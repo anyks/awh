@@ -147,6 +147,8 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	expression.backtracking = false;
 	// Выполняем сброс флага применимости поиска позиции начала
 	expression.reversible = false;
+	// Выполняем сброс флага применимости детерминированного исполнения
+	expression.automatic = false;
 	// Выполняем очистку соответствия имён именованных групп
 	expression.names.clear();
 	// Выполняем сброс кода ошибки последней операции
@@ -270,6 +272,8 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 			expression.backtracking = true;
 			// Выполняем установку флага готовности движка
 			expression.ready = true;
+			// Выполняем установку флага применимости детерминированного исполнения
+			expression.automatic = dfa_t::available(expression.forward);
 			// Выполняем порождение сопоставителя выражения машинным кодом
 			generating();
 			// Выводим результат выполнения сборки
@@ -280,6 +284,17 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	}
 	// Выполняем установку флага готовности движка
 	expression.ready = true;
+	/**
+	 * Выполняем установку флага применимости детерминированного исполнения
+	 *
+	 * @details Применимость есть чистая функция программы, и считается она
+	 *          однажды при сборке, а не на всяком сопоставлении: прежде обход
+	 *          всех классов в поисках свойств Юникода шёл на каждом вызове, и по
+	 *          образцам стека на «alternate-short» стоил двадцать пятой доли
+	 *          времени сопоставления.
+	 *
+	 */
+	expression.automatic = dfa_t::available(expression.forward);
 	// Выполняем порождение сопоставителя выражения машинным кодом
 	generating();
 	/**
@@ -390,6 +405,8 @@ bool awh::regex::Engine::test(string_view text, const size_t start) noexcept {
  * @param expression сопоставляемое регулярное выражение
  * @param text       текст для сопоставления
  * @param start      позиция начала поиска совпадения
+ * @param located    позиция вхождения обязательного литерала, проверкой
+ *                   найденная, либо «npos», если проверка не велась
  * @param captures   набор границ совпадения и захваченных групп
  * @param result     исход сопоставления, пробою установленный
  * @param exhausted  признак исчерпания объёма работы при объёме полном
@@ -398,7 +415,7 @@ bool awh::regex::Engine::test(string_view text, const size_t start) noexcept {
  * @return           признак разрешения вопроса пробою
  *
  */
-bool awh::regex::Engine::probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept {
+bool awh::regex::Engine::probe(const expression_t & expression, string_view text, const size_t start, const size_t located, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept {
 	// Выполняем сброс признака исчерпания объёма работы
 	exhausted = false;
 	// Выполняем сброс позиции прекращения пробы пределом
@@ -426,6 +443,8 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	if(span > MAX_DIRECT)
 		// Выполняем установку предела числа попыток сопоставления
 		this->_backtrack.horizon(MAX_PROBES);
+	// Выполняем передачу вхождения обязательного литерала, проверкой найденного
+	this->_backtrack.located(located);
 	/**
 	 * Если сопоставление исполнением с возвратом выполнено
 	 */
@@ -588,7 +607,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          лишь выражению, началом строки привязанному.
 	 *
 	 */
-	if(this->_dfa.available(expression.forward))
+	if(expression.automatic)
 		// Выводим результат проверки наличия совпадения детерминированным исполнением
 		return this->_dfa.test(expression.forward, text, start);
 	/**
@@ -822,6 +841,20 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 			return false;
 	}
 	/**
+	 * Позиция вхождения обязательного литерала, проверкой возможности найденная
+	 *
+	 * @details Проверка находит вхождение, и исполнение с возвратом, какое путь
+	 *          ведёт дальше, получает его готовым: прежде оно разыскивало литерал
+	 *          заново, и сопоставление, пробою разрешённое, искало его дважды -
+	 *          по образцам стека на «region-medium» второй поиск стоил одиннадцатой
+	 *          доли времени. Отменить же саму проверку нельзя: отказ при отсутствии
+	 *          литерала она даёт раньше выбора пути, и перенос его в исполнение
+	 *          с возвратом замером стоил «(?:ab|cd)+z» на коротком тексте больше
+	 *          половины - подготовка исполнения превышает там весь поиск.
+	 *
+	 */
+	size_t located = string_view::npos;
+	/**
 	 * Если обязательный литерал совпадения в тексте отсутствует
 	 *
 	 * @details Выражение, к позиции начала поиска привязанное, проверки этой
@@ -831,9 +864,16 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          до выбора пути исполнения.
 	 *
 	 */
-	if(!expression.forward.anchored && !expression.forward.prefilter.possible(text, start))
-		// Выводим результат поиска совпадения
-		return false;
+	if(!expression.forward.anchored && !expression.forward.prefilter.literal.empty()) {
+		// Выполняем поиск вхождения обязательного литерала в оставшемся тексте
+		located = expression.forward.prefilter.locate(text, start);
+		/**
+		 * Если обязательный литерал в оставшемся тексте отсутствует
+		 */
+		if(located == string_view::npos)
+			// Выводим результат поиска совпадения
+			return false;
+	}
 	/**
 	 * Если пустое совпадение совпадением не считается
 	 *
@@ -852,7 +892,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	/**
 	 * Если детерминированное исполнение неприменимо
 	 */
-	if(!this->_dfa.available(expression.forward))
+	if(!expression.automatic)
 		// Выводим результат сопоставления исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, captures);
 	/**
@@ -872,6 +912,8 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		AWH_REGEX_TICK(path_t::SWEEPING);
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((text.size() - start + 1) * BACKTRACK_RATIO);
+		// Выполняем передачу вхождения обязательного литерала, проверкой найденного
+		this->_backtrack.located(located);
 		/**
 		 * Если сопоставление исполнением с возвратом выполнено
 		 */
@@ -904,7 +946,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		/**
 		 * Если проба исполнением с возвратом вопрос разрешила
 		 */
-		if(this->probe(expression, text, start, captures, answer, exhausted, frontier))
+		if(this->probe(expression, text, start, located, captures, answer, exhausted, frontier))
 			// Выводим исход сопоставления, пробою установленный
 			return answer;
 	}
@@ -955,6 +997,15 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *
 		 */
 		this->_backtrack.onset(frontier);
+		/**
+		 * Выполняем передачу вхождения обязательного литерала, проверкой найденного
+		 *
+		 * @details Вхождение отвечает началу поиска, а не позиции первой попытки:
+		 *          лежащее левее неё исполнение с возвратом отбрасывает само
+		 *          и разыскивает литерал от позиции попытки заново.
+		 *
+		 */
+		this->_backtrack.located(located);
 		/**
 		 * Если сопоставление исполнением с возвратом выполнено
 		 */

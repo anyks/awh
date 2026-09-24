@@ -4768,3 +4768,180 @@ TEST(Regex, EngineStaleCaptures) {
 		EXPECT_EQ(captures.at(1).second, string_view::npos);
 	}
 }
+/**
+ * @brief Проверка передачи вхождения обязательного литерала исполнению с возвратом
+ *
+ * @details Движок находит вхождение обязательного литерала своей проверкой
+ *          возможности совпадения и передаёт его исполнению с возвратом на одно
+ *          сопоставление: литерал разыскивается однажды. Смотрите раздел
+ *          «Намеренные решения» заголовка движка. Проверка стережёт два свойства
+ *          передачи. Первое - отбор при удалении ограниченном выводится
+ *          из переданного вхождения так же, как его выводит «Prefilter::bounded»:
+ *          ошибка там отодвигает первую попытку правее совпадения, и оно теряется
+ *          молча. Второе - передача не переживает сопоставления: выражение,
+ *          ушедшее после проверки к исполнению без возврата, вхождения своего
+ *          выражению следующему не оставляет, иначе чужое вхождение отодвинуло бы
+ *          попытки и у него.
+ *
+ */
+TEST(Regex, EngineLocatedHandoff) {
+	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	/**
+	 * @brief Набор выражений и текстов сопоставления
+	 *
+	 */
+	const struct {
+		// Текст регулярного выражения
+		const char * pattern;
+		// Набор текстов сопоставления
+		vector <string> texts;
+	} samples[] = {
+		// Литерал при удалении неограниченном: вхождение служит проверке
+		{"(?:[a-z]+/)+v1", {"GET /api/v1/items", "v1 api/v1", "no literal here", "zz/v1/v1 a/b/v1", "api/v2/xv1"}},
+		/**
+		 * Литерал при удалении ограниченном: вхождение отодвигает первую попытку
+		 *
+		 * @details Первое вхождение литерала в «dogtrot» входит в совпадение,
+		 *          а в «trot then foxtrot» - не входит, и попытки уходят правее
+		 *
+		 */
+		{"(?:fox|dog)trot", {"dogtrot", "trot then foxtrot", "fox trot", "trotfoxtro", "xxtrot dogtrot foxtrot"}},
+		// Литерал в один байт
+		{"(?:ab|cd)+z", {"ababz", "abcd", "zz ab cdz", "cdcdcdz abz"}},
+		// Проход текста единственной попыткой
+		{".*needle", {"a needle", "none", "needle needle"}}
+	};
+	/**
+	 * Выполняем обход набора проверяемых выражений
+	 */
+	for(auto & sample : samples) {
+		// Создаём объект движка регулярных выражений: один на все тексты выражения
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(sample.pattern, 0, expression)) << sample.pattern;
+		// Выполняем проверку наличия обязательного литерала: передача его обязана исполняться
+		ASSERT_FALSE(expression.forward.prefilter.literal.empty()) << sample.pattern;
+		// Количество текстов с совпадением
+		size_t matched = 0;
+		// Количество текстов без совпадения
+		size_t refused = 0;
+		/**
+		 * Выполняем обход текстов сопоставления
+		 */
+		for(auto & text : sample.texts) {
+			// Создаём объект исполнения без возврата
+			regex::pike_t pike;
+			// Создаём набор границ, установленных движком
+			vector <pair <size_t, size_t>> received;
+			// Создаём набор границ, установленных исполнением без возврата
+			vector <pair <size_t, size_t>> expected;
+			// Выполняем сопоставление регулярного выражения движком
+			const bool result = engine.exec(expression, text, 0, received);
+			// Выполняем проверку совпадения вердикта сопоставления
+			ASSERT_EQ(result, pike.exec(expression.forward, text, 0, expected)) << sample.pattern << " / " << text;
+			// Выполняем учёт вердикта сопоставления
+			(result ? matched : refused)++;
+			// Выполняем проверку количества установленных границ
+			ASSERT_EQ(received.size(), expected.size()) << sample.pattern << " / " << text;
+			/**
+			 * Выполняем обход набора установленных границ
+			 */
+			for(size_t i = 0; i < received.size(); i++) {
+				// Выполняем проверку начальной границы захвата
+				EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << " / " << text << ", группа " << i;
+				// Выполняем проверку конечной границы захвата
+				EXPECT_EQ(received.at(i).second, expected.at(i).second) << sample.pattern << " / " << text << ", группа " << i;
+			}
+		}
+		// Выполняем проверку наличия совпадения: выборка обязана его давать
+		EXPECT_GT(matched, static_cast <size_t> (0)) << sample.pattern;
+		// Выполняем проверку наличия отказа: выборка обязана его давать
+		EXPECT_GT(refused, static_cast <size_t> (0)) << sample.pattern;
+	}
+	/**
+	 * Выполняем проверку отбора при удалении ограниченном заданными вердиктами
+	 *
+	 * @details Сличение с исполнением без возврата стережёт вердикт, а здесь
+	 *          он задан прямо: отбор, забывший об удалении, начинает попытки
+	 *          с самого вхождения литерала, и «dogtrot» совпадения не находит вовсе
+	 *
+	 */
+	{
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Создаём набор границ совпадения
+		vector <pair <size_t, size_t>> captures;
+		// Выполняем сборку выражения с литералом при удалении ограниченном
+		ASSERT_TRUE(engine.build("(?:fox|dog)trot", 0, expression));
+		// Выполняем проверку ограниченности удаления литерала от начала совпадения
+		ASSERT_NE(expression.forward.prefilter.distance, string_view::npos);
+		// Выполняем сброс учёта путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление, где первое вхождение литерала входит в совпадение
+		ASSERT_TRUE(engine.exec(expression, "dogtrot", 0, captures));
+		// Выполняем проверку пути: сопоставление обязано вестись исполнением с возвратом
+		EXPECT_GT(regex::probe_t::count(regex::path_t::PROBING), static_cast <uint64_t> (0));
+		// Выполняем проверку начала совпадения
+		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (0));
+		// Выполняем проверку конца совпадения
+		EXPECT_EQ(captures.at(0).second, static_cast <size_t> (7));
+		// Выполняем сопоставление, где первое вхождение литерала в совпадение не входит
+		ASSERT_TRUE(engine.exec(expression, "trot then foxtrot", 0, captures));
+		// Выполняем проверку начала совпадения
+		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (10));
+		// Выполняем проверку конца совпадения
+		EXPECT_EQ(captures.at(0).second, static_cast <size_t> (17));
+	}
+	/**
+	 * Выполняем проверку непереживания передачи
+	 *
+	 * @details Первое выражение собрано в режиме разбора UTF-8: автомат ему
+	 *          неприменим, и после проверки литерала оно уходит к исполнению
+	 *          без возврата, исполнения с возвратом не зовя. Второе исполняется
+	 *          лишь с возвратом - проверка окружения держит его вне регулярного
+	 *          подмножества, - и путь его проверки движка не проходит вовсе.
+	 *          Вхождение первого, у второго оставшееся, отодвинуло бы его первую
+	 *          попытку за конец короткого текста, и совпадение пропало бы
+	 *
+	 */
+	{
+		// Создаём объект движка регулярных выражений: общий для обоих выражений
+		regex::engine_t engine;
+		// Создаём выражение, уходящее к исполнению без возврата
+		regex::expression_t piked;
+		// Создаём выражение, исполняемое лишь с возвратом
+		regex::expression_t tracked;
+		// Создаём набор границ совпадения
+		vector <pair <size_t, size_t>> captures;
+		// Выполняем сборку выражения в режиме разбора UTF-8
+		ASSERT_TRUE(engine.build("(?:fox|dog)trot", 0x20, piked));
+		// Выполняем сборку выражения с проверкой окружения
+		ASSERT_TRUE(engine.build("(fox|dog)trot(?=\\s)", 0, tracked));
+		// Выполняем проверку пути второго выражения
+		ASSERT_TRUE(tracked.backtracking);
+		// Выполняем проверку ограниченности удаления литерала у второго выражения
+		ASSERT_NE(tracked.forward.prefilter.distance, string_view::npos);
+		// Выполняем сброс учёта путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление первого выражения с литералом далеко от начала
+		ASSERT_TRUE(engine.exec(piked, "xxxxxxxxxxxxxxxxxxxxfoxtrot", 0, captures));
+		// Выполняем проверку пути: первое выражение обязано уйти к исполнению без возврата
+		EXPECT_GT(regex::probe_t::count(regex::path_t::PIKING), static_cast <uint64_t> (0));
+		// Выполняем проверку начала совпадения первого выражения
+		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (20));
+		// Выполняем сопоставление второго выражения с совпадением в самом начале
+		ASSERT_TRUE(engine.exec(tracked, "dogtrot fox", 0, captures));
+		// Выполняем проверку числа границ совпадения и групп
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		// Выполняем проверку начала совпадения второго выражения
+		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (0));
+		// Выполняем проверку конца совпадения второго выражения
+		EXPECT_EQ(captures.at(0).second, static_cast <size_t> (7));
+		// Выполняем проверку конца группы второго выражения
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
+	}
+}

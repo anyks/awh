@@ -361,7 +361,7 @@ void awh::regex::Dfa::alphabet() noexcept {
  * @return        результат проверки применимости исполнения
  *
  */
-bool awh::regex::Dfa::available(const program_t & program) const noexcept {
+bool awh::regex::Dfa::available(const program_t & program) noexcept {
 	/**
 	 * Если программа регулярного выражения пуста
 	 */

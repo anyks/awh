@@ -103,6 +103,20 @@
  *          исчерпывает допустимый объём работы. Узость закреплена тестом
  *          «Regex.EngineSweeping».
  *
+ *          <b>Обязательный литерал ищет движок, прежде выбора пути, а найденное
+ *          вхождение передаёт исполнению с возвратом.</b> Выглядит это лишним:
+ *          исполнение с возвратом проверять литерал умеет и само. Прежде оно
+ *          и проверяло, и сопоставление, пробою разрешённое, искало литерал
+ *          дважды - на «(?:fox|dog)trot» по тексту среднему это стоило более
+ *          трети времени. Простая правка, снятие проверки с движка, замером
+ *          отвергнута: «(?:ab|cd)+z» на коротком тексте без литерала терял
+ *          57 процентов - отказ уходил за подготовку исполнения, какая дороже
+ *          всего поиска. Передача действует на одно сопоставление и ставится
+ *          перед самым вызовом исполнения с возвратом, а не прежде выбора пути:
+ *          путь, исполнения этого не зовущий, оставил бы вхождение своего
+ *          текста сопоставлению чужому. Порядок закреплён тестом
+ *          «Regex.EngineLocatedHandoff».
+ *
  * \~english
  * @brief Header file of the regular expression engine — the Engine class, which unites parsing,
  *        compilation of the forward and the reversed programs, deterministic execution and execution
@@ -184,6 +198,19 @@
  *          with backtracking forty times longer, and «.*(a+)+b» with nested repetitions
  *          exhausts the admissible amount of work. The narrowness is fixed by the
  *          «Regex.EngineSweeping» test.
+ *          <b>The mandatory literal is searched for by the engine, before choosing the path,
+ *          and the found occurrence is handed over to execution with backtracking.</b> This looks
+ *          redundant: execution with backtracking can check the literal by itself. Formerly it
+ *          did check it, and a match resolved by the probe searched for the literal
+ *          twice - on «(?:fox|dog)trot» over the medium text this cost more than
+ *          a third of the time. The simple correction, removing the check from the engine, was
+ *          rejected by measurement: «(?:ab|cd)+z» on a short text without the literal lost
+ *          57 per cent - the refusal moved behind the preparation of the execution, which costs
+ *          more than the whole search. The handover acts on one match and is placed
+ *          right before the call of execution with backtracking rather than before choosing the path:
+ *          a path that does not call that execution would leave the occurrence of its own
+ *          text to someone else's match. The order is fixed by the
+ *          «Regex.EngineLocatedHandoff» test.
  *
  * \~
  *
@@ -449,6 +476,27 @@ namespace awh {
 			bool reversible;
 			/**
 			 * \~russian
+			 * Флаг применимости детерминированного исполнения к прямой программе
+			 *
+			 * @details Применимость есть чистая функция программы, и спрашивалась
+			 *          она прежде на всяком сопоставлении - обходом всех классов
+			 *          в поисках свойств Юникода. Флаг считают сборка и хранилище:
+			 *          хранилище выводит его из восстановленной программы само,
+			 *          записи не доверяя, и формат записи от него не зависит.
+			 *
+			 * \~english
+			 * Flag of the applicability of deterministic execution to the forward program
+			 * @details The applicability is a pure function of the program, and formerly it was asked
+			 *          on every match - by a walk over all the classes in search of Unicode
+			 *          properties. The flag is computed by the build and by the storage:
+			 *          the storage derives it from the restored program by itself, not trusting the record,
+			 *          and the format of the record does not depend on it.
+			 *
+			 * \~
+			 */
+			bool automatic;
+			/**
+			 * \~russian
 			 * Сопоставитель выражения в виде порождённого машинного кода
 			 *
 			 * @details Сопоставитель порождается сборкой в режиме «JIT», если
@@ -478,7 +526,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Expression() noexcept : backtracking(false), ready(false), reversible(false) {}
+			Expression() noexcept : backtracking(false), ready(false), reversible(false), automatic(false) {}
 		} expression_t;
 
 		/**
@@ -540,6 +588,8 @@ namespace awh {
 				 * @param expression сопоставляемое регулярное выражение
 				 * @param text       текст для сопоставления
 				 * @param start      позиция начала поиска совпадения
+				 * @param located    позиция вхождения обязательного литерала, проверкой
+				 *                   найденная, либо «npos», если проверка не велась
 				 * @param captures   набор границ совпадения и захваченных групп
 				 * @param result     исход сопоставления, пробою установленный
 				 * @param exhausted  признак исчерпания объёма работы при объёме полном
@@ -558,6 +608,8 @@ namespace awh {
 				 * @param expression matched regular expression
 				 * @param text       text to match
 				 * @param start      position to start the search for a match from
+				 * @param located    position of the occurrence of the mandatory literal found
+				 *                   by the check, or «npos» if the check was not performed
 				 * @param captures   set of the boundaries of the match and of the captured groups
 				 * @param result     outcome of the matching established by the probe
 				 * @param exhausted  indication of the exhaustion of the amount of work at the full amount
@@ -567,7 +619,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				bool probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept;
+				bool probe(const expression_t & expression, string_view text, const size_t start, const size_t located, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept;
 			private:
 				/**
 				 * \~russian

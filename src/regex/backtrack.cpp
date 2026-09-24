@@ -346,7 +346,7 @@ namespace {
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _onset(string_view::npos), _frontier(string_view::npos), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _onset(string_view::npos), _frontier(string_view::npos), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE), _located(string_view::npos) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -386,6 +386,16 @@ bool awh::regex::Backtrack::bounded() const noexcept {
 void awh::regex::Backtrack::onset(const size_t onset) noexcept {
 	// Выполняем установку позиции первой попытки сопоставления
 	this->_onset = onset;
+}
+/**
+ * @brief Метод передачи вхождения обязательного литерала
+ *
+ * @param located позиция вхождения обязательного литерала либо «npos»
+ *
+ */
+void awh::regex::Backtrack::located(const size_t located) noexcept {
+	// Выполняем установку позиции вхождения обязательного литерала
+	this->_located = located;
 }
 /**
  * @brief Метод извлечения позиции, на которой сопоставление прекращено пределом
@@ -3258,6 +3268,21 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	const size_t onset = this->_onset;
 	// Выполняем снятие позиции первой попытки
 	this->_onset = string_view::npos;
+	/**
+	 * Выполняем установку вхождения обязательного литерала, вызывающей стороной найденного
+	 *
+	 * @details Вхождение действует на одно сопоставление и снимается по его
+	 *          принятии - тем же порядком, каким принимается позиция первой
+	 *          попытки. Берётся оно лишь до первого розыска литерала: розыски
+	 *          последующие идут от позиций, попытками уже пройденных. Живёт оно
+	 *          до цикла попыток и в цикл не входит: переданное вхождение ложится
+	 *          в место, циклом и без того несомое, и переменной, через весь цикл
+	 *          живой, у него не прибавляется.
+	 *
+	 */
+	const size_t located = this->_located;
+	// Выполняем снятие вхождения обязательного литерала
+	this->_located = string_view::npos;
 	// Выполняем сброс позиции прекращения сопоставления пределом
 	this->_frontier = string_view::npos;
 	/**
@@ -3430,8 +3455,17 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 * Если проверка возможности совпадения по литералу применима
 	 */
 	if(checking) {
-		// Выполняем поиск обязательного литерала в оставшемся тексте
-		required = seek(text, program.prefilter.literal, pos);
+		/**
+		 * Выполняем поиск обязательного литерала в оставшемся тексте
+		 *
+		 * @details Вхождение, переданное вызывающей стороной, берётся как есть:
+		 *          движок находит его своей проверкой возможности совпадения,
+		 *          и прежде сопоставление, пробою разрешённое, искало литерал
+		 *          дважды. Лежащее левее первой попытки вхождение первым для
+		 *          неё не является, и литерал разыскивается от неё заново.
+		 *
+		 */
+		required = (((located != string_view::npos) && (located >= pos)) ? located : program.prefilter.locate(text, pos));
 		/**
 		 * Если обязательный литерал в оставшемся тексте отсутствует
 		 */
@@ -3441,7 +3475,17 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			// Выводим результат поиска совпадения
 			return false;
 		}
-	}
+	/**
+	 * Если вхождение литерала передано для отбора при удалении ограниченном
+	 *
+	 * @details Место его - «required»: при удалении ограниченном проверка
+	 *          возможности совпадения не ведётся, и место это свободно.
+	 *          Отбор первый вхождение принимает и место освобождает.
+	 *
+	 */
+	} else if((located != string_view::npos) && (located >= pos))
+		// Выполняем передачу вхождения отбору первому
+		required = located;
 	/**
 	 * Выполняем обход позиций начала попытки сопоставления
 	 */
@@ -3476,8 +3520,27 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			 *
 			 */
 			if(!program.prefilter.literal.empty() && (program.prefilter.distance != string_view::npos)) {
+				// Позиция, раньше какой совпадение начаться не может
+				size_t limit = pos;
+				/**
+				 * Если вхождение литерала передано вызывающей стороной и попыткой не пройдено
+				 *
+				 * @details Отбор выводится из вхождения тем же порядком, каким его
+				 *          выводит «Prefilter::bounded», но без розыска литерала:
+				 *          вхождение первое не левее позиции уже найдено движком.
+				 *          Передача действует на отбор первый, а отборы последующие
+				 *          разыскивают литерал сами.
+				 *
+				 */
+				if((required != string_view::npos) && (required >= pos)) {
+					// Получаем позицию, раньше какой совпадение начаться не может
+					const size_t bound = ((required > program.prefilter.distance) ? (required - program.prefilter.distance) : 0);
+					// Выполняем установку позиции возможного начала совпадения
+					limit = ((bound > pos) ? bound : pos);
 				// Выполняем отбор позиции начала совпадения по обязательному литералу
-				const size_t limit = program.prefilter.bounded(text, pos);
+				} else limit = program.prefilter.bounded(text, pos);
+				// Выполняем снятие вхождения, отбором первым принятого
+				required = string_view::npos;
 				/**
 				 * Если отодвигание начало поиска продвинуло
 				 *
@@ -3691,17 +3754,19 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		 * Если попытка сопоставления с текущей позиции выполнена
 		 */
 		if(this->attempt(pos)) {
-			// Выполняем размещение границ совпадения и захваченных групп
-			captures.resize(static_cast <size_t> (program.captures) + 1);
 			/**
 			 * Выполняем заполнение границ совпадения и захваченных групп
+			 *
+			 * @details Набор очищен при входе в сопоставление, и границы кладутся
+			 *          в него построением на месте. Прежде набор размещался размером,
+			 *          а границы писались следом, и размещение обнуляло его внешним
+			 *          вызовом прежде записи: по образцам стека на «alternate-short»
+			 *          это одиннадцатая доля времени сопоставления.
+			 *
 			 */
-			for(size_t i = 0; i < captures.size(); i++) {
-				// Выполняем установку начальной границы захвата
-				captures.at(i).first = this->_slots.at(i * 2);
-				// Выполняем установку конечной границы захвата
-				captures.at(i).second = this->_slots.at((i * 2) + 1);
-			}
+			for(size_t i = 0; i <= static_cast <size_t> (program.captures); i++)
+				// Выполняем размещение границ очередного захвата
+				captures.emplace_back(this->_slots.at(i * 2), this->_slots.at((i * 2) + 1));
 			// Выводим результат поиска совпадения
 			return true;
 		}

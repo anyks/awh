@@ -847,111 +847,43 @@ namespace awh {
 				if(this->literal.empty())
 					// Выводим результат проверки возможности совпадения
 					return true;
-				/**
-				 * Если позиция проверки за пределы текста выходит
-				 */
-				if(pos > text.size())
-					// Выводим невозможность совпадения в тексте
-					return false;
-				/**
-				 * Выполняем пробу поиском первого байта в ближнем участке текста
-				 *
-				 * @details Оконный проход обвязку свою несёт всегда: замером на тексте
-				 *          в две тысячи байтов он стоил 5.02 наносекунды при находке
-				 *          в девятой позиции, тогда как поиск одного байта тем же набором
-				 *          команд процессора - 1.50. Литерал же у большинства текстов
-				 *          стоит близко к началу поиска, и проба берёт его втрое дешевле.
-				 *
-				 *          Место пробы - здесь, а не в самом поиске: проверка возможности
-				 *          выполняется единожды на сопоставление, тогда как отбор позиции
-				 *          по литералу зовётся на всякую попытку, и проба, туда внесённая,
-				 *          множилась бы числом попыток - замером она отняла у длинных
-				 *          строк набора от пяти до семи сотых доли.
-				 *
-				 *          Проба ограничена ближним участком и малым числом встреч
-				 *          первого байта: байт этот разборчивостью не отличается,
-				 *          и проход по всем его встречам выродился бы ровно в то,
-				 *          от чего оконный проход и заведён.
-				 *
-				 */
-				{
-					// Получаем искомый обязательный литерал совпадения
-					const string_view what(this->literal);
-					/**
-					 * Если искомое состоит из одного байта
-					 *
-					 * @details Поиск одного байта и есть то, чем проба берёт находку,
-					 *          и сам поиск ведёт его же: проба тут лишь удвоила бы
-					 *          проход по тексту. Замером она отняла у «(?:ab|cd)+z»
-					 *          треть - 8.55 наносекунды против 6.52.
-					 *
-					 */
-					if(what.size() < 2)
-						// Выводим результат поиска обязательного литерала в тексте
-						return (seek(text, this->literal, pos) != string_view::npos);
-					// Получаем предел ближнего участка текста
-					const size_t horizon = (((pos + LOOKAHEAD) < text.size()) ? (pos + LOOKAHEAD) : text.size());
-					// Получаем обзор ближнего участка текста
-					/**
-					 * Обзор ближнего участка текста
-					 *
-					 * @warning Имя `near` здесь непригодно: у MS Windows это МАКРОС,
-					 *          доставшийся от моделей памяти и объявленный в windows.h.
-					 *          Объявление с ним рассыпается подстановкой, и заголовок
-					 *          переставал собираться всюду, где windows.h подключён
-					 *          раньше. Снять имя через suppress.hpp тоже можно, но
-					 *          заголовок не должен зависеть от порядка подключений
-					 */
-					const string_view nearby(text.data(), horizon);
-					// Получаем положение поиска первого байта искомого
-					size_t current = pos;
-					/**
-					 * Выполняем пробу поиском первого байта в ближнем участке
-					 */
-					for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
-						// Выполняем поиск первого байта искомого в ближнем участке
-						const size_t candidate = nearby.find(what.front(), current);
-						/**
-						 * Если первый байт искомого в ближнем участке не обнаружен
-						 */
-						if(candidate == string_view::npos)
-							// Выходим из пробы ближнего участка
-							break;
-						/**
-						 * Если остаток искомого за пределы текста выходит
-						 */
-						if((candidate + what.size()) > text.size())
-							// Выходим из пробы ближнего участка
-							break;
-						// Признак совпадения искомого с текстом
-						bool equal = true;
-						/**
-						 * Выполняем сличение остатка искомого с текстом
-						 */
-						for(size_t i = 1; i < what.size(); i++) {
-							/**
-							 * Если очередной байт искомого тексту не отвечает
-							 */
-							if(text[candidate + i] != what[i]) {
-								// Выполняем сброс признака совпадения искомого
-								equal = false;
-								// Выходим из сличения остатка искомого
-								break;
-							}
-						}
-						/**
-						 * Если искомое тексту отвечает
-						 */
-						if(equal)
-							// Выводим возможность совпадения в тексте
-							return true;
-						// Переходим к встрече первого байта следующей
-						current = (candidate + 1);
-					}
-				}
 				// Выводим результат поиска обязательного литерала в тексте
-				return (seek(text, this->literal, pos) != string_view::npos);
+				return (this->locate(text, pos) != string_view::npos);
 			}
+			/**
+			 * \~russian
+			 * @brief Метод поиска вхождения обязательного литерала в оставшемся тексте
+			 *
+			 * @details Поиск ведётся единожды на сопоставление: сперва пробой первого
+			 *          байта в ближнем участке текста, затем, не найдя там искомого,
+			 *          поиском последовательности по остатку. Проверка возможности
+			 *          совпадения стоит на нём же, а исполнение с возвратом берёт
+			 *          найденное вхождение как есть: прежде оно разыскивало литерал
+			 *          заново, и сопоставление, пробою разрешённое, искало его дважды.
+			 *
+			 * @param text текст сопоставления
+			 * @param pos  позиция начала проверяемого участка текста
+			 * @return     позиция первого вхождения литерала не левее заданной либо
+			 *             «npos» при его отсутствии; литерал пустой входит в заданную
+			 *             позицию, если она не лежит за концом текста
+			 *
+			 * \~english
+			 * @brief Method of searching for an occurrence of the mandatory literal in the remaining text
+			 * @details The search is performed once per match: first by a probe of the first
+			 *          byte in the near stretch of the text, then, not having found the sought
+			 *          sequence there, by a search for the sequence over the remainder. The check
+			 *          of the possibility of a match stands on it, and the execution with
+			 *          backtracking takes the found occurrence as is: formerly it searched for the
+			 *          literal anew, and a match resolved by the probe searched for it twice.
+			 * @param text text to match
+			 * @param pos  position of the beginning of the checked stretch of the text
+			 * @return     position of the first occurrence of the literal not to the left of the given one
+			 *             or «npos» in its absence; an empty literal occurs at the given
+			 *             position, unless it lies beyond the end of the text
+			 *
+			 * \~
+			 */
+			size_t locate(string_view text, const size_t pos) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод отбора позиции начала совпадения по обязательному литералу

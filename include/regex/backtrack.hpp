@@ -1103,6 +1103,24 @@ namespace awh {
 			private:
 				// Код ошибки последней операции сопоставления
 				error_t _error;
+			private:
+				/**
+				 * \~russian
+				 * Позиция вхождения обязательного литерала, вызывающей стороной найденная
+				 *
+				 * @details Позиция действует на одно последующее сопоставление, как и
+				 *          позиция первой попытки. Поле стоит последним намеренно:
+				 *          смещения полей, читаемых циклом исполнения, оно не сдвигает.
+				 *
+				 * \~english
+				 * Position of the occurrence of the mandatory literal found by the calling side
+				 * @details The position acts on one subsequent match, as the position of the
+				 *          first attempt does. The field stands last deliberately: it does not shift
+				 *          the offsets of the fields read by the execution loop.
+				 *
+				 * \~
+				 */
+				size_t _located;
 			public:
 				/**
 				 * \~russian
@@ -1293,6 +1311,35 @@ namespace awh {
 				 * \~
 				 */
 				void onset(const size_t onset) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод передачи вхождения обязательного литерала
+				 *
+				 * @details Позиция действует на одно последующее сопоставление, после
+				 *          чего снимается. Её передаёт движок, проверивший возможность
+				 *          совпадения до выбора пути исполнения: найденное проверкой
+				 *          вхождение исполнение берёт как есть, а не разыскивает заново.
+				 *          Вхождение обязано быть первым не левее начала поиска; лежащее
+				 *          левее первой попытки исполнение отбрасывает и ищет литерал
+				 *          от неё само.
+				 *
+				 * @param located позиция вхождения обязательного литерала либо «npos»
+				 *
+				 * \~english
+				 * @brief Method of handing over the occurrence of the mandatory literal
+				 * @details The position acts on one subsequent match, after which it is
+				 *          removed. It is handed over by the engine that checked the possibility
+				 *          of a match before choosing the path of execution: the execution takes
+				 *          the occurrence found by the check as is instead of searching for it anew.
+				 *          The occurrence must be the first one not to the left of the start of the
+				 *          search; one lying to the left of the first attempt the execution discards
+				 *          and searches for the literal from the attempt by itself.
+				 * @param located position of the occurrence of the mandatory literal or «npos»
+				 *
+				 * \~
+				 */
+				void located(const size_t located) noexcept;
 			public:
 				/**
 				 * \~russian

@@ -373,7 +373,9 @@ namespace awh {
 				 *
 				 * @details Детерминированное исполнение выполняется побайтово, тогда как
 				 *          программа в режиме разбора UTF-8 сопоставляет символы целиком,
-				 *          поэтому в этом режиме исполнение неприменимо.
+				 *          поэтому в этом режиме исполнение неприменимо. Метод состояния
+				 *          автомата не читает и отвечает по одной программе: признак
+				 *          выражения, из него выводимый, считают и сборка, и хранилище.
 				 *
 				 * @param program исполняемая программа регулярного выражения
 				 * @return        результат проверки применимости исполнения
@@ -382,13 +384,15 @@ namespace awh {
 				 * @brief Method of checking the applicability of deterministic execution
 				 * @details Deterministic execution is performed byte by byte, whereas
 				 *          a program in the UTF-8 parsing mode matches whole characters,
-				 *          therefore in that mode the execution is inapplicable.
+				 *          therefore in that mode the execution is inapplicable. The method does not read
+				 *          the state of the automaton and answers by the program alone: the flag of the
+				 *          expression derived from it is computed by both the build and the storage.
 				 * @param program program of the regular expression being executed
 				 * @return        result of checking the applicability of the execution
 				 *
 				 * \~
 				 */
-				bool available(const program_t & program) const noexcept;
+				static bool available(const program_t & program) noexcept;
 			public:
 				/**
 				 * \~russian
