@@ -96,6 +96,11 @@ void awh::Http2::debug(const char * format, va_list args) noexcept {
 int32_t awh::Http2::begin([[maybe_unused]] nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	/**
+	 * Начинается новый блок заголовков: блоки заголовков в HTTP/2 не перемежаются между потоками
+	 * (за HEADERS следуют только его CONTINUATION), поэтому достаточно одного счётчика на сессию
+	 */
+	self->_headersSize = 0;
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("begin")){
 		/**
@@ -561,6 +566,11 @@ int32_t awh::Http2::close(nghttp2_session * session, const int32_t sid, const ui
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
 	/**
+	 * Поток закрыт, отправить его данные уже невозможно: освобождаем буферы неотправленной полезной нагрузки.
+	 * Сами записи удаляются после выхода из внешней операции, так как сейчас по ним может идти перебор
+	 */
+	self->release(sid);
+	/**
 	 * Если включён режим отладки
 	 */
 	#if DEBUG_MODE
@@ -809,12 +819,28 @@ int32_t awh::Http2::chunk([[maybe_unused]] nghttp2_session * session, [[maybe_un
 int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const nghttp2_frame * frame, nghttp2_rcbuf * name, nghttp2_rcbuf * value, [[maybe_unused]] const uint8_t flags, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	// Получаем буфер названия заголовка
+	auto nameBuffer = nghttp2_rcbuf_get_buf(name);
+	// Получаем буфер значения заголовка
+	auto valueBuffer = nghttp2_rcbuf_get_buf(value);
+	// Увеличиваем размер полученного списка заголовков (как в RFC 7541: имя, значение и 32 байта накладных расходов)
+	self->_headersSize += (nameBuffer.len + valueBuffer.len + 32);
+	/**
+	 * Если размер списка заголовков превышает установленный предел, сбрасываем поток.
+	 * Без предела HPACK позволяет удалённой стороне заставить нас хранить сколь угодно большой список заголовков
+	 */
+	if((self->_maxHeaderListSize > 0) && (self->_headersSize > static_cast <size_t> (self->_maxHeaderListSize))){
+		// Выводим сообщение об ошибке
+		self->_log->print("Stream %d header list size exceeds the limit of %u bytes", log_t::flag_t::WARNING, frame->hd.stream_id, self->_maxHeaderListSize);
+		// Если функция обратного вызова на на вывод ошибок установлена
+		if(self->_callback.is("error"))
+			// Выполняем функцию обратного вызова
+			self->_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::HTTP2_RECV, self->_fmk->format("Stream %d header list size exceeds the limit of %u bytes", frame->hd.stream_id, self->_maxHeaderListSize));
+		// Сообщаем библиотеке, что поток следует сбросить
+		return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+	}
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("header")){
-		// Получаем буфер названия заголовка
-		auto nameBuffer = nghttp2_rcbuf_get_buf(name);
-		// Получаем буфер значения заголовка
-		auto valueBuffer = nghttp2_rcbuf_get_buf(value);
 		/**
 		 * Выполняем определение типа фрейма
 		 */
@@ -936,10 +962,11 @@ ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const int32
 				(* flags) |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
 		// Если произошла рассинхронизация буфера и потоков
 		} else {
-			// Удаляем записи для потока
-			self->_records.erase(i);
-			// Удаляем буфер данных
-			self->_payloads.erase(sid);
+			/**
+			 * Удаляем записи и буфер данных потока. Удалять элементы словарей здесь нельзя:
+			 * по ним сейчас идёт перебор в вызывающем методе, поэтому они только очищаются
+			 */
+			self->release(sid);
 			// Выводим сообщение об ошибке
 			return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 		}
@@ -978,14 +1005,57 @@ size_t awh::Http2::available(const int32_t sid) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод пометки буферов потока на удаление
+ *
+ * @param sid идентификатор потока
+ */
+void awh::Http2::release(const int32_t sid) noexcept {
+	// Флаг найденных буферов потока
+	bool found = false;
+	// Выполняем поиск записей для потока
+	auto i = this->_records.find(sid);
+	// Если записи для потока найдены
+	if((found = (i != this->_records.end())))
+		// Выполняем очистку записей потока
+		std::queue <std::pair <size_t, flag_t>> ().swap(i->second);
+	// Выполняем поиск буфера данных для потока
+	auto j = this->_payloads.find(sid);
+	// Если буфер данных для потока найден
+	if(j != this->_payloads.end()){
+		// Выполняем очистку буфера данных
+		j->second->clear();
+		// Запоминаем, что буферы потока найдены
+		found = true;
+	}
+	/**
+	 * Если буферы потока найдены, помечаем их на удаление. Элементы словарей удаляются
+	 * только после выхода из внешней операции, так как по ним может идти перебор
+	 */
+	if(found)
+		// Добавляем поток в список закрытых
+		this->_closed.emplace(sid);
+}
+/**
+ * @brief Метод начала выполнения операции
+ *
+ * @param event событие выполняемой операции
+ */
+void awh::Http2::activate(const event_t event) noexcept {
+	// Если это самая внешняя операция, запоминаем её событие
+	if(this->_depth++ == 0)
+		// Выполняем установку активного события
+		this->_event = event;
+}
+/**
  * @brief Метод применения изменений
  *
  * @param event событие которому соответствует фиксация
  * @return      результат отправки
  */
-bool awh::Http2::commit(const event_t event) noexcept {
-	// Выполняем установку активного события
-	this->_event = event;
+bool awh::Http2::commit([[maybe_unused]] const event_t event) noexcept {
+	/**
+	 * Активное событие устанавливает метод activate(), вызываемый в начале каждой операции
+	 */
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
 		// Фиксируем отправленный результат
@@ -1010,11 +1080,30 @@ bool awh::Http2::commit(const event_t event) noexcept {
  *
  * @param event событие выполненной операции
  */
-void awh::Http2::completed(const event_t event) noexcept {
-	// Если выполненное событие соответствует последнему событию
-	if(event == this->_event){
+void awh::Http2::completed([[maybe_unused]] const event_t event) noexcept {
+	// Если глубина вложенности операций не нулевая
+	if(this->_depth > 0)
+		// Уменьшаем глубину вложенности операций
+		this->_depth--;
+	/**
+	 * Завершаем только самую внешнюю операцию: пока выполняется вложенная операция,
+	 * мы находимся внутри функций обратного вызова nghttp2 и удалять сессию нельзя
+	 */
+	if(this->_depth == 0){
 		// Выполняем сброс активного события
 		this->_event = event_t::NONE;
+		// Если есть закрытые потоки
+		if(!this->_closed.empty()){
+			// Выполняем перебор всех закрытых потоков
+			for(auto sid : this->_closed){
+				// Выполняем удаление записей потока
+				this->_records.erase(sid);
+				// Выполняем удаление буфера полезной нагрузки потока
+				this->_payloads.erase(sid);
+			}
+			// Выполняем очистку списка закрытых потоков
+			this->_closed.clear();
+		}
 		// Если функция обратного вызова на тригер установлена
 		if(this->_callback.is(1)){
 			// Выполняем функцию триггера
@@ -1140,8 +1229,8 @@ bool awh::Http2::windowUpdate(const int32_t sid, const int32_t size) noexcept {
  * @return результат работы пинга
  */
 bool awh::Http2::ping() noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_PING;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_PING);
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
 		// Если библиотека не готова отдать или принять данные, тогда закрываем подключение
@@ -1185,8 +1274,8 @@ bool awh::Http2::ping() noexcept {
  * @return результат выполнения операции
  */
 bool awh::Http2::shutdown() noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_SHUTDOWN;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_SHUTDOWN);
 	// Если сессия инициализированна
 	if(this->_session != nullptr){
 		// Если библиотека не готова отдать или принять данные, тогда закрываем подключение
@@ -1232,8 +1321,8 @@ bool awh::Http2::shutdown() noexcept {
  * @return       результат чтения данных фрейма
  */
 bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::RECV_FRAME;
+	// Выполняем начало операции
+	this->activate(event_t::RECV_FRAME);
 	// Если данные для чтения переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Если сессия инициализированна
@@ -1259,6 +1348,14 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
 			if(!this->commit(event_t::RECV_FRAME))
 				// Выполняем завершение работы
 				goto End;
+			/**
+			 * Если после обработки сессия больше не готова ни читать, ни писать (отправлен или получен GOAWAY
+			 * при ошибке уровня подключения), сообщаем об этом, чтобы подключение было закрыто.
+			 * Ошибки уровня потока подключение не закрывают
+			 */
+			if((this->_session != nullptr) && (nghttp2_session_want_read(this->_session) == 0) && (nghttp2_session_want_write(this->_session) == 0))
+				// Выполняем завершение работы
+				goto End;
 		}
 		// Выполняем вызов метода выполненного события
 		this->completed(event_t::RECV_FRAME);
@@ -1280,8 +1377,8 @@ bool awh::Http2::frame(const uint8_t * buffer, const size_t size) noexcept {
  * @return      результат отправки сообщения
  */
 bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_REJECT;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_REJECT);
 	/**
 	 * Определяем идентификатор сервиса
 	 */
@@ -1407,8 +1504,12 @@ bool awh::Http2::reject(const int32_t sid, const error_t error) noexcept {
  *
  */
 void awh::Http2::sendOrigin() noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_ORIGIN;
+	// Если список источников пуст, отправлять нечего и операцию не начинаем
+	if(this->_origins.empty())
+		// Выходим из функции
+		return;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_ORIGIN);
 	// Если список источников передан
 	if(!this->_origins.empty()){
 		/**
@@ -1447,8 +1548,10 @@ void awh::Http2::sendOrigin() noexcept {
 						// Выходим из функции
 						goto End;
 					}
-					// Выполняем применение изменений
-					this->commit(event_t::SEND_ORIGIN);
+					/**
+					 * Фрейм не отправляем здесь: метод вызывается из функции обратного вызова nghttp2
+					 * внутри nghttp2_session_mem_recv2, фрейм отправит метод frame() после её завершения
+					 */
 				}
 			}
 		}
@@ -1464,8 +1567,12 @@ void awh::Http2::sendOrigin() noexcept {
  * @param sid идентификатор потока
  */
 void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_ALTSVC;
+	// Если список альтернативных сервисов пуст, отправлять нечего и операцию не начинаем
+	if(this->_altsvc.empty())
+		// Выходим из функции
+		return;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_ALTSVC);
 	// Если список альтернативных сервисов не пустой
 	if(!this->_altsvc.empty()){
 		/**
@@ -1506,11 +1613,11 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 									// Выходим из функции
 									goto End;
 								}
-								// Выполняем применение изменений
-								if(!this->commit(event_t::SEND_ALTSVC))
-									// Выходим из функции
-									goto End;
 							}
+							/**
+							 * Фреймы не отправляем здесь: метод вызывается из функции обратного вызова nghttp2
+							 * внутри nghttp2_session_mem_recv2, фреймы отправит метод frame() после её завершения
+							 */
 						} break;
 						// Если фрейм является пользовательским запросом
 						default: {
@@ -1527,10 +1634,10 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
 								// Выходим из функции
 								goto End;
 							}
-							// Выполняем применение изменений
-							if(!this->commit(event_t::SEND_ALTSVC))
-								// Выходим из функции
-								goto End;
+							/**
+							 * Фрейм не отправляем здесь: метод вызывается из функции обратного вызова nghttp2
+							 * внутри nghttp2_session_mem_recv2, фрейм отправит метод frame() после её завершения
+							 */
 						}
 					}
 				}
@@ -1550,8 +1657,8 @@ void awh::Http2::sendAltSvc(const int32_t sid) noexcept {
  * @return        результат отправки данных фрейма
  */
 bool awh::Http2::sendTrailers(const int32_t id, const vector <std::pair <string, string>> & headers) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_TRAILERS;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_TRAILERS);
 	// Если заголовки для отправки переданы и сессия инициализированна
 	if(!headers.empty() && (this->_session != nullptr)){
 		/**
@@ -1627,12 +1734,24 @@ bool awh::Http2::sendTrailers(const int32_t id, const vector <std::pair <string,
  * @return       результат отправки данных фрейма
  */
 bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t size, const flag_t flag) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_DATA;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_DATA);
 	// Если данные полезной нагрузки для отправки в сеть переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Если сессия инициализированна
 		if(this->_session != nullptr){
+			/**
+			 * Если на сервере поток, открытый клиентом (нечётный идентификатор), уже закрыт (например, сброшен клиентом),
+			 * данные доставить некому: не накапливаем их в буфере, иначе они останутся в нём до закрытия подключения.
+			 * Это не ошибка подключения, поэтому сообщаем об успехе, чтобы подключение не закрывалось.
+			 * На клиенте поток может ещё не существовать (его HEADERS стоят в очереди), поэтому проверка только для сервера
+			 */
+			if((this->_mode == mode_t::SERVER) && ((id % 2) == 1) && (nghttp2_session_find_stream(this->_session, id) == nullptr)){
+				// Выполняем вызов метода выполненного события
+				this->completed(event_t::SEND_DATA);
+				// Выводим результат
+				return true;
+			}
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -1733,14 +1852,11 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 	}
 	// Устанавливаем метку завершения работы
 	End:
-	// Если записи для потока существуют
-	if(this->_records.find(id) != this->_records.end())
-		// Выполняем очистку всех записей для потока
-		this->_records.erase(id);
-	// Если буферы полезной нагрузки для потока существуют
-	if(this->_payloads.find(id) != this->_payloads.end())
-		// Выполняем очистку буферов полезной нагрузки
-		this->_payloads.erase(id);
+	/**
+	 * Выполняем очистку записей и буферов полезной нагрузки для потока.
+	 * Элементы словарей удаляются после выхода из внешней операции, так как по ним может идти перебор
+	 */
+	this->release(id);
 	// Выполняем вызов метода выполненного события
 	this->completed(event_t::SEND_DATA);
 	// Выводим результат
@@ -1757,8 +1873,8 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 int32_t awh::Http2::sendPush(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_PUSH;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_PUSH);
 	// Если заголовки для отправки переданы и сессия инициализированна
 	if(!headers.empty() && (this->_session != nullptr)){
 		// Список заголовков для запроса
@@ -1837,8 +1953,8 @@ int32_t awh::Http2::sendPush(const int32_t id, const vector <std::pair <string, 
 int32_t awh::Http2::sendHeaders(const int32_t id, const vector <std::pair <string, string>> & headers, const flag_t flag) noexcept {
 	// Результат работы функции
 	int32_t result = -1;
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_HEADERS;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_HEADERS);
 	// Если заголовки для отправки переданы и сессия инициализированна
 	if(!headers.empty() && (this->_session != nullptr)){
 		// Список заголовков для запроса
@@ -1916,8 +2032,8 @@ int32_t awh::Http2::sendHeaders(const int32_t id, const vector <std::pair <strin
  * @return       результат отправки данных фрейма
  */
 bool awh::Http2::goaway(const int32_t last, const error_t error, const uint8_t * buffer, const size_t size) noexcept {
-	// Выполняем установку активного события
-	this->_event = event_t::SEND_GOAWAY;
+	// Выполняем начало операции
+	this->activate(event_t::SEND_GOAWAY);
 	// Если размер окна фрейма передан
 	if(last > 0){
 		/**
@@ -2061,14 +2177,22 @@ void awh::Http2::free() noexcept {
 	if(!this->_records.empty())
 		// Выполняем удаление всего списка записей
 		this->_records.clear();
+	// Выполняем очистку списка закрытых потоков
+	this->_closed.clear();
+	// Выполняем сброс размера полученного списка заголовков
+	this->_headersSize = 0;
 }
 /**
  * @brief Метод закрытия подключения
  *
  */
 void awh::Http2::close() noexcept {
-	// Если активное событие не установлено
-	if(!(this->_close = (this->_event != event_t::NONE))){
+	/**
+	 * Если выполняется хотя бы одна операция, мы можем находиться внутри функций обратного вызова nghttp2
+	 * (nghttp2_session_mem_recv2 или nghttp2_session_send): удаление сессии там приводит к обращению к освобождённой памяти,
+	 * поэтому закрытие откладывается до завершения самой внешней операции
+	 */
+	if(!(this->_close = (this->_depth > 0))){
 		// Если сессия создана удачно
 		if(this->_session != nullptr){
 			// Результат завершения сессии
@@ -2350,6 +2474,23 @@ bool awh::Http2::init(const mode_t mode, const std::map <settings_t, uint32_t> &
 				// Выполняем удаление памяти объекта опции
 				nghttp2_option_del(option);
 			} break;
+		}
+		{
+			/**
+			 * Устанавливаем максимальный размер списка заголовков по умолчанию. Клиенту допускаем больший размер,
+			 * так как заголовки ответов серверов бывают крупнее (браузеры принимают до 256 КиБ)
+			 */
+			this->_maxHeaderListSize = (mode == mode_t::CLIENT ? (MAX_HEADER_LIST_SIZE * 4) : MAX_HEADER_LIST_SIZE);
+			// Выполняем поиск максимального размера списка заголовков
+			auto i = settings.find(settings_t::HEADER_LIST_SIZE);
+			// Если максимальный размер списка заголовков передан в настройках
+			if(i != settings.end())
+				// Выполняем установку максимального размера списка заголовков (0 - без ограничения)
+				this->_maxHeaderListSize = i->second;
+			// Если максимальный размер списка заголовков ограничен
+			if(this->_maxHeaderListSize > 0)
+				// Сообщаем удалённой стороне максимальный размер списка заголовков, который мы готовы принять
+				iv.push_back({NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE, this->_maxHeaderListSize});
 		}
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callback);

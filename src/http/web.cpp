@@ -23,6 +23,88 @@
 using namespace std;
 
 /**
+ * Максимальная длина строки размера чанка вместе с расширениями
+ */
+static constexpr size_t CHUNK_SIZE_LINE_MAX = 0x1000;
+
+/**
+ * @brief Функция строгого разбора размера чанка
+ *
+ * Допускаются только шестнадцатеричные цифры (не более 16-ти), затем необязательные
+ * пробелы и расширения чанка после ';'. Любой другой символ является ошибкой: разбор
+ * через atoi принимал мусор как ноль и позволял переполнить проверку размера тела
+ *
+ * @param buffer буфер строки размера чанка
+ * @param result полученный размер чанка
+ * @return       результат разбора
+ */
+static bool chunkSize(const vector <char> & buffer, uint64_t & result) noexcept {
+	// Количество полученных цифр
+	size_t digits = 0, i = 0;
+	// Выполняем сброс результата
+	result = 0;
+	// Выполняем перебор всех цифр
+	for(; i < buffer.size(); i++){
+		// Получаем текущий символ
+		const char c = buffer[i];
+		// Если символ является цифрой
+		if((c >= '0') && (c <= '9'))
+			// Добавляем цифру
+			result = ((result << 4) | static_cast <uint64_t> (c - '0'));
+		// Если символ является буквой в нижнем регистре
+		else if((c >= 'a') && (c <= 'f'))
+			// Добавляем цифру
+			result = ((result << 4) | static_cast <uint64_t> (c - 'a' + 10));
+		// Если символ является буквой в верхнем регистре
+		else if((c >= 'A') && (c <= 'F'))
+			// Добавляем цифру
+			result = ((result << 4) | static_cast <uint64_t> (c - 'A' + 10));
+		// Если цифры закончились, выходим
+		else break;
+		// Если цифр слишком много
+		if(++digits > 16)
+			// Выводим результат
+			return false;
+	}
+	// Если цифры не получены
+	if(digits == 0)
+		// Выводим результат
+		return false;
+	// Пропускаем необязательные пробелы
+	while((i < buffer.size()) && ((buffer[i] == ' ') || (buffer[i] == '\t')))
+		// Переходим к следующему символу
+		i++;
+	// Строка завершена или далее следуют расширения чанка
+	return ((i == buffer.size()) || (buffer[i] == ';'));
+}
+/**
+ * @brief Функция строгого разбора размера тела Content-Length
+ *
+ * @param value  значение заголовка
+ * @param result полученный размер тела
+ * @return       результат разбора
+ */
+static bool contentLength(const string & value, uint64_t & result) noexcept {
+	// Выполняем сброс результата
+	result = 0;
+	// Если значение пустое или слишком длинное
+	if(value.empty() || (value.size() > 18))
+		// Выводим результат
+		return false;
+	// Выполняем перебор всех символов
+	for(auto & c : value){
+		// Если символ не является цифрой
+		if((c < '0') || (c > '9'))
+			// Выводим результат
+			return false;
+		// Добавляем цифру
+		result = ((result * 10) + static_cast <uint64_t> (c - '0'));
+	}
+	// Выводим результат
+	return true;
+}
+
+/**
  * @brief Оператор [=] перемещения параметров запроса клиента
  *
  * @param request объект параметров запроса клиента
@@ -379,81 +461,128 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
 							result = offset;
-							// Если мы получили последний символ получения трейлеров
-							if(buffer[i] == '\n'){
-								// Если трейлеров в списке больше нет
-								if(this->_trailers.empty())
-									// Меняем стейт чанка на завершение сбора данных
-									this->_chunk.state = process_t::STOP_BODY;
+							// Если мы работаем с сервером
+							if(this->_hid == hid_t::SERVER){
+								// Трейлеры учитываются в ограничении размера секции заголовков
+								this->_headerBytes++;
+								// Если секция трейлеров превышает допустимый размер
+								if(this->_headerBytes > AWH_MAX_HEADERS_SIZE){
+									// Выводим сообщение об ошибке
+									this->_log->print("Request trailer fields are too large", log_t::flag_t::WARNING);
+									// Запрос отклоняется целиком
+									this->_fault = 431;
+									// Выполняем переход к ошибке
+									goto Stop;
+								}
+							// Если строка трейлера ответа слишком длинная
+							} else if(this->_chunk.buffer.size() >= AWH_MAX_HEADERS_SIZE) {
+								// Выводим сообщение об ошибке
+								this->_log->print("Response trailer fields are too large", log_t::flag_t::WARNING);
+								// Выполняем переход к ошибке
+								goto Stop;
+							}
+							// Если мы получили перевод строки, строка трейлера уже обработана по возврату каретки
+							if(buffer[i] == '\n')
+								// Продолжаем обработку
+								break;
 							// Если мы получили возврат каретки
-							} else if(buffer[i] == '\r') {
+							else if(buffer[i] == '\r') {
+								// Если строка пустая, секция трейлеров завершена
+								if(this->_chunk.buffer.empty()){
+									// Ожидаем завершающий перевод строки
+									this->_chunk.state = process_t::END_BODY;
+									// Продолжаем обработку
+									break;
+								}
 								// Получаем заголовок переданного трейлера
 								const string header(this->_chunk.buffer.begin(), this->_chunk.buffer.end());
-								// Выполняем поиск разделителя заголовка
-								const size_t pos = header.find(':');
-								// Если позиция разделителя найдена
-								if(pos != string::npos){
-									// Получаем ключ заголовка
-									string key = header.substr(0, pos);
-									// Получаем значение заголовка
-									string val = header.substr(pos + 1);
-									// Добавляем заголовок в список
-									this->_headers.emplace(
-										this->_fmk->transform(key, fmk_t::transform_t::LOWER),
-										this->_fmk->transform(val, fmk_t::transform_t::TRIM)
-									);
-									// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
-									if(this->_callback.is("header"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, key, val);
-									// Выполняем поиск ключа заголовка в списке трейлеров
-									auto i = this->_trailers.find(key);
-									// Если трейлер найден в списке
-									if(i != this->_trailers.end())
-										// Выполняем удаление полученного трейлера
-										this->_trailers.erase(i);
-									// Если трейлер не соответствует
-									else {
-										// Устанавливаем код внутренней ошибки сервера
-										// this->_response.code = 500;
-										// Стираем сообщение ответа сервера
-										this->_response.message = this->_fmk->format("Trailer \"%s\" does not exist", key.c_str());
-										// Выполняем очистку списка трейлеров
-										this->_trailers.clear();
-										// Выводим сообщение об ошибке, что трейлер не существует
-										this->_log->print("Trailer \"%s\" does not exist", log_t::flag_t::WARNING, key.c_str());
-										// Если функция обратного вызова на на вывод ошибок установлена
-										if(this->_callback.is("error"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_response.message.c_str());
-										// Выполняем переход к ошибке
-										goto Stop;
-									}
-								}
 								// Выполняем сброс тела данных
 								this->_chunk.buffer.clear();
-							// Выполняем сборку трейлера, выполняем сборку размера чанка
+								// Выполняем поиск разделителя заголовка
+								const size_t pos = header.find(':');
+								// Получаем ключ заголовка
+								string key = ((pos != string::npos) ? header.substr(0, pos) : "");
+								/**
+								 * Строка трейлера без двоеточия или с пустым либо содержащим пробелы именем
+								 * является ошибкой разбора (RFC 9112 §5.1)
+								 */
+								if(key.empty() || (key.find_first_of(" \t") != string::npos)){
+									// Выводим сообщение об ошибке
+									this->_log->print("Broken trailer field", log_t::flag_t::WARNING);
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken trailer field");
+									// Если мы работаем с сервером
+									if(this->_hid == hid_t::SERVER)
+										// Запрос отклоняется целиком
+										this->_fault = 400;
+									// Выполняем переход к ошибке
+									goto Stop;
+								}
+								// Если мы работаем с сервером и трейлеров слишком много
+								if((this->_hid == hid_t::SERVER) && (++this->_headerCount > AWH_MAX_HEADERS_COUNT)){
+									// Выводим сообщение об ошибке
+									this->_log->print("Request trailer fields are too many", log_t::flag_t::WARNING);
+									// Запрос отклоняется целиком
+									this->_fault = 431;
+									// Выполняем переход к ошибке
+									goto Stop;
+								}
+								// Получаем значение заголовка
+								string val = header.substr(pos + 1);
+								// Добавляем заголовок в список
+								this->_headers.emplace(
+									this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+									this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+								);
+								// Если функция обратного вызова на вывод полученного заголовка с сервера установлена
+								if(this->_callback.is("header"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const uint64_t,const string &, const string &)> ("header", this->_id, key, val);
+								// Если трейлер был объявлен, снимаем его из списка ожидаемых
+								this->_trailers.erase(key);
+							// Выполняем сборку строки трейлера
 							} else this->_chunk.buffer.push_back(buffer[i]);
 						} break;
 						// Если мы ожидаем получения размера тела чанка
 						case static_cast <uint8_t> (process_t::SIZE): {
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r'){
+								// Размер чанка
+								uint64_t length = 0;
 								// Меняем стейт чанка
 								this->_chunk.state = process_t::END_SIZE;
-								// Получаем размер чанка
-								this->_chunk.size = this->_fmk->atoi <size_t> (
-									this->_chunk.buffer.data(),
-									this->_chunk.buffer.size(), 16
-								);
 								// Устанавливаем смещение
 								offset = (i + 1);
 								// Запоминаем количество обработанных байт
 								result = offset;
+								// Если размер чанка передан неверно
+								if(!::chunkSize(this->_chunk.buffer, length)){
+									// Выводим сообщение об ошибке
+									this->_log->print("Body chunk size is invalid", log_t::flag_t::WARNING);
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Body chunk size is invalid");
+									// Если мы работаем с сервером
+									if(this->_hid == hid_t::SERVER)
+										// Запрос отклоняется целиком
+										this->_fault = 400;
+									// Выполняем переход к ошибке
+									goto Stop;
+								}
 								// Выполняем сброс тела данных
 								this->_chunk.buffer.clear();
-								// Если размер тела слишком большой
-								if((this->_chunk.size + this->_body.size()) > AWH_MAX_BODY_SIZE){
+								/**
+								 * Размер проверяется до сложения с телом: сложение с размером
+								 * близким к максимуму 64 бит переполнялось и снимало ограничение
+								 */
+								if((length > AWH_MAX_BODY_SIZE) || (this->_body.size() > AWH_MAX_BODY_SIZE) || (length > (AWH_MAX_BODY_SIZE - this->_body.size()))){
+									// Если мы работаем с сервером
+									if(this->_hid == hid_t::SERVER)
+										// Тело запроса слишком большое
+										this->_fault = 413;
 									/**
 									 * Если включён режим отладки
 									 */
@@ -462,7 +591,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										this->_log->debug(
 											"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 											__PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL,
-											this->_fmk->bytes(static_cast <double> (this->_chunk.size + this->_body.size())).c_str(),
+											this->_fmk->bytes(static_cast <double> (length) + static_cast <double> (this->_body.size())).c_str(),
 											this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
 										);
 									/**
@@ -473,17 +602,30 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										this->_log->print(
 											"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 											log_t::flag_t::CRITICAL,
-											this->_fmk->bytes(static_cast <double> (this->_chunk.size + this->_body.size())).c_str(),
+											this->_fmk->bytes(static_cast <double> (length) + static_cast <double> (this->_body.size())).c_str(),
 											this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
 										);
 									#endif
 									// Выполняем переход к ошибке
 									goto Stop;
 								}
+								// Запоминаем размер чанка
+								this->_chunk.size = static_cast <size_t> (length);
 							// Выполняем сборку 16-го размера чанка
 							} else {
 								// Запоминаем количество обработанных байт
 								result = (i + 1);
+								// Если строка размера чанка слишком длинная
+								if(this->_chunk.buffer.size() >= CHUNK_SIZE_LINE_MAX){
+									// Выводим сообщение об ошибке
+									this->_log->print("Body chunk size line is too long", log_t::flag_t::WARNING);
+									// Если мы работаем с сервером
+									if(this->_hid == hid_t::SERVER)
+										// Запрос отклоняется целиком
+										this->_fault = 400;
+									// Выполняем переход к ошибке
+									goto Stop;
+								}
 								// Выполняем сборку размера чанка
 								this->_chunk.buffer.push_back(buffer[i]);
 							}
@@ -498,25 +640,13 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
 								if(this->_chunk.size == 0){
-									// Если список трейлеров собран
-									if(!this->_trailers.empty()){
-										// Если мы работаем с клиентом
-										if(this->_hid == hid_t::CLIENT){
-											// Выполняем сброс тела данных
-											this->_chunk.buffer.clear();
-											// Меняем стейт чанка на получение трейлеров
-											this->_chunk.state = process_t::TRAILERS;
-										// Если мы работаем с сервером
-										} else {
-											// Выводим сообщение об ошибке
-											this->_log->print("Client cannot transfer trailers", log_t::flag_t::WARNING);
-											// Если функция обратного вызова на на вывод ошибок установлена
-											if(this->_callback.is("error"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Client cannot transfer trailers");
-										}
-									// Меняем стейт чанка на завершение сбора данных
-									} else this->_chunk.state = process_t::STOP_BODY;
+									// Выполняем сброс тела данных
+									this->_chunk.buffer.clear();
+									/**
+									 * После последнего чанка всегда разбирается секция трейлеров до пустой строки
+									 * (RFC 9112 §7.1.2): поля трейлеров допустимы и без объявления в заголовке Trailer
+									 */
+									this->_chunk.state = process_t::TRAILERS;
 								// Если данные собраны не полностью
 								} else {
 									// Если количества байт достаточно для сбора тела чанка
@@ -631,10 +761,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				Stop:
 				// Выполняем очистку чанка
 				this->_chunk.clear();
+				// Если мы работаем с сервером и в чанках допущена ошибка
+				if((error != '\0') && (this->_hid == hid_t::SERVER))
+					// Запрос отклоняется целиком
+					this->_fault = 400;
 				/**
 				 * Определяем тип HTTP-модуля
 				 */
-				switch(static_cast <uint8_t> (this->_hid)){
+				switch((this->_fault == 0) ? static_cast <uint8_t> (this->_hid) : static_cast <uint8_t> (hid_t::NONE)){
 					// Если мы работаем с клиентом
 					case static_cast <uint8_t> (hid_t::CLIENT): {
 						// Если функция обратного вызова на вывод полученного тела данных с сервера установлена
@@ -706,8 +840,44 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 			this->prepare(buffer, size, [&result, this](const char * buffer, const size_t size, const size_t bytes, const bool stop) noexcept {
 				// Запоминаем количество обработанных байт
 				result = bytes;
+				// Если запрос уже отклонён, дальнейшие строки не обрабатываем
+				if(this->_fault > 0)
+					// Выходим из функции
+					return;
+				// Если мы работаем с сервером
+				if(this->_hid == hid_t::SERVER){
+					// Если получена очередная строка заголовка
+					if(!stop && (size > 0) && (this->_state == state_t::HEADERS))
+						// Увеличиваем количество полученных заголовков
+						this->_headerCount++;
+					/**
+					 * Размер секции заголовков и число заголовков ограничены,
+					 * иначе клиент заставляет сервер копить заголовки без предела
+					 */
+					if(((this->_headerBytes + bytes) > AWH_MAX_HEADERS_SIZE) || (this->_headerCount > AWH_MAX_HEADERS_COUNT)){
+						// Выводим сообщение об ошибке
+						this->_log->print("Request header fields are too large", log_t::flag_t::WARNING);
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Request header fields are too large");
+						// Запрос отклоняется целиком
+						this->_fault = 431;
+						// Прекращаем обработку запроса
+						this->_state = state_t::END;
+						// Выходим из функции
+						return;
+					}
+				}
 				// Если все данные получены
 				if(stop){
+					/**
+					 * Пустые строки перед стартовой строкой запроса пропускаются (RFC 9112 §2.2),
+					 * иначе сервер передавал приложению пустой запрос без метода
+					 */
+					if((this->_hid == hid_t::SERVER) && (this->_state == state_t::QUERY))
+						// Выходим из функции
+						return;
 					/**
 					 * Выполняем отлов ошибок
 					 */
@@ -731,25 +901,150 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &, const std::unordered_multimap <string, string> &)> ("headersRequest", this->_id, this->_request.method, this->_request.url, this->_headers);
 							} break;
 						}
-						// Получаем размер тела
-						auto i = this->_headers.find("content-length");
+						/**
+						 * @brief Функция отклонения запроса с ошибкой разбора
+						 *
+						 * @param code    код ответа сервера
+						 * @param message сообщение об ошибке
+						 */
+						auto faultFn = [this](const uint32_t code, const char * message) noexcept -> void {
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, message);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, message);
+							// Если мы работаем с сервером
+							if(this->_hid == hid_t::SERVER)
+								// Запрос отклоняется целиком
+								this->_fault = code;
+							// Тело в запросе не передано
+							this->_state = state_t::END;
+						};
+						// Если секция заголовков слишком большая или заголовков слишком много
+						if(this->_fault > 0){
+							// Тело в запросе не передано
+							this->_state = state_t::END;
+							// Выходим из функции
+							return;
+						}
+						// Флаг передачи тела чанками
+						bool chunked = false;
+						// Выполняем извлечение списка параметров передачи данных
+						const auto & encodings = this->_headers.equal_range("transfer-encoding");
+						// Выполняем извлечение списка размеров тела
+						const auto & lengths = this->_headers.equal_range("content-length");
+						// Если способ передачи данных указан
+						if(encodings.first != encodings.second){
+							// Последний способ передачи данных
+							string last = "";
+							// Выполняем перебор всего списка указанных заголовков
+							for(auto i = encodings.first; i != encodings.second; ++i){
+								// Список способов передачи данных
+								vector <string> tokens;
+								// Выполняем разделение способов передачи данных
+								this->_fmk->split(i->second, ",", tokens);
+								// Выполняем перебор всех способов передачи данных
+								for(auto & token : tokens){
+									// Если способ передачи данных указан
+									if(!token.empty())
+										// Запоминаем последний способ передачи данных
+										last = token;
+								}
+							}
+							/**
+							 * Чанки признаются только если chunked является последним способом передачи
+							 * (RFC 9112 §6.3), поиск подстроки принимал "xchunked" и "chunked, gzip"
+							 */
+							chunked = this->_fmk->compare(last, "chunked");
+						}
+						// Если мы работаем с сервером и способ передачи данных указан
+						if((this->_hid == hid_t::SERVER) && (encodings.first != encodings.second)){
+							/**
+							 * Запрос одновременно с Content-Length и Transfer-Encoding отклоняется
+							 * (RFC 9112 §6.1), иначе фронт и сервер по-разному определяют границу тела
+							 */
+							if(lengths.first != lengths.second)
+								// Выполняем отклонение запроса
+								faultFn(400, "Request contains both Content-Length and Transfer-Encoding");
+							// Если последним способом передачи являются не чанки
+							else if(!chunked)
+								// Выполняем отклонение запроса
+								faultFn(400, "Request Transfer-Encoding must end with chunked");
+							// Если тело передаётся чанками
+							else this->_state = state_t::BODY;
+							// Выходим из функции
+							return;
+						}
+						// Если клиент получил тело чанками
+						if(chunked){
+							// Устанавливаем стейт поиска тела запроса
+							this->_state = state_t::BODY;
+							// Выходим из функции
+							return;
+						}
 						// Если размер запроса передан
-						if(i != this->_headers.end()){
-							// Запоминаем размер тела сообщения
-							this->_bodySize = static_cast <size_t> (::stoull(i->second));
+						if(lengths.first != lengths.second){
+							// Размер тела сообщения
+							uint64_t length = 0;
+							// Флаг корректности размера тела
+							bool valid = true, first = true;
+							// Выполняем перебор всех переданных размеров
+							for(auto i = lengths.first; (i != lengths.second) && valid; ++i){
+								// Список значений размера
+								vector <string> values;
+								// Выполняем разделение значений размера
+								this->_fmk->split(i->second, ",", values);
+								// Если значения не получены
+								if(values.empty())
+									// Размер передан неверно
+									valid = false;
+								// Выполняем перебор всех значений размера
+								for(auto & value : values){
+									// Текущее значение размера
+									uint64_t current = 0;
+									/**
+									 * Размер должен состоять только из цифр, а повторы обязаны совпадать:
+									 * иначе "+5", " 5", "5abc", "-1" и разные дубли давали разное понимание тела
+									 */
+									if(!::contentLength(value, current) || (!first && (current != length))){
+										// Размер передан неверно
+										valid = false;
+										// Выходим из цикла
+										break;
+									}
+									// Запоминаем размер тела
+									length = current;
+									// Снимаем флаг первого значения
+									first = false;
+								}
+							}
+							// Если размер передан неверно
+							if(!valid){
+								// Выполняем отклонение запроса
+								faultFn(400, "Content-Length is invalid");
+								// Выходим из функции
+								return;
+							}
 							// Если размер тела не получен
-							if(this->_bodySize == 0){
+							if(length == 0){
+								// Запоминаем размер тела сообщения
+								this->_bodySize = 0;
 								// Запрашиваем заголовок подключения
 								const string & header = this->header("connection");
-								// Если заголовок подключения найден
-								if(header.empty() || !this->_fmk->exists("close", header)){
+								/**
+								 * Нулевой размер с закрытием подключения читается до закрытия только клиентом:
+								 * так вещают интернет-радиостанции (наследие HTTP/1.0). Сервер такие тела не читает,
+								 * иначе один клиент удерживает обработку бесконечно, поэтому тело запроса пустое
+								 */
+								if((this->_hid != hid_t::CLIENT) || header.empty() || !this->_fmk->exists("close", header)){
 									// Тело в запросе не передано
 									this->_state = state_t::END;
 									// Выходим из функции
 									return;
 								}
 							// Если размер тела слишком большой
-							} else if(this->_bodySize > AWH_MAX_BODY_SIZE) {
+							} else if(length > AWH_MAX_BODY_SIZE) {
 								/**
 								 * Если включён режим отладки
 								 */
@@ -758,7 +1053,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									this->_log->debug(
 										"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 										__PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL,
-										this->_fmk->bytes(static_cast <double> (this->_bodySize)).c_str(),
+										this->_fmk->bytes(static_cast <double> (length)).c_str(),
 										this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
 									);
 								/**
@@ -769,33 +1064,24 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									this->_log->print(
 										"HTTP-body is %s and is too large, the HTTP-body cannot exceed %s",
 										log_t::flag_t::CRITICAL,
-										this->_fmk->bytes(static_cast <double> (this->_bodySize)).c_str(),
+										this->_fmk->bytes(static_cast <double> (length)).c_str(),
 										this->_fmk->bytes(static_cast <double> (AWH_MAX_BODY_SIZE)).c_str()
 									);
 								#endif
+								// Если мы работаем с сервером
+								if(this->_hid == hid_t::SERVER)
+									// Тело запроса слишком большое
+									this->_fault = 413;
 								// Тело в запросе не передано
 								this->_state = state_t::END;
 								// Выходим из функции
 								return;
-							}
+							// Запоминаем размер тела сообщения
+							} else this->_bodySize = static_cast <int64_t> (length);
 							// Устанавливаем стейт поиска тела запроса
 							this->_state = state_t::BODY;
-							// Продолжаем работу
-							goto end;
-						// Если тело приходит
-						} else {
-							// Выполняем извлечение списка параметров передачи данных
-							const auto & range = this->_headers.equal_range("transfer-encoding");
-							// Выполняем перебор всего списка указанных заголовков
-							for(auto i = range.first; i != range.second; ++i){
-								// Если нужно получать размер тела чанками
-								if(this->_fmk->exists("chunked", i->second)){
-									// Устанавливаем стейт поиска тела запроса
-									this->_state = state_t::BODY;
-									// Продолжаем работу
-									goto end;
-								}
-							}
+							// Выходим из функции
+							return;
 						}
 						// Тело в запросе не передано
 						this->_state = state_t::END;
@@ -803,6 +1089,12 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					 * Если возникает ошибка
 					 */
 					} catch(const exception & error) {
+						// Если мы работаем с сервером
+						if(this->_hid == hid_t::SERVER)
+							// Запрос отклоняется целиком
+							this->_fault = 400;
+						// Тело в запросе не передано
+						this->_state = state_t::END;
 						/**
 						 * Если включён режим отладки
 						 */
@@ -817,8 +1109,6 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						#endif
 					}
-					// Устанавливаем метку завершения работы
-					end:
 					// Выходим из функции
 					return;
 				// Если необходимо  получить оставшиеся данные
@@ -969,6 +1259,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										} else {
 											// Выполняем очистку всех ранее полученных данных
 											this->clear();
+											// Запрос с неверной стартовой строкой отклоняется целиком
+											this->_fault = 400;
+											// Прекращаем обработку запроса
+											this->_state = state_t::END;
 											// Сообщаем, что переданное тело содержит ошибки
 											this->_log->print("Broken request client", log_t::flag_t::WARNING);
 											// Если функция обратного вызова на на вывод ошибок установлена
@@ -980,6 +1274,10 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									 * Если возникает ошибка
 									 */
 									} catch(const exception & error) {
+										// Запрос с неверной стартовой строкой отклоняется целиком
+										this->_fault = 400;
+										// Прекращаем обработку запроса
+										this->_state = state_t::END;
 										/**
 										 * Если включён режим отладки
 										 */
@@ -1007,6 +1305,24 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 								string key(buffer, this->_pos[0]);
 								// Получаем значение заголовка
 								string val(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
+								/**
+								 * Имя заголовка запроса не может быть пустым или содержать пробелы (RFC 9112 §5.1):
+								 * "Content-Length : 5" и продолжения строк иначе понимаются разными узлами по-разному
+								 */
+								if((this->_hid == hid_t::SERVER) && (key.empty() || (key.find_first_of(" \t") != string::npos))){
+									// Выводим сообщение об ошибке
+									this->_log->print("Broken request header", log_t::flag_t::WARNING);
+									// Если функция обратного вызова на на вывод ошибок установлена
+									if(this->_callback.is("error"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request header");
+									// Запрос отклоняется целиком
+									this->_fault = 400;
+									// Прекращаем обработку запроса
+									this->_state = state_t::END;
+									// Выходим из функции
+									return;
+								}
 								// Добавляем заголовок в список заголовков
 								if(!key.empty() && !val.empty()){
 									// Если название заголовка соответствует HOST
@@ -1104,6 +1420,24 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					}
 				}
 			});
+			// Если мы работаем с сервером и запрос ещё не отклонён
+			if((this->_hid == hid_t::SERVER) && (this->_fault == 0)){
+				// Увеличиваем размер полученной секции заголовков
+				this->_headerBytes += result;
+				// Если заголовки ещё не получены, а недочитанная строка превышает допустимый размер
+				if(((this->_state == state_t::QUERY) || (this->_state == state_t::HEADERS)) && ((this->_headerBytes + (size - result)) > AWH_MAX_HEADERS_SIZE)){
+					// Выводим сообщение об ошибке
+					this->_log->print("Request header fields are too large", log_t::flag_t::WARNING);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Request header fields are too large");
+					// Запрос отклоняется целиком
+					this->_fault = 431;
+					// Прекращаем обработку запроса
+					this->_state = state_t::END;
+				}
+			}
 		}
 	}
 	// Выводим результат
@@ -1512,6 +1846,12 @@ void awh::Web::clear() noexcept {
  *
  */
 void awh::Web::reset() noexcept {
+	// Выполняем сброс кода ошибки разбора запроса
+	this->_fault = 0;
+	// Выполняем сброс количества полученных заголовков
+	this->_headerCount = 0;
+	// Выполняем сброс размера полученной секции заголовков
+	this->_headerBytes = 0;
 	// Выполняем сброс размера тела
 	this->_bodySize = -1;
 	// Устанавливаем разделитель
@@ -1615,8 +1955,8 @@ bool awh::Web::isHeader(const string & key) const noexcept {
 bool awh::Web::isStandard(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty())
-		// Выполняем проверку заголовка
-		return (this->_standardHeaders.count(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) > 0);
+		// Выполняем проверку заголовка (по копии: константный transform меняет строку на месте)
+		return (this->_standardHeaders.count(this->_fmk->transform(string(key), fmk_t::transform_t::LOWER)) > 0);
 	// Выводим результат
 	return false;
 }
@@ -1695,8 +2035,8 @@ void awh::Web::upgrade(const string & upgrade) noexcept {
 std::set <awh::Web::proto_t> awh::Web::proto(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty()){
-		// Выполняем поиск заголовка
-		auto i = this->_standardHeaders.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+		// Выполняем поиск заголовка (по копии: константный transform меняет строку на месте)
+		auto i = this->_standardHeaders.find(this->_fmk->transform(string(key), fmk_t::transform_t::LOWER));
 		// Если заголовок найден выводим результат
 		if(i != this->_standardHeaders.end())
 			// Выводим результат
@@ -1820,6 +2160,15 @@ void awh::Web::state(const state_t state) noexcept {
 	this->_state = state;
 }
 /**
+ * @brief Метод получения кода ошибки разбора запроса
+ *
+ * @return код HTTP-ответа для ошибки разбора (0 если ошибки нет)
+ */
+uint32_t awh::Web::fault() const noexcept {
+	// Выводим код ошибки разбора запроса
+	return this->_fault;
+}
+/**
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
@@ -1852,6 +2201,7 @@ awh::Web::Web(const fmk_t * fmk, const log_t * log) noexcept :
  _separator('\0'), _pos{-1, -1},
  _bodySize(-1), _uri(fmk, log), _callback(log),
  _hid(hid_t::NONE), _state(state_t::QUERY),
+ _fault(0), _headerCount(0), _headerBytes(0),
  _body(fmk, log), _upgrade{""}, _fmk(fmk), _log(log) {
 	// Выполняем заполнение списка стандартных заголовков
 	this->_standardHeaders.insert({

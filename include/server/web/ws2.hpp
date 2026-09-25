@@ -67,6 +67,12 @@ namespace awh {
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
+			private:
+				/**
+				 * Брокеры, у которых идёт приём фрагментированного сообщения,
+				 * отдельный признак нужен, так как фрагменты нулевой длины не попадают в буфер
+				 */
+				std::set <uint64_t> _fragmented;
 				// Объект работы с Websocket-клиентом HTTP/1.1
 				ws1_t _ws1;
 			private:
@@ -86,6 +92,9 @@ namespace awh {
 			private:
 				// Полученные HTTP заголовки
 				std::unordered_multimap <string, string> _headers;
+			private:
+				// Объём полученных заголовков HTTP/2 по потокам (идентификатор брокера, идентификатор потока)
+				std::map <pair <uint64_t, int32_t>, size_t> _headersSize;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу

@@ -526,7 +526,12 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 				/**
 				 * Определяем тип пути
 				 */
-				switch(static_cast <uint8_t> (this->type(address))){
+				/**
+				 * Тип определяем без перехода по символьной ссылке: при актуальном адресе
+				 * ссылки уже разрешены, а при неактуальном ссылка на каталог должна быть
+				 * удалена как ссылка, без захода внутрь каталога на который она указывает
+				 */
+				switch(static_cast <uint8_t> (this->type(address, false))){
 					// Если переданный путь является каталогом
 					case static_cast <uint8_t> (type_t::DIR): {
 						/**
@@ -598,34 +603,40 @@ int32_t awh::FS::delPath(const string & path, const bool actual) const noexcept 
 										 * Для операционной системы MS Windows
 										 */
 										#if _WIN32 || _WIN64
-											// Если статистика извлечена
-											if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
-												// Если дочерний элемент является дирректорией
-												if(S_ISDIR(info.st_mode))
-													// Выполняем удаление подкаталогов
-													count = this->delPath(address);
-												// Если дочерний элемент является файлом то удаляем его
-												else count = ::_wunlink(this->_fmk->convert(address).c_str());
-											// Если путь является символьной ссылкой
-											} else if(this->isLink(address))
+											// Если путь является символьной ссылкой, удаляем саму ссылку не заходя в неё
+											if(this->isLink(address))
 												// Выполняем удаление символьной ссылки
 												count = ::_wunlink(this->_fmk->convert(address).c_str());
+											// Если статистика извлечена
+											else if(!::_wstat(this->_fmk->convert(address).c_str(), &info)){
+												// Если дочерний элемент является дирректорией
+												if(S_ISDIR(info.st_mode))
+													// Выполняем удаление подкаталогов без разрешения ссылок
+													count = this->delPath(address, false);
+												// Если дочерний элемент является файлом то удаляем его
+												else count = ::_wunlink(this->_fmk->convert(address).c_str());
+											}
 										/**
 										 * Для операционной системы не являющейся MS Windows
 										 */
 										#else
-											// Если статистика извлечена
-											if(!::stat(address.c_str(), &info)){
+											/**
+											 * Статистику извлекаем через lstat, не переходя по символьным ссылкам:
+											 * иначе ссылка на чужой каталог принимается за подкаталог и удаляется
+											 * содержимое каталога на который она указывает
+											 */
+											if(!::lstat(address.c_str(), &info)){
+												// Если дочерний элемент является символьной ссылкой
+												if(S_ISLNK(info.st_mode))
+													// Выполняем удаление самой символьной ссылки
+													count = ::unlink(address.c_str());
 												// Если дочерний элемент является дирректорией
-												if(S_ISDIR(info.st_mode))
-													// Выполняем удаление подкаталогов
-													count = this->delPath(address);
+												else if(S_ISDIR(info.st_mode))
+													// Выполняем удаление подкаталогов без разрешения ссылок
+													count = this->delPath(address, false);
 												// Если дочерний элемент является файлом то удаляем его
 												else count = ::unlink(address.c_str());
-											// Если путь является символьной ссылкой
-											} else if(this->isLink(address))
-												// Выполняем удаление символьной ссылки
-												count = ::unlink(address.c_str());
+											}
 										#endif
 										// Запоминаем количество дочерних элементов
 										result = count;
@@ -1589,8 +1600,11 @@ uintmax_t awh::FS::size(const string & path, const string & ext, const bool rec)
 										#endif
 												// Если дочерний элемент является дирректорией
 												if(S_ISDIR(info.st_mode))
-													// Выполняем подсчёт размера каталога
-													result += (rec ? this->size(address, ext) : 0);
+													/**
+													 * В каталоги по символьным ссылкам не заходим: ссылка на
+													 * родительский каталог зацикливает рекурсию без конца
+													 */
+													result += ((rec && !this->isLink(address)) ? this->size(address, ext) : 0);
 												// Если дочерний элемент является файлом
 												else if(!ext.empty()) {
 													// Получаем расширение файла
@@ -1761,8 +1775,11 @@ uintmax_t awh::FS::count(const string & path, const string & ext, const bool rec
 								#endif
 										// Если дочерний элемент является дирректорией
 										if(S_ISDIR(info.st_mode))
-											// Выполняем подсчитываем количество файлов в каталоге
-											result += (rec ? this->count(address, ext) : 0);
+											/**
+											 * В каталоги по символьным ссылкам не заходим: ссылка на
+											 * родительский каталог зацикливает рекурсию без конца
+											 */
+											result += ((rec && !this->isLink(address)) ? this->count(address, ext) : 0);
 										// Если дочерний элемент является файлом
 										else if(!ext.empty()) {
 											// Получаем расширение файла
@@ -2535,6 +2552,13 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 		 */
 		function <void (const string &, const string &, const bool)> readFn;
 		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#if !_WIN32 && !_WIN64
+			// Цепочка открытых каталогов (устройство и индексный узел) для обнаружения петель
+			vector <pair <dev_t, ino_t>> chain;
+		#endif
+		/**
 		 * @brief Функция запроса файлов в каталоге
 		 *
 		 * @param path путь до каталога
@@ -2623,9 +2647,44 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 										// Если дочерний элемент является дирректорией
 										if(S_ISDIR(info.st_mode)){
 											// Продолжаем обработку следующих каталогов
-											if(rec)
+											if(rec){
+												/**
+												 * Для операционной системы не являющейся MS Windows
+												 */
+												#if !_WIN32 && !_WIN64
+													/**
+													 * Символьные ссылки на каталоги обходим как прежде, но каталог уже
+													 * открытый выше по цепочке рекурсии пропускаем: ссылка на родителя
+													 * иначе зацикливает обход без конца
+													 */
+													bool loop = false;
+													// Выполняем перебор всей цепочки открытых каталогов
+													for(auto & item : chain){
+														// Если каталог уже открыт выше по цепочке
+														if((item.first == info.st_dev) && (item.second == info.st_ino)){
+															// Запоминаем что обнаружена петля
+															loop = true;
+															// Выходим из цикла
+															break;
+														}
+													}
+													// Если петля обнаружена, пропускаем каталог
+													if(loop)
+														// Выполняем пропуск каталога
+														continue;
+													// Добавляем каталог в цепочку
+													chain.emplace_back(info.st_dev, info.st_ino);
+												#endif
 												// Выполняем функцию обратного вызова
 												readFn(address, ext, rec);
+												/**
+												 * Для операционной системы не являющейся MS Windows
+												 */
+												#if !_WIN32 && !_WIN64
+													// Удаляем каталог из цепочки
+													chain.pop_back();
+												#endif
+											}
 											// Выводим данные каталога как он есть
 											else std::apply(callback, std::make_tuple(this->realPath(address, actual)));
 										// Если дочерний элемент является файлом и расширение файла указано то выводим его
@@ -2723,9 +2782,21 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->realPath(path);
 		// Если адрес получен правильный
-		if(!address.empty())
+		if(!address.empty()){
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Структура проверка статистики
+				struct stat info;
+				// Если статистика корневого каталога извлечена
+				if(!::stat(address.c_str(), &info))
+					// Добавляем корневой каталог в цепочку
+					chain.emplace_back(info.st_dev, info.st_ino);
+			#endif
 			// Запрашиваем данные первого каталога
 			readFn(address, ext, rec);
+		}
 	// Выводим сообщение об ошибке
 	} else this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }

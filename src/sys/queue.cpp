@@ -415,6 +415,164 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод записи данных в буфер очереди
+ *
+ * Вызывается только при захваченной блокировке очереди
+ *
+ * @param records список бинарных буферов для добавления
+ * @param count   количество бинарных буферов в списке
+ * @param size    общий размер добавляемых данных
+ * @return        результат выполнения операции
+ */
+bool awh::Queue::write(const record_t * records, const size_t count, const size_t size) noexcept {
+	// Выполняем выделение памяти
+	if(this->rss(size)){
+		// Увеличиваем количество записей в очереди
+		this->_iter.count++;
+		// Выполняем запись данных в буфер
+		::memcpy(this->_buffer.data() + this->_iter.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
+		// Увеличиваем смещение конца данных буфера
+		this->_iter.end += sizeof(size);
+		// Выполняем перебор всех записей
+		for(size_t i = 0; i < count; i++){
+			// Выполняем добавление самих данных полезной нагрузки
+			::memcpy(this->_buffer.data() + this->_iter.end, records[i].first, records[i].second);
+			// Увеличиваем смещение конца данных буфера
+			this->_iter.end += records[i].second;
+		}
+		// Отправляем сообщение, что очередь готова на чтение
+		this->_cv.read.notify_one();
+		// Сообщаем, что запись добавлена
+		return true;
+	}
+	// Сообщаем, что запись не добавлена
+	return false;
+}
+/**
+ * @brief Метод блокирующего добавления записи в очередь
+ *
+ * @param records список бинарных буферов для добавления
+ * @param count   количество бинарных буферов в списке
+ * @param size    общий размер добавляемых данных
+ */
+void awh::Queue::append(const record_t * records, const size_t count, const size_t size) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		std::unique_lock lock(this->_mtx);
+		// Если очередь завершила работу
+		if(this->_terminate)
+			// Выходим из функции
+			return;
+		// Если все данные добавлены в очередь
+		if(this->_iter.count >= this->_max.records){
+			// Выполняем ожидание доступности записей
+			this->_cv.write.wait(lock, [this]() noexcept -> bool {
+				// Завершаем ожидание очистки очереди, когда очередь освобождается
+				return (this->_terminate || (this->_iter.count < this->_max.records));
+			});
+			// Если очередь завершила работу
+			if(this->_terminate)
+				// Выходим из функции
+				return;
+		}
+		/**
+		 * Прежде после ожидания освобождения памяти запись молча терялась.
+		 * Теперь после освобождения очереди запись повторяется, пока не будет добавлена
+		 */
+		while(!this->write(records, count, size)){
+			// Если очередь пустая, то запись не поместится в неё никогда
+			if(this->_iter.end == 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Record exceeds the queue memory limit");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Record exceeds the queue memory limit");
+				#endif
+				// Выходим из функции
+				return;
+			}
+			// Выполняем ожидание доступности записей
+			this->_cv.write.wait(lock, [this]() noexcept -> bool {
+				// Завершаем ожидание очистки очереди, когда очередь освобождается
+				return (this->_terminate || (this->_iter.end == 0));
+			});
+			// Если очередь завершила работу
+			if(this->_terminate)
+				// Выходим из функции
+				return;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод неблокирующего добавления записи в очередь
+ *
+ * @param records список бинарных буферов для добавления
+ * @param count   количество бинарных буферов в списке
+ * @param size    общий размер добавляемых данных
+ * @return        результат добавления записи
+ */
+bool awh::Queue::attempt(const record_t * records, const size_t count, const size_t size) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
+		// Если очередь завершила работу или количество записей достигло предела
+		if(this->_terminate || (this->_iter.count >= this->_max.records))
+			// Сообщаем, что запись не добавлена
+			return false;
+		// Выполняем добавление записи
+		return this->write(records, count, size);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Сообщаем, что запись не добавлена
+	return false;
+}
+/**
  * @brief Метод добавления бинарного буфера данных в очередь
  *
  * @param buffer бинарный буфер для добавления
@@ -424,72 +582,10 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 	// Если данные переданы верные
 	if((buffer != nullptr) && (size > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
-			// Если очередь завершила работу
-			if(this->_terminate)
-				// Выводим текущий размер очереди
-				return this->_iter.count;
-			// Если все данные добавлены в очередь
-			if(this->_iter.count >= this->_max.records){
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.count < this->_max.records));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_iter.count;
-			}
-			// Выполняем выделение памяти
-			if(this->rss(size)){
-				// Увеличиваем количество записей в очереди
-				this->_iter.count++;
-				// Выполняем запись данных в буфер
-				::memcpy(this->_buffer.data() + this->_iter.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
-				// Увеличиваем смещение конца данных буфера
-				this->_iter.end += sizeof(size);
-				// Выполняем добавление самих данных полезной нагрузки
-				::memcpy(this->_buffer.data() + this->_iter.end, buffer, size);
-				// Увеличиваем смещение конца данных буфера
-				this->_iter.end += size;
-				// Отправляем сообщение, что очередь готова на чтение
-				this->_cv.read.notify_one();
-			// Если память не выделена
-			} else {
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.end == 0));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_iter.count;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
+		// Формируем запись для добавления
+		const record_t record(buffer, size);
+		// Выполняем блокирующее добавление записи
+		this->append(&record, 1, size);
 	}
 	// Выводим результат
 	return this->_iter.count;
@@ -503,79 +599,44 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
  */
 size_t awh::Queue::push(const vector <record_t> & records, const size_t size) noexcept {
 	// Если данные переданы верные
-	if(!records.empty() && (size > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Выполняем блокировку потока
-			std::unique_lock lock(this->_mtx);
-			// Если очередь завершила работу
-			if(this->_terminate)
-				// Выводим текущий размер очереди
-				return this->_iter.count;
-			// Если все данные добавлены в очередь
-			if(this->_iter.count >= this->_max.records){
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.count < this->_max.records));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_iter.count;
-			}
-			// Выполняем выделение памяти
-			if(this->rss(size)){
-				// Увеличиваем количество записей в очереди
-				this->_iter.count++;
-				// Выполняем запись данных в буфер
-				::memcpy(this->_buffer.data() + this->_iter.end, reinterpret_cast <const uint8_t *> (&size), sizeof(size));
-				// Увеличиваем смещение конца данных буфера
-				this->_iter.end += sizeof(size);
-				// Выполняем перебор всех записей
-				for(auto & record : records){
-					// Выполняем добавление самих данных полезной нагрузки
-					::memcpy(this->_buffer.data() + this->_iter.end, record.first, record.second);
-					// Увеличиваем смещение конца данных буфера
-					this->_iter.end += record.second;
-				}
-				// Отправляем сообщение, что очередь готова на чтение
-				this->_cv.read.notify_one();
-			// Если память не выделена
-			} else {
-				// Выполняем ожидание доступности записей
-				this->_cv.write.wait(lock, [this]() noexcept -> bool {
-					// Завершаем ожидание очистки очереди, когда очередь освобождается
-					return (this->_terminate || (this->_iter.end == 0));
-				});
-				// Если очередь завершила работу
-				if(this->_terminate)
-					// Выводим текущий размер очереди
-					return this->_iter.count;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			* Если режим отладки не включён
-			*/
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
+	if(!records.empty() && (size > 0))
+		// Выполняем блокирующее добавление записи
+		this->append(records.data(), records.size(), size);
 	// Выводим результат
 	return this->_iter.count;
+}
+/**
+ * @brief Метод неблокирующего добавления бинарного буфера данных в очередь
+ *
+ * @param buffer бинарный буфер для добавления
+ * @param size   размер бинарного буфера
+ * @return       результат добавления (false, если очередь заполнена или память исчерпана)
+ */
+bool awh::Queue::tryPush(const void * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((buffer != nullptr) && (size > 0)){
+		// Формируем запись для добавления
+		const record_t record(buffer, size);
+		// Выполняем неблокирующее добавление записи
+		return this->attempt(&record, 1, size);
+	}
+	// Сообщаем, что запись не добавлена
+	return false;
+}
+/**
+ * @brief Метод неблокирующего добавления бинарного буфера данных в очередь
+ *
+ * @param records список бинарных буферов для добавления
+ * @param size    общий размер добавляемых данных
+ * @return        результат добавления (false, если очередь заполнена или память исчерпана)
+ */
+bool awh::Queue::tryPush(const vector <record_t> & records, const size_t size) noexcept {
+	// Если данные переданы верные
+	if(!records.empty() && (size > 0))
+		// Выполняем неблокирующее добавление записи
+		return this->attempt(records.data(), records.size(), size);
+	// Сообщаем, что запись не добавлена
+	return false;
 }
 /**
  * @brief Метод установки максимального размера потребления памяти

@@ -18,9 +18,330 @@
 #include <auth/server.hpp>
 
 /**
+ * Стандартные модули
+ */
+#include <mutex>
+#include <random>
+#include <unordered_map>
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Структура учёта счётчиков запросов nonce
+ *
+ */
+typedef struct DigestCounter {
+	uint64_t max;  // Максимальный полученный счётчик запросов
+	uint64_t mask; // Маска уже полученных счётчиков ниже максимального
+	uint64_t date; // Штамп времени выдачи ключа nonce
+	uint64_t used; // Штамп времени последнего использования
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	DigestCounter() noexcept : max(0), mask(0), date(0), used(0) {}
+} digest_counter_t;
+/**
+ * Мютекс для блокировки учёта счётчиков запросов
+ */
+static std::mutex digestMtx;
+/**
+ * Штамп времени последней очистки устаревших счётчиков запросов
+ */
+static uint64_t digestSweep = 0;
+/**
+ * Максимальное количество учитываемых пар nonce и cnonce: cnonce выбирает клиент,
+ * поэтому при переполнении вытесняется давно не использованная пара
+ */
+static constexpr size_t DIGEST_COUNTERS_MAX = 0x4000;
+/**
+ * Список счётчиков запросов для каждой пары ключей nonce и cnonce
+ */
+static std::unordered_map <string, digest_counter_t> digestCounters;
+/**
+ * @brief Функция получения типа хэш-суммы для алгоритма Digest авторизации
+ *
+ * @param hash алгоритм шифрования Digest авторизации
+ * @return     тип хэш-суммы
+ */
+static awh::hash_t::type_t digestHashType(const awh::Authorization::hash_t hash) noexcept {
+	/**
+	 * Определяем алгоритм шифрования
+	 */
+	switch(static_cast <uint8_t> (hash)){
+		// Если алгоритм шифрования SHA1
+		case static_cast <uint8_t> (awh::Authorization::hash_t::SHA1): return awh::hash_t::type_t::SHA1;
+		// Если алгоритм шифрования SHA224
+		case static_cast <uint8_t> (awh::Authorization::hash_t::SHA224): return awh::hash_t::type_t::SHA224;
+		// Если алгоритм шифрования SHA256
+		case static_cast <uint8_t> (awh::Authorization::hash_t::SHA256): return awh::hash_t::type_t::SHA256;
+		// Если алгоритм шифрования SHA384
+		case static_cast <uint8_t> (awh::Authorization::hash_t::SHA384): return awh::hash_t::type_t::SHA384;
+		// Если алгоритм шифрования SHA512
+		case static_cast <uint8_t> (awh::Authorization::hash_t::SHA512): return awh::hash_t::type_t::SHA512;
+	}
+	// Выводим алгоритм шифрования по умолчанию
+	return awh::hash_t::type_t::MD5;
+}
+/**
+ * @brief Функция получения секретного ключа подписи nonce
+ *
+ * Ключ создаётся один раз на процесс. Nonce подписывается им, поэтому сервер проверяет
+ * свой nonce на любом подключении и в любом потоке HTTP/2, не храня выданные ключи
+ *
+ * @return секретный ключ подписи
+ */
+static const string & digestSecret() noexcept {
+	/**
+	 * Создаём секретный ключ подписи
+	 */
+	static const string secret = []() noexcept -> string {
+		// Результат работы функции
+		string result = "";
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Создаём генератор случайных чисел
+			random_device rd;
+			// Выполняем сборку случайного ключа
+			for(uint8_t i = 0; i < 8; i++)
+				// Добавляем очередную часть ключа
+				result.append(std::to_string(rd()));
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception &) {
+			// Выполняем очистку ключа
+			result.clear();
+		}
+		// Добавляем в ключ текущее время и адрес переменной
+		result.append(std::to_string(chrono::steady_clock::now().time_since_epoch().count()));
+		// Добавляем в ключ адрес переменной
+		result.append(std::to_string(reinterpret_cast <uintptr_t> (&result)));
+		// Выводим результат
+		return result;
+	}();
+	// Выводим секретный ключ
+	return secret;
+}
+/**
+ * @brief Функция разбора шестнадцатеричного числа
+ *
+ * @param text   текст для разбора
+ * @param result результат разбора
+ * @return       результат проверки корректности числа
+ */
+static bool digestHex(const string & text, uint64_t & result) noexcept {
+	// Выполняем сброс результата
+	result = 0;
+	// Если текст пустой или слишком длинный
+	if(text.empty() || (text.size() > 16))
+		// Выводим результат
+		return false;
+	// Выполняем перебор всех символов
+	for(auto & c : text){
+		// Если символ является цифрой
+		if((c >= '0') && (c <= '9'))
+			// Добавляем цифру
+			result = ((result << 4) | static_cast <uint64_t> (c - '0'));
+		// Если символ является буквой в нижнем регистре
+		else if((c >= 'a') && (c <= 'f'))
+			// Добавляем цифру
+			result = ((result << 4) | static_cast <uint64_t> (c - 'a' + 10));
+		// Если символ является буквой в верхнем регистре
+		else if((c >= 'A') && (c <= 'F'))
+			// Добавляем цифру
+			result = ((result << 4) | static_cast <uint64_t> (c - 'A' + 10));
+		// Если символ не является шестнадцатеричной цифрой
+		else return false;
+	}
+	// Выводим результат
+	return true;
+}
+/**
+ * @brief Функция удаления кавычек у значения параметра
+ *
+ * @param value значение параметра
+ * @return      значение без кавычек
+ */
+static string digestUnquote(const string & value) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если значение обрамлено кавычками
+		if((value.size() >= 2) && (value.front() == '"') && (value.back() == '"'))
+			// Выводим значение без кавычек
+			return value.substr(1, value.size() - 2);
+		// Выводим значение как есть
+		return value;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Выводим пустое значение
+		return "";
+	}
+}
+/**
+ * @brief Функция создания подписанного ключа nonce
+ *
+ * @param hash объект хэширования
+ * @param type тип хэш-суммы
+ * @param date штамп времени выдачи ключа
+ * @return     ключ nonce
+ */
+static string digestNonce(const awh::hash_t & hash, const awh::hash_t::type_t type, const uint64_t date) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Буфер для штампа времени
+		char buffer[17];
+		// Формируем штамп времени в шестнадцатеричном виде
+		::snprintf(buffer, sizeof(buffer), "%016llx", static_cast <unsigned long long> (date));
+		// Получаем штамп времени
+		const string stamp(buffer, 16);
+		// Выводим ключ: штамп времени и подпись
+		return (stamp + hash.hmac <string> (digestSecret(), stamp, type));
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Выводим пустое значение
+		return "";
+	}
+}
+/**
+ * @brief Функция проверки подписанного ключа nonce
+ *
+ * @param hash  объект хэширования
+ * @param type  тип хэш-суммы
+ * @param nonce ключ nonce для проверки
+ * @param date  штамп времени выдачи ключа
+ * @return      результат проверки подписи
+ */
+static bool digestNonce(const awh::hash_t & hash, const awh::hash_t::type_t type, const string & nonce, uint64_t & date) noexcept {
+	// Выполняем сброс штампа времени
+	date = 0;
+	// Если ключ имеет минимальный размер
+	if(nonce.size() > 16){
+		// Если штамп времени получен
+		if(digestHex(nonce.substr(0, 16), date))
+			// Выполняем сравнение ключа с ожидаемым
+			return (digestNonce(hash, type, date) == nonce);
+	}
+	// Выводим результат
+	return false;
+}
+/**
+ * @brief Функция учёта счётчика запросов ключа nonce
+ *
+ * Счётчик ведётся для пары nonce и cnonce: клиенты (например curl) начинают nc с единицы
+ * для каждого нового cnonce, а перехваченный заголовок повторяется целиком вместе со своим cnonce.
+ * В паре принимается любой ещё не использованный счётчик в окне 64 значений ниже максимального;
+ * повтор тройки nonce, cnonce и nc, а также счётчик за пределами окна отклоняются
+ *
+ * @param nonce  ключ nonce
+ * @param cnonce ключ клиента cnonce
+ * @param nc     счётчик запроса
+ * @param date   штамп времени выдачи ключа
+ * @param now    текущий штамп времени
+ * @return       результат проверки, что счётчик не использовался
+ */
+static bool digestCount(const string & nonce, const string & cnonce, const uint64_t nc, const uint64_t date, const uint64_t now) noexcept {
+	// Если счётчик нулевой
+	if(nc == 0)
+		// Выводим результат
+		return false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(digestMtx);
+		// Если пришло время очистки устаревших счётчиков
+		if((now - digestSweep) >= 60000){
+			// Запоминаем время очистки
+			digestSweep = now;
+			// Выполняем перебор всех счётчиков
+			for(auto i = digestCounters.begin(); i != digestCounters.end();){
+				// Если время жизни ключа истекло
+				if((now - i->second.date) >= DIGEST_ALIVE_NONCE)
+					// Удаляем устаревший счётчик
+					i = digestCounters.erase(i);
+				// Переходим к следующему счётчику
+				else ++i;
+			}
+		}
+		// Формируем ключ пары nonce и cnonce
+		const string key = (nonce + '\n' + cnonce);
+		// Выполняем поиск счётчика пары
+		auto i = digestCounters.find(key);
+		// Если счётчик пары ещё не создан
+		if(i == digestCounters.end()){
+			// Если список счётчиков переполнен
+			if(digestCounters.size() >= DIGEST_COUNTERS_MAX){
+				// Самый давно использованный счётчик
+				auto j = digestCounters.begin();
+				// Выполняем поиск самого давно использованного счётчика
+				for(auto k = digestCounters.begin(); k != digestCounters.end(); ++k){
+					// Если счётчик использовался раньше
+					if(k->second.used < j->second.used)
+						// Запоминаем счётчик
+						j = k;
+				}
+				// Вытесняем самый давно использованный счётчик
+				digestCounters.erase(j);
+			}
+			// Создаём счётчик пары
+			i = digestCounters.emplace(key, digest_counter_t()).first;
+		}
+		// Получаем счётчик пары
+		digest_counter_t & counter = i->second;
+		// Запоминаем штамп времени выдачи ключа
+		counter.date = date;
+		// Запоминаем время использования
+		counter.used = now;
+		// Если счётчик больше максимального
+		if(nc > counter.max){
+			// Получаем величину сдвига окна
+			const uint64_t shift = (nc - counter.max);
+			// Выполняем сдвиг окна
+			counter.mask = ((shift >= 64) ? 0 : (counter.mask << shift));
+			// Помечаем счётчик как использованный
+			counter.mask |= 1;
+			// Запоминаем максимальный счётчик
+			counter.max = nc;
+			// Выводим результат
+			return true;
+		}
+		// Получаем отставание счётчика от максимального
+		const uint64_t diff = (counter.max - nc);
+		// Если счётчик за пределами окна
+		if(diff >= 64)
+			// Выводим результат
+			return false;
+		// Если счётчик уже использовался
+		if((counter.mask & (static_cast <uint64_t> (1) << diff)) != 0)
+			// Выводим результат
+			return false;
+		// Помечаем счётчик как использованный
+		counter.mask |= (static_cast <uint64_t> (1) << diff);
+		// Выводим результат
+		return true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Выводим результат
+		return false;
+	}
+}
 
 /**
  * @brief Метод извлечения данных авторизации
@@ -86,28 +407,52 @@ bool awh::server::Auth::check(const string & method) noexcept {
 		// Если тип авторизации - Дайджест
 		case static_cast <uint8_t> (type_t::DIGEST): {
 			// Если данные пользователя переданы
-			if(!method.empty() && !this->_user.empty() && !this->_locale.nc.empty() && !this->_locale.uri.empty() && !this->_locale.cnonce.empty() && !this->_locale.resp.empty()){
-				// Если на сервере счётчик меньше
-				if((this->_fmk->atoi <size_t> (this->_digest.nc, 16) <= this->_fmk->atoi <size_t> (this->_locale.nc, 16)) && this->_callback.is("extract")){
+			if(!method.empty() && !this->_user.empty() && !this->_locale.nc.empty() && !this->_locale.uri.empty() && !this->_locale.nonce.empty() && !this->_locale.cnonce.empty() && !this->_locale.resp.empty()){
+				// Счётчик запросов клиента
+				uint64_t nc = 0;
+				// Если счётчик клиента корректный и функция извлечения пароля установлена
+				if(digestHex(this->_locale.nc, nc) && (nc > 0) && this->_callback.is("extract")){
 					// Получаем пароль пользователя
 					const string & pass = this->_callback.call <string (const string &)> ("extract", this->_user);
 					// Если пароль пользователя получен
 					if(!pass.empty()){
 						// Параметры проверки дайджест авторизации
 						digest_t digest;
-						// Устанавливаем счётчик клиента
-						this->_digest.nc = this->_locale.nc;
-						// Устанавливаем параметры для проверки
-						digest.nc     = this->_digest.nc;
+						/**
+						 * Ответ считается по realm и qop самого сервера,
+						 * а nonce и opaque проверяются на выдачу этим сервером ниже
+						 */
+						digest.nc     = this->_locale.nc;
 						digest.hash   = this->_digest.hash;
 						digest.uri    = this->_locale.uri;
-						digest.qop    = this->_locale.qop;
-						digest.realm  = this->_locale.realm;
+						digest.qop    = this->_digest.qop;
+						digest.realm  = this->_digest.realm;
 						digest.nonce  = this->_locale.nonce;
 						digest.opaque = this->_locale.opaque;
 						digest.cnonce = this->_locale.cnonce;
-						// Выполняем проверку авторизации
-						result = (this->_fmk->compare(this->response(this->_fmk->transform(method, fmk_t::transform_t::UPPER), this->_user, pass, digest), this->_locale.resp));
+						// Если ответ клиента соответствует паролю
+						if(this->_fmk->compare(this->response(this->_fmk->transform(string(method), fmk_t::transform_t::UPPER), this->_user, pass, digest), this->_locale.resp)){
+							// Штамп времени выдачи ключа
+							uint64_t date = 0;
+							// Получаем текущее значение штампа времени
+							const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+							// Если ключ выдан этим сервером и его время жизни не истекло
+							if(digestNonce(this->_hash, digestHashType(this->_digest.hash), this->_locale.nonce, date) && (date <= now) && ((now - date) < DIGEST_ALIVE_NONCE)){
+								// Если ключ сессии сервера ещё не создан
+								if(this->_digest.opaque.empty())
+									// Создаём ключ сервера так же, как при выдаче запроса авторизации
+									this->_hash.hashing(AWH_SITE, digestHashType(this->_digest.hash), this->_digest.opaque);
+								// Если ключ сессии сервера совпадает с выданным
+								if(!this->_digest.opaque.empty() && (this->_digest.opaque.compare(this->_locale.opaque) == 0)){
+									// Если счётчик запросов ранее не использовался
+									if((result = digestCount(this->_locale.nonce, this->_locale.cnonce, nc, date, now)))
+										// Запоминаем счётчик клиента
+										this->_digest.nc = this->_locale.nc;
+								// Сообщаем клиенту, что необходимо повторить запрос с новыми ключами
+								} else this->_stale = true;
+							// Сообщаем клиенту, что ключ устарел и необходимо повторить запрос с новым ключом
+							} else this->_stale = true;
+						}
 					}
 				}
 			}
@@ -170,112 +515,164 @@ void awh::server::Auth::header(const string & header) noexcept {
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если тип авторизации Digest
 			case static_cast <uint8_t> (type_t::DIGEST): {
-				// Тип авторизации на сервере
-				const string type = "Digest";
-				// Выполняем поиск Basic авторизации
-				size_t pos = header.find(type);
-				// Если авторизация получена
-				if((pos != string::npos) && ((pos + type.length()) < header.length())){
-					// Получаем параметры авторизации
-					const string & digest = header.substr(pos + type.length() + 1);
-					// Если параметры дайджест авторизации получены
-					if(!digest.empty()){
-						// Список параметров
-						vector <string> params;
-						// Выполняем разделение параметров расширений
-						if(!this->_fmk->split(digest, ",", params).empty()){
-							// Позиция поиска разделителя
-							size_t pos = wstring::npos;
-							// Ключ и значение параметра
-							string key = "", value = "";
-							// Переходим по всему списку параметров
-							for(auto & param : params){
-								// Ищем разделитель параметров
-								if((pos = param.find("=")) != wstring::npos){
-									// Получаем ключ параметра
-									key = param.substr(0, pos);
-									// Получаем значение параметра
-									value = param.substr(pos + 1);
-									// Если параметр является именем пользователя
-									if(this->_fmk->compare(key, "username")){
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Получаем логин пользователя
-										this->_user = value;
-									// Если параметр является идентификатором сайта
-									} else if(this->_fmk->compare(key, "realm")) {
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Устанавливаем relam
-										this->_locale.realm = value;
-									// Если параметр является ключём сгенерированным сервером
-									} else if(this->_fmk->compare(key, "nonce")) {
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Устанавливаем nonce
-										this->_locale.nonce = value;
-									// Если параметр являеются параметры запроса
-									} else if(this->_fmk->compare(key, "uri")) {
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Устанавливаем uri
-										this->_locale.uri = value;
-									// Если параметр является ключём сгенерированным клиентом
-									} else if(this->_fmk->compare(key, "cnonce")) {
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Устанавливаем cnonce
-										this->_locale.cnonce = value;
-									// Если параметр является ключём ответа клиента
-									} else if(this->_fmk->compare(key, "response")) {
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Устанавливаем response
-										this->_locale.resp = value;
-									// Если параметр является ключём сервера
-									} else if(this->_fmk->compare(key, "opaque")) {
-										// Удаляем кавычки
-										value.assign(value.begin() + 1, value.end() - 1);
-										// Устанавливаем opaque
-										this->_locale.opaque = value;
-									// Если параметр является типом авторизации
-									} else if(this->_fmk->compare(key, "qop"))
-										// Устанавливаем qop
-										this->_locale.qop = value;
-									// Если параметр является счётчиком запросов
-									else if(this->_fmk->compare(key, "nc"))
-										// Устанавливаем nc
-										this->_locale.nc = value;
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем сброс логина пользователя
+					this->_user.clear();
+					// Выполняем сброс параметров Digest авторизации пользователя
+					this->_locale = digest_t();
+					// Тип авторизации на сервере
+					const string type = "Digest";
+					// Выполняем поиск Basic авторизации
+					size_t pos = header.find(type);
+					// Если авторизация получена
+					if((pos != string::npos) && ((pos + type.length()) < header.length())){
+						// Получаем параметры авторизации
+						const string & digest = header.substr(pos + type.length() + 1);
+						// Если параметры дайджест авторизации получены
+						if(!digest.empty()){
+							// Список параметров
+							vector <string> params;
+							// Выполняем разделение параметров расширений
+							if(!this->_fmk->split(digest, ",", params).empty()){
+								// Позиция поиска разделителя
+								size_t pos = string::npos;
+								// Ключ и значение параметра
+								string key = "", value = "";
+								// Переходим по всему списку параметров
+								for(auto & param : params){
+									// Ищем разделитель параметров
+									if((pos = param.find("=")) != string::npos){
+										// Получаем ключ параметра
+										key = this->_fmk->transform(param.substr(0, pos), fmk_t::transform_t::TRIM);
+										/**
+										 * Кавычки снимаются только если значение ими обрамлено:
+										 * пустое или однобуквенное значение раньше роняло процесс исключением
+										 */
+										value = digestUnquote(this->_fmk->transform(param.substr(pos + 1), fmk_t::transform_t::TRIM));
+										// Если параметр является именем пользователя
+										if(this->_fmk->compare(key, "username"))
+											// Получаем логин пользователя
+											this->_user = value;
+										// Если параметр является идентификатором сайта
+										else if(this->_fmk->compare(key, "realm"))
+											// Устанавливаем relam
+											this->_locale.realm = value;
+										// Если параметр является ключём сгенерированным сервером
+										else if(this->_fmk->compare(key, "nonce"))
+											// Устанавливаем nonce
+											this->_locale.nonce = value;
+										// Если параметр являеются параметры запроса
+										else if(this->_fmk->compare(key, "uri"))
+											// Устанавливаем uri
+											this->_locale.uri = value;
+										// Если параметр является ключём сгенерированным клиентом
+										else if(this->_fmk->compare(key, "cnonce"))
+											// Устанавливаем cnonce
+											this->_locale.cnonce = value;
+										// Если параметр является ключём ответа клиента
+										else if(this->_fmk->compare(key, "response"))
+											// Устанавливаем response
+											this->_locale.resp = value;
+										// Если параметр является ключём сервера
+										else if(this->_fmk->compare(key, "opaque"))
+											// Устанавливаем opaque
+											this->_locale.opaque = value;
+										// Если параметр является типом авторизации
+										else if(this->_fmk->compare(key, "qop"))
+											// Устанавливаем qop
+											this->_locale.qop = value;
+										// Если параметр является счётчиком запросов
+										else if(this->_fmk->compare(key, "nc"))
+											// Устанавливаем nc
+											this->_locale.nc = value;
+									}
 								}
 							}
 						}
 					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					// Выполняем сброс логина пользователя
+					this->_user.clear();
+					// Выполняем сброс параметров Digest авторизации пользователя
+					this->_locale = digest_t();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(header), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
 			} break;
 			// Если тип авторизации Basic
 			case static_cast <uint8_t> (type_t::BASIC): {
-				// Тип авторизации на сервере
-				const string type = "Basic";
-				// Выполняем поиск Basic авторизации
-				size_t pos = header.find(type);
-				// Если авторизация получена
-				if((pos != string::npos) && ((pos + type.length()) < header.length())){
-					// Получаем значение заголовка для дешифрования
-					const string & value = header.substr(pos + type.length() + 1);
-					// Выполняем шифрование полезной нагрузки
-					const string & result = this->_hash.decode <string> (value.data(), value.size(), awh::hash_t::cipher_t::BASE64);
-					// Если хэш получен
-					if(!result.empty()){
-						// Выполняем поиск разделителя
-						pos = result.find(":");
-						// Если разделитель получен
-						if(pos != string::npos){
-							// Записываем полученный логин клиента
-							this->_user = result.substr(0, pos);
-							// Записываем полученный пароль клиента
-							this->_pass = result.substr(pos + 1);
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Выполняем сброс логина пользователя
+					this->_user.clear();
+					// Выполняем сброс пароля пользователя
+					this->_pass.clear();
+					// Тип авторизации на сервере
+					const string type = "Basic";
+					// Выполняем поиск Basic авторизации
+					size_t pos = header.find(type);
+					// Если авторизация получена
+					if((pos != string::npos) && ((pos + type.length()) < header.length())){
+						// Получаем значение заголовка для дешифрования
+						const string & value = this->_fmk->transform(header.substr(pos + type.length() + 1), fmk_t::transform_t::TRIM);
+						// Если значение получено
+						if(!value.empty()){
+							// Выполняем шифрование полезной нагрузки
+							const string & result = this->_hash.decode <string> (value.data(), value.size(), awh::hash_t::cipher_t::BASE64);
+							// Если хэш получен
+							if(!result.empty()){
+								// Выполняем поиск разделителя
+								pos = result.find(":");
+								// Если разделитель получен
+								if(pos != string::npos){
+									// Записываем полученный логин клиента
+									this->_user = result.substr(0, pos);
+									// Записываем полученный пароль клиента
+									this->_pass = result.substr(pos + 1);
+								}
+							}
 						}
 					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					// Выполняем сброс логина пользователя
+					this->_user.clear();
+					// Выполняем сброс пароля пользователя
+					this->_pass.clear();
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(header), log_t::flag_t::CRITICAL, error.what());
+					/**
+					* Если режим отладки не включён
+					*/
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
 			} break;
 		}
@@ -318,6 +715,17 @@ awh::server::Auth::operator string() noexcept {
 							// Выполняем установку полученного значения
 							stale = "TRUE";
 					}
+					// Если клиент прислал верный ответ на чужой или устаревший ключ
+					if(this->_stale){
+						// Снимаем флаг устаревшего ключа
+						this->_stale = false;
+						// Сообщаем клиенту, что достаточно повторить запрос с новым ключом
+						stale = "TRUE";
+						// Выполняем создание нового ключа
+						createNonce = true;
+						// Устанавливаем штамп времени
+						this->_digest.date = date;
+					}
 					/**
 					 * Определяем алгоритм шифрования
 					 */
@@ -326,10 +734,6 @@ awh::server::Auth::operator string() noexcept {
 						case static_cast <uint16_t> (hash_t::MD5): {
 							// Устанавливаем тип шифрования
 							algorithm = "MD5";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::MD5, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -339,10 +743,6 @@ awh::server::Auth::operator string() noexcept {
 						case static_cast <uint16_t> (hash_t::SHA1): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA1";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA1, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -352,10 +752,6 @@ awh::server::Auth::operator string() noexcept {
 						case static_cast <uint16_t> (hash_t::SHA224): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA224";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA224, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -365,10 +761,6 @@ awh::server::Auth::operator string() noexcept {
 						case static_cast <uint16_t> (hash_t::SHA256): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA256";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA256, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -378,10 +770,6 @@ awh::server::Auth::operator string() noexcept {
 						case static_cast <uint16_t> (hash_t::SHA384): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA384";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA384, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
@@ -391,15 +779,21 @@ awh::server::Auth::operator string() noexcept {
 						case static_cast <uint16_t> (hash_t::SHA512): {
 							// Устанавливаем тип шифрования
 							algorithm = "SHA512";
-							// Выполняем создание ключа клиента
-							if(createNonce)
-								// Выполняем установку полученного значения
-								this->_hash.hashing(std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::SHA512, this->_digest.nonce);
 							// Создаём ключ сервера
 							if(this->_digest.opaque.empty())
 								// Выполняем установку полученного значения
 								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA512, this->_digest.opaque);
 						} break;
+					}
+					// Если требуется создать новый ключ клиента
+					if(createNonce){
+						/**
+						 * Ключ подписывается секретом процесса и содержит время выдачи,
+						 * поэтому проверяется на любом подключении и потоке без хранения
+						 */
+						this->_digest.nonce = digestNonce(this->_hash, digestHashType(this->_digest.hash), date);
+						// Выполняем сброс счётчика запросов для нового ключа
+						this->_digest.nc = "00000000";
 					}
 					// Создаём строку запроса авторизации
 					result = this->_fmk->format(

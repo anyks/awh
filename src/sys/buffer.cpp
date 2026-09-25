@@ -66,8 +66,8 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 								bytes = (this->_iter.end - this->_iter.begin);
 								// Если нам есть чего перемещать
 								if(bytes > 0)
-									// Выполняем перемещение верхней границы памяти
-									::memcpy(this->_buffer.data(), this->_buffer.data() + this->_iter.begin, bytes);
+									// Выполняем перемещение верхней границы памяти (области могут перекрываться, поэтому memmove)
+									::memmove(this->_buffer.data(), this->_buffer.data() + this->_iter.begin, bytes);
 								// Выполняем смещение верхней границы буфера
 								this->_iter.begin = 0;
 								// Выполняем смещение нижней границы буфера
@@ -97,8 +97,8 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 							bytes = (this->_iter.end - this->_iter.begin);
 							// Если нам есть чего перемещать
 							if(bytes > 0)
-								// Выполняем перемещение верхней границы памяти
-								::memcpy(this->_buffer.data(), this->_buffer.data() + this->_iter.begin, bytes);
+								// Выполняем перемещение верхней границы памяти (области могут перекрываться, поэтому memmove)
+								::memmove(this->_buffer.data(), this->_buffer.data() + this->_iter.begin, bytes);
 							// Выполняем смещение верхней границы буфера
 							this->_iter.begin = 0;
 							// Выполняем смещение нижней границы буфера

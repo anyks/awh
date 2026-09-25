@@ -16,6 +16,11 @@
 #define __AWH_CORE_SERVER__
 
 /**
+ * Стандартные модули
+ */
+#include <set>
+
+/**
  * Наши модули
  */
 #include "node.hpp"
@@ -117,6 +122,16 @@ namespace awh {
 				// Список подключённых брокеров
 				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
 			private:
+				// Список схем сети, у которых приём подключений приостановлен
+				std::set <uint16_t> _paused;
+				// Список схем сети, для которых ожидается таймер возобновления приёма
+				std::set <uint16_t> _resumes;
+			private:
+				// Резервный файловый дескриптор для сброса подключений при исчерпании дескрипторов
+				SOCKET _reserve;
+				// Время последнего предупреждения о перегрузке приёма подключений
+				uint64_t _warned;
+			private:
 				/**
 				 * @brief Метод вызова при подключении к серверу
 				 *
@@ -217,6 +232,33 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void initDTLS(const uint16_t sid) noexcept;
+			private:
+				/**
+				 * @brief Метод проверки разрешён ли вывод предупреждения о перегрузке
+				 *
+				 * @return результат проверки (не чаще одного раза в секунду)
+				 */
+				bool warn() noexcept;
+				/**
+				 * @brief Метод сброса одного ожидающего подключения при исчерпании дескрипторов
+				 *
+				 * @param sock сокет сервера
+				 * @return     результат работы функции
+				 */
+				bool shed(const SOCKET sock) noexcept;
+				/**
+				 * @brief Метод приостановки приёма подключений
+				 *
+				 * @param sid идентификатор схемы сети
+				 */
+				void standby(const uint16_t sid) noexcept;
+				/**
+				 * @brief Метод возобновления приёма подключений
+				 *
+				 * @param sid   идентификатор схемы сети
+				 * @param timer флаг вызова по таймеру
+				 */
+				void resume(const uint16_t sid, const bool timer) noexcept;
 			public:
 				/**
 				 * @brief Метод остановки клиента
@@ -547,7 +589,7 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-				~Core() noexcept {}
+				~Core() noexcept;
 		} core_t;
 	};
 };

@@ -19,6 +19,7 @@
  * Стандартные модули
  */
 #include <map>
+#include <set>
 #include <cmath>
 #include <queue>
 #include <string>
@@ -129,7 +130,8 @@ namespace awh {
 				PAYLOAD_SIZE      = 0x06, // Максимальный размер буфера полезной нагурзки
 				ENABLE_ALTSVC     = 0x07, // Разрешение передавать расширения ALTSVC
 				ENABLE_ORIGIN     = 0x08, // Разрешение передавать расширение ORIGIN
-				HEADER_TABLE_SIZE = 0x09  // Максимальный размер таблицы заголовков
+				HEADER_TABLE_SIZE = 0x09, // Максимальный размер таблицы заголовков
+				HEADER_LIST_SIZE  = 0x0A  // Максимальный размер списка заголовков (0 - без ограничения)
 			};
 			/**
 			 * Флаги ошибок протокола HTTP/2
@@ -175,6 +177,10 @@ namespace awh {
 			 * Максимальный размер фрейма по умолчанию
 			 */
 			static constexpr uint32_t MAX_FRAME_SIZE_MAX = 0xFFFFFF;
+			/**
+			 * Максимальный размер списка заголовков по умолчанию (SETTINGS_MAX_HEADER_LIST_SIZE)
+			 */
+			static constexpr uint32_t MAX_HEADER_LIST_SIZE = 0x10000;
 		private:
 			/**
 			 * Событие обмена данными
@@ -201,6 +207,21 @@ namespace awh {
 			mode_t _mode;
 			// Флаг активного последнего события
 			event_t _event;
+		private:
+			/**
+			 * Глубина вложенности выполняемых операций. Операции вкладываются друг в друга
+			 * через функции обратного вызова nghttp2, поэтому одиночного флага события недостаточно:
+			 * закрытие сессии и триггер выполняются только после выхода из самой внешней операции
+			 */
+			uint32_t _depth;
+		private:
+			// Размер полученного списка заголовков текущего блока
+			size_t _headersSize;
+			// Максимальный размер списка заголовков
+			uint32_t _maxHeaderListSize;
+		private:
+			// Список закрытых потоков, буферы которых следует удалить
+			std::set <int32_t> _closed;
 		private:
 			// Объект работы с сокетами
 			socket_t _socket;
@@ -351,6 +372,19 @@ namespace awh {
 			 */
 			size_t available(const int32_t sid) const noexcept;
 		private:
+			/**
+			 * @brief Метод пометки буферов потока на удаление
+			 *
+			 * @param sid идентификатор потока
+			 */
+			void release(const int32_t sid) noexcept;
+		private:
+			/**
+			 * @brief Метод начала выполнения операции
+			 *
+			 * @param event событие выполняемой операции
+			 */
+			void activate(const event_t event) noexcept;
 			/**
 			 * @brief Метод применения изменений
 			 *
@@ -647,8 +681,9 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Http2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE),
-			 _socket(fmk, log), _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
+			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE), _depth(0),
+			 _headersSize(0), _maxHeaderListSize(0), _socket(fmk, log),
+			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * @brief Деструктор
 			 *

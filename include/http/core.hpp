@@ -323,6 +323,13 @@ namespace awh {
 			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
+			 * @brief Метод получения кода ошибки разбора запроса
+			 *
+			 * @return код HTTP-ответа для ошибки разбора (0 если ошибки нет)
+			 */
+			uint32_t fault() const noexcept;
+		public:
+			/**
 			 * @brief Метод извлечения список протоколов к которому принадлежит заголовок
 			 *
 			 * @param key ключ заголовка

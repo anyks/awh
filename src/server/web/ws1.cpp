@@ -184,7 +184,19 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 				// Если разрешено получение данных
 				if(options->allow.receive){
 					// Добавляем полученные данные в буфер
-					options->buffer.payload.push(buffer, size);
+					if(!options->buffer.payload.push(buffer, size)){
+						// Если рукопожатие ещё не выполнено
+						if(!reinterpret_cast <http_t &> (options->http).is(http_t::state_t::HANDSHAKE)){
+							// Завершаем работу
+							const_cast <server::core_t *> (this->_core)->close(bid);
+							// Выходим из функции
+							return;
+						}
+						// Создаём сообщение
+						options->mess = ws::mess_t(1009, "Payload data is too large for system limitations to support");
+						// Выполняем отключение брокера
+						goto Stop;
+					}
 					// Обнуляем время последнего ответа на пинг
 					options->respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Обновляем время отправленного пинга
@@ -201,6 +213,66 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 								options->buffer.payload.erase(bytes);
 							// Если байт в буфере меньше, просто очищаем буфер
 							else options->buffer.payload.clear();
+						}
+						/**
+						 * Если разбор запроса завершился ошибкой (нарушены границы запроса
+						 * или пределы заголовков), запрос приложению не передаётся: сервер
+						 * отвечает кодом ошибки разбора и закрывает подключение, так как
+						 * граница следующего запроса неизвестна (как в server/web/http1.cpp)
+						 */
+						if(options->http.fault() > 0){
+							// Получаем код ответа на ошибку разбора
+							const uint32_t code = options->http.fault();
+							// Выполняем создание объекта для генерации HTTP-ответа
+							http_t http(this->_fmk, this->_log);
+							// Устанавливаем закрытие подключения
+							http.header("Connection", "close");
+							// Формируем ответ с ошибкой разбора запроса
+							const auto & response = http.reject(awh::web_t::res_t(code, http.message(code)));
+							// Выполняем очистку HTTP-парсера
+							options->http.clear();
+							// Выполняем сброс состояния HTTP-парсера
+							options->http.reset();
+							// Выполняем очистку буфера данных
+							options->buffer.payload.clear();
+							// Если ответ получен
+							if(!response.empty()){
+								// Тело полезной нагрузки
+								buffer_t payload(this->_fmk, this->_log);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим заголовок ответа
+									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
+									// Выводим параметры ответа
+									std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+								#endif
+								// Если тела ответа нет, закрываем подключение после отправки заголовков
+								options->stopped = http.empty(awh::http_t::suite_t::BODY);
+								// Выполняем запрет на получение входящих данных
+								const_cast <server::core_t *> (this->_core)->events(bid, awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
+								// Отправляем ответ брокеру
+								const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
+								/**
+								 * Получаем тело полезной нагрузки ответа
+								 */
+								while(!(payload = ::move(http.payload())).empty()){
+									// Если тела данных для отправки больше не осталось
+									if(http.empty(awh::http_t::suite_t::BODY))
+										// Устанавливаем флаг закрытия подключения после отправки
+										options->stopped = true;
+									// Выполняем отправку тела ответа клиенту
+									const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+								}
+							// Выполняем отключение брокера
+							} else const_cast <server::core_t *> (this->_core)->close(bid);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::WARNING, http::error_t::HTTP1_RECV, this->_fmk->format("Request rejected with code %u", code));
+							// Выходим из функции
+							return;
 						}
 						// Если все данные получены
 						if(options->http.is(http_t::state_t::END)){
@@ -484,8 +556,29 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 						while(!options->close && options->allow.receive && !options->buffer.payload.empty()){
 							// Выполняем чтение фрейма Websocket
 							const auto & payload = options->frame.methods.get(head, static_cast <const char *> (options->buffer.payload), static_cast <size_t> (options->buffer.payload));
-							// Если буфер данных получен
-							if(!payload.empty() || (head.optcode == ws::frame_t::opcode_t::PING) || (head.optcode == ws::frame_t::opcode_t::PONG) || (head.optcode == ws::frame_t::opcode_t::CLOSE)){
+							/**
+							 * Если заголовок фрейма прочитан, проверяем объявленный размер сразу,
+							 * не дожидаясь, пока фрейм целиком накопится в буфере
+							 */
+							if((head.size > 0) && (((head.payload + head.size + 4) > static_cast <uint64_t> (AWH_MAX_MEMORY_BUFFER)) ||
+							   ((head.optcode == ws::frame_t::opcode_t::CONTINUATION) &&
+							   ((head.payload + options->buffer.fragments.size()) > static_cast <uint64_t> (AWH_MAX_MEMORY_BUFFER))))){
+								// Создаём сообщение
+								options->mess = ws::mess_t(1009, "Payload data is too large for system limitations to support");
+								// Выполняем отключение брокера
+								goto Stop;
+							// Если фрейм получен не полностью, ожидаем данные не трогая буфер
+							} else if(head.state == ws::frame_t::state_t::INCOMPLETE)
+								// Выходим из цикла
+								break;
+							// Если мы получили ошибку получения фрейма
+							else if(head.state == ws::frame_t::state_t::BAD) {
+								// Создаём сообщение
+								options->mess = options->frame.methods.message(head, 1002, (options->compressor != http_t::compressor_t::NONE));
+								// Выполняем отключение брокера
+								goto Stop;
+							// Если фрейм получен целиком (RFC 6455 допускает фреймы данных нулевой длины)
+							} else {
 								/**
 								 * Определяем тип ответа
 								 */
@@ -537,19 +630,23 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 											// Выполняем отключение брокера
 											goto Stop;
 										// Если список фрагментированных сообщений существует
-										} else if(!options->buffer.fragments.empty()) {
+										} else if(this->_fragmented.count(bid) > 0) {
 											// Очищаем список фрагментированных сообщений
 											options->buffer.fragments.clear();
+											// Сбрасываем признак приёма фрагментированного сообщения
+											this->_fragmented.erase(bid);
 											// Создаём сообщение
 											options->mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 											// Выполняем отключение брокера
 											goto Stop;
 										// Если сообщение является не последнем
 										} else if(!head.fin) {
+											// Запоминаем, что начат приём фрагментированного сообщения
+											this->_fragmented.emplace(bid);
 											// Заполняем фрагментированное сообщение
-											if(!options->buffer.fragments.push(payload.data(), payload.size())){
+											if(!payload.empty() && !options->buffer.fragments.push(payload.data(), payload.size())){
 												// Создаём сообщение
-												options->mess = ws::mess_t(1007, "Fragmented payload data is too large for system limitations to support");
+												options->mess = ws::mess_t(1009, "Fragmented payload data is too large for system limitations to support");
 												// Выполняем отключение брокера
 												goto Stop;
 											}
@@ -557,8 +654,14 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										} else {
 											// Если тредпул активирован
 											if(this->_thr.initialized())
-												// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-												this->_thr.push(std::bind(&ws1_t::extraction, this, bid, payload.data(), payload.size(), (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+												/**
+												 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
+												 * данные копируем в задачу, так как буфер фрейма освобождается до её исполнения
+												 */
+												this->_thr.push([this, bid, text = (options->frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (payload.begin(), payload.end())]() noexcept -> void {
+													// Выполняем извлечение полученных сообщений
+													this->extraction(bid, data.data(), data.size(), text);
+												});
 											// Если тредпул не активирован, выполняем извлечение полученных сообщений
 											else this->extraction(bid, payload.data(), payload.size(), (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 										}
@@ -566,23 +669,31 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 									// Если ответом является CONTINUATION
 									case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 										// Если фрагменты сообщения уже собраны
-										if(!options->buffer.fragments.empty()){
+										if(this->_fragmented.count(bid) > 0){
 											// Заполняем фрагментированное сообщение
-											if(!options->buffer.fragments.push(payload.data(), payload.size())){
+											if(!payload.empty() && !options->buffer.fragments.push(payload.data(), payload.size())){
 												// Создаём сообщение
-												options->mess = ws::mess_t(1007, "Fragmented payload data is too large for system limitations to support");
+												options->mess = ws::mess_t(1009, "Fragmented payload data is too large for system limitations to support");
 												// Выполняем отключение брокера
 												goto Stop;
 											// Если сообщение является последним
 											} else if(head.fin) {
 												// Если тредпул активирован
 												if(this->_thr.initialized())
-													// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-													this->_thr.push(std::bind(&ws1_t::extraction, this, bid, static_cast <const char *> (options->buffer.fragments), static_cast <size_t> (options->buffer.fragments), (options->frame.opcode == ws::frame_t::opcode_t::TEXT)));
+													/**
+													 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
+													 * данные копируем в задачу, так как буфер фрагментов очищается сразу после постановки
+													 */
+													this->_thr.push([this, bid, text = (options->frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (static_cast <const char *> (options->buffer.fragments), static_cast <const char *> (options->buffer.fragments) + static_cast <size_t> (options->buffer.fragments))]() noexcept -> void {
+														// Выполняем извлечение полученных сообщений
+														this->extraction(bid, data.data(), data.size(), text);
+													});
 												// Если тредпул не активирован, выполняем извлечение полученных сообщений
 												else this->extraction(bid, static_cast <const char *> (options->buffer.fragments), static_cast <size_t> (options->buffer.fragments), (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 												// Очищаем список фрагментированных сообщений
 												options->buffer.fragments.clear();
+												// Сбрасываем признак приёма фрагментированного сообщения
+												this->_fragmented.erase(bid);
 											}
 										// Если фрагментированные сообщения не существуют
 										} else {
@@ -618,17 +729,9 @@ void awh::server::Websocket1::readEvents(const char * buffer, const size_t size,
 										// Удаляем количество обработанных байт
 										options->buffer.payload.erase(head.frame);
 								}
-							// Если мы получили ошибку получения фрейма
-							} else if(head.state == ws::frame_t::state_t::BAD) {
-								// Создаём сообщение
-								options->mess = options->frame.methods.message(head, 1005, (options->compressor != http_t::compressor_t::NONE));
-								// Выполняем отключение брокера
-								goto Stop;
 							}
 							// Если данные мы все получили, выходим
-							if(!receive || (payload.empty() &&
-							  (head.optcode != ws::frame_t::opcode_t::PING) &&
-							  (head.optcode != ws::frame_t::opcode_t::PONG)) || options->buffer.payload.empty())
+							if(!receive || options->buffer.payload.empty())
 								// Выходим из условия
 								break;
 						}
@@ -696,6 +799,8 @@ void awh::server::Websocket1::error(const uint64_t bid, const ws::mess_t & messa
 		options->buffer.payload.clear();
 		// Очищаем список фрагментированных сообщений
 		options->buffer.fragments.clear();
+		// Сбрасываем признак приёма фрагментированного сообщения
+		const_cast <ws1_t *> (this)->_fragmented.erase(bid);
 		// Выполняем очистку буфера извлечений данных
 		options->buffer.extraction.clear();
 	}
@@ -729,6 +834,13 @@ void awh::server::Websocket1::error(const uint64_t bid, const ws::mess_t & messa
  * @param text   данные передаются в текстовом виде
  */
 void awh::server::Websocket1::extraction(const uint64_t bid, const char * buffer, const size_t size, const bool text) noexcept {
+	// Если получено сообщение нулевой длины (RFC 6455 допускает пустые сообщения)
+	if((bid > 0) && (size == 0) && this->_callback.is("messageWebsocket")){
+		// Отправляем пустое сообщение
+		this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, vector <char> (), text);
+		// Выходим из функции
+		return;
+	}
 	// Если буфер данных передан
 	if((bid > 0) && (buffer != nullptr) && (size > 0) && this->_callback.is("messageWebsocket")){
 		// Получаем параметры активного клиента
@@ -745,6 +857,15 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const char * buffer
 				options->buffer.extraction = options->hash.decode <vector <char>> (buffer, size, options->cipher);
 			// Устанавливаем буфер результата как есть
 			else options->buffer.extraction.push(buffer, size);
+			/**
+			 * Флаг пустого сжатого сообщения: пустое сообщение передаётся пустой полезной нагрузкой
+			 * или, для permessage-deflate, единственным байтом 0x00 (RFC 7692, 7.2.3.6). Декомпрессор
+			 * возвращает пустой результат и при ошибке, поэтому пустое сообщение распознаём заранее;
+			 * байт 0x00 всё равно пропускаем через декомпрессор, чтобы общий контекст оставался согласованным
+			 */
+			const bool blank = (options->inflate && (options->compressor != http_t::compressor_t::NONE) && (options->buffer.extraction.empty() ||
+			                   ((options->compressor == http_t::compressor_t::DEFLATE) && (options->buffer.extraction.size() == 1) &&
+			                   (static_cast <const char *> (options->buffer.extraction)[0] == 0x00))));
 			// Если данные пришли в сжатом виде
 			if(options->inflate && (options->compressor != http_t::compressor_t::NONE)){
 				/**
@@ -822,6 +943,10 @@ void awh::server::Websocket1::extraction(const uint64_t bid, const char * buffer
 			if(!options->buffer.extraction.empty())
 				// Отправляем полученный результат
 				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, options->buffer.extraction, text);
+			// Если получено пустое сжатое сообщение, отправляем пустой результат
+			else if(blank)
+				// Отправляем пустое сообщение
+				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, vector <char> (), text);
 			// Выводим сообщение об ошибке
 			else if(this->_core != nullptr) {
 				// Создаём сообщение
@@ -913,6 +1038,8 @@ void awh::server::Websocket1::erase(const uint64_t bid) noexcept {
 				options->buffer.payload.clear();
 				// Выполняем очистку оставшихся фрагментов
 				options->buffer.fragments.clear();
+				// Сбрасываем признак приёма фрагментированного сообщения
+				this->_fragmented.erase(bid);
 				// Выполняем очистку буфера извлечений данных
 				options->buffer.extraction.clear();
 			}

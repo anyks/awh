@@ -196,8 +196,9 @@ void awh::server::Proxy::available(const broker_t broker, const uint64_t bid, co
  * @param bid    идентификатор брокера
  * @param buffer буфер полезной нагрузки которую не получилось отправить
  * @param size   размер буфера полезной нагрузки
+ * @return       результат сохранения (false, если очередь переполнена и подключение нужно закрыть)
  */
-void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept {
+bool awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept {
 	// Флаг разрешения добавления неотправленных данных во временный буфер полезной нагрузки
 	bool allow = true;
 	// Если функция обратного вызова установлена
@@ -210,18 +211,39 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Результат добавления буфера полезной нагрузки в очередь
+			bool result = false;
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
-			// Если для потока очередь полезной нагрузки получена
+			/**
+			 * Очередь пополняется и опустошается в потоке цикла событий, поэтому
+			 * блокирующий push() при заполненной очереди зависал навсегда вместе
+			 * со всем сервером. Используем неблокирующее добавление
+			 */
 			if(i != this->_payloads.end())
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				i->second->push(buffer, size);
+				result = i->second->tryPush(buffer, size);
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
 				auto ret = this->_payloads.emplace(bid, std::make_unique <queue_t> (this->_fmk, this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				ret.first->second->push(buffer, size);
+				result = ret.first->second->tryPush(buffer, size);
+			}
+			/**
+			 * Если очередь переполнена, данные уже прочитаны из источника и сохранить
+			 * их негде: продолжать передачу значит отдать получателю поток с пропуском.
+			 * Поэтому закрываем подключение клиента
+			 */
+			if(!result){
+				// Выводим сообщение об ошибке
+				this->_log->print("Payload queue for broker [%zu] is full, the connection is closed", log_t::flag_t::WARNING, bid);
+				// Если брокером является сервер, закрываем подключение клиента
+				if(broker == broker_t::SERVER)
+					// Выполняем закрытие подключения клиента
+					this->close(bid);
+				// Сообщаем, что буфер полезной нагрузки не сохранён
+				return false;
 			}
 		/**
 		 * Если возникает ошибка
@@ -244,6 +266,22 @@ void awh::server::Proxy::unavailable(const broker_t broker, const uint64_t bid, 
 			::exit(EXIT_FAILURE);
 		}
 	}
+	// Сообщаем, что подключение закрывать не требуется
+	return true;
+}
+/**
+ * @brief Метод получения событий недоступности памяти буфера полезной нагрузки клиента
+ *
+ * @param bid1   идентификатор брокера сервера (подключённого клиента)
+ * @param bid2   идентификатор брокера клиента (подключения к удалённому серверу)
+ * @param buffer буфер полезной нагрузки которую не получилось отправить
+ * @param size   размер буфера полезной нагрузки
+ */
+void awh::server::Proxy::unavailableClient(const uint64_t bid1, const uint64_t bid2, const char * buffer, const size_t size) noexcept {
+	// Если буфер полезной нагрузки не сохранён в очереди, закрываем подключение клиента
+	if(!this->unavailable(broker_t::CLIENT, bid2, buffer, size))
+		// Выполняем закрытие подключения клиента
+		this->close(bid1);
 }
 /**
  * @brief Метод удаления подключённого клиента
@@ -340,7 +378,7 @@ void awh::server::Proxy::activeServer(const uint64_t bid, const server::web_t::m
 			// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
 			ret.first->second->core.on <void (const uint64_t, const size_t)> ("available", &server::proxy_t::available, this, broker_t::CLIENT, _1, _2, &ret.first->second->core);
 			// Устанавливаем функцию обратного вызова на получение событий очистки буферов полезной нагрузки
-			ret.first->second->core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &server::proxy_t::unavailable, this, broker_t::CLIENT, _1, _2, _3);
+			ret.first->second->core.on <void (const uint64_t, const char *, const size_t)> ("unavailable", &server::proxy_t::unavailableClient, this, bid, _1, _2, _3);
 			// Если чёрный список DNS-адресов установлен
 			if(!this->_settings.dns.blacklist.empty()){
 				// Выполняем перебор всего чёрного списка DNS-адресов

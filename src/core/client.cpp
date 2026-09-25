@@ -183,8 +183,11 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					}
 					// Если подключение выполняется по защищённому каналу DTLS
 					if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
-						// Выполняем получение контекста сертификата
-						this->_engine.wrap(broker->ectx, &broker->addr, engine_t::type_t::CLIENT);
+						/**
+						 * Выполняем получение контекста сертификата с именем хоста (как для TLS):
+						 * без него DTLS-клиент не проверял имя в сертификате и не отправлял SNI
+						 */
+						this->_engine.wrap(broker->ectx, &broker->addr, engine_t::type_t::CLIENT, (family == scheme_t::family_t::IPC) ? url.host : (!url.domain.empty() ? url.domain : url.ip));
 					// Если подключение выполняется не по защищённому каналу DTLS
 					else {
 						// Хост сервера для подклчюения

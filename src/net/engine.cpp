@@ -1221,6 +1221,13 @@ void awh::Engine::Context::clear() noexcept {
 		// Зануляем контекст сервера
 		this->_ctx = nullptr;
 	}
+	// Если объект CRL-файла сертификата установлен
+	if(this->_crl != nullptr){
+		// Освобождаем захваченную ссылку на CRL
+		::X509_CRL_free(const_cast <X509_CRL *> (this->_crl));
+		// Зануляем объект CRL-файла сертификата
+		this->_crl = nullptr;
+	}
 	/*
 	// Если BIO создано
 	if(this->_bio != nullptr){
@@ -1298,9 +1305,20 @@ void awh::Engine::Context::info() const noexcept {
 		}
 	}
 	// Если объект CRL-файла сертификата создан
-	if(this->_crl != nullptr)
-		// Выводим информацию об отозванном сертификате
-		::X509_CRL_print(this->_bio, const_cast <X509_CRL *> (this->_crl));
+	if(this->_crl != nullptr){
+		/**
+		 * Печатаем в стандартный вывод, а не в this->_bio: это BIO сокета,
+		 * и печать в него отправляла текст CRL удалённой стороне в обход шифрования
+		 */
+		BIO * bio = ::BIO_new_fp(stdout, BIO_NOCLOSE);
+		// Если BIO стандартного вывода создан
+		if(bio != nullptr){
+			// Выводим информацию об отозванном сертификате
+			::X509_CRL_print(bio, const_cast <X509_CRL *> (this->_crl));
+			// Выполняем очистку памяти BIO
+			::BIO_free(bio);
+		}
+	}
 }
 /**
  * @brief Метод установки CRL-файла сертификата
@@ -1308,8 +1326,19 @@ void awh::Engine::Context::info() const noexcept {
  * @param crl CRL-файл сертификат
  */
 void awh::Engine::Context::crl(const X509_CRL * crl) noexcept {
-	// Выполняем установку объекта CRL-файла сертификата
-	this->_crl = crl;
+	// Если объект CRL-файла сертификата уже был установлен
+	if(this->_crl != nullptr)
+		// Освобождаем ранее захваченную ссылку
+		::X509_CRL_free(const_cast <X509_CRL *> (this->_crl));
+	// Зануляем объект CRL-файла сертификата
+	this->_crl = nullptr;
+	/**
+	 * Контекст захватывает собственную ссылку на CRL: движок освобождает свой объект CRL
+	 * при каждом новом подключении клиента, и без ссылки у старых контекстов оставался висячий указатель
+	 */
+	if((crl != nullptr) && (::X509_CRL_up_ref(const_cast <X509_CRL *> (crl)) == 1))
+		// Выполняем установку объекта CRL-файла сертификата
+		this->_crl = crl;
 }
 /**
  * @brief Метод чтения данных из сокета
@@ -1355,8 +1384,13 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
-							// Выполняем чтение из защищённого сокета
-							result = ::BIO_read(this->_bio, buffer, size);
+							/**
+							 * Читаем через SSL_read, а не BIO_read: this->_bio это сырой
+							 * датаграммный BIO сокета, чтение из него минует расшифровку DTLS
+							 * и отдаёт приложению записи как есть (прикладные данные шли открытым текстом).
+							 * BIO используется только для управляющих вызовов (BIO_ctrl).
+							 */
+							result = ::SSL_read(this->_ssl, buffer, size);
 						break;
 					}
 				// Если произошла ошибка чтения данных
@@ -1391,33 +1425,14 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						addr = reinterpret_cast <struct sockaddr *> (&this->_addr->_peer.client);
 					break;
 				}
-				// Метка повторного получения данных
-				Read:
-				// Выполняем чтение данных из сокета
-				result = ::recvfrom(this->_addr->sock, buffer, size, 0, addr, &this->_addr->_peer.size);
 				/**
-				 * Если приложение является клиентом, нужно получить вообще все данные ответа,
-				 * для сервера это не нужно, так-как данный контроль производится в другом месте.
+				 * Выполняем чтение данных из сокета.
+				 * Повтор чтения при EWOULDBLOCK для клиента намеренно убран: сокет клиента UDP
+				 * блокирующий с таймаутом SO_RCVTIMEO, и при отсутствии данных повтор крутился
+				 * бесконечно, подвешивая цикл событий. Теперь EWOULDBLOCK/EAGAIN возвращает -1
+				 * (ниже по коду), и вызывающий выходит из цикла чтения до следующего события.
 				 */
-				if(this->_type == type_t::CLIENT){
-					/**
-					 * Для операционной системы MS Windows
-					 */
-					#if _WIN32 || _WIN64
-						// Если нужно попытаться ещё раз получить сообщение
-						if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
-							// Повторяем попытку получить ещё раз
-							goto Read;
-					/**
-					 * Для операционной системы не являющейся MS Windows
-					 */
-					#else
-						// Если нужно попытаться ещё раз получить сообщение
-						if((result < 0) && (AWH_ERROR() == EWOULDBLOCK))
-							// Повторяем попытку получить ещё раз
-							goto Read;
-					#endif
-				}
+				result = ::recvfrom(this->_addr->sock, buffer, size, 0, addr, &this->_addr->_peer.size);
 			}
 		}
 		// Если данные прочитать не удалось
@@ -1655,8 +1670,11 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
-							// Выполняем отправку сообщения через защищённый канал
-							result = ::BIO_write(this->_bio, buffer, size);
+							/**
+							 * Пишем через SSL_write, а не BIO_write: запись в сырой датаграммный
+							 * BIO сокета минует шифрование DTLS и отправляет данные открытым текстом.
+							 */
+							result = ::SSL_write(this->_ssl, buffer, size);
 						break;
 					}
 				// Если произошла ошибка чтения данных
@@ -2090,8 +2108,8 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 							if(this->_encrypted && (this->_ssl != nullptr)){
 								// Разрешаем отправку частичных пакетов в соединение
 								::SSL_set_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-								// Отключаем алгоритм Нейгла
-								result = !static_cast <bool> (::BIO_set_tcp_ndelay(this->_addr->sock, 1));
+								// Отключаем алгоритм Нейгла (BIO_set_tcp_ndelay возвращает 1 при успехе)
+								result = static_cast <bool> (::BIO_set_tcp_ndelay(this->_addr->sock, 1));
 							// Выполняем деактивирование алгоритма Нейгла
 							} else result = this->_addr->_socket.nodelay(this->_addr->sock, socket_t::mode_t::ENABLED);
 						} break;
@@ -2101,8 +2119,8 @@ bool awh::Engine::Context::nodelay(const mode_t mode) noexcept {
 							if(this->_encrypted && (this->_ssl != nullptr)){
 								// Запрещаем отправку частичных пакетов в соединение
 								::SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
-								// Включаем алгоритм Нейгла
-								result = !static_cast <bool> (::BIO_set_tcp_ndelay(this->_addr->sock, 0));
+								// Включаем алгоритм Нейгла (BIO_set_tcp_ndelay возвращает 1 при успехе)
+								result = static_cast <bool> (::BIO_set_tcp_ndelay(this->_addr->sock, 0));
 							// Выполняем активирование алгоритма Нейгла
 							} else result = this->_addr->_socket.nodelay(this->_addr->sock, socket_t::mode_t::DISABLED);
 						} break;
@@ -2275,10 +2293,18 @@ int32_t awh::Engine::Context::availability(const method_t method) const noexcept
  * @return        результат переключения протокола
  */
 bool awh::Engine::Context::selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, uint32_t inSize, const char * key, uint32_t keySize) const noexcept {
-	// Выполняем перебор всех данных в входящем буфере
-	for(uint32_t i = 0; (i + keySize) <= inSize; i += (uint32_t) (in[i] + 1)){
-		// Если данные ключа скопированны удачно
-		if(::memcmp(&in[i], key, keySize) == 0){
+	/**
+	 * Ключ передаётся с байтом длины впереди ("\x2h2"), keySize это длина самого имени протокола.
+	 * Сравниваем длину и имя целиком: раньше сравнивались лишь keySize байт вместе с префиксом,
+	 * и "h2" совпадал с "h3". Выход записи за границу входящего буфера также проверяется.
+	 */
+	for(uint32_t i = 0; i < inSize; i += (static_cast <uint32_t> (in[i]) + 1)){
+		// Если запись протокола выходит за пределы входящего буфера, выходим
+		if((i + 1 + static_cast <uint32_t> (in[i])) > inSize)
+			// Выходим из цикла
+			break;
+		// Если длина и имя протокола совпадают с ключом
+		if((static_cast <uint32_t> (in[i]) == keySize) && (::memcmp(&in[i + 1], key + 1, keySize) == 0)){
 			// Выполняем установку размеров исходящего буфера
 			(* outSize) = in[i];
 			// Выполняем установку полученных данных в исходящий буфер
@@ -2819,6 +2845,8 @@ int32_t awh::Engine::generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size
 			return 0;
 		}
 	}
+	// Выполняем зануление структуры адреса, чтобы хеш неизвестных семейств был детерминирован
+	::memset(&peer, 0, sizeof(peer));
 	// Выполняем чтение из подключения информации
 	BIO_dgram_get_peer(::SSL_get_rbio(ssl), &peer);
 	/**
@@ -2835,8 +2863,11 @@ int32_t awh::Engine::generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size
 			// Увеличиваем смещение на размер структуры данных протокола IPv6
 			offset += sizeof(struct in6_addr);
 		break;
-		// Если производится работа с другими протоколами, выходим
-		default: OPENSSL_assert(0);
+		/**
+		 * Для остальных семейств (например, AF_UNIX) хешируем сырые байты адреса.
+		 * Ранее здесь стояло аварийное завершение, которое роняло сервер DTLS на unix-сокете.
+		 */
+		default: offset += sizeof(peer.ss);
 	}
 	// Увеличиваем смещение на размер буфера входящих данных
 	offset += sizeof(uint16_t);
@@ -2869,8 +2900,13 @@ int32_t awh::Engine::generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size
 			// Выполняем чтение в буфер данных данные структуры подключения
 			::memcpy(buffer + sizeof(uint16_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
-		// Если производится работа с другими протоколами, выходим
-		default: OPENSSL_assert(0);
+		// Для остальных семейств протоколов
+		default: {
+			// Выполняем зануление буфера данных
+			::memset(buffer, 0, offset);
+			// Выполняем копирование сырых байт адреса
+			::memcpy(buffer, &peer.ss, sizeof(peer.ss));
+		}
 	}
 	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
 	::HMAC(::EVP_sha1(), reinterpret_cast <void *> (_cookies), sizeof(_cookies), buffer, offset, result, &length);
@@ -2906,6 +2942,8 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t si
 	if(!_cookieInit)
 		// Выходим из функции
 		return 0;
+	// Выполняем зануление структуры адреса, чтобы хеш неизвестных семейств был детерминирован
+	::memset(&peer, 0, sizeof(peer));
 	// Выполняем чтение из подключения информации
 	BIO_dgram_get_peer(::SSL_get_rbio(ssl), &peer);
 	/**
@@ -2922,8 +2960,11 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t si
 			// Увеличиваем смещение на размер структуры данных протокола IPv6
 			offset += sizeof(struct in6_addr);
 		break;
-		// Если производится работа с другими протоколами, выходим
-		default: OPENSSL_assert(0);
+		/**
+		 * Для остальных семейств (например, AF_UNIX) хешируем сырые байты адреса.
+		 * Ранее здесь стояло аварийное завершение, которое роняло сервер DTLS на unix-сокете.
+		 */
+		default: offset += sizeof(peer.ss);
 	}
 	// Увеличиваем смещение на размер буфера входящих данных
 	offset += sizeof(uint16_t);
@@ -2956,8 +2997,13 @@ int32_t awh::Engine::verifyCookie(SSL * ssl, const uint8_t * cookie, uint32_t si
 			// Выполняем чтение в буфер данных данные структуры подключения
 			::memcpy(buffer + sizeof(uint16_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
-		// Если производится работа с другими протоколами, выходим
-		default: OPENSSL_assert(0);
+		// Для остальных семейств протоколов
+		default: {
+			// Выполняем зануление буфера данных
+			::memset(buffer, 0, offset);
+			// Выполняем копирование сырых байт адреса
+			::memcpy(buffer, &peer.ss, sizeof(peer.ss));
+		}
 	}
 	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
 	::HMAC(::EVP_sha1(), reinterpret_cast <void *> (_cookies), sizeof(_cookies), buffer, offset, result, &length);
@@ -3306,6 +3352,11 @@ bool awh::Engine::storeCRL(SSL_CTX * ctx) const noexcept {
 			result = (::X509_load_cert_crl_file(lookup, this->_cert.crl.c_str(), X509_FILETYPE_PEM) != 0);
 			// Если CRL-файл сертификата удачно загружен
 			if(result){
+				/**
+				 * Без этих флагов загруженный CRL лежит в хранилище, но OpenSSL его не проверяет,
+				 * и отозванный сертификат принимается. Проверяем отзыв для всей цепочки.
+				 */
+				::X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 				// Если CRL-файл сертификата уже создан
 				if(this->_crl != nullptr)
 					// Выполняем освобождение памяти
@@ -3418,11 +3469,19 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 	if(target._ssl != nullptr){
 		// Результат работы функции
 		result = target._proto;
-		// Если подключение выполнено
-		if(target._type == type_t::SERVER ? ::SSL_accept(target._ssl) : ::SSL_connect(target._ssl)){
-			/**
-			 * Определяет желаемый активный протокол
-			 */
+		/**
+		 * Продвигаем рукопожатие, но его результат намеренно не проверяем. Раньше результат
+		 * проверялся как логическое значение: -1 (рукопожатие идёт) считался успехом, а 0 (отказ)
+		 * возвращал желаемый протокол без проверки ALPN. Согласованный протокол определяется
+		 * только по ALPN/NPN: если он ещё не выбран, ниже возвращается HTTP/1.1. Проверка "> 0"
+		 * здесь не подходит: на сервере ALPN выбирается уже по ClientHello, до завершения
+		 * рукопожатия, и HTTP/2 в этот момент определялся верно.
+		 */
+		static_cast <void> (target._type == type_t::SERVER ? ::SSL_accept(target._ssl) : ::SSL_connect(target._ssl));
+		/**
+		 * Определяет желаемый активный протокол
+		 */
+		{
 			switch(static_cast <uint8_t> (target._proto)){
 				// Если протокол соответствует SPDY/1
 				case static_cast <uint8_t> (proto_t::SPDY1):
@@ -3973,6 +4032,19 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
  * @return        объект SSL контекста
  */
 void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noexcept {
+	// Выполняем обёртывание без хоста удалённого сервера
+	this->wrap(target, address, type, "");
+}
+/**
+ * @brief Метод обертывания сетевого сокета для клиента/сервера
+ *
+ * @param target  контекст назначения
+ * @param address объект подключения
+ * @param type    тип активного приложения
+ * @param host    хост удалённого сервера
+ * @return        объект SSL контекста
+ */
+void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, const string & host) noexcept {
 	// Если данные переданы
 	if(address != nullptr){
 		// Устанавливаем тип приложения
@@ -4216,10 +4288,26 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			}
 			// Если нужно произвести проверку
 			if(this->_verify){
-				// Устанавливаем глубину проверки
-				::SSL_CTX_set_verify_depth(target._ctx, 2);
-				// Выполняем проверку сертификата клиента
-				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+				/**
+				 * Для клиента с известным хостом проверяем сертификат так же, как у клиента TLS:
+				 * цепочка и соответствие сертификата доменному имени, глубина цепочки 4
+				 */
+				if((type == type_t::CLIENT) && !host.empty()){
+					// Создаём объект проверки домена
+					target._verify = std::make_unique <verify_t> (host, this);
+					// Выполняем проверку сертификата
+					::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+					// Выполняем проверку всех дочерних сертификатов
+					::SSL_CTX_set_cert_verify_callback(target._ctx, &verifyHost, target._verify.get());
+					// Устанавливаем глубину проверки
+					::SSL_CTX_set_verify_depth(target._ctx, 4);
+				// Если хост удалённого сервера неизвестен
+				} else {
+					// Устанавливаем глубину проверки
+					::SSL_CTX_set_verify_depth(target._ctx, 2);
+					// Выполняем проверку сертификата клиента
+					::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+				}
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else ::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
 			// Устанавливаем, что мы должны читать как можно больше входных байтов
@@ -4256,6 +4344,25 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 				// Выходим
 				return;
+			}
+			// Если приложение является клиентом и хост удалённого сервера известен
+			if((type == type_t::CLIENT) && !host.empty()){
+				/**
+				 * Если нужно установить TLS расширение
+				 */
+				#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+					// Устанавливаем имя хоста для SNI расширения
+					::SSL_set_tlsext_host_name(target._ssl, host.c_str());
+				#endif
+				// Активируем верификацию доменного имени
+				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(target._ssl), host.c_str(), 0) < 1){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->_log->print("Host SSL verification failed", log_t::flag_t::CRITICAL);
+					// Выходим
+					return;
+				}
 			}
 			// Устанавливаем флаг активации TLS
 			target._addr->_encrypted = target._encrypted;

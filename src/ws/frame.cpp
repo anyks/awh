@@ -175,48 +175,62 @@ awh::ws::Message::Message(const uint16_t code, const string & text) noexcept : c
  * @param buffer буфер с данными заголовка
  * @param size   размер передаваемого буфера
  * @param log    объект для работы с логами
+ * @return       результат извлечения заголовка (false - заголовок получен не полностью)
  */
-static void head(frame_t::head_t & head, const void * buffer, const size_t size, const log_t * log) noexcept {
+static bool head(frame_t::head_t & head, const void * buffer, const size_t size, const log_t * log) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Сбрасываем размер блока заголовков
+	head.size = 0;
 	// Если данные переданы
 	if((buffer != nullptr) && (log != nullptr) && (size >= 2)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Получаем бинарный буфер данных
+			const uint8_t * data = reinterpret_cast <const uint8_t *> (buffer);
 			// Определяем является ли сообщение последним
-			head.fin = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x080);
+			head.fin = (data[0] & 0x080);
 			// Получаем наличие маски
-			head.mask = (reinterpret_cast <const uint8_t *> (buffer)[1] & 0x080);
+			head.mask = (data[1] & 0x080);
 			// Определяем байты расширенного протокола
-			head.rsv[0] = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x040);
-			head.rsv[1] = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x020);
-			head.rsv[2] = (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x010);
+			head.rsv[0] = (data[0] & 0x040);
+			head.rsv[1] = (data[0] & 0x020);
+			head.rsv[2] = (data[0] & 0x010);
 			// Получаем малый размер полезной нагрузки
-			head.payload = static_cast <uint64_t> (reinterpret_cast <const uint8_t *> (buffer)[1] & 0x07F);
+			head.payload = static_cast <uint64_t> (data[1] & 0x07F);
 			// Получаем опкод
-			head.optcode = static_cast <frame_t::opcode_t> (reinterpret_cast <const uint8_t *> (buffer)[0] & 0x00F);
+			head.optcode = static_cast <frame_t::opcode_t> (data[0] & 0x00F);
 			// Если размер пересылаемых данных, имеет малый размер
-			if(head.payload < 0x07E)
+			if(head.payload < 0x07E){
 				// Получаем размер блока заголовков
 				head.size = 2;
+				// Запоминаем, что заголовок получен
+				result = true;
 			// Если размер пересылаемых данных, имеет более высокий размер
-			else if((head.payload == 0x07E) && (size >= 4)) {
+			} else if((head.payload == 0x07E) && (size >= 4)) {
 				// Получаем размер блока заголовков
 				head.size = 4;
-				// Размер полезной нагрузки
-				uint16_t size = 0;
-				// Получаем размер данных
-				::memcpy(&size, reinterpret_cast <const uint8_t *> (buffer) + 2, sizeof(size));
-				// Преобразуем сетевой порядок расположения байтов
-				head.payload = static_cast <uint64_t> (ntohs(size));
+				// Получаем размер данных в сетевом порядке байт (big-endian)
+				head.payload = ((static_cast <uint64_t> (data[2]) << 8) | static_cast <uint64_t> (data[3]));
+				// Запоминаем, что заголовок получен
+				result = true;
 			// Если размер пересылаемых данных, имеет очень большой размер
 			} else if((head.payload == 0x07F) && (size >= 10)) {
 				// Получаем размер блока заголовков
 				head.size = 10;
-				// Получаем размер данных
-				::memcpy(&head.payload, reinterpret_cast <const uint8_t *> (buffer) + 2, sizeof(head.payload));
-				// Преобразуем сетевой порядок расположения байтов
-				head.payload = static_cast <uint64_t> (ntohl(head.payload));
+				// Сбрасываем размер полезной нагрузки
+				head.payload = 0;
+				/**
+				 * Размер полезной нагрузки передаётся 64-битным числом в сетевом порядке байт (RFC 6455, 5.2),
+				 * собираем его побайтно, ntohl здесь не годится - он работает только с 32-битными числами
+				 */
+				for(uint8_t i = 0; i < 8; i++)
+					// Добавляем очередной байт размера
+					head.payload = ((head.payload << 8) | static_cast <uint64_t> (data[2 + i]));
+				// Запоминаем, что заголовок получен
+				result = true;
 			}
 		/**
 		 * Если возникает ошибка
@@ -237,6 +251,8 @@ static void head(frame_t::head_t & head, const void * buffer, const size_t size,
 			#endif
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * frame Шаблон функции создания бинарного фрейма
@@ -287,10 +303,13 @@ static void frame(T & payload, const void * buffer, const size_t size, const boo
 				payload.back() = (static_cast <uint8_t> (mask ? 0x080 : 0x00) | 0x07F);
 				// Увеличиваем память ещё на восемь байт
 				payload.resize(offset, 0x00);
-				// Выполняем перерасчёт размера передаваемых данных
-				const uint64_t bytes = static_cast <uint64_t> (htonl(size));
-				// Устанавливаем размер строки в следующие 8 байт
-				::memcpy(payload.data() + 2, &bytes, sizeof(bytes));
+				/**
+				 * Записываем размер 64-битным числом в сетевом порядке байт (RFC 6455, 5.2),
+				 * побайтно, htonl здесь не годится - он работает только с 32-битными числами
+				 */
+				for(uint8_t i = 0; i < 8; i++)
+					// Устанавливаем очередной байт размера
+					payload.at(2 + i) = static_cast <uint8_t> ((static_cast <uint64_t> (size) >> ((7 - i) * 8)) & 0xFF);
 			}
 			// Если нужно выполнить маскировку сообщения
 			if(mask){
@@ -359,8 +378,21 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 			result.front() = (static_cast <char> (0x080) | (0x00F & static_cast <char> (opcode_t::CLOSE)));
 			// Размер смещения в буфере
 			uint16_t offset = 0;
+			/**
+			 * Полезная нагрузка управляющего фрейма не может превышать 125 байт (RFC 6455, 5.5),
+			 * из них 2 байта занимает код, поэтому текст причины обрезаем до 123 байт,
+			 * не разрывая многобайтовый символ UTF-8
+			 */
+			size_t length = std::min(mess.text.size(), static_cast <size_t> (123));
+			// Если текст обрезан посреди многобайтового символа UTF-8
+			if(length < mess.text.size()){
+				// Отступаем к началу символа UTF-8
+				while((length > 0) && ((static_cast <uint8_t> (mess.text[length]) & 0xC0) == 0x80))
+					// Уменьшаем размер текста
+					length--;
+			}
 			// Размер передаваемых данных
-			uint64_t size = static_cast <uint64_t> (mess.text.size());
+			uint64_t size = static_cast <uint64_t> (length);
 			// Если размер строки меньше 126 байт, значит строка умещается во второй байт
 			if(size < 0x07E){
 				// Устанавливаем смещение в буфере
@@ -385,9 +417,9 @@ vector <char> awh::ws::Frame::message(const mess_t & mess) const noexcept {
 			// Устанавливаем код сообщения
 			::memcpy(result.data() + offset, &code, sizeof(code));
 			// Если данные текстового сообщения получены
-			if(!mess.text.empty())
+			if(length > 0)
 				// Выполняем копирования оставшихся данных в буфер
-				result.insert(result.end(), mess.text.begin(), mess.text.end());
+				result.insert(result.end(), mess.text.begin(), mess.text.begin() + length);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -438,7 +470,7 @@ awh::ws::mess_t awh::ws::Frame::message(const void * buffer, const size_t size) 
 				// Если текст сообщения существует
 				if(size > sizeof(result.code))
 					// Извлекаем текст сообщения
-					result.text.assign(reinterpret_cast <const char *> (buffer) + sizeof(result.code), size);
+					result.text.assign(reinterpret_cast <const char *> (buffer) + sizeof(result.code), size - sizeof(result.code));
 				// Иначе запоминаем, что текст не установлен
 				else result.text.clear();
 			/**
@@ -573,94 +605,102 @@ vector <char> awh::ws::Frame::pong(const void * buffer, const size_t size, const
 vector <char> awh::ws::Frame::get(head_t & head, const void * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	vector <char> result;
+	// Сбрасываем размер обработанного фрейма
+	head.frame = 0;
 	// Если данные переданы в достаточном объёме
 	if((buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем чтение заголовков
-			::head(head, buffer, size, this->_log);
+			/**
+			 * Если заголовок фрейма ещё не получен целиком, сообщаем, что нужно дождаться данных,
+			 * при этом head.frame остаётся нулевым и вызывающая сторона не должна трогать буфер
+			 */
+			if(!::head(head, buffer, size, this->_log)){
+				// Устанавливаем статус неполного фрейма
+				head.state = state_t::INCOMPLETE;
+				// Выводим результат
+				return result;
+			}
 			// Устанавливаем стейт фрейма
 			head.state = state_t::GOOD;
-			// Получаем размер смещения
-			head.frame = static_cast <uint64_t> (head.size);
-			// Получаем общее количество байтов
-			uint64_t bytes = (head.payload + head.frame);
-			// Если данные переданы в достаточном объёме для проверки входящих данных
-			if(static_cast <size_t> (bytes) <= size){
-				// Если входящие данные не являются мусоромы
-				if((head.optcode == opcode_t::TEXT) || (head.optcode == opcode_t::BINARY) ||
-				   (head.optcode == opcode_t::PING) || (head.optcode == opcode_t::PONG) ||
-				   (head.optcode == opcode_t::CLOSE) || (head.optcode == opcode_t::CONTINUATION)){
-					// Если маска требуется, маскируем данные
-					if(head.mask)
-						// Увеличиваем количество ожидаемых байт
-						bytes += 4;
-					// Если ожидаемых байт фрейма достаточно для обработки
-					if(static_cast <size_t> (bytes) <= size){
-						// Бинарные данные маски
-						uint8_t mask[4];
-						// Если маска требуется, маскируем данные
-						if(head.mask){
-							// Считываем ключ маски
-							::memcpy(mask, reinterpret_cast <const uint8_t *> (buffer) + head.frame, 4);
-							// Увеличиваем размер смещения
-							head.frame += 4;
-						}
-						// Если полезная нагрузка получена
-						if(head.payload > 0){
-							// Получаем оставшиеся данные полезной нагрузки
-							result.assign(
-								reinterpret_cast <const char *> (buffer) + head.frame,
-								reinterpret_cast <const char *> (buffer) + (head.payload + head.frame)
-							);
-							// Если маска требуется, размаскируем данные
-							if(head.mask){
-								// Выполняем перебор всех байт передаваемых данных
-								for(size_t i = 0; i < result.size(); i++)
-									// Выполняем шифрование данных
-									result.at(i) ^= mask[i % 4];
-							}
-						}
-						// Увеличиваем размер смещения
-						head.frame += head.payload;
-						// Если размер не установлен
-						if((head.payload == 0) && ((head.optcode != opcode_t::PING) &&
-						  (head.optcode != opcode_t::PONG) && (head.optcode != opcode_t::CLOSE)))
-							// Устанавливаем статус битого фрейма
-							head.state = state_t::BAD;
-						// Проверяем состояние флагов RSV2 и RSV3
-						else if(head.rsv[1] || head.rsv[2])
-							// Устанавливаем статус битого фрейма
-							head.state = state_t::BAD;
-						// Если флаг компресси включён а данные пришли не сжатые
-						else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) ||
-						       ((static_cast <uint8_t> (head.optcode) > 0x007) && (static_cast <uint8_t> (head.optcode) < 0x00B))))
-							// Устанавливаем статус битого фрейма
-							head.state = state_t::BAD;
-						// Если опкоды требуют финального фрейма
-						else if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x007) && (static_cast <uint8_t> (head.optcode) < 0x00B))
-							// Устанавливаем статус битого фрейма
-							head.state = state_t::BAD;
-						// Если фрейм испорчен
-						if(head.state == state_t::BAD){
-							// Очищаем результирующий буфер
-							result.clear();
-							// Выполняем очистку выделенной памяти
-							vector <decltype(result)::value_type> ().swap(result);
-						}
-					}
-				// Устанавливаем статус битого фрейма
-				} else head.state = state_t::BAD;
-			// Если размер данных уже слишком большой, выводим сообщение об ошибке
-			} else if((size > sizeof(head_t)) && (head.payload > MAX_FRAME_SIZE))
+			// Флаг управляющего фрейма
+			const bool control = ((head.optcode == opcode_t::PING) || (head.optcode == opcode_t::PONG) || (head.optcode == opcode_t::CLOSE));
+			// Если входящие данные являются мусором
+			if(!control && (head.optcode != opcode_t::TEXT) && (head.optcode != opcode_t::BINARY) && (head.optcode != opcode_t::CONTINUATION))
 				// Устанавливаем статус битого фрейма
 				head.state = state_t::BAD;
+			// Если размер данных слишком большой
+			else if(head.payload > static_cast <uint64_t> (MAX_FRAME_SIZE))
+				// Устанавливаем статус битого фрейма
+				head.state = state_t::BAD;
+			// Если полезная нагрузка управляющего фрейма больше 125 байт (RFC 6455, 5.5)
+			else if(control && (head.payload > 0x07D))
+				// Устанавливаем статус битого фрейма
+				head.state = state_t::BAD;
+			// Проверяем состояние флагов RSV2 и RSV3
+			else if(head.rsv[1] || head.rsv[2])
+				// Устанавливаем статус битого фрейма
+				head.state = state_t::BAD;
+			// Если флаг компресси включён а данные пришли не сжатые
+			else if(head.rsv[0] && ((head.optcode == opcode_t::CONTINUATION) || control))
+				// Устанавливаем статус битого фрейма
+				head.state = state_t::BAD;
+			// Если опкоды требуют финального фрейма
+			else if(!head.fin && control)
+				// Устанавливаем статус битого фрейма
+				head.state = state_t::BAD;
+			// Если фрейм не испорчен
+			if(head.state == state_t::GOOD){
+				// Получаем общее количество байтов фрейма
+				const uint64_t bytes = (head.payload + static_cast <uint64_t> (head.size) + (head.mask ? 4 : 0));
+				// Если фрейм ещё не получен целиком
+				if(bytes > static_cast <uint64_t> (size))
+					// Устанавливаем статус неполного фрейма
+					head.state = state_t::INCOMPLETE;
+				// Если фрейм получен целиком
+				else {
+					// Получаем размер смещения
+					head.frame = static_cast <uint64_t> (head.size);
+					// Бинарные данные маски
+					uint8_t mask[4];
+					// Если маска требуется, маскируем данные
+					if(head.mask){
+						// Считываем ключ маски
+						::memcpy(mask, reinterpret_cast <const uint8_t *> (buffer) + head.frame, 4);
+						// Увеличиваем размер смещения
+						head.frame += 4;
+					}
+					// Если полезная нагрузка получена
+					if(head.payload > 0){
+						// Получаем оставшиеся данные полезной нагрузки
+						result.assign(
+							reinterpret_cast <const char *> (buffer) + head.frame,
+							reinterpret_cast <const char *> (buffer) + (head.payload + head.frame)
+						);
+						// Если маска требуется, размаскируем данные
+						if(head.mask){
+							// Выполняем перебор всех байт передаваемых данных
+							for(size_t i = 0; i < result.size(); i++)
+								// Выполняем шифрование данных
+								result[i] ^= mask[i % 4];
+						}
+					}
+					// Увеличиваем размер смещения
+					head.frame += head.payload;
+				}
+			}
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
+			// Устанавливаем статус битого фрейма
+			head.state = state_t::BAD;
+			// Сбрасываем размер обработанного фрейма
+			head.frame = 0;
+			// Очищаем результирующий буфер
+			result.clear();
 			/**
 			 * Если включён режим отладки
 			 */
@@ -675,7 +715,8 @@ vector <char> awh::ws::Frame::get(head_t & head, const void * buffer, const size
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	}
+	// Если данных нет, значит фрейм ещё не получен
+	} else head.state = state_t::INCOMPLETE;
 	// Выводим результат
 	return result;
 }

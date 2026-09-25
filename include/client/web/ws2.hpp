@@ -109,13 +109,18 @@ namespace awh {
 					// Буфер извлечения данных
 					awh::buffer_t extraction;
 					/**
+					 * Флаг приёма фрагментированного сообщения,
+					 * отдельный признак нужен, так как фрагменты нулевой длины не попадают в буфер
+					 */
+					bool fragmented;
+					/**
 					 * @brief Конструктор
 					 *
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
 					Intermediate(const fmk_t * fmk, const log_t * log) noexcept :
-					 fragments(fmk, log), extraction(fmk, log) {}
+					 fragments(fmk, log), extraction(fmk, log), fragmented(false) {}
 				} inter_t;
 			private:
 				// Идентификатор подключения

@@ -1249,13 +1249,31 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	if((this->_state != state_t::GOOD) && (this->_state != state_t::BROKEN) && (this->_state != state_t::BROKEN)){
 		// Выполняем парсинг сырых данных
 		result = this->_web.parse(buffer, size);
+		/**
+		 * Запрос с ошибкой разбора не фиксируется и не проходит авторизацию:
+		 * он помечается бракованным, а сервер отвечает кодом из fault()
+		 */
+		if(this->_web.fault() > 0){
+			// Помечаем данные как бракованные
+			this->_state = state_t::BROKEN;
+			// Помечаем проверку как неудачную
+			this->_status = status_t::FAULT;
 		// Если парсинг выполнен
-		if(this->_web.isEnd())
+		} else if(this->_web.isEnd())
 			// Выполняем коммит полученного результата
 			this->commit();
 	}
 	// Выводим реузльтат
 	return result;
+}
+/**
+ * @brief Метод получения кода ошибки разбора запроса
+ *
+ * @return код HTTP-ответа для ошибки разбора (0 если ошибки нет)
+ */
+uint32_t awh::Http::fault() const noexcept {
+	// Выводим код ошибки разбора запроса
+	return this->_web.fault();
 }
 /**
  * @brief Метод извлечения список протоколов к которому принадлежит заголовок
@@ -1459,8 +1477,8 @@ void awh::Http::payload(const char * buffer, const size_t size) noexcept {
 void awh::Http::blacklist(const string & key) noexcept {
 	// Если ключ заголовка передан, добавляем в список
 	if(!key.empty())
-		// Выполняем добавление заголовка в чёрный список
-		this->_blacklist.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+		// Выполняем добавление заголовка в чёрный список (по копии: константный transform меняет строку на месте)
+		this->_blacklist.emplace(this->_fmk->transform(string(key), fmk_t::transform_t::LOWER));
 }
 /**
  * @brief Метод получения данных тела
@@ -1573,8 +1591,8 @@ void awh::Http::trailer(const string & key, const string & val) noexcept {
 					if(this->_te.trailers){
 						// Добавляем заголовок названия трейлера
 						this->_web.header("Trailer", key);
-						// Выполняем добавление заголовка в список трейлеров
-						this->_trailers.emplace(this->_fmk->transform(key, fmk_t::transform_t::LOWER), val);
+						// Выполняем добавление заголовка в список трейлеров (по копии: константный transform меняет строку на месте)
+						this->_trailers.emplace(this->_fmk->transform(string(key), fmk_t::transform_t::LOWER), val);
 					// Если добавление трейлеров не запрашивалось клиентом
 					} else {
 						// Выводим сообщение о невозможности установки трейлера
@@ -2567,8 +2585,8 @@ bool awh::Http::is(const suite_t suite, const string & key) const noexcept {
 		switch(static_cast <uint8_t> (suite)){
 			// Если набор соответствует заголовку чёрного списка
 			case static_cast <uint8_t> (suite_t::BLACK):
-				// Выполняем проверку наличия заголовка в чёрном списке
-				return (this->_blacklist.find(this->_fmk->transform(key, fmk_t::transform_t::LOWER)) != this->_blacklist.end());
+				// Выполняем проверку наличия заголовка в чёрном списке (по копии: константный transform меняет строку на месте)
+				return (this->_blacklist.find(this->_fmk->transform(string(key), fmk_t::transform_t::LOWER)) != this->_blacklist.end());
 			// Если набор соответствует заголовку сообщения
 			case static_cast <uint8_t> (suite_t::HEADER):
 				// Выводим результат проверки
@@ -2597,8 +2615,8 @@ void awh::Http::rm(const suite_t suite, const string & key) const noexcept {
 		switch(static_cast <uint8_t> (suite)){
 			// Если набор соответствует заголовку чёрного списка
 			case static_cast <uint8_t> (suite_t::BLACK):
-				// Выполняем удаление заголовка из чёрного списка
-				this->_blacklist.erase(this->_fmk->transform(key, fmk_t::transform_t::LOWER));
+				// Выполняем удаление заголовка из чёрного списка (по копии: константный transform меняет строку на месте)
+				this->_blacklist.erase(this->_fmk->transform(string(key), fmk_t::transform_t::LOWER));
 			break;
 			// Если набор соответствует заголовку сообщения
 			case static_cast <uint8_t> (suite_t::HEADER):
@@ -3384,7 +3402,7 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 								// Если заголовок не находится в чёрном списке и не является системным
 								bool allow = (!this->is(suite_t::BLACK, header.first) && (systemHeaders.count(header.first) < 1));
 								// Выполняем перебор всех обязательных заголовков
-								for(uint8_t i = 0; i < 14; i++){
+								for(uint8_t i = 0; i < 15; i++){
 									// Если заголовок уже найден пропускаем его
 									if(available[i])
 										// Продолжаем поиск дальше
@@ -3735,8 +3753,8 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										if(!header.empty())
 											// Добавляем разделитель
 											header.append(", ");
-										// Добавляем заголовок в список
-										header.append(this->_fmk->transform(i->second, fmk_t::transform_t::LOWER));
+										// Добавляем заголовок в список (по копии: константный transform меняет строку на месте)
+										header.append(this->_fmk->transform(string(i->second), fmk_t::transform_t::LOWER));
 									}
 									// Если заголовок собран
 									if(!header.empty())
@@ -4468,8 +4486,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 					for(auto & header : this->_web.headers()){
 						// Если заголовок является системным
 						if(header.first.front() == ':')
-							// Формируем строку запроса
-							result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+							// Формируем строку запроса (по копии: константный transform меняет строку на месте)
+							result.push_back(std::make_pair(this->_fmk->transform(string(header.first), fmk_t::transform_t::LOWER), header.second));
 					}
 					/**
 					 * Определяем тип HTTP-модуля
@@ -4510,7 +4528,7 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									// Если заголовок не находится в чёрном списке и не является системным
 									bool allow = (!this->is(suite_t::BLACK, header.first) && (systemHeaders.count(header.first) < 1));
 									// Выполняем перебор всех обязательных заголовков
-									for(uint8_t i = 0; i < 14; i++){
+									for(uint8_t i = 0; i < 15; i++){
 										// Если заголовок уже найден пропускаем его
 										if(available[i])
 											// Продолжаем поиск дальше
@@ -4558,8 +4576,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									}
 									// Если заголовок не является запрещённым, добавляем заголовок в запрос
 									if(allow)
-										// Формируем строку запроса
-										result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+										// Формируем строку запроса (по копии: константный transform меняет строку на месте)
+										result.push_back(std::make_pair(this->_fmk->transform(string(header.first), fmk_t::transform_t::LOWER), header.second));
 								}
 							}
 							// Устанавливаем Accept если не передан
@@ -4956,8 +4974,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							for(auto & header : this->_web.headers()){
 								// Если заголовок не является системным
 								if(header.first.front() != ':')
-									// Формируем строку запроса
-									result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+									// Формируем строку запроса (по копии: константный transform меняет строку на месте)
+									result.push_back(std::make_pair(this->_fmk->transform(string(header.first), fmk_t::transform_t::LOWER), header.second));
 							}
 						} break;
 					}
@@ -4983,8 +5001,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 						case static_cast <uint8_t> (web_t::hid_t::CLIENT): {
 							// Переходим по всему списку заголовков
 							for(auto & header : this->_web.headers())
-								// Формируем строку ответа
-								result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+								// Формируем строку ответа (по копии: константный transform меняет строку на месте)
+								result.push_back(std::make_pair(this->_fmk->transform(string(header.first), fmk_t::transform_t::LOWER), header.second));
 						} break;
 						// Если мы работаем с сервером
 						case static_cast <uint8_t> (web_t::hid_t::SERVER): {
@@ -5079,8 +5097,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								}
 								// Если заголовок не является запрещённым, добавляем заголовок в ответ
 								if(allow)
-									// Формируем строку ответа
-									result.push_back(std::make_pair(this->_fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
+									// Формируем строку ответа (по копии: константный transform меняет строку на месте)
+									result.push_back(std::make_pair(this->_fmk->transform(string(header.first), fmk_t::transform_t::LOWER), header.second));
 							}
 							// Если заголовок не запрещён
 							if(!available[1] && !this->is(suite_t::BLACK, "server"))
@@ -5512,6 +5530,7 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log) noexcept :
 		{415, "Unsupported Media Type"},
 		{416, "Requested Range Not Satisfiable"},
 		{417, "Expectation Failed"},
+		{431, "Request Header Fields Too Large"},
 		{500, "Internal Server Error"},
 		{501, "Not Implemented"},
 		{502, "Bad Gateway"},

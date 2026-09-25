@@ -2220,8 +2220,13 @@ string awh::Net::arpa() const noexcept {
 					if(!result.empty())
 						// Добавляем разделитель
 						result.insert(result.begin(), '.');
+					/**
+					 * Хексет сохраняется в переменную: метод zerro возвращает ссылку на временный объект,
+					 * который разрушается до начала цикла, если использовать его прямо в заголовке цикла
+					 */
+					const string hexset = this->zerro(this->itoa(static_cast <int64_t> (num), 16), 4);
 					// Выполняем перебор полученного хексета
-					for(auto & item : this->zerro(this->itoa(static_cast <int64_t> (num), 16), 4)){
+					for(auto & item : hexset){
 						// Если последний символ не является точкой
 						if(!result.empty() && (result.front() != '.'))
 							// Добавляем разделитель
@@ -2280,23 +2285,54 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				this->_buffer.resize(4);
 				// Устанавливаем тип адреса
 				this->_type = type_t::IPV4;
-				// Позиция разделителя
-				size_t start = 0, stop = 0, index = 3;
 				// Получаем адрес для парсинга
 				const string ip = addr.substr(0, addr.length() - 13);
+				// Список октетов адреса
+				vector <string> octets;
+				// Позиция разделителя
+				size_t start = 0, stop = 0;
 				/**
 				 * Выполняем поиск разделителя
 				 */
 				while((stop = ip.find('.', start)) != string::npos){
-					// Извлекаем полученное число
-					this->_buffer[index] = static_cast <uint8_t> (::stoi(ip.substr(start, stop - start)));
+					// Добавляем октет в список
+					octets.push_back(ip.substr(start, stop - start));
 					// Выполняем смещение
 					start = (stop + 1);
-					// Уменьшаем смещение индекса
-					index--;
 				}
-				// Выполняем установку последнего октета
-				this->_buffer[index] = static_cast <uint8_t> (::stoi(ip.substr(start)));
+				// Добавляем последний октет в список
+				octets.push_back(ip.substr(start));
+				/**
+				 * Адрес обязан состоять ровно из 4 октетов, каждый из 1-3 десятичных цифр со значением не более 255,
+				 * иначе запись в буфер выходит за его пределы или принимается мусор
+				 */
+				if(octets.size() != 4)
+					// Выполняем сброс результата
+					result = false;
+				// Если количество октетов верное
+				else {
+					// Выполняем перебор всех октетов
+					for(size_t i = 0; i < octets.size(); i++){
+						// Получаем текущий октет
+						const string & octet = octets.at(i);
+						// Если октет пустой, длиннее 3 символов, содержит не цифры или больше 255
+						if(octet.empty() || (octet.size() > 3) || (octet.find_first_not_of("0123456789") != string::npos) || (::stoi(octet) > 255)){
+							// Выполняем сброс результата
+							result = false;
+							// Выходим из цикла
+							break;
+						}
+						// Извлекаем полученное число (октеты в ARPA-записи идут в обратном порядке)
+						this->_buffer[3 - i] = static_cast <uint8_t> (::stoi(octet));
+					}
+				}
+				// Если адрес не прошёл проверку
+				if(!result){
+					// Выполняем очистку буфера данных
+					this->_buffer.clear();
+					// Сбрасываем тип адреса
+					this->_type = type_t::NONE;
+				}
 			/**
 			 * Если возникает ошибка
 			 */
@@ -2314,6 +2350,8 @@ bool awh::Net::arpa(const string & addr) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
+				// Выполняем сброс результата
+				result = false;
 			}
 		// Если адрес является адресом IPv6
 		} else if((result = (addr.substr(addr.length() - 9).compare(".ip6.arpa") == 0))) {
@@ -2342,36 +2380,42 @@ bool awh::Net::arpa(const string & addr) noexcept {
 				this->_buffer.resize(16);
 				// Устанавливаем тип адреса
 				this->_type = type_t::IPV6;
-				// Позиция разделителя
-				size_t start = 0, stop = 0;
-				// Устанавливаем индекс последнего элемента
-				uint8_t index1 = 4, index2 = 8;
 				// Получаем адрес для парсинга
 				const string ip = addr.substr(0, addr.length() - 9);
 				/**
-				 * Выполняем поиск разделителя
+				 * Адрес обязан состоять ровно из 32 полубайтов, каждый из одной шестнадцатеричной цифры,
+				 * разделённых точками (длина строки 63 символа), иначе индексы выходят за пределы буфера
 				 */
-				while((stop = ip.find('.', start)) != string::npos){
-					// Выполняем установку хексета
-					buffer.hexset[--index1] = static_cast <uint8_t> (ip.at(start));
-					// Если хексет полностью заполнен
-					if(index1 == 0){
-						// Добавляем хексет в список
-						buffer.address[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <const char *> (buffer.hexset)));
-						// Выполняем сброс индекса
-						index1 = 4;
+				if(ip.size() == 63){
+					// Выполняем перебор всех полубайтов
+					for(uint8_t i = 0; i < 32; i++){
+						// Если полубайт не является одной шестнадцатеричной цифрой, отделённой точкой
+						if(!::isxdigit(static_cast <uint8_t> (ip.at(i * 2))) || ((i < 31) && (ip.at(i * 2 + 1) != '.'))){
+							// Выполняем сброс результата
+							result = false;
+							// Выходим из цикла
+							break;
+						}
+						// Выполняем установку полубайта (первым идёт младший полубайт хексета)
+						buffer.hexset[3 - (i % 4)] = static_cast <uint8_t> (ip.at(i * 2));
+						// Если хексет полностью заполнен
+						if((i % 4) == 3)
+							// Добавляем хексет в список (строка хексета строится с явной длиной, буфер хексета не завершён нулём)
+							buffer.address[7 - (i / 4)] = static_cast <uint16_t> (this->atoi(string(reinterpret_cast <const char *> (buffer.hexset), sizeof(buffer.hexset))));
 					}
-					// Выполняем смещение
-					start = (stop + 1);
+				// Выполняем сброс результата
+				} else result = false;
+				// Если адрес прошёл проверку
+				if(result)
+					// Выполняем копирование бинарных данных в буфер
+					::memcpy(this->_buffer.data(), buffer.address, sizeof(buffer.address));
+				// Если адрес не прошёл проверку
+				else {
+					// Выполняем очистку буфера данных
+					this->_buffer.clear();
+					// Сбрасываем тип адреса
+					this->_type = type_t::NONE;
 				}
-				// Выполняем установку хексета
-				buffer.hexset[--index1] = static_cast <uint8_t> (ip.at(start));
-				// Если хексет полностью заполнен
-				if(index1 == 0)
-					// Добавляем хексет в список
-					buffer.address[--index2] = static_cast <uint16_t> (this->atoi(reinterpret_cast <char *> (buffer.hexset)));
-				// Выполняем копирование бинарных данных в буфер
-				::memcpy(this->_buffer.data(), buffer.address, sizeof(buffer.address));
 			/**
 			 * Если возникает ошибка
 			 */
@@ -2389,6 +2433,8 @@ bool awh::Net::arpa(const string & addr) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
+				// Выполняем сброс результата
+				result = false;
 			}
 		}
 	}

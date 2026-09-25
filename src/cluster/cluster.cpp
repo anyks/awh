@@ -18,6 +18,11 @@
 #include <cluster/cluster.hpp>
 
 /**
+ * Стандартные модули
+ */
+#include <atomic>
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
@@ -48,8 +53,12 @@ using namespace placeholders;
 				case static_cast <uint8_t> (base_t::event_type_t::CLOSE): {
 					// Идентификатор процесса приславший сообщение
 					pid_t pid = 0;
+					// Флаг закрытия сокета подключения
+					bool closed = false;
 					/**
-					 * Определяем принцип передачи данных
+					 * Брокер завершившегося процесса здесь не удаляем, а только закрываем его дескрипторы:
+					 * удаление сдвигало индексы остальных брокеров (сообщения уходили не тем процессам), а
+					 * перезапуск процесса находит брокер по идентификатору процесса после его пожинания
 					 */
 					switch(static_cast <uint8_t> (this->_ctx->_transfer)){
 						// Если мы передаём данные через unix-сокет
@@ -59,13 +68,15 @@ using namespace placeholders;
 							// Если текущий брокер найден
 							if(i != const_cast <cluster_t *> (this->_ctx)->_brokers.end()){
 								// Переходим по всему списку брокеров
-								for(auto j = i->second.begin(); j != i->second.end(); ++j){
+								for(auto & broker : i->second){
 									// Если сетевой сокет соответствует
-									if(static_cast <SOCKET> ((* j)->mfds[0]) == sock){
+									if(static_cast <SOCKET> (broker->mfds[0]) == sock){
 										// Получаем идентификатор процесса приславшего сообщение
-										pid = (* j)->pid;
-										// Выполняем удаление указанного брокера
-										i->second.erase(j);
+										pid = broker->pid;
+										// Сбрасываем сокет чтения брокера
+										broker->mfds[0] = INVALID_SOCKET;
+										// Сбрасываем сокет записи брокера
+										broker->cfds[1] = INVALID_SOCKET;
 										// Выходим из цикла
 										break;
 									}
@@ -81,6 +92,8 @@ using namespace placeholders;
 								const_cast <cluster_t *> (this->_ctx)->close(j->second->wid, j->second->sock);
 								// Выполняем удаление клиента
 								const_cast <cluster_t *> (this->_ctx)->_clients.erase(j);
+								// Запоминаем, что сокет закрыт
+								closed = true;
 							}
 						} break;
 						// Если мы передаём данные через Shared memory
@@ -90,20 +103,27 @@ using namespace placeholders;
 							// Если текущий брокер найден
 							if(i != const_cast <cluster_t *> (this->_ctx)->_brokers.end()){
 								// Переходим по всему списку брокеров
-								for(auto j = i->second.begin(); j != i->second.end(); ++j){
+								for(auto & broker : i->second){
 									// Если сетевой сокет соответствует
-									if(static_cast <SOCKET> ((* j)->mfds[0]) == sock){
+									if(static_cast <SOCKET> (broker->mfds[0]) == sock){
 										// Получаем идентификатор процесса приславшего сообщение
-										pid = (* j)->pid;
+										pid = broker->pid;
 										// Выполняем остановку чтение сообщений
-										(* j)->read.stop();
+										broker->read.stop();
 										// Выполняем остановку отправки сообщений
-										(* j)->write.stop();
+										broker->write.stop();
 										// Выполняем закрытие сетевых сокетов
-										const_cast <cluster_t *> (this->_ctx)->close(i->first, (* j)->mfds[0]);
-										const_cast <cluster_t *> (this->_ctx)->close(i->first, (* j)->cfds[1]);
-										// Выполняем удаление указанного брокера
-										i->second.erase(j);
+										const_cast <cluster_t *> (this->_ctx)->close(i->first, broker->mfds[0]);
+										// Если сокет записи ещё открыт
+										if(broker->cfds[1] != INVALID_SOCKET)
+											// Выполняем закрытие сокета записи
+											const_cast <cluster_t *> (this->_ctx)->close(i->first, broker->cfds[1]);
+										// Сбрасываем сокет чтения брокера
+										broker->mfds[0] = INVALID_SOCKET;
+										// Сбрасываем сокет записи брокера
+										broker->cfds[1] = INVALID_SOCKET;
+										// Запоминаем, что сокет закрыт
+										closed = true;
 										// Выходим из цикла
 										break;
 									}
@@ -111,8 +131,10 @@ using namespace placeholders;
 							}
 						} break;
 					}
-					// Закрываем сокет подключения
-					const_cast <cluster_t *> (this->_ctx)->close(this->_wid, sock);
+					// Если сокет подключения ещё не закрыт (повторное закрытие задело бы чужой дескриптор с тем же номером)
+					if(!closed)
+						// Закрываем сокет подключения
+						const_cast <cluster_t *> (this->_ctx)->close(this->_wid, sock);
 					// Выводим сообщение об ошибке в лог
 					this->_log->print("[%u] Data from child process [%u] is closed", log_t::flag_t::CRITICAL, this->_ctx->_pid, pid);
 					// Если установлен флаг аннигиляции
@@ -197,8 +219,8 @@ using namespace placeholders;
 													if(j != this->_ctx->_brokers.end()){
 														// Выполняем поиск идентификатор процесса
 														auto k = this->_ctx->_pids.find(i->second->pid());
-														// Если идентификатор процесса найден
-														if(k != this->_ctx->_pids.end()){
+														// Если идентификатор процесса найден и индекс брокера существует
+														if((k != this->_ctx->_pids.end()) && (static_cast <size_t> (k->second) < j->second.size())){
 															// Получаем найденного брокера
 															broker_t * broker = j->second.at(k->second).get();
 															// Устанавливаем сетевой сокет на чтение данных
@@ -218,8 +240,8 @@ using namespace placeholders;
 													if(j != this->_ctx->_brokers.end()){
 														// Выполняем поиск идентификатор процесса
 														auto k = this->_ctx->_pids.find(i->second->pid());
-														// Если идентификатор процесса найден
-														if(k != this->_ctx->_pids.end())
+														// Если идентификатор процесса найден и индекс брокера существует
+														if((k != this->_ctx->_pids.end()) && (static_cast <size_t> (k->second) < j->second.size()))
 															// Устанавливаем размер блока энкодера по размеру буфера данных сокета
 															ret.first->second->chunkSize(this->_ctx->_server.socket.bufferSize(j->second.at(k->second)->cfds[1], socket_t::mode_t::WRITE));
 													}
@@ -293,12 +315,12 @@ using namespace placeholders;
 						case static_cast <uint8_t> (transfer_t::PIPE): {
 							// Выполняем поиск текущего брокера
 							auto i = this->_ctx->_brokers.find(this->_wid);
-							// Если текущий брокер найден
-							if(i != this->_ctx->_brokers.end()){
-								// Получаем индекс текущего процесса
-								const uint16_t index = this->_ctx->_pids.at(::getpid());
+							// Выполняем поиск индекса текущего процесса
+							auto k = this->_ctx->_pids.find(::getpid());
+							// Если текущий брокер найден и индекс текущего процесса существует
+							if((i != this->_ctx->_brokers.end()) && (k != this->_ctx->_pids.end()) && (static_cast <size_t> (k->second) < i->second.size())){
 								// Получаем объект текущего брокера
-								broker_t * broker = i->second.at(index).get();
+								broker_t * broker = i->second.at(k->second).get();
 								// Выполняем остановку чтение сообщений
 								broker->read.stop();
 								// Выполняем остановку отправки сообщений
@@ -322,12 +344,12 @@ using namespace placeholders;
 				case static_cast <uint8_t> (base_t::event_type_t::READ): {
 					// Выполняем поиск текущего брокера
 					auto i = this->_ctx->_brokers.find(this->_wid);
-					// Если текущий брокер найден
-					if(i != this->_ctx->_brokers.end()){
-						// Получаем индекс текущего процесса
-						const uint16_t index = this->_ctx->_pids.at(::getpid());
+					// Выполняем поиск индекса текущего процесса
+					auto k = this->_ctx->_pids.find(::getpid());
+					// Если текущий брокер найден и индекс текущего процесса существует
+					if((i != this->_ctx->_brokers.end()) && (k != this->_ctx->_pids.end()) && (static_cast <size_t> (k->second) < i->second.size())){
 						// Получаем объект текущего брокера
-						broker_t * broker = i->second.at(index).get();
+						broker_t * broker = i->second.at(k->second).get();
 						// Если файловый дескриптор не соответствует родительскому
 						if(broker->cfds[0] != sock){
 							// Переходим по всему списку брокеров
@@ -417,9 +439,11 @@ using namespace placeholders;
 		} else {
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-			// Останавливаем чтение данных с родительского процесса
-			const_cast <cluster_t *> (this->_ctx)->stop(this->_wid);
-			// Выходим из приложения
+			/**
+			 * Брокеры здесь не останавливаем: процесс сразу завершается и дескрипторы закроет система,
+			 * а события чужих брокеров в дочернем процессе неактивны (достались копией при fork) —
+			 * их остановка обращалась к мусору и роняла процесс, когда мастер завершался раньше него
+			 */
 			::exit(EXIT_FAILURE);
 		}
 	}
@@ -444,9 +468,98 @@ awh::Cluster::Worker::~Worker() noexcept {}
  */
 #if !_WIN32 && !_WIN64
 	/**
-	 * Глобальный объект воркера
+	 * Зарегистрированные кластеры процесса. Сигнал SIGCHLD один на процесс, а кластеров может быть
+	 * несколько — у каждого серверного ядра свой. Прежний единственный указатель перезаписывался
+	 * последним созданным кластером (чужие процессы не перезапускались) и оставался висячим после
+	 * разрушения кластера (обработчик сигнала обращался к освобождённой памяти при остановке).
+	 * Атомарные указатели без блокировок безопасно читать из обработчика сигнала.
 	 */
-	static awh::cluster_t * cluster = nullptr;
+	static std::atomic <awh::cluster_t *> clusters[32];
+	/**
+	 * @brief Функция регистрации кластера в списке кластеров процесса
+	 *
+	 * @param cluster объект кластера для регистрации
+	 */
+	static void attach(awh::cluster_t * cluster) noexcept {
+		// Выполняем перебор всех ячеек списка
+		for(auto & item : clusters){
+			// Ожидаемое значение свободной ячейки
+			awh::cluster_t * empty = nullptr;
+			// Если свободная ячейка занята нашим кластером
+			if(item.compare_exchange_strong(empty, cluster))
+				// Выходим из функции
+				return;
+		}
+	}
+	/**
+	 * @brief Функция снятия кластера со списка кластеров процесса
+	 *
+	 * @param cluster объект кластера для снятия
+	 */
+	static void detach(awh::cluster_t * cluster) noexcept {
+		// Выполняем перебор всех ячеек списка
+		for(auto & item : clusters){
+			// Ожидаемое значение ячейки нашего кластера
+			awh::cluster_t * expected = cluster;
+			// Если ячейка нашего кластера освобождена
+			if(item.compare_exchange_strong(expected, nullptr))
+				// Выходим из функции
+				return;
+		}
+	}
+	/**
+	 * Идентификаторы рабочих процессов всех кластеров процесса, которые ещё не пожаты.
+	 * Обработчик сигнала SIGCHLD пожинает только эти процессы: прежний waitpid(-1) забирал
+	 * и собственные дочерние процессы приложения, даже когда кластер выключен. Процесс
+	 * остаётся в списке до пожинания (и после erase или остановки кластера), поэтому
+	 * зомби от рабочих процессов не остаются. Атомарные ячейки безопасно читать из обработчика
+	 */
+	static std::atomic <pid_t> children[1024];
+	/**
+	 * @brief Структура записи о завершившемся процессе для передачи в цикл событий
+	 *
+	 */
+	typedef struct Reaped {
+		pid_t pid;      // Идентификатор завершившегося процесса
+		int32_t status; // Статус завершения процесса (как его вернул waitpid)
+	} reaped_t;
+	/**
+	 * @brief Функция добавления рабочего процесса в список ожидающих пожинания
+	 *
+	 * @param pid идентификатор рабочего процесса
+	 * @return    результат добавления процесса в список
+	 */
+	static bool enlist(const pid_t pid) noexcept {
+		// Выполняем перебор всех ячеек списка
+		for(auto & item : children){
+			// Ожидаемое значение свободной ячейки
+			pid_t empty = 0;
+			// Если свободная ячейка занята нашим процессом
+			if(item.compare_exchange_strong(empty, pid))
+				// Выходим из функции
+				return true;
+		}
+		// Сообщаем, что список переполнен
+		return false;
+	}
+	/**
+	 * @brief Функция получения кода завершения приложения по статусу завершившегося процесса
+	 *
+	 * @param status статус завершения процесса (как его вернул waitpid)
+	 * @return       код завершения для передачи в exit()
+	 */
+	static int32_t code(const int32_t status) noexcept {
+		// Если процесс завершился самостоятельно
+		if(WIFEXITED(status))
+			// Выводим код завершения процесса
+			return WEXITSTATUS(status);
+		// Если процесс завершён сигналом
+		else if(WIFSIGNALED(status))
+			// Выводим код завершения по соглашению оболочки
+			return (128 + WTERMSIG(status));
+		// Выводим код ошибки по умолчанию
+		return EXIT_FAILURE;
+	}
 	/**
 	 * @brief Метод инициализации unix-сокета для обмены данными
 	 *
@@ -455,10 +568,22 @@ awh::Cluster::Worker::~Worker() noexcept {}
 	void awh::Cluster::ipc(const family_t family) noexcept {
 		// Если приложение является сервером
 		if(family == family_t::MASTER){
-			// Если сокет в файловой системе уже существует, удаляем его
+			// Если сокет сервера остался от предыдущего запуска кластера
+			if(this->_server.sock != INVALID_SOCKET){
+				// Останавливаем событие приёма подключений
+				this->_server.ev.stop();
+				// Закрываем сокет сервера
+				::close(this->_server.sock);
+				// Сбрасываем сокет сервера
+				this->_server.sock = INVALID_SOCKET;
+			}
+			/**
+			 * Прежде здесь выполнялся выход без bind: сокет из прошлого запуска оставался в файловой системе,
+			 * сервер не слушал, а дочерние процессы бесконечно пытались подключиться
+			 */
 			if(this->_server.fs.isSock(this->_server.ipc))
-				// Выходим из функции
-				return;
+				// Удаляем файл сокета
+				::unlink(this->_server.ipc.c_str());
 		}
 		// Если unix-сокет передан
 		if(!this->_server.ipc.empty()){
@@ -552,60 +677,287 @@ awh::Cluster::Worker::~Worker() noexcept {}
 		// Выполняем перебор всего списка процессов
 		for(auto & item : this->_brokers){
 			// Выполняем поиск завершившегося процесса
-			for(auto & broker : item.second){
+			for(size_t index = 0; index < item.second.size(); index++){
+				// Получаем объект текущего брокера
+				broker_t * broker = item.second.at(index).get();
 				// Если процесс найден
-				if((broker->stop = (broker->pid == pid))){
+				if(broker->pid == pid){
+					// Получаем идентификатор воркера
+					const uint16_t wid = item.first;
+					// Устанавливаем флаг завершения работы процессом
+					broker->stop = true;
 					// Выполняем остановку чтение сообщений
 					broker->read.stop();
 					// Выполняем остановку отправки сообщений
 					broker->write.stop();
-					// Выполняем закрытие файловых дескрипторов
-					this->close(item.first, broker->mfds[0]);
-					this->close(item.first, broker->cfds[1]);
+					/**
+					 * Определяем принцип передачи данных
+					 */
+					switch(static_cast <uint8_t> (this->_transfer)){
+						// Если мы передаём данные через unix-сокет
+						case static_cast <uint8_t> (transfer_t::IPC): {
+							// Выполняем поиск активного клиента
+							auto i = this->_clients.find(broker->mfds[0]);
+							// Если активный клиент найден
+							if(i != this->_clients.end()){
+								// Выполняем остановку получения событий
+								i->second->ev.stop();
+								// Закрываем сокет подключения
+								this->close(i->second->wid, i->second->sock);
+								// Выполняем удаление клиента
+								this->_clients.erase(i);
+							}
+						} break;
+						// Если мы передаём данные через Shared memory
+						case static_cast <uint8_t> (transfer_t::PIPE): {
+							// Если файловый дескриптор чтения ещё открыт
+							if(broker->mfds[0] != INVALID_SOCKET)
+								// Выполняем закрытие файлового дескриптора
+								this->close(wid, broker->mfds[0]);
+							// Если файловый дескриптор записи ещё открыт
+							if(broker->cfds[1] != INVALID_SOCKET)
+								// Выполняем закрытие файлового дескриптора
+								this->close(wid, broker->cfds[1]);
+						} break;
+					}
+					/**
+					 * Закрытые номера дескрипторов система выдаёт заново: оставленные в брокере,
+					 * они уводили сообщения кластера в чужие файловые дескрипторы
+					 */
+					broker->mfds[0] = INVALID_SOCKET;
+					broker->cfds[1] = INVALID_SOCKET;
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 					this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, broker->pid, status);
-					// Если статус сигнала, ручной остановкой процесса
-					if(status == SIGINT){
+					// Если процесс завершён сигналом ручной остановки процесса
+					if(WIFSIGNALED(status) && (WTERMSIG(status) == SIGINT)){
 						// Выполняем остановку работы
 						this->clear();
 						// Выходим из приложения
-						::exit(SIGINT);
+						::exit(code(status));
 					// Если время жизни процесса составляет меньше 3-х минут
 					} else if((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - broker->date) <= 180000) {
 						// Выполняем остановку работы
 						this->clear();
 						// Выходим из приложения
-						::exit(status);
+						::exit(code(status));
 					}
+					// Выполняем поиск энкодера завершившегося процесса
+					auto j = this->_encoders.find(pid);
+					// Если энкодер найден
+					if(j != this->_encoders.end())
+						// Выполняем удаление энкодера
+						this->_encoders.erase(j);
+					/**
+					 * Удаляем брокер завершившегося процесса и пересчитываем индексы остальных:
+					 * мёртвый брокер в списке получал рассылку в закрытые дескрипторы
+					 */
+					item.second.erase(item.second.begin() + index);
+					// Выполняем пересчёт индексов брокеров
+					this->reindex();
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("exit"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", item.first, pid, status);
+						this->_callback.call <void (const uint16_t, const pid_t, const int32_t)> ("exit", wid, pid, status);
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("events"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", item.first, pid, event_t::STOP);
+						this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", wid, pid, event_t::STOP);
 					// Выполняем поиск воркера
-					auto i = this->_workers.find(item.first);
+					auto i = this->_workers.find(wid);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
 					if((i != this->_workers.end()) && i->second->_autoRestart){
-						// Удаляем процесс из списка процессов
-						this->_pids.erase(broker->pid);
 						// Если процесс завершился не сам, перезапускаем его
 						if(status > 0)
 							// Выполняем создание нового процесса
-							this->emplace(item.first, pid);
+							this->emplace(wid, pid);
 					// Просто удаляем процесс из списка процессов
 					} else {
 						// Выполняем остановку работы
 						this->clear();
 						// Выполняем завершение работы
-						::exit(status);
+						::exit(code(status));
 					}
 					// Выходим функции
 					return;
 				}
 			}
+		}
+	}
+	/**
+	 * @brief Метод пересчёта индексов брокеров в списке процессов
+	 *
+	 */
+	void awh::Cluster::reindex() noexcept {
+		/**
+		 * Выполняем обработку ошибки
+		 */
+		try {
+			// Удаляем список дочерних процессов
+			this->_pids.clear();
+			// Выполняем перебор всех воркеров
+			for(auto & item : this->_brokers){
+				// Выполняем перебор всех брокеров воркера
+				for(size_t index = 0; index < item.second.size(); index++){
+					// Получаем идентификатор процесса брокера
+					const pid_t pid = item.second.at(index)->pid;
+					// Если процесс брокера уже создан (ещё не созданный брокер несёт идентификатор мастер-процесса)
+					if((pid > 0) && (pid != this->_pid))
+						// Добавляем индекс брокера в список процессов
+						this->_pids.emplace(pid, static_cast <uint16_t> (index));
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	/**
+	 * @brief Метод создания канала передачи завершившихся процессов в цикл событий
+	 *
+	 */
+	void awh::Cluster::channel() noexcept {
+		// Если канал ещё не создан
+		if(this->_channel[0].load() == INVALID_SOCKET){
+			// Файловые дескрипторы канала
+			int32_t fds[2] = {INVALID_SOCKET, INVALID_SOCKET};
+			// Выполняем создание канала
+			if(::pipe(fds) != 0){
+				// Выводим в лог сообщение
+				this->_log->print("Cluster [%s] channel: %s", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_server.socket.message(AWH_ERROR()).c_str());
+				// Выходим из функции
+				return;
+			}
+			// Выполняем перебор файловых дескрипторов канала
+			for(auto & fd : fds){
+				/**
+				 * Канал неблокирующий: обработчик сигнала не должен ждать при переполнении канала,
+				 * а чтение в цикле событий выбирает записи до опустошения канала
+				 */
+				::fcntl(fd, F_SETFL, ::fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+				// Запрещаем наследование дескриптора запускаемыми программами
+				::fcntl(fd, F_SETFD, FD_CLOEXEC);
+			}
+			// Устанавливаем дескриптор чтения канала
+			this->_channel[0].store(fds[0]);
+			// Устанавливаем дескриптор записи канала (с этого момента его видит обработчик сигнала)
+			this->_channel[1].store(fds[1]);
+		}
+		// Если сетевое ядро установлено и база событий создана
+		if((this->_core != nullptr) && (this->_core->base() != nullptr)){
+			/**
+			 * Выполняем обработку ошибки
+			 */
+			try {
+				// Если событие чтения канала ещё не создано
+				if(this->_reaper == nullptr)
+					// Выполняем создание события чтения канала
+					this->_reaper = std::make_unique <awh::event_t> (awh::event_t::type_t::EVENT, this->_fmk, this->_log);
+				/**
+				 * Событие перерегистрируем при каждом запуске кластера: остановка базы событий
+				 * очищает её список событий, а повторный start() у запущенного события ничего не делает
+				 */
+				else this->_reaper->stop();
+				// Устанавливаем базу событий
+				(* this->_reaper) = this->_core->base();
+				// Устанавливаем файловый дескриптор чтения канала
+				(* this->_reaper) = static_cast <SOCKET> (this->_channel[0].load());
+				// Устанавливаем функцию обратного вызова чтения канала
+				(* this->_reaper) = std::bind(&cluster_t::reap, this, _1, _2);
+				// Выполняем запуск события
+				this->_reaper->start();
+				// Выполняем активацию чтения канала
+				this->_reaper->mode(base_t::event_type_t::READ, base_t::event_mode_t::ENABLED);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const bad_alloc &) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory allocation error");
+				/**
+				* Если режим отладки не включён
+				*/
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
+		}
+	}
+	/**
+	 * @brief Метод очистки унаследованных от мастер-процесса ресурсов в дочернем процессе
+	 *
+	 */
+	void awh::Cluster::inherit() noexcept {
+		// Выполняем перебор всего списка рабочих процессов
+		for(auto & item : children)
+			// Рабочие процессы мастера дочернему процессу не принадлежат, пожинать их здесь нечего
+			item.store(0);
+		// Получаем дескриптор записи канала завершившихся процессов
+		const SOCKET writer = this->_channel[1].exchange(INVALID_SOCKET);
+		// Получаем дескриптор чтения канала завершившихся процессов
+		const SOCKET reader = this->_channel[0].exchange(INVALID_SOCKET);
+		// Если дескриптор записи канала открыт
+		if(writer != INVALID_SOCKET)
+			// Закрываем дескриптор записи канала
+			::close(writer);
+		// Если дескриптор чтения канала открыт
+		if(reader != INVALID_SOCKET)
+			// Закрываем дескриптор чтения канала
+			::close(reader);
+		/**
+		 * Событие чтения канала и события подключений дочерних процессов (IPC) принадлежат базе событий мастера,
+		 * которая в дочернем процессе пересоздаётся. Их остановка обратилась бы к освобождённой базе событий,
+		 * поэтому объекты отпускаем без разрушения (память вернёт система при завершении процесса)
+		 */
+		static_cast <void> (this->_reaper.release());
+		// Выполняем перебор всех унаследованных подключений дочерних процессов
+		for(auto & client : this->_clients){
+			// Закрываем копию сокета мастера: иначе соседний процесс не узнает о завершении мастера
+			::close(client.second->sock);
+			// Отпускаем объект подключения без разрушения
+			static_cast <void> (client.second.release());
+		}
+		// Очищаем список унаследованных подключений
+		this->_clients.clear();
+	}
+	/**
+	 * @brief Метод обратного вызова чтения канала завершившихся процессов
+	 *
+	 * @param sock  файловый дескриптор канала
+	 * @param event произошедшее событие
+	 */
+	void awh::Cluster::reap(const SOCKET sock, const base_t::event_type_t event) noexcept {
+		// Если в канале появились данные
+		if(event == base_t::event_type_t::READ){
+			// Запись о завершившемся процессе
+			reaped_t record;
+			/**
+			 * Выбираем все записи канала. Метод выполняется в цикле событий, поэтому перезапуск процессов,
+			 * изменение списков, функции обратного вызова и логирование здесь безопасны
+			 */
+			while(::read(sock, &record, sizeof(record)) == static_cast <ssize_t> (sizeof(record)))
+				// Выполняем обработку завершившегося процесса
+				this->process(record.pid, record.status);
 		}
 	}
 	/**
@@ -616,16 +968,53 @@ awh::Cluster::Worker::~Worker() noexcept {}
 	 * @param ctx    передаваемый внутренний контекст
 	 */
 	void awh::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]] siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
-		// Идентификатор упавшего процесса
-		pid_t pid = 0;
-		// Статус упавшего процесса
-		int32_t status = 0;
 		/**
-		 * Выполняем получение идентификатора упавшего процесса
+		 * Здесь допустимы только асинхронно-безопасные действия: атомарные ячейки, waitpid и write.
+		 * Прежде обработчик перезапускал процесс прямо здесь (fork, логирование, изменение списков,
+		 * функции обратного вызова, exit). Новый процесс пересоздавал базу событий и возвращался из
+		 * обработчика в цикл уже удалённой базы, а падение молодого процесса завершало мастер.
+		 * Обработчик только пожинает известные рабочие процессы и передаёт их в цикл событий
 		 */
-		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
-			// Выполняем создание дочернего потока
-			const_cast <cluster_t *> (cluster)->process(pid, status);
+		const int32_t error = errno;
+		// Выполняем перебор всего списка рабочих процессов
+		for(auto & item : children){
+			// Получаем идентификатор рабочего процесса
+			pid_t pid = item.load();
+			// Если ячейка занята рабочим процессом
+			if(pid > 0){
+				// Статус завершившегося процесса
+				int32_t status = 0;
+				// Выполняем попытку пожать рабочий процесс
+				const pid_t result = ::waitpid(pid, &status, WNOHANG);
+				// Если рабочий процесс завершился и пожат
+				if(result == pid){
+					// Если ячейка освобождена именно нами
+					if(item.compare_exchange_strong(pid, 0)){
+						// Формируем запись о завершившемся процессе
+						const reaped_t record = {pid, status};
+						// Выполняем перебор всех зарегистрированных кластеров
+						for(auto & cell : clusters){
+							// Получаем объект кластера
+							cluster_t * cluster = cell.load();
+							// Если кластер зарегистрирован
+							if(cluster != nullptr){
+								// Получаем дескриптор записи канала кластера
+								const SOCKET fd = cluster->_channel[1].load();
+								// Если канал кластера открыт (чужой процесс кластер пропустит сам)
+								if(fd != INVALID_SOCKET)
+									// Передаём запись в цикл событий кластера (запись меньше PIPE_BUF атомарна)
+									static_cast <void> (::write(fd, &record, sizeof(record)));
+							}
+						}
+					}
+				// Если процесс не является нашим дочерним (его пожал кто-то другой)
+				} else if((result < 0) && (errno == ECHILD))
+					// Освобождаем ячейку, чтобы не пожать чужой процесс с тем же идентификатором
+					item.compare_exchange_strong(pid, 0);
+			}
+		}
+		// Восстанавливаем код ошибки прерванного кода
+		errno = error;
 	}
 #endif
 /**
@@ -1043,6 +1432,14 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 							const pid_t pid = ::getpid();
 							// Добавляем в список дочерних процессов, идентификатор процесса
 							this->_pids.emplace(pid, static_cast <uint16_t> (j->second.size() - 1));
+							/**
+							 * Процесс создан из работающего цикла событий мастера (перезапуск упавшего процесса или добавление процесса),
+							 * если старая база событий уже запущена. Ниже она удаляется, и вернуться в её цикл нельзя: новый процесс
+							 * возвращался в цикл удалённой базы и падал (SIGTRAP), а мастер из-за падения молодого процесса завершался
+							 */
+							const bool nested = ((this->_core->base() != nullptr) && this->_core->base()->launched());
+							// Выполняем очистку унаследованных от мастер-процесса ресурсов
+							this->inherit();
 							{
 								// Выполняем переинициализацию базы событий
 								this->_core->reinit();
@@ -1220,6 +1617,16 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								if(this->_callback.is("events"))
 									// Выполняем функцию обратного вызова
 									this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", i->first, pid, event_t::START);
+								/**
+								 * Если процесс создан из работающего цикла событий мастера, запускаем цикл новой базы событий здесь
+								 * и завершаем процесс по его окончании, не возвращаясь в цикл удалённой базы (намеренное решение)
+								 */
+								if(nested){
+									// Выполняем запуск цикла новой базы событий
+									this->_core->base()->start();
+									// Выходим из приложения
+									::exit(EXIT_SUCCESS);
+								}
 							}
 						// Если процесс превратился в зомби
 						} else {
@@ -1242,6 +1649,17 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 						// Устанавливаем время начала жизни процесса
 						broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 						/**
+						 * Добавляем процесс в список рабочих процессов, которые пожинает обработчик сигнала SIGCHLD
+						 */
+						if(!enlist(pid))
+							// Выводим сообщение о переполнении списка
+							this->_log->print("Cluster [%s] process list is full, process [%u] will not be restarted", log_t::flag_t::WARNING, this->_name.c_str(), pid);
+						/**
+						 * Процесс мог завершиться раньше, чем попал в список: такой сигнал обработчик уже пропустил.
+						 * Выполняем пожинание вручную (функция асинхронно-безопасна и допустима вне обработчика сигнала)
+						 */
+						cluster_t::child(SIGCHLD, nullptr, nullptr);
+						/**
 						 * Определяем принцип передачи данных
 						 */
 						switch(static_cast <uint8_t> (this->_transfer)){
@@ -1251,6 +1669,12 @@ void awh::Cluster::emplace(const uint16_t wid, const pid_t pid) noexcept {
 								this->close(i->first, broker->mfds[1]);
 								// Закрываем файловый дескриптор на чтение из дочернего процесса
 								this->close(i->first, broker->cfds[0]);
+								/**
+								 * Сбрасываем закрытые дескрипторы: их номера система выдаёт заново, а следующий дочерний процесс
+								 * закрывает дескрипторы чужих брокеров по этим номерам (закрыл бы, например, слушающий сокет сервера)
+								 */
+								broker->mfds[1] = INVALID_SOCKET;
+								broker->cfds[0] = INVALID_SOCKET;
 								// Делаем сокет на чтение неблокирующим
 								this->_server.socket.blocking(broker->mfds[0], socket_t::mode_t::DISABLED);
 								// Делаем сокет на запись неблокирующим
@@ -1455,6 +1879,14 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 								const pid_t pid = ::getpid();
 								// Добавляем в список дочерних процессов, идентификатор процесса
 								this->_pids.emplace(pid, index);
+								/**
+								 * Процесс создан из работающего цикла событий мастера (перезапуск упавшего процесса или добавление процесса),
+								 * если старая база событий уже запущена. Ниже она удаляется, и вернуться в её цикл нельзя: новый процесс
+								 * возвращался в цикл удалённой базы и падал (SIGTRAP), а мастер из-за падения молодого процесса завершался
+								 */
+								const bool nested = ((this->_core->base() != nullptr) && this->_core->base()->launched());
+								// Выполняем очистку унаследованных от мастер-процесса ресурсов
+								this->inherit();
 								{
 									// Выполняем переинициализацию базы событий
 									this->_core->reinit();
@@ -1625,6 +2057,16 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									if(this->_callback.is("events"))
 										// Выполняем функцию обратного вызова
 										this->_callback.call <void (const uint16_t, const pid_t, const event_t)> ("events", i->first, pid, event_t::START);
+									/**
+									 * Если процесс создан из работающего цикла событий мастера, запускаем цикл новой базы событий здесь
+									 * и завершаем процесс по его окончании, не возвращаясь в цикл удалённой базы (намеренное решение)
+									 */
+									if(nested){
+										// Выполняем запуск цикла новой базы событий
+										this->_core->base()->start();
+										// Выходим из приложения
+										::exit(EXIT_SUCCESS);
+									}
 								}
 							// Если процесс превратился в зомби
 							} else {
@@ -1647,6 +2089,17 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 							// Устанавливаем время начала жизни процесса
 							broker->date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 							/**
+							 * Добавляем процесс в список рабочих процессов, которые пожинает обработчик сигнала SIGCHLD
+							 */
+							if(!enlist(pid))
+								// Выводим сообщение о переполнении списка
+								this->_log->print("Cluster [%s] process list is full, process [%u] will not be restarted", log_t::flag_t::WARNING, this->_name.c_str(), pid);
+							/**
+							 * Процесс мог завершиться раньше, чем попал в список: такой сигнал обработчик уже пропустил.
+							 * Выполняем пожинание вручную (функция асинхронно-безопасна и допустима вне обработчика сигнала)
+							 */
+							cluster_t::child(SIGCHLD, nullptr, nullptr);
+							/**
 							 * Определяем принцип передачи данных
 							 */
 							switch(static_cast <uint8_t> (this->_transfer)){
@@ -1656,6 +2109,12 @@ void awh::Cluster::create(const uint16_t wid, const uint16_t index) noexcept {
 									this->close(i->first, broker->mfds[1]);
 									// Закрываем файловый дескриптор на чтение из дочернего процесса
 									this->close(i->first, broker->cfds[0]);
+									/**
+									 * Сбрасываем закрытые дескрипторы: их номера система выдаёт заново, а следующий дочерний процесс
+									 * закрывает дескрипторы чужих брокеров по этим номерам (закрыл бы, например, слушающий сокет сервера)
+									 */
+									broker->mfds[1] = INVALID_SOCKET;
+									broker->cfds[0] = INVALID_SOCKET;
 									// Делаем сокет на чтение неблокирующим
 									this->_server.socket.blocking(broker->mfds[0], socket_t::mode_t::DISABLED);
 									// Делаем сокет на запись неблокирующим
@@ -1867,8 +2326,8 @@ void awh::Cluster::send(const uint16_t wid, const char * buffer, const size_t si
 			if(i != this->_brokers.end()){
 				// Выполняем поиск идентификатор процесса
 				auto j = this->_pids.find(pid);
-				// Если идентификатор процесса найден
-				if(j != this->_pids.end()){
+				// Если идентификатор процесса найден и индекс брокера существует
+				if((j != this->_pids.end()) && (static_cast <size_t> (j->second) < i->second.size())){
 					// Выполняем поиск объектов энкодеров для отправки сообщения
 					auto k = this->_encoders.find(this->_pid);
 					// Если протокол кластера найден
@@ -1922,8 +2381,8 @@ void awh::Cluster::send(const uint16_t wid, const pid_t pid, const char * buffer
 			if(i != this->_brokers.end()){
 				// Выполняем поиск идентификатор процесса
 				auto j = this->_pids.find(pid);
-				// Если идентификатор процесса найден
-				if(j != this->_pids.end()){
+				// Если идентификатор процесса найден, индекс брокера существует и канал процесса открыт
+				if((j != this->_pids.end()) && (static_cast <size_t> (j->second) < i->second.size()) && (i->second.at(j->second)->cfds[1] != INVALID_SOCKET)){
 					// Выполняем поиск объектов энкодеров для отправки сообщения
 					auto k = this->_encoders.find(j->first);
 					// Если протокол кластера найден
@@ -1987,8 +2446,8 @@ void awh::Cluster::broadcast(const uint16_t wid, const char * buffer, const size
 			if((i != this->_brokers.end()) && !i->second.empty()){
 				// Переходим по всем дочерним процессам
 				for(auto & broker : i->second){
-					// Если идентификатор процесса не нулевой
-					if(broker->pid > 0){
+					// Если идентификатор процесса не нулевой и канал процесса открыт (процесс ещё не завершился)
+					if((broker->pid > 0) && (broker->cfds[1] != INVALID_SOCKET)){
 						// Выполняем поиск объектов энкодеров для отправки сообщения
 						auto j = this->_encoders.find(broker->pid);
 						// Если протокол кластера найден
@@ -2045,10 +2504,15 @@ void awh::Cluster::clear() noexcept {
 					i->second->ev.stop();
 					// Закрываем сокет подключения
 					this->close(i->second->wid, i->second->sock);
-					// Закрываем сокет подключения
-					this->close(i->second->wid, this->_server.sock);
 					// Выполняем удаление клиента
 					i = this->_clients.erase(i);
+				}
+				// Если сокет сервера открыт (прежде он закрывался на каждого клиента по одному и тому же номеру)
+				if(this->_server.sock != INVALID_SOCKET){
+					// Закрываем сокет сервера
+					::close(this->_server.sock);
+					// Сбрасываем сокет сервера
+					this->_server.sock = INVALID_SOCKET;
 				}
 			} break;
 			// Если мы передаём данные через Shared memory
@@ -2194,12 +2658,38 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 				} break;
 				// Если мы передаём данные через Shared memory
 				case static_cast <uint8_t> (transfer_t::PIPE): {
+					/**
+					 * В дочернем процессе активны только события его собственного брокера: события остальных
+					 * достались копией при fork и в этом процессе не запускались. Их остановка обращалась
+					 * к мусору и роняла рабочий процесс при закрытии канала от мастера
+					 */
+					const bool child = (this->_pid != static_cast <pid_t> (::getpid()));
+					// Индекс брокера текущего дочернего процесса
+					size_t own = i->second.size();
+					// Если процесс является дочерним
+					if(child){
+						// Выполняем поиск индекса текущего процесса
+						auto k = this->_pids.find(::getpid());
+						// Если индекс текущего процесса найден
+						if(k != this->_pids.end())
+							// Получаем индекс брокера текущего процесса
+							own = static_cast <size_t> (k->second);
+					}
+					// Номер текущего брокера в списке
+					size_t index = 0;
 					// Переходим по всему списку брокеров
 					for(auto & broker : i->second){
-						// Выполняем остановку чтение сообщений
-						broker->read.stop();
-						// Выполняем остановку записи сообщений
-						broker->write.stop();
+						// Брокер чужого процесса, доставшийся дочернему процессу копией при fork
+						const bool foreign = (child && (index != own));
+						// Переходим к следующему брокеру
+						index++;
+						// Если это родительский процесс или собственный брокер дочернего процесса
+						if(!foreign){
+							// Выполняем остановку чтение сообщений
+							broker->read.stop();
+							// Выполняем остановку записи сообщений
+							broker->write.stop();
+						}
 						// Выполняем закрытие файловых дескрипторов
 						this->close(i->first, broker->cfds[0]);
 						this->close(i->first, broker->cfds[1]);
@@ -2211,6 +2701,14 @@ void awh::Cluster::close(const uint16_t wid) noexcept {
 						if(j != this->_encoders.end())
 							// Выполняем удаление объекта энкодера
 							this->_encoders.erase(j);
+						/**
+						 * Чужой брокер отпускаем без разрушения: деструктор его событий обратился бы к базе событий
+						 * родителя, которой в дочернем процессе уже нет. Процесс сразу после этого завершается,
+						 * память вернёт система
+						 */
+						if(foreign)
+							// Отпускаем объект брокера
+							static_cast <void> (broker.release());
 					}
 				}
 			}
@@ -2298,9 +2796,7 @@ void awh::Cluster::stop(const uint16_t wid) noexcept {
 		else {
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("Process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-			// Выполняем закрытие подключения передачи сообщений
-			this->close(wid);
-			// Выходим из приложения
+			// Брокеры не останавливаем: процесс сразу завершается, а события чужих брокеров в нём неактивны (копия при fork)
 			::exit(EXIT_FAILURE);
 		}
 		// Если воркер найден, снимаем флаг запуска кластера
@@ -2326,9 +2822,12 @@ void awh::Cluster::start(const uint16_t wid) noexcept {
 			// Выполняем поиск идентификатора воркера
 			auto i = this->_workers.find(wid);
 			// Если вокер найден
-			if((i != this->_workers.end()) && !i->second->_working)
+			if((i != this->_workers.end()) && !i->second->_working){
+				// Создаём канал передачи завершившихся процессов в цикл событий до создания первого процесса
+				this->channel();
 				// Выполняем запуск процесса
 				this->create(i->first);
+			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
 			// Процесс превратился в зомби, самоликвидируем его
@@ -2517,6 +3016,8 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 								i->second->ev.stop();
 								// Закрываем сокет подключения
 								this->close(i->second->wid, i->second->sock);
+								// Выполняем удаление клиента (закрытый сокет не должен оставаться в списке)
+								this->_clients.erase(i);
 							}
 						} break;
 						// Если мы передаём данные через Shared memory
@@ -2525,15 +3026,30 @@ void awh::Cluster::erase(const uint16_t wid, const pid_t pid) noexcept {
 							broker->read.stop();
 							// Выполняем остановку записи сообщений
 							broker->write.stop();
-							// Выполняем закрытие открытых файловых дескрипторов
-							this->close(i->first, broker->mfds[0]);
-							this->close(i->first, broker->cfds[1]);
+							// Если файловый дескриптор чтения ещё открыт
+							if(broker->mfds[0] != INVALID_SOCKET)
+								// Выполняем закрытие файлового дескриптора
+								this->close(i->first, broker->mfds[0]);
+							// Если файловый дескриптор записи ещё открыт
+							if(broker->cfds[1] != INVALID_SOCKET)
+								// Выполняем закрытие файлового дескриптора
+								this->close(i->first, broker->cfds[1]);
 						} break;
 					}
+					// Выполняем поиск энкодера удаляемого процесса
+					auto k = this->_encoders.find(pid);
+					// Если энкодер найден
+					if(k != this->_encoders.end())
+						// Выполняем удаление энкодера
+						this->_encoders.erase(k);
 					// Выполняем удаление указанного брокера
 					i->second.erase(next(i->second.begin(), j->second));
-					// Выполняем удаление процесса из списка
-					this->_pids.erase(j);
+					/**
+					 * Пересчитываем индексы остальных брокеров: прежде удалялась только запись процесса, индексы
+					 * остальных указывали мимо списка (std::terminate из noexcept-метода) или на чужой процесс.
+					 * Процесс остаётся в списке ожидающих пожинания и после завершения будет пожат
+					 */
+					this->reindex();
 					// Выполняем убийство процесса
 					::kill(pid, SIGTERM);
 				}
@@ -2607,12 +3123,31 @@ void awh::Cluster::autoRestart(const uint16_t wid, const bool mode) noexcept {
 	#if !_WIN32 && !_WIN64
 		// Если процесс является родительским
 		if(this->_pid == static_cast <pid_t> (::getpid())){
-			// Выполняем поиск идентификатора воркера
-			auto i = this->_workers.find(wid);
-			// Если вокер найден
-			if(i != this->_workers.end())
+			/**
+			 * Выполняем обработку ошибки
+			 */
+			try {
+				// Выполняем поиск идентификатора воркера
+				auto i = this->_workers.find(wid);
+				/**
+				 * Если воркер ещё не создан, создаём его: серверное ядро устанавливает флаг до init(),
+				 * и флаг терялся — упавший процесс не перезапускался, а мастер завершался с кодом 1.
+				 * Количество процессов установит последующий вызов init()
+				 */
+				if(i == this->_workers.end())
+					// Добавляем воркер в список воркеров
+					i = this->_workers.emplace(wid, std::make_unique <worker_t> (wid, this, this->_fmk, this->_log)).first;
 				// Устанавливаем флаг автоматического перезапуска процесса
 				i->second->_autoRestart = mode;
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const bad_alloc &) {
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != ::getpid()) && (this->_pid != static_cast <pid_t> (::getppid()))) {
 			// Процесс превратился в зомби, самоликвидируем его
@@ -2717,8 +3252,11 @@ awh::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Выполняем установку объекта кластера
-		cluster = this;
+		// Канал завершившихся процессов ещё не создан (до регистрации: канал читает обработчик сигнала)
+		this->_channel[0].store(INVALID_SOCKET);
+		this->_channel[1].store(INVALID_SOCKET);
+		// Выполняем регистрацию кластера в списке кластеров процесса
+		attach(this);
 		// Выполняем зануление структур перехватчиков событий
 		::memset(&this->_sa, 0, sizeof(this->_sa));
 		// Устанавливаем функцию перехвадчика событий
@@ -2748,8 +3286,11 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Выполняем установку объекта кластера
-		cluster = this;
+		// Канал завершившихся процессов ещё не создан (до регистрации: канал читает обработчик сигнала)
+		this->_channel[0].store(INVALID_SOCKET);
+		this->_channel[1].store(INVALID_SOCKET);
+		// Выполняем регистрацию кластера в списке кластеров процесса
+		attach(this);
 		// Выполняем зануление структур перехватчиков событий
 		::memset(&this->_sa, 0, sizeof(this->_sa));
 		// Устанавливаем функцию перехвадчика событий
@@ -2769,6 +3310,28 @@ awh::Cluster::Cluster(core_t * core, const fmk_t * fmk, const log_t * log) noexc
  *
  */
 awh::Cluster::~Cluster() noexcept {
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Первым делом снимаем кластер со списка: процессы, остановленные ниже, завершаются
+		// намеренно, а обработчик сигнала не должен обращаться к разрушаемому объекту
+		detach(this);
+		// Получаем дескриптор записи канала завершившихся процессов
+		const SOCKET writer = this->_channel[1].exchange(INVALID_SOCKET);
+		// Получаем дескриптор чтения канала завершившихся процессов
+		const SOCKET reader = this->_channel[0].exchange(INVALID_SOCKET);
+		// Выполняем остановку события чтения канала
+		this->_reaper.reset();
+		// Если дескриптор записи канала открыт
+		if(writer != INVALID_SOCKET)
+			// Закрываем дескриптор записи канала
+			::close(writer);
+		// Если дескриптор чтения канала открыт
+		if(reader != INVALID_SOCKET)
+			// Закрываем дескриптор чтения канала
+			::close(reader);
+	#endif
 	// Если активные брокеры присутствуют в кластере
 	if(!this->_brokers.empty()){
 		// Список активных брокеров

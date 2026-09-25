@@ -75,6 +75,21 @@ namespace awh {
 				std::map <int32_t, std::unique_ptr <request_t>> _requests;
 			private:
 				/**
+				 * Учётные данные, установленные через API, после переадресации на другой узел
+				 * скрываются и возвращаются только для запросов к исходному узлу
+				 */
+				// Флаг установки исходного узла учётных данных
+				bool _bound;
+				// Флаг скрытия учётных данных
+				bool _hidden;
+				// Исходный узел учётных данных
+				uri_t::url_t _origin;
+				// Скрытый логин пользователя
+				string _hiddenUser;
+				// Скрытый пароль пользователя
+				string _hiddenPass;
+			private:
+				/**
 				 * @brief Метод обратного вызова при подключении к серверу
 				 *
 				 * @param bid идентификатор брокера
@@ -182,6 +197,28 @@ namespace awh {
 				 * @param sid идентификатор запроса
 				 */
 				void result(const int32_t sid) noexcept;
+			private:
+				/**
+				 * @brief Метод проверки принадлежности адреса исходному узлу учётных данных
+				 *
+				 * @param url адрес для проверки
+				 * @return    результат проверки
+				 */
+				bool origin(const uri_t::url_t & url) const noexcept;
+				/**
+				 * @brief Метод обработки учётных данных при переадресации
+				 *
+				 * @param request объект запроса для переадресации
+				 * @param from    адрес до переадресации
+				 * @param to      адрес после переадресации
+				 */
+				void redirected(request_t & request, const uri_t::url_t & from, const uri_t::url_t & to) noexcept;
+				/**
+				 * @brief Метод скрытия или возврата учётных данных для адреса запроса
+				 *
+				 * @param url адрес выполняемого запроса
+				 */
+				void credentials(const uri_t::url_t & url) noexcept;
 			private:
 				/**
 				 * @brief Метод таймера выполнения пинга удалённого сервера

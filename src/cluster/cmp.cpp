@@ -18,6 +18,11 @@
 #include <cluster/cmp.hpp>
 
 /**
+ * Стандартные модули
+ */
+#include <cstddef>
+
+/**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
@@ -713,8 +718,24 @@ size_t awh::cmp::Decoder::process(const void * buffer, const size_t size) noexce
 							// Выводим сообщение об ошибке
 							this->_log->print("%s", log_t::flag_t::CRITICAL, "Data buffer has been corrupted");
 						#endif
-						// Очищаем все данные декодера
-						this->clear();
+						/**
+						 * Метод вызывается из push() под уже захваченным мьютексом, поэтому clear() здесь вызывать нельзя:
+						 * повторный захват нерекурсивного мьютекса в том же потоке заклинивал процесс навсегда.
+						 * Сбрасываем только испорченный заголовок, уже разобранные сообщения в очереди сохраняем,
+						 * а испорченные байты пропускаем до следующей подписи заголовка, чтобы поток данных восстановился
+						 */
+						this->_header = header_t();
+						// Получаем смещение подписи внутри заголовка
+						const size_t offset = offsetof(header_t, sign);
+						/**
+						 * Выполняем поиск следующей подписи заголовка, начиная со следующего байта
+						 */
+						for(result = 1; (result + HEADER_SIZE) <= size; result++){
+							// Если подпись заголовка найдена
+							if(::memcmp(reinterpret_cast <const uint8_t *> (buffer) + result + offset, HEADER_SIGN, sizeof(HEADER_SIGN)) == 0)
+								// Выходим из цикла
+								break;
+						}
 					// Если данные получены правильные
 					} else {
 						// Устанавливаем идентификатор процесса

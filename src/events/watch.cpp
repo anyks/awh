@@ -252,22 +252,63 @@ void awh::Watch::away(const SOCKET sock) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если список таймеров не пустой
-		if(!this->_timers.empty()){
-			// Выполняем блокировку потока
-			const lock_guard <std::mutex> lock(this->_mtx);
-			// Выполняем удаление уведомителя
-			this->_notifiers.erase(sock);
-			// Выполняем перебор всего списка таймеров
-			for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
-				// Если мы нашли наш таймер
-				if(sock == i->second){
-					// Выполняем удаление значение таймера
-					this->_timers.erase(i);
-					// Выходим из цикла
-					break;
-				}
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
+		/**
+		 * Уведомитель удаляем всегда. Раньше он удалялся только при непустом списке
+		 * ожидающих таймеров: одноразовый таймер, сработавший последним, оставлял
+		 * открытым файловый дескриптор своего уведомителя (утечка на каждый такой таймер)
+		 */
+		this->_notifiers.erase(sock);
+		// Выполняем перебор всего списка таймеров
+		for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
+			// Если мы нашли наш таймер
+			if(sock == i->second){
+				// Выполняем удаление значение таймера
+				this->_timers.erase(i);
+				// Выходим из цикла
+				break;
 			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод отмены ожидания таймера без удаления его уведомителя
+ *
+ * @param sock файловый дескриптор таймера
+ */
+void awh::Watch::cancel(const SOCKET sock) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::mutex> lock(this->_mtx);
+		// Выполняем перебор всего списка таймеров
+		for(auto i = this->_timers.begin(); i != this->_timers.end();){
+			// Если мы нашли наш таймер
+			if(sock == i->second)
+				// Выполняем удаление значение таймера
+				i = this->_timers.erase(i);
+			// Продолжаем перебор дальше
+			else ++i;
 		}
 	/**
 	 * Если возникает ошибка

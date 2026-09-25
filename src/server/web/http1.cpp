@@ -184,6 +184,91 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 					while(!options->close){
 						// Выполняем парсинг полученных данных
 						const size_t bytes = options->http.parse(static_cast <const char *> (options->buffer), static_cast <size_t> (options->buffer));
+						/**
+						 * Запрос с ошибкой разбора (неверные границы тела, слишком большие тело
+						 * или заголовки) приложению не передаётся: сервер сам отвечает ошибкой
+						 * и закрывает подключение, так как граница следующего запроса неизвестна
+						 */
+						if(options->http.fault() > 0){
+							// Получаем код ответа на ошибку разбора
+							const uint32_t code = options->http.fault();
+							// Выполняем очистку HTTP-парсера
+							options->http.clear();
+							// Выполняем сброс состояния HTTP-парсера
+							options->http.reset();
+							// Выполняем очистку буфера полученных данных
+							options->buffer.clear();
+							/**
+							 * Определяем идентичность сервера
+							 */
+							switch(static_cast <uint8_t> (this->_identity)){
+								// Если сервер соответствует HTTP-серверу
+								case static_cast <uint8_t> (http_t::identity_t::HTTP):
+									// Устанавливаем закрытие подключения
+									options->http.header("Connection", "close");
+								break;
+								// Если сервер соответствует PROXY-серверу
+								case static_cast <uint8_t> (http_t::identity_t::PROXY): {
+									// Устанавливаем закрытие подключения
+									options->http.header("Connection", "close");
+									// Устанавливаем закрытие подключения
+									options->http.header("Proxy-Connection", "close");
+								} break;
+							}
+							// Формируем ответ с ошибкой разбора запроса
+							const auto & response = options->http.reject(awh::web_t::res_t(code, options->http.message(code)));
+							// Если ответ получен
+							if(!response.empty()){
+								// Тело полезной нагрузки
+								buffer_t payload(this->_fmk, this->_log);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим заголовок ответа
+									std::cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << std::endl << std::flush;
+									// Выводим параметры ответа
+									std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
+								#endif
+								// Если тела ответа нет, закрываем подключение после отправки заголовков
+								options->stopped = options->http.empty(awh::http_t::suite_t::BODY);
+								// Отправляем ответ брокеру
+								const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
+								/**
+								 * Получаем тело полезной нагрузки ответа
+								 */
+								while(!(payload = ::move(options->http.payload())).empty()){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение о выводе чанка полезной нагрузки
+										std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+									#endif
+									// Если тела данных для отправки больше не осталось
+									if(options->http.empty(awh::http_t::suite_t::BODY))
+										// Устанавливаем флаг закрытия подключения после отправки
+										options->stopped = true;
+									// Выполняем отправку тела ответа клиенту
+									const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+								}
+							// Выполняем отключение брокера
+							} else const_cast <server::core_t *> (this->_core)->close(bid);
+							// Если функция обратного вызова активности потока установлена
+							if(this->_callback.is("stream"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const int32_t, const uint64_t, const mode_t)> ("stream", 1, bid, mode_t::CLOSE);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::WARNING, http::error_t::HTTP1_RECV, this->_fmk->format("Request rejected with code %u", code));
+							// Если установлена функция отлова завершения запроса
+							if(this->_callback.is("end"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::RECV);
+							// Выходим из функции
+							return;
+						}
 						// Если все данные получены
 						if((bytes > 0) && options->http.is(http_t::state_t::END)){
 							// Получаем флаг постоянного подключения
@@ -450,6 +535,10 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 						}
 						// Устанавливаем метку продолжения обработки пайплайна
 						Next:
+						// Если подключение будет закрыто после ответа, следующие запросы не обрабатываем
+						if(options->stopped)
+							// Выходим из цикла
+							break;
 						// Если парсер обработал какое-то количество байт
 						if((bytes > 0) && !options->buffer.empty()){
 							// Если размер буфера больше количества удаляемых байт
@@ -1257,8 +1346,10 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 				const bool alive = options->http.is(http_t::state_t::ALIVE);
 				// Выполняем сброс состояния HTTP-парсера
 				options->http.reset();
-				// Выполняем очистку буфера полученных данных
-				options->buffer.clear();
+				/**
+				 * Буфер полученных данных не очищается: в нём могут находиться следующие
+				 * запросы конвейера (pipelining), их разбор продолжается после этого ответа
+				 */
 				// Выполняем очистку данных тела
 				options->http.clear(http_t::suite_t::BODY);
 				// Выполняем очистку заголовков

@@ -138,6 +138,8 @@ void awh::client::Websocket1::disconnectEvent(const uint64_t bid, const uint16_t
 		this->_buffer.clear();
 		// Выполняем очистку оставшихся фрагментов
 		this->_inter.fragments.clear();
+		// Сбрасываем признак приёма фрагментированного сообщения
+		this->_inter.fragmented = false;
 		// Выполняем очистку буфера извлечений данных
 		this->_inter.extraction.clear();
 	// Если подключение не является постоянным
@@ -188,7 +190,12 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 				// Если рукопожатие не выполнено
 				if(!(this->_shake = reinterpret_cast <http_t &> (this->_http).is(http_t::state_t::HANDSHAKE))){
 					// Добавляем полученные данные в буфер
-					this->_buffer.push(buffer, size);
+					if(!this->_buffer.push(buffer, size)){
+						// Завершаем работу
+						const_cast <client::core_t *> (this->_core)->close(bid);
+						// Выходим из функции
+						return;
+					}
 					// Выполняем парсинг полученных данных
 					const size_t bytes = this->_http.parse(static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
 					// Есла данных передано больше чем обработано
@@ -269,13 +276,20 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 				// Если рукопожатие выполнено
 				} else if(this->_allow.receive) {
 					// Добавляем полученные данные в буфер
-					this->_buffer.push(buffer, size);
-					// Обнуляем время последнего ответа на пинг
-					this->_respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-					// Обновляем время отправленного пинга
-					this->_sendPing = this->_respPong;
-					// Выполняем препарирование полученных данных
-					this->prepare(this->_sid, bid);
+					if(!this->_buffer.push(buffer, size)){
+						// Создаём сообщение
+						this->_mess = ws::mess_t(1009, "Payload data is too large for system limitations to support");
+						// Отправляем серверу сообщение об ошибке
+						this->sendError(this->_mess);
+					// Если данные добавлены в буфер
+					} else {
+						// Обнуляем время последнего ответа на пинг
+						this->_respPong = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+						// Обновляем время отправленного пинга
+						this->_sendPing = this->_respPong;
+						// Выполняем препарирование полученных данных
+						this->prepare(this->_sid, bid);
+					}
 				}
 				// Если функция обратного вызова активности потока установлена
 				if(this->_callback.is("stream"))
@@ -471,6 +485,8 @@ void awh::client::Websocket1::flush() noexcept {
 	this->_buffer.clear();
 	// Выполняем очистку оставшихся фрагментов
 	this->_inter.fragments.clear();
+	// Сбрасываем признак приёма фрагментированного сообщения
+	this->_inter.fragmented = false;
 	// Выполняем очистку буфера извлечений данных
 	this->_inter.extraction.clear();
 }
@@ -659,6 +675,8 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					this->_attempt = 0;
 					// Очищаем список фрагментированных сообщений
 					this->_inter.fragments.clear();
+					// Сбрасываем признак приёма фрагментированного сообщения
+					this->_inter.fragmented = false;
 					// Получаем флаг шифрованных данных
 					this->_crypted = this->_http.crypted();
 					// Получаем поддерживаемый метод компрессии
@@ -771,8 +789,41 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 		while(!this->_close && this->_allow.receive && !this->_buffer.empty()){
 			// Выполняем чтение фрейма Websocket
 			const auto & payload = this->_frame.methods.get(head, static_cast <const char *> (this->_buffer), static_cast <size_t> (this->_buffer));
-			// Если буфер данных получен
-			if(!payload.empty() || (head.optcode == ws::frame_t::opcode_t::PING) || (head.optcode == ws::frame_t::opcode_t::PONG) || (head.optcode == ws::frame_t::opcode_t::CLOSE)){
+			/**
+			 * Если заголовок фрейма прочитан, проверяем объявленный размер сразу,
+			 * не дожидаясь, пока фрейм целиком накопится в буфере
+			 */
+			if((head.size > 0) && (((head.payload + head.size + 4) > static_cast <uint64_t> (AWH_MAX_MEMORY_BUFFER)) ||
+			   ((head.optcode == ws::frame_t::opcode_t::CONTINUATION) &&
+			   ((head.payload + this->_inter.fragments.size()) > static_cast <uint64_t> (AWH_MAX_MEMORY_BUFFER))))){
+				// Создаём сообщение
+				this->_mess = ws::mess_t(1009, "Payload data is too large for system limitations to support");
+				// Отправляем серверу сообщение об ошибке
+				this->sendError(this->_mess);
+				// Если функция обратного вызова активности потока установлена
+				if(web_t::_callback.is("stream"))
+					// Устанавливаем полученную функцию обратного вызова
+					this->_callback.on <void (const int32_t, const uint64_t, const mode_t)> ("stream", web_t::_callback.get <void (const int32_t, const uint64_t, const mode_t)> ("stream"), sid, this->_rid, mode_t::CLOSE);
+				// Выполняем завершение работы
+				return status_t::STOP;
+			// Если фрейм получен не полностью, ожидаем данные не трогая буфер
+			} else if(head.state == ws::frame_t::state_t::INCOMPLETE)
+				// Выходим из цикла
+				break;
+			// Если мы получили ошибку получения фрейма
+			else if(head.state == ws::frame_t::state_t::BAD) {
+				// Создаём сообщение
+				this->_mess = this->_frame.methods.message(head, 1002, (this->_compressor != http_t::compressor_t::NONE));
+				// Отправляем серверу сообщение об ошибке протокола (RFC 6455, 7.1.7)
+				this->sendError(this->_mess);
+				// Если функция обратного вызова активности потока установлена
+				if(web_t::_callback.is("stream"))
+					// Устанавливаем полученную функцию обратного вызова
+					this->_callback.on <void (const int32_t, const uint64_t, const mode_t)> ("stream", web_t::_callback.get <void (const int32_t, const uint64_t, const mode_t)> ("stream"), sid, this->_rid, mode_t::CLOSE);
+				// Выполняем реконнект
+				return status_t::STOP;
+			// Если фрейм получен целиком (RFC 6455 допускает фреймы данных нулевой длины)
+			} else {
 				/**
 				 * Определяем тип ответа
 				 */
@@ -830,9 +881,11 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 							// Выполняем реконнект
 							return status_t::STOP;
 						// Если список фрагментированных сообщений существует
-						} else if(!this->_inter.fragments.empty()) {
+						} else if(this->_inter.fragmented) {
 							// Очищаем список фрагментированных сообщений
 							this->_inter.fragments.clear();
+							// Сбрасываем признак приёма фрагментированного сообщения
+							this->_inter.fragmented = false;
 							// Создаём сообщение
 							this->_mess = ws::mess_t(1002, "Opcode for subsequent fragmented messages should not be set");
 							// Выводим сообщение
@@ -844,15 +897,30 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 							// Выполняем реконнект
 							return status_t::STOP;
 						// Если сообщение является не последнем
-						} else if(!head.fin)
+						} else if(!head.fin) {
+							// Запоминаем, что начат приём фрагментированного сообщения
+							this->_inter.fragmented = true;
 							// Заполняем фрагментированное сообщение
-							this->_inter.fragments.push(payload.data(), payload.size());
+							if(!payload.empty() && !this->_inter.fragments.push(payload.data(), payload.size())){
+								// Создаём сообщение
+								this->_mess = ws::mess_t(1009, "Fragmented payload data is too large for system limitations to support");
+								// Отправляем серверу сообщение об ошибке
+								this->sendError(this->_mess);
+								// Выполняем завершение работы
+								return status_t::STOP;
+							}
 						// Если сообщение является последним
-						else {
+						} else {
 							// Если тредпул активирован
 							if(this->_thr.initialized())
-								// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-								this->_thr.push(std::bind(&ws1_t::extraction, this, payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+								/**
+								 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
+								 * данные копируем в задачу, так как буфер фрейма освобождается до её исполнения
+								 */
+								this->_thr.push([this, text = (this->_frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (payload.begin(), payload.end())]() noexcept -> void {
+									// Выполняем извлечение полученных сообщений
+									this->extraction(data.data(), data.size(), text);
+								});
 							// Если тредпул не активирован, выполняем извлечение полученных сообщений
 							else this->extraction(payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 						}
@@ -860,25 +928,33 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 					// Если ответом является CONTINUATION
 					case static_cast <uint8_t> (ws::frame_t::opcode_t::CONTINUATION): {
 						// Если фрагменты сообщения уже собраны
-						if(!this->_inter.fragments.empty()){
+						if(this->_inter.fragmented){
 							// Заполняем фрагментированное сообщение
-							if(!this->_inter.fragments.push(payload.data(), payload.size())){
+							if(!payload.empty() && !this->_inter.fragments.push(payload.data(), payload.size())){
 								// Создаём сообщение
-								this->_mess = ws::mess_t(1007, "Fragmented payload data is too large for system limitations to support");
-								// Выводим сообщение
-								this->error(this->_mess);
+								this->_mess = ws::mess_t(1009, "Fragmented payload data is too large for system limitations to support");
+								// Отправляем серверу сообщение об ошибке
+								this->sendError(this->_mess);
 								// Выполняем реконнект
 								return status_t::NEXT;
 							// Если сообщение является последним
 							} else if(head.fin) {
 								// Если тредпул активирован
 								if(this->_thr.initialized())
-									// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-									this->_thr.push(std::bind(&ws1_t::extraction, this, static_cast <const char *> (this->_inter.fragments), static_cast <size_t> (this->_inter.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT)));
+									/**
+									 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
+									 * данные копируем в задачу, так как буфер фрагментов очищается сразу после постановки
+									 */
+									this->_thr.push([this, text = (this->_frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (static_cast <const char *> (this->_inter.fragments), static_cast <const char *> (this->_inter.fragments) + static_cast <size_t> (this->_inter.fragments))]() noexcept -> void {
+										// Выполняем извлечение полученных сообщений
+										this->extraction(data.data(), data.size(), text);
+									});
 								// Если тредпул не активирован, выполняем извлечение полученных сообщений
 								else this->extraction(static_cast <const char *> (this->_inter.fragments), static_cast <size_t> (this->_inter.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 								// Очищаем список фрагментированных сообщений
 								this->_inter.fragments.clear();
+								// Сбрасываем признак приёма фрагментированного сообщения
+								this->_inter.fragmented = false;
 							}
 						// Если фрагментированные сообщения не существуют
 						} else {
@@ -920,23 +996,9 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 						// Удаляем количество обработанных байт
 						this->_buffer.erase(head.frame);
 				}
-			// Если мы получили ошибку получения фрейма
-			} else if(head.state == ws::frame_t::state_t::BAD) {
-				// Создаём сообщение
-				this->_mess = this->_frame.methods.message(head, 1005, (this->_compressor != http_t::compressor_t::NONE));
-				// Выводим сообщение
-				this->error(this->_mess);
-				// Если функция обратного вызова активности потока установлена
-				if(web_t::_callback.is("stream"))
-					// Устанавливаем полученную функцию обратного вызова
-					this->_callback.on <void (const int32_t, const uint64_t, const mode_t)> ("stream", web_t::_callback.get <void (const int32_t, const uint64_t, const mode_t)> ("stream"), sid, this->_rid, mode_t::CLOSE);
-				// Выполняем реконнект
-				return status_t::STOP;
 			}
 			// Если данные мы все получили, выходим
-			if(!receive || (payload.empty() &&
-			  (head.optcode != ws::frame_t::opcode_t::PING) &&
-			  (head.optcode != ws::frame_t::opcode_t::PONG)) || this->_buffer.empty())
+			if(!receive || this->_buffer.empty())
 				// Выходим из условия
 				break;
 		}
@@ -960,6 +1022,8 @@ void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
 	const_cast <ws1_t *> (this)->_buffer.clear();
 	// Очищаем список фрагментированных сообщений
 	const_cast <ws1_t *> (this)->_inter.fragments.clear();
+	// Сбрасываем признак приёма фрагментированного сообщения
+	const_cast <ws1_t *> (this)->_inter.fragmented = false;
 	// Выполняем очистку буфера извлечений данных
 	const_cast <ws1_t *> (this)->_inter.extraction.clear();
 	// Если код ошибки указан
@@ -991,6 +1055,13 @@ void awh::client::Websocket1::error(const ws::mess_t & message) const noexcept {
  * @param text   данные передаются в текстовом виде
  */
 void awh::client::Websocket1::extraction(const char * buffer, const size_t size, const bool text) noexcept {
+	// Если получено сообщение нулевой длины (RFC 6455 допускает пустые сообщения)
+	if((size == 0) && !this->_freeze && web_t::_callback.is("messageWebsocket")){
+		// Отправляем пустое сообщение
+		web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", vector <char> (), text);
+		// Выходим из функции
+		return;
+	}
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0) && !this->_freeze && web_t::_callback.is("messageWebsocket")){
 		// Выполняем очистку буфера извлечений данных
@@ -1001,6 +1072,15 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
 			this->_inter.extraction = this->_hash.decode <vector <char>> (buffer, size, this->_cipher);
 		// Устанавливаем буфер результата как есть
 		else this->_inter.extraction.push(buffer, size);
+		/**
+		 * Флаг пустого сжатого сообщения: пустое сообщение передаётся пустой полезной нагрузкой
+		 * или, для permessage-deflate, единственным байтом 0x00 (RFC 7692, 7.2.3.6). Декомпрессор
+		 * возвращает пустой результат и при ошибке, поэтому пустое сообщение распознаём заранее;
+		 * байт 0x00 всё равно пропускаем через декомпрессор, чтобы общий контекст оставался согласованным
+		 */
+		const bool blank = (this->_inflate && (this->_compressor != http_t::compressor_t::NONE) && (this->_inter.extraction.empty() ||
+		                   ((this->_compressor == http_t::compressor_t::DEFLATE) && (this->_inter.extraction.size() == 1) &&
+		                   (static_cast <const char *> (this->_inter.extraction)[0] == 0x00))));
 		// Если данные пришли в сжатом виде
 		if(this->_inflate && (this->_compressor != http_t::compressor_t::NONE)){
 			/**
@@ -1078,6 +1158,10 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
 		if(!this->_inter.extraction.empty())
 			// Отправляем полученный результат
 			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", this->_inter.extraction, text);
+		// Если получено пустое сжатое сообщение, отправляем пустой результат
+		else if(blank)
+			// Отправляем пустое сообщение
+			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", vector <char> (), text);
 		// Выводим сообщение об ошибке
 		else {
 			// Иначе выводим сообщение так - как оно пришло

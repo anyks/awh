@@ -882,6 +882,19 @@ namespace awh {
 			 * @return        объект SSL контекста
 			 */
 			void wrap(ctx_t & target, addr_t * address, const type_t type) noexcept;
+			/**
+			 * @brief Метод обертывания сетевого сокета для клиента/сервера
+			 *
+			 * Для клиента DTLS хост удалённого сервера передаётся в расширение SNI
+			 * и используется для проверки соответствия сертификата доменному имени
+			 *
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @param type    тип активного приложения
+			 * @param host    хост удалённого сервера
+			 * @return        объект SSL контекста
+			 */
+			void wrap(ctx_t & target, addr_t * address, const type_t type, const string & host) noexcept;
 		public:
 			/**
 			 * @brief Метод обертывания сетевого сокета для клиента

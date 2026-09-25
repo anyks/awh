@@ -200,9 +200,11 @@ namespace awh {
 			#elif __linux__
 				// Идентификатор активного EPoll
 				SOCKET _efd;
+				// Количество событий полученных последним опросом
+				size_t _ready;
 				// Список активных изменений событий
 				vector <struct epoll_event> _change;
-				// Список активных событий
+				// Список активных событий (буфер результатов опроса ядра)
 				vector <struct epoll_event> _events;
 			/**
 			 * Для операционной системы MacOS Xб FreeBSD, NetBSD или OpenBSD
@@ -210,9 +212,11 @@ namespace awh {
 			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Идентификатор активного kqueue
 				SOCKET _kq;
-				// Список активных изменений событий
+				// Количество событий полученных последним опросом
+				size_t _ready;
+				// Список активных изменений событий (для сокета отдельно фильтр чтения и фильтр записи)
 				vector <struct kevent> _change;
-				// Список активных событий
+				// Список активных событий (буфер результатов опроса ядра)
 				vector <struct kevent> _events;
 			#endif
 		private:
@@ -271,6 +275,42 @@ namespace awh {
 			 * @param event входящее событие от межпотокового передатчика
 			 */
 			void stream(const SOCKET sock, const uint64_t event) noexcept;
+		private:
+			/**
+			 * Для операционной системы Linux
+			 */
+			#if __linux__
+				/**
+				 * @brief Метод исключения участника из результатов последнего опроса базы событий
+				 *
+				 * @param peer участник для исключения
+				 */
+				void forget(const peer_t * peer) noexcept;
+			/**
+			 * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+			 */
+			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				/**
+				 * @brief Метод исключения сокета из результатов последнего опроса базы событий
+				 *
+				 * @param sock сокет для исключения
+				 */
+				void forget(const SOCKET sock) noexcept;
+				/**
+				 * @brief Метод удаления всех изменений событий сокета
+				 *
+				 * @param sock сокет изменения которого удаляются
+				 */
+				void unslot(const SOCKET sock) noexcept;
+				/**
+				 * @brief Метод поиска изменения события сокета для указанного фильтра
+				 *
+				 * @param sock   сокет для поиска
+				 * @param filter фильтр события (EVFILT_READ / EVFILT_WRITE)
+				 * @return       найденное изменение события или nullptr
+				 */
+				struct kevent * slot(const SOCKET sock, const int16_t filter) noexcept;
+			#endif
 		private:
 			/**
 			 * @brief Метод удаления файлового дескриптора из базы событий

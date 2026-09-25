@@ -266,7 +266,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 						// Если количество байт достаточно, чтобы получить логин пользователя
 						if(size >= (offset + sizeof(length) + length)){
 							// Получаем логин пользователя
-							const string & login = this->text(buffer + offset, length);
+							const string & login = this->text(buffer + offset, size - offset);
 							// Увеличиваем смещение в буфере
 							offset += (sizeof(length) + length);
 							// Если логин пользователя получен
@@ -276,7 +276,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 								// Если количество байт достаточно, чтобы получить пароль пользователя
 								if(size >= (offset + sizeof(length) + length)){
 									// Получаем пароль пользователя
-									const string & password = this->text(buffer + offset, length);
+									const string & password = this->text(buffer + offset, size - offset);
 									// Если пароль получен
 									if(!password.empty()){
 										// Выполняем проверку авторизации
@@ -362,20 +362,23 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 								} break;
 								// Получаем адрес IPv6
 								case static_cast <uint8_t> (atyp_t::IPv6): {
-									// Если буфер пришел достаточного размера
-									if(size >= (sizeof(req_t) + sizeof(ip_t))){
-										// Создаём объект данных сервера
-										ip_t server;
+									/**
+									 * Структура ip_t рассчитана на IPv4 (4 байта адреса), поэтому адрес IPv6
+									 * (16 байт) и порт за ним (смещение 4 + 16) читаем из буфера напрямую
+									 */
+									if(size >= (sizeof(req_t) + sizeof(struct in6_addr) + sizeof(uint16_t))){
 										// Устанавливаем тип хоста сервера
 										this->_server.family = AF_INET6;
-										// Копируем в буфер наши данные IP адреса
-										::memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
-										this->_server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
+										this->_server.host = this->hexToIp(buffer + sizeof(req_t), sizeof(struct in6_addr), AF_INET6);
 										// Если IP адрес получен
 										if(!this->_server.host.empty()){
+											// Создаём порт сервера
+											uint16_t port = 0;
+											// Выполняем извлечение порта сервера
+											::memcpy(&port, buffer + sizeof(req_t) + sizeof(struct in6_addr), sizeof(port));
 											// Заменяем порт сервера
-											this->_server.port = ntohs(server.port);
+											this->_server.port = ntohs(port);
 											// Устанавливаем стейт выполнения проверки
 											this->_state = state_t::CONNECT;
 										}
@@ -386,7 +389,7 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 									// Если буфер пришел достаточного размера
 									if(size >= (sizeof(req_t) + sizeof(uint16_t))){
 										// Извлекаем доменное имя
-										this->_server.host = this->text(buffer + sizeof(req_t), size);
+										this->_server.host = this->text(buffer + sizeof(req_t), size - sizeof(req_t));
 										// Получаем размер смещения
 										uint16_t offset = (sizeof(req_t) + sizeof(uint8_t) + this->_server.host.size());
 										// Если доменное имя получено

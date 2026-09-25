@@ -177,6 +177,7 @@ namespace awh {
 				uint32_t type;         // Тип полученной записи
 				string record;         // Данные полученной записи
 				vector <string> items; // Составные части доменного имени
+				vector <string> target; // Составные части доменного имени значения записи (NS, CNAME, PTR)
 				/**
 				 * @brief Конструктор
 				 *
@@ -334,6 +335,12 @@ namespace awh {
 					// Тип DNS-запроса
 					q_type_t _qtype;
 				private:
+					// Идентификатор текущего DNS-запроса
+					uint16_t _id;
+				private:
+					// Список полученных PTR-записей
+					vector <string> _ptr;
+				private:
 					// Объект для работы с подключениями
 					peer_t _peer;
 					// Объект для работы с сокетами
@@ -361,13 +368,15 @@ namespace awh {
 					vector <uint8_t> split(const string & domain) const noexcept;
 				private:
 					/**
-					 * @brief Метод извлечения записи из ответа DNS
+					 * @brief Метод извлечения доменного имени из ответа DNS
 					 *
-					 * @param data буфер данных из которого нужно извлечь запись
-					 * @param pos  позиция в буфере данных
-					 * @return     запись в текстовом виде из ответа DNS
+					 * @param data   буфер данных из которого нужно извлечь запись
+					 * @param size   размер буфера данных
+					 * @param offset позиция в буфере данных (после выполнения указывает на конец доменного имени)
+					 * @param labels составные части извлечённого доменного имени
+					 * @return       результат извлечения доменного имени
 					 */
-					string extract(const uint8_t * data, const size_t pos) const noexcept;
+					bool extract(const uint8_t * data, const size_t size, size_t & offset, vector <string> & labels) const noexcept;
 					/**
 					 * @brief Метод восстановления доменного имени
 					 *
@@ -423,7 +432,7 @@ namespace awh {
 					 */
 					Worker(const int32_t family, const DNS * self) noexcept :
 					 _sock(INVALID_SOCKET), _mode(false), _family(family),
-					 _qtype(q_type_t::IP), _socket(self->_fmk, self->_log), _self(self) {}
+					 _qtype(q_type_t::IP), _id(0), _socket(self->_fmk, self->_log), _self(self) {}
 					/**
 					 * @brief Деструктор
 					 *

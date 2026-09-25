@@ -23,6 +23,56 @@
 using namespace std;
 
 /**
+ * @brief Функция извлечения байта из процентной кодировки
+ *
+ * Проверяет, что после '%' в пределах строки стоят две шестнадцатеричные цифры:
+ * раньше завершающий '%' читал за концом строки, а "%zz" повторял прошлое значение
+ *
+ * @param text   исходная строка
+ * @param pos    позиция символа '%'
+ * @param result полученный байт
+ * @return       результат извлечения
+ */
+static bool percentByte(const string & text, const size_t pos, char & result) noexcept {
+	// Если после знака процента недостаточно символов
+	if((pos + 2) >= text.length())
+		// Выводим результат
+		return false;
+	/**
+	 * @brief Функция получения значения шестнадцатеричной цифры
+	 *
+	 * @param c символ для проверки
+	 * @return  значение цифры или -1
+	 */
+	auto digitFn = [](const char c) noexcept -> int32_t {
+		// Если символ является цифрой
+		if((c >= '0') && (c <= '9'))
+			// Выводим значение цифры
+			return (c - '0');
+		// Если символ является буквой в нижнем регистре
+		if((c >= 'a') && (c <= 'f'))
+			// Выводим значение цифры
+			return (c - 'a' + 10);
+		// Если символ является буквой в верхнем регистре
+		if((c >= 'A') && (c <= 'F'))
+			// Выводим значение цифры
+			return (c - 'A' + 10);
+		// Символ не является цифрой
+		return -1;
+	};
+	// Получаем значения цифр
+	const int32_t high = digitFn(text[pos + 1]), low = digitFn(text[pos + 2]);
+	// Если обе цифры корректные
+	if((high < 0) || (low < 0))
+		// Выводим результат
+		return false;
+	// Запоминаем полученный байт
+	result = static_cast <char> ((high << 4) | low);
+	// Выводим результат
+	return true;
+}
+
+/**
  * @brief Метод очистки
  *
  */
@@ -856,12 +906,6 @@ string awh::URI::decode(const string & text) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём бинарный буфер данных
-			char buffer[3];
-			// Устанавливаем завершение строки
-			buffer[2] = '\0';
-			// Код символа в 16-м виде
-			uint16_t hex = 0;
 			// Смещение в текстовом буфере
 			const char * offset = nullptr;
 			// Выделяем память для строки
@@ -880,14 +924,16 @@ string awh::URI::decode(const string & text) const noexcept {
 					else result.append(1, offset[0]);
 				// Если же это проценты
 				} else {
-					// Выполняем копирование в бинарный буфер полученных байт
-					::memcpy(buffer, offset + 1, 2);
-					// Извлекаем из 16-х символов наш код числа
-					sscanf(buffer, "%hx", &hex);
-					// Запоминаем полученный символ
-					result.append(1, static_cast <char> (hex));
-					// Смещаем итератор
-					i += 2;
+					// Полученный байт
+					char letter = 0;
+					// Если после процента стоят две шестнадцатеричные цифры
+					if(::percentByte(text, i, letter)){
+						// Запоминаем полученный символ
+						result.append(1, letter);
+						// Смещаем итератор
+						i += 2;
+					// Неверная последовательность копируется как есть
+					} else result.append(1, offset[0]);
 				}
 			}
 		/**
@@ -1735,14 +1781,8 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём бинарный буфер данных
-			char buffer[3];
-			// Устанавливаем завершение строки
-			buffer[2] = '\0';
 			// Текст названия каталога
 			string name = "";
-			// Код символа в 16-м виде
-			uint16_t hex = 0;
 			// Смещение в текстовом буфере
 			const char * offset = nullptr;
 			/**
@@ -1776,14 +1816,16 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 				switch(offset[0]){
 					// Если символом является знак процента %
 					case '%': {
-						// Выполняем копирование в бинарный буфер полученных байт
-						::memcpy(buffer, offset + 1, 2);
-						// Извлекаем из 16-х символов наш код числа
-						sscanf(buffer, "%hx", &hex);
-						// Запоминаем полученный символ
-						name.append(1, static_cast <char> (hex));
-						// Смещаем итератор
-						i += 2;
+						// Полученный байт
+						char letter = 0;
+						// Если после процента стоят две шестнадцатеричные цифры
+						if(::percentByte(path, i, letter)){
+							// Запоминаем полученный символ
+							name.append(1, letter);
+							// Смещаем итератор
+							i += 2;
+						// Неверная последовательность копируется как есть
+						} else name.append(1, offset[0]);
 					} break;
 					// Если мы получили разделитель двух слов
 					case '+':

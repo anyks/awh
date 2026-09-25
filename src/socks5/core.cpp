@@ -155,8 +155,11 @@ string awh::Socks5::text(const char * buffer, const size_t size) const noexcept 
 		uint8_t length = 0;
 		// Извлекаем размер текста
 		::memcpy(&length, buffer, sizeof(length));
-		// Если размер текста получен, извлекаем текстовые данные
-		if(length > 0)
+		/**
+		 * Длина текста приходит от удалённой стороны, поэтому проверяем, что текст
+		 * целиком помещается в переданный буфер, иначе чтение выходит за его пределы
+		 */
+		if((length > 0) && ((sizeof(length) + static_cast <size_t> (length)) <= size))
 			// Устанавливаем текстовые данные буфера
 			result.assign(buffer + sizeof(length), length);
 	}

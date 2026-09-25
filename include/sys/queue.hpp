@@ -140,6 +140,34 @@ namespace awh {
 			 * @return     результат выполнения операции
 			 */
 			bool rss(const size_t size) noexcept;
+		private:
+			/**
+			 * @brief Метод записи данных в буфер очереди
+			 *
+			 * @param records список бинарных буферов для добавления
+			 * @param count   количество бинарных буферов в списке
+			 * @param size    общий размер добавляемых данных
+			 * @return        результат выполнения операции
+			 */
+			bool write(const record_t * records, const size_t count, const size_t size) noexcept;
+		private:
+			/**
+			 * @brief Метод блокирующего добавления записи в очередь
+			 *
+			 * @param records список бинарных буферов для добавления
+			 * @param count   количество бинарных буферов в списке
+			 * @param size    общий размер добавляемых данных
+			 */
+			void append(const record_t * records, const size_t count, const size_t size) noexcept;
+			/**
+			 * @brief Метод неблокирующего добавления записи в очередь
+			 *
+			 * @param records список бинарных буферов для добавления
+			 * @param count   количество бинарных буферов в списке
+			 * @param size    общий размер добавляемых данных
+			 * @return        результат добавления записи
+			 */
+			bool attempt(const record_t * records, const size_t count, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления записи в очереди
@@ -211,6 +239,27 @@ namespace awh {
 			 * @return        текущий размер очереди
 			 */
 			size_t push(const vector <record_t> & records, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод неблокирующего добавления бинарного буфера данных в очередь
+			 *
+			 * Не ждёт освобождения очереди: предназначен для потока цикла событий,
+			 * где единственный потребитель очереди работает в том же потоке и
+			 * блокирующий push() зависает навсегда
+			 *
+			 * @param buffer бинарный буфер для добавления
+			 * @param size   размер бинарного буфера
+			 * @return       результат добавления (false, если очередь заполнена или память исчерпана)
+			 */
+			bool tryPush(const void * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод неблокирующего добавления бинарного буфера данных в очередь
+			 *
+			 * @param records список бинарных буферов для добавления
+			 * @param size    общий размер добавляемых данных
+			 * @return        результат добавления (false, если очередь заполнена или память исчерпана)
+			 */
+			bool tryPush(const vector <record_t> & records, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод установки максимального размера потребления памяти

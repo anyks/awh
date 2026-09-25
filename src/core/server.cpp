@@ -231,12 +231,22 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 					try {
 						// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 						if(shm->_brokers.size() >= static_cast <size_t> (shm->_total)){
-							// Выводим в консоль информацию
-							this->_log->print("Number of simultaneous connections, cannot exceed maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed maximum allowed number of %d", shm->_total));
+							// Если предупреждение разрешено выводить (не чаще раза в секунду)
+							if(this->warn()){
+								// Выводим в консоль информацию
+								this->_log->print("Number of simultaneous connections, cannot exceed maximum allowed number of %d", log_t::flag_t::WARNING, shm->_total);
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Number of simultaneous connections, cannot exceed maximum allowed number of %d", shm->_total));
+							}
+							/**
+							 * Приостанавливаем приём подключений до освобождения места. Раньше ожидающее
+							 * подключение не принималось, сокет сервера оставался готовым к чтению, и цикл
+							 * событий вращался вхолостую, выводя предупреждение на каждом проходе. В кластере
+							 * приостановка позволяет забрать подключение другому процессу
+							 */
+							this->standby(sid);
 							// Выходим
 							break;
 						}
@@ -583,6 +593,35 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 							}
 						// Если подключение не установлено
 						} else {
+							/**
+							 * Для операционной системы не являющейся MS Windows
+							 */
+							#if !_WIN32 && !_WIN64
+								// Получаем код ошибки разрешения подключения
+								const int32_t error = errno;
+								// Если закончились файловые дескрипторы процесса или системы
+								if((error == EMFILE) || (error == ENFILE)){
+									// Если предупреждение разрешено выводить (не чаще раза в секунду)
+									if(this->warn()){
+										// Выводим сообщение об ошибке
+										this->_log->print("Accepting failed, PID=%d: %s", log_t::flag_t::WARNING, ::getpid(), ::strerror(error));
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("error"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, this->_fmk->format("Accepting failed, PID=%d: %s", ::getpid(), ::strerror(error)));
+									}
+									/**
+									 * Ожидающее подключение не принимается, сокет сервера остаётся готовым к чтению,
+									 * и цикл событий вращался вхолостую. Сбрасываем подключение через резервный
+									 * дескриптор, а если это невозможно, приостанавливаем приём подключений
+									 */
+									if(!this->shed(shm->_addr.sock))
+										// Выполняем приостановку приёма подключений
+										this->standby(sid);
+									// Выходим
+									break;
+								}
+							#endif
 							/**
 							 * Определяем режим активации кластера
 							 */
@@ -1442,6 +1481,147 @@ void awh::server::Core::initDTLS(const uint16_t sid) noexcept {
 	}
 }
 /**
+ * @brief Метод проверки разрешён ли вывод предупреждения о перегрузке
+ *
+ * @return результат проверки (не чаще одного раза в секунду)
+ */
+bool awh::server::Core::warn() noexcept {
+	// Получаем текущее время в миллисекундах
+	const uint64_t date = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	// Если с последнего предупреждения прошло меньше секунды
+	if((this->_warned > 0) && (date >= this->_warned) && ((date - this->_warned) < 1000))
+		// Запрещаем вывод предупреждения
+		return false;
+	// Запоминаем время предупреждения
+	this->_warned = date;
+	// Разрешаем вывод предупреждения
+	return true;
+}
+/**
+ * @brief Метод сброса одного ожидающего подключения при исчерпании дескрипторов
+ *
+ * Резервный дескриптор закрывается, освободившийся номер используется для приёма
+ * ожидающего подключения, которое сразу закрывается, после чего резерв создаётся снова
+ *
+ * @param sock сокет сервера
+ * @return     результат работы функции
+ */
+bool awh::server::Core::shed(const SOCKET sock) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Если резервный дескриптор и сокет сервера существуют
+		if((this->_reserve != INVALID_SOCKET) && (sock != INVALID_SOCKET)){
+			// Выполняем закрытие резервного дескриптора
+			::close(this->_reserve);
+			// Выполняем принятие ожидающего подключения
+			const SOCKET fd = ::accept(sock, nullptr, nullptr);
+			// Если подключение принято
+			if((result = (fd != INVALID_SOCKET)))
+				// Выполняем закрытие подключения
+				::close(fd);
+			// Выполняем создание резервного дескриптора заново
+			this->_reserve = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+		}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод приостановки приёма подключений
+ *
+ * @param sid идентификатор схемы сети
+ */
+void awh::server::Core::standby(const uint16_t sid) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.accept);
+		// Если приём подключений ещё не приостановлен
+		if(this->_paused.emplace(sid).second){
+			// Выполняем поиск брокера сервера
+			auto i = this->_brokers.find(sid);
+			// Если брокер сервера найден
+			if(i != this->_brokers.end())
+				// Выполняем отключение ожидания новых подключений
+				i->second->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
+		}
+		/**
+		 * Запасной таймер возобновления приёма (раз в секунду): место может освободиться
+		 * путём, минующим закрытие брокера. Одновременно ожидается не больше одного таймера
+		 */
+		if(this->_resumes.find(sid) == this->_resumes.end()){
+			// Если таймер не инициализирован
+			if(this->_timer == nullptr){
+				// Выполняем блокировку потока
+				const lock_guard <std::recursive_mutex> lock1(this->_mtx.receive);
+				// Выполняем блокировку потока
+				const lock_guard <std::recursive_mutex> lock2(this->_mtx.timeout);
+				// Выполняем инициализацию нового таймера
+				this->_timer = std::make_unique <timer_t> (this->_fmk, this->_log);
+				// Устанавливаем флаг запрещающий вывод информационных сообщений
+				this->_timer->verbose(false);
+				// Выполняем биндинг сетевого ядра таймера
+				this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+			}
+			// Выполняем создание таймера возобновления приёма подключений
+			const uint16_t tid = this->_timer->timeout(1000);
+			// Если таймер создан
+			if(tid > 0){
+				// Запоминаем, что таймер возобновления ожидается
+				this->_resumes.emplace(sid);
+				// Выполняем добавление функции обратного вызова
+				this->_timer->on(tid, static_cast <void (core_t::*)(const uint16_t, const bool)> (&core_t::resume), this, sid, true);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод возобновления приёма подключений
+ *
+ * @param sid   идентификатор схемы сети
+ * @param timer флаг вызова по таймеру
+ */
+void awh::server::Core::resume(const uint16_t sid, const bool timer) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.accept);
+	// Если метод вызван по таймеру
+	if(timer)
+		// Таймер отработал, больше не ожидается
+		this->_resumes.erase(sid);
+	// Если приём подключений был приостановлен
+	if(this->_paused.erase(sid) > 0){
+		// Выполняем поиск брокера сервера
+		auto i = this->_brokers.find(sid);
+		// Если брокер сервера найден и схема сети существует
+		if((i != this->_brokers.end()) && this->has(sid))
+			// Выполняем возобновление ожидания новых подключений (если лимит всё ещё исчерпан, приём снова приостановится)
+			i->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+	}
+}
+/**
  * @brief Метод остановки клиента
  *
  */
@@ -1493,6 +1673,14 @@ void awh::server::Core::close() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock2(node_t::_mtx.main);
 		const lock_guard <std::recursive_mutex> lock3(node_t::_mtx.send);
+		{
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.accept);
+			// Сбрасываем список приостановленных схем сети (сокеты серверов закрываются ниже)
+			this->_paused.clear();
+			// Сбрасываем список ожидаемых таймеров возобновления (устаревший таймер безвреден)
+			this->_resumes.clear();
+		}
 		// Объект работы с функциями обратного вызова
 		callback_t callback(this->_log);
 		// Переходим по всему списку схем сети
@@ -1690,6 +1878,8 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 						broker->ectx.clear();
 						// Выполняем удаление параметров активного брокера
 						node_t::remove(bid);
+						// Место освободилось, возобновляем приём подключений, если он был приостановлен
+						this->resume(i->first, false);
 						// Если разрешено выводить информационыне уведомления
 						if(this->_info)
 							// Выводим информацию об удачном отключении от сервера
@@ -3649,7 +3839,15 @@ void awh::server::Core::waitTimeDetect(const uint64_t bid, const uint16_t read, 
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(fmk, log), _socket(fmk, log), _cluster(this, fmk, log),
  _clusterSize(-1), _clusterAutoRestart(false),
- _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
+ _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr),
+ _reserve(INVALID_SOCKET), _warned(0) {
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Создаём резервный файловый дескриптор для сброса подключений при исчерпании дескрипторов
+		this->_reserve = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+	#endif
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения события подключения дочерних процессов
@@ -3673,7 +3871,15 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
 awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  awh::node_t(dns, fmk, log), _socket(fmk, log), _cluster(this, fmk, log),
  _transfer(transfer_t::SYNC), _clusterSize(-1), _clusterAutoRestart(false),
- _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr) {
+ _clusterMode(awh::scheme_t::mode_t::DISABLED), _timer(nullptr),
+ _reserve(INVALID_SOCKET), _warned(0) {
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Создаём резервный файловый дескриптор для сброса подключений при исчерпании дескрипторов
+		this->_reserve = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+	#endif
 	// Устанавливаем тип запускаемого ядра
 	this->_type = engine_t::type_t::SERVER;
 	// Устанавливаем функцию получения события подключения дочерних процессов
@@ -3686,4 +3892,19 @@ awh::server::Core::Core(const dns_t * dns, const fmk_t * fmk, const log_t * log)
 	this->_cluster.on <void (const uint16_t, const pid_t, const cluster_t::event_t)> ("events", &core_t::clusterEventsCallback, this, _1, _2, _3);
 	// Устанавливаем функцию получения сообщений процессов кластера
 	this->_cluster.on <void (const uint16_t, const pid_t, const char *, const size_t)> ("message", &core_t::clusterMessageCallback, this, _1, _2, _3, _4);
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::server::Core::~Core() noexcept {
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Если резервный файловый дескриптор создан
+		if(this->_reserve != INVALID_SOCKET)
+			// Выполняем закрытие резервного файлового дескриптора
+			::close(this->_reserve);
+	#endif
 }

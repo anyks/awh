@@ -23,6 +23,14 @@
 using namespace std;
 
 /**
+ * Предельный размер буфера форматирования широких строк (в символах), после
+ * которого ошибка vswprintf считается ошибкой кодировки, а не нехваткой места
+ */
+#ifndef AWH_FORMAT_BUFFER_MAX
+	#define AWH_FORMAT_BUFFER_MAX 0x1000000
+#endif
+
+/**
  * @brief Функция определения количества знаков после запятой
  *
  * @param number число в котором нужно определить количество знаков
@@ -863,8 +871,24 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 bool awh::Framework::is(const string & text, const check_t flag) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Выполняем удаление пробелов вокруг текста
-	this->transform(text, transform_t::TRIM);
+	/**
+	 * Пробелы вокруг текста удаляем в копии: прежде обрезалась сама строка
+	 * вызывающего, переданная по константной ссылке (в том числе ключи
+	 * контейнеров). Копия создаётся только когда пробелы действительно есть
+	 */
+	if(!text.empty() && (::isspace(static_cast <u_char> (text.front())) || ::isspace(static_cast <u_char> (text.back())))){
+		// Создаём копию текста
+		string buffer = text;
+		// Выполняем удаление пробелов вокруг копии текста
+		this->transform(buffer, transform_t::TRIM);
+		/**
+		 * Рекурсию выполняем только если текст действительно сократился: признаки
+		 * пробела здесь и в TRIM могут разойтись в зависимости от локали
+		 */
+		if(buffer.length() != text.length())
+			// Выполняем проверку обрезанной копии текста
+			return this->is(static_cast <const string &> (buffer), flag);
+	}
 	// Если текст передан
 	if(!text.empty()){
 		/**
@@ -1182,8 +1206,24 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Выполняем удаление пробелов вокруг текста
-	this->transform(text, transform_t::TRIM);
+	/**
+	 * Пробелы вокруг текста удаляем в копии: прежде обрезалась сама строка
+	 * вызывающего, переданная по константной ссылке (в том числе ключи
+	 * контейнеров). Копия создаётся только когда пробелы действительно есть
+	 */
+	if(!text.empty() && (::iswspace(text.front()) || (text.front() == 160) || (text.front() == 173) || ::iswspace(text.back()) || (text.back() == 160) || (text.back() == 173))){
+		// Создаём копию текста
+		wstring buffer = text;
+		// Выполняем удаление пробелов вокруг копии текста
+		this->transform(buffer, transform_t::TRIM);
+		/**
+		 * Рекурсию выполняем только если текст действительно сократился: признаки
+		 * пробела здесь и в TRIM могут разойтись в зависимости от локали
+		 */
+		if(buffer.length() != text.length())
+			// Выполняем проверку обрезанной копии текста
+			return this->is(static_cast <const wstring &> (buffer), flag);
+	}
 	// Если текст передан
 	if(!text.empty()){
 		/**
@@ -3942,8 +3982,12 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Размер полученной строки
-			size_t length = 0;
+			/**
+			 * Результат держим знаковым: при ошибке функция возвращает -1, а в
+			 * беззнаковой переменной это превращается в SIZE_MAX, размер буфера
+			 * обнуляется и цикл крутится вечно
+			 */
+			int length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
 			/**
@@ -3957,7 +4001,7 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 				// Выполняем запись в буфер данных
 				length = ::vsnprintf(result.data(), result.size(), format, args2);
 				// Если результат получен
-				if((length >= 0) && (length < result.size())){
+				if((length >= 0) && (static_cast <size_t> (length) < result.size())){
 					// Завершаем список аргументов
 					va_end(args);
 					// Завершаем список локальных аргументов
@@ -3973,12 +4017,20 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 				}
 				// Размер буфера данных
 				size_t size = 0;
-				// Если данные не получены, увеличиваем буфер в два раза
-				if(length < 0)
-					// Увеличиваем размер буфера в два раза
-					size = (result.size() * 2);
+				/**
+				 * Функция vsnprintf сообщает нужный размер буфера, а -1 возвращает
+				 * только при ошибке кодировки, которую увеличение буфера не исправит
+				 */
+				if(length < 0){
+					// Завершаем список локальных аргументов
+					va_end(args2);
+					// Выполняем сброс результата
+					result.clear();
+					// Выходим из цикла
+					break;
+				}
 				// Увеличиваем размер буфера на один байт
-				else size = (length + 1);
+				size = (static_cast <size_t> (length) + 1);
 				// Очищаем буфер данных
 				result.clear();
 				// Выделяем память для буфера
@@ -4030,8 +4082,12 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Размер полученной строки
-			size_t length = 0;
+			/**
+			 * Результат держим знаковым: при ошибке функция возвращает -1, а в
+			 * беззнаковой переменной это превращается в SIZE_MAX, размер буфера
+			 * обнуляется и цикл крутится вечно
+			 */
+			int length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
 			/**
@@ -4045,7 +4101,7 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 				// Выполняем запись в буфер данных
 				length = ::vswprintf(result.data(), result.size(), format, args2);
 				// Если результат получен
-				if((length >= 0) && (length < result.size())){
+				if((length >= 0) && (static_cast <size_t> (length) < result.size())){
 					// Завершаем список аргументов
 					va_end(args);
 					// Завершаем список локальных аргументов
@@ -4061,12 +4117,25 @@ wstring awh::Framework::format(const wchar_t * format, ...) const noexcept {
 				}
 				// Размер буфера данных
 				size_t size = 0;
-				// Если данные не получены, увеличиваем буфер в два раза
-				if(length < 0)
+				/**
+				 * Функция vswprintf не сообщает нужный размер буфера и возвращает -1 как
+				 * при нехватке места, так и при ошибке кодировки, поэтому буфер удваиваем
+				 * до разумного предела, после которого считаем строку ошибочной
+				 */
+				if(length < 0){
+					// Если предел размера буфера достигнут
+					if(result.size() >= AWH_FORMAT_BUFFER_MAX){
+						// Завершаем список локальных аргументов
+						va_end(args2);
+						// Выполняем сброс результата
+						result.clear();
+						// Выходим из цикла
+						break;
+					}
 					// Увеличиваем размер буфера в два раза
 					size = (result.size() * 2);
 				// Увеличиваем размер буфера на один байт
-				else size = (length + 1);
+				} else size = (static_cast <size_t> (length) + 1);
 				// Очищаем буфер данных
 				result.clear();
 				// Выделяем память для буфера
@@ -4417,8 +4486,11 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 			while((pos = text.find(word, pos)) != string::npos){
 				// Выполняем замену текста
 				text.replace(pos, word.length(), alternative);
-				// Смещаем позицию на единицу
-				pos++;
+				/**
+				 * Смещаем позицию за вставленный текст: при смещении на единицу замена,
+				 * содержащая искомое слово, находится снова и цикл не завершается
+				 */
+				pos += alternative.length();
 			}
 		/**
 		 * Если возникает ошибка
@@ -4467,8 +4539,11 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 			while((pos = text.find(word, pos)) != wstring::npos){
 				// Выполняем замену текста
 				text.replace(pos, word.length(), alternative);
-				// Смещаем позицию на единицу
-				pos++;
+				/**
+				 * Смещаем позицию за вставленный текст: при смещении на единицу замена,
+				 * содержащая искомое слово, находится снова и цикл не завершается
+				 */
+				pos += alternative.length();
 			}
 		/**
 		 * Если возникает ошибка

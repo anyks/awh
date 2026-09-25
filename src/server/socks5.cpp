@@ -508,18 +508,58 @@ void awh::server::ProxySocks5::unavailable(const broker_t broker, const uint64_t
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Результат добавления буфера полезной нагрузки в очередь
+			bool result = false;
 			// Ещем для указанного потока очередь полезной нагрузки
 			auto i = this->_payloads.find(bid);
-			// Если для потока очередь полезной нагрузки получена
+			/**
+			 * Очередь пополняется и опустошается в потоке цикла событий, поэтому
+			 * блокирующий push() при заполненной очереди зависал навсегда вместе
+			 * со всем сервером. Используем неблокирующее добавление
+			 */
 			if(i != this->_payloads.end())
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				i->second->push(buffer, size);
+				result = i->second->tryPush(buffer, size);
 			// Если для потока почередь полезной нагрузки ещё не сформированна
 			else {
 				// Создаём новую очередь полезной нагрузки
 				auto ret = this->_payloads.emplace(bid, std::make_unique <queue_t> (this->_fmk, this->_log));
 				// Добавляем в очередь полезной нагрузки наш буфер полезной нагрузки
-				ret.first->second->push(buffer, size);
+				result = ret.first->second->tryPush(buffer, size);
+			}
+			/**
+			 * Если очередь переполнена, данные уже прочитаны из источника и сохранить
+			 * их негде: продолжать передачу значит отдать получателю поток с пропуском.
+			 * Поэтому закрываем подключение клиента
+			 */
+			if(!result){
+				// Выводим сообщение об ошибке
+				this->_log->print("Payload queue for broker [%zu] is full, the connection is closed", log_t::flag_t::WARNING, bid);
+				/**
+				 * Определяем переданного брокера
+				 */
+				switch(static_cast <uint8_t> (broker)){
+					// Если брокером является клиент
+					case static_cast <uint8_t> (broker_t::CLIENT): {
+						// Выполняем поиск клиента которому принадлежит брокер
+						for(auto j = this->_clients.begin(); j != this->_clients.end(); ++j){
+							// Получаем параметры активного клиента
+							const scheme::socks5_t::options_t * options = this->_scheme.get(j->first);
+							// Если брокер принадлежит клиенту
+							if((options != nullptr) && (options->id == bid)){
+								// Выполняем закрытие подключения клиента
+								this->close(j->first);
+								// Выходим из цикла
+								break;
+							}
+						}
+					} break;
+					// Если брокером является сервер
+					case static_cast <uint8_t> (broker_t::SERVER):
+						// Выполняем закрытие подключения клиента
+						this->close(bid);
+					break;
+				}
 			}
 		/**
 		 * Если возникает ошибка

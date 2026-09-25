@@ -370,13 +370,14 @@ int32_t awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) n
  * @param error флаг ошибки если присутствует
  * @return      статус полученных данных
  */
-int32_t awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, const awh::http2_t::error_t error) noexcept {
+int32_t awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::http2_t::error_t error) noexcept {
 	// Выполняем закрытие потока
 	this->_scheme.closeStream(sid, bid);
-	// Если разрешено выполнить остановку
-	if((this->_core != nullptr) && (error != awh::http2_t::error_t::NONE))
-		// Выполняем закрытие подключения
-		web2_t::close(bid);
+	/**
+	 * Ошибка потока (RST_STREAM с кодом CANCEL, REFUSED_STREAM и т.д.) закрывает только этот поток:
+	 * браузеры отменяют потоки при обычной работе, и закрытие всего подключения обрывало бы остальные потоки.
+	 * Ошибки уровня подключения (GOAWAY) закрывают подключение через результат метода frame()
+	 */
 	// Если функция обратного вызова активности потока установлена
 	if(this->_callback.is("stream"))
 		// Выполняем функцию обратного вызова
@@ -2036,9 +2037,16 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 											flag = awh::http2_t::flag_t::END_STREAM;
 										// Выполняем отправку данных на удалённый сервер
 										result = web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag);
+										/**
+										 * Извлекаем данные потока повторно: если поток уже полузакрыт клиентом, отправка фрейма
+										 * с флагом END_STREAM закрывает его синхронно и объект потока удаляется
+										 */
+										if((stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid))) == nullptr)
+											// Выходим из цикла
+											break;
 									}
 									// Если список трейлеров установлен
-									if(result && (stream->http.trailers() > 0)){
+									if(result && (stream != nullptr) && (stream->http.trailers() > 0)){
 										// Выполняем извлечение трейлеров
 										const auto & trailers = stream->http.trailers2();
 										/**
@@ -2062,7 +2070,7 @@ bool awh::server::Http2::send(const int32_t sid, const uint64_t bid, const char 
 											std::cout << std::endl << std::endl << std::flush;
 										#endif
 										// Выполняем отправку трейлеров
-										if((result = !web2_t::send(sid, bid, trailers)))
+										if(!(result = web2_t::send(sid, bid, trailers)))
 											// Выходим из функции
 											return result;
 									}
@@ -2285,6 +2293,13 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 											if(web2_t::send(sid, bid, headers, flag) < 0)
 												// Выходим из функции
 												return;
+											/**
+											 * Извлекаем данные потока повторно: если ответ отправляется вне обработчика запроса,
+											 * поток уже полузакрыт клиентом, и отправка фрейма с флагом END_STREAM закрывает его синхронно
+											 */
+											if((stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid))) == nullptr)
+												// Выходим из функции
+												return;
 											// Если тело запроса существует
 											if((code >= 200) && !stream->http.empty(awh::http_t::suite_t::BODY)){
 												// Тело HTTP-запроса
@@ -2306,6 +2321,10 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 														flag = awh::http2_t::flag_t::END_STREAM;
 													// Выполняем отправку тела запроса на сервер
 													if(!web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag))
+														// Выходим из функции
+														return;
+													// Извлекаем данные потока повторно, так как после отправки поток мог быть закрыт
+													if((stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid))) == nullptr)
 														// Выходим из функции
 														return;
 												}

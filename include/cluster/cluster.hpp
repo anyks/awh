@@ -19,6 +19,8 @@
  * Стандартные библиотеки
  */
 #include <map>
+#include <atomic>
+#include <memory>
 #include <vector>
 #include <thread>
 #include <string>
@@ -342,6 +344,14 @@ namespace awh {
 			#if !_WIN32 && !_WIN64
 				// Объект перехвата сигнала
 				struct sigaction _sa;
+				/**
+				 * Канал передачи завершившихся процессов из обработчика сигнала SIGCHLD в цикл событий.
+				 * Обработчик только пожинает процессы и пишет записи в канал, а перезапуск выполняется
+				 * в цикле событий (fork внутри обработчика сигнала ронял весь кластер)
+				 */
+				std::atomic <SOCKET> _channel[2];
+				// Объект события чтения канала завершившихся процессов
+				std::unique_ptr <awh::event_t> _reaper;
 			#endif
 		private:
 			// Список активных дочерних процессов
@@ -382,6 +392,28 @@ namespace awh {
 				 * @param status статус остановившегося процесса
 				 */
 				void process(const pid_t pid, const int32_t status) noexcept;
+				/**
+				 * @brief Метод пересчёта индексов брокеров в списке процессов
+				 *
+				 */
+				void reindex() noexcept;
+				/**
+				 * @brief Метод создания канала передачи завершившихся процессов в цикл событий
+				 *
+				 */
+				void channel() noexcept;
+				/**
+				 * @brief Метод очистки унаследованных от мастер-процесса ресурсов в дочернем процессе
+				 *
+				 */
+				void inherit() noexcept;
+				/**
+				 * @brief Метод обратного вызова чтения канала завершившихся процессов
+				 *
+				 * @param sock  файловый дескриптор канала
+				 * @param event произошедшее событие
+				 */
+				void reap(const SOCKET sock, const base_t::event_type_t event) noexcept;
 				/**
 				 * @brief Функция фильтр перехватчика сигналов
 				 *

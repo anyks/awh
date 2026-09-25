@@ -98,95 +98,128 @@ void awh::client::Auth::pass(const string & pass) noexcept {
 void awh::client::Auth::header(const string & header) noexcept {
 	// Если заголовок передан
 	if(!header.empty() && (this->_fmk != nullptr)){
-		// Выполняем поиск авторизации
-		size_t pos = string::npos;
-		// Переводим заголовок в нижний регистр
-		this->_fmk->transform(header, fmk_t::transform_t::LOWER);
-		// Если тип авторизации Basic получен
-		if((pos = header.find("basic")) != string::npos)
-			// Устанавливаем тип авторизации
-			this->_type = type_t::BASIC;
-		// Если тип авторизации Digest получен
-		else if((pos = header.find("digest")) != string::npos) {
-			// Устанавливаем тип авторизации
-			this->_type = type_t::DIGEST;
-			// Получаем параметры авторизации
-			const string & digest = header.substr(pos + 7);
-			// Если параметры дайджест авторизации получены
-			if(!digest.empty()){
-				// Список параметров
-				vector <string> params;
-				// Выполняем разделение параметров расширений
-				if(!this->_fmk->split(digest, ",", params).empty()){
-					// Ключ и значение параметра
-					string key = "", value = "";
-					// Переходим по всему списку параметров
-					for(auto & param : params){
-						// Ищем разделитель параметров
-						if((pos = param.find("=")) != wstring::npos){
-							// Получаем ключ параметра
-							key = param.substr(0, pos);
-							// Получаем значение параметра
-							value = param.substr(pos + 1);
-							// Если параметр является идентификатором сайта
-							if(this->_fmk->compare(key, "realm")){
-								// Удаляем кавычки
-								value.assign(value.begin() + 1, value.end() - 1);
-								// Устанавливаем relam
-								this->_digest.realm = value;
-							// Если параметр является ключём сгенерированным сервером
-							} else if(this->_fmk->compare(key, "nonce")) {
-								// Удаляем кавычки
-								value.assign(value.begin() + 1, value.end() - 1);
-								// Устанавливаем nonce
-								this->_digest.nonce = value;
-							// Если параметр является ключём сервера
-							} else if(this->_fmk->compare(key, "opaque")) {
-								// Удаляем кавычки
-								value.assign(value.begin() + 1, value.end() - 1);
-								// Устанавливаем opaque
-								this->_digest.opaque = value;
-							// Если параметр является алгоритмом
-							} else if(this->_fmk->compare(key, "algorithm")) {
-								// Удаляем кавычки
-								value.assign(value.begin() + 1, value.end() - 1);
-								// Переводим в нижний регистр
-								this->_fmk->transform(value, fmk_t::transform_t::LOWER);
-								// Если алгоритм является MD5
-								if(this->_fmk->compare(value, "MD5"))
-									// Выполняем установку типа хэша MD5
-									this->_digest.hash = hash_t::MD5;
-								// Если алгоритм является SHA1
-								else if(this->_fmk->compare(value, "SHA1"))
-									// Выполняем установку типа хэша SHA1
-									this->_digest.hash = hash_t::SHA1;
-								// Если алгоритм является SHA224
-								else if(this->_fmk->compare(value, "SHA224"))
-									// Выполняем установку типа хэша SHA224
-									this->_digest.hash = hash_t::SHA224;
-								// Если алгоритм является SHA256
-								else if(this->_fmk->compare(value, "SHA256"))
-									// Выполняем установку типа хэша SHA256
-									this->_digest.hash = hash_t::SHA256;
-								// Если алгоритм является SHA384
-								else if(this->_fmk->compare(value, "SHA384"))
-									// Выполняем установку типа хэша SHA384
-									this->_digest.hash = hash_t::SHA384;
-								// Если алгоритм является SHA512
-								else if(this->_fmk->compare(value, "SHA512"))
-									// Выполняем установку типа хэша SHA512
-									this->_digest.hash = hash_t::SHA512;
-							// Если параметр является типом авторизации
-							} else if(this->_fmk->compare(key, "qop")) {
-								// Если тип авторизации передан верно
-								if(value.find("auth") != wstring::npos)
-									// Выполняем установку типа авторизации
-									this->_digest.qop = "auth";
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем поиск авторизации
+			size_t pos = string::npos;
+			/**
+			 * Тип авторизации ищется в копии заголовка в нижнем регистре,
+			 * а значения берутся из исходного заголовка: realm и nonce чувствительны к регистру
+			 */
+			string lower = header;
+			// Переводим копию заголовка в нижний регистр
+			this->_fmk->transform(lower, fmk_t::transform_t::LOWER);
+			// Если тип авторизации Basic получен
+			if((pos = lower.find("basic")) != string::npos)
+				// Устанавливаем тип авторизации
+				this->_type = type_t::BASIC;
+			// Если тип авторизации Digest получен
+			else if((pos = lower.find("digest")) != string::npos) {
+				// Устанавливаем тип авторизации
+				this->_type = type_t::DIGEST;
+				// Если после типа авторизации переданы параметры
+				if((pos + 7) < header.length()){
+					// Получаем параметры авторизации
+					const string & digest = header.substr(pos + 7);
+					// Если параметры дайджест авторизации получены
+					if(!digest.empty()){
+						// Список параметров
+						vector <string> params;
+						// Выполняем разделение параметров расширений
+						if(!this->_fmk->split(digest, ",", params).empty()){
+							// Ключ и значение параметра
+							string key = "", value = "";
+							// Переходим по всему списку параметров
+							for(auto & param : params){
+								// Ищем разделитель параметров
+								if((pos = param.find("=")) != string::npos){
+									// Получаем ключ параметра
+									key = this->_fmk->transform(param.substr(0, pos), fmk_t::transform_t::TRIM);
+									// Получаем значение параметра
+									value = this->_fmk->transform(param.substr(pos + 1), fmk_t::transform_t::TRIM);
+									/**
+									 * Кавычки снимаются только если значение ими обрамлено:
+									 * пустое или однобуквенное значение от сервера раньше роняло клиент исключением
+									 */
+									if((value.size() >= 2) && (value.front() == '"') && (value.back() == '"'))
+										// Удаляем кавычки
+										value = value.substr(1, value.size() - 2);
+									// Если параметр является идентификатором сайта
+									if(this->_fmk->compare(key, "realm"))
+										// Устанавливаем relam
+										this->_digest.realm = value;
+									// Если параметр является ключём сгенерированным сервером
+									else if(this->_fmk->compare(key, "nonce")) {
+										// Если ключ сервера изменился
+										if(this->_digest.nonce.compare(value) != 0)
+											// Выполняем сброс счётчика запросов для нового ключа
+											this->_digest.nc = "00000000";
+										// Устанавливаем nonce
+										this->_digest.nonce = value;
+									// Если параметр является ключём сервера
+									} else if(this->_fmk->compare(key, "opaque"))
+										// Устанавливаем opaque
+										this->_digest.opaque = value;
+									// Если параметр является алгоритмом
+									else if(this->_fmk->compare(key, "algorithm")) {
+										// Если алгоритм является MD5
+										if(this->_fmk->compare(value, "MD5"))
+											// Выполняем установку типа хэша MD5
+											this->_digest.hash = hash_t::MD5;
+										// Если алгоритм является SHA1
+										else if(this->_fmk->compare(value, "SHA1"))
+											// Выполняем установку типа хэша SHA1
+											this->_digest.hash = hash_t::SHA1;
+										// Если алгоритм является SHA224
+										else if(this->_fmk->compare(value, "SHA224"))
+											// Выполняем установку типа хэша SHA224
+											this->_digest.hash = hash_t::SHA224;
+										// Если алгоритм является SHA256
+										else if(this->_fmk->compare(value, "SHA256"))
+											// Выполняем установку типа хэша SHA256
+											this->_digest.hash = hash_t::SHA256;
+										// Если алгоритм является SHA384
+										else if(this->_fmk->compare(value, "SHA384"))
+											// Выполняем установку типа хэша SHA384
+											this->_digest.hash = hash_t::SHA384;
+										// Если алгоритм является SHA512
+										else if(this->_fmk->compare(value, "SHA512"))
+											// Выполняем установку типа хэша SHA512
+											this->_digest.hash = hash_t::SHA512;
+									// Если параметр является типом авторизации
+									} else if(this->_fmk->compare(key, "qop")) {
+										// Переводим значение в нижний регистр
+										this->_fmk->transform(value, fmk_t::transform_t::LOWER);
+										// Если тип авторизации передан верно
+										if(value.find("auth") != string::npos)
+											// Выполняем установку типа авторизации
+											this->_digest.qop = "auth";
+									}
+								}
 							}
 						}
 					}
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(header), log_t::flag_t::CRITICAL, error.what());
+			/**
+			* Если режим отладки не включён
+			*/
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -219,13 +252,15 @@ string awh::client::Auth::auth(const string & method) noexcept {
 						if(this->_digest.cnonce.empty()){
 							// Устанавливаем ключ клиента
 							this->_digest.cnonce = this->_hash.hashing <string> (std::to_string(this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::NANOSECONDS)), awh::hash_t::type_t::MD5);
-							// Обрезаем лишние символы
-							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
+							// Если ключ клиента достаточной длины
+							if(this->_digest.cnonce.size() > 24)
+								// Обрезаем лишние символы
+								this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
 						// Выполняем инкрементацию счётчика
 						this->_digest.nc = this->_fmk->itoa((this->_fmk->atoi <size_t> (this->_digest.nc, 16) + 1), 16);
-						// Добавляем нули в начало счётчика
-						for(uint16_t i = 0; i < (8 - this->_digest.nc.size()); i++)
+						// Добавляем нули в начало счётчика до 8-ми символов
+						while(this->_digest.nc.size() < 8)
 							// Добавляем ноль в начало счётчика
 							this->_digest.nc.insert(0, "0");
 						// Устанавливаем параметры для проверки

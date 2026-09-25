@@ -65,6 +65,13 @@ namespace awh {
 				// Пароль пользователя
 				string _pass;
 			private:
+				/**
+				 * Флаг устаревшего ключа nonce: клиент прислал верный ответ,
+				 * но ключ выдан не этим сервером или его время жизни истекло,
+				 * клиенту сообщается stale=TRUE чтобы он повторил запрос без запроса пароля
+				 */
+				bool _stale;
+			private:
 				// Параметры Digest авторизации пользователя
 				digest_t _locale;
 				// Хранилище функций обратного вызова
@@ -138,7 +145,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Auth(const fmk_t * fmk, const log_t * log) noexcept :
-				 auth_t(fmk, log), _user{""}, _pass{""}, _callback(log) {}
+				 auth_t(fmk, log), _user{""}, _pass{""}, _stale(false), _callback(log) {}
 		} auth_t;
 	};
 };

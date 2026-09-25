@@ -37,6 +37,19 @@
 #include "../sys/callback.hpp"
 
 /**
+ * Максимальный размер секции заголовков запроса вместе со строкой запроса в байтах
+ */
+#ifndef AWH_MAX_HEADERS_SIZE
+	#define AWH_MAX_HEADERS_SIZE 0x10000
+#endif
+/**
+ * Максимальное количество заголовков запроса
+ */
+#ifndef AWH_MAX_HEADERS_COUNT
+	#define AWH_MAX_HEADERS_COUNT 128
+#endif
+
+/**
  * @brief пространство имён
  *
  */
@@ -399,6 +412,16 @@ namespace awh {
 			// Стейт текущего запроса
 			state_t _state;
 		private:
+			/**
+			 * Код ошибки разбора запроса на сервере (400, 413, 431):
+			 * такой запрос не передаётся приложению, сервер отвечает ошибкой и закрывает подключение
+			 */
+			uint32_t _fault;
+			// Количество полученных заголовков запроса
+			size_t _headerCount;
+			// Размер полученной секции заголовков запроса
+			size_t _headerBytes;
+		private:
 			// Полученное тело HTTP-запроса
 			buffer_t _body;
 		private:
@@ -660,6 +683,13 @@ namespace awh {
 			 * @param state стейт ожидания данных для установки
 			 */
 			void state(const state_t state) noexcept;
+		public:
+			/**
+			 * @brief Метод получения кода ошибки разбора запроса
+			 *
+			 * @return код HTTP-ответа для ошибки разбора (0 если ошибки нет)
+			 */
+			uint32_t fault() const noexcept;
 		public:
 			/**
 			 * @brief Метод установки функций обратного вызова

@@ -51,6 +51,38 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Страж флага блокировки опроса базы событий
+ *
+ * Флаг снимается на любом пути выхода из метода, включая досрочный возврат
+ * и исключение. Иначе опрос базы событий останавливается навсегда.
+ */
+namespace {
+	class LockerGuard {
+		private:
+			// Флаг блокировки опроса базы событий
+			std::atomic_bool & _locker;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param locker флаг блокировки опроса базы событий
+			 */
+			explicit LockerGuard(std::atomic_bool & locker) noexcept : _locker(locker) {
+				// Выполняем блокировку чтения базы событий
+				this->_locker = true;
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~LockerGuard() noexcept {
+				// Выполняем разблокировку чтения базы событий
+				this->_locker = false;
+			}
+	};
+};
+
+/**
  * Для операционной системы MS Windows
  */
 #if _WIN32 || _WIN64
@@ -583,6 +615,103 @@ void awh::Base::stream(const SOCKET sock, const uint64_t event) noexcept {
 	}
 }
 /**
+ * Для операционной системы Linux
+ */
+#if __linux__
+	/**
+	 * @brief Метод исключения участника из результатов последнего опроса базы событий
+	 *
+	 * Буфер результатов опроса нельзя сокращать во время его обхода: записи сдвигаются,
+	 * часть событий пропускается, а в обход попадают устаревшие записи прошлого опроса.
+	 * Поэтому запись удаляемого участника только помечается пустой (data.ptr = nullptr),
+	 * и обход её пропускает. Без этого указатель на удалённого участника разыменовывается.
+	 *
+	 * @param peer участник для исключения
+	 */
+	void awh::Base::forget(const peer_t * peer) noexcept {
+		// Количество действительных записей в буфере результатов
+		const size_t count = std::min(this->_ready, this->_events.size());
+		// Выполняем перебор всех действительных записей
+		for(size_t i = 0; i < count; i++){
+			// Если запись принадлежит участнику
+			if(this->_events[i].data.ptr == peer){
+				// Сбрасываем флаги события
+				this->_events[i].events = 0;
+				// Помечаем запись пустой
+				this->_events[i].data.ptr = nullptr;
+			}
+		}
+	}
+/**
+ * Для операционной системы MacOS X, FreeBSD, NetBSD или OpenBSD
+ */
+#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	/**
+	 * @brief Метод исключения сокета из результатов последнего опроса базы событий
+	 *
+	 * Буфер результатов опроса нельзя сокращать во время его обхода: записи сдвигаются,
+	 * часть событий пропускается, а в обход попадают устаревшие записи прошлого опроса
+	 * (например чужой EV_EOF закрывает здоровое подключение с тем же номером сокета).
+	 * Поэтому запись только помечается недействительной, и обход её пропускает.
+	 *
+	 * @param sock сокет для исключения
+	 */
+	void awh::Base::forget(const SOCKET sock) noexcept {
+		// Количество действительных записей в буфере результатов
+		const size_t count = std::min(this->_ready, this->_events.size());
+		// Выполняем перебор всех действительных записей
+		for(size_t i = 0; i < count; i++){
+			// Если запись принадлежит сокету
+			if(this->_events[i].ident == static_cast <uintptr_t> (sock)){
+				// Сбрасываем флаги события
+				this->_events[i].flags = 0;
+				// Помечаем фильтр события недействительным
+				this->_events[i].filter = 0;
+				// Помечаем идентификатор события недействительным
+				this->_events[i].ident = static_cast <uintptr_t> (INVALID_SOCKET);
+			}
+		}
+	}
+	/**
+	 * @brief Метод удаления всех изменений событий сокета
+	 *
+	 * @param sock сокет изменения которого удаляются
+	 */
+	void awh::Base::unslot(const SOCKET sock) noexcept {
+		// Выполняем перебор всего списка изменений
+		for(auto i = this->_change.begin(); i != this->_change.end();){
+			// Если изменение принадлежит сокету
+			if(i->ident == static_cast <uintptr_t> (sock))
+				// Выполняем удаление изменения
+				i = this->_change.erase(i);
+			// Продолжаем перебор дальше
+			else ++i;
+		}
+	}
+	/**
+	 * @brief Метод поиска изменения события сокета для указанного фильтра
+	 *
+	 * Фильтры kqueue являются малыми отрицательными числами, а не битами, поэтому
+	 * у сокета отдельное изменение для чтения и отдельное для записи. Одно общее
+	 * изменение затирало ожидающее включение записи при включении чтения.
+	 *
+	 * @param sock   сокет для поиска
+	 * @param filter фильтр события (EVFILT_READ / EVFILT_WRITE)
+	 * @return       найденное изменение события или nullptr
+	 */
+	struct kevent * awh::Base::slot(const SOCKET sock, const int16_t filter) noexcept {
+		// Выполняем перебор всего списка изменений
+		for(auto & item : this->_change){
+			// Если изменение принадлежит сокету и фильтру
+			if((item.ident == static_cast <uintptr_t> (sock)) && (item.filter == filter))
+				// Выводим найденное изменение
+				return &item;
+		}
+		// Сообщаем, что изменение не найдено
+		return nullptr;
+	}
+#endif
+/**
  * @brief Метод удаления файлового дескриптора из базы событий
  *
  * @param sock сокет для удаления
@@ -686,39 +815,22 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
-			// Флаг удалённого события из базы событий
-			bool erased = false;
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
-			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_events.begin(); i != this->_events.end(); ++i){
-				// Если сокет найден
-				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->sock == sock)){
-					// Выполняем изменение параметров события
-					result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
-					// Если событие принадлежит к таймеру
-					if(reinterpret_cast <peer_t *> (i->data.ptr)->type == event_type_t::TIMER)
-						// Выполняем удаление таймера
-						this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
-					// Выполняем удаление события из списка отслеживания
-					this->_events.erase(i);
-					// Выходим из цикла
-					break;
-				}
-			}
+			/**
+			 * Буфер результатов опроса (_events) здесь не трогаем: он может обходиться
+			 * прямо сейчас, а регистрацию в ядре снимаем по списку изменений
+			 */
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end(); ++i){
 				// Если сокет найден
 				if((i->data.ptr != nullptr) && (reinterpret_cast <peer_t *> (i->data.ptr)->sock == sock)){
-					// Если событие ещё не удалено из базы событий
-					if(!erased){
-						// Выполняем изменение параметров события
-						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
-						// Если событие принадлежит к таймеру
-						if(reinterpret_cast <peer_t *> (i->data.ptr)->type == event_type_t::TIMER)
-							// Выполняем удаление таймера
-							this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
-					}
+					// Выполняем изменение параметров события
+					result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, sock, &(* i)) == 0);
+					// Если событие принадлежит к таймеру
+					if(reinterpret_cast <peer_t *> (i->data.ptr)->type == event_type_t::TIMER)
+						// Выполняем удаление таймера
+						this->_watch.away(reinterpret_cast <peer_t *> (i->data.ptr)->sock);
 					// Выполняем удаление события из списка изменений
 					this->_change.erase(i);
 					// Выходим из цикла
@@ -735,36 +847,12 @@ bool awh::Base::del(const SOCKET sock) noexcept {
 		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Флаг удалённого события из базы событий
-			bool erased = false;
 			// Выполняем блокировку чтения базы событий
 			this->_locker = true;
-			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_events.begin(); i != this->_events.end(); ++i){
-				// Если сокет найден
-				if((erased = (i->ident == sock))){
-					// Выполняем удаление объекта события
-					EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-					// Выполняем удаление события из списка отслеживания
-					this->_events.erase(i);
-					// Выходим из цикла
-					break;
-				}
-			}
-			// Выполняем поиск файлового дескриптора из списка изменений
-			for(auto i = this->_change.begin(); i != this->_change.end(); ++i){
-				// Если сокет найден
-				if(i->ident == sock){
-					// Если событие ещё не удалено из базы событий
-					if(!erased)
-						// Выполняем удаление объекта события
-						EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-					// Выполняем удаление события из списка изменений
-					this->_change.erase(i);
-					// Выходим из цикла
-					break;
-				}
-			}
+			// Исключаем сокет из результатов текущего опроса (буфер не сокращаем, он может обходиться)
+			this->forget(sock);
+			// Выполняем удаление всех изменений событий сокета (чтения и записи)
+			this->unslot(sock);
 			// Выполняем поиск файлового дескриптора в базе событий
 			auto i = this->_peers.find(sock);
 			// Если сокет есть в базе событий
@@ -913,30 +1001,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
-				// Флаг удалённого события из базы событий
-				bool erased = false;
-				// Выполняем поиск файлового дескриптора из списка событий
-				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
-					// Если сокет найден
-					if((reinterpret_cast <peer_t *> (j->data.ptr) == &i->second) &&
-					   (reinterpret_cast <peer_t *> (j->data.ptr)->id == id)){
-						// Выполняем изменение параметров события
-						result = erased = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
-						// Выполняем удаление события из списка отслеживания
-						this->_events.erase(j);
-						// Выходим из цикла
-						break;
-					}
-				}
+				// Исключаем участника из результатов текущего опроса (буфер не сокращаем, он может обходиться)
+				this->forget(&i->second);
 				// Выполняем поиск файлового дескриптора из списка изменений
 				for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
 					// Если сокет найден
 					if((reinterpret_cast <peer_t *> (j->data.ptr) == &i->second) &&
 					   (reinterpret_cast <peer_t *> (j->data.ptr)->id == id)){
-						// Если событие ещё не удалено из базы событий
-						if(!erased)
-							// Выполняем изменение параметров события
-							result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
+						// Выполняем изменение параметров события
+						result = (::epoll_ctl(this->_efd, EPOLL_CTL_DEL, i->second.sock, &(* j)) == 0);
 						// Выполняем удаление события из списка изменений
 						this->_change.erase(j);
 						// Выходим из цикла
@@ -960,65 +1033,15 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock) noexcept {
 			auto i = this->_peers.find(sock);
 			// Если сокет есть в базе событий
 			if((result = (i != this->_peers.end()) && (i->second.id == id))){
-				// Флаг удалённого события из базы событий
-				bool erased = false;
 				// Выполняем блокировку чтения базы событий
 				this->_locker = true;
-				// Выполняем поиск файлового дескриптора из списка событий
-				for(auto j = this->_events.begin(); j != this->_events.end(); ++j){
-					// Если сокет найден
-					if((erased = (j->ident == sock))){
-						/**
-						 * Определяем тип события к которому принадлежит сокет
-						 */
-						switch(static_cast <uint8_t> (i->second.type)){
-							// Если событие принадлежит к таймеру
-							case static_cast <uint8_t> (event_type_t::TIMER):
-							// Если событие принадлежит к потоку
-							case static_cast <uint8_t> (event_type_t::STREAM):
-								// Выполняем удаление события таймера
-								EV_SET(&(* j), j->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-							break;
-							// Если это другие события
-							default:
-								// Выполняем удаление объекта события
-								EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-						}
-						// Выполняем удаление события из списка отслеживания
-						this->_events.erase(j);
-						// Выходим из цикла
-						break;
-					}
-				}
-				// Выполняем поиск файлового дескриптора из списка изменений
-				for(auto j = this->_change.begin(); j != this->_change.end(); ++j){
-					// Если сокет найден
-					if(j->ident == sock){
-						// Если событие ещё не удалено из базы событий
-						if(!erased){
-							/**
-							 * Определяем тип события к которому принадлежит сокет
-							 */
-							switch(static_cast <uint8_t> (i->second.type)){
-								// Если событие принадлежит к таймеру
-								case static_cast <uint8_t> (event_type_t::TIMER):
-								// Если событие принадлежит к потоку
-								case static_cast <uint8_t> (event_type_t::STREAM):
-									// Выполняем удаление события таймера
-									EV_SET(&(* j), j->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-								break;
-								// Если это другие события
-								default:
-									// Выполняем удаление объекта события
-									EV_SET(&(* j), j->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-							}
-						}
-						// Выполняем удаление события из списка изменений
-						this->_change.erase(j);
-						// Выходим из цикла
-						break;
-					}
-				}
+				// Исключаем сокет из результатов текущего опроса (буфер не сокращаем, он может обходиться)
+				this->forget(sock);
+				/**
+				 * Выполняем удаление всех изменений событий сокета (чтения и записи).
+				 * Регистрация в ядре снимается закрытием сокета, как и раньше
+				 */
+				this->unslot(sock);
 				// Если событие принадлежит к таймеру
 				if(i->second.type == event_type_t::TIMER)
 					// Выполняем удаление таймера
@@ -1579,21 +1602,12 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 					}
 					// Если список режимов событий пустой
 					if(i->second.mode.empty()){
-						// Выполняем поиск файлового дескриптора из списка событий
-						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
-							// Если сокет найден
-							if((reinterpret_cast <peer_t *> (k->data.ptr) == &i->second) &&
-							   (reinterpret_cast <peer_t *> (k->data.ptr)->id == id)){
-								// Выполняем удаление события из списка событий
-								this->_events.erase(k);
-								// Если событие принадлежит к таймеру
-								if(i->second.type == event_type_t::TIMER)
-									// Выполняем удаление таймера
-									this->_watch.away(i->second.sock);
-								// Выходим из цикла
-								break;
-							}
-						}
+						// Исключаем участника из результатов текущего опроса (буфер не сокращаем, он может обходиться)
+						this->forget(&i->second);
+						// Если событие принадлежит к таймеру
+						if(i->second.type == event_type_t::TIMER)
+							// Выполняем удаление таймера
+							this->_watch.away(i->second.sock);
 						// Выполняем удаление всего события
 						this->_peers.erase(i);
 					}
@@ -1627,176 +1641,66 @@ bool awh::Base::del(const uint64_t id, const SOCKET sock, const event_type_t typ
 							}
 						} break;
 						// Если событие установлено как таймер
-						case static_cast <uint8_t> (event_type_t::TIMER): {
-							// Флаг удалённого события из базы событий
-							bool erased = false;
-							// Выполняем поиск типа события и его режим работы
-							auto j = i->second.mode.find(type);
-							// Если режим работы события получен
-							if((result = (j != i->second.mode.end()))){
-								// Выполняем отключение работы события
-								j->second = event_mode_t::DISABLED;
-								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
-									// Если сокет найден
-									if((erased = (k->ident == sock))){
-										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-										// Выполняем удаление типа события
-										i->second.mode.erase(j);
-										// Выполняем удаление события из списка изменений
-										this->_change.erase(k);
-										// Выполняем удаление таймера
-										this->_watch.away(i->second.sock);
-										// Выходим из цикла
-										break;
-									}
-								}
-								// Если удаление события небыло произведено
-								if(!erased)
-									// Выполняем удаление типа события
-									i->second.mode.erase(j);
-							}
-						} break;
+						case static_cast <uint8_t> (event_type_t::TIMER):
 						// Если событие принадлежит к потоку
 						case static_cast <uint8_t> (event_type_t::STREAM): {
-							// Флаг удалённого события из базы событий
-							bool erased = false;
 							// Выполняем поиск типа события и его режим работы
 							auto j = i->second.mode.find(type);
 							// Если режим работы события получен
 							if((result = (j != i->second.mode.end()))){
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
-								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
-									// Если сокет найден
-									if((erased = (k->ident == sock))){
-										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-										// Выполняем удаление типа события
-										i->second.mode.erase(j);
-										// Выполняем удаление события из списка изменений
-										this->_change.erase(k);
-										// Выходим из цикла
-										break;
-									}
+								// Выполняем удаление типа события
+								i->second.mode.erase(j);
+								// Если изменение события чтения найдено
+								if(this->slot(sock, EVFILT_READ) != nullptr){
+									// Исключаем сокет из результатов текущего опроса (буфер не сокращаем, он может обходиться)
+									this->forget(sock);
+									// Выполняем удаление всех изменений событий сокета
+									this->unslot(sock);
+									// Если удаляется таймер
+									if(type == event_type_t::TIMER)
+										// Выполняем удаление таймера
+										this->_watch.away(i->second.sock);
 								}
-								// Если удаление события небыло произведено
-								if(!erased)
-									// Выполняем удаление типа события
-									i->second.mode.erase(j);
 							}
 						} break;
 						// Если событие установлено как отслеживание события чтения из сокета
-						case static_cast <uint8_t> (event_type_t::READ): {
-							// Флаг удалённого события из базы событий
-							bool erased = false;
-							// Выполняем поиск типа события и его режим работы
-							auto j = i->second.mode.find(type);
-							// Если режим работы события получен
-							if((result = (j != i->second.mode.end()))){
-								// Выполняем отключение работы события
-								j->second = event_mode_t::DISABLED;
-								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
-									// Если сокет найден
-									if((erased = (k->ident == sock))){
-										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
-										// Выполняем поиск типа события
-										auto l = i->second.mode.find(event_type_t::WRITE);
-										// Если режим записи данных найден и он активирован
-										if((l != i->second.mode.end()) && (l->second == event_mode_t::ENABLED))
-											// Выполняем активацию события на запись
-											EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-										// Выполняем удаление типа события
-										i->second.mode.erase(j);
-										// Если список режимов событий пустой
-										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::WRITE) == i->second.mode.end()))
-											// Выполняем удаление события из списка изменений
-											this->_change.erase(k);
-										// Выходим из цикла
-										break;
-									}
-								}
-								// Если удаление события небыло произведено
-								if(!erased)
-									// Выполняем удаление типа события
-									i->second.mode.erase(j);
-							}
-						} break;
+						case static_cast <uint8_t> (event_type_t::READ):
 						// Если событие установлено как отслеживание события записи в сокет
 						case static_cast <uint8_t> (event_type_t::WRITE): {
-							// Флаг удалённого события из базы событий
-							bool erased = false;
 							// Выполняем поиск типа события и его режим работы
 							auto j = i->second.mode.find(type);
 							// Если режим работы события получен
 							if((result = (j != i->second.mode.end()))){
 								// Выполняем отключение работы события
 								j->second = event_mode_t::DISABLED;
-								// Выполняем поиск файлового дескриптора из списка событий
-								for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
-									// Если сокет найден
-									if((erased = (k->ident == sock))){
-										// Выполняем удаление работы события
-										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, &i->second);
-										// Выполняем поиск типа события
-										auto l = i->second.mode.find(event_type_t::READ);
-										// Если режим чтения данных найден и он активирован
-										if((l != i->second.mode.end()) && (l->second == event_mode_t::ENABLED))
-											// Выполняем активацию события на чтение
-											EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-										// Выполняем удаление типа события
-										i->second.mode.erase(j);
-										// Если список режимов событий пустой
-										if(i->second.mode.empty() || (i->second.mode.find(event_type_t::READ) == i->second.mode.end()))
-											// Выполняем удаление события из списка изменений
-											this->_change.erase(k);
-										// Выходим из цикла
-										break;
-									}
-								}
-								// Если удаление события небыло произведено
-								if(!erased)
-									// Выполняем удаление типа события
-									i->second.mode.erase(j);
+								// Выполняем поиск изменения события для нужного фильтра
+								struct kevent * k = this->slot(sock, (type == event_type_t::READ ? EVFILT_READ : EVFILT_WRITE));
+								/**
+								 * Если изменение найдено, выключаем фильтр в ядре.
+								 * EV_DELETE в постоянном списке изменений оставлять нельзя: список подаётся в
+								 * каждый вызов kevent, повторное удаление вернёт ENOENT с флагом EV_ERROR,
+								 * и обход примет это за ошибку сокета и закроет подключение
+								 */
+								if(k != nullptr)
+									// Выполняем выключение фильтра события
+									EV_SET(k, k->ident, k->filter, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
+								// Выполняем удаление типа события
+								i->second.mode.erase(j);
 							}
 						} break;
 					}
 					// Если список режимов событий пустой
 					if(i->second.mode.empty() || ((i->second.mode.size() == 1) && (i->second.mode.find(event_type_t::CLOSE) != i->second.mode.end()))){
-						// Выполняем поиск файлового дескриптора из списка событий
-						for(auto k = this->_events.begin(); k != this->_events.end(); ++k){
-							// Если сокет найден
-							if(k->ident == sock){
-								/**
-								 * Определяем тип события к которому принадлежит сокет
-								 */
-								switch(static_cast <uint8_t> (i->second.type)){
-									// Если событие принадлежит к таймеру
-									case static_cast <uint8_t> (event_type_t::TIMER):
-									// Если событие принадлежит к потоку
-									case static_cast <uint8_t> (event_type_t::STREAM):
-										// Выполняем удаление события таймера
-										EV_SET(&(* k), k->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-									break;
-									// Если это другие события
-									default:
-										// Выполняем полное удаление события из базы событий
-										EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-								}
-								// Выполняем удаление события из списка событий
-								this->_events.erase(k);
-								// Если событие принадлежит к таймеру
-								if(i->second.type == event_type_t::TIMER)
-									// Выполняем удаление таймера
-									this->_watch.away(i->second.sock);
-								// Выходим из цикла
-								break;
-							}
-						}
+						// Исключаем сокет из результатов текущего опроса (буфер не сокращаем, он может обходиться)
+						this->forget(sock);
+						// Выполняем удаление всех изменений событий сокета
+						this->unslot(sock);
+						// Если событие принадлежит к таймеру
+						if(i->second.type == event_type_t::TIMER)
+							// Выполняем удаление таймера
+							this->_watch.away(i->second.sock);
 						// Выполняем удаление всего события
 						this->_peers.erase(i);
 					}
@@ -1847,8 +1751,12 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 		try {
 			// Если количество добавленных файловых дескрипторов для отслеживания не достигло предела
 			if(this->_peers.size() < AWH_MAX_COUNT_FDS){
-				// Выполняем блокировку чтения базы событий
-				this->_locker = true;
+				/**
+				 * Выполняем блокировку чтения базы событий. Страж снимает блокировку на любом
+				 * пути выхода: при неудачном создании таймера метод выходит досрочно, и раньше
+				 * флаг оставался взведённым, а база событий больше никогда не опрашивалась
+				 */
+				const LockerGuard locker(this->_locker);
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -2047,8 +1955,11 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								item->callback = callback;
 							// Устанавливаем новый объект для изменений события
 							this->_change.push_back((struct epoll_event){});
-							// Устанавливаем новый объект для отслеживания события
-							this->_events.push_back((struct epoll_event){});
+							/**
+							 * Буфер результатов опроса (_events) здесь не расширяем: метод может быть вызван
+							 * из обработчика во время обхода буфера, и перераспределение памяти оставит обход
+							 * с висячей ссылкой. Буфер подгоняется под размер списка изменений перед опросом
+							 */
 							// Выполняем установку указателя на основное событие
 							this->_change.back().data.ptr = item;
 							// Устанавливаем флаг ожидания отключения сокета
@@ -2133,21 +2044,24 @@ bool awh::Base::add(const uint64_t id, SOCKET & sock, callback_t callback, const
 								item->callback = callback;
 							// Устанавливаем новый объект для изменений события
 							this->_change.push_back((struct kevent){});
-							// Устанавливаем новый объект для отслеживания события
-							this->_events.push_back((struct kevent){});
+							/**
+							 * Буфер результатов опроса (_events) здесь не расширяем: метод может быть вызван
+							 * из обработчика во время обхода буфера, и перераспределение памяти оставит обход
+							 * с висячей ссылкой. Буфер подгоняется под размер списка изменений перед опросом
+							 */
 							// Выполняем заполнение нулями всю структуру изменений
 							::memset(&this->_change.back(), 0, sizeof(this->_change.back()));
-							// Выполняем заполнение нулями всю структуру событий
-							::memset(&this->_events.back(), 0, sizeof(this->_events.back()));
 							// Устанавливаем идентификатор файлового дескриптора
 							this->_change.back().ident = sock;
-							// Выполняем смену режима работы отлова события
-							EV_SET(&this->_change.back(), this->_change.back().ident, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, item);
+							/**
+							 * Создаём изменение только для фильтра чтения. Фильтры kqueue не битовые маски:
+							 * прежнее «EVFILT_READ | EVFILT_WRITE» и так давало EVFILT_READ. Изменение для
+							 * фильтра записи создаётся отдельно при первом включении записи
+							 */
+							EV_SET(&this->_change.back(), this->_change.back().ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, item);
 						}
 					}
 				#endif
-				// Выполняем разблокировку чтения базы событий
-				this->_locker = false;
 			// Выводим сообщение об ошибке
 			} else this->_log->print("SOCKET=%d cannot be added because the number of events being monitored has already reached the limit of %llu", log_t::flag_t::WARNING, sock, AWH_MAX_COUNT_FDS);
 		/**
@@ -2233,8 +2147,8 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 												case static_cast <uint8_t> (event_mode_t::DISABLED): {
 													// Снимаем флаг ожидания готовности файлового дескриптора на чтение
 													k->events ^= POLLIN;
-													// Выполняем деактивацию таймера
-													this->_watch.away(k->fd);
+													// Выполняем отмену ожидания таймера (уведомитель остаётся, таймер можно включить снова)
+													this->_watch.cancel(k->fd);
 												} break;
 											}
 										} break;
@@ -2361,8 +2275,8 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 														// Выводим сообщение об ошибке
 														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
-												// Выполняем деактивацию таймера
-												} else this->_watch.away(sock);
+												// Выполняем отмену ожидания таймера (уведомитель остаётся, таймер можно включить снова)
+												} else this->_watch.cancel(sock);
 											} break;
 										}
 									} break;
@@ -2632,8 +2546,8 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 														// Выводим сообщение об ошибке
 														this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 													#endif
-												// Выполняем деактивацию таймера
-												} else this->_watch.away(sock);
+												// Выполняем отмену ожидания таймера (уведомитель остаётся, таймер можно включить снова)
+												} else this->_watch.cancel(sock);
 											} break;
 										}
 									} break;
@@ -2850,103 +2764,76 @@ bool awh::Base::mode(const uint64_t id, const SOCKET sock, const event_type_t ty
 					#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 						// Если тип установлен как не закрытие подключения
 						if(type != event_type_t::CLOSE){
-							// Выполняем поиск файлового дескриптора из списка событий
-							for(auto k = this->_change.begin(); k != this->_change.end(); ++k){
-								// Если сокет найден
-								if(k->ident == sock){
-									/**
-									 * Определяем тип события
-									 */
-									switch(static_cast <uint8_t> (type)){
-										// Если событие установлено как таймер
-										case static_cast <uint8_t> (event_type_t::TIMER): {
-											/**
-											 * Определяем режим работы модуля
-											 */
-											switch(static_cast <uint8_t> (mode)){
-												// Если нужно активировать событие работы таймера
-												case static_cast <uint8_t> (event_mode_t::ENABLED): {
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-													// Выполняем активацию таймера на указанное время
-													this->_watch.wait(k->ident, i->second.delay);
-												} break;
-												// Если нужно деактивировать событие работы таймера
-												case static_cast <uint8_t> (event_mode_t::DISABLED): {
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
-													// Выполняем деактивацию таймера
-													this->_watch.away(k->ident);
-												} break;
-											}
-										} break;
-										// Если событие принадлежит к потоку
-										case static_cast <uint8_t> (event_type_t::STREAM): {
-											// Устанавливаем тип события сокета
-											i->second.type = type;
-											/**
-											 * Определяем режим работы модуля
-											 */
-											switch(static_cast <uint8_t> (mode)){
-												// Если нужно активировать событие чтения из сокета
-												case static_cast <uint8_t> (event_mode_t::ENABLED):
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-												break;
-												// Если нужно деактивировать событие чтения из сокета
-												case static_cast <uint8_t> (event_mode_t::DISABLED):
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
-												break;
-											}
-										} break;
-										// Если событие является чтением данных из сокета
-										case static_cast <uint8_t> (event_type_t::READ): {
-											/**
-											 * Определяем режим работы модуля
-											 */
-											switch(static_cast <uint8_t> (mode)){
-												// Если нужно активировать событие чтения из сокета
-												case static_cast <uint8_t> (event_mode_t::ENABLED):
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-												break;
-												// Если нужно деактивировать событие чтения из сокета
-												case static_cast <uint8_t> (event_mode_t::DISABLED): {
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
-													// Если событие на запись включено
-													if(i->second.mode.at(event_type_t::WRITE) == event_mode_t::ENABLED)
-														// Выполняем активацию события на запись
-														EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-												} break;
-											}
-										} break;
-										// Если событие является записи данных в сокет
-										case static_cast <uint8_t> (event_type_t::WRITE): {
-											/**
-											 * Определяем режим работы модуля
-											 */
-											switch(static_cast <uint8_t> (mode)){
-												// Если нужно активировать событие записи в сокет
-												case static_cast <uint8_t> (event_mode_t::ENABLED):
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-												break;
-												// Если нужно деактивировать событие записи в сокет
-												case static_cast <uint8_t> (event_mode_t::DISABLED): {
-													// Выполняем смену режима работы отлова события
-													EV_SET(&(* k), k->ident, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
-													// Если событие на чтение включено
-													if(i->second.mode.at(event_type_t::READ) == event_mode_t::ENABLED)
-														// Выполняем активацию события на чтение
-														EV_SET(&(* k), k->ident, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
-												} break;
-											}
-										} break;
-									}
-									// Выходим из цикла
-									break;
+							/**
+							 * Фильтры kqueue являются малыми отрицательными числами, а не битами, поэтому у сокета
+							 * отдельное изменение для чтения и отдельное для записи. Раньше одно общее изменение
+							 * перезаписывалось: включение чтения затирало ещё не применённое включение записи,
+							 * и очередь исходящих данных вставала
+							 */
+							const int16_t filter = (type == event_type_t::WRITE ? EVFILT_WRITE : EVFILT_READ);
+							// Выполняем поиск изменения события для нужного фильтра
+							struct kevent * k = this->slot(sock, filter);
+							// Если изменения для фильтра записи ещё нет, а запись включается
+							if((k == nullptr) && (filter == EVFILT_WRITE) && (mode == event_mode_t::ENABLED) && (this->slot(sock, EVFILT_READ) != nullptr)){
+								// Устанавливаем новый объект для изменений события
+								this->_change.push_back((struct kevent){});
+								// Выполняем заполнение нулями всю структуру изменений
+								::memset(&this->_change.back(), 0, sizeof(this->_change.back()));
+								// Получаем добавленное изменение события
+								k = &this->_change.back();
+							}
+							// Если изменение события найдено
+							if(k != nullptr){
+								/**
+								 * Определяем тип события
+								 */
+								switch(static_cast <uint8_t> (type)){
+									// Если событие установлено как таймер
+									case static_cast <uint8_t> (event_type_t::TIMER): {
+										/**
+										 * Определяем режим работы модуля
+										 */
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие работы таймера
+											case static_cast <uint8_t> (event_mode_t::ENABLED): {
+												// Выполняем смену режима работы отлова события
+												EV_SET(k, sock, EVFILT_READ, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
+												// Выполняем активацию таймера на указанное время
+												this->_watch.wait(sock, i->second.delay);
+											} break;
+											// Если нужно деактивировать событие работы таймера
+											case static_cast <uint8_t> (event_mode_t::DISABLED): {
+												// Выполняем смену режима работы отлова события
+												EV_SET(k, sock, EVFILT_READ, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
+												// Выполняем отмену ожидания таймера (уведомитель остаётся, таймер можно включить снова)
+												this->_watch.cancel(sock);
+											} break;
+										}
+									} break;
+									// Если событие принадлежит к потоку
+									case static_cast <uint8_t> (event_type_t::STREAM):
+										// Устанавливаем тип события сокета
+										i->second.type = type;
+									// Если событие является чтением данных из сокета
+									case static_cast <uint8_t> (event_type_t::READ):
+									// Если событие является записи данных в сокет
+									case static_cast <uint8_t> (event_type_t::WRITE): {
+										/**
+										 * Определяем режим работы модуля
+										 */
+										switch(static_cast <uint8_t> (mode)){
+											// Если нужно активировать событие
+											case static_cast <uint8_t> (event_mode_t::ENABLED):
+												// Выполняем смену режима работы отлова события
+												EV_SET(k, sock, filter, EV_ADD | EV_CLEAR | EV_ENABLE, 0, 0, &i->second);
+											break;
+											// Если нужно деактивировать событие
+											case static_cast <uint8_t> (event_mode_t::DISABLED):
+												// Выполняем смену режима работы отлова события
+												EV_SET(k, sock, filter, EV_ADD | EV_CLEAR | EV_DISABLE, 0, 0, &i->second);
+											break;
+										}
+									} break;
 								}
 							}
 						}
@@ -3062,46 +2949,32 @@ void awh::Base::clear() noexcept {
 				// Выполняем удаление события из списка изменений
 				i = this->_change.erase(i);
 			}
-			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_events.begin(); i != this->_events.end();)
-				// Выполняем удаление события из списка отслеживания
-				i = this->_events.erase(i);
+			/**
+			 * Буфер результатов опроса не сокращаем (он может обходиться прямо сейчас,
+			 * если метод вызван из обработчика), а помечаем все его записи пустыми
+			 */
+			for(size_t i = 0; i < std::min(this->_ready, this->_events.size()); i++){
+				// Сбрасываем флаги события
+				this->_events[i].events = 0;
+				// Помечаем запись пустой
+				this->_events[i].data.ptr = nullptr;
+			}
 		/**
 		 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
-			// Выполняем поиск файлового дескриптора из списка событий
-			for(auto i = this->_events.begin(); i != this->_events.end();){
-				// Выполняем поиск файлового дескриптора в базе событий
-				auto j = this->_peers.find(i->ident);
-				// Если сокет есть в базе событий
-				if(j != this->_peers.end()){
-					/**
-					 * Определяем тип события к которому принадлежит сокет
-					 */
-					switch(static_cast <uint8_t> (j->second.type)){
-						// Если событие принадлежит к таймеру
-						case static_cast <uint8_t> (event_type_t::TIMER): {
-							// Выполняем удаление события таймера
-							EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-							// Выполняем удаление таймера
-							this->_watch.away(j->second.sock);
-						} break;
-						// Если событие принадлежит к потоку
-						case static_cast <uint8_t> (event_type_t::STREAM):
-							// Выполняем удаление события таймера
-							EV_SET(&(* i), i->ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-						break;
-						// Если это другое событие
-						default:
-							// Выполняем удаление объекта события
-							EV_SET(&(* i), i->ident, EVFILT_READ | EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-					}
-					// Выполняем удаление события
-					this->_peers.erase(j);
-				}
-				// Выполняем удаление события из списка отслеживания
-				i = this->_events.erase(i);
+			/**
+			 * Буфер результатов опроса не сокращаем (он может обходиться прямо сейчас,
+			 * если метод вызван из обработчика), а помечаем все его записи недействительными.
+			 * Все участники есть в списке изменений и удаляются ниже
+			 */
+			for(size_t i = 0; i < std::min(this->_ready, this->_events.size()); i++){
+				// Сбрасываем флаги события
+				this->_events[i].flags = 0;
+				// Помечаем фильтр события недействительным
+				this->_events[i].filter = 0;
+				// Помечаем идентификатор события недействительным
+				this->_events[i].ident = static_cast <uintptr_t> (INVALID_SOCKET);
 			}
 			// Выполняем поиск файлового дескриптора из списка изменений
 			for(auto i = this->_change.begin(); i != this->_change.end();){
@@ -3777,8 +3650,16 @@ void awh::Base::start() noexcept {
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
 						if(!this->_change.empty()){
-							// Выполняем запуск ожидания входящих событий сокетов
-							poll = ::epoll_wait(this->_efd, this->_events.data(), AWH_MAX_COUNT_FDS, (!this->_easily ? static_cast <int32_t> (this->_rate) : 0));
+							// Если буфер результатов опроса меньше списка отслеживаемых событий
+							if(this->_events.size() < this->_change.size())
+								// Выполняем увеличение буфера результатов опроса (вне обхода буфера это безопасно)
+								this->_events.resize(this->_change.size());
+							// Сбрасываем количество действительных записей в буфере результатов
+							this->_ready = 0;
+							// Выполняем запуск ожидания входящих событий сокетов (размер буфера передаём как предел событий)
+							poll = ::epoll_wait(this->_efd, this->_events.data(), static_cast <int32_t> (this->_events.size()), (!this->_easily ? static_cast <int32_t> (this->_rate) : 0));
+							// Запоминаем количество действительных записей в буфере результатов
+							this->_ready = (poll > 0 ? static_cast <size_t> (poll) : 0);
 							// Если мы получили ошибку
 							if(poll == INVALID_SOCKET){
 								/**
@@ -3994,8 +3875,19 @@ void awh::Base::start() noexcept {
 					if(!this->_locker){
 						// Если в списке достаточно событий для опроса
 						if(!this->_change.empty()){
+							/**
+							 * Буфер результатов не меньше списка изменений: тогда в нём хватает места и для
+							 * ошибок применения изменений (EV_ERROR), и kevent не отказывает целиком
+							 */
+							if(this->_events.size() < this->_change.size())
+								// Выполняем увеличение буфера результатов опроса (вне обхода буфера это безопасно)
+								this->_events.resize(this->_change.size());
+							// Сбрасываем количество действительных записей в буфере результатов
+							this->_ready = 0;
 							// Выполняем запуск ожидания входящих событий сокетов
 							poll = ::kevent(this->_kq, this->_change.data(), this->_change.size(), this->_events.data(), this->_events.size(), ((this->_rate > -1) || this->_easily ? &baseDelay : nullptr));
+							// Запоминаем количество действительных записей в буфере результатов
+							this->_ready = (poll > 0 ? static_cast <size_t> (poll) : 0);
 							// Если мы получили ошибку
 							if(poll == INVALID_SOCKET){
 								/**
@@ -4032,18 +3924,26 @@ void awh::Base::start() noexcept {
 									if(static_cast <size_t> (i) < this->_events.size()){
 										// Получаем объект файлового дескриптора
 										const auto & event = this->_events.at(i);
+										// Если запись исключена из обхода (её сокет удалён во время обхода)
+										if(event.filter == 0)
+											// Пропускаем запись
+											continue;
 										// Получаем код ошибки переданный ядром
-										code = event.data;
+										code = static_cast <int32_t> (event.data);
 										// Получаем флаг закрытия подключения
 										isClose = (event.flags & EV_EOF);
 										// Получаем флаг получения ошибки сокета
 										isError = (event.flags & EV_ERROR);
-										// Получаем флаг достуности чтения из сокета
-										isRead = (event.filter & EVFILT_READ);
+										/**
+										 * Фильтры kqueue являются малыми отрицательными числами, а не битами,
+										 * поэтому сравниваем на равенство. Проверка по маске давала истину
+										 * для любого фильтра, и чтение с записью срабатывали одновременно
+										 */
+										isRead = (event.filter == EVFILT_READ);
 										// Получаем флаг доступности сокета на запись
-										isWrite = (event.filter & EVFILT_WRITE);
+										isWrite = (event.filter == EVFILT_WRITE);
 										// Получаем флаг нашего кастомного события
-										isEvent = (event.filter & EVFILT_USER);
+										isEvent = (event.filter == EVFILT_USER);
 										// Выполняем поиск файлового дескриптора в базе событий
 										auto j = this->_peers.find(event.ident);
 										// Если сокет есть в базе событий
@@ -4355,6 +4255,11 @@ void awh::Base::upstream(const SOCKET sock, const uint64_t tid) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/**
+			 * Выполняем блокировку списка передатчиков: метод вызывается из дочернего потока,
+			 * а активация и деактивация меняют список под этим же мютексом
+			 */
+			const lock_guard <std::recursive_mutex> guard(this->_mtx);
 			// Выполняем поиск указанного межпотокового передатчика
 			auto i = this->_upstream.find(sock);
 			// Если межпотоковый передатчик обнаружен
@@ -4531,6 +4436,13 @@ awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
  _fds(log), _watch(fmk, log), _fmk(fmk), _log(log) {
 	// Получаем идентификатор потока
 	this->_wid = this->wid();
+	/**
+	 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
+	 */
+	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		// Сбрасываем количество действительных записей в буфере результатов
+		this->_ready = 0;
+	#endif
 	// Выполняем инициализацию базы событий
 	this->init(event_mode_t::ENABLED);
 	// Выполняем настройку сетевых параметров

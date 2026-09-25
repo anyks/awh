@@ -397,8 +397,18 @@ namespace awh {
 				 * @param bid    идентификатор брокера
 				 * @param buffer буфер полезной нагрузки которую не получилось отправить
 				 * @param size   размер буфера полезной нагрузки
+				 * @return       результат сохранения (false, если очередь переполнена и подключение нужно закрыть)
 				 */
-				void unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
+				bool unavailable(const broker_t broker, const uint64_t bid, const char * buffer, const size_t size) noexcept;
+				/**
+				 * @brief Метод получения событий недоступности памяти буфера полезной нагрузки клиента
+				 *
+				 * @param bid1   идентификатор брокера сервера (подключённого клиента)
+				 * @param bid2   идентификатор брокера клиента (подключения к удалённому серверу)
+				 * @param buffer буфер полезной нагрузки которую не получилось отправить
+				 * @param size   размер буфера полезной нагрузки
+				 */
+				void unavailableClient(const uint64_t bid1, const uint64_t bid2, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * @brief Метод удаления подключённого клиента

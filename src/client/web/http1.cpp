@@ -399,12 +399,16 @@ bool awh::client::Http1::redirect(const uint64_t bid, const uint16_t sid) noexce
 						if((result = !url.empty())){
 							// Увеличиваем количество попыток
 							this->_attempt++;
+							// Запоминаем адрес до переадресации
+							const uri_t::url_t from = this->_scheme.url;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(this->_scheme.url, url);
 							// Получаем объект текущего запроса
 							request_t * request = this->_requests.begin()->second.get();
 							// Устанавливаем новый адрес запроса
 							request->url = this->_scheme.url;
+							// Выполняем обработку учётных данных при переадресации
+							this->redirected(* request, from, this->_scheme.url);
 							// Если необходимо метод изменить на GET и основной метод не является GET
 							if(((response.code == 201) || (response.code == 303)) && (request->method != awh::web_t::method_t::GET)){
 								// Выполняем очистку тела запроса
@@ -592,6 +596,101 @@ void awh::client::Http1::result(const int32_t sid) noexcept {
 	}
 }
 /**
+ * @brief Метод проверки принадлежности адреса исходному узлу учётных данных
+ *
+ * @param url адрес для проверки
+ * @return    результат проверки
+ */
+bool awh::client::Http1::origin(const uri_t::url_t & url) const noexcept {
+	/**
+	 * Сравниваются протокол, хост и порт: IP-адрес не сравнивается,
+	 * так как он заполняется после разрешения имени и у одного узла может отличаться
+	 */
+	return (
+		(this->_origin.port == url.port) &&
+		this->_fmk->compare(this->_origin.host, url.host) &&
+		this->_fmk->compare(this->_origin.schema, url.schema)
+	);
+}
+/**
+ * @brief Метод обработки учётных данных при переадресации
+ *
+ * @param request объект запроса для переадресации
+ * @param from    адрес до переадресации
+ * @param to      адрес после переадресации
+ */
+void awh::client::Http1::redirected(request_t & request, const uri_t::url_t & from, const uri_t::url_t & to) noexcept {
+	// Если исходный узел учётных данных ещё не установлен
+	if(!this->_bound){
+		// Запоминаем исходный узел учётных данных
+		this->_origin = from;
+		// Устанавливаем флаг установки исходного узла
+		this->_bound = true;
+	}
+	/**
+	 * При переадресации на другой узел (протокол, хост или порт) заголовки Authorization
+	 * и Cookie из запроса удаляются, иначе учётные данные уходят на чужой сервер
+	 */
+	if(!this->origin(to)){
+		// Выполняем перебор всех заголовков запроса
+		for(auto i = request.headers.begin(); i != request.headers.end();){
+			// Если заголовок содержит учётные данные
+			if(this->_fmk->compare(i->first, "authorization") || this->_fmk->compare(i->first, "cookie"))
+				// Выполняем удаление заголовка
+				i = request.headers.erase(i);
+			// Переходим к следующему заголовку
+			else ++i;
+		}
+	}
+	// Выполняем скрытие или возврат учётных данных
+	this->credentials(to);
+}
+/**
+ * @brief Метод скрытия или возврата учётных данных для адреса запроса
+ *
+ * @param url адрес выполняемого запроса
+ */
+void awh::client::Http1::credentials(const uri_t::url_t & url) noexcept {
+	// Если исходный узел учётных данных установлен
+	if(this->_bound){
+		// Если запрос выполняется к исходному узлу
+		if(this->origin(url)){
+			// Если учётные данные были скрыты
+			if(this->_hidden){
+				// Снимаем флаг скрытия учётных данных
+				this->_hidden = false;
+				// Возвращаем учётные данные
+				this->_http.user(this->_hiddenUser, this->_hiddenPass);
+				// Выполняем очистку скрытого логина
+				this->_hiddenUser.clear();
+				// Выполняем очистку скрытого пароля
+				this->_hiddenPass.clear();
+			}
+		// Если запрос выполняется к другому узлу и учётные данные ещё не скрыты
+		} else if(!this->_hidden) {
+			// Пустое значение учётных данных
+			const string empty = "";
+			// Получаем данные авторизации
+			auto data = this->_http.authorization();
+			// Если данные авторизации получены
+			if((data.user != nullptr) && (data.pass != nullptr)){
+				// Запоминаем логин пользователя
+				this->_hiddenUser = (* data.user);
+				// Запоминаем пароль пользователя
+				this->_hiddenPass = (* data.pass);
+				// Устанавливаем пустой логин
+				data.user = &empty;
+				// Устанавливаем пустой пароль
+				data.pass = &empty;
+				// Выполняем скрытие учётных данных
+				this->_http.authorization(data);
+				// Устанавливаем флаг скрытия учётных данных
+				this->_hidden = true;
+			}
+		}
+	}
+}
+/**
  * @brief Метод таймера выполнения пинга удалённого сервера
  *
  * @param tid идентификатор таймера
@@ -673,6 +772,12 @@ awh::client::Web::status_t awh::client::Http1::prepare(const int32_t sid, const 
 							this->_attempt++;
 							// Устанавливаем новый адрес запроса
 							this->_uri.combine(i->second->url, url);
+							// Получаем полный адрес после переадресации
+							uri_t::url_t to = this->_scheme.url;
+							// Выполняем сборку полного адреса так же, как при отправке запроса
+							this->_uri.combine(to, i->second->url);
+							// Выполняем обработку учётных данных при переадресации
+							this->redirected(* i->second, this->_scheme.url, to);
 							// Выполняем запрос на удалённый сервер
 							this->send(* i->second);
 							// Если функция обратного вызова активности потока установлена
@@ -875,6 +980,8 @@ void awh::client::Http1::submit(const request_t & request) noexcept {
 				this->_http.body(request.entity);
 			// Устанавливаем новый адрес запроса
 			this->_uri.combine(this->_scheme.url, request.url);
+			// Выполняем скрытие или возврат учётных данных для адреса запроса
+			this->credentials(this->_scheme.url);
 			// Создаём объек запроса
 			awh::web_t::req_t query(request.method, this->_scheme.url);
 			// Если активирован режим прокси-сервера
@@ -1394,6 +1501,12 @@ void awh::client::Http1::user(const string & login, const string & password) noe
 	this->_ws1.user(login, password);
 	// Устанавливаем логин и пароль пользователя
 	this->_http.user(login, password);
+	// Новые учётные данные не привязаны к узлу прежней переадресации
+	this->_bound = this->_hidden = false;
+	// Выполняем очистку скрытого логина
+	this->_hiddenUser.clear();
+	// Выполняем очистку скрытого пароля
+	this->_hiddenPass.clear();
 }
 /**
  * @brief Метод установки User-Agent для HTTP-запроса
@@ -1547,7 +1660,8 @@ void awh::client::Http1::encryption(const string & pass, const string & salt, co
  * @param log объект для работы с логами
  */
 awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
- web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _callback(log) {
+ web_t(fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _callback(log),
+ _bound(false), _hidden(false), _hiddenUser{""}, _hiddenPass{""} {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
 	this->_ws1.on <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", &http1_t::answer, this, _1, _2, _3);
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера
@@ -1569,7 +1683,8 @@ awh::client::Http1::Http1(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log  объект для работы с логами
  */
 awh::client::Http1::Http1(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _callback(log) {
+ web_t(core, fmk, log), _mode(false), _webSocket(false), _ws1(fmk, log), _http(fmk, log), _agent(agent_t::HTTP), _threads(-1), _callback(log),
+ _bound(false), _hidden(false), _hiddenUser{""}, _hiddenPass{""} {
 	// Выполняем установку перехвата событий получения статуса овтета сервера для Websocket-клиента
 	this->_ws1.on <void (const int32_t, const uint64_t, const awh::http_t::status_t)> ("answer", &http1_t::answer, this, _1, _2, _3);
 	// Устанавливаем функцию обработки вызова для вывода полученного заголовка с сервера

@@ -28,6 +28,16 @@
 #include <condition_variable>
 
 /**
+ * Для операционной системы не являющейся MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	/**
+	 * Стандартные модули
+	 */
+	#include <unistd.h>
+#endif
+
+/**
  * @brief пространство имён
  *
  */
@@ -64,11 +74,13 @@ namespace awh {
 				ALIVE = 0x01  // Живой
 			};
 		private:
-			// Флаг остановки работы дочернего потока
-			bool _stop;
+			// Флаг остановки работы дочернего потока (читается и пишется из разных потоков)
+			std::atomic <bool> _stop;
 		private:
 			// Идентификатор потока
 			uint64_t _id;
+			// Идентификатор процесса, запустившего поток: после fork потока в дочернем процессе нет
+			int64_t _owner;
 		private:
 			// Состояние здоровья
 			health_t _health;
@@ -195,6 +207,27 @@ namespace awh {
 							break;
 					}
 				}
+			}
+		private:
+			/**
+			 * @brief Метод получения идентификатора текущего процесса
+			 *
+			 * @return идентификатор процесса (в MS Windows fork нет, всегда 0)
+			 */
+			static int64_t pid() noexcept {
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#if !_WIN32 && !_WIN64
+					// Выводим идентификатор процесса
+					return static_cast <int64_t> (::getpid());
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#else
+					// Выводим значение по умолчанию
+					return 0;
+				#endif
 			}
 		private:
 			/**
@@ -501,12 +534,39 @@ namespace awh {
 				try {
 					// Если работа модуля запущена
 					if(!this->_stop){
-						// Устанавливаем флаг остановки работы модуля
-						this->_stop = !this->_stop;
-						// Отправляем сообщение, что данные записаны
-						this->_cv.notify_one();
-						// Дожидаемся завершения работы потока
-						this->_thr.join();
+						/**
+						 * Флаг ставится под мьютексом ожидания: иначе поток мог проверить флаг,
+						 * не успеть уснуть и пропустить пробуждение
+						 */
+						{
+							// Выполняем блокировку мьютекса ожидания
+							const lock_guard <std::mutex> lock(this->_locker);
+							// Устанавливаем флаг остановки работы модуля
+							this->_stop = true;
+						}
+						// Отправляем сообщение, что работа остановлена
+						this->_cv.notify_all();
+						// Если поток ещё не завершён
+						if(this->_thr.joinable()){
+							/**
+							 * В дочернем процессе после fork потока нет, есть только копия объекта: pthread_detach вернёт ESRCH,
+							 * detach() бросит исключение, а разрушение присоединяемого std::thread вызовет std::terminate.
+							 * Описатель переносим в объект, который намеренно не разрушается (один описатель на дочерний процесс)
+							 */
+							if(this->_owner != pid())
+								// Переносим описатель потока в неразрушаемый объект
+								static_cast <void> (new std::thread(std::move(this->_thr)));
+							// Если остановка пришла из самого потока, ожидание было бы взаимоблокировкой
+							else if(this->_thr.get_id() == std::this_thread::get_id())
+								// Отсоединяемся от потока
+								this->_thr.detach();
+							/**
+							 * Иначе дожидаемся завершения потока. Прежде поток отсоединялся при запуске, join здесь
+							 * всегда падал, и поток переживал объект: ожидание на разрушенной условной переменной
+							 * завершало процесс исключением «condition_variable timed_wait failed»
+							 */
+							else this->_thr.join();
+						}
 						// Выполняем сброс идентификатора потока
 						this->_id = 0;
 					}
@@ -515,10 +575,7 @@ namespace awh {
 				 */
 				} catch(const exception &) {
 					/**
-					 * Пропускаем полученную ошибку.
-					 *
-					 * Этот метод вызывается также в деструкторе,
-					 * по этому ошибку выводить не надо, так-как она всплывает всегда
+					 * Пропускаем полученную ошибку: метод вызывается и в деструкторе
 					 */
 				}
 			}
@@ -534,15 +591,15 @@ namespace awh {
 					// Если работа модуля ещё не запущена
 					if(this->_stop){
 						// Снимаем флаг остановки работы модуля
-						this->_stop = !this->_stop;
+						this->_stop = false;
+						// Запоминаем процесс, запустивший поток
+						this->_owner = pid();
 						// Создаём объект хэширования
 						std::hash <std::thread::id> hasher;
 						// Создаём дочерний поток для формирования лога
 						this->_thr = std::thread(&Screen::receiving, this);
-						// Выполняем получение идентификатора потока
+						// Выполняем получение идентификатора потока (поток не отсоединяем: stop() дожидается его завершения)
 						this->_id = hasher(this->_thr.get_id());
-						// Отсоединяемся от потока
-						this->_thr.detach();
 					}
 				/**
 				 * Если возникает ошибка
@@ -673,7 +730,7 @@ namespace awh {
 			 *
 			 */
 			Screen() noexcept :
-			 _stop(true), _id(0), _health(health_t::ALIVE),
+			 _stop(true), _id(0), _owner(0), _health(health_t::ALIVE),
 			 _delay(std::chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Выполняем запуск модуля
@@ -685,7 +742,7 @@ namespace awh {
 			 * @param health статус здоровья
 			 */
 			Screen(const health_t health) noexcept :
-			 _stop(true), _id(0), _health(health),
+			 _stop(true), _id(0), _owner(0), _health(health),
 			 _delay(std::chrono::nanoseconds(TIMEOUT)),
 			 _trigger(nullptr), _callback(nullptr), _state(nullptr) {
 				// Если статус здоровья установлен как живой
