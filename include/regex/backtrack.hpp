@@ -157,7 +157,10 @@
  *          с 0.75 до 0.89. На Эльбрусе выросли шестнадцать строк, от 2.0 до 18.7
  *          процента, и просели три, до 3.3. На x86-64 у Clang со своим случаем
  *          выросли одиннадцать, до 15.8, и просели восемь, до 4.4; у GCC путём
- *          общим - тринадцать, до 38.2, и семь, до 6.3. Числа и условия замеров -
+ *          общим - тринадцать, до 38.2, и семь, до 6.3. Платит за путь сборка
+ *          выражения: проход пометки стоит ей около четырёх процентов, и
+ *          поправки дешёвые - иная запись циклов, слияние с проходом рядов -
+ *          этого не снимают. Числа и условия замеров -
  *          в «benchmark/regex/COMPARISON.md». Закреплено проверками
  *          «Regex.EngineLiteralRun» и «Regex.StorageForgedLiteral»; путь, какой
  *          машине не достался, проверяется сборкой с признаком переопределённым.
@@ -324,7 +327,10 @@
  *          Elbrus sixteen rows grew, from 2.0 to 18.7 per cent, and three dropped, by up
  *          to 3.3. On x86-64 with Clang and the own case eleven grew, by up to 15.8, and
  *          eight dropped, by up to 4.4; with GCC on the common path — thirteen, by up to
- *          38.2, and seven, by up to 6.3. The numbers and the conditions of the
+ *          38.2, and seven, by up to 6.3. The building of an expression pays for the
+ *          path: the marking pass costs it about four per cent, and cheap remedies —
+ *          another writing of the loops, a merge with the pass of series — do not
+ *          remove that. The numbers and the conditions of the
  *          measurements are in «benchmark/regex/COMPARISON.md». Pinned by the
  *          «Regex.EngineLiteralRun» and «Regex.StorageForgedLiteral» tests; the path
  *          a machine did not get is checked by a build with the flag overridden.
