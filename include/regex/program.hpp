@@ -281,8 +281,9 @@ namespace awh {
 					 *          остатком, как и пометка ряда: управление приходит
 					 *          и в середину литерала - ветвью либо переходом. Нуль
 					 *          означает инструкцию, байтом дословно не сопоставляемую,
-					 *          и есть значение по умолчанию; единица - литерал
-					 *          из одного символа, заходу одиночному равный.
+					 *          либо инструкцию развёрнутой программы, какой пометка
+					 *          не ставится, и есть значение по умолчанию; единица -
+					 *          литерал из одного символа, заходу одиночному равный.
 					 *
 					 * \~english
 					 * Length of the literal starting with this instruction, in characters
@@ -296,8 +297,9 @@ namespace awh {
 					 *          The mark is placed on EVERY instruction of the literal with its own
 					 *          remainder, like the mark of a row: control arrives in the middle of the
 					 *          literal as well — by a branch or a jump. Zero means an instruction
-					 *          not matched by a byte verbatim and is the default; a unit is a literal
-					 *          of a single character, equal to a single trip.
+					 *          not matched by a byte verbatim, or an instruction of the reverse
+					 *          program, which receives no mark, and is the default; a unit is a
+					 *          literal of a single character, equal to a single trip.
 					 *
 					 * \~
 					 */

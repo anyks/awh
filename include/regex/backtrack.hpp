@@ -103,7 +103,8 @@
  *          компилируется инструкциями одиночного символа по одной на символ,
  *          и проход его стоил захода в разбор кода операции на каждом символе.
  *          Сборка помечает всякую инструкцию литерала длиной остатка и байтами
- *          его, а исполнение сличает байты разом. Литерал, совпавший до конца
+ *          его - при размещении символа, а не проходом по программе, - а
+ *          исполнение сличает байты разом. Литерал, совпавший до конца
  *          текста, поглощается приставкой, а обрыв на байте несовпавшем есть
  *          отказ сразу: учтённых шагов столько же, сколько учёл бы проход
  *          по одной, и исход при всяком пределе шагов и памяти тот же. Шаг
@@ -118,8 +119,9 @@
  *          литерала вовсе - «region-nested-heavy» и «recurse-heavy» - теряли
  *          со сверкой 5.3 и 5.9 процента, без неё 1.9 и 2.2. Безопасна
  *          проверка без кода оттого, что
- *          пометку у прочих символьных кодов сборка держит нулём, а поверка
- *          записи иной не принимает. Метод сличения подстановке запрещён:
+ *          пометка у прочих символьных кодов нулевая по построению - операнды
+ *          размещаемой инструкции обнулены конструктором, а зазор их пишет
+ *          лишь пометка литерала, - и поверка записи иной не принимает. Метод сличения подстановке запрещён:
  *          подставленный, на x86-64 он отнимал у восьми строк от 1.6 до 6.9
  *          процента, отдельный - ни у одной. Обрыв
  *          отказывает сразу, не исполняя инструкции несовпавшего байта:
@@ -157,13 +159,21 @@
  *          с 0.75 до 0.89. На Эльбрусе выросли шестнадцать строк, от 2.0 до 18.7
  *          процента, и просели три, до 3.3. На x86-64 у Clang со своим случаем
  *          выросли одиннадцать, до 15.8, и просели восемь, до 4.4; у GCC путём
- *          общим - тринадцать, до 38.2, и семь, до 6.3. Платит за путь сборка
- *          выражения: проход пометки стоит ей около четырёх процентов, и
+ *          общим - тринадцать, до 38.2, и семь, до 6.3.
+ *
+ *          Сборке выражения путь заметного не стоит: пометка ставится при
+ *          размещении символа, и одной лишь прямой программе - развёрнутую
+ *          исполняет детерминированное исполнение, пометки не читающее.
+ *          Проходом по программе, каким пометка ставилась прежде, сборка
+ *          теряла 4.1 процента: шёл он по всякой инструкции, и дважды, а
  *          поправки дешёвые - иная запись циклов, слияние с проходом рядов -
- *          этого не снимают. Числа и условия замеров -
+ *          этого не снимали. Пометка при размещении со сборкой, пометки
+ *          не ставящей вовсе, вровень: минус 0.2 процента тридцатью кругами
+ *          вперемежку. Числа и условия замеров -
  *          в «benchmark/regex/COMPARISON.md». Закреплено проверками
- *          «Regex.EngineLiteralRun» и «Regex.StorageForgedLiteral»; путь, какой
- *          машине не достался, проверяется сборкой с признаком переопределённым.
+ *          «Regex.EngineLiteralRun», «Regex.EngineLiteralPlacement»
+ *          и «Regex.StorageForgedLiteral»; путь, какой машине не достался,
+ *          проверяется сборкой с признаком переопределённым.
  *
  *          <b>Проверка допустимого объёма памяти ждёт рубежа, а не шага,
  *          кратного двумстам пятидесяти шести.</b> Счётчик шагов прибавляется
@@ -272,7 +282,8 @@
  *          expression is compiled into single character instructions, one per
  *          character, and walking it cost a trip through the dispatch of the
  *          operation code on every character. The build marks every instruction of
- *          the literal with the length of the remainder and its bytes, and the
+ *          the literal with the length of the remainder and its bytes — when a
+ *          character is placed rather than by a pass over the program, — and the
  *          execution compares the bytes at once. A literal that coincided up to the
  *          end of the text is consumed by the prefix, while a break on a non-matching
  *          byte is an immediate refusal: as many steps are counted as walking one by
@@ -288,9 +299,10 @@
  *          character class went through an indirect jump. In a pair of measurements of
  *          one run on ARM64 the rows without any literal — «region-nested-heavy» and
  *          «recurse-heavy» — lost 5.3 and 5.9 per cent with the check, 1.9 and 2.2
- *          without it. The check without the code is safe because the build keeps
- *          the mark of the other character codes at zero and the verification of the
- *          record accepts no other. The comparison method is forbidden to be inlined:
+ *          without it. The check without the code is safe because the mark of the
+ *          other character codes is zero by construction — the operands of a placed
+ *          instruction are zeroed by the constructor, and only the mark of a literal
+ *          writes their gap, — and the verification of the record accepts no other. The comparison method is forbidden to be inlined:
  *          inlined, on x86-64 it took from 1.6 to 6.9 per cent from eight rows,
  *          separate — from none. A break refuses at once, without executing the
  *          instruction of the non-matching byte: an alternation of literals,
@@ -327,13 +339,21 @@
  *          Elbrus sixteen rows grew, from 2.0 to 18.7 per cent, and three dropped, by up
  *          to 3.3. On x86-64 with Clang and the own case eleven grew, by up to 15.8, and
  *          eight dropped, by up to 4.4; with GCC on the common path — thirteen, by up to
- *          38.2, and seven, by up to 6.3. The building of an expression pays for the
- *          path: the marking pass costs it about four per cent, and cheap remedies —
- *          another writing of the loops, a merge with the pass of series — do not
- *          remove that. The numbers and the conditions of the
+ *          38.2, and seven, by up to 6.3.
+ *
+ *          The path costs the building of an expression nothing noticeable: the mark
+ *          is set when a character is placed, and to the forward program alone — the
+ *          reverse one is executed by the deterministic execution, which does not read
+ *          the mark. With the pass over the program that set the mark before, the
+ *          building lost 4.1 per cent: it went over every instruction, and twice, and
+ *          cheap remedies — another writing of the loops, a merge with the pass of
+ *          series — did not remove that. The mark at placement is on a par with a
+ *          building that sets no mark at all: minus 0.2 per cent over thirty
+ *          interleaved rounds. The numbers and the conditions of the
  *          measurements are in «benchmark/regex/COMPARISON.md». Pinned by the
- *          «Regex.EngineLiteralRun» and «Regex.StorageForgedLiteral» tests; the path
- *          a machine did not get is checked by a build with the flag overridden.
+ *          «Regex.EngineLiteralRun», «Regex.EngineLiteralPlacement» and
+ *          «Regex.StorageForgedLiteral» tests; the path a machine did not get is
+ *          checked by a build with the flag overridden.
  *
  *          <b>The check of the admissible amount of memory waits for a checkpoint
  *          rather than for a step that is a multiple of two hundred fifty-six.</b>

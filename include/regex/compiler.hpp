@@ -54,6 +54,23 @@
  *          тогда как обёртка отступает телом и даёт «α». Правило снято
  *          опытом, решение закреплено тестом «Regex.InterfaceScriptRuns».
  *
+ *          <b>Пометка литерала ставится при размещении символа и одной лишь
+ *          прямой программе, а пометку прочих символьных кодов никто не обнуляет.</b>
+ *          Обе вещи выглядят недосмотром: развёрнутая программа остаётся без
+ *          пометки, а исполнение с возвратом читает пометку у всякого символьного
+ *          кода, не сверяя кода операции. Развёрнутую программу исполняет одно
+ *          лишь детерминированное исполнение, пометки не читающее, и восстановление
+ *          записи отсутствие пометки принимает. Нулевой же пометку прочих кодов
+ *          держит построение: инструкцию размещает лишь метод размещения, в конец
+ *          и с операндами, обнулёнными конструктором, код операции на месте никто
+ *          не переписывает, а зазор операндов пишет лишь пометка литерала. Проход
+ *          по программе, ставивший пометку прежде и обнулявший зазор всякого
+ *          символьного кода, стоил сборке 4.1 процента - шёл он и по развёрнутой
+ *          программе, - а сборка с пометкой при размещении со сборкой без пометки
+ *          вовсе вровень. Закреплено тестом «Regex.EngineLiteralPlacement»:
+ *          пометка сличается с определением литерала, а у развёрнутой программы
+ *          проверяется её отсутствие.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -91,6 +108,23 @@
  *          refuses at the first position and finds the match from the second,
  *          whereas the wrapper retreats through the body and yields «α». The rule was taken
  *          by experiment, the decision is pinned by the test «Regex.InterfaceScriptRuns».
+ *
+ *          <b>The mark of a literal is set when a character is placed and to the forward
+ *          program alone, and nobody zeroes the mark of the other character codes.</b>
+ *          Both things look like an oversight: the reverse program is left without the
+ *          mark, while the backtracking execution reads the mark of every character code
+ *          without checking the operation code. The reverse program is executed by the
+ *          deterministic execution alone, which does not read the mark, and the restoration
+ *          of a record accepts the absence of the mark. The mark of the other codes is kept
+ *          at zero by construction: an instruction is placed only by the placement method,
+ *          at the end and with operands zeroed by the constructor, nobody rewrites an
+ *          operation code in place, and only the mark of a literal writes the gap of the
+ *          operands. The pass over the program that set the mark before and zeroed the gap
+ *          of every character code cost the building 4.1 per cent — it went over the
+ *          reverse program as well, — while the building with the mark at placement is on
+ *          a par with a building that sets no mark at all. Pinned by the test
+ *          «Regex.EngineLiteralPlacement»: the mark is compared with the definition of a
+ *          literal, and its absence is checked in the reverse program.
  *
  * \~
  *
@@ -1016,25 +1050,30 @@ namespace awh {
 				void series() noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод пометки литералов, байтами дословно сличаемых
+				 * @brief Метод продления литералов, байтами дословно сличаемых, размещённым символом
 				 *
 				 * @details Подряд идущие одиночные символы, сопоставляемые байтом
 				 *          дословно, управления между собою не принимают и точек
 				 *          возврата не ставят: сличение их одним заходом равно
 				 *          сличению по одному, а заходов в разбор кода операции
-				 *          стоит один взамен нескольких
+				 *          стоит один взамен нескольких. Пометка ставится при
+				 *          размещении символа, а не проходом по программе
+				 *
+				 * @param address адрес размещённой инструкции одиночного символа
 				 *
 				 * \~english
-				 * @brief Method of marking the literals compared by bytes verbatim
+				 * @brief Method of prolonging the literals compared by bytes verbatim with a placed character
 				 * @details Consecutive single characters matched by a byte verbatim do not
 				 *          take control between themselves and set no backtracking points:
 				 *          comparing them in one trip equals comparing them one by one, while
 				 *          costing one trip through the dispatch of the operation code
-				 *          instead of several
+				 *          instead of several. The mark is set when a character is placed
+				 *          rather than by a pass over the program
+				 * @param address address of the placed instruction of a single character
 				 *
 				 * \~
 				 */
-				void literals() noexcept;
+				void prolong(const address_t address) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод пометки цепочек ограниченного повторения одиночного символа
