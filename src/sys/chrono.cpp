@@ -929,23 +929,25 @@ namespace {
 		return (isAlphaChar(letter) || isDigitChar(letter) || (letter == '_'));
 	}
 	/**
-	 * @brief Функция снятия пробельных символов по краям записи
+	 * @brief Функция округления величины продолжительности
 	 *
-	 * @param text запись для обработки
-	 * @return     запись без пробельных символов по краям
+	 * @details Обозначение продолжительности предназначено для чтения человеком, и
+	 *          дробная часть выводилась в нём со всей разрядностью двоичного числа:
+	 *          тридцать суток давали 4.285714285714286w. Округление до сотых даёт
+	 *          4.29w, но величины мельче сотой доли единицы оно обратило бы в ноль,
+	 *          поэтому они выводятся без округления
+	 *
+	 * @param value величина продолжительности в единицах её измерения
+	 * @return      округлённая величина продолжительности
 	 *
 	 */
-	inline string_view trimSpaces(string_view text) noexcept {
-		// Снимаем пробельные символы в начале записи
-		while(!text.empty() && ((text.front() == ' ') || (text.front() == '\t') || (text.front() == '\r') || (text.front() == '\n')))
-			// Переходим к следующему символу записи
-			text.remove_prefix(1);
-		// Снимаем пробельные символы в конце записи
-		while(!text.empty() && ((text.back() == ' ') || (text.back() == '\t') || (text.back() == '\r') || (text.back() == '\n')))
-			// Переходим к предыдущему символу записи
-			text.remove_suffix(1);
-		// Выводим запись без пробельных символов по краям
-		return text;
+	inline double roundDuration(const double value) noexcept {
+		// Величины мельче сотой доли единицы округление обратило бы в ноль
+		if(value < 0.01)
+			// Выводим величину без округления
+			return value;
+		// Выводим величину, округлённую до сотых
+		return (::round(value * 100.) / 100.);
 	}
 	/**
 	 * @brief Функция проверки, является ли символ пробельным
@@ -2253,11 +2255,9 @@ void awh::Chrono::clear() noexcept {
 			::tzset();
 		#endif
 		/**
-		 * Очистка всех локальных данных в AWH 4 снимает и список собственных временных
-		 * зон: так метод работал всегда, и вызывающая сторона на это полагается
+		 * Реестр временных зон здесь не затрагивается: пополняется он вызывающей
+		 * стороной и её же методом clearTimeZones очищается
 		 */
-		// Выполняем очистку списка временных зон
-		this->clearTimeZones();
 		// Выполняем блокировку потока
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.date);
 		// Выполняем сброс временной зоны, выставленной вызывающей стороной
@@ -6158,11 +6158,6 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			 * к готовому: разбор обозначения знак читает, и вывод обязан его писать -
 			 * иначе продолжительность в минус два часа выводилась обозначением «0s»
 			 */
-			/**
-			 * Дробная часть в AWH 4 не округляется: обозначение всегда выводилось со всей
-			 * разрядностью, которую даёт форматирование числа, и вызывающая сторона на
-			 * его вид полагается. Округление до сотых оставлено решению о выпуске
-			 */
 			const double seconds = ((duration < 0.) ? -duration : duration);
 			// Шаблон минуты
 			const double minute = 60.;
@@ -6179,43 +6174,43 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			// Если переданное значение соответствует году
 			if(seconds >= year){
 				// Выполняем преобразование в количество лет
-				result = this->_fmk->noexp(seconds / year, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / year), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'y');
 			// Если переданное значение соответствует месяцу
 			} else if((seconds >= month) && (seconds < year)) {
 				// Выполняем преобразование в количество месяцев
-				result = this->_fmk->noexp(seconds / month, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / month), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'M');
 			// Если переданное значение соответствует недели
 			} else if((seconds >= week) && (seconds < month)) {
 				// Выполняем преобразование в количество недель
-				result = this->_fmk->noexp(seconds / week, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / week), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'w');
 			// Если переданное значение соответствует дням
 			} else if((seconds >= day) && (seconds < week)) {
 				// Выполняем преобразование в количество дней
-				result = this->_fmk->noexp(seconds / day, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / day), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'd');
 			// Если переданное значение соответствует часам
 			} else if((seconds >= hour) && (seconds < day)) {
 				// Выполняем преобразование в количество часов
-				result = this->_fmk->noexp(seconds / hour, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / hour), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'h');
 			// Если переданное значение соответствует минут
 			} else if((seconds >= minute) && (seconds < hour)) {
 				// Выполняем преобразование в количество минут
-				result = this->_fmk->noexp(seconds / minute, true);
+				result = this->_fmk->noexp(::roundDuration(seconds / minute), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'm');
 			// Если переданное значение соответствует секундам
 			} else {
 				// Выполняем преобразование в количество секунд
-				result = this->_fmk->noexp(seconds, true);
+				result = this->_fmk->noexp(::roundDuration(seconds), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 's');
 			}
@@ -6256,10 +6251,10 @@ double awh::Chrono::seconds(const string & value) const noexcept {
 	// Количество секунд
 	double result = 0.;
 	/**
-	 * Пробельные символы по краям записи в AWH 4 разбору не мешали, и запись
-	 * настроек вида « 90m» читалась как девяносто минут: так она читается и теперь
+	 * Обозначение занимает запись целиком: число обязано стоять в её начале, а
+	 * единица размерности - в её конце, и запись « 90m» даёт ноль
 	 */
-	const string_view text = ::trimSpaces(value);
+	const string_view text = value;
 	// Если строка с секундами передана
 	if(!text.empty()){
 		/**
@@ -12048,8 +12043,8 @@ bool awh::Chrono::validateTimeZone(const string & zone) const noexcept {
  *
  */
 bool awh::Chrono::validateSeconds(const string & value) const noexcept {
-	// Снимаем пробельные символы по краям записи наравне с разбором
-	const string_view text = ::trimSpaces(value);
+	// Получаем обозначение размерности, занимающее запись целиком
+	const string_view text = value;
 	// Если обозначение размерности не указано
 	if(text.empty())
 		// Обозначение непригодно
@@ -14032,11 +14027,10 @@ string awh::Chrono::strip(const string & date, const string & format1, const str
 			const uint64_t stamp = const_cast <chrono_t *> (this)->parse(date, format1, storage, &valid);
 			/**
 			 * Пригодность записи запрашивается отдельно: нулевой штамп времени - это
-			 * первое января 1970 года, а не признак неудачи разбора. Запись, проверку
-			 * не прошедшую, AWH 4 по-прежнему формирует, если разбор дал ненулевой
-			 * штамп времени: так метод работал всегда
+			 * первое января 1970 года, а не признак неудачи разбора
 			 */
-			if(valid || (stamp > 0))
+			// Если запись разобрана
+			if(valid)
 				// Выполняем формирование формата даты и времени
 				return this->format(stamp, ((storage == storage_t::GLOBAL) ? this->zoneOf(stamp) : this->getTimeZone(storage)), format2);
 		/**

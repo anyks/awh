@@ -474,6 +474,8 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 							}
 						}
 					#endif
+					// Выводим полученный адрес
+					return result;
 				// Если результат не получен
 				} else if(this->isLink(result)) {
 					// Выполняем зануление буфера данных
@@ -488,6 +490,14 @@ string awh::FS::realPath(const string & path, const bool actual) const noexcept 
 						return buffer;
 					}
 				}
+				/**
+				 * Адрес, какого в файловой системе нет, прежде отдавался как передан (относительным
+				 * и ненормализованным). Теперь, как и в AWH 5, он отдаётся полным нормализованным
+				 * адресом - лексическим разбором без разрешения ссылок (решение согласовано)
+				 */
+				if(!path.empty())
+					// Выполняем лексическую нормализацию адреса
+					return this->realPath(path, false);
 			// Если актуальный путь выводить не нужно
 			} else {
 				// Если путь передан пустой или конеь адреса не указан
