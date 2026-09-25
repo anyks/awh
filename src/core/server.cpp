@@ -292,8 +292,9 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 						}
 						// Выполняем разрешение подключения
 						if(broker->addr.accept(shm->_addr)){
-							// Если MAC или IP-адрес не получен, тогда выходим
-							if(broker->addr.mac.empty() || broker->addr.ip.empty()){
+							// Если IP-адрес не получен, тогда выходим. MAC-адрес есть только у клиентов из той же сети:
+							// у клиента за маршрутизатором (любой клиент из интернета) его нет, и это не повод отказывать
+							if(broker->addr.ip.empty()){
 								// Выполняем очистку контекста двигателя
 								broker->ectx.clear();
 								// Если подключение не установлено, выводим сообщение об ошибке
@@ -724,8 +725,9 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 					if(broker->addr.attach(shm->_addr)){
 						// Выполняем прикрепление контекста клиента к контексту сервера
 						this->_engine.attach(broker->ectx, &broker->addr);
-						// Если MAC или IP-адрес не получен, тогда выходим
-						if(broker->addr.mac.empty() || broker->addr.ip.empty()){
+						// Если IP-адрес не получен, тогда выходим. MAC-адрес есть только у клиентов из той же сети:
+						// у клиента за маршрутизатором (любой клиент из интернета) его нет, и это не повод отказывать
+						if(broker->addr.ip.empty()){
 							// Выполняем очистку контекста двигателя
 							broker->ectx.clear();
 							// Если подключение не установлено, выводим сообщение об ошибке

@@ -1733,7 +1733,7 @@ string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcep
 				::inet_ntop(family, &s->sin_addr, buffer, sizeof(buffer));
 				// Выводим результат
 				result = buffer;
-			}
+			} break;
 			// Если это IPv6
 			case AF_INET6: {
 				// Создаем буфер для получения ip адреса
@@ -1746,7 +1746,7 @@ string awh::IfNet::ip(struct sockaddr * sin, const int32_t family) const noexcep
 				::inet_ntop(family, &s->sin6_addr, buffer, sizeof(buffer));
 				// Выводим результат
 				result = buffer;
-			}
+			} break;
 		}
 	}
 	// Выводим результат

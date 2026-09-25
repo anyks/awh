@@ -96,8 +96,8 @@ void awh::server::ProxySocks5::launchedEvents(const string & host, const uint32_
  * @return     результат разрешения к подключению клиента
  */
 bool awh::server::ProxySocks5::acceptEvents(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
-	// Если данные существуют
-	if(!ip.empty() && !mac.empty() && (sid > 0)){
+	// Если данные существуют (MAC-адреса у клиента из другой сети нет, фильтр всё равно должен сработать)
+	if(!ip.empty() && (sid > 0)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
 			// Выводим функцию обратного вызова

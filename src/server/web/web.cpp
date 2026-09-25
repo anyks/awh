@@ -110,8 +110,8 @@ void awh::server::Web::launchedEvents(const string & host, const uint32_t port) 
 bool awh::server::Web::acceptEvents(const string & ip, const string & mac, const uint32_t port, const uint16_t sid) noexcept {
 	// Результат работы функции
 	bool result = true;
-	// Если данные существуют
-	if(!ip.empty() && !mac.empty() && (sid > 0)){
+	// Если данные существуют (MAC-адреса у клиента из другой сети нет, фильтр всё равно должен сработать)
+	if(!ip.empty() && (sid > 0)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("accept"))
 			// Выполняем функцию обратного вызова
