@@ -108,6 +108,28 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Наибольшая длина литерала, пометкой одной инструкции выразимая
+		 *
+		 * @details Байты литерала лежат в зазоре операндов одиночного символа:
+		 *          объединение операндов держит тридцать два байта по наибольшему
+		 *          члену своему, а кодовое значение символа и длина литерала
+		 *          занимают из них пять. Литерал длиннее пометки проходится
+		 *          несколькими заходами: пометка у всякой инструкции своя.
+		 *
+		 * \~english
+		 * @brief Largest length of a literal expressible by the mark of a single instruction
+		 * @details The bytes of the literal lie in the gap of the operands of a single character:
+		 *          the union of the operands holds thirty-two bytes by its largest member,
+		 *          while the code value of the character and the length of the literal take five
+		 *          of them. A literal longer than the mark is walked in several trips: every
+		 *          instruction has a mark of its own.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_LITERAL = 27;
+
+		/**
+		 * \~russian
 		 * @brief Код операции инструкции программы
 		 *
 		 * \~english
@@ -243,6 +265,67 @@ namespace awh {
 				struct {
 					// Кодовое значение сопоставляемого символа
 					uint32_t code;
+					/**
+					 * \~russian
+					 * Длина литерала, с этой инструкции начинающегося, в символах
+					 *
+					 * @details Литерал выражения компилируется инструкциями одиночного
+					 *          символа по одной на символ, и исполнение с возвратом
+					 *          проходило его заходом в разбор кода операции на каждом
+					 *          символе. Подряд идущие символы, сопоставляемые байтом
+					 *          дословно, управления между собою не принимают и точек
+					 *          возврата не ставят, отчего сличение их одним заходом
+					 *          равно сличению по одному.
+					 *
+					 *          Пометка ставится КАЖДОЙ инструкции литерала со своим
+					 *          остатком, как и пометка ряда: управление приходит
+					 *          и в середину литерала - ветвью либо переходом. Нуль
+					 *          означает инструкцию, байтом дословно не сопоставляемую,
+					 *          и есть значение по умолчанию; единица - литерал
+					 *          из одного символа, заходу одиночному равный.
+					 *
+					 * \~english
+					 * Length of the literal starting with this instruction, in characters
+					 * @details A literal of the expression is compiled into single character
+					 *          instructions, one per character, and the backtracking execution
+					 *          walked it with a trip through the dispatch of the operation code
+					 *          on every character. Consecutive characters matched by a byte
+					 *          verbatim take no control between themselves and set no backtracking
+					 *          points, so matching them in one trip equals matching them one by one.
+					 *
+					 *          The mark is placed on EVERY instruction of the literal with its own
+					 *          remainder, like the mark of a row: control arrives in the middle of the
+					 *          literal as well — by a branch or a jump. Zero means an instruction
+					 *          not matched by a byte verbatim and is the default; a unit is a literal
+					 *          of a single character, equal to a single trip.
+					 *
+					 * \~
+					 */
+					uint8_t length;
+					/**
+					 * \~russian
+					 * Байты литерала, с этой инструкции начинающегося
+					 *
+					 * @details Байты лежат в самой инструкции, а не в хранилище
+					 *          последовательностей программы намеренно: исполнение
+					 *          читает их из той же строки кэша, что и код операции,
+					 *          и инструкций следующих не касается вовсе. Байты
+					 *          за длиною литерала нулевые: запись хранилища несёт
+					 *          образ инструкций, и мусор в ней делал бы записи
+					 *          одного выражения различными.
+					 *
+					 * \~english
+					 * Bytes of the literal starting with this instruction
+					 * @details The bytes lie in the instruction itself rather than in the storage
+					 *          of sequences of the program deliberately: the execution reads them from
+					 *          the same cache line as the operation code and does not touch the
+					 *          following instructions at all. The bytes past the length of the literal
+					 *          are zero: the storage record carries the image of the instructions, and
+					 *          garbage in it would make records of one expression differ.
+					 *
+					 * \~
+					 */
+					char bytes[MAX_LITERAL];
 				} letter;
 				/**
 				 * \~russian
@@ -814,6 +897,49 @@ namespace awh {
 			}
 			// Инструкция прочая ряду неподвластна
 			return false;
+		}
+
+		/**
+		 * \~russian
+		 * @brief Функция проверки сопоставления инструкцией байта текста дословно
+		 *
+		 * @details Дословно сопоставляется одиночный символ ASCII с учётом регистра:
+		 *          он отвечает ровно одному байту текста, равному своему кодовому
+		 *          значению, во всяком режиме разбора текста. Символ за пределами
+		 *          ASCII в режиме разбора UTF-8 занимает несколько байтов, а символ
+		 *          без учёта регистра отвечает и иным значениям - у буквы «k» среди
+		 *          них знак кельвина за пределами ASCII, - отчего литералу, байтами
+		 *          сличаемому, не принадлежат ни тот, ни другой.
+		 *
+		 *          Правило ведётся здесь одним местом по той же причине, что
+		 *          и одинаковость инструкций: пометку литерала ставит сборка,
+		 *          а поверяет её восстановление записи.
+		 *
+		 * @param instruction проверяемая инструкция программы
+		 * @return            результат проверки сопоставления байта дословно
+		 *
+		 * \~english
+		 * @brief Function of checking whether an instruction matches a byte of the text verbatim
+		 * @details An ASCII single character with case sensitivity is matched verbatim: it
+		 *          corresponds to exactly one byte of the text equal to its code value in every
+		 *          mode of parsing the text. A character beyond ASCII takes several bytes in the
+		 *          UTF-8 parsing mode, and a character without case sensitivity corresponds to
+		 *          other values as well — among those of the letter «k» is the Kelvin sign beyond
+		 *          ASCII, — which is why neither belongs to a literal compared by bytes.
+		 *
+		 *          The rule is kept here in a single place for the same reason as the identity
+		 *          of instructions: the mark of a literal is placed by the build and verified
+		 *          by the restoration of the record.
+		 *
+		 * @param instruction the instruction of the program to check
+		 * @return            result of checking whether a byte is matched verbatim
+		 *
+		 * \~
+		 */
+		AWH_REGEX_INLINE bool verbatim(const instruction_t & instruction) noexcept {
+			// Выводим результат проверки сопоставления байта дословно
+			return ((instruction.type == opcode_t::CHAR) && (instruction.letter.code < 0x80) &&
+			 ((instruction.flags & static_cast <uint32_t> (flag_t::CASELESS)) == 0));
 		}
 
 		/**

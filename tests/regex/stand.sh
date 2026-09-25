@@ -198,7 +198,16 @@ fi
 # прогнал бы старый код, отчитавшись о нём как о новом
 ##
 rm -f "$OUT/regex-tests" "$OUT/regex-tests.exe"
-$CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
+##
+# Модуль собирается тем же уровнем оптимизации, каким его собирает выпуск
+#
+# Сборка выпуска и стенд замеров «benchmark/regex/stand.sh» идут с «-O3 -DNDEBUG»,
+# а стенд проверок шёл с «-O2» и судил тем самым сборку, какой потребитель
+# не получает. Правки горячего цикла уровни различают даже знаком замера, и
+# поведение, неопределённое стандартом, «-O3» вскрывает там, где «-O2» его щадит.
+# Утверждений «assert» модуль не несёт, и «-DNDEBUG» проверок не ослабляет
+##
+$CXX -std=c++17 -O3 -DNDEBUG -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
  -o "$OUT/regex-tests" $LANGUAGE $SOURCES $RELEASE $LIBRARY \
  -L"$GTEST/lib" -lgmock -lgtest -lgtest_main $LIBS > "$OUT/build.log" 2>&1
 head -40 "$OUT/build.log"

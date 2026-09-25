@@ -97,6 +97,76 @@
  *          «Regex.EngineSingleAndSeries»: всякий код операции, ряд образующий,
  *          сличается одиночкой и рядом с исполнением без возврата.
  *
+ *          <b>Литерал, байтами дословно сличаемый, проходится одним заходом,
+ *          а пометка его проверяется без кода операции.</b> Литерал выражения
+ *          компилируется инструкциями одиночного символа по одной на символ,
+ *          и проход его стоил захода в разбор кода операции на каждом символе.
+ *          Сборка помечает всякую инструкцию литерала длиной остатка и байтами
+ *          его, а исполнение сличает байты разом. Литерал, совпавший до конца
+ *          текста, поглощается приставкой, а обрыв на байте несовпавшем есть
+ *          отказ сразу: учтённых шагов столько же, сколько учёл бы проход
+ *          по одной, и исход при всяком пределе шагов и памяти тот же. Шаг
+ *          проверки памяти литерал перешагивать вправе: проверка ждёт рубежа -
+ *          смотрите решение следующее, - а памяти литерал не размещает вовсе.
+ *
+ *          Три устройства этого пути выбраны замером, а не вкусом. Пометка
+ *          читается в начале разбора символьных кодов без сверки кода
+ *          операции: сверка сворачивалась собирателем в самый разбор, таблица
+ *          переходов вбирала коды символьные, и класс символов шёл косвенным
+ *          переходом. В паре замеров одного прогона на ARM64 строки без
+ *          литерала вовсе - «region-nested-heavy» и «recurse-heavy» - теряли
+ *          со сверкой 5.3 и 5.9 процента, без неё 1.9 и 2.2. Безопасна
+ *          проверка без кода оттого, что
+ *          пометку у прочих символьных кодов сборка держит нулём, а поверка
+ *          записи иной не принимает. Метод сличения подстановке запрещён:
+ *          подставленный, на x86-64 он отнимал у восьми строк от 1.6 до 6.9
+ *          процента, отдельный - ни у одной. Обрыв
+ *          отказывает сразу, не исполняя инструкции несовпавшего байта:
+ *          выбор ветвей литералов, «alpha|bravo|...», иначе оплачивал сличение
+ *          дважды и терял от пяти до семнадцати процентов, а так выигрывает
+ *          шестнадцать.
+ *
+ *          Итог мерился щупом «rowtime» против основы, двенадцатью кругами
+ *          вперемежку. На ARM64 выросли тринадцать строк, от 3.3 до 23.1
+ *          процента: «(?:HT|TP)/1» - 23.1, «GET|POST|PUT|DELETE|HEAD|OPTIONS» -
+ *          19.1, «(?m)^(GET|POST) (\S+) HTTP/...» - 18.2. Строки прочие ARM64
+ *          качает размещением кода: две правки, смысла не менявшие, - иная
+ *          запись рубежа проверки памяти и снятый довод метода сличения, -
+ *          сдвигали «\((?:[^()]|(?R))*\)» с минус 2.8 до минус 7.6 процента.
+ *          Цену самого пути показывает
+ *          сборка, где всякий блок, куда ведёт переход, выровнен по 64 байтам:
+ *          там просели семь строк, от 1.1 до 3.7 процента, и все они богаты
+ *          шагами класса символов - пометку читает и такой шаг. Три из них
+ *          против эталона уже на единице либо ниже и опускаются ещё:
+ *          «[0-9]{3,5}» - с 0.98 до 0.95, «(\w+)@(\w+)\.(\w+)» - с 0.91 до 0.89,
+ *          «(\w+) \1» - с 1.00 до 0.98. Строк ниже единицы при этом становится
+ *          девять взамен десяти, а слабейшая, «(?m)^(GET|POST) ...», поднимается
+ *          с 0.75 до 0.89. На Эльбрусе выросли шестнадцать строк, от 2.0 до 18.7
+ *          процента, и просели три, до 3.3. На x86-64 (clang 19) выросли
+ *          четыре, до 11.0, и просели восемь, до 6.6: лучший разбор кода
+ *          операции там иной, и числа его - в «benchmark/regex/COMPARISON.md».
+ *          Закреплено проверками «Regex.EngineLiteralRun» и
+ *          «Regex.StorageForgedLiteral».
+ *
+ *          <b>Проверка допустимого объёма памяти ждёт рубежа, а не шага,
+ *          кратного двумстам пятидесяти шести.</b> Счётчик шагов прибавляется
+ *          и пачкой: проход ряда, цепочки и копий ряда одинаковых инструкций,
+ *          продвижение ленивого ряда, отмена захватов и литерал учитывают
+ *          разом всё пройденное, и шаг кратный перешагивался - предел памяти
+ *          не проверялся, пока пачка не приходилась на кратный шаг случаем.
+ *          Щупом установлено: «^(?:x|a{8})*$» на сорока трёх обходах при
+ *          пределе в два килобайта находил совпадение там, где проход по одной
+ *          исчерпывал память, - 740 расхождений из 7 200 сочетаний, и ни одного
+ *          с рубежом. Рубеж есть ближайший шаг, кратный двумстам пятидесяти
+ *          шести, впереди счётчика; проверка ведётся на всяком шаге за ним
+ *          и переносит его дальше. Сличений на шаг остаётся два, как и было,
+ *          и от рубежа единого, в цикле отброшенного, этот отличен тем, что
+ *          пределу шагов не служит. Цены своей рубеж не несёт - перенос его
+ *          лежит на пути редком, - и замер обычных сборок ARM64 показал лишь
+ *          размещение кода: против исполнения без рубежа строки сдвигались
+ *          от минус 4.3 до плюс 12 процентов. Закреплено проверкой
+ *          «Regex.EngineMemoryCheckpoint».
+ *
  * \~english
  * @brief Header file of the execution of regular expressions with backtracking — the Backtrack class,
  *        which executes the program by a single state while saving backtracking points,
@@ -178,6 +248,78 @@
  *          «Regex.EngineSingleAndSeries» test: every operation code forming a row
  *          is compared, as a single and as a row, with the execution without
  *          backtracking.
+ *
+ *          <b>A literal compared by bytes verbatim is walked in one trip, and its
+ *          mark is checked without the operation code.</b> A literal of the
+ *          expression is compiled into single character instructions, one per
+ *          character, and walking it cost a trip through the dispatch of the
+ *          operation code on every character. The build marks every instruction of
+ *          the literal with the length of the remainder and its bytes, and the
+ *          execution compares the bytes at once. A literal that coincided up to the
+ *          end of the text is consumed by the prefix, while a break on a non-matching
+ *          byte is an immediate refusal: as many steps are counted as walking one by
+ *          one would count, and the outcome is the same at every limit of steps and
+ *          memory. The literal is entitled to step over the step of the memory check:
+ *          the check waits for a checkpoint — see the next decision, — and the literal
+ *          allocates no memory at all.
+ *
+ *          Three features of this path are chosen by measurement, not by taste. The
+ *          mark is read at the beginning of the dispatch of character codes without
+ *          checking the operation code: the check was folded by the compiler into the
+ *          dispatch itself, the jump table absorbed the character codes, and the
+ *          character class went through an indirect jump. In a pair of measurements of
+ *          one run on ARM64 the rows without any literal — «region-nested-heavy» and
+ *          «recurse-heavy» — lost 5.3 and 5.9 per cent with the check, 1.9 and 2.2
+ *          without it. The check without the code is safe because the build keeps
+ *          the mark of the other character codes at zero and the verification of the
+ *          record accepts no other. The comparison method is forbidden to be inlined:
+ *          inlined, on x86-64 it took from 1.6 to 6.9 per cent from eight rows,
+ *          separate — from none. A break refuses at once, without executing the
+ *          instruction of the non-matching byte: an alternation of literals,
+ *          «alpha|bravo|...», otherwise paid for the comparison twice and lost from
+ *          five to seventeen per cent, and so it gains sixteen.
+ *
+ *          The result was measured by the «rowtime» probe against the base, with
+ *          twelve interleaved rounds. On ARM64 thirteen rows grew, from 3.3 to 23.1
+ *          per cent: «(?:HT|TP)/1» — 23.1, «GET|POST|PUT|DELETE|HEAD|OPTIONS» — 19.1,
+ *          «(?m)^(GET|POST) (\S+) HTTP/...» — 18.2. The other rows are swung on ARM64
+ *          by the placement of code: two edits that changed no meaning — another
+ *          writing of the checkpoint of the memory check and the removed argument of
+ *          the comparison method — moved «\((?:[^()]|(?R))*\)» from minus 2.8 to
+ *          minus 7.6 per cent. The price of the path itself is shown by
+ *          a build where every block a jump leads to is aligned by 64 bytes: there
+ *          seven rows dropped, from 1.1 to 3.7 per cent, and all of them are rich in
+ *          steps of a character class — such a step reads the mark too. Three of them
+ *          are already at one or below against the reference and go lower still:
+ *          «[0-9]{3,5}» — from 0.98 to 0.95, «(\w+)@(\w+)\.(\w+)» — from 0.91 to 0.89,
+ *          «(\w+) \1» — from 1.00 to 0.98. The rows below one become nine instead of
+ *          ten, and the weakest, «(?m)^(GET|POST) ...», rises from 0.75 to 0.89. On
+ *          Elbrus sixteen rows grew, from 2.0 to 18.7 per cent, and three dropped, by up
+ *          to 3.3. On x86-64 (clang 19) four grew, by up to 11.0, and eight dropped, by
+ *          up to 6.6: the best dispatch of the operation code is different there, and
+ *          its numbers are in «benchmark/regex/COMPARISON.md».
+ *          Pinned by the «Regex.EngineLiteralRun» and «Regex.StorageForgedLiteral»
+ *          tests.
+ *
+ *          <b>The check of the admissible amount of memory waits for a checkpoint
+ *          rather than for a step that is a multiple of two hundred fifty-six.</b>
+ *          The step counter is also increased in bundles: walking a row, a chain and
+ *          the copies of a row of identical instructions, advancing a lazy row,
+ *          undoing captures and a literal count everything passed at once, and the
+ *          multiple step was stepped over — the memory limit was not checked until a
+ *          bundle landed on a multiple step by chance. A probe established:
+ *          «^(?:x|a{8})*$» on forty-three passes with a limit of two kilobytes found a
+ *          match where walking one by one exhausted the memory — 740 divergences out
+ *          of 7 200 combinations, and none with the checkpoint. The checkpoint is the
+ *          nearest step that is a multiple of two hundred fifty-six ahead of the
+ *          counter; the check is made at every step past it and moves it further.
+ *          Two comparisons per step remain, as before, and this checkpoint differs
+ *          from the single threshold rejected in the loop in that it does not serve
+ *          the step limit. The checkpoint carries no price of its own — moving it lies
+ *          on a rare path, — and the measurement of ordinary ARM64 builds showed only
+ *          the placement of code: against the execution without the checkpoint the
+ *          rows moved from minus 4.3 to plus 12 per cent. Pinned by the
+ *          «Regex.EngineMemoryCheckpoint» test.
  *
  * \~
  *
@@ -290,6 +432,29 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t UNCHAINED = static_cast <size_t> (-1);
+
+		/**
+		 * \~russian
+		 * @brief Признак обрыва сличения литерала на байте, литералу не отвечающем
+		 *
+		 * @details Сличение литерала отдаёт количество совпавших символов, а обрыв
+		 *          надлежит отличить от литерала, совпавшего до конца текста: первый
+		 *          есть отказ инструкции следующей, второй велит исполнению
+		 *          продолжать. Признак прибавляется
+		 *          к количеству и количеством недостижим: литерал пометки
+		 *          не длиннее MAX_LITERAL.
+		 *
+		 * \~english
+		 * @brief Mark of a break of comparing a literal on a byte not matching the literal
+		 * @details Comparing a literal returns the number of the coinciding characters, and a
+		 *          break must be told apart from a literal that coincided up to the end of the
+		 *          text: the first is a refusal of the next instruction, the second orders the
+		 *          execution to continue. The mark is added to the number
+		 *          and is unreachable by it: the literal of a mark is not longer than MAX_LITERAL.
+		 *
+		 * \~
+		 */
+		constexpr size_t BROKEN = 0x100;
 
 		/**
 		 * \~russian
@@ -1639,6 +1804,34 @@ namespace awh {
 				 * \~
 				 */
 				size_t consume(const instruction_t & instruction, const size_t from, const size_t size, const uint16_t series) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод сличения литерала с текстом одним заходом
+				 *
+				 * @details Первый символ литерала уже сопоставлен, и сличаются байты
+				 *          за ним. Сличение останавливается на первом байте, литералу
+				 *          не отвечающем, и на конце текста.
+				 *
+				 * @param instruction инструкция одиночного символа, литерал возглавляющая
+				 * @param from        позиция первого символа литерала в тексте сопоставления
+				 * @param size        размер текста сопоставления
+				 * @return            количество символов литерала, с текстом совпавших подряд,
+				 *                    с прибавкой BROKEN при обрыве на байте несовпавшем
+				 *
+				 * \~english
+				 * @brief Method of comparing a literal with the text in one trip
+				 * @details The first character of the literal is already matched, and the bytes after
+				 *          it are compared. The comparison stops at the first byte not matching the
+				 *          literal and at the end of the text.
+				 * @param instruction instruction of a single character heading the literal
+				 * @param from        position of the first character of the literal in the matching text
+				 * @param size        size of the matching text
+				 * @return            number of characters of the literal that coincided with the text in a row,
+				 *                    increased by BROKEN on a break on a non-matching byte
+				 *
+				 * \~
+				 */
+				size_t literal(const instruction_t & instruction, const size_t from, const size_t size) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод прохода цепочки ограниченного повторения одиночного символа

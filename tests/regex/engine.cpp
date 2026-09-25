@@ -4945,3 +4945,458 @@ TEST(Regex, EngineLocatedHandoff) {
 		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
 	}
 }
+/**
+ * @brief Тест прохода литерала одним заходом
+ *
+ * @details Литерал, байтами дословно сличаемый, исполнение с возвратом проходит
+ *          одним заходом, поглощая приставку, с текстом совпавшую. Проверка
+ *          держит три свойства пути этого.
+ *
+ *          Вердикт и границы захватов - те же, что даёт исполнение без возврата,
+ *          пометки не ведающее; управление приходит и в середину литерала,
+ *          и литерал прерывается символом, байтом не сличаемым.
+ *
+ *          Учёт шагов и проверки памяти - те же, что у прохода по одной
+ *          инструкции: при всяком допустимом объёме работы и при нескольких
+ *          пределах памяти исход программы с пометкой равен исходу той же
+ *          программы с пометкой снятой, вплоть до кода ошибки. Литерал
+ *          перешагивает шаг проверки памяти, и исход держится рубежом
+ *          проверки: без него исход расходился на пределе памяти.
+ *
+ *          Пометка ставится там, где ей место: у символа без учёта регистра
+ *          и за пределами ASCII её нет, а литерал длиннее пометки вмещается
+ *          несколькими.
+ *
+ */
+TEST(Regex, EngineLiteralRun) {
+	/**
+	 * @brief Набор выражений и текстов сопоставления
+	 *
+	 */
+	const struct {
+		// Текст регулярного выражения
+		const char * pattern;
+		// Набор режимов компиляции регулярного выражения
+		uint32_t flags;
+		// Набор текстов сопоставления
+		vector <string> texts;
+	} samples[] = {
+		// Литерал, в середину какого управление приходит ветвью
+		{"(?:ab|b)cde", 0x00, {"abcde", "bcde", "xbcdex", "abcdx", "abcd", "ab", "", "aabcde", "abcdabcde"}},
+		// Литерал с рядом одинаковых символов внутри
+		{"HTTP/1\\.[01]", 0x00, {"GET / HTTP/1.1", "HTTP/1.2", "HTTP/1.0x", "HTTTP/1.1", "HTTP/", "xHTTP/1.0"}},
+		// Литерал длиннее пометки одной инструкции
+		{"(x)abcdefghijklmnopqrstuvwxyz0123456789(y)", 0x00, {
+			"xabcdefghijklmnopqrstuvwxyz0123456789y", "xabcdefghijklmnopqrstuvwxyz012345678y",
+			"xabcdefghijklmnopqrstuvwxyz0123456789", "zxabcdefghijklmnopqrstuvwxyz0123456789yz",
+			"xabcdefghijklmnopqrstuvwxyz", "xabcdefghijklmnopqrstuvwxyZ0123456789y"
+		}},
+		// Литерал, прерванный символом без учёта регистра
+		{"ab(?i:c)de", 0x00, {"abcde", "abCde", "abCDe", "xabcdex", "abde"}},
+		// Литерал, прерванный символом за пределами ASCII в режиме разбора UTF-8
+		{"abжde", 0x20, {"abжde", "abзde", "xabжdex", "abж", "abde"}},
+		// Литерал в повторении: точка возврата на всяком обходе
+		{"^(?:x|abcdefgh)*$", 0x00, {
+			"abcdefghabcdefghabcdefgh", "abcdefghabcdefghabcdefg", "abcdefghxabcdefgh", string(),
+			[]{ string text; for(size_t i = 0; i < 40; i++) text.append("abcdefgh"); return text; }(),
+			[]{ string text; for(size_t i = 0; i < 40; i++) text.append("abcdefgh"); return text.append("!"); }()
+		}},
+		// Литерал за повторением, перебором возврата сличаемый многократно
+		{"(a+)+abc", 0x00, {"aaaaabc", "aaaaab", "aaaaa", "abc", "aabcabc"}},
+		/**
+		 * Выбор ветвей литералов: сличение обрывается на середине литерала
+		 *
+		 * @details Обязательного литерала у выбора нет, и попытка начинается
+		 *          на всяком первом байте ветви, а приставки «alps», «brave»,
+		 *          «charm» обрывают литерал после нескольких совпавших символов.
+		 *          Выражения выше отбор по обязательному литералу ставит точно,
+		 *          и обрыва посреди литерала у них почти не бывает.
+		 *
+		 */
+		{"alpha|bravo|charlie", 0x00, {"alps bravo", "alpine brave charm", "xyz", "alphabet", "charliebrav", "alp", "bra"}}
+	};
+	/**
+	 * Выполняем обход набора проверяемых выражений
+	 */
+	for(auto & sample : samples) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(sample.pattern, sample.flags, expression)) << sample.pattern;
+		// Создаём выражение, пометки литералов лишённое
+		regex::expression_t stripped = expression;
+		// Наибольшая длина литерала в пометках программы
+		size_t longest = 0;
+		/**
+		 * Выполняем обход инструкций программы
+		 */
+		for(size_t i = 0; i < stripped.forward.instructions.size(); i++) {
+			// Получаем инструкцию программы, пометки лишаемой
+			auto & instruction = stripped.forward.instructions[i];
+			/**
+			 * Если инструкция одиночного символа не сопоставляет
+			 *
+			 * @details Прочие символьные коды пометки не несут: исполнение читает
+			 *          её у всякого из них, не сверяя кода операции.
+			 *
+			 */
+			if(instruction.type != regex::opcode_t::CHAR) {
+				/**
+				 * Если инструкция сопоставляет символ иного рода
+				 */
+				if((instruction.type == regex::opcode_t::CLASS) || (instruction.type == regex::opcode_t::ANY) ||
+				   (instruction.type == regex::opcode_t::CODEUNIT) || (instruction.type == regex::opcode_t::GRAPHEME))
+					// Выполняем проверку отсутствия пометки литерала
+					EXPECT_EQ(instruction.letter.length, 0) << sample.pattern << ", инструкция " << i;
+				// Переходим к следующей инструкции программы
+				continue;
+			}
+			/**
+			 * Если пометка стоит у символа, байтом дословно не сопоставляемого
+			 */
+			if(!regex::verbatim(instruction))
+				// Выполняем проверку отсутствия пометки литерала
+				EXPECT_EQ(instruction.letter.length, 0) << sample.pattern << ", инструкция " << i;
+			// Выполняем учёт наибольшей длины литерала
+			longest = ((static_cast <size_t> (instruction.letter.length) > longest) ? static_cast <size_t> (instruction.letter.length) : longest);
+			// Выполняем снятие пометки литерала
+			instruction.letter.length = 0;
+		}
+		// Выполняем проверку наличия литерала: путь его обязан исполняться
+		ASSERT_GT(longest, static_cast <size_t> (1)) << sample.pattern;
+		// Количество текстов с совпадением
+		size_t matched = 0;
+		// Количество текстов без совпадения
+		size_t refused = 0;
+		// Количество исходов, отказом объёма работы оборванных
+		size_t exhausted = 0;
+		/**
+		 * Выполняем обход текстов сопоставления
+		 */
+		for(auto & text : sample.texts) {
+			// Создаём объект исполнения без возврата
+			regex::pike_t pike;
+			// Создаём набор границ, установленных исполнением с возвратом
+			vector <pair <size_t, size_t>> received;
+			// Создаём набор границ, установленных исполнением без возврата
+			vector <pair <size_t, size_t>> expected;
+			// Создаём объект исполнения с возвратом
+			regex::backtrack_t backtrack;
+			// Выполняем установку допустимого объёма работы сопоставления
+			backtrack.budget(0xFFFFFFF);
+			// Выполняем сопоставление регулярного выражения исполнением с возвратом
+			const bool result = backtrack.exec(expression.forward, text, 0, received);
+			// Выполняем проверку совпадения вердикта сопоставления
+			ASSERT_EQ(result, pike.exec(expression.forward, text, 0, expected)) << sample.pattern << " / " << text;
+			// Выполняем учёт вердикта сопоставления
+			(result ? matched : refused)++;
+			// Выполняем проверку совпадения установленных границ
+			ASSERT_EQ(received, expected) << sample.pattern << " / " << text;
+			/**
+			 * Выполняем обход пределов памяти сопоставления
+			 *
+			 * @details Предельное значение разрядности означает отсутствие предела,
+			 *          а килобайт единственный исчерпывается десятками точек
+			 *          возврата - повтору с литералом его хватает на немногие обходы.
+			 *
+			 */
+			for(const uint32_t heap : {~0u, 1u, 2u}) {
+				// Выполняем установку предела памяти программе с пометкой
+				expression.forward.heap = heap;
+				// Выполняем установку предела памяти программе без пометки
+				stripped.forward.heap = heap;
+				/**
+				 * Выполняем обход допустимых объёмов работы сопоставления
+				 */
+				for(size_t budget = 1; budget <= 1200; budget++) {
+					// Создаём исполнение программы с пометкой
+					regex::backtrack_t marked;
+					// Создаём исполнение программы без пометки
+					regex::backtrack_t plain;
+					// Выполняем установку допустимого объёма работы исполнению с пометкой
+					marked.budget(budget);
+					// Выполняем установку допустимого объёма работы исполнению без пометки
+					plain.budget(budget);
+					// Создаём набор границ исполнения с пометкой
+					vector <pair <size_t, size_t>> first;
+					// Создаём набор границ исполнения без пометки
+					vector <pair <size_t, size_t>> second;
+					// Выполняем сопоставление программой с пометкой
+					const bool one = marked.exec(expression.forward, text, 0, first);
+					// Выполняем сопоставление программой без пометки
+					const bool two = plain.exec(stripped.forward, text, 0, second);
+					// Выполняем проверку совпадения вердиктов
+					ASSERT_EQ(one, two) << sample.pattern << " / " << text << ", объём " << budget << ", память " << heap;
+					// Выполняем проверку совпадения кодов ошибки
+					ASSERT_EQ(marked.error(), plain.error()) << sample.pattern << " / " << text << ", объём " << budget << ", память " << heap;
+					// Выполняем проверку совпадения установленных границ
+					ASSERT_EQ(first, second) << sample.pattern << " / " << text << ", объём " << budget << ", память " << heap;
+					// Выполняем учёт исхода, отказом объёма работы оборванного
+					exhausted += ((marked.error() == regex::error_t::BUDGET_EXCEEDED) ? 1 : 0);
+				}
+			}
+			// Выполняем снятие предела памяти программе с пометкой
+			expression.forward.heap = ~0u;
+			// Выполняем снятие предела памяти программе без пометки
+			stripped.forward.heap = ~0u;
+		}
+		// Выполняем проверку наличия совпадения: выборка обязана его давать
+		EXPECT_GT(matched, static_cast <size_t> (0)) << sample.pattern;
+		// Выполняем проверку наличия отказа: выборка обязана его давать
+		EXPECT_GT(refused, static_cast <size_t> (0)) << sample.pattern;
+		// Выполняем проверку того, что обход объёмов работы границу исходов пересекал
+		EXPECT_GT(exhausted, static_cast <size_t> (0)) << sample.pattern;
+	}
+	/**
+	 * Выполняем проверку предела памяти на всяком числе обходов повтора
+	 *
+	 * @details Литерал, поглощённый разом, перешагивает шаг проверки памяти,
+	 *          и без рубежа проверки исполнение теряло её вовсе. Исход разошёлся
+	 *          бы, лишь когда память на пропущенной проверке уже сверх предела,
+	 *          а сопоставление кончается прежде проверки следующей, - оттого
+	 *          перебираются и длина текста, и предел, и длина литерала: всякое
+	 *          сочетание ставит пропуск в иное место.
+	 *
+	 */
+	for(const char * pattern : {"^(?:x|abcdefgh)*$", "^(?:x|abcdefghijklmnopqrstuvwxyz)*$"}) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(pattern, 0x00, expression)) << pattern;
+		// Создаём выражение, пометки литералов лишённое
+		regex::expression_t stripped = expression;
+		/**
+		 * Выполняем снятие пометок литералов
+		 */
+		for(size_t i = 0; i < stripped.forward.instructions.size(); i++) {
+			/**
+			 * Если инструкция сопоставляет одиночный символ
+			 */
+			if(stripped.forward.instructions[i].type == regex::opcode_t::CHAR)
+				// Выполняем снятие пометки литерала
+				stripped.forward.instructions[i].letter.length = 0;
+		}
+		// Получаем литерал повтора
+		const string word = string(pattern).substr(6, string(pattern).find(')') - 6);
+		// Количество исходов, пределом памяти оборванных
+		size_t exhausted = 0;
+		// Количество исходов, сопоставлением завершённых
+		size_t completed = 0;
+		/**
+		 * Выполняем обход числа обходов повтора
+		 */
+		for(size_t count = 1; count <= 150; count++) {
+			// Создаём текст сопоставления
+			string text;
+			/**
+			 * Выполняем сборку текста из литералов повтора
+			 */
+			for(size_t i = 0; i < count; i++)
+				// Выполняем добавление литерала повтора
+				text.append(word);
+			/**
+			 * Выполняем обход пределов памяти сопоставления
+			 */
+			for(uint32_t heap = 1; heap <= 8; heap++) {
+				// Выполняем установку предела памяти программе с пометкой
+				expression.forward.heap = heap;
+				// Выполняем установку предела памяти программе без пометки
+				stripped.forward.heap = heap;
+				// Создаём исполнение программы с пометкой
+				regex::backtrack_t marked;
+				// Создаём исполнение программы без пометки
+				regex::backtrack_t plain;
+				// Создаём набор границ исполнения с пометкой
+				vector <pair <size_t, size_t>> first;
+				// Создаём набор границ исполнения без пометки
+				vector <pair <size_t, size_t>> second;
+				// Выполняем сопоставление программой с пометкой
+				const bool one = marked.exec(expression.forward, text, 0, first);
+				// Выполняем сопоставление программой без пометки
+				const bool two = plain.exec(stripped.forward, text, 0, second);
+				// Выполняем проверку совпадения вердиктов
+				ASSERT_EQ(one, two) << pattern << ", обходов " << count << ", память " << heap;
+				// Выполняем проверку совпадения кодов ошибки
+				ASSERT_EQ(marked.error(), plain.error()) << pattern << ", обходов " << count << ", память " << heap;
+				// Выполняем проверку совпадения установленных границ
+				ASSERT_EQ(first, second) << pattern << ", обходов " << count << ", память " << heap;
+				// Выполняем учёт исхода, пределом памяти оборванного
+				exhausted += ((marked.error() == regex::error_t::BUDGET_EXCEEDED) ? 1 : 0);
+				// Выполняем учёт исхода, совпадением завершённого
+				completed += (one ? 1 : 0);
+			}
+		}
+		// Выполняем проверку того, что перебор предел памяти исчерпывал
+		EXPECT_GT(exhausted, static_cast <size_t> (0)) << pattern;
+		// Выполняем проверку того, что перебор сопоставления и завершал
+		EXPECT_GT(completed, static_cast <size_t> (0)) << pattern;
+	}
+	/**
+	 * Выполняем проверку литерала длиннее пометки одной инструкции
+	 *
+	 * @details Тридцать шесть символов литерала пометка одной инструкции не вмещает:
+	 *          голова несёт наибольшую длину, а инструкция за её пределом - остаток.
+	 *
+	 */
+	{
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения с литералом длиннее пометки
+		ASSERT_TRUE(engine.build("abcdefghijklmnopqrstuvwxyz0123456789", 0x00, expression));
+		// Получаем инструкции прямой программы выражения
+		const auto & instructions = expression.forward.instructions;
+		// Номер инструкции, литерал возглавляющей
+		size_t head = instructions.size();
+		/**
+		 * Выполняем поиск инструкции, литерал возглавляющей
+		 */
+		for(size_t i = 0; i < instructions.size(); i++) {
+			/**
+			 * Если инструкция сопоставляет первый символ литерала
+			 */
+			if((instructions.at(i).type == regex::opcode_t::CHAR) && (instructions.at(i).letter.code == 'a')) {
+				// Выполняем установку номера головы литерала
+				head = i;
+				// Прекращаем поиск
+				break;
+			}
+		}
+		// Выполняем проверку наличия головы литерала
+		ASSERT_LT(head + 36, instructions.size() + 1);
+		// Выполняем проверку наибольшей длины пометки у головы литерала
+		EXPECT_EQ(static_cast <size_t> (instructions.at(head).letter.length), regex::MAX_LITERAL);
+		// Выполняем проверку остатка у инструкции за пределом пометки
+		EXPECT_EQ(static_cast <size_t> (instructions.at(head + regex::MAX_LITERAL).letter.length), static_cast <size_t> (36 - regex::MAX_LITERAL));
+		// Выполняем проверку байтов пометки головы литерала
+		EXPECT_EQ(string(instructions.at(head).letter.bytes, regex::MAX_LITERAL), string("abcdefghijklmnopqrstuvwxyz0"));
+		// Выполняем проверку пометки последнего символа литерала
+		EXPECT_EQ(static_cast <size_t> (instructions.at(head + 35).letter.length), static_cast <size_t> (1));
+	}
+}
+/**
+ * @brief Тест рубежа проверки допустимого объёма памяти
+ *
+ * @details Счётчик шагов прибавляется и пачкой - проходом ряда одинаковых
+ *          инструкций среди прочего, - и проверка памяти, ждавшая шага,
+ *          кратного двумстам пятидесяти шести, такой шаг перешагивала:
+ *          выражение с рядом находило совпадение там, где проход по одной
+ *          исчерпывал память. Проверка ждёт ныне рубежа и ловит всякий шаг
+ *          за ним. Проверка эта сличает программу с пометкой ряда и ту же
+ *          программу с пометкой снятой на всяком числе обходов повтора
+ *          и нескольких пределах памяти: ряд копий памяти не размещает,
+ *          и исход обязан совпасть до кода ошибки.
+ *
+ *          Ряд взят классом символов и символом без учёта регистра: символ
+ *          ASCII с учётом регистра несёт пометку литерала, и путь литерала
+ *          перехватил бы его прежде пути ряда.
+ *
+ */
+TEST(Regex, EngineMemoryCheckpoint) {
+	/**
+	 * @brief Набор выражений с рядом в повторении и слов, повтор проходящих
+	 *
+	 */
+	const struct {
+		// Текст регулярного выражения
+		const char * pattern;
+		// Слово, одним обходом повтора поглощаемое
+		string word;
+	} samples[] = {
+		{"^(?:x|[ab]{8})*$",      "abababab"},
+		{"^(?:x|[0-9]{27})*$",    string(27, '5')},
+		{"^(?:x|(?i:a){27})*$",   string(27, 'A')},
+		{"^(?:x|[ab]{100})*$",    string(100, 'b')}
+	};
+	/**
+	 * Выполняем обход набора выражений
+	 */
+	for(auto & sample : samples) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(sample.pattern, 0x00, expression)) << sample.pattern;
+		// Создаём выражение, пометки ряда лишённое
+		regex::expression_t stripped = expression;
+		// Количество инструкций, ряд возглавляющих
+		size_t series = 0;
+		/**
+		 * Выполняем снятие пометок ряда и литерала
+		 */
+		for(size_t i = 0; i < stripped.forward.instructions.size(); i++) {
+			// Получаем инструкцию программы, пометки лишаемой
+			auto & instruction = stripped.forward.instructions[i];
+			// Выполняем учёт инструкции, ряд возглавляющей
+			series += ((instruction.repeat > 1) ? 1 : 0);
+			// Выполняем снятие пометки ряда
+			instruction.repeat = 1;
+			/**
+			 * Если инструкция сопоставляет одиночный символ
+			 */
+			if(instruction.type == regex::opcode_t::CHAR)
+				// Выполняем снятие пометки литерала
+				instruction.letter.length = 0;
+		}
+		// Выполняем проверку наличия ряда: путь его обязан исполняться
+		ASSERT_GT(series, static_cast <size_t> (0)) << sample.pattern;
+		// Количество исходов, пределом памяти оборванных
+		size_t exhausted = 0;
+		// Количество исходов, сопоставлением завершённых
+		size_t completed = 0;
+		/**
+		 * Выполняем обход числа обходов повтора
+		 */
+		for(size_t count = 1; count <= 150; count++) {
+			// Создаём текст сопоставления
+			string text;
+			/**
+			 * Выполняем сборку текста из слов повтора
+			 */
+			for(size_t i = 0; i < count; i++)
+				// Выполняем добавление слова повтора
+				text.append(sample.word);
+			/**
+			 * Выполняем обход пределов памяти сопоставления
+			 */
+			for(uint32_t heap = 1; heap <= 12; heap++) {
+				// Выполняем установку предела памяти программе с пометкой
+				expression.forward.heap = heap;
+				// Выполняем установку предела памяти программе без пометки
+				stripped.forward.heap = heap;
+				// Создаём исполнение программы с пометкой
+				regex::backtrack_t marked;
+				// Создаём исполнение программы без пометки
+				regex::backtrack_t plain;
+				// Создаём набор границ исполнения с пометкой
+				vector <pair <size_t, size_t>> first;
+				// Создаём набор границ исполнения без пометки
+				vector <pair <size_t, size_t>> second;
+				// Выполняем сопоставление программой с пометкой
+				const bool one = marked.exec(expression.forward, text, 0, first);
+				// Выполняем сопоставление программой без пометки
+				const bool two = plain.exec(stripped.forward, text, 0, second);
+				// Выполняем проверку совпадения вердиктов
+				ASSERT_EQ(one, two) << sample.pattern << ", обходов " << count << ", память " << heap;
+				// Выполняем проверку совпадения кодов ошибки
+				ASSERT_EQ(marked.error(), plain.error()) << sample.pattern << ", обходов " << count << ", память " << heap;
+				// Выполняем проверку совпадения установленных границ
+				ASSERT_EQ(first, second) << sample.pattern << ", обходов " << count << ", память " << heap;
+				// Выполняем учёт исхода, пределом памяти оборванного
+				exhausted += ((marked.error() == regex::error_t::BUDGET_EXCEEDED) ? 1 : 0);
+				// Выполняем учёт исхода, совпадением завершённого
+				completed += (one ? 1 : 0);
+			}
+		}
+		// Выполняем проверку того, что перебор предел памяти исчерпывал
+		EXPECT_GT(exhausted, static_cast <size_t> (0)) << sample.pattern;
+		// Выполняем проверку того, что перебор сопоставления и завершал
+		EXPECT_GT(completed, static_cast <size_t> (0)) << sample.pattern;
+	}
+}

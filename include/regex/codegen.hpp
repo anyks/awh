@@ -172,6 +172,37 @@
  *          а предел ширины остаётся лишь границей применимости набора команд
  *          процессора.
  *
+ *          <b>На e2k набор допустимых начальных байтов широкий просеивается
+ *          на месте окном, а за окном отбирается подпрограммой общего
+ *          отбора.</b> Набору шире SPARSE поиск значений не годен, и прочим
+ *          процессорам он просеивается на месте по всему тексту. У e2k же
+ *          порождённый ход по тексту на порядок дороже хода, собранного LCC:
+ *          порождение ставит по одной операции на широкую команду, и операции
+ *          ждут одна другую, тогда как LCC прячет задержки конвейеризацией
+ *          цикла. Замер поиска байта на мегабайте текста на Эльбрусе-8С2:
+ *          порождённый цикл - 17.6 такта на байт, он же с подготовкой переходов
+ *          до цикла - 14.6, цикл LCC - 1.6. Оттого участок без кандидатов
+ *          проходит подпрограмма, собранная LCC, а окно в WIDE_SIFTING позиций
+ *          бережёт от платы за вызов текст, где кандидат - почти всякая позиция.
+ *
+ *          Окно назначено замером набора на Эльбрусе-8С2 - три круга против
+ *          просеивания по всему тексту, путь потребителя. Подпрограмма без окна
+ *          дала «[0-9]{3,5}» по длинному тексту 176 процентов, но семь выражений
+ *          теряли от 8 до 42, «(?<=@)\w+» - 42. Окно в одну позицию:
+ *          164 процента, а восемь выражений теряли от 2 до 20,
+ *          «(\w+)@(\w+)\.(\w+)» - 20. Окно в четыре: 140 процентов, а
+ *          «(?:[a-z]+/)+v1» терял 5.2 во всяком круге. Окно в восемь:
+ *          112 процентов по тексту длинному и 20 по короткому, и ни одно
+ *          выражение набора не потеряло больше 0.7 процента.
+ *
+ *          Прочим процессорам подпрограмма не дана по замеру же. На ARM64
+ *          окно в одну позицию, включённое принудительно, отняло у всех
+ *          одиннадцати выражений с набором широким от 9 до 39 процентов;
+ *          окно в восемь отняло у «(?<=@)\w+» 31 процент во всяком из шести
+ *          кругов и у «[0-9]{3,5}» 4.5, прибавив четырём выражениям от 5 до 11.
+ *          Границу окна сличением с исполнением программы держит проверка
+ *          «Regex.CodegenWideSifting».
+ *
  *          <b>Границы захватывающих групп запоминаются лишь на цепочках ветвей
  *          выбора, а при отступлении ряда - нет.</b> Отступление возвращает
  *          исполнение к сопоставлению вслед за рядом, отчего сохранения,
@@ -618,6 +649,39 @@
  *          is found out by the window at execution time, while the limit on the
  *          width remains merely the boundary of applicability of the processor
  *          instruction set.
+ *
+ *          <b>On e2k a wide set of permitted starting bytes is sifted in place by
+ *          a window, and beyond the window it is selected by the subroutine of the
+ *          general prefilter.</b> A set wider than SPARSE does not suit the search
+ *          for values, and on the other processors it is sifted in place over the
+ *          whole text. On e2k, however, a generated walk over the text is an order
+ *          of magnitude more expensive than a walk compiled by LCC: generation places
+ *          one operation per wide instruction, and the operations wait for one
+ *          another, whereas LCC hides the latencies by pipelining the loop. The
+ *          measurement of a byte search over a megabyte of text on Elbrus-8C2: the
+ *          generated loop — 17.6 cycles per byte, the same with the jumps prepared
+ *          before the loop — 14.6, the LCC loop — 1.6. That is why a stretch without
+ *          candidates is walked by the subroutine compiled by LCC, while the window of
+ *          WIDE_SIFTING positions spares the payment for the call on a text where
+ *          almost every position is a candidate.
+ *
+ *          The window is appointed by a measurement of the suite on Elbrus-8C2 —
+ *          three rounds against sifting over the whole text, the consumer path. The
+ *          subroutine without a window gave «[0-9]{3,5}» over the long text 176 per
+ *          cent, but seven expressions lost from 8 to 42, «(?<=@)\w+» — 42. A window
+ *          of one position: 164 per cent, while eight expressions lost from 2 to 20,
+ *          «(\w+)@(\w+)\.(\w+)» — 20. A window of four: 140 per cent, while
+ *          «(?:[a-z]+/)+v1» lost 5.2 in every round. A window of eight: 112 per cent
+ *          over the long text and 20 over the short one, and not a single expression
+ *          of the suite lost more than 0.7 per cent.
+ *
+ *          The other processors are not given the subroutine, by measurement as well.
+ *          On ARM64 a window of one position, enabled forcibly, took from all eleven
+ *          expressions with a wide set from 9 to 39 per cent; a window of eight took
+ *          from «(?<=@)\w+» 31 per cent in every one of six rounds and from
+ *          «[0-9]{3,5}» 4.5, adding from 5 to 11 to four expressions.
+ *          The boundary of the window is held by the check
+ *          «Regex.CodegenWideSifting», comparing against the execution of the program.
  *
  *          <b>The boundaries of the capturing groups are remembered only on the chains of alternation
  *          branches, and not on the retreat of a run.</b> The retreat returns

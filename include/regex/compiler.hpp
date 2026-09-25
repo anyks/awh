@@ -1016,6 +1016,27 @@ namespace awh {
 				void series() noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод пометки литералов, байтами дословно сличаемых
+				 *
+				 * @details Подряд идущие одиночные символы, сопоставляемые байтом
+				 *          дословно, управления между собою не принимают и точек
+				 *          возврата не ставят: сличение их одним заходом равно
+				 *          сличению по одному, а заходов в разбор кода операции
+				 *          стоит один взамен нескольких
+				 *
+				 * \~english
+				 * @brief Method of marking the literals compared by bytes verbatim
+				 * @details Consecutive single characters matched by a byte verbatim do not
+				 *          take control between themselves and set no backtracking points:
+				 *          comparing them in one trip equals comparing them one by one, while
+				 *          costing one trip through the dispatch of the operation code
+				 *          instead of several
+				 *
+				 * \~
+				 */
+				void literals() noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод пометки цепочек ограниченного повторения одиночного символа
 				 *
 				 * @details Повторение ограниченное компилируется цепочкой переходов
