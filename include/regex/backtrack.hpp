@@ -98,7 +98,8 @@
  *          сличается одиночкой и рядом с исполнением без возврата.
  *
  *          <b>Литерал, байтами дословно сличаемый, проходится одним заходом,
- *          а пометка его проверяется без кода операции.</b> Литерал выражения
+ *          а пометка его проверяется без кода операции всюду, кроме Clang
+ *          на x86-64.</b> Литерал выражения
  *          компилируется инструкциями одиночного символа по одной на символ,
  *          и проход его стоил захода в разбор кода операции на каждом символе.
  *          Сборка помечает всякую инструкцию литерала длиной остатка и байтами
@@ -126,6 +127,18 @@
  *          дважды и терял от пяти до семнадцати процентов, а так выигрывает
  *          шестнадцать.
  *
+ *          У Clang на x86-64 разбор устроен иначе, признаком
+ *          «AWH_REGEX_LITERAL_CASE»: у одиночного символа свой случай, таблица
+ *          переходов растянута на все коды, и пометку читает лишь он. Там это
+ *          устройство выигрывает: против пути общего оно подняло на FreeBSD
+ *          (clang 19, десять кругов вперемежку) двенадцать строк, до 8.6
+ *          процента, и опустило три, «alpha|bravo|...» - на 6.7; в сборке
+ *          с выравниванием всех блоков - десять и две. У GCC на x86-64 (NetBSD,
+ *          GCC 10.5) свой случай проигрывает, как и на ARM64: в сборке
+ *          с выравниванием всех переходов он опустил восемнадцать строк, до 12.9
+ *          процента, и GCC оставлен на пути общем. Код ARM64, Эльбруса и GCC
+ *          от признака не изменился вовсе: сборки их совпали с прежними до байта.
+ *
  *          Итог мерился щупом «rowtime» против основы, двенадцатью кругами
  *          вперемежку. На ARM64 выросли тринадцать строк, от 3.3 до 23.1
  *          процента: «(?:HT|TP)/1» - 23.1, «GET|POST|PUT|DELETE|HEAD|OPTIONS» -
@@ -142,11 +155,12 @@
  *          «(\w+) \1» - с 1.00 до 0.98. Строк ниже единицы при этом становится
  *          девять взамен десяти, а слабейшая, «(?m)^(GET|POST) ...», поднимается
  *          с 0.75 до 0.89. На Эльбрусе выросли шестнадцать строк, от 2.0 до 18.7
- *          процента, и просели три, до 3.3. На x86-64 (clang 19) выросли
- *          четыре, до 11.0, и просели восемь, до 6.6: лучший разбор кода
- *          операции там иной, и числа его - в «benchmark/regex/COMPARISON.md».
- *          Закреплено проверками «Regex.EngineLiteralRun» и
- *          «Regex.StorageForgedLiteral».
+ *          процента, и просели три, до 3.3. На x86-64 у Clang со своим случаем
+ *          выросли одиннадцать, до 15.8, и просели восемь, до 4.4; у GCC путём
+ *          общим - тринадцать, до 38.2, и семь, до 6.3. Числа и условия замеров -
+ *          в «benchmark/regex/COMPARISON.md». Закреплено проверками
+ *          «Regex.EngineLiteralRun» и «Regex.StorageForgedLiteral»; путь, какой
+ *          машине не достался, проверяется сборкой с признаком переопределённым.
  *
  *          <b>Проверка допустимого объёма памяти ждёт рубежа, а не шага,
  *          кратного двумстам пятидесяти шести.</b> Счётчик шагов прибавляется
@@ -250,7 +264,8 @@
  *          backtracking.
  *
  *          <b>A literal compared by bytes verbatim is walked in one trip, and its
- *          mark is checked without the operation code.</b> A literal of the
+ *          mark is checked without the operation code everywhere except Clang
+ *          on x86-64.</b> A literal of the
  *          expression is compiled into single character instructions, one per
  *          character, and walking it cost a trip through the dispatch of the
  *          operation code on every character. The build marks every instruction of
@@ -279,6 +294,18 @@
  *          «alpha|bravo|...», otherwise paid for the comparison twice and lost from
  *          five to seventeen per cent, and so it gains sixteen.
  *
+ *          With Clang on x86-64 the dispatch is arranged differently, by the
+ *          «AWH_REGEX_LITERAL_CASE» flag: a single character has its own case, the
+ *          jump table is stretched over all the codes, and only that case reads the
+ *          mark. There this arrangement wins: against the common path it raised twelve
+ *          rows on FreeBSD (clang 19, ten interleaved rounds), by up to 8.6 per cent,
+ *          and lowered three, «alpha|bravo|...» by 6.7; in the build with all blocks
+ *          aligned — ten and two. With GCC on x86-64 (NetBSD, GCC 10.5) the own case
+ *          loses, as on ARM64: in the build with all jump targets aligned it lowered
+ *          eighteen rows, by up to 12.9 per cent, and GCC is left on the common path.
+ *          The code of ARM64, Elbrus and GCC did not change from the flag at all: their
+ *          builds coincided with the former ones byte for byte.
+ *
  *          The result was measured by the «rowtime» probe against the base, with
  *          twelve interleaved rounds. On ARM64 thirteen rows grew, from 3.3 to 23.1
  *          per cent: «(?:HT|TP)/1» — 23.1, «GET|POST|PUT|DELETE|HEAD|OPTIONS» — 19.1,
@@ -295,11 +322,12 @@
  *          «(\w+) \1» — from 1.00 to 0.98. The rows below one become nine instead of
  *          ten, and the weakest, «(?m)^(GET|POST) ...», rises from 0.75 to 0.89. On
  *          Elbrus sixteen rows grew, from 2.0 to 18.7 per cent, and three dropped, by up
- *          to 3.3. On x86-64 (clang 19) four grew, by up to 11.0, and eight dropped, by
- *          up to 6.6: the best dispatch of the operation code is different there, and
- *          its numbers are in «benchmark/regex/COMPARISON.md».
- *          Pinned by the «Regex.EngineLiteralRun» and «Regex.StorageForgedLiteral»
- *          tests.
+ *          to 3.3. On x86-64 with Clang and the own case eleven grew, by up to 15.8, and
+ *          eight dropped, by up to 4.4; with GCC on the common path — thirteen, by up to
+ *          38.2, and seven, by up to 6.3. The numbers and the conditions of the
+ *          measurements are in «benchmark/regex/COMPARISON.md». Pinned by the
+ *          «Regex.EngineLiteralRun» and «Regex.StorageForgedLiteral» tests; the path
+ *          a machine did not get is checked by a build with the flag overridden.
  *
  *          <b>The check of the admissible amount of memory waits for a checkpoint
  *          rather than for a step that is a multiple of two hundred fifty-six.</b>
@@ -346,6 +374,73 @@
 #include "pike.hpp"
 #include "text.hpp"
 #include "program.hpp"
+
+/**
+ * \~russian
+ * @brief Признак разбора литерала своим случаем кода операции
+ *
+ * @details Голову литерала исполнение с возвратом узнаёт пометкой, и место
+ *          проверки её в разборе кода операции выбрано замером по архитектуре
+ *          и собирателю. У Clang на x86-64 у одиночного символа свой случай:
+ *          таблица переходов растянута на все коды, класс символов идёт ею
+ *          без сравнения диапазона, а пометку читает лишь одиночный символ.
+ *          Прочие сборки проверяют пометку в начале разбора кодов символьных
+ *          общего без кода операции, куда коды символьные уходят сравнением
+ *          диапазона: свой случай стоил там до тринадцати процентов - на ARM64
+ *          строкам со скобками, на x86-64 у GCC восемнадцати строкам в сборке,
+ *          где всякий блок, куда ведёт переход, выровнен.
+ *
+ *          Признак заведён в заголовке, а не в исполнении, затем, что его читают
+ *          и проверки: пометка у класса символов опасна лишь на пути без своего
+ *          случая. Сборка переопределяет его, «-DAWH_REGEX_LITERAL_CASE=0» либо
+ *          «=1»: так проверяется на всякой машине и путь, какой ей не достался,
+ *          и так же заводится условие под собиратель, какой иное устройство
+ *          предпочтёт. Сборка ARM64EC у Visual Studio ставит признак x86-64 тоже,
+ *          а код её машинный - ARM64, отчего она исключена.
+ *
+ * \~english
+ * @brief Flag of dispatching a literal by its own opcode case
+ *
+ * @details Execution with backtracking recognises the head of a literal by its mark,
+ *          and the place where the mark is checked in the opcode dispatch was chosen
+ *          by measurement per architecture and compiler. With Clang on x86-64 a single
+ *          character has its own case: the jump table is stretched over all the codes,
+ *          the character class goes through it without a range comparison, and only
+ *          a single character reads the mark. The other builds check the mark at the
+ *          start of the common dispatch of character opcodes without the opcode, where
+ *          the character opcodes arrive by a range comparison: an own case cost up to
+ *          thirteen per cent there — on ARM64 to the rows with brackets, on x86-64 with
+ *          GCC to eighteen rows in a build where every block a jump leads to is aligned.
+ *
+ *          The flag lives in the header rather than in the implementation because the
+ *          tests read it as well: a mark on a character class is dangerous only on the
+ *          path without an own case. The build overrides it, «-DAWH_REGEX_LITERAL_CASE=0»
+ *          or «=1»: this way every machine checks the path it did not get as well, and
+ *          a condition for a compiler preferring the other arrangement is added the same
+ *          way. The ARM64EC build of Visual Studio sets the x86-64 flag too, while its
+ *          machine code is ARM64, therefore it is excluded.
+ *
+ * \~
+ */
+#if !defined(AWH_REGEX_LITERAL_CASE)
+	/**
+	 * Если сборка ведётся собирателем Clang под x86-64
+	 */
+	#if defined(__clang__) && (defined(__x86_64__) || (defined(_M_X64) && !defined(_M_ARM64EC)))
+		/**
+		 * Литерал разбирается своим случаем кода операции
+		 */
+		#define AWH_REGEX_LITERAL_CASE 1
+	/**
+	 * Если сборка ведётся под прочие архитектуры либо прочими собирателями
+	 */
+	#else
+		/**
+		 * Литерал разбирается пометкой без кода операции
+		 */
+		#define AWH_REGEX_LITERAL_CASE 0
+	#endif
+#endif
 
 /**
  * \~russian
