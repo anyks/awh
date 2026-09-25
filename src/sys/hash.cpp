@@ -1021,8 +1021,13 @@ static void lz4(const char * buffer, const size_t size, const uint32_t level, co
 					result.resize(actual, 0);
 					// Выполняем компрессию буфера бинарных данных
 					actual = ::LZ4_compress_fast(buffer, result.data(), size, actual, level);
+					/**
+					 * Результат больше исходных данных допустим: буфер выделен по LZ4_compressBound,
+					 * а малые и несжимаемые данные в Lz4 всегда немного растут. Прежний отказ
+					 * при росте больше чем на 10% оставлял пустой результат для коротких тел
+					 */
 					// Если компрессия не выполнена
-					if((actual <= 0) || (static_cast <uint32_t> (actual) > static_cast <uint32_t> (size + size / 10))){
+					if(actual <= 0){
 						// Выполняем очистку результата
 						result.clear();
 						// Выходим из функции

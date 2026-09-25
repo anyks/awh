@@ -31,6 +31,10 @@ using namespace placeholders;
  * Объект глобальной базы событий
  */
 static awh::base_t * EventBase = nullptr;
+/**
+ * Идентификатор процесса, создавшего глобальную базу событий
+ */
+static pid_t EventBaseOwner = 0;
 
 /**
  * @brief Метод отправки пинка
@@ -115,7 +119,12 @@ void awh::Core::Dispatch::rebase() noexcept {
 				// Выполняем пересоздание базы событий
 				EventBase->rebase();
 			// Создаем новую базу событий
-			else EventBase = new base_t(this->_fmk, this->_log);
+			else {
+				// Создаем новую базу событий
+				EventBase = new base_t(this->_fmk, this->_log);
+				// Запоминаем процесс, создавший базу событий
+				EventBaseOwner = static_cast <pid_t> (::getpid());
+			}
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**
@@ -174,12 +183,19 @@ void awh::Core::Dispatch::reinit() noexcept {
 				this->_init = static_cast <bool> (this->_virt);
 			// Выполняем блокировку потока
 			const lock_guard <std::mutex> lock(this->_mtx);
-			// Если база событий уже создана
-			if(EventBase != nullptr)
+			/**
+			 * База событий, доставшаяся копией при fork из работающего цикла, намеренно не разрушается: потоков
+			 * родителя в дочернем процессе нет, а разрушение их условных переменных зависает навсегда
+			 * (pthread_cond_destroy в glibc ждёт ожидающих потоков родителя). Процесс завис бы в перезапуске,
+			 * удерживая чужие дескрипторы кластера, и ни мастер, ни соседи не завершались бы
+			 */
+			if((EventBase != nullptr) && (EventBaseOwner == static_cast <pid_t> (::getpid())))
 				// Удаляем объект базы событий
 				delete EventBase;
 			// Создаем новую базу событий
 			EventBase = new base_t(this->_fmk, this->_log);
+			// Запоминаем процесс, создавший базу событий
+			EventBaseOwner = static_cast <pid_t> (::getpid());
 			// Выполняем разблокировку чтения данных
 			this->_init = !this->_virt;
 		/**

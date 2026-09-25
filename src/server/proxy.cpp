@@ -1587,10 +1587,15 @@ void awh::server::Proxy::start() noexcept {
 	if(this->_callback.is("clusterRebase"))
 		// Выполняем установку функции обратного вызова для получения события пересоздании процесса
 		this->_core.on <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase", this->_callback.get <void (const uint16_t, const pid_t, const pid_t)> ("clusterRebase"), _1, _2, _3);
-	// Если функция обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
+	/**
+	 * Если функция обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера установлена, передаём её серверу:
+	 * событие "clusterEvents" сетевого ядра обрабатывает сам сервер (в дочерних процессах он запускает таймер удаления
+	 * отключившихся брокеров) и пересылает его в функцию "cluster". Установка напрямую в сетевое ядро заменила бы
+	 * обработчик сервера, и память отключившихся брокеров в дочерних процессах не освобождалась бы
+	 */
 	if(this->_callback.is("clusterEvents"))
 		// Выполняем установку функции обратного вызова для получения события ЗАПУСКА/ОСТАНОВКИ кластера
-		this->_core.on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents", this->_callback.get <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents"), _1, _2, _3, _4);
+		this->_server.on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", this->_callback.get <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents"), _1, _2, _3, _4);
 	// Если функция обратного вызова для получения сообщений от дочерних процессоров кластера
 	if(this->_callback.is("clusterMessage"))
 		// Выполняем установку функции обратного вызова для получения сообщений от дочерних процессоров кластера

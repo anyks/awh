@@ -275,6 +275,11 @@ namespace awh {
 			 *
 			 */
 			void decompress() noexcept;
+			/**
+			 * @brief Метод отклонения запроса, тело которого сервер не смог раскодировать
+			 *
+			 */
+			void undecoded() noexcept;
 		public:
 			/**
 			 * @brief Метод применения полученных результатов

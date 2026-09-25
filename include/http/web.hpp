@@ -690,6 +690,12 @@ namespace awh {
 			 * @return код HTTP-ответа для ошибки разбора (0 если ошибки нет)
 			 */
 			uint32_t fault() const noexcept;
+			/**
+			 * @brief Метод установки кода ошибки обработки запроса
+			 *
+			 * @param code код HTTP-ответа для ошибки (устанавливается только если ошибки ещё нет)
+			 */
+			void fault(const uint32_t code) noexcept;
 		public:
 			/**
 			 * @brief Метод установки функций обратного вызова

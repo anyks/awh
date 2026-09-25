@@ -15,6 +15,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <stdexcept>
 #include <sys/os.hpp>
 #include <sys/ver.hpp>
 
@@ -47,8 +48,12 @@ using namespace std;
  * @return версия в виде числа
  */
 uint32_t awh::Version::num() const noexcept {
-	// Выводим версию в виде числа
-	return htons(this->_version);
+	/**
+	 * Версия хранится в сетевом порядке байт (htonl), поэтому обратное
+	 * преобразование выполняется через ntohl. Прежний вызов htons усекал
+	 * значение до 16 бит и возвращал неверное число
+	 */
+	return ntohl(this->_version);
 }
 /**
  * @brief Метод извлечения версии в виде строки
@@ -63,18 +68,20 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Получаем текущее значение версии в Lite-Endian
-		const uint32_t version = htons(this->_version);
+		// Получаем текущее значение версии в порядке байт узла (htons усекал значение до 16 бит)
+		const uint32_t version = ntohl(this->_version);
+		// Нормализуем количество октетов (1..4) в локальной переменной (изменение константного параметра недопустимо)
+		uint8_t count = octets;
 		// Если количество октетов не указанно
-		if(octets == 0)
+		if(count == 0)
 			// Выполняем корректировку
-			const_cast <uint8_t &> (octets) = 1;
+			count = 1;
 		// Если октетов больше 4-х
-		else if(octets > 4)
+		else if(count > 4)
 			// Выполняем корректировку
-			const_cast <uint8_t &> (octets) = 4;
+			count = 4;
 		// Переходим по всему массиву
-		for(uint8_t i = 0; i < octets; i++){
+		for(uint8_t i = 0; i < count; i++){
 			// Если строка уже существует, добавляем разделитель
 			if(!result.empty())
 				// Добавляем разделитель
@@ -124,29 +131,57 @@ void awh::Version::set(const string & ver) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем сброс версии
-			this->_version = 0;
+			// Временное значение версии (фиксируется в объекте только при полном успехе разбора)
+			uint32_t result = 0;
 			// Позиция разделителя
 			size_t start = 0, stop = 0, index = 0;
+			/**
+			 * @brief Функция извлечения и проверки одного октета версии
+			 *
+			 * Числовой префикс октета разбирается как и прежде через stoi, поэтому
+			 * хвосты вида "3-beta" по-прежнему дают 3 (совместимость с AWH 4).
+			 * Отрицательные значения и значения больше 255 отвергаются: раньше
+			 * они молча заворачивались (-1 -> 255, 300 -> 44)
+			 *
+			 * @param octet строковое представление октета
+			 * @return      числовое значение октета [0..255]
+			 */
+			auto parseFn = [](const string & octet) -> uint8_t {
+				// Извлекаем числовое значение октета (пустой или нечисловой октет вызывает исключение)
+				const int value = ::stoi(octet);
+				// Если значение октета выходит за пределы диапазона [0..255]
+				if((value < 0) || (value > 255))
+					// Сообщаем об ошибке диапазона октета
+					throw out_of_range("version octet out of range [0..255]: \"" + octet + "\"");
+				// Выводим числовое значение октета
+				return static_cast <uint8_t> (value);
+			};
 			/**
 			 * Выполняем поиск разделителя
 			 */
 			while((stop = ver.find('.', start)) != string::npos){
-				// Извлекаем полученное число
-				reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(ver.substr(start, stop)));
+				// Извлекаем полученное число (длина подстроки считается от начала октета)
+				reinterpret_cast <uint8_t *> (&result)[index] = parseFn(ver.substr(start, stop - start));
 				// Выполняем смещение
 				start = (stop + 1);
 				// Увеличиваем смещение индекса
 				index++;
-				// Если индекс перешёл диапазон, выходим
-				if(index > 3)
+				// Если индекс достиг последнего октета, выходим (последний октет записывается после цикла)
+				if(index >= 3)
 					// Выходим из цикла
 					break;
 			}
+			/**
+			 * Если после третьего разделителя остались ещё разделители, октетов больше четырёх.
+			 * Раньше пятый октет записывался за пределы 32-битного значения
+			 */
+			if(ver.find('.', start) != string::npos)
+				// Сообщаем об ошибке количества октетов
+				throw out_of_range("version has more than four octets: \"" + ver + "\"");
 			// Выполняем установку последнего октета
-			reinterpret_cast <uint8_t *> (&this->_version)[index] = static_cast <uint8_t> (::stoi(ver.substr(start)));
-			// Переводим число в Big-Endian
-			this->_version = htonl(this->_version);
+			reinterpret_cast <uint8_t *> (&result)[index] = parseFn(ver.substr(start));
+			// Переводим число в Big-Endian и фиксируем результат (при ошибке прежнее значение сохраняется)
+			this->_version = htonl(result);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -252,8 +287,10 @@ bool awh::Version::operator == (const ver_t & ver) const noexcept {
  * @return    текущий объект
  */
 awh::Version & awh::Version::operator = (const char * ver) noexcept {
-	// Устанавливаем версию
-	this->set(ver);
+	// Если версия передана (построение строки из нулевого указателя приводит к падению)
+	if(ver != nullptr)
+		// Устанавливаем версию
+		this->set(string(ver));
 	// Выводим результат
 	return (* this);
 }
@@ -304,8 +341,10 @@ awh::Version::Version() noexcept : _version(0) {}
  * @param ver устанавливаемая версия
  */
 awh::Version::Version(const char * ver) noexcept : _version(0) {
-	// Устанавливаем версию
-	this->set(ver);
+	// Если версия передана (построение строки из нулевого указателя приводит к падению)
+	if(ver != nullptr)
+		// Устанавливаем версию
+		this->set(string(ver));
 }
 /**
  * @brief Конструктор

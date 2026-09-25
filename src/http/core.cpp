@@ -587,6 +587,27 @@ void awh::Http::decompress() noexcept {
 	}
 }
 /**
+ * @brief Метод отклонения запроса, тело которого сервер не смог раскодировать
+ *
+ */
+void awh::Http::undecoded() noexcept {
+	/**
+	 * Если сервер не смог раскодировать полностью полученное тело запроса (повреждённые данные или превышение
+	 * предела распаковки), приложение не должно получить закодированные байты как раскодированные: тело удаляется,
+	 * а запрос отклоняется с кодом 400. Проверка выполняется только для полного тела, а не при сборке чанков.
+	 * Клиент сохраняет прежнее поведение: тело остаётся закодированным, метод компрессии не снимается
+	 * и возвращается методом compression(), а о сбое сообщается через функцию обратного вызова ошибок
+	 */
+	if((this->_web.hid() == web_t::hid_t::SERVER) && (this->_compressors.current != compressor_t::NONE) && !this->_crypted && !this->_web.body().empty()){
+		// Запрос с телом, которое невозможно раскодировать, отклоняется целиком
+		this->_web.fault(400);
+		// Выполняем очистку данных тела
+		this->_web.clearBody();
+		// Снимаем флаг компрессии
+		this->_compressors.current = compressor_t::NONE;
+	}
+}
+/**
  * @brief Метод применения полученных результатов
  *
  */
@@ -692,6 +713,34 @@ void awh::Http::commit() noexcept {
 							// Добавляем в общий список компрессоров
 							compressors.insert(compressors.end(), tmp.begin(), tmp.end());
 					}
+					// Если мы работаем с сервером
+					if(this->_web.hid() == web_t::hid_t::SERVER){
+						// Выполняем перебор всех компрессоров
+						for(auto & compressor : compressors){
+							// Получаем название компрессора без пробелов
+							const string name = this->_fmk->transform(string(compressor), fmk_t::transform_t::TRIM);
+							/**
+							 * Неизвестный метод кодирования тела сервер раскодировать не может: запрос отклоняется
+							 * с кодом 415 (RFC 9110 §15.5.16), иначе приложение получило бы закодированные байты
+							 */
+							if(!name.empty() && !this->_fmk->compare(name, "identity") && !this->_fmk->compare(name, "lz4") &&
+							   !this->_fmk->compare(name, "zstd") && !this->_fmk->compare(name, "xz") && !this->_fmk->compare(name, "br") &&
+							   !this->_fmk->compare(name, "bzip2") && !this->_fmk->compare(name, "gzip") && !this->_fmk->compare(name, "deflate")){
+								// Выводим сообщение об ошибке
+								this->_log->print("Unsupported content coding [%s]", log_t::flag_t::WARNING, name.c_str());
+								// Если функция обратного вызова на на вывод ошибок установлена
+								if(this->_callback.is("error"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_web.id(), log_t::flag_t::WARNING, http::error_t::PROTOCOL, this->_fmk->format("Unsupported content coding [%s]", name.c_str()));
+								// Запрос с неподдерживаемым кодированием тела отклоняется целиком
+								this->_web.fault(415);
+								// Раскодирование тела не выполняется
+								compressors.clear();
+								// Выходим из цикла
+								break;
+							}
+						}
+					}
 					// Если список компрессоров получен
 					if(!compressors.empty()){
 						// Если компрессоров в списке больше 1-го
@@ -702,10 +751,23 @@ void awh::Http::commit() noexcept {
 								extractFn(compressors.at(i));
 								// Выполняем декомпрессию
 								this->decompress();
+								// Если тело не раскодировано, отклоняем запрос
+								this->undecoded();
 							}
 						}
 						// Выполняем определение типа компрессора
 						extractFn(compressors.front());
+						/**
+						 * Сервер раскодирует тело сразу при фиксации запроса, чтобы ошибка раскодирования
+						 * была обнаружена до передачи запроса приложению и отклонена через код ошибки разбора.
+						 * Зашифрованное тело раскодируется позже, после дешифрования, при запросе тела
+						 */
+						if((this->_web.hid() == web_t::hid_t::SERVER) && !this->_crypted){
+							// Выполняем декомпрессию
+							this->decompress();
+							// Если тело не раскодировано, отклоняем запрос
+							this->undecoded();
+						}
 					}
 				}
 			}
@@ -1490,6 +1552,8 @@ const awh::buffer_t & awh::Http::body() const noexcept {
 	const_cast <http_t *> (this)->decrypt();
 	// Выполняем декомпрессию полезной нагрузки
 	const_cast <http_t *> (this)->decompress();
+	// Если тело не раскодировано, отклоняем запрос (закодированные байты приложению не отдаются)
+	const_cast <http_t *> (this)->undecoded();
 	// Выводим данные тела
 	return this->_web.body();
 }

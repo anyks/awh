@@ -120,6 +120,14 @@ namespace awh {
 				FIFO = 0x06, // Очередь ввода-вывода
 				SOCK = 0x07  // Сокет
 			};
+			/**
+			 * Типы смещений в файле
+			 */
+			enum class seek_t : uint8_t {
+				BEGIN   = 0x00, // Смещение от начала файла
+				CURRENT = 0x01, // Смещение от текущей позиции
+				END     = 0x02  // Смещение от конца файла
+			};
 		private:
 			// Объект работы с операционной системой
 			os_t _os;
@@ -202,6 +210,20 @@ namespace awh {
 			 * @param addr2 адрес где должна быть создана ссылка
 			 */
 			void hardLink(const string & addr1, const string & addr2) const noexcept;
+		public:
+			/**
+			 * @brief Метод подмены целевого файла временным
+			 *
+			 * @note Запись через временный файл с последующей подменой оставляет прежнее
+			 *       содержимое целым при отказе посреди записи. У POSIX подмена выполняется
+			 *       rename(), а у MS Windows тот же вызов существующий файл не заменяет,
+			 *       оттого там зовётся MoveFileExW с признаком замены
+			 *
+			 * @param temporary адрес временного файла записи
+			 * @param filename  адрес целевого файла записи
+			 * @return          результат подмены
+			 */
+			bool replaceAddress(const string & temporary, const string & filename) const noexcept;
 		public:
 			/**
 			 * @brief Метод рекурсивного создания пути
@@ -289,12 +311,57 @@ namespace awh {
 			uintmax_t count(const string & path, const string & ext = "", const bool rec = true) const noexcept;
 		public:
 			/**
+			 * @brief Метод усечения файла до заданной длины
+			 *
+			 * @note Отсутствующий файл заводится пустым, файл короче заданной длины
+			 *       наращивается нулями - так велит работа самих систем
+			 *
+			 * @param filename адрес файла который необходимо усечь
+			 * @param length   длина, до какой усекается файл
+			 * @return         результат усечения
+			 */
+			bool truncate(const string & filename, const uint64_t length = 0) const noexcept;
+			/**
+			 * @brief Метод сброса записанного из ядра на носитель
+			 *
+			 * @note Под MacOS X fsync не опустошает кэш самого накопителя, оттого при
+			 *       durable зовётся F_FULLFSYNC. Отказ EINVAL (канал, устройство) отказом
+			 *       сброса не считается
+			 *
+			 * @param filename адрес файла который необходимо сбросить на носитель
+			 * @param durable  флаг доведения записанного до носителя, а не до накопителя
+			 * @return         результат сброса
+			 */
+			bool flush(const string & filename, const bool durable = true) const noexcept;
+		public:
+			/**
 			 * @brief Метод чтения данных из файла
 			 *
 			 * @param filename адрес файла для чтения
 			 * @return         бинарный буфер с прочитанными данными
 			 */
 			vector <char> read(const string & filename) const noexcept;
+			/**
+			 * @brief Метод чтения данных из файла со смещением
+			 *
+			 * @note Смещение за пределами файла даёт пустой результат, отказ чтения тоже.
+			 *       При END смещение отсчитывается от конца файла НАЗАД (как в AWH 5)
+			 *
+			 * @param filename адрес файла для чтения
+			 * @param seek     тип смещения в файле (CURRENT для нового описателя равен BEGIN)
+			 * @param offset   смещение в файле
+			 * @return         бинарный буфер с прочитанными данными
+			 */
+			vector <char> read(const string & filename, const seek_t seek, const size_t offset) const noexcept;
+			/**
+			 * @brief Метод чтения файла блоками с обратным вызовом
+			 *
+			 * @param filename адрес файла для чтения
+			 * @param size     размер блока для чтения
+			 * @param callback функция обратного вызова (буфер, размер, смещение, остаток), ложь останавливает чтение
+			 * @param offset   смещение в файле с которого следует начать чтение
+			 */
+			void read(const string & filename, const size_t size, function <bool (const void *, const size_t, const size_t, const size_t)> callback, const size_t offset = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод записи в файл бинарных данных
@@ -304,6 +371,21 @@ namespace awh {
 			 * @param size     размер бинарного буфера для записи в файл
 			 */
 			void write(const string & filename, const char * buffer, const size_t size) const noexcept;
+			/**
+			 * @brief Метод записи в файл бинарных данных по смещению
+			 *
+			 * @note В отличие от записи без смещения файл НЕ усекается: данные ложатся
+			 *       поверх прежних начиная с заданного места, отсутствующий файл заводится.
+			 *       При END смещение отсчитывается от конца файла ВПЕРЁД, как у lseek (как в AWH 5)
+			 *
+			 * @param filename адрес файла в который необходимо выполнить запись
+			 * @param buffer   бинарный буфер который необходимо записать в файл
+			 * @param size     размер бинарного буфера для записи в файл
+			 * @param seek     тип смещения в файле (CURRENT для нового описателя равен BEGIN)
+			 * @param offset   смещение в файле
+			 * @return         результат записи (легли ли данные в файл целиком)
+			 */
+			bool write(const string & filename, const char * buffer, const size_t size, const seek_t seek, const size_t offset = 0) const noexcept;
 			/**
 			 * @brief Метод добавления в файл бинарных данных
 			 *
@@ -334,6 +416,14 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void readFile3(const string & filename, function <void (const string &)> callback) const noexcept;
+			/**
+			 * @brief Метод получения содержимого файла блоками
+			 *
+			 * @param filename адрес файла для чтения
+			 * @param size     размер блока для чтения (ноль - размер страницы памяти)
+			 * @param callback функция обратного вызова
+			 */
+			void readFile(const string & filename, const size_t size, function <void (const void *, const size_t)> callback) const noexcept;
 		public:
 			/**
 			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
@@ -345,6 +435,20 @@ namespace awh {
 			 * @param actual   флаг формирования актуальных адресов
 			 */
 			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback, const bool actual = true) const noexcept;
+			/**
+			 * @brief Метод обхода файлов во всех подкаталогах с досрочной остановкой
+			 *
+			 * @note Отличается от readDir лишь тем, что функция обратного вызова вправе
+			 *       остановить обход, вернув ложь
+			 *
+			 * @param path     путь до каталога
+			 * @param ext      расширение файла по которому идет фильтрация
+			 * @param rec      флаг рекурсивного перебора каталогов
+			 * @param callback функция обратного вызова, ложь останавливает обход
+			 * @param actual   флаг формирования актуальных адресов
+			 * @return         результат обхода (довершён ли обход до конца)
+			 */
+			bool walkDir(const string & path, const string & ext, const bool rec, function <bool (const string &)> callback, const bool actual = true) const noexcept;
 			/**
 			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах
 			 *

@@ -177,6 +177,15 @@ namespace awh {
 				 */
 				void prepare(const int32_t sid, const uint64_t bid) noexcept;
 				/**
+				 * @brief Метод отклонения запроса с ошибкой обработки (тело невозможно раскодировать)
+				 *
+				 * @param sid идентификатор потока
+				 * @param bid идентификатор брокера
+				 * @param end флаг завершения передачи запроса клиентом
+				 * @return    результат проверки: true, если запрос отклонён и приложению не передаётся
+				 */
+				bool fault(const int32_t sid, const uint64_t bid, const bool end) noexcept;
+				/**
 				 * @brief Метод инициализации Websocket протокола
 				 *
 				 * @param sid идентификатор потока

@@ -27,6 +27,7 @@
 #include <vector>
 #include <cstdarg>
 #include <iostream>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <pcre2/pcre2posix.h>
@@ -48,6 +49,16 @@ namespace awh {
 	/**
 	 * @brief Структура модуля Chrono
 	 *
+	 * @details Намеренные решения AWH 4, от AWH 5 отличающиеся (правке не подлежат без
+	 *          решения о выпуске):
+	 *          - clear() очищает и список собственных временных зон (addTimeZone);
+	 *          - seconds(double) выводит дробную часть без округления до сотых;
+	 *          - seconds(string) допускает пробелы по краям записи (« 90m»);
+	 *          - strip() константен и формирует запись, если разбор дал ненулевой штамп
+	 *            времени, даже когда проверку пригодности она не проходит;
+	 *          - смещение зоны окружения берётся на момент самой даты (как localtime),
+	 *            а не на текущий момент - и при формировании, и при разборе записи без зоны
+	 *
 	 */
 	typedef class AWH_SHARED_EXPORT Chrono {
 		private:
@@ -56,8 +67,8 @@ namespace awh {
 			 */
 			enum class format_t : uint8_t {
 				NONE = 0x00, // Формат не определён
-				y    = 0x01, // Формат соответствует %y и %g (YY)
-				Y    = 0x02, // Формат соответствует %Y и %G (YYYY)
+				y    = 0x01, // Формат соответствует %y (YY)
+				Y    = 0x02, // Формат соответствует %Y (YYYY)
 				b    = 0x03, // Формат соответствует %b и %h (MMM)
 				B    = 0x04, // Формат соответствует %B (MMMMM)
 				m    = 0x05, // Формат соответствует %m (MM)
@@ -68,7 +79,7 @@ namespace awh {
 				u    = 0x0A, // Формат соответствует %u (u)
 				w    = 0x0B, // Формат соответствует %w
 				W    = 0x0C, // Формат соответствует %W
-				D    = 0x0D, // Формат соответствует %D и %x (MM/dd/YYYY)
+				D    = 0x0D, // Формат соответствует %D и %x (MM/dd/YY)
 				F    = 0x0E, // Формат соответствует %F (YYYY-MM-dd)
 				H    = 0x0F, // Формат соответствует %H (HH)
 				I    = 0x10, // Формат соответствует %I (h)
@@ -80,9 +91,11 @@ namespace awh {
 				T    = 0x16, // Формат соответствует %T и %X (HH:mm:ss)
 				r    = 0x17, // Формат соответствует %r (h:mm:ss a)
 				c    = 0x18, // Формат соответствует %c (EEE MMM dd HH:mm:ss YYYY)
-				z    = 0x19, // Формат соответствует %z (Z)
-				Z    = 0x1A, // Формат соответствует %Z (z)
-				e    = 0x1B  // Формат соответствует %e (Zz)
+				z    = 0x19, // Формат соответствует %z и %o (±hhmm и ±hh:mm)
+				Z    = 0x1A, // Формат соответствует %Z и %i (название зоны, UTC±h:mm либо Z)
+				C    = 0x1B, // Формат соответствует %C (CC)
+				G    = 0x1C, // Формат соответствует %G и %g (год недельного счёта ISO 8601)
+				V    = 0x1D  // Формат соответствует %V (номер недели по ISO 8601)
 			};
 		public:
 			/**
@@ -105,6 +118,26 @@ namespace awh {
 			enum class actual_t : uint8_t {
 				LEFT   = 0x00, // Сколько осталось времени
 				PASSED = 0x01  // Сколько прошло времени
+			};
+			/**
+			 * Запись даты, заданная стандартом
+			 */
+			enum class standard_t : uint8_t {
+				CLF     = 0x00, // Журнал веб-сервера: 06/Apr/2025:12:37:01 +0000
+				RFC850  = 0x01, // Устаревшая запись HTTP: Sunday, 06-Apr-25 12:37:01 GMT
+				RFC1123 = 0x02, // Заголовки HTTP (IMF-fixdate): Sun, 06 Apr 2025 12:37:01 GMT
+				RFC3164 = 0x03, // Устаревший системный журнал: Apr  6 12:37:01
+				RFC3339 = 0x04, // Журналы и программные вводы: 2025-04-06T12:37:01.520Z
+				RFC5322 = 0x05, // Заголовок Date почты: Sun, 06 Apr 2025 12:37:01 +0000
+				ISO8601 = 0x06, // Основная форма ISO 8601: 20250406T123701Z
+				ASCTIME = 0x07  // Запись asctime языка C: Sun Apr  6 12:37:01 2025
+			};
+			/**
+			 * Правило раскрытия двузначного года
+			 */
+			enum class century_t : uint8_t {
+				WINDOW = 0x00, // Скользящее окно от текущего года по RFC 9110 (§5.6.7)
+				POSIX  = 0x01  // Неподвижный рубеж: 69-99 к двадцатому веку, 00-68 к двадцать первому
 			};
 			/**
 			 * Тип хранимой даты
@@ -355,9 +388,8 @@ namespace awh {
 			 *
 			 */
 			typedef struct Mutex {
-				std::mutex tz;              // Мютекс контроля добавления временной зоны
-				std::mutex date;            // Мютекс контроля локального объекта даты
-				std::recursive_mutex parse; // Мютекс контроля парсинга
+				std::recursive_mutex tz;   // Мютекс контроля добавления временной зоны
+				std::recursive_mutex date; // Мютекс контроля локального объекта даты
 			} mtx_t;
 			/**
 			 * @brief Структура параметров даты и времени
@@ -397,11 +429,30 @@ namespace awh {
 			// Объект локального времени
 			dt_t _dt;
 		private:
+			/**
+			 * Временная зона, выставленная вызывающей стороной, хранится отдельно от
+			 * локального объекта даты: разбор записи оставляет в объекте зону самой
+			 * записи, и прежде следующий разбор принимал её за выставленную методом
+			 * setTimeZone - зона одной записи применялась к следующей, зоны не несущей
+			 */
+			// Смещение временной зоны, выставленной вызывающей стороной
+			int32_t _zoneOffset;
+			// Обозначение временной зоны, выставленной вызывающей стороной
+			zone_t _zoneName;
+		private:
+			// Признак приёма секунды координации при проверке пригодности записи
+			bool _leapSecond;
+		private:
+			// Правило раскрытия двузначного года при разборе записи с ним
+			century_t _century;
+			// Окно двузначного года при разборе записи с ним (в годах)
+			uint8_t _yearWindow;
+			// Допуск отката года при разборе записи без года (в секундах)
+			uint32_t _yearRollback;
+		private:
 			// Мютекс для блокировки потока
 			mutable mtx_t _mtx;
 		private:
-			// Список скомпилированных регулярных выражений
-			std::map <format_t, regex_t> _expressions;
 			// Список внутренних временных зон
 			std::unordered_map <string, int32_t> _timeZones;
 		private:
@@ -411,8 +462,179 @@ namespace awh {
 			/**
 			 * @brief Метод очистку всех локальных данных
 			 *
+			 * @details Возвращает внутренний объект даты (хранилище storage_t::LOCAL) к
+			 *          текущему моменту системных часов, сбрасывает временную зону,
+			 *          выставленную методом setTimeZone, и очищает список собственных
+			 *          временных зон
 			 */
 			void clear() noexcept;
+		public:
+			/**
+			 * @brief Метод получения допуска отката года
+			 *
+			 * @return допуск отката года в секундах, ноль если откат отключён
+			 */
+			uint32_t yearRollback() const noexcept;
+			/**
+			 * @brief Метод установки допуска отката года
+			 *
+			 * @details Задаёт, насколько далеко вперёд может отстоять запись, года не
+			 *          содержащая (RFC 3164), прежде чем разбор отнесёт её к предыдущему
+			 *          году. По умолчанию допуск равен двадцати шести часам - полному
+			 *          разбросу временных зон от UTC+14 до UTC-12
+			 *
+			 * @param seconds допуск отката года в секундах, ноль отключает откат
+			 */
+			void yearRollback(const uint32_t seconds) noexcept;
+		public:
+			/**
+			 * @brief Метод получения окна двузначного года
+			 *
+			 * @return окно двузначного года в годах, ноль если правило отключено
+			 */
+			uint8_t yearWindow() const noexcept;
+			/**
+			 * @brief Метод установки окна двузначного года
+			 *
+			 * @details Задаёт, насколько далеко вперёд может отстоять запись с двузначным
+			 *          годом, прежде чем разбор отнесёт её к предыдущему столетию (RFC 9110,
+			 *          §5.6.7). По умолчанию окно равно пятидесяти годам
+			 *
+			 * @param years окно двузначного года в годах, ноль отключает правило
+			 */
+			void yearWindow(const uint8_t years) noexcept;
+		public:
+			/**
+			 * @brief Метод получения правила раскрытия двузначного года
+			 *
+			 * @return правило, действующее при разборе записей с двузначным годом
+			 */
+			century_t century() const noexcept;
+			/**
+			 * @brief Метод установки правила раскрытия двузначного года
+			 *
+			 * @param mode правило раскрытия двузначного года
+			 */
+			void century(const century_t mode) noexcept;
+		public:
+			/**
+			 * @brief Метод получения признака приёма секунды координации
+			 *
+			 * @return признак приёма секунды координации
+			 */
+			bool leapSecond() const noexcept;
+			/**
+			 * @brief Метод установки признака приёма секунды координации
+			 *
+			 * @details Признак затрагивает лишь проверку пригодности записи (validate):
+			 *          разбор секунду координации принимает всегда и переносит её на
+			 *          следующую минуту
+			 *
+			 * @param mode признак приёма секунды координации
+			 */
+			void leapSecond(const bool mode) noexcept;
+		public:
+			/**
+			 * @brief Метод подсчёта количества десятичных разрядов числа
+			 *
+			 * @param value число для которого выполняется подсчёт разрядов
+			 * @return      количество десятичных разрядов (нулевое значение - один разряд)
+			 */
+			uint8_t digits(const uint64_t value) const noexcept;
+		private:
+			/**
+			 * @brief Метод приведения числа месяца к его настоящей длине
+			 *
+			 * @param dt объект даты и времени для приведения
+			 */
+			void clampDay(dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод переноса объекта даты на указанный момент времени
+			 *
+			 * @param dt   объект даты и времени для переноса
+			 * @param date штамп времени в миллисекундах, на который переносится объект
+			 */
+			void moveDate(dt_t & dt, const uint64_t date) const noexcept;
+			/**
+			 * @brief Метод согласования полей объекта даты между собой
+			 *
+			 * @param dt объект даты и времени для согласования
+			 */
+			void syncDate(dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод разрешения смещения сводной временной зоны по самой записи
+			 *
+			 * @param dt объект даты и времени для разрешения
+			 */
+			void resolveZone(dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод согласования выводных признаков объекта даты
+			 *
+			 * @param dt объект даты и времени для согласования
+			 */
+			void syncFlags(dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод получения опорного момента времени для разрешения сводной зоны
+			 *
+			 * @param dt объект даты и времени
+			 * @return   штамп времени в миллисекундах
+			 */
+			uint64_t baseStamp(const dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод определения летнего времени по местному времени зоны
+			 *
+			 * @param date   штамп времени в миллисекундах
+			 * @param offset смещение стандартного времени зоны в секундах
+			 * @return       результат проверки
+			 */
+			bool isDST(const uint64_t date, const int32_t offset) const noexcept;
+			/**
+			 * @brief Метод получения смещения временной зоны окружения на указанный момент
+			 *
+			 * @param date штамп времени в миллисекундах
+			 * @return     смещение временной зоны окружения в секундах
+			 */
+			int32_t zoneOf(const uint64_t date) const noexcept;
+			/**
+			 * @brief Метод получения смещения временной зоны окружения для местной записи
+			 *
+			 * @param dt объект даты, поля которого записаны в зоне окружения
+			 * @return   смещение временной зоны окружения в секундах
+			 */
+			int32_t zoneOf(const dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод подсчёта количества високосных лет, прошедших с 1970 года
+			 *
+			 * @param years количество прошедших лет с 1970 года
+			 * @return      количество високосных лет с учётом григорианского календаря
+			 */
+			uint16_t leapYears(const uint16_t years) const noexcept;
+			/**
+			 * @brief Метод получения штампа времени начала указанного года в миллисекундах
+			 *
+			 * @param year год для которого необходимо получить начало
+			 * @return     штамп времени начала года в миллисекундах
+			 */
+			uint64_t beginOfYear(const uint16_t year) const noexcept;
+			/**
+			 * @brief Метод извлечения года из даты вместе с началом этого года
+			 *
+			 * @param date  штамп времени в миллисекундах
+			 * @param begin штамп времени начала извлечённого года в миллисекундах
+			 * @return      значение года, которому принадлежит дата
+			 */
+			uint16_t year(const uint64_t date, uint64_t & begin) const noexcept;
+		private:
+			/**
+			 * @brief Метод проверки действует ли летнее время (DST) по правилам США/Канады
+			 *
+			 * @param month номер месяца (1-12)
+			 * @param date  число месяца (1-31)
+			 * @param day   день недели (1 - понедельник, 7 - воскресенье)
+			 * @param hour  количество часов (0-23)
+			 * @return      результат проверки действия летнего времени
+			 */
+			bool isDST(const uint8_t month, const uint8_t date, const uint8_t day, const uint8_t hour) const noexcept;
 		private:
 			/**
 			 * @brief Метод получения штампа времени из объекта даты
@@ -422,21 +644,53 @@ namespace awh {
 			 */
 			uint64_t makeDate(const dt_t & dt) const noexcept;
 			/**
+			 * @brief Метод получения штампа времени из объекта даты с учётом временной зоны
+			 *
+			 * @param dt объект даты из которой необходимо получить штамп времени
+			 * @return   штамп времени в миллисекундах
+			 */
+			uint64_t makeStamp(const dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод перекладки объекта даты в указанную временную зону
+			 *
+			 * @param dt   объект даты который необходимо переложить
+			 * @param zone смещение временной зоны в секундах
+			 */
+			void shiftDate(dt_t & dt, const int32_t zone) const noexcept;
+		private:
+			/**
+			 * @brief Метод раскрытия двузначного обозначения года в полное
+			 *
+			 * @param value двузначное обозначение года
+			 * @return      полное обозначение года
+			 */
+			uint16_t makeFullYear(const uint16_t value) const noexcept;
+			/**
 			 * @brief Метод заполнения объекта даты из штампа времени
 			 *
 			 * @param date дата из которой необходимо заполнить объект
 			 * @param dt   объект даты который необходимо заполнить
 			 */
 			void makeDate(const uint64_t date, dt_t & dt) const noexcept;
+			/**
+			 * @brief Метод заполнения объекта даты из штампа времени в указанной временной зоне
+			 *
+			 * @param date дата из которой необходимо заполнить объект
+			 * @param zone смещение временной зоны в секундах
+			 * @param dt   объект даты который необходимо заполнить
+			 */
+			void makeDate(const uint64_t date, const int32_t zone, dt_t & dt) const noexcept;
 		private:
 			/**
-			 * @brief Метод компиляции регулярных выражений
+			 * @brief Метод парсинга строки даты и времени в UnixTimestamp
 			 *
-			 * @param expression регулярное выражение для компиляции
-			 * @param format     формат к которому относится регулярное выражение
+			 * @param date    строка даты
+			 * @param format  формат даты
+			 * @param storage хранение значение времени
+			 * @param valid   признак пригодности записи, ноль если проверка не нужна
+			 * @return        дата в UnixTimestamp
 			 */
-			void compile(const string & expression, const format_t format) noexcept;
-		private:
+			uint64_t parse(std::string_view date, std::string_view format, const storage_t storage, bool * valid) noexcept;
 			/**
 			 * @brief Функция заполнения объекта даты и времени
 			 *
@@ -446,7 +700,7 @@ namespace awh {
 			 * @param pos    начальная позиция в тексте
 			 * @return       конечная позиция обработанных данных в тексте
 			 */
-			ssize_t prepare(dt_t & dt, const string & text, const format_t format, const size_t pos = 0) const noexcept;
+			ssize_t prepare(dt_t & dt, std::string_view text, const format_t format, const size_t pos = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод перевода времени в аббревиатуру
@@ -458,6 +712,11 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод получения конца позиции указанной даты
+			 *
+			 * @details Граница исключающая: она совпадает с началом следующего отрезка, а не
+			 *          с его последней миллисекундой, и вместе с begin задаёт полуинтервал
+			 *          [begin, end). У последнего года календаря (9999) граница насыщается
+			 *          последним представимым мгновением
 			 *
 			 * @param date дата для которой необходимо получить позицию
 			 * @param type тип единиц измерений даты
@@ -535,12 +794,20 @@ namespace awh {
 			/**
 			 * @brief Метод получения текстового значения времени
 			 *
+			 * @details Продолжительность записывается наибольшей единицей, в которой она не
+			 *          меньше единицы; отрицательная записывается со знаком. Месяц берётся
+			 *          средней длительности (30.436875 суток) наравне с обратным разбором
+			 *
 			 * @param seconds количество секунд для конвертации
 			 * @return        обозначение времени с указанием размерности
 			 */
 			string seconds(const double seconds) const noexcept;
 			/**
 			 * @brief Метод получения размера в секундах из строки
+			 *
+			 * @details Обозначение занимает запись целиком (пробелы по краям допускаются):
+			 *          одно число, отделяющее дробную часть точкой, и одна единица. Составные
+			 *          записи вида «1h30m» и записи с посторонним текстом дают ноль
 			 *
 			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return      размер в секундах
@@ -577,6 +844,10 @@ namespace awh {
 		public:
 			/**
 			 * @brief Метод проверки принадлежит ли дата к лету
+			 *
+			 * @details Проверка ведётся по правилам летнего времени США и Канады, действующим
+			 *          с 2007 года: со второго воскресенья марта 02:00 по первое воскресенье
+			 *          ноября 02:00. Для зон других стран признак справочный
 			 *
 			 * @param date дата для проверки
 			 * @return     результат проверки
@@ -741,6 +1012,18 @@ namespace awh {
 			 */
 			int32_t getTimeZone(const zone_t zone) const noexcept;
 			/**
+			 * @brief Метод перевода временной зоны в смещение на указанный момент времени
+			 *
+			 * @details Сводные зоны Северной Америки (AT, CT, ET, MT, NT и PT) обозначают то
+			 *          стандартное время, то летнее; эта перегрузка выбирает между ними по
+			 *          указанной дате, а не по текущему моменту
+			 *
+			 * @param zone временная зона для конвертации
+			 * @param date штамп времени в миллисекундах
+			 * @return     смещение временной зоны в секундах
+			 */
+			int32_t getTimeZone(const zone_t zone, const uint64_t date) const noexcept;
+			/**
 			 * @brief Метод перевода временной зоны в смещение
 			 *
 			 * @param zone временная зона для конвертации
@@ -809,6 +1092,75 @@ namespace awh {
 			 * @return        дата в UnixTimestamp
 			 */
 			uint64_t parse(const string & date, const string & format, const storage_t storage = storage_t::GLOBAL) noexcept;
+			/**
+			 * @brief Метод разбора записи даты по стандарту
+			 *
+			 * @details Разбирает запись, стандартом заданную, принимая все допустимые им
+			 *          разновидности: RFC 5322 позволяет опустить день недели, RFC 3339 -
+			 *          долю секунды, ISO 8601 знает основную и расширенную формы записи
+			 *
+			 * @param date     строка даты для парсинга
+			 * @param standard стандарт записи даты
+			 * @param storage  хранение значение времени
+			 * @return         дата в UnixTimestamp
+			 */
+			uint64_t parse(const string & date, const standard_t standard, const storage_t storage = storage_t::GLOBAL) noexcept;
+			/**
+			 * @brief Метод разбора записи даты с признаком её пригодности
+			 *
+			 * @details Признак поднимается по тем же правилам, что и у метода validate
+			 *
+			 * @param date    строка даты
+			 * @param format  формат даты
+			 * @param valid   признак пригодности записи, выставляемый разбором
+			 * @param storage хранение значение времени
+			 * @return        дата в UnixTimestamp
+			 */
+			uint64_t parse(const string & date, const string & format, bool & valid, const storage_t storage = storage_t::GLOBAL) noexcept;
+			/**
+			 * @brief Метод разбора записи даты по стандарту с признаком её пригодности
+			 *
+			 * @param date     строка даты
+			 * @param standard стандарт записи даты
+			 * @param valid    признак пригодности записи, выставляемый разбором
+			 * @param storage  хранение значение времени
+			 * @return         дата в UnixTimestamp
+			 */
+			uint64_t parse(const string & date, const standard_t standard, bool & valid, const storage_t storage = storage_t::GLOBAL) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки пригодности записи даты для разбора
+			 *
+			 * @details Пригодной считается запись, в которой нашлась каждая переменная
+			 *          формата и разобранные поля которой лежат в допустимых пределах
+			 *
+			 * @param date   строка даты
+			 * @param format формат даты
+			 * @return       признак пригодности записи для разбора
+			 */
+			bool validate(const string & date, const string & format) noexcept;
+			/**
+			 * @brief Метод проверки пригодности записи даты по стандарту
+			 *
+			 * @param date     строка даты для проверки
+			 * @param standard стандарт записи даты
+			 * @return         признак пригодности записи
+			 */
+			bool validate(const string & date, const standard_t standard) noexcept;
+			/**
+			 * @brief Метод проверки пригодности обозначения временной зоны
+			 *
+			 * @param zone обозначение временной зоны
+			 * @return     признак пригодности обозначения
+			 */
+			bool validateTimeZone(const string & zone) const noexcept;
+			/**
+			 * @brief Метод проверки пригодности обозначения размерности времени
+			 *
+			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
+			 * @return      признак пригодности обозначения
+			 */
+			bool validateSeconds(const string & value) const noexcept;
 		public:
 			/**
 			 * @brief Метод форматирования временной зоны
@@ -824,6 +1176,17 @@ namespace awh {
 			 * @return     строковое обозначение временной зоны
 			 */
 			string format(const zone_t zone) const noexcept;
+			/**
+			 * @brief Метод форматирования временной зоны на указанный момент времени
+			 *
+			 * @details Для сводных зон Северной Америки обозначение выбирается между
+			 *          стандартным и летним временем по указанной дате, а не по текущей
+			 *
+			 * @param zone временная зона в которой нужно получить результат
+			 * @param date штамп времени в миллисекундах
+			 * @return     строковое обозначение временной зоны
+			 */
+			string format(const zone_t zone, const uint64_t date) const noexcept;
 		private:
 			/**
 			 * @brief Метод формирования объекта даты и времени
@@ -832,16 +1195,41 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string format(const dt_t & dt, const string & format) const noexcept;
+			string format(const dt_t & dt, std::string_view format) const noexcept;
 		public:
 			/**
 			 * @brief Метод формирования UnixTimestamp без учёта временной зоны
+			 *
+			 * @details Дата записывается во временной зоне окружения со смещением, которое
+			 *          действует на саму эту дату. Нулевая дата - полночь 1 января 1970 года
 			 *
 			 * @param date   дата в UnixTimestamp
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
 			string format(const uint64_t date, const string & format) const noexcept;
+		public:
+			/**
+			 * @brief Метод формирования записи даты по стандарту
+			 *
+			 * @details Стандарты RFC 1123 и RFC 850 предписывают нулевую зону и обозначают её
+			 *          словом GMT, поэтому запись по ним формируется в нулевой зоне. Прочие
+			 *          записываются в зоне окружения наравне с перегрузкой со строкой формата
+			 *
+			 * @param date     дата в UnixTimestamp
+			 * @param standard стандарт записи даты
+			 * @return         строка содержащая дату
+			 */
+			string format(const uint64_t date, const standard_t standard) const noexcept;
+			/**
+			 * @brief Метод формирования записи даты по стандарту в указанной зоне
+			 *
+			 * @param date     дата в UnixTimestamp
+			 * @param zone     смещение временной зоны в секундах
+			 * @param standard стандарт записи даты
+			 * @return         строка содержащая дату
+			 */
+			string format(const uint64_t date, const int32_t zone, const standard_t standard) const noexcept;
 			/**
 			 * @brief Метод формирования UnixTimestamp с учётом временной зоны
 			 *

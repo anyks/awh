@@ -358,8 +358,12 @@ void awh::server::Web::core(const server::core_t * core) noexcept {
 	if(this->_core != nullptr){
 		// Устанавливаем функцию активации ядра сервера
 		const_cast <server::core_t *> (this->_core)->on <void (const awh::core_t::status_t)> ("status", &web_t::statusEvents, this, _1);
-		// Устанавливаем функцию обратного вызова на перехват событий кластера
-		const_cast <server::core_t *> (this->_core)->on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", &web_t::clusterEvents, this, _1, _2, _3, _4);
+		/**
+		 * Устанавливаем функцию обратного вызова на перехват событий кластера. Сетевое ядро вызывает её под именем "clusterEvents":
+		 * под прежним именем "cluster" она не вызывалась никогда, и в дочерних процессах не запускался таймер удаления отключившихся
+		 * брокеров, из-за чего параметры каждого подключения вместе с буферами ответа оставались в памяти навсегда
+		 */
+		const_cast <server::core_t *> (this->_core)->on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents", &web_t::clusterEvents, this, _1, _2, _3, _4);
 	}
 }
 /**
@@ -503,6 +507,9 @@ awh::server::Web::Web(const server::core_t * core, const fmk_t * fmk, const log_
 	const_cast <server::core_t *> (this->_core)->on <void (const awh::core_t::status_t)> ("status", &web_t::statusEvents, this, _1);
 	// Устанавливаем функцию получения события запуска сервера
 	const_cast <server::core_t *> (this->_core)->on <void (const string &, const uint32_t)> ("launched", &web_t::launchedEvents, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на перехват событий кластера
-	const_cast <server::core_t *> (this->_core)->on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("cluster", &web_t::clusterEvents, this, _1, _2, _3, _4);
+	/**
+	 * Устанавливаем функцию обратного вызова на перехват событий кластера. Сетевое ядро вызывает её под именем "clusterEvents",
+	 * без неё в дочерних процессах не запускается таймер удаления отключившихся брокеров
+	 */
+	const_cast <server::core_t *> (this->_core)->on <void (const cluster_t::family_t, const uint16_t, const pid_t, const cluster_t::event_t)> ("clusterEvents", &web_t::clusterEvents, this, _1, _2, _3, _4);
 }

@@ -539,6 +539,19 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				}
 				// Выполняем открытие файлового дескриптора
 				::fcntl(this->_efd, F_SETFD, FD_CLOEXEC);
+				// Если уведомитель пробуждения опроса инициализирован
+				if(this->_wakeup != INVALID_SOCKET){
+					// Создаём объект события пробуждения
+					struct epoll_event event = {};
+					// Устанавливаем флаги ожидания готовности на чтение
+					event.events = (EPOLLIN | EPOLLET);
+					// Помечаем событие указателем на уведомитель пробуждения
+					event.data.ptr = &this->_wake;
+					// Выполняем регистрацию уведомителя пробуждения в EPoll
+					if(::epoll_ctl(this->_efd, EPOLL_CTL_ADD, this->_wakeup, &event) != 0)
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				}
 			/**
 			 * Для операционной системы FreeBSD, NetBSD, OpenBSD или MacOS X
 			 */
@@ -563,6 +576,22 @@ void awh::Base::init(const event_mode_t mode) noexcept {
 				}
 				// Выполняем открытие файлового дескриптора
 				::fcntl(this->_kq, F_SETFD, FD_CLOEXEC);
+				// Если уведомитель пробуждения опроса инициализирован
+				if(this->_wakeup != INVALID_SOCKET){
+					// Создаём объект события пробуждения
+					struct kevent event;
+					// Выполняем заполнение нулями всю структуру события
+					::memset(&event, 0, sizeof(event));
+					// Устанавливаем событие чтения уведомителя пробуждения
+					EV_SET(&event, this->_wakeup, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, nullptr);
+					/**
+					 * Регистрируем отдельным вызовом, а не через постоянный список изменений:
+					 * уведомитель не является участником базы событий
+					 */
+					if(::kevent(this->_kq, &event, 1, nullptr, 0, nullptr) == INVALID_SOCKET)
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				}
 			#endif
 		} break;
 		// Если необходимо деактивировать сетевые методы
@@ -3275,6 +3304,27 @@ void awh::Base::stop() noexcept {
 	try {
 		// Если работа базы событий запущена
 		if(this->_works){
+			/**
+			 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
+			 */
+			#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				/**
+				 * Если опрос работает в другом потоке (остановка по сигналу), то очищать базу событий
+				 * здесь нельзя: поток опроса обходит её прямо сейчас, а ожидание событий без таймаута
+				 * не прерывается пересозданием объекта ядра (Linux, FreeBSD), и start() не возвращался.
+				 * Поэтому помечаем очистку отложенной, будим поток опроса, и он очищает базу сам
+				 */
+				if(this->_launched && this->isChildThread() && (this->_wakeup != INVALID_SOCKET)){
+					// Помечаем очистку отложенной (до снятия флага работы, чтобы поток опроса её увидел)
+					this->_defer = true;
+					// Снимаем флаг работы базы событий
+					this->_works = !this->_works;
+					// Выполняем пробуждение потока опроса
+					this->_wake.notify(0);
+					// Выходим из функции
+					return;
+				}
+			#endif
 			// Снимаем флаг работы базы событий
 			this->_works = !this->_works;
 			// Выполняем очистку списка событий
@@ -3874,6 +3924,15 @@ void awh::Base::start() noexcept {
 										isError = (event.events & EPOLLERR);
 										// Получаем флаг закрытия подключения
 										isClose = (event.events & (EPOLLRDHUP | EPOLLHUP));
+										// Если сработал уведомитель пробуждения опроса
+										if(event.data.ptr == &this->_wake){
+											// Идентификатор события пробуждения
+											uint64_t wake = 0;
+											// Извлекаем все события пробуждения
+											while(this->_wake.event(wake));
+											// Продолжаем обход дальше
+											continue;
+										}
 										// Получаем объект текущего события
 										peer_t * item = reinterpret_cast <peer_t *> (event.data.ptr);
 										// Если объект текущего события получен
@@ -4096,6 +4155,15 @@ void awh::Base::start() noexcept {
 										if(event.filter == 0)
 											// Пропускаем запись
 											continue;
+										// Если сработал уведомитель пробуждения опроса
+										if(event.ident == static_cast <uintptr_t> (this->_wakeup)){
+											// Идентификатор события пробуждения
+											uint64_t wake = 0;
+											// Извлекаем все события пробуждения
+											while(this->_wake.event(wake));
+											// Продолжаем обход дальше
+											continue;
+										}
 										// Получаем код ошибки переданный ядром
 										code = static_cast <int32_t> (event.data);
 										// Получаем флаг закрытия подключения
@@ -4276,6 +4344,19 @@ void awh::Base::start() noexcept {
 					// Замораживаем поток на период времени частоты обновления базы событий
 					std::this_thread::sleep_for(100ms);
 				#endif
+			}
+			// Если очистка базы событий отложена остановкой из другого потока
+			if(this->_defer.exchange(false)){
+				// Выполняем очистку списка событий
+				this->clear();
+				// Выполняем деинициализацию базы событий
+				this->init(event_mode_t::DISABLED);
+				// Выполняем инициализацию базы событий
+				this->init(event_mode_t::ENABLED);
+				// Идентификатор события пробуждения
+				uint64_t wake = 0;
+				// Извлекаем оставшиеся события пробуждения
+				while(this->_wake.event(wake));
 			}
 			// Останавливаем работу таймеров скрина
 			this->_watch.stop();
@@ -4583,7 +4664,8 @@ awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
  _wid(0), _rate(-1),
  _works(false), _easily(false),
  _locker(false), _launched(false),
- _fds(log), _watch(fmk, log), _fmk(fmk), _log(log) {
+ _fds(log), _watch(fmk, log), _defer(false),
+ _wakeup(INVALID_SOCKET), _wake(fmk, log), _fmk(fmk), _log(log) {
 	// Получаем идентификатор потока
 	this->_wid = this->wid();
 	/**
@@ -4592,6 +4674,13 @@ awh::Base::Base(const fmk_t * fmk, const log_t * log) noexcept :
 	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		// Сбрасываем количество действительных записей в буфере результатов
 		this->_ready = 0;
+	#endif
+	/**
+	 * Для операционной системы Linux, MacOS X, FreeBSD, NetBSD или OpenBSD
+	 */
+	#if __linux__ || __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		// Выполняем инициализацию уведомителя пробуждения опроса
+		this->_wakeup = this->_wake.init();
 	#endif
 	// Выполняем инициализацию базы событий
 	this->init(event_mode_t::ENABLED);

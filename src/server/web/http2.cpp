@@ -465,8 +465,11 @@ int32_t awh::server::Http2::chunkSignal(const int32_t sid, const uint64_t bid, c
 						// Выводим результат
 						return 0;
 					}
-				// Добавляем полученный чанк в тело данных
-				} else stream->http.body(reinterpret_cast <const char *> (buffer), size);
+				/**
+				 * Добавляем полученный чанк в тело данных. Чанки только накапливаются: тело раскодируется
+				 * один раз целиком при фиксации запроса, а не на каждом частичном фрейме DATA
+				 */
+				} else stream->http.payload(reinterpret_cast <const char *> (buffer), size);
 			}
 			// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
 			if(this->_callback.is("chunks"))
@@ -581,6 +584,10 @@ int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, c
 										if(stream != nullptr){
 											// Выполняем коммит полученного результата
 											stream->http.commit();
+											// Если тело запроса невозможно раскодировать, запрос отклоняется без передачи приложению
+											if(this->fault(sid, bid, true))
+												// Выходим из функции
+												return 0;
 											// Выполняем обработку полученных данных
 											this->prepare(sid, bid);
 											// Если функция обратного вызова активности потока установлена
@@ -604,6 +611,10 @@ int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, c
 										if(stream != nullptr){
 											// Выполняем коммит полученного результата
 											stream->http.commit();
+											// Если кодирование тела запроса не поддерживается, запрос отклоняется без передачи приложению
+											if(this->fault(sid, bid, flags.find(awh::http2_t::flag_t::END_STREAM) != flags.end()))
+												// Выходим из функции
+												return 0;
 											// Выполняем извлечение параметров запроса
 											const auto & request = stream->http.request();
 											// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
@@ -648,6 +659,86 @@ int32_t awh::server::Http2::frameSignal(const int32_t sid, const uint64_t bid, c
 	}
 	// Выводим результат
 	return 0;
+}
+/**
+ * @brief Метод отклонения запроса с ошибкой обработки (тело невозможно раскодировать)
+ *
+ * @param sid идентификатор потока
+ * @param bid идентификатор брокера
+ * @param end флаг завершения передачи запроса клиентом
+ * @return    результат проверки: true, если запрос отклонён и приложению не передаётся
+ */
+bool awh::server::Http2::fault(const int32_t sid, const uint64_t bid, const bool end) noexcept {
+	// Извлекаем данные потока
+	scheme::web2_t::stream_t * stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid));
+	// Если поток не получен
+	if(stream == nullptr)
+		// Выходим из функции
+		return false;
+	/**
+	 * Если запрос получен полностью и ошибка ещё не обнаружена, запрашиваем тело: зашифрованное тело
+	 * дешифруется и раскодируется только при его получении, и ошибка раскодирования устанавливается там же
+	 */
+	if(end && (stream->http.fault() == 0) && !stream->http.empty(awh::http_t::suite_t::BODY))
+		// Выполняем получение тела запроса
+		stream->http.body();
+	// Получаем код ответа на ошибку обработки запроса
+	const uint32_t code = stream->http.fault();
+	// Если ошибки нет, запрос передаётся приложению
+	if(code == 0)
+		// Выходим из функции
+		return false;
+	// Выполняем очистку HTTP-парсера
+	stream->http.clear();
+	// Выполняем сброс состояния HTTP-парсера
+	stream->http.reset();
+	// Получаем заголовки ответа удалённому клиенту
+	const auto & headers = stream->http.reject2(awh::web_t::res_t(2.f, code, stream->http.message(code)));
+	// Если заголовки ответа получены
+	if(!headers.empty()){
+		// Флаг отправляемого фрейма
+		awh::http2_t::flag_t flag = awh::http2_t::flag_t::NONE;
+		// Если тело ответа не существует
+		if(stream->http.empty(awh::http_t::suite_t::BODY))
+			// Устанавливаем флаг завершения потока
+			flag = awh::http2_t::flag_t::END_STREAM;
+		// Если ответ не получилось отправить
+		if(web2_t::send(sid, bid, headers, flag) < 0)
+			// Выходим из функции
+			return true;
+		// Тело HTTP-ответа
+		buffer_t payload(this->_fmk, this->_log);
+		/**
+		 * Получаем данные тела ответа (поток извлекается повторно после каждой отправки, так как он мог быть закрыт)
+		 */
+		while(((stream = const_cast <scheme::web2_t::stream_t *> (this->_scheme.getStream(sid, bid))) != nullptr) && !(payload = ::move(stream->http.payload())).empty()){
+			// Если тела для отправки больше не осталось
+			if(stream->http.empty(awh::http_t::suite_t::BODY))
+				// Устанавливаем флаг завершения потока
+				flag = awh::http2_t::flag_t::END_STREAM;
+			// Выполняем отправку тела ответа
+			if(!web2_t::send(sid, bid, static_cast <const char *> (payload), static_cast <size_t> (payload), flag))
+				// Выходим из функции
+				return true;
+		}
+	}
+	/**
+	 * Если клиент ещё передаёт тело запроса, сбрасываем поток с кодом NO_ERROR (RFC 9113 §8.1: ответ уже отправлен,
+	 * тело запроса больше не нужно), иначе полученное тело было бы передано приложению при завершении потока
+	 */
+	if(!end && (this->_scheme.getStream(sid, bid) != nullptr))
+		// Выполняем сброс потока
+		web2_t::reject(sid, bid, awh::http2_t::error_t::NONE);
+	// Если функция обратного вызова на на вывод ошибок установлена
+	if(this->_callback.is("error"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", bid, log_t::flag_t::WARNING, http::error_t::HTTP2_RECV, this->_fmk->format("Request rejected with code %u", code));
+	// Если установлена функция отлова завершения запроса
+	if(this->_callback.is("end"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", sid, bid, direct_t::RECV);
+	// Сообщаем, что запрос отклонён
+	return true;
 }
 /**
  * @brief Метод выполнения препарирования полученных данных
@@ -1343,6 +1434,11 @@ void awh::server::Http2::erase(const uint64_t bid) noexcept {
 							// Выполняем удаление активного агента
 							this->_agents.erase(i);
 						}
+						/**
+						 * Если при подключении протокол ещё не был определён, для брокера были созданы параметры HTTP/1.1
+						 * (см. connectEvents), удаляем и их, иначе они остаются в памяти после отключения
+						 */
+						this->_http1.erase(bid);
 					} break;
 				}
 			}
@@ -1437,6 +1533,13 @@ void awh::server::Http2::disconnect(const uint64_t bid) noexcept {
 						break;
 					}
 				}
+				/**
+				 * Если при подключении протокол ещё не был определён (ALPN не завершён), в connectEvents
+				 * для брокера были созданы параметры HTTP/1.1: ставим их в очередь на удаление вместе с брокером
+				 */
+				if(this->_http1._agents.find(bid) != this->_http1._agents.end())
+					// Добавляем брокера в очередь отключившихся клиентов HTTP/1.1
+					this->_http1.disconnect(bid);
 			} break;
 		}
 		// Добавляем в очередь список отключившихся клиентов
