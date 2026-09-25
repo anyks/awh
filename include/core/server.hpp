@@ -118,6 +118,10 @@ namespace awh {
 				std::map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
+				// Список таймеров перепосылки рукопожатия DTLS
+				std::map <uint64_t, uint16_t> _retransmits;
+				// Список таймеров отправки очереди датаграмм
+				std::map <uint64_t, uint16_t> _flushes;
 			private:
 				// Список подключённых брокеров
 				std::map <uint16_t, std::unique_ptr <awh::scheme_t::broker_t>> _brokers;
@@ -184,6 +188,51 @@ namespace awh {
 				 * @param mode режим создания таймера
 				 */
 				void createTimeout(const uint16_t sid, const uint64_t bid, const uint32_t msec, const mode_t mode) noexcept;
+			private:
+				/**
+				 * @brief Метод срабатывания таймера брокера
+				 *
+				 * @param sid  идентификатор схемы сети
+				 * @param bid  идентификатор брокера
+				 * @param tid  идентификатор сработавшего таймера
+				 * @param mode режим таймера
+				 */
+				void expired(const uint16_t sid, const uint64_t bid, const uint16_t tid, const mode_t mode) noexcept;
+			private:
+				/**
+				 * @brief Метод запуска таймера отправки очереди датаграмм
+				 *
+				 * @param bid  идентификатор брокера
+				 * @param msec задержка отправки в миллисекундах
+				 */
+				void flush(const uint64_t bid, const uint32_t msec) noexcept;
+				/**
+				 * @brief Метод срабатывания таймера отправки очереди датаграмм
+				 *
+				 * @param bid идентификатор брокера
+				 * @param tid идентификатор сработавшего таймера
+				 */
+				void flushed(const uint64_t bid, const uint16_t tid) noexcept;
+			private:
+				/**
+				 * @brief Метод запуска таймера перепосылки рукопожатия DTLS
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void retransmission(const uint64_t bid) noexcept;
+				/**
+				 * @brief Метод перепосылки рукопожатия DTLS по таймеру
+				 *
+				 * @param bid идентификатор брокера
+				 * @param tid идентификатор сработавшего таймера
+				 */
+				void retransmit(const uint64_t bid, const uint16_t tid) noexcept;
+				/**
+				 * @brief Метод удаления таймера перепосылки рукопожатия DTLS
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void clearRetransmit(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод получения события подключения дочерних процессов

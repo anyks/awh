@@ -73,6 +73,16 @@ namespace awh {
 				// Список активных агентов
 				std::map <uint64_t, agent_t> _agents;
 			private:
+				// Идентификатор брокера, запросы которого разбираются в данный момент
+				uint64_t _busy;
+				// Список брокеров, ожидающих продолжения разбора конвейера запросов
+				std::set <uint64_t> _resumes;
+				/**
+				 * Собственный таймер продолжения разбора: таймер базового класса закрыт,
+				 * а у вложенного в HTTP/2 модуля он не привязывается к ядру
+				 */
+				timer_t _resumer;
+			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу
 				 *
@@ -106,6 +116,20 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 */
 				void writeEvents(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept;
+			private:
+				/**
+				 * @brief Метод разбора накопленных данных брокера
+				 *
+				 * @param bid идентификатор брокера
+				 * @param sid идентификатор схемы сети
+				 */
+				void process(const uint64_t bid, const uint16_t sid) noexcept;
+				/**
+				 * @brief Метод продолжения разбора конвейера запросов после асинхронного ответа
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void resume(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод отлавливания событий контейнера функций обратного вызова

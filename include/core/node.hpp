@@ -20,6 +20,7 @@
  */
 #include <set>
 #include <map>
+#include <deque>
 #include <queue>
 #include <mutex>
 #include <string>
@@ -209,6 +210,13 @@ namespace awh {
 			std::map <uint64_t, const scheme_t::broker_t *> _brokers;
 			// Буферы отправляемой полезной нагрузки
 			std::map <uint64_t, std::unique_ptr <buffer_t>> _payloads;
+		private:
+			/**
+			 * Размеры датаграмм в очереди полезной нагрузки брокера (UDP / DTLS): буфер
+			 * полезной нагрузки хранит сплошной поток байт, а границы датаграмм храним
+			 * отдельно, чтобы отправлять каждую датаграмму отдельно, не склеивая и не разрезая
+			 */
+			std::map <uint64_t, std::deque <size_t>> _datagrams;
 		protected:
 			// Объект DNS-резолвера
 			const dns_t * _dns;
@@ -267,6 +275,13 @@ namespace awh {
 			 * @param size размер байт удаляемых из буфера
 			 */
 			void erase(const uint64_t bid, const size_t size) noexcept;
+			/**
+			 * @brief Метод получения размера следующей датаграммы в очереди полезной нагрузки
+			 *
+			 * @param bid идентификатор брокера
+			 * @return    размер следующей датаграммы (0 - сокет не датаграммный или очередь пуста)
+			 */
+			size_t datagram(const uint64_t bid) noexcept;
 		protected:
 			/**
 			 * @brief Метод извлечения брокера подключения

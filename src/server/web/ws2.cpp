@@ -41,6 +41,13 @@ static constexpr size_t MAX_HEADERS_LIST_SIZE = 0x10000;
 void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
+		// Если тредпул активирован и сетевое ядро установлено
+		if(this->_thr.initialized() && (this->_core != nullptr))
+			/**
+			 * Выполняем активацию передатчика задач в поток базы событий заранее, чтобы отправка
+			 * из пула потоков передавалась в поток базы событий с первого сообщения
+			 */
+			this->_relay.activation(const_cast <server::core_t *> (this->_core));
 		// Создаём брокера
 		this->_scheme.set(bid);
 		// Выполняем проверку инициализирован ли протокол HTTP/2 для текущего клиента
@@ -142,13 +149,17 @@ void awh::server::Websocket2::connectEvents(const uint64_t bid, const uint16_t s
 			if(!this->_extensions.empty())
 				// Устанавливаем список поддерживаемых расширений
 				this->_ws1.extensions(this->_extensions);
-			// Если многопоточность активированна
-			if(this->_thr.initialized()){
-				// Выполняем завершение всех активных потоков
-				this->_thr.stop();
-				// Выполняем инициализацию нового тредпула
-				this->_ws1.multiThreads(this->_threads);
-			}
+			/**
+			 * Если многопоточность активированна, а пул потоков для клиентов HTTP/1.1 ещё не запущен,
+			 * запускаем его. Пул потоков HTTP/2 не останавливаем и пул HTTP/1.1 не пересоздаём: сервер
+			 * одновременно обслуживает клиентов обоих протоколов, а остановка пула удаляет задачи, ещё
+			 * не исполненные для других клиентов (полученные сообщения терялись). Пул запускается напрямую,
+			 * без multiThreads: режим простого чтения базы событий уже установлен при активации многопоточности,
+			 * а его повторная установка пинает базу событий посреди обработки подключения (подключение терялось)
+			 */
+			if(this->_thr.initialized() && !this->_ws1._thr.initialized())
+				// Выполняем инициализацию тредпула для клиентов HTTP/1.1
+				this->_ws1._thr.init(this->_threads);
 			// Выполняем переброс вызова коннекта на клиент Websocket
 			this->_ws1.connectEvents(bid, sid);
 		}
@@ -173,6 +184,8 @@ void awh::server::Websocket2::disconnectEvents(const uint64_t bid, const uint16_
 		if(i != this->_sessions.end())
 			// Выполняем закрытие подключения
 			i->second->close();
+		// Удаляем недосланные байты разорванного подключения HTTP/1.1
+		this->_ws1._outgoing.erase(bid);
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -684,18 +697,11 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 													}
 												// Если сообщение является последним
 												} else {
-													// Если тредпул активирован
-													if(this->_thr.initialized())
-														/**
-														 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
-														 * данные копируем в задачу, так как буфер фрейма освобождается до её исполнения
-														 */
-														this->_thr.push([this, bid, text = (options->frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (payload.begin(), payload.end())]() noexcept -> void {
-															// Выполняем извлечение полученных сообщений
-															this->extraction(bid, data.data(), data.size(), text);
-														});
-													// Если тредпул не активирован, выполняем извлечение полученных сообщений
-													else this->extraction(bid, payload.data(), payload.size(), (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
+													/**
+													 * Выполняем извлечение полученного сообщения в потоке базы событий: расшифровка и декомпрессия
+													 * с общим контекстом выполняются строго по порядку, в пул потоков передаётся готовое сообщение
+													 */
+													this->extraction(bid, payload.data(), payload.size(), (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 												}
 											} break;
 											// Если ответом является CONTINUATION
@@ -710,18 +716,11 @@ int32_t awh::server::Websocket2::frameSignal(const int32_t sid, const uint64_t b
 														goto Stop;
 													// Если сообщение является последним
 													} else if(head.fin) {
-														// Если тредпул активирован
-														if(this->_thr.initialized())
-															/**
-															 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
-															 * данные копируем в задачу, так как буфер фрагментов очищается сразу после постановки
-															 */
-															this->_thr.push([this, bid, text = (options->frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (static_cast <const char *> (options->buffer.fragments), static_cast <const char *> (options->buffer.fragments) + static_cast <size_t> (options->buffer.fragments))]() noexcept -> void {
-																// Выполняем извлечение полученных сообщений
-																this->extraction(bid, data.data(), data.size(), text);
-															});
-														// Если тредпул не активирован, выполняем извлечение полученных сообщений
-														else this->extraction(bid, static_cast <const char *> (options->buffer.fragments), static_cast <size_t> (options->buffer.fragments), (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
+														/**
+														 * Выполняем извлечение полученного сообщения в потоке базы событий: расшифровка и декомпрессия
+														 * с общим контекстом выполняются строго по порядку, в пул потоков передаётся готовое сообщение
+														 */
+														this->extraction(bid, static_cast <const char *> (options->buffer.fragments), static_cast <size_t> (options->buffer.fragments), (options->frame.opcode == ws::frame_t::opcode_t::TEXT));
 														// Очищаем список фрагментированных сообщений
 														options->buffer.fragments.clear();
 														// Сбрасываем признак приёма фрагментированного сообщения
@@ -1128,7 +1127,7 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const char * buffer
 	// Если получено сообщение нулевой длины (RFC 6455 допускает пустые сообщения)
 	if((bid > 0) && (size == 0) && this->_callback.is("messageWebsocket")){
 		// Отправляем пустое сообщение
-		this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, vector <char> (), text);
+		this->delivery(bid, vector <char> (), text);
 		// Выходим из функции
 		return;
 	}
@@ -1233,15 +1232,20 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const char * buffer
 			// Если данные получены
 			if(!options->buffer.extraction.empty())
 				// Отправляем полученный результат
-				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, options->buffer.extraction, text);
+				this->delivery(bid, options->buffer.extraction, text);
 			// Если получено пустое сжатое сообщение, отправляем пустой результат
 			else if(blank)
 				// Отправляем пустое сообщение
-				this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, vector <char> (), text);
+				this->delivery(bid, vector <char> (), text);
 			// Выводим сообщение об ошибке
 			else if(this->_core != nullptr) {
 				// Создаём сообщение
 				options->mess = ws::mess_t(1007, "Received data decompression error");
+				/**
+				 * Запрещаем получение данных: извлечение выполняется в цикле разбора фреймов,
+				 * и следующие фреймы после ошибки декомпрессии обрабатываться не должны
+				 */
+				options->allow.receive = false;
 				// Получаем буфер сообщения
 				options->buffer.extraction = options->frame.methods.message(options->mess);
 				// Если данные сообщения получены
@@ -1253,6 +1257,73 @@ void awh::server::Websocket2::extraction(const uint64_t bid, const char * buffer
 			}
 		}
 	}
+}
+/**
+ * @brief Метод передачи полученного сообщения в функцию обратного вызова
+ *
+ * @param bid     идентификатор брокера
+ * @param message буфер полученного сообщения
+ * @param text    данные передаются в текстовом виде
+ */
+void awh::server::Websocket2::delivery(const uint64_t bid, const vector <char> & message, const bool text) noexcept {
+	// Если функция обратного вызова получения сообщений установлена
+	if((bid > 0) && this->_callback.is("messageWebsocket")){
+		// Если тредпул активирован
+		if(this->_thr.initialized()){
+			// Если сетевое ядро установлено
+			if(this->_core != nullptr)
+				// Выполняем активацию передатчика задач в поток базы событий
+				this->_relay.activation(const_cast <server::core_t *> (this->_core));
+			/**
+			 * Добавляем сообщение в очередь брокера, сообщения одного брокера передаются
+			 * функции обратного вызова по порядку, поэтому задача в пуле потоков для брокера
+			 * запускается, только если очередь брокера ещё не обрабатывается
+			 */
+			if(this->_relay.push(bid, vector <char> (message), text))
+				// Добавляем в тредпул задачу обработки очереди сообщений брокера
+				this->_thr.push([this, bid]() noexcept -> void {
+					// Выполняем обработку очереди сообщений брокера
+					this->received(bid);
+				});
+		// Выполняем функцию обратного вызова
+		} else this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, message, text);
+	}
+}
+/**
+ * @brief Метод обработки очереди полученных сообщений брокера в пуле потоков
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Websocket2::received(const uint64_t bid) noexcept {
+	// Флаг текстового сообщения
+	bool text = false;
+	// Буфер полученного сообщения
+	vector <char> message;
+	// Если сообщение из очереди брокера извлечено
+	if(this->_relay.pop(bid, message, text)){
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const uint64_t, const vector <char> &, const bool)> ("messageWebsocket", bid, message, text);
+		/**
+		 * Если в очереди брокера остались сообщения, ставим обработку очереди в тредпул заново,
+		 * а не продолжаем в цикле, чтобы один брокер не занимал поток пула в ущерб остальным
+		 */
+		if(this->_relay.next(bid))
+			// Добавляем в тредпул задачу обработки очереди сообщений брокера
+			this->_thr.push([this, bid]() noexcept -> void {
+				// Выполняем обработку очереди сообщений брокера
+				this->received(bid);
+			});
+	}
+}
+/**
+ * @brief Метод остановки пула потоков
+ *
+ */
+void awh::server::Websocket2::release() noexcept {
+	// Выполняем завершение всех активных потоков
+	this->_thr.stop();
+	// Очищаем очереди сообщений, задачи обработки которых удалены вместе с пулом потоков
+	this->_relay.clear();
 }
 /**
  * @brief Метод проверки доступности сервера
@@ -1480,6 +1551,16 @@ void awh::server::Websocket2::init(const uint32_t port, const string & host, con
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::server::Websocket2::sendError(const uint64_t bid, const ws::mess_t & mess) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро и сессия HTTP/2 не потокобезопасны
+	 */
+	if((this->_core != nullptr) && this->_relay.remote() && this->_relay.forward(const_cast <server::core_t *> (this->_core), [this, bid, mess]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->sendError(bid, mess);
+	}))
+		// Выходим из функции
+		return;
 	// Если подключение выполнено
 	if((this->_core != nullptr) && this->_core->working()){
 		// Если код ошибки относится к Websocket
@@ -1547,6 +1628,16 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const vector <char
  * @return        результат отправки сообщения
  */
 bool awh::server::Websocket2::sendMessage(const uint64_t bid, const char * message, const size_t size, const bool text) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро, сессия HTTP/2 и контекст компрессии не потокобезопасны
+	 */
+	if((this->_core != nullptr) && (message != nullptr) && (size > 0) && this->_relay.remote() && this->_relay.forward(const_cast <server::core_t *> (this->_core), [this, bid, text, data = vector <char> (message, message + size)]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->sendMessage(bid, data.data(), data.size(), text);
+	}))
+		// Сообщаем, что задача передана в поток базы событий
+		return true;
 	// Результат работы функции
 	bool result = false;
 	// Если подключение выполнено
@@ -1703,6 +1794,16 @@ bool awh::server::Websocket2::sendMessage(const uint64_t bid, const char * messa
  * @return       результат отправки сообщения
  */
 bool awh::server::Websocket2::send(const uint64_t bid, const char * buffer, const size_t size) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро и сессия HTTP/2 не потокобезопасны
+	 */
+	if((this->_core != nullptr) && (buffer != nullptr) && (size > 0) && this->_relay.remote() && this->_relay.forward(const_cast <server::core_t *> (this->_core), [this, bid, data = vector <char> (buffer, buffer + size)]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->send(bid, data.data(), data.size());
+	}))
+		// Сообщаем, что задача передана в поток базы событий
+		return true;
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков ответа клиенту
@@ -1832,6 +1933,16 @@ void awh::server::Websocket2::start() noexcept {
  * @param bid идентификатор брокера
  */
 void awh::server::Websocket2::close(const uint64_t bid) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро и сессия HTTP/2 не потокобезопасны
+	 */
+	if((this->_core != nullptr) && this->_relay.remote() && this->_relay.forward(const_cast <server::core_t *> (this->_core), [this, bid]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->close(bid);
+	}))
+		// Выходим из функции
+		return;
 	// Получаем параметры активного клиента
 	scheme::ws_t::options_t * options = const_cast <scheme::ws_t::options_t *> (this->_scheme.get(bid));
 	// Если параметры активного клиента получены, устанавливаем флаг закрытия подключения
@@ -1974,7 +2085,7 @@ void awh::server::Websocket2::multiThreads(const uint16_t count, const bool mode
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
-			this->_thr.stop();
+			this->release();
 			// Выполняем инициализацию нового тредпула
 			this->_thr.init(this->_threads);
 		}
@@ -1982,8 +2093,13 @@ void awh::server::Websocket2::multiThreads(const uint16_t count, const bool mode
 		if(this->_core != nullptr)
 			// Устанавливаем простое чтение базы событий
 			const_cast <server::core_t *> (this->_core)->easily(true);
-	// Выполняем завершение всех потоков
-	} else this->_thr.stop();
+	// Если нужно деактивировать многопоточность
+	} else {
+		// Выполняем завершение всех потоков
+		this->release();
+		// Выполняем завершение потоков клиентов HTTP/1.1, запущенных при подключении
+		this->_ws1.release();
+	}
 }
 /**
  * @brief Метод установки максимального количества одновременных подключений
@@ -2127,12 +2243,16 @@ void awh::server::Websocket2::core(const server::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_thr.initialized() || this->_ws1._thr.initialized()){
 			// Выполняем завершение всех активных потоков
-			this->_thr.stop();
+			this->release();
 			// Выполняем завершение всех активных потоков
-			this->_ws1._thr.stop();
+			this->_ws1.release();
 			// Снимаем режим простого чтения базы событий
 			const_cast <server::core_t *> (this->_core)->easily(false);
 		}
+		// Выполняем деактивацию передатчика задач в поток базы событий
+		this->_relay.deactivation(const_cast <server::core_t *> (this->_core));
+		// Выполняем деактивацию передатчика задач клиентов HTTP/1.1
+		this->_ws1._relay.deactivation(const_cast <server::core_t *> (this->_core));
 		// Удаляем схему сети из сетевого ядра
 		const_cast <server::core_t *> (this->_core)->remove(this->_scheme.id);
 		// Выполняем удаление объекта сетевого ядра
@@ -2350,5 +2470,5 @@ awh::server::Websocket2::~Websocket2() noexcept {
 	// Если многопоточность активированна
 	if(this->_thr.initialized())
 		// Выполняем завершение всех активных потоков
-		this->_thr.stop();
+		this->release();
 }

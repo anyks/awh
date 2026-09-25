@@ -155,6 +155,12 @@ namespace awh {
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
+			private:
+				/**
+				 * Передатчик работы между пулом потоков и потоком базы событий,
+				 * хранит очереди полученных сообщений брокеров для пула потоков
+				 */
+				ws_relay_t _relay;
 				// Объект для работы с HTTP-протколом
 				ws_t _http;
 				// Объект хэширования
@@ -352,6 +358,28 @@ namespace awh {
 				 * @param text   данные передаются в текстовом виде
 				 */
 				void extraction(const char * buffer, const size_t size, const bool text) noexcept;
+			private:
+				/**
+				 * @brief Метод передачи полученного сообщения в функцию обратного вызова
+				 *
+				 * Вызывается в потоке базы событий. При активном пуле потоков сообщение
+				 * ставится в очередь и передаётся в пул потоков
+				 *
+				 * @param message буфер полученного сообщения
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void delivery(const vector <char> & message, const bool text) noexcept;
+				/**
+				 * @brief Метод обработки очереди полученных сообщений в пуле потоков
+				 *
+				 */
+				void received() noexcept;
+			private:
+				/**
+				 * @brief Метод остановки пула потоков
+				 *
+				 */
+				void release() noexcept;
 			public:
 				/**
 				 * @brief Метод отправки сообщения об ошибке

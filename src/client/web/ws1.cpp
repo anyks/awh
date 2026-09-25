@@ -38,6 +38,13 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::OPEN, event_t::READ, event_t::PROXY_READ}, event_t::CONNECT)){
+		// Если тредпул активирован и сетевое ядро установлено
+		if(this->_thr.initialized() && (this->_core != nullptr))
+			/**
+			 * Выполняем активацию передатчика задач в поток базы событий заранее, чтобы отправка
+			 * из пула потоков передавалась в поток базы событий с первого сообщения
+			 */
+			this->_relay.activation(const_cast <client::core_t *> (this->_core));
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Запоминаем идентификатор брокера
@@ -124,6 +131,8 @@ void awh::client::Websocket1::connectEvent(const uint64_t bid, const uint16_t si
  * @param sid идентификатор схемы сети
  */
 void awh::client::Websocket1::disconnectEvent(const uint64_t bid, const uint16_t sid) noexcept {
+	// Удаляем недосланные байты разорванного подключения
+	this->_outgoing.reset(nullptr);
 	// Выполняем редирект, если редирект выполнен
 	if(this->redirect())
 		// Выходим из функции
@@ -316,8 +325,14 @@ void awh::client::Websocket1::readEvent(const char * buffer, const size_t size, 
 void awh::client::Websocket1::writeEvent(const char * buffer, const size_t size, const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные существуют
 	if((bid > 0) && (sid > 0)){
-		// Если необходимо выполнить закрыть подключение
-		if(!this->_close && this->_stopped){
+		// Выполняем досылку байт, ожидающих места в буфере отправки сетевого ядра
+		this->flush(size);
+		/**
+		 * Если необходимо выполнить закрыть подключение: закрываем, только когда записаны последние
+		 * байты (очередь модуля пуста, а буфер сетевого ядра содержит только что записанные байты),
+		 * иначе фрейм закрытия обрывался на полуслове
+		 */
+		if(!this->_close && this->_stopped && (this->_outgoing == nullptr) && (this->_core->brokerAvailableSize(bid) == size)){
 			// Устанавливаем флаг закрытия подключения
 			this->_close = !this->_close;
 			// Принудительно выполняем отключение лкиента
@@ -538,7 +553,7 @@ void awh::client::Websocket1::ping(const void * buffer, const size_t size) noexc
 			// Если фрейм для отправки получен
 			if(!frame.empty()){
 				// Выполняем отправку сообщения на сервер
-				if(const_cast <client::core_t *> (this->_core)->send(frame.data(), frame.size(), this->_bid))
+				if(this->transmit(frame.data(), frame.size()))
 					// Обновляем время отправленного пинга
 					this->_sendPing = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 			}
@@ -561,7 +576,7 @@ void awh::client::Websocket1::pong(const void * buffer, const size_t size) noexc
 			// Если фрейм для отправки получен
 			if(!frame.empty())
 				// Выполняем отправку сообщения на сервер
-				const_cast <client::core_t *> (this->_core)->send(frame.data(), frame.size(), this->_bid);
+				this->transmit(frame.data(), frame.size());
 		}
 	}
 }
@@ -911,18 +926,11 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 							}
 						// Если сообщение является последним
 						} else {
-							// Если тредпул активирован
-							if(this->_thr.initialized())
-								/**
-								 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
-								 * данные копируем в задачу, так как буфер фрейма освобождается до её исполнения
-								 */
-								this->_thr.push([this, text = (this->_frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (payload.begin(), payload.end())]() noexcept -> void {
-									// Выполняем извлечение полученных сообщений
-									this->extraction(data.data(), data.size(), text);
-								});
-							// Если тредпул не активирован, выполняем извлечение полученных сообщений
-							else this->extraction(payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+							/**
+							 * Выполняем извлечение полученного сообщения в потоке базы событий: расшифровка и декомпрессия
+							 * с общим контекстом выполняются строго по порядку, в пул потоков передаётся готовое сообщение
+							 */
+							this->extraction(payload.data(), payload.size(), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 						}
 					} break;
 					// Если ответом является CONTINUATION
@@ -939,18 +947,11 @@ awh::client::Web::status_t awh::client::Websocket1::prepare(const int32_t sid, c
 								return status_t::NEXT;
 							// Если сообщение является последним
 							} else if(head.fin) {
-								// Если тредпул активирован
-								if(this->_thr.initialized())
-									/**
-									 * Добавляем в тредпул новую задачу на извлечение полученных сообщений,
-									 * данные копируем в задачу, так как буфер фрагментов очищается сразу после постановки
-									 */
-									this->_thr.push([this, text = (this->_frame.opcode == ws::frame_t::opcode_t::TEXT), data = vector <char> (static_cast <const char *> (this->_inter.fragments), static_cast <const char *> (this->_inter.fragments) + static_cast <size_t> (this->_inter.fragments))]() noexcept -> void {
-										// Выполняем извлечение полученных сообщений
-										this->extraction(data.data(), data.size(), text);
-									});
-								// Если тредпул не активирован, выполняем извлечение полученных сообщений
-								else this->extraction(static_cast <const char *> (this->_inter.fragments), static_cast <size_t> (this->_inter.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
+								/**
+								 * Выполняем извлечение полученного сообщения в потоке базы событий: расшифровка и декомпрессия
+								 * с общим контекстом выполняются строго по порядку, в пул потоков передаётся готовое сообщение
+								 */
+								this->extraction(static_cast <const char *> (this->_inter.fragments), static_cast <size_t> (this->_inter.fragments), (this->_frame.opcode == ws::frame_t::opcode_t::TEXT));
 								// Очищаем список фрагментированных сообщений
 								this->_inter.fragments.clear();
 								// Сбрасываем признак приёма фрагментированного сообщения
@@ -1058,7 +1059,7 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
 	// Если получено сообщение нулевой длины (RFC 6455 допускает пустые сообщения)
 	if((size == 0) && !this->_freeze && web_t::_callback.is("messageWebsocket")){
 		// Отправляем пустое сообщение
-		web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", vector <char> (), text);
+		this->delivery(vector <char> (), text);
 		// Выходим из функции
 		return;
 	}
@@ -1157,19 +1158,235 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
 		// Если данные получены
 		if(!this->_inter.extraction.empty())
 			// Отправляем полученный результат
-			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", this->_inter.extraction, text);
+			this->delivery(this->_inter.extraction, text);
 		// Если получено пустое сжатое сообщение, отправляем пустой результат
 		else if(blank)
 			// Отправляем пустое сообщение
-			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", vector <char> (), text);
+			this->delivery(vector <char> (), text);
 		// Выводим сообщение об ошибке
 		else {
 			// Иначе выводим сообщение так - как оно пришло
-			web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", vector <char> (), text);
+			this->delivery(vector <char> (), text);
 			// Создаём сообщение
 			this->_mess = ws::mess_t(1007, "Received data decompression error");
 			// Выполняем отправку сообщения об ошибке
 			this->sendError(this->_mess);
+		}
+	}
+}
+/**
+ * @brief Метод передачи полученного сообщения в функцию обратного вызова
+ *
+ * @param message буфер полученного сообщения
+ * @param text    данные передаются в текстовом виде
+ */
+void awh::client::Websocket1::delivery(const vector <char> & message, const bool text) noexcept {
+	// Если функция обратного вызова получения сообщений установлена
+	if(web_t::_callback.is("messageWebsocket")){
+		// Если тредпул активирован
+		if(this->_thr.initialized()){
+			// Если сетевое ядро установлено
+			if(this->_core != nullptr)
+				// Выполняем активацию передатчика задач в поток базы событий
+				this->_relay.activation(const_cast <client::core_t *> (this->_core));
+			/**
+			 * Добавляем сообщение в очередь, сообщения передаются функции обратного вызова
+			 * по порядку, поэтому задача в пуле потоков запускается, только если очередь
+			 * ещё не обрабатывается (у клиента одно подключение, очередь одна)
+			 */
+			if(this->_relay.push(0, vector <char> (message), text))
+				// Добавляем в тредпул задачу обработки очереди сообщений
+				this->_thr.push([this]() noexcept -> void {
+					// Выполняем обработку очереди сообщений
+					this->received();
+				});
+		// Выполняем функцию обратного вызова
+		} else web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", message, text);
+	}
+}
+/**
+ * @brief Метод обработки очереди полученных сообщений в пуле потоков
+ *
+ */
+void awh::client::Websocket1::received() noexcept {
+	// Флаг текстового сообщения
+	bool text = false;
+	// Буфер полученного сообщения
+	vector <char> message;
+	// Если сообщение из очереди извлечено
+	if(this->_relay.pop(0, message, text)){
+		// Выполняем функцию обратного вызова
+		web_t::_callback.call <void (const vector <char> &, const bool)> ("messageWebsocket", message, text);
+		// Если в очереди остались сообщения
+		if(this->_relay.next(0))
+			// Добавляем в тредпул задачу обработки очереди сообщений
+			this->_thr.push([this]() noexcept -> void {
+				// Выполняем обработку очереди сообщений
+				this->received();
+			});
+	}
+}
+/**
+ * @brief Метод остановки пула потоков
+ *
+ */
+void awh::client::Websocket1::release() noexcept {
+	// Выполняем завершение всех активных потоков
+	this->_thr.stop();
+	// Очищаем очередь сообщений, задачи обработки которой удалены вместе с пулом потоков
+	this->_relay.clear();
+}
+/**
+ * @brief Метод получения свободного места в буфере отправки сетевого ядра
+ *
+ * @return количество байт, которое сетевое ядро примет без отказа
+ */
+size_t awh::client::Websocket1::available() const noexcept {
+	// Если сетевое ядро установлено
+	if(this->_core != nullptr){
+		// Получаем предельный размер буфера отправки одного брокера
+		const size_t limit = this->_core->brokerAvailableSize();
+		// Получаем количество байт, уже находящихся в буфере отправки брокера
+		const size_t used = this->_core->brokerAvailableSize(this->_bid);
+		/**
+		 * Свободное место считаем так же, как сетевое ядро при постановке данных в очередь
+		 * (node_t::send), тогда отправка в пределах этого места не получает отказа
+		 */
+		if(limit > used)
+			// Выводим свободное место с учётом общего предела памяти
+			return std::min(limit - used, this->_core->memoryAvailableSize());
+	}
+	// Сообщаем, что места нет
+	return 0;
+}
+/**
+ * @brief Метод постановки байт в поток отправки
+ *
+ * @param buffer буфер для отправки
+ * @param size   размер буфера для отправки
+ * @return       результат постановки буфера в поток отправки
+ */
+bool awh::client::Websocket1::transmit(const char * buffer, const size_t size) noexcept {
+	// Если данные переданы верные
+	if((this->_core != nullptr) && this->_core->working() && (this->_bid > 0) && (buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем объект сетевого ядра
+			client::core_t * core = const_cast <client::core_t *> (this->_core);
+			/**
+			 * Сначала переносим очередь модуля в буфер сетевого ядра, насколько он позволяет. Вызов идёт
+			 * вне события записи: при пустом буфере сетевое ядро пишет в сокет напрямую, и это безопасно
+			 */
+			if(this->_outgoing != nullptr){
+				// Получаем количество байт, которое можно передать сетевому ядру
+				const size_t bytes = std::min(this->available(), this->_outgoing->size());
+				// Если байты переданы сетевому ядру
+				if((bytes > 0) && core->send(static_cast <const char *> (* this->_outgoing), bytes, this->_bid)){
+					// Удаляем переданные байты из очереди модуля
+					this->_outgoing->erase(bytes);
+					// Если очередь модуля опустела
+					if(this->_outgoing->empty())
+						// Удаляем очередь модуля
+						this->_outgoing.reset(nullptr);
+				}
+			}
+			// Получаем размер очереди модуля
+			const size_t queued = (this->_outgoing != nullptr ? this->_outgoing->size() : 0);
+			// Получаем предельный размер буфера отправки одного брокера
+			const size_t limit = this->_core->brokerAvailableSize();
+			/**
+			 * Если очередь модуля не пуста, байты встают строго за ней, иначе сначала
+			 * заполняется свободное место в буфере сетевого ядра
+			 */
+			const size_t free = (queued == 0 ? this->available() : 0);
+			/**
+			 * Буфер ставится целиком или не ставится вовсе: он должен поместиться в свободное место
+			 * буфера сетевого ядра и в очередь модуля, ограниченную тем же пределом одного брокера
+			 */
+			if(size > (free + (limit > queued ? limit - queued : 0)))
+				// Сообщаем, что буфер не поставлен
+				return false;
+			// Количество байт, переданных сетевому ядру
+			size_t sent = 0;
+			/**
+			 * Передаём байты сетевому ядру порциями в пределах свободного места: при пустом буфере
+			 * сетевое ядро пишет в сокет напрямую, и место освобождается снова. Места не меньше,
+			 * чем при проверке выше, поэтому остаток всегда помещается в очередь модуля
+			 */
+			while((queued == 0) && (sent < size)){
+				// Получаем размер порции
+				const size_t bytes = std::min(this->available(), size - sent);
+				// Если места в буфере сетевого ядра не осталось
+				if(bytes == 0)
+					// Выходим из цикла
+					break;
+				// Если сетевое ядро отказало
+				if(!core->send(buffer + sent, bytes, this->_bid)){
+					// Если из буфера ещё ничего не ушло
+					if(sent == 0)
+						// Сообщаем, что буфер не поставлен
+						return false;
+					/**
+					 * Часть буфера уже ушла, а остаток не принят: чтобы на проводе не осталась оборванная
+					 * последовательность байт, закрываем подключение (отказ возможен лишь при его потере)
+					 */
+					core->close(this->_bid);
+					// Сообщаем, что буфер не поставлен
+					return false;
+				}
+				// Увеличиваем количество переданных байт
+				sent += bytes;
+			}
+			// Если часть буфера не поместилась в буфер сетевого ядра
+			if(sent < size){
+				// Если очередь модуля ещё не создана
+				if(this->_outgoing == nullptr)
+					// Создаём очередь модуля
+					this->_outgoing = std::make_unique <awh::buffer_t> (this->_fmk, this->_log);
+				// Добавляем оставшиеся байты в очередь модуля
+				this->_outgoing->push(buffer + sent, size - sent);
+			}
+			// Сообщаем, что буфер поставлен
+			return true;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception &) {
+			// Сообщаем, что буфер не поставлен
+			return false;
+		}
+	}
+	// Сообщаем, что буфер не поставлен
+	return false;
+}
+/**
+ * @brief Метод досылки байт из очереди модуля в буфер отправки сетевого ядра
+ *
+ * @param size количество байт, записанных в сокет при текущем событии записи
+ */
+void awh::client::Websocket1::flush(const size_t size) noexcept {
+	// Если очередь модуля существует и сетевое ядро установлено
+	if((this->_outgoing != nullptr) && (this->_core != nullptr)){
+		/**
+		 * Досылаем только при записи из буфера сетевого ядра: записанные байты ещё числятся
+		 * в буфере (освобождаются после этого вызова), и новые байты встают за ними. При прямой
+		 * записи внутри отправки буфер пуст, остаток текущей отправки ещё не поставлен,
+		 * и досылка вклинилась бы в середину чужих байт
+		 */
+		if((size > 0) && (this->_core->brokerAvailableSize(this->_bid) >= size)){
+			// Получаем количество байт, которое можно передать сетевому ядру
+			const size_t bytes = std::min(this->available(), this->_outgoing->size());
+			// Если байты переданы сетевому ядру
+			if((bytes > 0) && const_cast <client::core_t *> (this->_core)->send(static_cast <const char *> (* this->_outgoing), bytes, this->_bid)){
+				// Удаляем переданные байты из очереди модуля
+				this->_outgoing->erase(bytes);
+				// Если очередь модуля опустела
+				if(this->_outgoing->empty())
+					// Удаляем очередь модуля
+					this->_outgoing.reset(nullptr);
+			}
 		}
 	}
 }
@@ -1179,6 +1396,16 @@ void awh::client::Websocket1::extraction(const char * buffer, const size_t size,
  * @param mess отправляемое сообщение об ошибке
  */
 void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро не потокобезопасно
+	 */
+	if((this->_core != nullptr) && this->_relay.remote() && this->_relay.forward(const_cast <client::core_t *> (this->_core), [this, mess]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->sendError(mess);
+	}))
+		// Выходим из функции
+		return;
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
@@ -1200,7 +1427,24 @@ void awh::client::Websocket1::sendError(const ws::mess_t & mess) noexcept {
 					// Выводим сообщение об ошибке
 					this->error(mess);
 					// Выполняем отправку сообщения на сервер
-					if(core->send(buffer.data(), buffer.size(), this->_bid)){
+					if(this->transmit(buffer.data(), buffer.size())){
+						/**
+						 * Если все байты уже записаны в сокет, событий записи больше не будет:
+						 * закрываем подключение сразу, иначе оно закрывается в writeEvent,
+						 * когда будет записан последний байт
+						 */
+						if(!this->_close && (this->_outgoing == nullptr) && (this->_core->brokerAvailableSize(this->_bid) == 0)){
+							// Устанавливаем флаг закрытия подключения
+							this->_close = !this->_close;
+							// Получаем идентификатор брокера
+							const uint64_t bid = this->_bid;
+							// Если установлена функция отлова завершения запроса
+							if(web_t::_callback.is("end"))
+								// Выполняем функцию обратного вызова (до закрытия, которое сбрасывает идентификаторы запроса)
+								web_t::_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", this->_sid, this->_rid, direct_t::SEND);
+							// Завершаем работу
+							core->close(bid);
+						}
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1240,14 +1484,27 @@ bool awh::client::Websocket1::sendMessage(const vector <char> & message, const b
  * @return        результат отправки сообщения
  */
 bool awh::client::Websocket1::sendMessage(const char * message, const size_t size, const bool text) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро и контекст компрессии не потокобезопасны
+	 */
+	if((this->_core != nullptr) && (message != nullptr) && (size > 0) && this->_relay.remote() && this->_relay.forward(const_cast <client::core_t *> (this->_core), [this, text, data = vector <char> (message, message + size)]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->sendMessage(data.data(), data.size(), text);
+	}))
+		// Сообщаем, что задача передана в поток базы событий
+		return true;
 	// Результат работы функции
 	bool result = false;
 	// Создаём объект холдирования
 	hold_t <event_t> hold(this->_events);
 	// Если событие соответствует разрешённому
 	if(hold.access({event_t::CONNECT, event_t::READ}, event_t::SEND)){
-		// Если подключение выполнено
-		if((this->_core != nullptr) && this->_core->working() && this->_allow.send){
+		/**
+		 * Если подключение выполнено и фрейм закрытия ещё не отправлен:
+		 * после фрейма закрытия фреймы данных отправлять нельзя (RFC 6455, 5.5.1)
+		 */
+		if((this->_core != nullptr) && this->_core->working() && this->_allow.send && !this->_stopped){
 			// Выполняем блокировку отправки сообщения
 			this->_allow.send = !this->_allow.send;
 			// Если рукопожатие выполнено
@@ -1332,6 +1589,12 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 				if(this->_crypted)
 					// Выполняем шифрование полезной нагрузки
 					buffer = this->_hash.encode <vector <char>> (buffer.data(), buffer.size(), this->_cipher);
+				/**
+				 * Собираем все фреймы сообщения в один поток байт и ставим его в отправку целиком:
+				 * если часть фреймов не принималась сетевым ядром, оставшиеся фреймы раньше
+				 * отбрасывались, и на провод уходила оборванная последовательность фрагментов
+				 */
+				vector <char> wire;
 				// Если требуется фрагментация сообщения
 				if(buffer.size() > this->_frame.size){
 					// Смещение в бинарном буфере и актуальный размер блока
@@ -1352,25 +1615,33 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
 						offset += actual;
 						// Если бинарный буфер для отправки данных получен
 						if(!payload.empty())
-							// Выполняем отправку сообщения на сервер
-							result = const_cast <client::core_t *> (this->_core)->send(payload.data(), payload.size(), this->_bid);
+							// Добавляем фрейм в поток байт сообщения
+							wire.insert(wire.end(), payload.begin(), payload.end());
+						// Иначе прекращаем сборку сообщения
+						else {
+							// Очищаем поток байт сообщения
+							wire.clear();
+							// Выходим из цикла
+							break;
+						}
 						// Выполняем сброс RSV1
 						head.rsv[0] = false;
 						// Устанавливаем опкод сообщения
 						head.optcode = ws::frame_t::opcode_t::CONTINUATION;
-						// Если запрос не отправлен
-						if(!result)
-							// Выходим из цикла
-							break;
 					}
 				// Если фрагментация сообщения не требуется
-				} else {
-					// Создаём буфер для отправки
-					const auto & payload = this->_frame.methods.set(head, buffer.data(), buffer.size());
-					// Если бинарный буфер для отправки данных получен
-					if(!payload.empty())
-						// Отправляем серверу сообщение
-						result = const_cast <client::core_t *> (this->_core)->send(payload.data(), payload.size(), this->_bid);
+				} else wire = this->_frame.methods.set(head, buffer.data(), buffer.size());
+				// Если поток байт сообщения собран
+				if(!wire.empty()){
+					// Если сообщение не удалось поставить в отправку целиком
+					if(!(result = this->transmit(wire.data(), wire.size()))){
+						// Выводим сообщение об ошибке
+						this->_log->print("Websocket message of %zu bytes was not sent: the send buffer of the connection is full", log_t::flag_t::WARNING, wire.size());
+						// Если функция обратного вызова на на вывод ошибок установлена
+						if(web_t::_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							web_t::_callback.call <void (const log_t::flag_t, const http::error_t, const string &)> ("error", log_t::flag_t::WARNING, http::error_t::WEBSOCKET, "Message was not sent: the send buffer of the connection is full");
+					}
 				}
 			}
 			// Выполняем разблокировку отправки сообщения
@@ -1388,10 +1659,20 @@ bool awh::client::Websocket1::sendMessage(const char * message, const size_t siz
  * @return       результат отправки сообщения
  */
 bool awh::client::Websocket1::send(const char * buffer, const size_t size) noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро не потокобезопасно
+	 */
+	if((this->_core != nullptr) && (buffer != nullptr) && (size > 0) && this->_relay.remote() && this->_relay.forward(const_cast <client::core_t *> (this->_core), [this, data = vector <char> (buffer, buffer + size)]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->send(data.data(), data.size());
+	}))
+		// Сообщаем, что задача передана в поток базы событий
+		return true;
 	// Если данные переданы верные
 	if((this->_core != nullptr) && this->_core->working() && (buffer != nullptr) && (size > 0))
 		// Выполняем отправку заголовков запроса серверу
-		return const_cast <client::core_t *> (this->_core)->send(buffer, size, this->_bid);
+		return this->transmit(buffer, size);
 	// Сообщаем что ничего не найдено
 	return false;
 }
@@ -1408,6 +1689,16 @@ void awh::client::Websocket1::pause() noexcept {
  *
  */
 void awh::client::Websocket1::stop() noexcept {
+	/**
+	 * Если метод вызван не в потоке базы событий (например, из функции обратного вызова в пуле потоков),
+	 * выполнение передаётся в поток базы событий: сетевое ядро не потокобезопасно
+	 */
+	if((this->_core != nullptr) && this->_relay.remote() && this->_relay.forward(const_cast <client::core_t *> (this->_core), [this]() noexcept -> void {
+		// Выполняем вызов в потоке базы событий
+		this->stop();
+	}))
+		// Выходим из функции
+		return;
 	// Запрещаем чтение данных из буфера
 	this->_reading = false;
 	// Выполняем очистку буфера данных
@@ -1585,10 +1876,12 @@ void awh::client::Websocket1::core(const client::core_t * core) noexcept {
 		// Если многопоточность активированна
 		if(this->_thr.initialized()){
 			// Выполняем завершение всех активных потоков
-			this->_thr.stop();
+			this->release();
 			// Снимаем режим простого чтения базы событий
 			const_cast <client::core_t *> (this->_core)->easily(false);
 		}
+		// Выполняем деактивацию передатчика задач в поток базы событий
+		this->_relay.deactivation(const_cast <client::core_t *> (this->_core));
 		// Выполняем передачу настроек сетевого ядра в родительский модуль
 		web_t::core(core);
 	}
@@ -1687,7 +1980,7 @@ void awh::client::Websocket1::multiThreads(const uint16_t count, const bool mode
 		// Если многопоточность уже активированна
 		else {
 			// Выполняем завершение всех активных потоков
-			this->_thr.stop();
+			this->release();
 			// Выполняем инициализацию нового тредпула
 			this->_thr.init(count);
 		}
@@ -1696,7 +1989,7 @@ void awh::client::Websocket1::multiThreads(const uint16_t count, const bool mode
 			// Устанавливаем простое чтение базы событий
 			const_cast <client::core_t *> (this->_core)->easily(true);
 	// Выполняем завершение всех потоков
-	} else this->_thr.stop();
+	} else this->release();
 }
 /**
  * @brief Метод активации/деактивации прокси-склиента
@@ -1827,5 +2120,5 @@ awh::client::Websocket1::~Websocket1() noexcept {
 	// Если многопоточность активированна
 	if(this->_thr.initialized())
 		// Выполняем завершение всех активных потоков
-		this->_thr.stop();
+		this->release();
 }

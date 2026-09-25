@@ -141,10 +141,19 @@ void awh::server::Core::accept(const SOCKET sock, const uint16_t sid) noexcept {
 									node_t::_brokers.emplace(ret.first->first, ret.first->second.get());
 									// Выполняем блокировку потока
 									this->_mtx.accept.unlock();
-									// Переводим сокет в блокирующий режим
-									ret.first->second->ectx.blocking(engine_t::mode_t::ENABLED);
+									/**
+									 * Сокет сервера UDP неблокирующий: цикл чтения выбирает датаграммы до
+									 * EWOULDBLOCK и выходит, а блокирующий сокет (таймауты чтения для сервера UDP
+									 * не задаются) ждал следующую датаграмму бесконечно, останавливая цикл событий
+									 */
+									ret.first->second->ectx.blocking(engine_t::mode_t::DISABLED);
 									// Выполняем установку функции обратного вызова на получении сообщений
 									ret.first->second->on <void (const uint64_t)> ("read", &core_t::read, this, _1);
+									/**
+									 * Функция записи нужна и брокеру UDP: без неё очередь отправки (режим DEFFER
+									 * или датаграммы, отложенные при EAGAIN / ENOBUFS) никогда не отправлялась
+									 */
+									ret.first->second->on <void (const uint64_t)> ("write", static_cast <void (core_t::*)(const uint64_t)> (&core_t::write), this, _1);
 									// Выполняем установку функции обратного вызова на получение сигнала закрытия подключения
 									ret.first->second->on <void (const uint64_t)> ("close", static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::close), this, sid, _1);
 									// Выполняем запуск работы события
@@ -883,8 +892,13 @@ void awh::server::Core::accept(const uint16_t sid, const uint64_t bid) noexcept 
 								// Выходим
 								return;
 							}
-							// Переводим сокет в блокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::ENABLED);
+							/**
+							 * Сокет клиента DTLS оставляем неблокирующим: блокирующее чтение ждало
+							 * следующую датаграмму до таймаута чтения (по умолчанию 60 секунд), и один
+							 * замолчавший посреди рукопожатия клиент останавливал цикл событий сервера.
+							 * Перепосылку рукопожатия обслуживает таймер (retransmission)
+							 */
+							broker->ectx.blocking(engine_t::mode_t::DISABLED);
 							// Если вывод информационных данных не запрещён
 							if(this->_info){
 								// Если порт установлен
@@ -1082,6 +1096,220 @@ void awh::server::Core::clearTimeout(const uint16_t sid) noexcept {
 	}
 }
 /**
+ * @brief Метод запуска таймера отправки очереди датаграмм
+ *
+ * Готовность к записи для датаграммного сокета (UDP / unix-сокет) на kqueue с EV_CLEAR
+ * приходит только один раз: буфер отправки такого сокета не заполняется, и повторного
+ * перехода «не готов → готов» не бывает. Поэтому очередь датаграмм (режим DEFFER,
+ * датаграммы, отложенные при EAGAIN / ENOBUFS) отправляется по короткому таймеру, а не
+ * только по событию записи, иначе она могла бы не отправиться никогда.
+ *
+ * @param bid  идентификатор брокера
+ * @param msec задержка отправки в миллисекундах
+ */
+void awh::server::Core::flush(const uint64_t bid, const uint32_t msec) noexcept {
+	// Если сокет датаграммный, брокер существует и в очереди есть датаграммы
+	if(((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS)) && this->has(bid) && (this->datagram(bid) > 0)){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Если таймер отправки ещё не запущен
+		if(this->_flushes.find(bid) == this->_flushes.end()){
+			// Если таймер не инициализирован
+			if(this->_timer == nullptr){
+				// Выполняем инициализацию нового таймера
+				this->_timer = std::make_unique <timer_t> (this->_fmk, this->_log);
+				// Устанавливаем флаг запрещающий вывод информационных сообщений
+				this->_timer->verbose(false);
+				// Выполняем биндинг сетевого ядра таймера
+				this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+			}
+			// Выполняем создание таймера отправки
+			const uint16_t tid = this->_timer->timeout(msec);
+			// Если таймер создан
+			if(tid > 0){
+				// Запоминаем таймер отправки
+				this->_flushes.emplace(bid, tid);
+				// Выполняем добавление функции обратного вызова
+				this->_timer->on(tid, static_cast <void (core_t::*)(const uint64_t, const uint16_t)> (&core_t::flushed), this, bid, tid);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод срабатывания таймера отправки очереди датаграмм
+ *
+ * @param bid идентификатор брокера
+ * @param tid идентификатор сработавшего таймера
+ */
+void awh::server::Core::flushed(const uint64_t bid, const uint16_t tid) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск таймера отправки
+		auto i = this->_flushes.find(bid);
+		// Если запись принадлежит сработавшему таймеру
+		if((i != this->_flushes.end()) && (i->second == tid))
+			// Удаляем таймер из списка
+			this->_flushes.erase(i);
+	}
+	// Выполняем отправку очереди датаграмм
+	this->write(bid);
+}
+/**
+ * @brief Метод запуска таймера перепосылки рукопожатия DTLS
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Core::retransmission(const uint64_t bid) noexcept {
+	// Выполняем удаление старого таймера перепосылки
+	this->clearRetransmit(bid);
+	// Если подключение выполняется по защищённому каналу DTLS и брокер существует
+	if((this->_settings.sonet == scheme_t::sonet_t::DTLS) && this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Получаем время до перепосылки рукопожатия
+		const uint32_t msec = broker->ectx.retransmission();
+		// Если таймер перепосылки DTLS запущен
+		if(msec > 0){
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+			// Если таймер не инициализирован
+			if(this->_timer == nullptr){
+				// Выполняем инициализацию нового таймера
+				this->_timer = std::make_unique <timer_t> (this->_fmk, this->_log);
+				// Устанавливаем флаг запрещающий вывод информационных сообщений
+				this->_timer->verbose(false);
+				// Выполняем биндинг сетевого ядра таймера
+				this->bind(dynamic_cast <awh::core_t *> (this->_timer.get()));
+			}
+			// Выполняем создание таймера перепосылки
+			const uint16_t tid = this->_timer->timeout(msec);
+			// Запоминаем таймер перепосылки
+			this->_retransmits.emplace(bid, tid);
+			// Выполняем добавление функции обратного вызова
+			this->_timer->on(tid, &core_t::retransmit, this, bid, tid);
+		}
+	}
+}
+/**
+ * @brief Метод перепосылки рукопожатия DTLS по таймеру
+ *
+ * @param bid идентификатор брокера
+ * @param tid идентификатор сработавшего таймера
+ */
+void awh::server::Core::retransmit(const uint64_t bid, const uint16_t tid) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск таймера перепосылки
+		auto i = this->_retransmits.find(bid);
+		// Сработавший таймер удалён самим таймером, удаляем его из списка, если запись его
+		if((i != this->_retransmits.end()) && (i->second == tid))
+			// Удаляем таймер из списка
+			this->_retransmits.erase(i);
+	}
+	// Если брокер существует
+	if(this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если рукопожатие DTLS не удалось
+		if(!broker->ectx.retransmit()){
+			// Выводим сообщение об ошибке
+			this->_log->print("DTLS handshake failed", log_t::flag_t::WARNING);
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::ACCEPT, "DTLS handshake failed");
+			// Выполняем закрытие подключения
+			this->close(bid);
+		// Запускаем таймер перепосылки заново
+		} else this->retransmission(bid);
+	}
+}
+/**
+ * @brief Метод удаления таймера перепосылки рукопожатия DTLS
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Core::clearRetransmit(const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+	// Выполняем поиск активного таймера перепосылки
+	auto i = this->_retransmits.find(bid);
+	// Если таймер найден
+	if(i != this->_retransmits.end()){
+		// Если таймер инициализирован
+		if(this->_timer != nullptr)
+			// Выполняем удаление активного таймера
+			this->_timer->clear(i->second);
+		// Удаляем таймер из списка
+		this->_retransmits.erase(i);
+	}
+}
+/**
+ * @brief Метод срабатывания таймера брокера
+ *
+ * Идентификаторы таймеров переиспользуются после срабатывания (timer_t выдаёт следующий
+ * свободный номер), поэтому запись сработавшего таймера удаляется из списка в момент
+ * срабатывания, и только если в записи всё ещё его номер. Иначе поздний clearTimeout
+ * по устаревшему номеру снимал чужой живой таймер (другого брокера, перепосылки DTLS).
+ *
+ * @param sid  идентификатор схемы сети
+ * @param bid  идентификатор брокера
+ * @param tid  идентификатор сработавшего таймера
+ * @param mode режим таймера
+ */
+void awh::server::Core::expired(const uint16_t sid, const uint64_t bid, const uint16_t tid, const mode_t mode) noexcept {
+	/**
+	 * Определяем режим таймера
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		// Если таймер хранится в списке таймаутов схемы сети
+		case static_cast <uint8_t> (mode_t::READ):
+		case static_cast <uint8_t> (mode_t::ACCEPT): {
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
+			// Выполняем поиск активных таймаутов
+			auto i = this->_timeouts.find(sid);
+			// Если запись принадлежит сработавшему таймеру
+			if((i != this->_timeouts.end()) && (i->second == tid))
+				// Удаляем таймаут из базы таймаутов
+				this->_timeouts.erase(i);
+		} break;
+		// Если таймер хранится в списке таймаутов брокера
+		case static_cast <uint8_t> (mode_t::RECEIVE): {
+			// Выполняем блокировку потока
+			const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+			// Выполняем поиск активных таймаутов
+			auto i = this->_receive.find(bid);
+			// Если запись принадлежит сработавшему таймеру
+			if((i != this->_receive.end()) && (i->second == tid))
+				// Удаляем таймаут из базы таймаутов
+				this->_receive.erase(i);
+		} break;
+	}
+	/**
+	 * Определяем режим таймера
+	 */
+	switch(static_cast <uint8_t> (mode)){
+		// Если необходимо выполнить чтение данных
+		case static_cast <uint8_t> (mode_t::READ):
+			// Выполняем чтение данных
+			this->read(bid);
+		break;
+		// Если необходимо выполнить разрешение подключения
+		case static_cast <uint8_t> (mode_t::ACCEPT):
+			// Выполняем разрешение подключения
+			this->accept(sid, bid);
+		break;
+		// Если необходимо закрыть подключение
+		case static_cast <uint8_t> (mode_t::RECEIVE):
+			// Выполняем закрытие подключения
+			this->close(bid);
+		break;
+	}
+}
+/**
  * @brief Метод создания таймаута подключения или переподключения
  *
  * @param sid  идентификатор схемы сети
@@ -1131,7 +1359,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
-					this->_timer->on(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::read), this, bid);
+					this->_timer->on(tid, static_cast <void (core_t::*)(const uint16_t, const uint64_t, const uint16_t, const mode_t)> (&core_t::expired), this, sid, bid, tid, mode_t::READ);
 				}
 			} break;
 			// Если необходимо создать таймер на разрешение подключения
@@ -1156,7 +1384,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						this->_timeouts.emplace(sid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
-					this->_timer->on(tid, static_cast <void (core_t::*)(const uint16_t, const uint64_t)> (&core_t::accept), this, sid, bid);
+					this->_timer->on(tid, static_cast <void (core_t::*)(const uint16_t, const uint64_t, const uint16_t, const mode_t)> (&core_t::expired), this, sid, bid, tid, mode_t::ACCEPT);
 				}
 			} break;
 			// Если необходимо создать таймер на ожидание входящих данных
@@ -1181,7 +1409,7 @@ void awh::server::Core::createTimeout(const uint16_t sid, const uint64_t bid, co
 						this->_receive.emplace(bid, (tid = this->_timer->timeout(msec)));
 					}
 					// Выполняем добавление функции обратного вызова
-					this->_timer->on(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid);
+					this->_timer->on(tid, static_cast <void (core_t::*)(const uint16_t, const uint64_t, const uint16_t, const mode_t)> (&core_t::expired), this, sid, bid, tid, mode_t::RECEIVE);
 				}
 			} break;
 		}
@@ -1756,6 +1984,21 @@ void awh::server::Core::remove() noexcept {
 		if(this->_timer != nullptr){
 			// Выполняем удаление всех таймеров
 			this->_timer->clear();
+			{
+				// Выполняем блокировку потока
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+				// Очищаем список таймаутов ожидания получения данных
+				this->_receive.clear();
+				// Очищаем список таймеров перепосылки рукопожатия DTLS
+				this->_retransmits.clear();
+				// Очищаем список таймеров отправки очереди датаграмм
+				this->_flushes.clear();
+			}{
+				// Выполняем блокировку потока
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
+				// Очищаем список таймаутов (номера таймеров нового таймера начнутся заново)
+				this->_timeouts.clear();
+			}
 			// Выполняем анбиндинг сетевого ядра таймера
 			this->unbind(dynamic_cast <awh::core_t *> (this->_timer.get()));
 			// Удалям активный таймер
@@ -2050,6 +2293,31 @@ void awh::server::Core::close(const uint16_t sid, const uint64_t bid) noexcept {
 						this->clearTimeout(i->first);
 						// Получаем объект схемы сети
 						scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+						/**
+						 * Для операционной системы не являющейся MS Windows
+						 */
+						#if !_WIN32 && !_WIN64
+							/**
+							 * Для DTLS поверх unix-сокета сокет клиента на сервере привязан к
+							 * собственному пути в файловой системе (engine_t::addr_t::attach),
+							 * удаляем файл этого пути, чтобы они не копились. Путь слушающего
+							 * сокета ниже пересоздаётся заново (create).
+							 */
+							if((this->_settings.family == scheme_t::family_t::IPC) && (broker->addr.sock != INVALID_SOCKET)){
+								// Создаём объект адреса unix-сокета
+								struct sockaddr_un name;
+								// Получаем размер объекта адреса
+								socklen_t size = sizeof(name);
+								// Выполняем зануление объекта адреса
+								::memset(&name, 0, sizeof(name));
+								// Если адрес сокета получен и путь установлен
+								if((::getsockname(broker->addr.sock, reinterpret_cast <struct sockaddr *> (&name), &size) == 0) && (name.sun_family == AF_UNIX) && (name.sun_path[0] != '\0'))
+									// Удаляем файл сокета
+									::unlink(name.sun_path);
+							}
+						#endif
+						// Выполняем удаление таймера перепосылки рукопожатия DTLS
+						this->clearRetransmit(bid);
 						// Выполняем остановку работы событий
 						broker->stop();
 						// Выполняем очистку контекста двигателя
@@ -2473,6 +2741,8 @@ bool awh::server::Core::send(const char * buffer, const size_t size, const uint6
 			if(broker->addr.sock != INVALID_SOCKET)
 				// Запускаем ожидание записи данных
 				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+			// Запускаем отправку очереди датаграмм по таймеру (для датаграммных сокетов)
+			this->flush(bid, 1);
 		}
 	}
 	// Сообщаем, что отправить сообщение неудалось
@@ -2744,6 +3014,10 @@ void awh::server::Core::read(const uint64_t bid) noexcept {
 				} while(this->has(bid));
 				// Если подключение ещё не разорванно
 				if(this->has(bid)){
+					// Если тип сокета установлен как DTLS
+					if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
+						// Запускаем таймер перепосылки рукопожатия DTLS, если рукопожатие ещё идёт
+						this->retransmission(bid);
 					// Если время ожиданий входящих сообщений установлено
 					if((broker->timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS))
 						// Выполняем создание таймаута ожидания получения данных
@@ -2791,18 +3065,48 @@ void awh::server::Core::write(const uint64_t bid) noexcept {
 			auto i = this->_payloads.find(bid);
 			// Если для потока очередь полезной нагрузки получена
 			if((i != this->_payloads.end()) && !i->second->empty()){
-				// Выполняем запись в сокет
-				const size_t bytes = this->write(static_cast <const char *> (* i->second), static_cast <size_t> (* i->second), bid);
-				// Если данные записаны удачно
-				if((bytes > 0) && this->has(bid))
-					// Выполняем освобождение памяти хранения полезной нагрузки
-					this->erase(bid, bytes);
+				/**
+				 * Для датаграммных сокетов (UDP / DTLS) очередь отправляем по одной датаграмме,
+				 * сохраняя их границы: сплошной буфер очереди склеивал датаграммы и резал их по
+				 * размеру буфера сокета. Отправку продолжаем, пока датаграммы уходят целиком
+				 */
+				if(this->datagram(bid) > 0){
+					// Размер следующей датаграммы
+					size_t size = 0;
+					// Выполняем отправку датаграмм, пока они уходят целиком
+					while(this->has(bid) && ((size = this->datagram(bid)) > 0)){
+						// Ещем для указанного потока очередь полезной нагрузки
+						auto j = this->_payloads.find(bid);
+						// Если очередь полезной нагрузки не найдена, выходим
+						if(j == this->_payloads.end())
+							// Выходим из цикла
+							break;
+						// Если датаграмма не отправлена целиком (отложена), выходим до готовности сокета
+						if(this->write(static_cast <const char *> (* j->second), size, bid) != size)
+							// Выходим из цикла
+							break;
+						// Если брокер существует
+						if(this->has(bid))
+							// Выполняем освобождение памяти хранения полезной нагрузки
+							this->erase(bid, size);
+					}
+				// Если сокет потоковый
+				} else {
+					// Выполняем запись в сокет
+					const size_t bytes = this->write(static_cast <const char *> (* i->second), static_cast <size_t> (* i->second), bid);
+					// Если данные записаны удачно
+					if((bytes > 0) && this->has(bid))
+						// Выполняем освобождение памяти хранения полезной нагрузки
+						this->erase(bid, bytes);
+				}
 				// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
 				if(this->_payloads.find(bid) != this->_payloads.end()){
 					// Если сокет подключения активен
 					if(broker->addr.sock != INVALID_SOCKET)
 						// Запускаем ожидание записи данных
 						broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+					// Повторяем отправку отложенных датаграмм по таймеру
+					this->flush(bid, 5);
 				}
 			}
 		}
@@ -2904,7 +3208,7 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 						break;
 					}
 					// Выполняем отправку сообщения клиенту
-					const int64_t bytes = broker->ectx.write(buffer, (size >= static_cast <size_t> (max) ? static_cast <size_t> (max) : size));
+					const int64_t bytes = broker->ectx.write(buffer, (((size >= static_cast <size_t> (max)) && (this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_settings.sonet != scheme_t::sonet_t::DTLS)) ? static_cast <size_t> (max) : size));
 					// Если данные удачно отправленны
 					if(bytes > 0)
 						// Запоминаем количество записанных байт
@@ -2913,6 +3217,10 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 					else if(bytes == 0)
 						// Выполняем закрытие подключения
 						this->close(bid);
+					// Если запись отложена, а тип сокета установлен как DTLS
+					else if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
+						// Запускаем таймер перепосылки рукопожатия DTLS, если рукопожатие ещё идёт
+						this->retransmission(bid);
 					// Если дисконнекта не произошло
 					if(bytes != 0){
 						/**

@@ -112,6 +112,14 @@ namespace awh {
 			 * @return     идентификатор события
 			 */
 			uint64_t event(const SOCKET sock) noexcept;
+			/**
+			 * @brief Метод извлечения идентификатора события с признаком наличия
+			 *
+			 * @param sock файловый дескриптор таймера
+			 * @param id   идентификатор извлечённого события
+			 * @return     результат извлечения (false, если событий нет или таймер не найден)
+			 */
+			bool event(const SOCKET sock, uint64_t & id) noexcept;
 		public:
 			/**
 			 * @brief Метод убрать таймер из отслеживания

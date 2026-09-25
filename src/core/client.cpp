@@ -160,27 +160,6 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 				if(broker->addr.sock != INVALID_SOCKET){
 					// Выполняем установку желаемого протокола подключения
 					broker->ectx.proto(this->_settings.proto);
-					/**
-					 * Определяем тип сокета
-					 */
-					switch(static_cast <uint8_t> (this->_settings.sonet)){
-						// Если тип сокета установлен как TCP/IP
-						case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
-						// Если тип сокета установлен как TCP/IP TLS
-						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
-						// Если тип сокета установлен как SCTP
-						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
-							// Переводим сокет в неблокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::DISABLED);
-						break;
-						// Если тип сокета установлен как UDP
-						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
-						// Если тип сокета установлен как DTLS
-						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
-							// Переводим сокет в блокирующий режим
-							broker->ectx.blocking(engine_t::mode_t::ENABLED);
-						break;
-					}
 					// Если подключение выполняется по защищённому каналу DTLS
 					if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
 						/**
@@ -285,6 +264,17 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 					this->_brokers.emplace(ret.first->first, ret.first->second.get());
 					// Выполняем блокировку потока
 					this->_mtx.connect.unlock();
+					/**
+					 * Переводим сокет в неблокирующий режим до подключения, для всех типов сокетов.
+					 * Перевод здесь, а не сразу после создания сокета: контекст двигателя получает
+					 * адрес только в wrap, до этого blocking() ничего не делал, и подключение TCP
+					 * шло в блокирующем режиме, останавливая цикл событий до ~75 секунд при
+					 * недоступном хосте. Сокеты UDP и DTLS тоже неблокирующие: блокирующее чтение
+					 * с таймаутом SO_RCVTIMEO после последней датаграммы подвешивало цикл событий.
+					 * Неблокирующее подключение завершается событием готовности к записи (write),
+					 * там же проверяется SO_ERROR, время ожидания ограничено таймаутом подключения.
+					 */
+					ret.first->second->ectx.blocking(engine_t::mode_t::DISABLED);
 					// Если подключение к серверу не выполнено
 					if(!ret.first->second->addr.connect()){
 						// Разрешаем выполнение работы
@@ -357,6 +347,8 @@ void awh::client::Core::connect(const uint16_t sid) noexcept {
 						ret.first->second->start();
 						// Активируем ожидание подключения
 						ret.first->second->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+						// Выполняем запуск таймера ожидания подключения
+						this->waiting(ret.first->first);
 						// Выполняем установку таймаута ожидания
 						ret.first->second->ectx.timeout(static_cast <uint32_t> (ret.first->second->timeouts.connect) * 1000, engine_t::method_t::READ);
 						// Если разрешено выводить информационные сообщения
@@ -641,6 +633,74 @@ void awh::client::Core::timeout(const uint16_t sid, const scheme_t::mode_t mode)
 	}
 }
 /**
+ * Идентификаторы таймеров переиспользуются после срабатывания (timer_t выдаёт следующий
+ * свободный номер), поэтому запись сработавшего таймера удаляется из списка в момент
+ * срабатывания, и только если в записи всё ещё его номер. Иначе поздний clearTimeout
+ * по устаревшему номеру снимал чужой живой таймер (подключения, перепосылки DTLS и т.д.).
+ */
+/**
+ * @brief Метод срабатывания таймаута ожидания получения данных
+ *
+ * @param bid идентификатор брокера
+ * @param tid идентификатор сработавшего таймера
+ */
+void awh::client::Core::expired(const uint64_t bid, const uint16_t tid) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск активных таймаутов
+		auto i = this->_receive.find(bid);
+		// Если запись принадлежит сработавшему таймеру
+		if((i != this->_receive.end()) && (i->second == tid))
+			// Удаляем таймаут из базы таймаутов
+			this->_receive.erase(i);
+	}
+	// Выполняем закрытие подключения
+	this->close(bid);
+}
+/**
+ * @brief Метод срабатывания таймаута подключения к серверу
+ *
+ * @param bid   идентификатор брокера
+ * @param tid   идентификатор сработавшего таймера
+ * @param error код системной ошибки подключения
+ */
+void awh::client::Core::expired(const uint64_t bid, const uint16_t tid, const int32_t error) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск активных таймаутов
+		auto i = this->_receive.find(bid);
+		// Если запись принадлежит сработавшему таймеру
+		if((i != this->_receive.end()) && (i->second == tid))
+			// Удаляем таймаут из базы таймаутов
+			this->_receive.erase(i);
+	}
+	// Выполняем обработку неудачного подключения
+	this->refused(bid, error);
+}
+/**
+ * @brief Метод срабатывания таймаута подключения или переподключения
+ *
+ * @param sid  идентификатор схемы сети
+ * @param tid  идентификатор сработавшего таймера
+ * @param mode режим работы клиента
+ */
+void awh::client::Core::expired(const uint16_t sid, const uint16_t tid, const scheme_t::mode_t mode) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.timeout);
+		// Выполняем поиск активных таймаутов
+		auto i = this->_timeouts.find(sid);
+		// Если запись принадлежит сработавшему таймеру
+		if((i != this->_timeouts.end()) && (i->second == tid))
+			// Удаляем таймаут из базы таймаутов
+			this->_timeouts.erase(i);
+	}
+	// Выполняем обработку таймаута
+	this->timeout(sid, mode);
+}
+/**
  * @brief Метод удаления таймера ожидания получения данных
  *
  * @param bid идентификатор брокера
@@ -703,7 +763,7 @@ void awh::client::Core::createTimeout(const uint64_t bid, const uint32_t msec) n
 			this->_receive.emplace(bid, (tid = this->_timer.timeout(msec)));
 		}
 		// Выполняем добавление функции обратного вызова
-		this->_timer.on(tid, static_cast <void (core_t::*)(const uint64_t)> (&core_t::close), this, bid);
+		this->_timer.on(tid, static_cast <void (core_t::*)(const uint64_t, const uint16_t)> (&core_t::expired), this, bid, tid);
 	}
 }
 /**
@@ -733,7 +793,7 @@ void awh::client::Core::createTimeout(const uint16_t sid, const scheme_t::mode_t
 			this->_timeouts.emplace(sid, (tid = this->_timer.timeout(5000)));
 		}
 		// Выполняем добавление функции обратного вызова
-		this->_timer.on(tid, static_cast <void (core_t::*)(const uint16_t, const scheme_t::mode_t)> (&core_t::timeout), this, sid, mode);
+		this->_timer.on(tid, static_cast <void (core_t::*)(const uint16_t, const uint16_t, const scheme_t::mode_t)> (&core_t::expired), this, sid, tid, mode);
 	}
 }
 /**
@@ -837,6 +897,10 @@ void awh::client::Core::close() noexcept {
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 		// Очищаем список таймаутов ожидания получения данных
 		this->_receive.clear();
+		// Очищаем список таймеров перепосылки рукопожатия DTLS
+		this->_retransmits.clear();
+		// Очищаем список таймеров отправки очереди датаграмм
+		this->_flushes.clear();
 	}
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
@@ -923,6 +987,10 @@ void awh::client::Core::remove() noexcept {
 		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
 		// Очищаем список таймаутов ожидания получения данных
 		this->_receive.clear();
+		// Очищаем список таймеров перепосылки рукопожатия DTLS
+		this->_retransmits.clear();
+		// Очищаем список таймеров отправки очереди датаграмм
+		this->_flushes.clear();
 	}
 	// Если список схем сети активен
 	if(!this->_schemes.empty()){
@@ -1072,6 +1140,28 @@ void awh::client::Core::open(const uint16_t sid) noexcept {
 void awh::client::Core::close(const uint64_t bid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск активного таймера перепосылки DTLS
+		auto i = this->_retransmits.find(bid);
+		// Если таймер найден
+		if(i != this->_retransmits.end()){
+			// Выполняем удаление активного таймера
+			this->_timer.clear(i->second);
+			// Удаляем таймер из списка
+			this->_retransmits.erase(i);
+		}
+		// Выполняем поиск активного таймера отправки очереди датаграмм
+		auto j = this->_flushes.find(bid);
+		// Если таймер найден
+		if(j != this->_flushes.end()){
+			// Выполняем удаление активного таймера
+			this->_timer.clear(j->second);
+			// Удаляем таймер из списка
+			this->_flushes.erase(j);
+		}
+	}
 	// Если блокировка брокера не установлена
 	if(this->_busy.find(bid) == this->_busy.end()){
 		// Выполняем блокировку брокера
@@ -1218,6 +1308,16 @@ void awh::client::Core::remove(const uint16_t sid) noexcept {
  * @param bid идентификатор брокера
  */
 void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
+	// Выполняем переключение с прежним (синхронным) поведением
+	this->switchProxy(bid, false);
+}
+/**
+ * @brief Метод переключения с прокси-сервера
+ *
+ * @param bid   идентификатор брокера
+ * @param async флаг асинхронного рукопожатия с событием подключения по завершении
+ */
+void awh::client::Core::switchProxy(const uint64_t bid, const bool async) noexcept {
 	/**
 	 * Определяем тип производимого подключения
 	 */
@@ -1293,8 +1393,328 @@ void awh::client::Core::switchProxy(const uint64_t bid) noexcept {
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::READ);
 				// Останавливаем запись данных
 				broker->events(awh::scheme_t::mode_t::DISABLED, engine_t::method_t::WRITE);
+				/**
+				 * Асинхронное рукопожатие TLS с сервером за прокси-сервером: wrap вернул сокет в
+				 * блокирующий режим, и выбор протокола (ALPN) сразу после переключения выполнял
+				 * рукопожатие блокирующе, так что сервер, не отвечающий на ClientHello, останавливал
+				 * цикл событий. Сокет снова неблокирующий, подключение переходит в ожидание
+				 * рукопожатия (PRECONNECT), рукопожатие идёт по событиям чтения и записи
+				 * (handshake), ограничено таймаутом подключения, а событие подключения ("connect")
+				 * вызывается по его завершении. Без шифрования рукопожатие завершается сразу
+				 */
+				if(async){
+					// Переводим сокет в неблокирующий режим
+					broker->ectx.blocking(engine_t::mode_t::DISABLED);
+					// Устанавливаем статус ожидания рукопожатия
+					shm->status.real = scheme_t::mode_t::PRECONNECT;
+					// Выполняем запуск таймера ожидания подключения
+					this->waiting(bid);
+					// Выполняем шаг рукопожатия
+					this->handshake(bid);
+				}
 			}
 		}
+	}
+}
+/**
+ * @brief Метод запуска таймера отправки очереди датаграмм
+ *
+ * Готовность к записи для датаграммного сокета (UDP / unix-сокет) на kqueue с EV_CLEAR
+ * приходит только один раз: буфер отправки такого сокета не заполняется, и повторного
+ * перехода «не готов → готов» не бывает. Поэтому очередь датаграмм (режим DEFFER,
+ * датаграммы, отложенные при EAGAIN / ENOBUFS) отправляется по короткому таймеру, а не
+ * только по событию записи, иначе она могла бы не отправиться никогда.
+ *
+ * @param bid  идентификатор брокера
+ * @param msec задержка отправки в миллисекундах
+ */
+void awh::client::Core::flush(const uint64_t bid, const uint32_t msec) noexcept {
+	// Если сокет датаграммный, брокер существует и в очереди есть датаграммы
+	if(((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS)) && this->has(bid) && (this->datagram(bid) > 0)){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Если таймер отправки ещё не запущен
+		if(this->_flushes.find(bid) == this->_flushes.end()){
+			// Выполняем создание таймера отправки
+			const uint16_t tid = this->_timer.timeout(msec);
+			// Если таймер создан
+			if(tid > 0){
+				// Запоминаем таймер отправки
+				this->_flushes.emplace(bid, tid);
+				// Выполняем добавление функции обратного вызова
+				this->_timer.on(tid, static_cast <void (core_t::*)(const uint64_t, const uint16_t)> (&core_t::flushed), this, bid, tid);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод срабатывания таймера отправки очереди датаграмм
+ *
+ * @param bid идентификатор брокера
+ * @param tid идентификатор сработавшего таймера
+ */
+void awh::client::Core::flushed(const uint64_t bid, const uint16_t tid) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск таймера отправки
+		auto i = this->_flushes.find(bid);
+		// Если запись принадлежит сработавшему таймеру
+		if((i != this->_flushes.end()) && (i->second == tid))
+			// Удаляем таймер из списка
+			this->_flushes.erase(i);
+	}
+	// Выполняем отправку очереди датаграмм
+	this->write(bid);
+}
+/**
+ * @brief Метод запуска таймера перепосылки рукопожатия DTLS
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::client::Core::retransmission(const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+	// Выполняем поиск активного таймера перепосылки
+	auto i = this->_retransmits.find(bid);
+	// Если таймер найден
+	if(i != this->_retransmits.end()){
+		// Выполняем удаление активного таймера
+		this->_timer.clear(i->second);
+		// Удаляем таймер из списка
+		this->_retransmits.erase(i);
+	}
+	// Если подключение выполняется по защищённому каналу DTLS и брокер существует
+	if((this->_settings.sonet == scheme_t::sonet_t::DTLS) && this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Получаем время до перепосылки рукопожатия
+		const uint32_t msec = broker->ectx.retransmission();
+		// Если таймер перепосылки DTLS запущен
+		if(msec > 0){
+			// Выполняем создание таймера перепосылки
+			const uint16_t tid = this->_timer.timeout(msec);
+			// Запоминаем таймер перепосылки
+			this->_retransmits.emplace(bid, tid);
+			// Выполняем добавление функции обратного вызова
+			this->_timer.on(tid, &core_t::retransmit, this, bid, tid);
+		}
+	}
+}
+/**
+ * @brief Метод перепосылки рукопожатия DTLS по таймеру
+ *
+ * @param bid идентификатор брокера
+ * @param tid идентификатор сработавшего таймера
+ */
+void awh::client::Core::retransmit(const uint64_t bid, const uint16_t tid) noexcept {
+	{
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+		// Выполняем поиск таймера перепосылки
+		auto i = this->_retransmits.find(bid);
+		// Сработавший таймер удалён самим таймером, удаляем его из списка, если запись его
+		if((i != this->_retransmits.end()) && (i->second == tid))
+			// Удаляем таймер из списка
+			this->_retransmits.erase(i);
+	}
+	// Если брокер существует
+	if(this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если рукопожатие DTLS не удалось
+		if(!broker->ectx.retransmit()){
+			// Выводим сообщение об ошибке
+			this->_log->print("DTLS handshake failed", log_t::flag_t::WARNING);
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("error"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CONNECT, "DTLS handshake failed");
+			// Выполняем закрытие подключения
+			this->close(bid);
+		// Если рукопожатие ещё не завершено
+		} else {
+			// Выполняем поиск идентификатора схемы сети
+			auto i = this->_schemes.find(broker->sid());
+			// Если подключение ещё ожидает завершения рукопожатия
+			if((i != this->_schemes.end()) && (dynamic_cast <const scheme_t *> (i->second)->status.real == scheme_t::mode_t::PRECONNECT))
+				// Выполняем шаг рукопожатия DTLS
+				this->handshake(bid);
+			// Запускаем таймер перепосылки заново
+			else this->retransmission(bid);
+		}
+	}
+}
+/**
+ * @brief Метод выполнения шага рукопожатия (TLS / DTLS) до установки подключения
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::client::Core::handshake(const uint64_t bid) noexcept {
+	// Если брокер существует
+	if(this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		/**
+		 * Выполняем шаг рукопожатия
+		 */
+		switch(broker->ectx.negotiate()){
+			// Если рукопожатие не удалось
+			case 0: {
+				// Выводим сообщение об ошибке
+				this->_log->print("%s handshake failed", log_t::flag_t::WARNING, (this->_settings.sonet == scheme_t::sonet_t::DTLS ? "DTLS" : "TLS"));
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::WARNING, error_t::CONNECT, this->_fmk->format("%s handshake failed", (this->_settings.sonet == scheme_t::sonet_t::DTLS ? "DTLS" : "TLS")));
+				// Выполняем закрытие подключения
+				this->close(bid);
+			} break;
+			// Если рукопожатие ждёт готовности сокета к записи
+			case -2:
+				// Ожидаем готовности сокета к записи
+				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+			break;
+			// Если рукопожатие завершено
+			case 1: {
+				// Выполняем удаление таймера перепосылки
+				this->retransmission(bid);
+				// Выполняем удаление таймера ожидания подключения
+				this->clearTimeout(bid);
+				// Выполняем запуск подключения
+				this->connected(bid);
+			} break;
+			// Если рукопожатие продолжается
+			default: {
+				// Запускаем таймер перепосылки рукопожатия
+				this->retransmission(bid);
+				// Ожидаем ответ сервера
+				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::READ);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод запуска таймера ожидания подключения (и рукопожатия TLS)
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::client::Core::waiting(const uint64_t bid) noexcept {
+	// Если брокер существует
+	if(this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если время ожидания подключения установлено
+		if(broker->timeouts.connect > 0){
+			// Идентификатор таймера ожидания подключения
+			const uint16_t tid = this->_timer.timeout(static_cast <uint32_t> (broker->timeouts.connect) * 1000);
+			/**
+			 * Таймер ожидания неблокирующего подключения храним в списке таймаутов
+			 * брокера: он снимается clearTimeout(bid) при удачном подключении и при закрытии
+			 */
+			{
+				// Выполняем блокировку потока
+				const lock_guard <std::recursive_mutex> lock(this->_mtx.receive);
+				// Выполняем поиск активных таймаутов
+				auto j = this->_receive.find(bid);
+				// Если таймаут найден
+				if(j != this->_receive.end()){
+					// Выполняем удаление активного таймера
+					this->_timer.clear(j->second);
+					// Запоминаем новый таймер
+					j->second = tid;
+				// Добавляем новый таймер
+				} else this->_receive.emplace(bid, tid);
+			}
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Выполняем добавление функции обратного вызова
+				this->_timer.on(tid, static_cast <void (core_t::*)(const uint64_t, const uint16_t, const int32_t)> (&core_t::expired), this, bid, tid, static_cast <int32_t> (WSAETIMEDOUT));
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#else
+				// Выполняем добавление функции обратного вызова
+				this->_timer.on(tid, static_cast <void (core_t::*)(const uint64_t, const uint16_t, const int32_t)> (&core_t::expired), this, bid, tid, static_cast <int32_t> (ETIMEDOUT));
+			#endif
+		}
+	}
+}
+/**
+ * @brief Метод обработки неудачного подключения к серверу
+ *
+ * @param bid   идентификатор брокера
+ * @param error код системной ошибки подключения
+ */
+void awh::client::Core::refused(const uint64_t bid, const int32_t error) noexcept {
+	// Выполняем удаление таймера ожидания подключения
+	this->clearTimeout(bid);
+	// Если идентификатор брокера подключений существует
+	if(this->has(bid)){
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Выполняем поиск идентификатора схемы сети
+		auto i = this->_schemes.find(broker->sid());
+		// Если идентификатор схемы сети найден
+		if(i != this->_schemes.end()){
+			// Получаем объект схемы сети
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+			// Получаем URL параметры запроса
+			const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
+			// Получаем семейство интернет-протоколов
+			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->_settings.family);
+			// Получаем текст ошибки
+			const string & message = socket_t(this->_fmk, this->_log).message(error);
+			// Если unix-сокет используется
+			if(family == scheme_t::family_t::IPC){
+				// Выводим ионформацию об обрыве подключении по unix-сокету
+				this->_log->print("Connecting to IPC=%s/%s.sock: %s", log_t::flag_t::CRITICAL, this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), message.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to IPC=%s/%s.sock: %s", this->_settings.sockpath.c_str(), this->_settings.sockname.c_str(), message.c_str()));
+			// Если используется хост и порт
+			} else {
+				// Выводим ионформацию об обрыве подключении по хосту и порту
+				this->_log->print("Connecting to HOST=%s, PORT=%u: %s", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port, message.c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("error"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const log_t::flag_t, const error_t, const string &)> ("error", log_t::flag_t::CRITICAL, error_t::CONNECT, this->_fmk->format("Connecting to HOST=%s, PORT=%u: %s", url.ip.c_str(), url.port, message.c_str()));
+				/**
+				 * Если объект DNS-резолвера установлен и подключение шло не через прокси-сервер
+				 * (за прокси-сервером адрес сервера разрешает прокси-сервер, заносить его в чёрный
+				 * список по отказу туннеля нельзя)
+				 */
+				if((this->_dns != nullptr) && (shm->proxy.type == proxy_t::type_t::NONE)){
+					// Выполняем сброс кэша резолвера
+					const_cast <dns_t *> (this->_dns)->flush();
+					/**
+					 * Определяем тип подключения
+					 */
+					switch(static_cast <uint8_t> (family)){
+						// Если тип протокола подключения IPv4
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+							// Добавляем бракованный IPv4 адрес в список адресов
+							const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET, url.domain, url.ip);
+						break;
+						// Если тип протокола подключения IPv6
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+							// Добавляем бракованный IPv6 адрес в список адресов
+							const_cast <dns_t *> (this->_dns)->setToBlackList(AF_INET6, url.domain, url.ip);
+						break;
+					}
+				}
+				// Если доменный адрес установлен
+				if(!url.domain.empty())
+					// Выполняем очистку IP-адреса
+					(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
+			}
+		}
+		// Выполняем отключение от сервера
+		this->close(bid);
 	}
 }
 /**
@@ -1466,6 +1886,8 @@ bool awh::client::Core::send(const char * buffer, const size_t size, const uint6
 			if(broker->addr.sock != INVALID_SOCKET)
 				// Запускаем ожидание записи данных
 				broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+			// Запускаем отправку очереди датаграмм по таймеру (для датаграммных сокетов)
+			this->flush(bid, 1);
 		}
 	}
 	// Сообщаем, что отправить сообщение неудалось
@@ -1489,8 +1911,12 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 			if(i != this->_schemes.end()){
 				// Получаем объект схемы сети
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
+				// Если идёт рукопожатие (TLS / DTLS), ответ сервера продвигает его
+				if((this->_settings.sonet != scheme_t::sonet_t::UDP) && (shm->status.real == scheme_t::mode_t::PRECONNECT))
+					// Выполняем шаг рукопожатия DTLS
+					this->handshake(bid);
 				// Если подключение установлено
-				if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
+				else if((shm->receiving = (shm->status.real == scheme_t::mode_t::CONNECT))){
 					/**
 					 * Определяем тип сокета
 					 */
@@ -1500,7 +1926,17 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 						// Если тип сокета установлен как TCP/IP TLS
 						case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 						// Если тип сокета установлен как SCTP
-						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+						/**
+						 * Сокеты UDP и DTLS читаем тоже в неблокирующем режиме: цикл чтения ниже
+						 * выбирает датаграммы до EWOULDBLOCK (для DTLS до SSL_ERROR_WANT_READ) и
+						 * выходит, а блокирующее чтение ждало следующую датаграмму до таймаута
+						 * SO_RCVTIMEO, останавливая весь цикл событий
+						 */
+						// Если тип сокета установлен как UDP
+						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+						// Если тип сокета установлен как DTLS
+						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 							/**
 							 * Для операционной системы MS Windows
 							 */
@@ -1561,6 +1997,10 @@ void awh::client::Core::read(const uint64_t bid) noexcept {
 					} while(this->has(bid));
 					// Если подключение ещё не разорванно
 					if(this->has(bid)){
+						// Если подключение выполняется по защищённому каналу DTLS
+						if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
+							// Запускаем таймер перепосылки рукопожатия DTLS, если рукопожатие ещё идёт
+							this->retransmission(bid);
 						// Если время ожиданий входящих сообщений установлено
 						if(broker->timeouts.wait > 0)
 							// Выполняем создание таймаута ожидания получения данных
@@ -1620,27 +2060,91 @@ void awh::client::Core::write(const uint64_t bid) noexcept {
 				// Получаем объект схемы сети
 				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (i->second));
 				// Если статус подключения не изменился
-				if(shm->status.real == scheme_t::mode_t::PRECONNECT)
-					// Выполняем запуск подключения
-					this->connected(bid);
+				if(shm->status.real == scheme_t::mode_t::PRECONNECT){
+					/**
+					 * Сокет подключается в неблокирующем режиме: готовность к записи означает
+					 * завершение подключения, удачное или нет, результат берём из SO_ERROR
+					 */
+					if((this->_settings.sonet == scheme_t::sonet_t::TCP) ||
+					   (this->_settings.sonet == scheme_t::sonet_t::TLS) ||
+					   (this->_settings.sonet == scheme_t::sonet_t::SCTP)){
+						// Код ошибки подключения
+						int32_t error = 0;
+						// Размер кода ошибки
+						socklen_t size = sizeof(error);
+						// Если код ошибки подключения не получен
+						if(::getsockopt(broker->addr.sock, SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&error), &size) != 0)
+							// Запоминаем код ошибки
+							error = AWH_ERROR();
+						// Если подключение не выполнено
+						if(error != 0){
+							// Выполняем обработку неудачного подключения
+							this->refused(bid, error);
+							// Выходим из функции
+							return;
+						}
+					}
+					/**
+					 * Подключение считается установленным только после рукопожатия TLS / DTLS: оно
+					 * идёт на неблокирующем сокете по событиям чтения и записи (и таймеру перепосылки
+					 * для DTLS) и ограничено таймаутом подключения. Событие подключения (connected)
+					 * вызывается после SSL_is_init_finished, поэтому выбор протокола (engine_t::proto)
+					 * читает уже согласованный ALPN (HTTP/2). Раньше сокет после подключения переводился
+					 * в блокирующий режим, и сервер, не отвечающий на ClientHello, останавливал цикл
+					 * событий. Для UDP и подключений без шифрования рукопожатие завершается сразу.
+					 * Для DTLS событие подключения до рукопожатия дало бы приложению писать данные,
+					 * которые копились бы в очереди отправки.
+					 */
+					this->handshake(bid);
+				}
 				// Если подключение уже выполненно
 				else {
 					// Ещем для указанного потока очередь полезной нагрузки
 					auto i = this->_payloads.find(bid);
 					// Если для потока очередь полезной нагрузки получена
 					if((i != this->_payloads.end()) && !i->second->empty()){
-						// Выполняем запись в сокет
-						const size_t bytes = this->write(static_cast <const char *> (* i->second), static_cast <size_t> (* i->second), bid);
-						// Если данные записаны удачно
-						if((bytes > 0) && this->has(bid))
-							// Выполняем освобождение памяти хранения полезной нагрузки
-							this->erase(bid, bytes);
+						/**
+						 * Для датаграммных сокетов (UDP / DTLS) очередь отправляем по одной датаграмме,
+						 * сохраняя их границы: сплошной буфер очереди склеивал датаграммы и резал их по
+						 * размеру буфера сокета. Отправку продолжаем, пока датаграммы уходят целиком
+						 */
+						if(this->datagram(bid) > 0){
+							// Размер следующей датаграммы
+							size_t size = 0;
+							// Выполняем отправку датаграмм, пока они уходят целиком
+							while(this->has(bid) && ((size = this->datagram(bid)) > 0)){
+								// Ещем для указанного потока очередь полезной нагрузки
+								auto j = this->_payloads.find(bid);
+								// Если очередь полезной нагрузки не найдена, выходим
+								if(j == this->_payloads.end())
+									// Выходим из цикла
+									break;
+								// Если датаграмма не отправлена целиком (отложена), выходим до готовности сокета
+								if(this->write(static_cast <const char *> (* j->second), size, bid) != size)
+									// Выходим из цикла
+									break;
+								// Если брокер существует
+								if(this->has(bid))
+									// Выполняем освобождение памяти хранения полезной нагрузки
+									this->erase(bid, size);
+							}
+						// Если сокет потоковый
+						} else {
+							// Выполняем запись в сокет
+							const size_t bytes = this->write(static_cast <const char *> (* i->second), static_cast <size_t> (* i->second), bid);
+							// Если данные записаны удачно
+							if((bytes > 0) && this->has(bid))
+								// Выполняем освобождение памяти хранения полезной нагрузки
+								this->erase(bid, bytes);
+						}
 						// Если опередей полезной нагрузки нет, отключаем событие ожидания записи
 						if(this->_payloads.find(bid) != this->_payloads.end()){
 							// Если сокет подключения активен
 							if(broker->addr.sock != INVALID_SOCKET)
 								// Запускаем ожидание записи данных
 								broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+							// Повторяем отправку отложенных датаграмм по таймеру
+							this->flush(bid, 5);
 						}
 					}
 				}
@@ -1713,6 +2217,10 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 									// Если тип сокета установлен как SCTP
 									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+									// Если тип сокета установлен как UDP
+									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+									// Если тип сокета установлен как DTLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 										// Переводим сокет в блокирующий режим
 										broker->ectx.blocking(engine_t::mode_t::ENABLED);
 									break;
@@ -1729,7 +2237,11 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 									// Если тип сокета установлен как TCP/IP TLS
 									case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 									// Если тип сокета установлен как SCTP
-									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
+									case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+									// Если тип сокета установлен как UDP
+									case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+									// Если тип сокета установлен как DTLS
+									case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 										/**
 										 * Для операционной системы MS Windows
 										 */
@@ -1768,7 +2280,7 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 							break;
 						}
 						// Выполняем отправку сообщения клиенту
-						const int64_t bytes = broker->ectx.write(buffer, (size >= static_cast <size_t> (max) ? static_cast <size_t> (max) : size));
+						const int64_t bytes = broker->ectx.write(buffer, (((size >= static_cast <size_t> (max)) && (this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_settings.sonet != scheme_t::sonet_t::DTLS)) ? static_cast <size_t> (max) : size));
 						// Если данные удачно отправленны
 						if(bytes > 0){
 							// Запоминаем количество записанных байт
@@ -1781,6 +2293,10 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 						} else if(bytes == 0)
 							// Выполняем закрытие подключения
 							this->close(bid);
+						// Если запись отложена, а подключение выполняется по защищённому каналу DTLS
+						else if(this->_settings.sonet == scheme_t::sonet_t::DTLS)
+							// Запускаем таймер перепосылки рукопожатия DTLS, если рукопожатие ещё идёт
+							this->retransmission(bid);
 						// Если дисконнекта не произошло
 						if(bytes != 0){
 							/**
@@ -1799,6 +2315,10 @@ size_t awh::client::Core::write(const char * buffer, const size_t size, const ui
 										case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 										// Если тип сокета установлен как SCTP
 										case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
+										// Если тип сокета установлен как UDP
+										case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
+										// Если тип сокета установлен как DTLS
+										case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 											// Переводим сокет в неблокирующий режим
 											broker->ectx.blocking(engine_t::mode_t::DISABLED);
 										break;

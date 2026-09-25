@@ -1581,8 +1581,16 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 			switch(static_cast <uint8_t> (event)){
 				// Если необходимо выполнить компрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::ENCODE): {
+					/**
+					 * Намеренно выдаём голый DEFLATE (RFC 1951), а не обёртку zlib (RFC 1950),
+					 * хотя RFC 9110 для HTTP "deflate" предписывает zlib: декодер прежних версий AWH
+					 * открывает поток с отрицательным окном и на заголовке zlib получит ошибку.
+					 * Браузеры принимают оба вида, а наш декодер теперь опознаёт оба.
+					 * Стратегия Z_DEFAULT_STRATEGY вместо Z_HUFFMAN_ONLY: только Хаффман без поиска
+					 * совпадений давал тело в 2.5 раза больше, чем GZip, формат потока от этого не меняется
+					 */
 					// Если поток инициализировать не удалось, выходим
-					if(takeOver || (::deflateInit2(&zs, level, Z_DEFLATED, -1 * wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
+					if(takeOver || (::deflateInit2(&zs, level, Z_DEFLATED, -1 * wbit, DEFAULT_MEM_LEVEL, Z_DEFAULT_STRATEGY) == Z_OK)){
 						// Если поток декомпрессора не создан ранее
 						if(!takeOver){
 							// Устанавливаем количество доступных данных
@@ -1635,66 +1643,109 @@ static void deflate(const char * buffer, const size_t size, const uint32_t level
 				} break;
 				// Если необходимо выполнить декомпрессию данных
 				case static_cast <uint8_t> (awh::hash_t::event_t::DECODE): {
-					// Если поток инициализировать не удалось, выходим
-					if(takeOver || (::inflateInit2(&zs, -1 * wbit) == Z_OK)){
-						// Если поток декомпрессора не создан ранее
-						if(!takeOver){
-							// Устанавливаем количество доступных данных
-							zs.avail_in = static_cast <uint32_t> (size);
-							// Копируем входящий буфер для дешифровки
-							zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
-						// Если нужно переиспользовать поток декомпрессора
-						} else {
-							// Устанавливаем количество доступных данных
-							stream.avail_in = static_cast <uint32_t> (size);
-							// Копируем входящий буфер для дешифровки
-							stream.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
-						}
-						/**
-						 * Выполняем декомпрессию всех данных
-						 */
-						do {
+					/**
+					 * По RFC 9110 (8.4.1.2) кодирование "deflate" в HTTP это формат zlib (RFC 1950),
+					 * но многие серверы (и прежние версии AWH) отдают голый DEFLATE (RFC 1951),
+					 * поэтому при разовой декомпрессии принимаем оба вида: обёртку zlib опознаём
+					 * по заголовку (CM = 8, CINFO <= 7, (CMF * 256 + FLG) кратно 31). Контекст
+					 * WebSocket с переиспользованием (takeover) всегда голый (RFC 7692) и не проверяется.
+					 * Голый поток с таким заголовком возможен лишь при хранимом блоке с ненулевыми
+					 * битами выравнивания, для этого случая при ошибке разбора zlib повторяем разбор как голый
+					 */
+					bool zlib = (
+						!takeOver && (size > 1) &&
+						((static_cast <uint8_t> (buffer[0]) & 0x0F) == 0x08) &&
+						((static_cast <uint8_t> (buffer[0]) >> 4) <= 0x07) &&
+						((((static_cast <uint32_t> (static_cast <uint8_t> (buffer[0])) << 8) | static_cast <uint8_t> (buffer[1])) % 31) == 0)
+					);
+					// Флаг превышения допустимого предела извлекаемых данных
+					bool overflow = false;
+					/**
+					 * Выполняем декомпрессию данных
+					 */
+					do {
+						// Если поток инициализировать не удалось, выходим
+						if(takeOver || (::inflateInit2(&zs, (zlib ? MAX_WBITS : -1 * wbit)) == Z_OK)){
 							// Если поток декомпрессора не создан ранее
 							if(!takeOver){
-								// Устанавливаем буфер для записи дешифрованных данных
-								zs.next_out = tmp.data();
-								// Устанавливаем количество доступных данных для записи
-								zs.avail_out = static_cast <uint32_t> (tmp.size());
-								// Выполняем декомпрессию данных
-								rv = ::inflate(&zs, Z_NO_FLUSH);
+								// Устанавливаем количество доступных данных
+								zs.avail_in = static_cast <uint32_t> (size);
+								// Копируем входящий буфер для дешифровки
+								zs.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
 							// Если нужно переиспользовать поток декомпрессора
 							} else {
-								// Устанавливаем буфер для записи дешифрованных данных
-								stream.next_out = tmp.data();
-								// Устанавливаем количество доступных данных для записи
-								stream.avail_out = static_cast <uint32_t> (tmp.size());
-								// Выполняем декомпрессию данных
-								rv = ::inflate(&stream, Z_SYNC_FLUSH);
+								// Устанавливаем количество доступных данных
+								stream.avail_in = static_cast <uint32_t> (size);
+								// Копируем входящий буфер для дешифровки
+								stream.next_in = const_cast <Bytef *> (reinterpret_cast <const Bytef *> (buffer));
 							}
-							// Если данные обработаны удачно
-							if((rv == Z_OK) || (rv == Z_STREAM_END)){
-								// Получаем размер извлечённых данных
-								const size_t length = (tmp.size() - (!takeOver ? zs.avail_out : stream.avail_out));
-								// Если извлечённые данные превышают допустимый предел
-								if((limit > 0) && ((result.size() + length) > limit)){
-									// Выполняем очистку результата
-									result.clear();
-									// Выходим из цикла
-									break;
+							/**
+							 * Выполняем декомпрессию всех данных
+							 */
+							do {
+								// Если поток декомпрессора не создан ранее
+								if(!takeOver){
+									// Устанавливаем буфер для записи дешифрованных данных
+									zs.next_out = tmp.data();
+									// Устанавливаем количество доступных данных для записи
+									zs.avail_out = static_cast <uint32_t> (tmp.size());
+									// Выполняем декомпрессию данных
+									rv = ::inflate(&zs, Z_NO_FLUSH);
+								// Если нужно переиспользовать поток декомпрессора
+								} else {
+									// Устанавливаем буфер для записи дешифрованных данных
+									stream.next_out = tmp.data();
+									// Устанавливаем количество доступных данных для записи
+									stream.avail_out = static_cast <uint32_t> (tmp.size());
+									// Выполняем декомпрессию данных
+									rv = ::inflate(&stream, Z_SYNC_FLUSH);
 								}
-								// Добавляем оставшиеся данные в список
-								result.insert(result.end(), tmp.begin(), tmp.begin() + length);
-							// Если данные не могут быть обработанны, то выходим
-							} else break;
-						/**
-						 * Если ещё не все данные извлечены
-						 */
-						} while(rv != Z_STREAM_END);
-						// Очищаем выделенную память для декомпрессора
-						if(!takeOver)
-							// Завершаем работу
-							::inflateEnd(&zs);
-					}
+								// Если данные обработаны удачно
+								if((rv == Z_OK) || (rv == Z_STREAM_END)){
+									// Получаем размер извлечённых данных
+									const size_t length = (tmp.size() - (!takeOver ? zs.avail_out : stream.avail_out));
+									// Если извлечённые данные превышают допустимый предел
+									if((limit > 0) && ((result.size() + length) > limit)){
+										// Выполняем очистку результата
+										result.clear();
+										// Запоминаем превышение предела
+										overflow = true;
+										// Выходим из цикла
+										break;
+									}
+									// Добавляем оставшиеся данные в список
+									result.insert(result.end(), tmp.begin(), tmp.begin() + length);
+								// Если данные не могут быть обработанны, то выходим
+								} else break;
+							/**
+							 * Если ещё не все данные извлечены
+							 */
+							} while(rv != Z_STREAM_END);
+							// Очищаем выделенную память для декомпрессора
+							if(!takeOver)
+								// Завершаем работу
+								::inflateEnd(&zs);
+						}
+						// Если данные опознаны как zlib, но разобрать их не удалось
+						if(zlib && !overflow && (rv != Z_OK) && (rv != Z_STREAM_END) && (rv != Z_BUF_ERROR)){
+							// Снимаем флаг формата zlib
+							zlib = false;
+							// Сбрасываем результат проверки декомпрессии
+							rv = Z_OK;
+							// Выполняем очистку блока с результатом
+							result.clear();
+							// Заполняем поток нулями
+							::memset(&zs, 0, sizeof(zs));
+							// Обнуляем структуру
+							zs.zfree  = Z_NULL;
+							zs.zalloc = Z_NULL;
+							zs.opaque = Z_NULL;
+						// Выходим из цикла
+						} else break;
+					/**
+					 * Повторяем разбор данных как голого DEFLATE
+					 */
+					} while(true);
 				} break;
 			}
 		/**
@@ -1799,12 +1850,14 @@ bool awh::Hash::cipher(const cipher_t cipher) noexcept {
  */
 void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
 	// Если сообщение является финальным
-	if(buffer.size() > sizeof(this->_btype)){
-		// Выполняем поиск хвостового списка байт для удаления
-		auto i = search(buffer.begin(), buffer.end(), this->_btype, this->_btype + sizeof(this->_btype));
+	/**
+	 * Хвост снимаем только с конца буфера: поиск первого вхождения 00 00 FF FF
+	 * обрезал данные, если такая последовательность встречалась внутри сжатого потока
+	 * (хранимый блок DEFLATE копирует несжимаемые данные как есть)
+	 */
+	if((buffer.size() > sizeof(this->_btype)) && equal(this->_btype, this->_btype + sizeof(this->_btype), buffer.end() - sizeof(this->_btype)))
 		// Удаляем хвостовой список байт из буфера данных
-		buffer.erase(i, buffer.end());
-	}
+		buffer.erase(buffer.end() - sizeof(this->_btype), buffer.end());
 }
 /**
  * @brief Метод добавления хвостовых данных
@@ -2695,8 +2748,12 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 		this->_zdef.zalloc = Z_NULL;
 		this->_zdef.zfree  = Z_NULL;
 		this->_zdef.opaque = Z_NULL;
+		/**
+		 * Стратегия Z_DEFAULT_STRATEGY вместо Z_HUFFMAN_ONLY: поиск совпадений резко уменьшает
+		 * сжатые данные, поток остаётся голым DEFLATE (RFC 7692) и читается любым участником
+		 */
 		// Если поток инициализировать не удалось, выходим
-		if(::deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
+		if(::deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
 			/**

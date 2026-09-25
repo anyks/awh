@@ -85,6 +85,10 @@ namespace awh {
 				std::map <uint64_t, uint16_t> _receive;
 				// Список активных таймаутов
 				std::map <uint16_t, uint16_t> _timeouts;
+				// Список таймеров перепосылки рукопожатия DTLS
+				std::map <uint64_t, uint16_t> _retransmits;
+				// Список таймеров отправки очереди датаграмм
+				std::map <uint64_t, uint16_t> _flushes;
 			private:
 				/**
 				 * @brief Метод создания подключения к удаленному серверу
@@ -121,6 +125,79 @@ namespace awh {
 				 * @param mode режим работы клиента
 				 */
 				void timeout(const uint16_t sid, const scheme_t::mode_t mode) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки неудачного подключения к серверу
+				 *
+				 * @param bid   идентификатор брокера
+				 * @param error код системной ошибки подключения
+				 */
+				void refused(const uint64_t bid, const int32_t error) noexcept;
+				/**
+				 * @brief Метод запуска таймера ожидания подключения (и рукопожатия TLS)
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void waiting(const uint64_t bid) noexcept;
+			private:
+				/**
+				 * @brief Метод запуска таймера отправки очереди датаграмм
+				 *
+				 * @param bid  идентификатор брокера
+				 * @param msec задержка отправки в миллисекундах
+				 */
+				void flush(const uint64_t bid, const uint32_t msec) noexcept;
+				/**
+				 * @brief Метод срабатывания таймера отправки очереди датаграмм
+				 *
+				 * @param bid идентификатор брокера
+				 * @param tid идентификатор сработавшего таймера
+				 */
+				void flushed(const uint64_t bid, const uint16_t tid) noexcept;
+			private:
+				/**
+				 * @brief Метод запуска таймера перепосылки рукопожатия DTLS
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void retransmission(const uint64_t bid) noexcept;
+				/**
+				 * @brief Метод перепосылки рукопожатия DTLS по таймеру
+				 *
+				 * @param bid идентификатор брокера
+				 * @param tid идентификатор сработавшего таймера
+				 */
+				void retransmit(const uint64_t bid, const uint16_t tid) noexcept;
+				/**
+				 * @brief Метод выполнения шага рукопожатия (TLS / DTLS) до установки подключения
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void handshake(const uint64_t bid) noexcept;
+			private:
+				/**
+				 * @brief Метод срабатывания таймаута ожидания получения данных
+				 *
+				 * @param bid идентификатор брокера
+				 * @param tid идентификатор сработавшего таймера
+				 */
+				void expired(const uint64_t bid, const uint16_t tid) noexcept;
+				/**
+				 * @brief Метод срабатывания таймаута подключения к серверу
+				 *
+				 * @param bid   идентификатор брокера
+				 * @param tid   идентификатор сработавшего таймера
+				 * @param error код системной ошибки подключения
+				 */
+				void expired(const uint64_t bid, const uint16_t tid, const int32_t error) noexcept;
+				/**
+				 * @brief Метод срабатывания таймаута подключения или переподключения
+				 *
+				 * @param sid  идентификатор схемы сети
+				 * @param tid  идентификатор сработавшего таймера
+				 * @param mode режим работы клиента
+				 */
+				void expired(const uint16_t sid, const uint16_t tid, const scheme_t::mode_t mode) noexcept;
 			private:
 				/**
 				 * @brief Метод удаления таймера ожидания получения данных
@@ -205,6 +282,19 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void switchProxy(const uint64_t bid) noexcept;
+				/**
+				 * @brief Метод переключения с прокси-сервера
+				 *
+				 * При async = true рукопожатие TLS с сервером за прокси-сервером выполняется
+				 * асинхронно (по событиям чтения и записи, с таймаутом подключения), и по его
+				 * завершении вызывается событие подключения ("connect"), как при прямом подключении.
+				 * При async = false поведение прежнее (switchProxy(bid)): событие подключения
+				 * вызывающий запускает сам.
+				 *
+				 * @param bid   идентификатор брокера
+				 * @param async флаг асинхронного рукопожатия с событием подключения по завершении
+				 */
+				void switchProxy(const uint64_t bid, const bool async) noexcept;
 			private:
 				/**
 				 * @brief Метод вызова при удачном подключении к серверу

@@ -69,6 +69,12 @@ namespace awh {
 				thr_t _thr;
 			private:
 				/**
+				 * Передатчик работы между пулом потоков и потоком базы событий,
+				 * хранит очереди полученных сообщений брокеров для пула потоков
+				 */
+				ws_relay_t _relay;
+			private:
+				/**
 				 * Брокеры, у которых идёт приём фрагментированного сообщения,
 				 * отдельный признак нужен, так как фрагменты нулевой длины не попадают в буфер
 				 */
@@ -204,6 +210,30 @@ namespace awh {
 				 * @param text   данные передаются в текстовом виде
 				 */
 				void extraction(const uint64_t bid, const char * buffer, const size_t size, const bool text) noexcept;
+			private:
+				/**
+				 * @brief Метод передачи полученного сообщения в функцию обратного вызова
+				 *
+				 * Вызывается в потоке базы событий. При активном пуле потоков сообщение
+				 * ставится в очередь брокера и передаётся в пул потоков
+				 *
+				 * @param bid     идентификатор брокера
+				 * @param message буфер полученного сообщения
+				 * @param text    данные передаются в текстовом виде
+				 */
+				void delivery(const uint64_t bid, const vector <char> & message, const bool text) noexcept;
+				/**
+				 * @brief Метод обработки очереди полученных сообщений брокера в пуле потоков
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void received(const uint64_t bid) noexcept;
+			private:
+				/**
+				 * @brief Метод остановки пула потоков
+				 *
+				 */
+				void release() noexcept;
 			private:
 				/**
 				 * @brief Метод проверки доступности сервера

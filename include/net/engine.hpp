@@ -428,6 +428,20 @@ namespace awh {
 					 * @return       результат работы фукнции
 					 */
 					int32_t error(const int32_t status) const noexcept;
+				private:
+					/**
+					 * @brief Метод проверки временной ошибки отправки датаграммы
+					 *
+					 * @return результат проверки (true - отправку нужно повторить позже)
+					 */
+					bool retry() const noexcept;
+				private:
+					/**
+					 * @brief Метод выполнения шага рукопожатия (SSL_accept / SSL_connect)
+					 *
+					 * @return результат работы функции OpenSSL
+					 */
+					int32_t handshake() noexcept;
 				public:
 					/**
 					 * @brief Метод очистки контекста
@@ -464,6 +478,26 @@ namespace awh {
 					 * @return       количество записанных байт
 					 */
 					int64_t write(const char * buffer, const size_t size) noexcept;
+				public:
+					/**
+					 * @brief Метод выполнения шага рукопожатия без передачи данных
+					 *
+					 * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+					 */
+					int32_t negotiate() noexcept;
+				public:
+					/**
+					 * @brief Метод получения времени до перепосылки рукопожатия DTLS
+					 *
+					 * @return время в миллисекундах до срабатывания таймера DTLS (0 - таймер не запущен)
+					 */
+					uint32_t retransmission() const noexcept;
+					/**
+					 * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
+					 *
+					 * @return результат работы функции (false - рукопожатие не удалось)
+					 */
+					bool retransmit() noexcept;
 				public:
 					/**
 					 * @brief Метод проверки на то, является ли сокет заблокированным

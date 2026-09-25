@@ -174,6 +174,8 @@ void awh::Node::remove() noexcept {
 	this->_brokers.clear();
 	// Выполняем удаление очередей полезной нагрузки
 	this->_payloads.clear();
+	// Выполняем удаление размеров датаграмм очередей полезной нагрузки
+	this->_datagrams.clear();
 	// Выполняем удаление списка используемой памяти буферов полезной нагрузки
 	this->_available.clear();
 }
@@ -198,6 +200,8 @@ void awh::Node::remove(const uint16_t sid) noexcept {
 				this->_brokers.erase(j->first);
 				// Выполняем удаление очереди полезной нагрузки
 				this->_payloads.erase(j->first);
+				// Выполняем удаление размеров датаграмм очереди полезной нагрузки
+				this->_datagrams.erase(j->first);
 				// Выполняем удаление списка используемой памяти буфера полезной нагрузки
 				this->_available.erase(j->first);
 				// Выполняем удаление брокера подключения
@@ -239,6 +243,8 @@ void awh::Node::remove(const uint64_t bid) noexcept {
 			}
 			// Выполняем удаление очереди полезной нагрузки
 			this->_payloads.erase(i->first);
+			// Выполняем удаление размеров датаграмм очереди полезной нагрузки
+			this->_datagrams.erase(i->first);
 			// Выполняем удаление списка используемой памяти буфера полезной нагрузки
 			this->_available.erase(i->first);
 			// Выполняем удаление брокера подключения
@@ -390,17 +396,73 @@ void awh::Node::erase(const uint64_t bid, const size_t size) noexcept {
 		if((bid > 0) && this->has(bid)){
 			// Выполняем удаление буфера буфера полезной нагрузки
 			i->second->erase(size);
+			// Выполняем поиск размеров датаграмм очереди
+			auto k = this->_datagrams.find(bid);
+			// Если размеры датаграмм найдены
+			if(k != this->_datagrams.end()){
+				// Количество байт для удаления из списка датаграмм
+				size_t bytes = size;
+				// Удаляем отправленные датаграммы из начала очереди
+				while((bytes > 0) && !k->second.empty()){
+					// Если датаграмма отправлена целиком
+					if(k->second.front() <= bytes){
+						// Уменьшаем количество байт для удаления
+						bytes -= k->second.front();
+						// Удаляем датаграмму из очереди
+						k->second.pop_front();
+					// Если датаграмма отправлена частично (для датаграмм не бывает)
+					} else {
+						// Уменьшаем размер оставшейся датаграммы
+						k->second.front() -= bytes;
+						// Выходим из цикла
+						break;
+					}
+				}
+			}
 			// Если очередь полностью пустая
-			if(i->second->empty())
+			if(i->second->empty()){
 				// Выполняем удаление всей очереди
 				this->_payloads.erase(i);
+				// Выполняем удаление размеров датаграмм очереди
+				this->_datagrams.erase(bid);
+			}
 		// Выполняем удаление всей очереди
-		} else this->_payloads.erase(i);
+		} else {
+			// Выполняем удаление всей очереди
+			this->_payloads.erase(i);
+			// Выполняем удаление размеров датаграмм очереди
+			this->_datagrams.erase(bid);
+		}
 	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("available"))
 		// Выполняем функцию обратного вызова сообщая об освобождении памяти
 		this->_callback.call <void (const uint64_t, const size_t)> ("available", bid, (this->_brokerAvailableSize < amount) ? 0 : std::min(this->_brokerAvailableSize - amount, this->_memoryAvailableSize));
+}
+/**
+ * @brief Метод получения размера следующей датаграммы в очереди полезной нагрузки
+ *
+ * @param bid идентификатор брокера
+ * @return    размер следующей датаграммы (0 - сокет не датаграммный или очередь пуста)
+ */
+size_t awh::Node::datagram(const uint64_t bid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.send);
+	// Выполняем поиск размеров датаграмм очереди
+	auto i = this->_datagrams.find(bid);
+	// Если размеры датаграмм найдены
+	if((i != this->_datagrams.end()) && !i->second.empty()){
+		// Ещем для указанного потока очередь полезной нагрузки
+		auto j = this->_payloads.find(bid);
+		// Если очередь полезной нагрузки существует и датаграмма в ней целиком
+		if((j != this->_payloads.end()) && (i->second.front() <= j->second->size()))
+			// Выводим размер следующей датаграммы
+			return i->second.front();
+		// Очередь удалена в обход списка датаграмм, сбрасываем устаревшие размеры
+		this->_datagrams.erase(i);
+	}
+	// Сокет не датаграммный или очередь пуста
+	return 0;
 }
 /**
  * @brief Метод извлечения брокера подключения
@@ -829,7 +891,16 @@ bool awh::Node::send(const char * buffer, const size_t size, const uint64_t bid)
 					auto ret = this->_payloads.emplace(bid, std::make_unique <buffer_t> (this->_fmk, this->_log));
 					// Выполняем добавление полезной нагрузки
 					ret.first->second->push(buffer, size);
+					// Сбрасываем размеры датаграмм прежней очереди, если они остались
+					this->_datagrams.erase(bid);
 				}
+				/**
+				 * Для датаграммных сокетов (UDP / DTLS) запоминаем границу датаграммы: очередь
+				 * отправляется по одной датаграмме за вызов записи (см. datagram)
+				 */
+				if((this->_settings.sonet == scheme_t::sonet_t::UDP) || (this->_settings.sonet == scheme_t::sonet_t::DTLS))
+					// Добавляем размер датаграммы в очередь
+					this->_datagrams[bid].push_back(size);
 				// Выполняем блокировку потока
 				this->_mtx.main.lock();
 				// Уменьшаем общее количество переданных данных

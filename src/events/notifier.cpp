@@ -203,6 +203,8 @@ void awh::Notifier::reset() noexcept {
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
 				// Выполняем закрытие сокета
@@ -210,6 +212,8 @@ void awh::Notifier::reset() noexcept {
 				// Сбрасываем значение сокета
 				this->_sock = INVALID_SOCKET;
 			}
+			// Очищаем очередь событий закрытого уведомителя
+			this->_events = std::queue <uint64_t> ();
 		/**
 		 * Для операционной системы OpenBSD или Sun Solaris
 		 */
@@ -465,6 +469,20 @@ SOCKET awh::Notifier::init() noexcept {
 uint64_t awh::Notifier::event() noexcept {
 	// Результат работы функции
 	uint64_t result = 0;
+	// Выполняем извлечение идентификатора события
+	this->event(result);
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод извлечения идентификатора события с признаком наличия
+ *
+ * @param id идентификатор извлечённого события
+ * @return   результат извлечения (false, если событий нет)
+ */
+bool awh::Notifier::event(uint64_t & id) noexcept {
+	// Результат работы функции
+	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -493,44 +511,35 @@ uint64_t awh::Notifier::event() noexcept {
 						size += bytes;
 				}
 				// Копируем прочитанные данные
-				::memcpy(&result, buffer, size);
+				::memcpy(&id, buffer, size);
+				// Сообщаем, что событие извлечено
+				result = true;
 			}
 		/**
 		 * Для операционной системы Linux
 		 */
 		#elif __linux__
-			// Если сокет ещё не закрыт
-			if(this->_sock != INVALID_SOCKET){
-				// Буфер данных для чтения
-				char buffer[8];
-				// Общий размер прочитанных данных
-				int8_t size = 0;
-				// Количество прочитанных данных
-				int8_t bytes = 0;
-				/**
-				 * Выполняем чтение данных пока не прочитаем все
-				 */
-				while(size < 8){
-					// Выполняем чтение данных (eventfd отдаёт значение целиком, поэтому размер буфера всегда 8)
-					bytes = static_cast <int8_t> (::read(this->_sock, buffer + size, 8));
-					// Если данные прочитанны
-					if(bytes > 0)
-						// Увеличиваем количество прочитанных данных
-						size += bytes;
-					// Если чтение прервано сигналом, повторяем попытку
-					else if((bytes < 0) && (errno == EINTR))
-						// Продолжаем чтение
-						continue;
-					/**
-					 * Данных нет (EAGAIN), канал закрыт или ошибка: выходим из цикла.
-					 * Раньше цикл повторялся бесконечно и останавливал всю базу событий
-					 */
-					else break;
-				}
-				// Если значение прочитано полностью
-				if(size == 8)
-					// Копируем прочитанные данные
-					::memcpy(&result, buffer, size);
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
+			// Если очередь событий не пустая
+			if(!this->_events.empty()){
+				// Выполняем извлечение из очереди события
+				id = this->_events.front();
+				// Удаляем извлечённое событие
+				this->_events.pop();
+				// Сообщаем, что событие извлечено
+				result = true;
+			}
+			/**
+			 * Если событий в очереди больше нет, сбрасываем счётчик eventfd, чтобы не было
+			 * пробуждений без событий. Очередь и счётчик меняются под одним мютексом:
+			 * счётчик ненулевой тогда и только тогда, когда очередь не пустая
+			 */
+			if(this->_events.empty() && (this->_sock != INVALID_SOCKET)){
+				// Значение счётчика eventfd
+				uint64_t counter = 0;
+				// Выполняем чтение счётчика (при отсутствии значения неблокирующий eventfd вернёт EAGAIN)
+				while((::read(this->_sock, &counter, sizeof(counter)) < 0) && (errno == EINTR));
 			}
 		/**
 		 * Для операционной системы OpenBSD или Sun Solaris
@@ -565,27 +574,30 @@ uint64_t awh::Notifier::event() noexcept {
 					else break;
 				}
 				// Если значение прочитано полностью
-				if(size == 8)
+				if((result = (size == 8)))
 					// Копируем прочитанные данные
-					::memcpy(&result, buffer, size);
+					::memcpy(&id, buffer, size);
 			}
 		/**
 		 * Для операционной системы MacOS X, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
-			// Выполняем блокирование потока
-			this->_mtx.lock();
+			// Выполняем блокировку потока
+			const lock_guard <std::mutex> lock(this->_mtx);
 			// Если очередь событий не пустая
 			if(!this->_events.empty()){
 				// Выполняем извлечение из очереди события
-				result = this->_events.front();
+				id = this->_events.front();
 				// Удаляем извлечённое событие
 				this->_events.pop();
+				// Сообщаем, что событие извлечено
+				result = true;
 			}
-			// Выполняем разблокирование потока
-			this->_mtx.unlock();
-			// Если сообщений больше нет, удаляем событие
-			if(this->_events.empty()){
+			/**
+			 * Если сообщений больше нет, пересоздаём событие. Проверка и пересоздание выполняются
+			 * под мютексом: иначе уведомление, пришедшее между ними, терялось вместе с событием
+			 */
+			if(this->_events.empty() && (this->_sock != INVALID_SOCKET)){
 				// Создаём объект события
 				struct kevent event;
 				// Выполняем удаление события
@@ -678,8 +690,17 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		#elif __linux__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
-				// Выполняем отправку сообщения
-				if(::write(this->_sock, reinterpret_cast <const char *> (&id), sizeof(id)) < sizeof(id)){
+				// Выполняем блокировку потока
+				const lock_guard <std::mutex> lock(this->_mtx);
+				// Добавляем идентификатор в очередь событий
+				this->_events.push(id);
+				/**
+				 * В eventfd пишем единицу, а не идентификатор: значение служит только сигналом
+				 * пробуждения, раньше два уведомления до одного чтения давали сумму идентификаторов
+				 */
+				const uint64_t signal = 1;
+				// Выполняем отправку сигнала пробуждения
+				if(::write(this->_sock, reinterpret_cast <const char *> (&signal), sizeof(signal)) < static_cast <ssize_t> (sizeof(signal))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -724,12 +745,14 @@ void awh::Notifier::notify(const uint64_t id) noexcept {
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не закрыт
 			if(this->_sock != INVALID_SOCKET){
-				// Выполняем блокирование потока
-				this->_mtx.lock();
-				// Удаляем извлечённое событие
+				/**
+				 * Добавление в очередь и срабатывание события выполняются под одним мютексом
+				 * с извлечением: иначе пересоздание события при извлечении могло стереть
+				 * срабатывание уже добавленного уведомления
+				 */
+				const lock_guard <std::mutex> lock(this->_mtx);
+				// Добавляем идентификатор в очередь событий
 				this->_events.push(id);
-				// Выполняем разблокирование потока
-				this->_mtx.unlock();
 				// Создаём событие триггера
 				struct kevent trigger;
 				// Выполняем установку события триггера

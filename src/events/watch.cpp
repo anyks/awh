@@ -243,6 +243,23 @@ uint64_t awh::Watch::event(const SOCKET sock) noexcept {
 	return 0;
 }
 /**
+ * @brief Метод извлечения идентификатора события с признаком наличия
+ *
+ * @param sock файловый дескриптор таймера
+ * @param id   идентификатор извлечённого события
+ * @return     результат извлечения (false, если событий нет или таймер не найден)
+ */
+bool awh::Watch::event(const SOCKET sock, uint64_t & id) noexcept {
+	// Выполняем поиск нужного нам уведомителя
+	auto i = this->_notifiers.find(sock);
+	// Если уведомитель найден
+	if(i != this->_notifiers.end())
+		// Выполняем извлечение полученного уведомления
+		return i->second->event(id);
+	// Сообщаем, что уведомление не извлечено
+	return false;
+}
+/**
  * @brief Метод убрать таймер из отслеживания
  *
  * @param sock файловый дескриптор таймера

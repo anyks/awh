@@ -269,12 +269,25 @@ namespace awh {
 			void init(const event_mode_t mode) noexcept;
 		private:
 			/**
+			 * @brief Метод пересоздания объекта ядра базы событий с повторной регистрацией всех участников
+			 *
+			 */
+			void recreate() noexcept;
+		private:
+			/**
 			 * @brief Метод получения событий верхнеуровневых потоков
 			 *
 			 * @param sock  окет межпотокового передатчика
 			 * @param event входящее событие от межпотокового передатчика
 			 */
 			void stream(const SOCKET sock, const uint64_t event) noexcept;
+			/**
+			 * @brief Метод извлечения всех накопившихся событий межпотокового передатчика
+			 *
+			 * @param id   идентификатор записи
+			 * @param sock сокет межпотокового передатчика
+			 */
+			void streams(const uint64_t id, const SOCKET sock) noexcept;
 		private:
 			/**
 			 * Для операционной системы Linux

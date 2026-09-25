@@ -1111,6 +1111,25 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					}
 					// Выходим из функции
 					return;
+				/**
+				 * Строка запроса без разделителя (стартовая строка без пробела, заголовок без двоеточия)
+				 * или с одиночным возвратом каретки либо нулевым байтом на сервере является ошибкой разбора
+				 * (RFC 9112 §2.2, §3, §5, RFC 9110 §5.5):
+				 * раньше такая строка молча пропускалась, и сервер ждал запроса до истечения времени ожидания
+				 */
+				} else if((size > 0) && (this->_hid == hid_t::SERVER) && ((this->_pos[0] < 0) || (::memchr(buffer, '\r', size) != nullptr) || (::memchr(buffer, '\0', size) != nullptr))) {
+					// Получаем текст сообщения об ошибке
+					const char * message = ((this->_state == state_t::QUERY) ? "Broken request client" : "Broken request header");
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::WARNING, message);
+					// Если функция обратного вызова на на вывод ошибок установлена
+					if(this->_callback.is("error"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, message);
+					// Запрос отклоняется целиком
+					this->_fault = 400;
+					// Прекращаем обработку запроса
+					this->_state = state_t::END;
 				// Если необходимо  получить оставшиеся данные
 				} else if((size > 0) && (this->_pos[0] > -1)) {
 					/**
@@ -1191,14 +1210,29 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									 * Выполняем отлов ошибок
 									 */
 									try {
-										// Создаём буфер для проверки
-										char temp[5];
-										// Копируем полученную строку
-										::strncpy(temp, buffer + (this->_pos[1] + 1), 4);
-										// Устанавливаем конец строки
-										temp[4] = '\0';
-										// Если мы получили ответ от сервера
-										if(::strcmp(temp, "HTTP") == 0){
+										/**
+										 * Стартовая строка обязана иметь вид «метод SP цель SP HTTP/цифра.цифра» (RFC 9112 §3):
+										 * метод является токеном, цель непуста и без управляющих символов. Прежняя проверка
+										 * читала четыре байта за концом короткой строки и пропускала мусор вместо метода
+										 */
+										bool valid = ((this->_pos[0] > 0) && (this->_pos[1] > (this->_pos[0] + 1)) && (size == static_cast <size_t> (this->_pos[1] + 9)));
+										// Если длина частей строки верная
+										if(valid){
+											// Получаем версию протокола
+											const char * version = (buffer + (this->_pos[1] + 1));
+											// Версия протокола должна соответствовать HTTP/цифра.цифра
+											valid = ((::memcmp(version, "HTTP/", 5) == 0) && (::isdigit(static_cast <uint8_t> (version[5])) != 0) && (version[6] == '.') && (::isdigit(static_cast <uint8_t> (version[7])) != 0));
+										}
+										// Выполняем проверку символов метода запроса
+										for(int32_t j = 0; valid && (j < this->_pos[0]); j++)
+											// Метод запроса должен состоять только из символов токена
+											valid = ((::isalnum(static_cast <uint8_t> (buffer[j])) != 0) || ((buffer[j] != '\0') && (::strchr("!#$%&'*+-.^_`|~", buffer[j]) != nullptr)));
+										// Выполняем проверку символов цели запроса
+										for(int32_t j = (this->_pos[0] + 1); valid && (j < this->_pos[1]); j++)
+											// Цель запроса не может содержать управляющие символы
+											valid = ((static_cast <uint8_t> (buffer[j]) > 0x20) && (static_cast <uint8_t> (buffer[j]) != 0x7F));
+										// Если стартовая строка запроса корректна и старшая версия протокола равна 1
+										if(valid && (buffer[this->_pos[1] + 6] == '1')){
 											// Выполняем очистку всех ранее полученных данных
 											this->clear();
 											// Выполняем сброс размера тела
@@ -1212,7 +1246,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											// Получаем параметры URI-запроса
 											const string uri(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
 											// Получаем версию протокол запроса
-											this->_request.version = ::stod(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
+											/**
+											 * Младшая версия выше поддерживаемой обрабатывается как HTTP/1.1 (RFC 9110 §2.5):
+											 * HTTP/1.2 и далее совместимы с HTTP/1.1, поэтому отклонять их нельзя
+											 */
+											this->_request.version = ((buffer[this->_pos[1] + 8] == '0') ? 1.0 : 1.1);
 											// Выполняем установку URI-параметров запроса
 											this->_request.url = this->_uri.parse(uri);
 											// Если метод определён как GET
@@ -1255,6 +1293,23 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 											if(this->_callback.is("request"))
 												// Выполняем функцию обратного вызова
 												this->_callback.call <void (const uint64_t, const method_t, const uri_t::url_t &)> ("request", this->_id, this->_request.method, this->_request.url);
+										/**
+										 * Старшая версия протокола отличная от 1 (например HTTP/2.0 или HTTP/9.9) не поддерживается
+										 * разборщиком HTTP/1: отвечаем 505 и закрываем подключение (RFC 9110 §15.6.6), а не 200
+										 */
+										} else if(valid) {
+											// Выполняем очистку всех ранее полученных данных
+											this->clear();
+											// Запрос с неподдерживаемой версией протокола отклоняется целиком
+											this->_fault = 505;
+											// Прекращаем обработку запроса
+											this->_state = state_t::END;
+											// Сообщаем, что версия протокола не поддерживается
+											this->_log->print("HTTP version not supported", log_t::flag_t::WARNING);
+											// Если функция обратного вызова на на вывод ошибок установлена
+											if(this->_callback.is("error"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "HTTP version not supported");
 										// Если данные пришли неправильные
 										} else {
 											// Выполняем очистку всех ранее полученных данных
@@ -1436,6 +1491,33 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					this->_fault = 431;
 					// Прекращаем обработку запроса
 					this->_state = state_t::END;
+				// Если заголовки ещё не получены
+				} else if((this->_state == state_t::QUERY) || (this->_state == state_t::HEADERS)) {
+					/**
+					 * Недочитанная строка с одиночным возвратом каретки (RFC 9112 §2.2) отклоняется сразу:
+					 * при окончаниях строк CR перевод строки не придёт никогда, и сервер молчал бы до таймаута
+					 */
+					for(size_t i = result; i < size; i++){
+						// Если строка завершена, её разберёт следующий вызов
+						if(buffer[i] == '\n')
+							// Выходим из цикла
+							break;
+						// Если за возвратом каретки получен не перевод строки
+						else if((buffer[i] == '\r') && ((i + 1) < size) && (buffer[i + 1] != '\n')) {
+							// Выводим сообщение об ошибке
+							this->_log->print("Broken request line ending", log_t::flag_t::WARNING);
+							// Если функция обратного вызова на на вывод ошибок установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const uint64_t, const log_t::flag_t, const http::error_t, const string &)> ("error", this->_id, log_t::flag_t::WARNING, http::error_t::PROTOCOL, "Broken request line ending");
+							// Запрос отклоняется целиком
+							this->_fault = 400;
+							// Прекращаем обработку запроса
+							this->_state = state_t::END;
+							// Выходим из цикла
+							break;
+						}
+					}
 				}
 			}
 		}
@@ -1478,6 +1560,13 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 			if((old == '\n') && (letter == '\r'))
 				// Устанавливаем флаг конца
 				stop = true;
+			/**
+			 * Возврат каретки без следующего за ним перевода строки концом секции не является (RFC 9112 §2.2):
+			 * иначе остаток строки после одиночного возврата каретки молча проглатывался как пустая строка
+			 */
+			else if(stop && (old == '\r'))
+				// Снимаем флаг конца, строка разбирается обычным образом
+				stop = false;
 			// Если сепаратор найден, добавляем его в массив
 			if((this->_separator != '\0') && (letter == this->_separator) && (count < 2)){
 				// Устанавливаем позицию найденного разделителя
@@ -1486,8 +1575,11 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 				count++;
 			}
 			// Если текущая буква является переносом строк
-			// if((i > 0) && ((letter == '\n') || (i == (size - 1)))){
-			if((i > 0) && (letter == '\n')){
+			/**
+			 * Перевод строки в самом начале буфера тоже завершает строку: при одиночных переводах строки
+			 * (RFC 9112 §2.2 разрешает их принимать) пустая строка конца заголовков может прийти отдельным пакетом
+			 */
+			if(letter == '\n'){
 				// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
 				length = ((old == '\r' ? i - 1 : i) - offset);
 				/*
@@ -1496,12 +1588,22 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 					// Увеличиваем общий размер обработанных байт
 					length++;
 				*/
-				// Если данные не получены но мы дошли до конца
-				if((length == 0) && (old == '\r') && (letter == '\n')){
+				/**
+				 * Пустая строка завершает секцию заголовков и при одиночном переводе строки (RFC 9112 §2.2),
+				 * иначе запрос с окончаниями строк LF ожидал продолжения до истечения времени ожидания
+				 */
+				if(length == 0){
 					// Устанавливаем флаг конца
 					stop = ((this->_state == state_t::HEADERS) || (this->_state == state_t::BODY));
 					// Выполняем функцию обратного вызова
 					callback(nullptr, 0, i + 1, stop);
+					/**
+					 * После конца секции заголовков разбор строк прекращается: следующие байты
+					 * принадлежат телу или следующему запросу и не должны учитываться как заголовки
+					 */
+					if(stop)
+						// Выходим из цикла
+						break;
 				// Если длина слова получена, выводим полученную строку
 				} else callback(buffer + offset, length, i + 1, stop);
 				// Если массив сепараторов получен

@@ -16,6 +16,7 @@
  * Подключаем заголовочный файл
  */
 #include <ws/core.hpp>
+#include <core/core.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -1943,3 +1944,285 @@ void awh::WebsocketCore::takeover(const web_t::hid_t hid, const bool flag) noexc
  */
 awh::WebsocketCore::WebsocketCore(const fmk_t * fmk, const log_t * log) noexcept :
  http_t(fmk, log), _encryption(false), _key{""} {}
+/**
+ * @brief Метод активации межпотокового передатчика
+ *
+ * @param core объект сетевого ядра
+ */
+void awh::WebsocketRelay::activation(Core * core) noexcept {
+	// Если объект сетевого ядра передан
+	if(core != nullptr){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем текущую базу событий
+			const void * base = core->base();
+			// Выполняем блокировку параметров передатчика
+			const lock_guard <std::mutex> lock(this->_mtx);
+			/**
+			 * Если передатчик уже активирован в этом процессе и в этой базе событий, повторно не активируем.
+			 * После создания процесса кластера база событий пересоздаётся, прежний передатчик в ней
+			 * отсутствует, поэтому передатчик активируется заново
+			 */
+			if((this->_sock != INVALID_SOCKET) && (this->_pid == ::getpid()) && (this->_base == base))
+				// Выходим из функции
+				return;
+			// Получаем слабую ссылку на очередь задач
+			std::weak_ptr <tasks_t> tasks = this->_tasks;
+			/**
+			 * Выполняем активацию межпотокового передатчика, функция обратного вызова
+			 * исполняется в потоке базы событий и выполняет все накопленные задачи по порядку
+			 */
+			const SOCKET sock = core->activationUpstream([tasks](const uint64_t) noexcept -> void {
+				// Получаем очередь задач, если модуль ещё существует
+				std::shared_ptr <tasks_t> queue = tasks.lock();
+				// Если очередь задач получена
+				if(queue != nullptr){
+					// Список задач для исполнения
+					std::queue <function <void (void)>> items;
+					{
+						// Выполняем блокировку очереди задач
+						const lock_guard <std::mutex> lock(queue->mtx);
+						// Забираем все накопленные задачи
+						items.swap(queue->items);
+					}
+					// Выполняем перебор всех задач
+					while(!items.empty()){
+						// Если задача существует
+						if(items.front() != nullptr)
+							// Выполняем задачу
+							items.front()();
+						// Удаляем выполненную задачу
+						items.pop();
+					}
+				}
+			});
+			// Если передатчик активирован
+			if(sock != INVALID_SOCKET){
+				// Запоминаем сокет передатчика
+				this->_sock = sock;
+				// Запоминаем базу событий
+				this->_base = base;
+				// Запоминаем идентификатор процесса
+				this->_pid = ::getpid();
+				// Запоминаем идентификатор потока базы событий
+				this->_tid = std::this_thread::get_id();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception &) {
+			// Сбрасываем сокет передатчика
+			this->_sock = INVALID_SOCKET;
+		}
+	}
+}
+/**
+ * @brief Метод деактивации межпотокового передатчика
+ *
+ * @param core объект сетевого ядра
+ */
+void awh::WebsocketRelay::deactivation(Core * core) noexcept {
+	// Сокет передатчика для деактивации
+	SOCKET sock = INVALID_SOCKET;
+	{
+		// Выполняем блокировку параметров передатчика
+		const lock_guard <std::mutex> lock(this->_mtx);
+		// Если передатчик активирован в этом процессе и в текущей базе событий
+		if((core != nullptr) && (this->_sock != INVALID_SOCKET) && (this->_pid == ::getpid()) && (this->_base == core->base()))
+			// Запоминаем сокет передатчика
+			sock = this->_sock;
+		// Сбрасываем сокет передатчика
+		this->_sock = INVALID_SOCKET;
+		// Сбрасываем базу событий
+		this->_base = nullptr;
+	}
+	// Если сокет передатчика получен
+	if(sock != INVALID_SOCKET)
+		// Выполняем деактивацию передатчика
+		core->deactivationUpstream(sock);
+	// Выполняем блокировку очереди задач
+	const lock_guard <std::mutex> lock(this->_tasks->mtx);
+	// Удаляем задачи, которые уже не будут исполнены
+	std::queue <function <void (void)>> ().swap(this->_tasks->items);
+}
+/**
+ * @brief Метод проверки необходимости передачи работы в поток базы событий
+ *
+ * @return передатчик активирован, а вызов выполнен не в потоке базы событий
+ */
+bool awh::WebsocketRelay::remote() const noexcept {
+	// Выполняем блокировку параметров передатчика
+	const lock_guard <std::mutex> lock(this->_mtx);
+	// Выводим результат проверки
+	return ((this->_sock != INVALID_SOCKET) && (this->_pid == ::getpid()) && (this->_tid != std::this_thread::get_id()));
+}
+/**
+ * @brief Метод передачи задачи в поток базы событий
+ *
+ * @param core объект сетевого ядра
+ * @param task задача для исполнения в потоке базы событий
+ * @return     результат передачи
+ */
+bool awh::WebsocketRelay::forward(Core * core, function <void (void)> task) noexcept {
+	// Если объект сетевого ядра и задача переданы
+	if((core != nullptr) && (task != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Сокет передатчика
+			SOCKET sock = INVALID_SOCKET;
+			{
+				// Выполняем блокировку параметров передатчика
+				const lock_guard <std::mutex> lock(this->_mtx);
+				/**
+				 * Если передатчик не активирован или вызов выполнен в потоке базы событий,
+				 * задача исполняется вызывающим как обычно
+				 */
+				if((this->_sock == INVALID_SOCKET) || (this->_pid != ::getpid()) || (this->_tid == std::this_thread::get_id()))
+					// Выходим из функции
+					return false;
+				// Запоминаем сокет передатчика
+				sock = this->_sock;
+			}{
+				// Выполняем блокировку очереди задач
+				const lock_guard <std::mutex> lock(this->_tasks->mtx);
+				// Добавляем задачу в очередь
+				this->_tasks->items.push(::move(task));
+			}
+			// Будим поток базы событий
+			core->upstream(sock, 0);
+			// Сообщаем, что задача передана
+			return true;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception &) {
+			// Сообщаем, что задача не передана
+			return false;
+		}
+	}
+	// Сообщаем, что задача не передана
+	return false;
+}
+/**
+ * @brief Метод добавления полученного сообщения в очередь брокера
+ *
+ * @param bid     идентификатор брокера
+ * @param message буфер полученного сообщения
+ * @param text    сообщение передаётся в текстовом виде
+ * @return        необходимо запустить обработку очереди брокера в пуле потоков
+ */
+bool awh::WebsocketRelay::push(const uint64_t bid, vector <char> && message, const bool text) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку очередей сообщений
+		const lock_guard <std::mutex> lock(this->_locker);
+		// Выполняем поиск очереди брокера
+		auto i = this->_messages.find(bid);
+		// Если очередь брокера существует, её уже обрабатывает пул потоков
+		if(i != this->_messages.end()){
+			// Добавляем сообщение в очередь
+			i->second.emplace(::move(message), text);
+			// Сообщаем, что обработку запускать не нужно
+			return false;
+		}
+		// Создаём очередь брокера и добавляем в неё сообщение
+		this->_messages[bid].emplace(::move(message), text);
+		// Сообщаем, что необходимо запустить обработку очереди
+		return true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Сообщаем, что обработку запускать не нужно
+		return false;
+	}
+}
+/**
+ * @brief Метод извлечения первого сообщения из очереди брокера
+ *
+ * @param bid     идентификатор брокера
+ * @param message буфер извлечённого сообщения
+ * @param text    сообщение передаётся в текстовом виде
+ * @return        результат извлечения сообщения
+ */
+bool awh::WebsocketRelay::pop(const uint64_t bid, vector <char> & message, bool & text) noexcept {
+	// Выполняем блокировку очередей сообщений
+	const lock_guard <std::mutex> lock(this->_locker);
+	// Выполняем поиск очереди брокера
+	auto i = this->_messages.find(bid);
+	// Если очередь брокера существует
+	if(i != this->_messages.end()){
+		// Если очередь пустая
+		if(i->second.empty()){
+			// Удаляем очередь брокера
+			this->_messages.erase(i);
+			// Сообщаем, что сообщений нет
+			return false;
+		}
+		// Извлекаем тип сообщения
+		text = i->second.front().second;
+		// Извлекаем сообщение
+		message = ::move(i->second.front().first);
+		// Удаляем сообщение из очереди, сама очередь остаётся признаком идущей обработки
+		i->second.pop();
+		// Сообщаем, что сообщение извлечено
+		return true;
+	}
+	// Сообщаем, что сообщений нет
+	return false;
+}
+/**
+ * @brief Метод проверки наличия следующего сообщения в очереди брокера
+ *
+ * @param bid идентификатор брокера
+ * @return    в очереди брокера ещё остались сообщения
+ */
+bool awh::WebsocketRelay::next(const uint64_t bid) noexcept {
+	// Выполняем блокировку очередей сообщений
+	const lock_guard <std::mutex> lock(this->_locker);
+	// Выполняем поиск очереди брокера
+	auto i = this->_messages.find(bid);
+	// Если очередь брокера существует
+	if(i != this->_messages.end()){
+		// Если в очереди остались сообщения
+		if(!i->second.empty())
+			// Сообщаем, что обработку нужно продолжить
+			return true;
+		// Удаляем очередь брокера
+		this->_messages.erase(i);
+	}
+	// Сообщаем, что обработка завершена
+	return false;
+}
+/**
+ * @brief Метод очистки очередей сообщений
+ *
+ */
+void awh::WebsocketRelay::clear() noexcept {
+	// Выполняем блокировку очередей сообщений
+	const lock_guard <std::mutex> lock(this->_locker);
+	// Выполняем очистку очередей сообщений
+	this->_messages.clear();
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::WebsocketRelay::WebsocketRelay() noexcept :
+ _pid(0), _sock(INVALID_SOCKET), _base(nullptr), _tasks(std::make_shared <tasks_t> ()) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::WebsocketRelay::~WebsocketRelay() noexcept {
+	// Выполняем блокировку очереди задач
+	const lock_guard <std::mutex> lock(this->_tasks->mtx);
+	// Удаляем задачи, которые уже не будут исполнены
+	std::queue <function <void (void)>> ().swap(this->_tasks->items);
+}

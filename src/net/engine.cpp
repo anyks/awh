@@ -35,6 +35,60 @@
 using namespace std;
 
 /**
+ * @brief Функция разбора IP-адреса, переданного в качестве хоста (IPv4 / IPv6)
+ *
+ * @param host   хост удалённого сервера
+ * @param buffer буфер для бинарного адреса (не менее 16 байт) или nullptr
+ * @return       размер бинарного адреса (4 / 16) или 0, если хост не является IP-адресом
+ */
+static size_t ipLiteral(const string & host, uint8_t * buffer = nullptr) noexcept {
+	// Буфер бинарного адреса
+	uint8_t addr[16];
+	// Если буфер не передан, используем локальный
+	uint8_t * data = ((buffer != nullptr) ? buffer : addr);
+	// Адрес без квадратных скобок IPv6
+	const string ip = (((host.size() > 2) && (host.front() == '[') && (host.back() == ']')) ? host.substr(1, host.size() - 2) : host);
+	// Если хост является адресом IPv4
+	if(::inet_pton(AF_INET, ip.c_str(), data) == 1)
+		// Выводим размер адреса
+		return 4;
+	// Если хост является адресом IPv6
+	if(::inet_pton(AF_INET6, ip.c_str(), data) == 1)
+		// Выводим размер адреса
+		return 16;
+	// Хост не является IP-адресом
+	return 0;
+}
+/**
+ * @brief Функция установки хоста для проверки сертификата и SNI
+ *
+ * Для IP-адреса проверяем запись IP в SAN (X509_VERIFY_PARAM_set1_ip_asc), а не
+ * имя DNS (X509_VERIFY_PARAM_set1_host сверяет только имена DNS), и не отправляем
+ * SNI: RFC 6066 запрещает передавать IP-адрес в расширении server_name.
+ *
+ * @param ssl  объект SSL
+ * @param host хост удалённого сервера
+ * @return     результат установки
+ */
+static bool verifyHostParam(SSL * ssl, const string & host) noexcept {
+	// Если хост является IP-адресом
+	if(ipLiteral(host) > 0){
+		// Адрес без квадратных скобок IPv6
+		const string ip = (((host.size() > 2) && (host.front() == '[') && (host.back() == ']')) ? host.substr(1, host.size() - 2) : host);
+		// Активируем проверку IP-адреса
+		return (::X509_VERIFY_PARAM_set1_ip_asc(::SSL_get0_param(ssl), ip.c_str()) > 0);
+	}
+	/**
+	 * Если нужно установить TLS расширение
+	 */
+	#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+		// Устанавливаем имя хоста для SNI расширения
+		::SSL_set_tlsext_host_name(ssl, host.c_str());
+	#endif
+	// Активируем верификацию доменного имени
+	return (::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(ssl), host.c_str(), 0) > 0);
+}
+/**
  * Буфер секретного слова печенок
  */
 uint8_t awh::Engine::_cookies[16];
@@ -285,14 +339,50 @@ bool awh::Engine::Address::connect() noexcept {
 				// Выполняем инициализацию SCTP протокола
 				this->_socket.events(this->sock);
 		#endif
-		// Выполняем подключение к удаленному серверу
-		if((this->_peer.size > 0) && (::connect(this->sock, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0))
-			// Устанавливаем статус подключения
-			this->status = status_t::CONNECTED;
+		// Если размер структуры адреса получен
+		if(this->_peer.size > 0){
+			// Выполняем подключение к удаленному серверу
+			if(::connect(this->sock, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) == 0)
+				// Устанавливаем статус подключения
+				this->status = status_t::CONNECTED;
+			/**
+			 * Неблокирующее подключение ещё выполняется: считаем его начатым, итог
+			 * подключения вызывающий получает по готовности сокета к записи из SO_ERROR
+			 */
+			else {
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Если подключение выполняется в фоне
+					if(AWH_ERROR() == WSAEWOULDBLOCK)
+						// Устанавливаем статус подключения
+						this->status = status_t::CONNECTED;
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Если подключение выполняется в фоне
+					if(AWH_ERROR() == EINPROGRESS)
+						// Устанавливаем статус подключения
+						this->status = status_t::CONNECTED;
+				#endif
+			}
+		}
 	// Если сокет установлен UDP
 	} else if(this->_type == SOCK_DGRAM) {
+		/**
+		 * Сокет DTLS поверх unix-сокета не подключаем (connect): сервер отвечает не со
+		 * слушающего сокета, а с отдельного сокета клиента по своему пути (два сокета не
+		 * могут занять один путь), и неподключённый BIO датаграмм переключает адрес
+		 * назначения на источник полученных датаграмм. Подключённый сокет продолжал бы
+		 * слать на слушающий сокет сервера, а в Linux и не принимал бы ответы с другого пути.
+		 */
+		if(this->_encrypted && (this->_peer.server.ss_family == AF_UNIX))
+			// Устанавливаем статус подключения
+			this->status = status_t::CONNECTED;
 		// Если подключение зашифрованно, значит мы должны использовать DTLS
-		if(this->_encrypted){
+		else if(this->_encrypted){
 			/**
 			 * Определяем тип подключения
 			 */
@@ -405,6 +495,16 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 			// Запоминаем размер структуры
 			this->_peer.size = sizeof(struct sockaddr_in6);
 		break;
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#if !_WIN32 && !_WIN64
+			// Для протокола unix-сокета
+			case AF_UNIX:
+				// Запоминаем размер структуры
+				this->_peer.size = sizeof(struct sockaddr_un);
+			break;
+		#endif
 	}
 	// Создаем сокет подключения
 	this->sock = ::socket(addr._peer.server.ss_family, addr._type, 0);
@@ -414,6 +514,38 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 	::memcpy(&this->_peer.client, &addr._peer.client, sizeof(struct sockaddr_storage));
 	// Выполняем копирование объекта подключения сервера
 	::memcpy(&this->_peer.server, &addr._peer.server, sizeof(struct sockaddr_storage));
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		/**
+		 * Путь unix-сокета не может занять второй сокет (SO_REUSEPORT для него не
+		 * действует), поэтому сокет клиента сервера DTLS привязываем к собственному
+		 * пути «<путь сервера>_<сокет>». Клиент узнаёт этот путь из первой полученной
+		 * датаграммы ответа. Файл пути удаляет сервер при закрытии подключения.
+		 */
+		if((this->_peer.server.ss_family == AF_UNIX) && (this->sock != INVALID_SOCKET)){
+			// Получаем объект адреса сервера
+			struct sockaddr_un * server = reinterpret_cast <struct sockaddr_un *> (&this->_peer.server);
+			// Формируем путь сокета клиента на сервере
+			const string & path = this->_fmk->format("%s_%d", server->sun_path, this->sock);
+			// Если путь не помещается в адрес unix-сокета
+			if(path.size() >= sizeof(server->sun_path)){
+				// Выводим сообщение об ошибке
+				this->_log->print("Unix socket path \"%s\" is too long", log_t::flag_t::CRITICAL, path.c_str());
+				// Выходим
+				return false;
+			}
+			// Если сокет в файловой системе уже существует, удаляем его
+			if(this->_fs.isSock(path))
+				// Удаляем файл сокета
+				::unlink(path.c_str());
+			// Очищаем путь сокета сервера
+			::memset(server->sun_path, 0, sizeof(server->sun_path));
+			// Копируем путь сокета клиента на сервере
+			::strncpy(server->sun_path, path.c_str(), sizeof(server->sun_path) - 1);
+		}
+	#endif
 	// Выполняем бинд на сокет
 	if((this->_peer.size > 0) && (::bind(this->sock, reinterpret_cast <struct sockaddr *> (&this->_peer.server), this->_peer.size) < 0)){
 		// Получаем код ошибки
@@ -1195,6 +1327,122 @@ int32_t awh::Engine::Context::error(const int32_t status) const noexcept {
 	return result;
 }
 /**
+ * @brief Метод проверки временной ошибки отправки датаграммы
+ *
+ * @return результат проверки (true - отправку нужно повторить позже)
+ */
+bool awh::Engine::Context::retry() const noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Выводим результат проверки
+		return ((AWH_ERROR() == WSAEWOULDBLOCK) || (AWH_ERROR() == WSAENOBUFS) || (AWH_ERROR() == WSAEINTR));
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		// Выводим результат проверки
+		return ((AWH_ERROR() == EWOULDBLOCK) || (AWH_ERROR() == EAGAIN) || (AWH_ERROR() == ENOBUFS) || (AWH_ERROR() == EINTR));
+	#endif
+}
+/**
+ * @brief Метод выполнения шага рукопожатия (SSL_accept / SSL_connect)
+ *
+ * @return результат работы функции OpenSSL
+ */
+int32_t awh::Engine::Context::handshake() noexcept {
+	// Выполняем шаг рукопожатия
+	return ((this->_type == type_t::SERVER) ? ::SSL_accept(this->_ssl) : ::SSL_connect(this->_ssl));
+}
+/**
+ * @brief Метод выполнения шага рукопожатия без передачи данных
+ *
+ * @return результат работы функции (1 - рукопожатие завершено, -1 - ждёт данных, -2 - ждёт записи, 0 - не удалось)
+ */
+int32_t awh::Engine::Context::negotiate() noexcept {
+	// Если шифрование не активно или рукопожатие уже завершено
+	if(!this->_encrypted || (this->_ssl == nullptr) || ::SSL_is_init_finished(this->_ssl))
+		// Сообщаем, что рукопожатие завершено
+		return 1;
+	// Если сокет не инициализирован
+	if((this->_addr == nullptr) || (this->_addr->sock == INVALID_SOCKET))
+		// Сообщаем, что рукопожатие не удалось
+		return 0;
+	// Выполняем очистку ошибок OpenSSL
+	::ERR_clear_error();
+	// Выполняем шаг рукопожатия
+	const int32_t result = this->handshake();
+	// Если рукопожатие завершено
+	if(result > 0)
+		// Сообщаем, что рукопожатие завершено
+		return 1;
+	// Если рукопожатие не удалось
+	if(this->error(result) == 0)
+		// Сообщаем, что рукопожатие не удалось
+		return 0;
+	// Сообщаем, что рукопожатие продолжается (-2 - ждём готовности к записи, -1 - данных для чтения)
+	return (SSL_want_write(this->_ssl) ? -2 : -1);
+}
+/**
+ * @brief Метод получения времени до перепосылки рукопожатия DTLS
+ *
+ * @return время в миллисекундах до срабатывания таймера DTLS (0 - таймер не запущен)
+ */
+uint32_t awh::Engine::Context::retransmission() const noexcept {
+	/**
+	 * Потерянные сообщения рукопожатия DTLS на неблокирующем сокете OpenSSL сам не
+	 * перепосылает: таймер перепосылки обслуживает цикл событий (DTLSv1_get_timeout и
+	 * DTLSv1_handle_timeout). Без этого одна потерянная датаграмма рукопожатия (например,
+	 * фрагмент ClientHello, который DTLSv1_listen не разбирает) останавливала его навсегда.
+	 */
+	if(this->_encrypted && (this->_ssl != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
+		// Время до срабатывания таймера
+		struct timeval tv;
+		// Выполняем зануление структуры времени
+		::memset(&tv, 0, sizeof(tv));
+		// Если таймер DTLS запущен
+		if(DTLSv1_get_timeout(this->_ssl, &tv) > 0){
+			// Получаем время в миллисекундах
+			const uint64_t msec = ((static_cast <uint64_t> (tv.tv_sec) * 1000) + (static_cast <uint64_t> (tv.tv_usec) / 1000));
+			// Выводим время не меньше одной миллисекунды (таймер уже истёк)
+			return static_cast <uint32_t> (msec > 0 ? std::min(msec, static_cast <uint64_t> (UINT32_MAX)) : 1);
+		}
+	}
+	// Таймер не запущен
+	return 0;
+}
+/**
+ * @brief Метод перепосылки сообщений рукопожатия DTLS по истечении таймера
+ *
+ * @return результат работы функции (false - рукопожатие не удалось)
+ */
+bool awh::Engine::Context::retransmit() noexcept {
+	// Если это подключение DTLS
+	if(this->_encrypted && (this->_ssl != nullptr) && (this->_addr != nullptr) && (this->_addr->_type == SOCK_DGRAM)){
+		// Выполняем очистку ошибок OpenSSL
+		::ERR_clear_error();
+		// Выполняем перепосылку, если таймер истёк (отрицательный результат - превышено число попыток)
+		if(DTLSv1_handle_timeout(this->_ssl) < 0){
+			// Выводим в лог сообщение
+			this->_log->print("DTLS handshake retransmission failed: %s", log_t::flag_t::WARNING, ::ERR_error_string(::ERR_get_error(), nullptr));
+			// Сообщаем, что рукопожатие не удалось
+			return false;
+		}
+		// Если рукопожатие ещё не завершено, продвигаем его (сообщения могли прийти без события)
+		if(!::SSL_is_init_finished(this->_ssl)){
+			// Выполняем шаг рукопожатия
+			const int32_t result = this->handshake();
+			// Если рукопожатие не удалось
+			if((result <= 0) && (this->error(result) == 0))
+				// Сообщаем, что рукопожатие не удалось
+				return false;
+		}
+	}
+	// Сообщаем, что всё хорошо
+	return true;
+}
+/**
  * @brief Метод очистки контекста
  *
  */
@@ -1360,7 +1608,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			// Если подключение ещё активно
 			if(!(::SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
 				// Если подключение выполнено
-				if((result = ((this->_type == type_t::SERVER) ? ::SSL_accept(this->_ssl) : ::SSL_connect(this->_ssl))) > 0){
+				if((result = this->handshake()) > 0){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1393,12 +1641,22 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							result = ::SSL_read(this->_ssl, buffer, size);
 						break;
 					}
-				// Если произошла ошибка чтения данных
-				} else result = this->error(result);
-				// Если нужно отключиться, выходим
-				if(result == 0)
+				}
+				/**
+				 * Если рукопожатие или чтение не выполнены, решение принимаем по коду OpenSSL
+				 * (SSL_get_error от исходного результата вызова), а не по errno: у неблокирующего
+				 * сокета SSL_ERROR_WANT_READ/WANT_WRITE означают «повторить позже» (-1), а errno
+				 * при этом может остаться от предыдущего системного вызова и ошибочно
+				 * трактоваться общим разбором ниже как разрыв подключения (0).
+				 */
+				if(result <= 0){
+					// Если нужно отключиться
+					if((result = this->error(result)) == 0)
+						// Устанавливаем статус отключён
+						this->_addr->status = addr_t::status_t::DISCONNECTED;
 					// Выводим полученный результат
 					return result;
+				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
@@ -1632,7 +1890,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			// Если подключение ещё активно
 			if(!(::SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
 				// Если подключение выполнено
-				if((result = ((this->_type == type_t::SERVER) ? ::SSL_accept(this->_ssl) : ::SSL_connect(this->_ssl))) > 0){
+				if((result = this->handshake()) > 0){
 					/**
 					 * Для операционной системы Linux или FreeBSD
 					 */
@@ -1677,12 +1935,31 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							result = ::SSL_write(this->_ssl, buffer, size);
 						break;
 					}
-				// Если произошла ошибка чтения данных
-				} else result = this->error(result);
-				// Если нужно отключиться, выходим
-				if(result == 0)
+				}
+				/**
+				 * Если рукопожатие или запись не выполнены, решение принимаем по коду OpenSSL
+				 * (SSL_get_error от исходного результата вызова), а не по errno: у неблокирующего
+				 * сокета SSL_ERROR_WANT_WRITE/WANT_READ означают «повторить позже» (-1), и вызывающий
+				 * ставит данные в очередь отправки, а не разрывает подключение.
+				 */
+				if(result <= 0){
+					/**
+					 * Для датаграммного сокета (DTLS) переполнение буфера получателя (ENOBUFS, так
+					 * отвечает unix-сокет датаграмм в macOS) или EAGAIN не разрывают подключение:
+					 * OpenSSL в этом случае отбрасывает запись и сообщает SSL_ERROR_SYSCALL без
+					 * фатального состояния сессии, повторный SSL_write формирует новую запись.
+					 * Возвращаем -1, и вызывающий ставит датаграмму в очередь отправки
+					 */
+					if((this->_addr->_type == SOCK_DGRAM) && (::SSL_get_error(this->_ssl, result) == SSL_ERROR_SYSCALL) && this->retry())
+						// Выполняем пропуск попытки
+						return -1;
+					// Если нужно отключиться
+					if((result = this->error(result)) == 0)
+						// Устанавливаем статус отключён
+						this->_addr->status = addr_t::status_t::DISCONNECTED;
 					// Выводим полученный результат
 					return result;
+				}
 			}
 		// Выполняем отправку сообщения в сокет
 		} else {
@@ -1733,27 +2010,18 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						#endif
 					} break;
 				}
-				// Метка отправки данных
-				Send:
 				// Выполняем запись данных в сокет
 				result = ::sendto(this->_addr->sock, buffer, size, 0, addr, this->_addr->_peer.size);
 				/**
-				 * Для операционной системы MS Windows
+				 * Повтор на месте при EWOULDBLOCK убран: очередь отправки брокера хранит границы
+				 * датаграмм (node_t::datagram), поэтому отложенная датаграмма ставится в очередь
+				 * целиком (-1) и уходит отдельно по готовности сокета. ENOBUFS (так unix-сокет
+				 * датаграмм в macOS сообщает о переполнении буфера получателя) тоже не разрывает
+				 * подключение, а откладывает отправку
 				 */
-				#if _WIN32 || _WIN64
-					// Если нужно попытаться ещё раз отправить сообщение
-					if((result < 0) && (AWH_ERROR() == WSAEWOULDBLOCK))
-						// Повторяем попытку отправить ещё раз
-						goto Send;
-				/**
-				 * Для операционной системы не являющейся MS Windows
-				 */
-				#else
-					// Если нужно попытаться ещё раз отправить сообщение
-					if((result < 0) && (AWH_ERROR() == EWOULDBLOCK))
-						// Повторяем попытку отправить ещё раз
-						goto Send;
-				#endif
+				if((result < 0) && this->retry())
+					// Выполняем пропуск попытки
+					return -1;
 			}
 		}
 		// Если данные записать не удалось
@@ -3110,12 +3378,29 @@ awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const
 			return validate_t::NoSANPresent;
 		// Получаем количество имен
 		const int32_t sanNamesNb = sk_GENERAL_NAME_num(sn);
+		// Бинарный IP-адрес хоста
+		uint8_t ip[16];
+		/**
+		 * Если хост является IP-адресом, сверяем его только с записями IP в SAN
+		 * (RFC 6125): имена DNS для IP-адреса не применяются
+		 */
+		const size_t length = ipLiteral(host, ip);
 		// Переходим по всему списку
 		for(int32_t i = 0; i < sanNamesNb; i++){
 			// Получаем имя из списка
 			const GENERAL_NAME * cn = sk_GENERAL_NAME_value(sn, i);
+			// Если хост является IP-адресом
+			if(length > 0){
+				// Если запись является IP-адресом того же размера и адреса совпадают
+				if((cn->type == GEN_IPADD) && (static_cast <size_t> (::ASN1_STRING_length(cn->d.iPAddress)) == length) &&
+				   (::memcmp(::ASN1_STRING_get0_data(cn->d.iPAddress), ip, length) == 0)){
+					// Запоминаем результат что адрес найден
+					result = validate_t::MatchFound;
+					// Выходим из цикла
+					break;
+				}
 			// Проверяем тип имени
-			if(cn->type == GEN_DNS){
+			} else if(cn->type == GEN_DNS){
 				// Получаем dns имя
 				const string dns(reinterpret_cast <char *> (const_cast <uint8_t *> (ASN1_STRING_get0_data(cn->d.dNSName))), ASN1_STRING_length(cn->d.dNSName));
 				// Если размер имени не совпадает
@@ -4347,15 +4632,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 			}
 			// Если приложение является клиентом и хост удалённого сервера известен
 			if((type == type_t::CLIENT) && !host.empty()){
-				/**
-				 * Если нужно установить TLS расширение
-				 */
-				#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-					// Устанавливаем имя хоста для SNI расширения
-					::SSL_set_tlsext_host_name(target._ssl, host.c_str());
-				#endif
-				// Активируем верификацию доменного имени
-				if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(target._ssl), host.c_str(), 0) < 1){
+				// Активируем верификацию имени хоста или IP-адреса и SNI
+				if(!verifyHostParam(target._ssl, host)){
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
@@ -4386,15 +4664,46 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 				// Выполняем установку BIO SSL
 				::SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**
+				 * Запрос MTU пути (BIO_CTRL_DGRAM_QUERY_MTU) OpenSSL умеет только в Linux и
+				 * только для IP, в остальных случаях он берёт минимальный MTU (256 байт) и режет
+				 * ClientHello на фрагменты по 228 байт. Сервер в DTLSv1_listen разбирает лишь
+				 * первый фрагмент, остальные теряются, и каждое рукопожатие ждало перепосылки
+				 * клиента (1 секунда). Поэтому в этих случаях явно задаём MTU канала Ethernet.
+				 */
+				bool mtu = (target._addr->_type == SOCK_DGRAM);
+				/**
+				 * Для операционной системы Linux
+				 */
+				#if __linux__
+					// Запрос MTU в Linux не работает только для unix-сокета
+					mtu = (mtu && (target._addr->_peer.server.ss_family == AF_UNIX));
+				#endif
+				// Если MTU необходимо установить явно
+				if(mtu){
+					// Запрещаем запрос MTU у системы
+					::SSL_set_options(target._ssl, SSL_OP_NO_QUERY_MTU);
+					// Устанавливаем MTU канала
+					::DTLS_set_link_mtu(target._ssl, 1500);
+				}
+				/**
 				 * Определяем тип активного приложения
 				 */
 				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
 					case static_cast <uint8_t> (type_t::CLIENT): {
 						// Если тип сокета - диграммы
-						if(target._addr->_type == SOCK_DGRAM)
+						if(target._addr->_type == SOCK_DGRAM){
+							/**
+							 * Для unix-сокета BIO оставляем неподключённым и задаём только начальный
+							 * адрес сервера: ответы приходят с отдельного пути сокета клиента на
+							 * сервере, и BIO переключает адрес назначения на источник ответа
+							 */
+							if(target._addr->_peer.server.ss_family == AF_UNIX)
+								// Выполняем установку адреса сервера в BIO
+								::BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_PEER, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.server));
 							// Выполняем установку объекта подключения в BIO
-							::BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.server));
+							else ::BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, reinterpret_cast <struct sockaddr *> (&target._addr->_peer.server));
+						}
 					} break;
 					// Если приложение является сервером
 					case static_cast <uint8_t> (type_t::SERVER): {
@@ -4624,15 +4933,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 				// Выходим
 				return;
 			}
-			/**
-			 * Если нужно установить TLS расширение
-			 */
-			#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-				// Устанавливаем имя хоста для SNI расширения
-				::SSL_set_tlsext_host_name(target._ssl, host.c_str());
-			#endif
-			// Активируем верификацию доменного имени
-			if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(target._ssl), host.c_str(), 0) < 1){
+			// Активируем верификацию имени хоста или IP-адреса и SNI
+			if(!verifyHostParam(target._ssl, host)){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение

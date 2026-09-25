@@ -16,13 +16,14 @@
 #define __AWH_EVENT_NOTIFIER__
 
 /**
- * Для операционной системы MacOS X, FreeBSD или NetBSD
+ * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
  */
-#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
 	/**
 	 * Стандартные модули
 	 */
 	#include <queue>
+	#include <mutex>
 #endif
 
 /**
@@ -59,9 +60,12 @@ namespace awh {
 				SOCKET _sock;
 			#endif
 			/**
-			 * Для операционной системы MacOS X, FreeBSD или NetBSD
+			 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux.
+			 * На Linux eventfd складывает записанные значения в один счётчик: два уведомления
+			 * до одного чтения давали сумму идентификаторов. Поэтому идентификаторы хранятся
+			 * в очереди, а eventfd служит только сигналом пробуждения
 			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
 				private:
 					// Мютекс для блокировки потока
 					std::mutex _mtx;
@@ -102,6 +106,16 @@ namespace awh {
 			 * @return идентификатор события
 			 */
 			uint64_t event() noexcept;
+			/**
+			 * @brief Метод извлечения идентификатора события с признаком наличия
+			 *
+			 * Идентификатор 0 допустим, поэтому наличие события сообщается отдельно.
+			 * Метод вызывается до получения false, чтобы извлечь все накопившиеся события
+			 *
+			 * @param id идентификатор извлечённого события
+			 * @return   результат извлечения (false, если событий нет)
+			 */
+			bool event(uint64_t & id) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки уведомления

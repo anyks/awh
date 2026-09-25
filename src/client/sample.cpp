@@ -272,11 +272,10 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 							// Если рукопожатие выполнено
 							if(this->_scheme.proxy.socks5.is(socks5_t::state_t::HANDSHAKE)){
 								/**
-								const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
-								const_cast <client::core_t *> (this->_core)-> */
-								const_cast <client::core_t *> (this->_core)->switchProxy(bid);
-								// Выполняем запуск функции подключения
-								this->connectEvent(bid, sid);
+								 * Выполняем переключение на работу с сервером. Рукопожатие TLS с сервером за прокси-сервером
+								 * выполняется асинхронно, событие подключения (connectEvent) сетевое ядро вызовет само по его завершении
+								 */
+								const_cast <client::core_t *> (this->_core)->switchProxy(bid, true);
 								// Завершаем работу
 								return;
 							// Если рукопожатие не выполнено
@@ -378,11 +377,10 @@ void awh::client::Sample::proxyReadEvent(const char * buffer, const size_t size,
 								// Если запрос выполнен удачно
 								case static_cast <uint8_t> (awh::http_t::status_t::GOOD): {
 									/**
-									const_cast <client::core_t *> (this->_core)-> * Выполняем переключение на работу с сервером
-									const_cast <client::core_t *> (this->_core)-> */
-									const_cast <client::core_t *> (this->_core)->switchProxy(bid);
-									// Выполняем запуск функции подключения
-									this->connectEvent(bid, sid);
+									 * Выполняем переключение на работу с сервером. Рукопожатие TLS с сервером за прокси-сервером
+									 * выполняется асинхронно, событие подключения (connectEvent) сетевое ядро вызовет само по его завершении
+									 */
+									const_cast <client::core_t *> (this->_core)->switchProxy(bid, true);
 									// Завершаем работу
 									return;
 								}
