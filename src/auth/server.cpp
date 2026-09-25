@@ -163,31 +163,6 @@ static bool digestHex(const string & text, uint64_t & result) noexcept {
 	return true;
 }
 /**
- * @brief Функция удаления кавычек у значения параметра
- *
- * @param value значение параметра
- * @return      значение без кавычек
- */
-static string digestUnquote(const string & value) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если значение обрамлено кавычками
-		if((value.size() >= 2) && (value.front() == '"') && (value.back() == '"'))
-			// Выводим значение без кавычек
-			return value.substr(1, value.size() - 2);
-		// Выводим значение как есть
-		return value;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception &) {
-		// Выводим пустое значение
-		return "";
-	}
-}
-/**
  * @brief Функция создания подписанного ключа nonce
  *
  * @param hash объект хэширования
@@ -393,6 +368,11 @@ void awh::server::Auth::data(const data_t & data) noexcept {
 bool awh::server::Auth::check(const string & method) noexcept {
 	// Результат работы функции
 	bool result = false;
+	// Если адрес запроса задан, а ответ Digest рассчитан для другого адреса
+	if((this->_type == type_t::DIGEST) && !this->_target.empty() && !this->_locale.uri.empty() &&
+	   (this->_target.compare(this->target(this->_uri.parse(this->_locale.uri))) != 0))
+		// Ответ для чужого адреса не принимаем
+		return result;
 	/**
 	 * Определяем тип авторизации
 	 */
@@ -462,6 +442,37 @@ bool awh::server::Auth::check(const string & method) noexcept {
 	return result;
 }
 /**
+ * @brief Метод приведения адреса запроса к виду для сверки
+ *
+ * @param url адрес запроса
+ * @return    путь с завершающим слэшем и параметрами в едином кодировании
+ */
+string awh::server::Auth::target(const uri_t::url_t & url) const noexcept {
+	// Выполняем сборку пути запроса
+	string result = this->_uri.joinPath(url.path);
+	// Если путь оканчивается слэшем
+	if(url.trailing && !url.path.empty())
+		// Добавляем завершающий слэш
+		result.append(1, '/');
+	// Добавляем параметры запроса
+	result.append(this->_uri.joinParams(url.params));
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки адреса запроса для сверки с uri из ответа Digest
+ *
+ * @param url адрес запроса
+ */
+void awh::server::Auth::uri(const uri_t::url_t & url) noexcept {
+	// Если адрес не передан, сверка отключается
+	if(url.empty())
+		// Очищаем адрес запроса
+		this->_target.clear();
+	// Запоминаем адрес запроса в виде для сверки
+	else this->_target = this->target(url);
+}
+/**
  * @brief Метод установки название сервера
  *
  * @param realm название сервера
@@ -525,71 +536,60 @@ void awh::server::Auth::header(const string & header) noexcept {
 					this->_locale = digest_t();
 					// Тип авторизации на сервере
 					const string type = "Digest";
-					// Выполняем поиск Basic авторизации
-					size_t pos = header.find(type);
+					// Выполняем поиск схемы авторизации без учёта регистра (RFC 7235: digest и Digest — одна схема)
+					string lower = header;
+					// Переводим копию заголовка в нижний регистр (сам заголовок не трогаем: nonce и response чувствительны к регистру)
+					this->_fmk->transform(lower, fmk_t::transform_t::LOWER);
+					// Позиция схемы авторизации
+					size_t pos = lower.find("digest");
 					// Если авторизация получена
 					if((pos != string::npos) && ((pos + type.length()) < header.length())){
 						// Получаем параметры авторизации
 						const string & digest = header.substr(pos + type.length() + 1);
 						// Если параметры дайджест авторизации получены
 						if(!digest.empty()){
-							// Список параметров
-							vector <string> params;
-							// Выполняем разделение параметров расширений
-							if(!this->_fmk->split(digest, ",", params).empty()){
-								// Позиция поиска разделителя
-								size_t pos = string::npos;
-								// Ключ и значение параметра
-								string key = "", value = "";
-								// Переходим по всему списку параметров
-								for(auto & param : params){
-									// Ищем разделитель параметров
-									if((pos = param.find("=")) != string::npos){
-										// Получаем ключ параметра
-										key = this->_fmk->transform(param.substr(0, pos), fmk_t::transform_t::TRIM);
-										/**
-										 * Кавычки снимаются только если значение ими обрамлено:
-										 * пустое или однобуквенное значение раньше роняло процесс исключением
-										 */
-										value = digestUnquote(this->_fmk->transform(param.substr(pos + 1), fmk_t::transform_t::TRIM));
-										// Если параметр является именем пользователя
-										if(this->_fmk->compare(key, "username"))
-											// Получаем логин пользователя
-											this->_user = value;
-										// Если параметр является идентификатором сайта
-										else if(this->_fmk->compare(key, "realm"))
-											// Устанавливаем relam
-											this->_locale.realm = value;
-										// Если параметр является ключём сгенерированным сервером
-										else if(this->_fmk->compare(key, "nonce"))
-											// Устанавливаем nonce
-											this->_locale.nonce = value;
-										// Если параметр являеются параметры запроса
-										else if(this->_fmk->compare(key, "uri"))
-											// Устанавливаем uri
-											this->_locale.uri = value;
-										// Если параметр является ключём сгенерированным клиентом
-										else if(this->_fmk->compare(key, "cnonce"))
-											// Устанавливаем cnonce
-											this->_locale.cnonce = value;
-										// Если параметр является ключём ответа клиента
-										else if(this->_fmk->compare(key, "response"))
-											// Устанавливаем response
-											this->_locale.resp = value;
-										// Если параметр является ключём сервера
-										else if(this->_fmk->compare(key, "opaque"))
-											// Устанавливаем opaque
-											this->_locale.opaque = value;
-										// Если параметр является типом авторизации
-										else if(this->_fmk->compare(key, "qop"))
-											// Устанавливаем qop
-											this->_locale.qop = value;
-										// Если параметр является счётчиком запросов
-										else if(this->_fmk->compare(key, "nc"))
-											// Устанавливаем nc
-											this->_locale.nc = value;
-									}
-								}
+							// Переходим по всем параметрам (значения в кавычках могут содержать запятые: uri="/api?ids=1,2")
+							for(auto & param : this->params(digest)){
+								// Получаем ключ параметра
+								const string & key = param.first;
+								// Получаем значение параметра
+								const string & value = param.second;
+								// Если параметр является именем пользователя
+								if(this->_fmk->compare(key, "username"))
+									// Получаем логин пользователя
+									this->_user = value;
+								// Если параметр является идентификатором сайта
+								else if(this->_fmk->compare(key, "realm"))
+									// Устанавливаем relam
+									this->_locale.realm = value;
+								// Если параметр является ключём сгенерированным сервером
+								else if(this->_fmk->compare(key, "nonce"))
+									// Устанавливаем nonce
+									this->_locale.nonce = value;
+								// Если параметр являеются параметры запроса
+								else if(this->_fmk->compare(key, "uri"))
+									// Устанавливаем uri
+									this->_locale.uri = value;
+								// Если параметр является ключём сгенерированным клиентом
+								else if(this->_fmk->compare(key, "cnonce"))
+									// Устанавливаем cnonce
+									this->_locale.cnonce = value;
+								// Если параметр является ключём ответа клиента
+								else if(this->_fmk->compare(key, "response"))
+									// Устанавливаем response
+									this->_locale.resp = value;
+								// Если параметр является ключём сервера
+								else if(this->_fmk->compare(key, "opaque"))
+									// Устанавливаем opaque
+									this->_locale.opaque = value;
+								// Если параметр является типом авторизации
+								else if(this->_fmk->compare(key, "qop"))
+									// Устанавливаем qop
+									this->_locale.qop = value;
+								// Если параметр является счётчиком запросов
+								else if(this->_fmk->compare(key, "nc"))
+									// Устанавливаем nc
+									this->_locale.nc = value;
 							}
 						}
 					}
@@ -628,8 +628,12 @@ void awh::server::Auth::header(const string & header) noexcept {
 					this->_pass.clear();
 					// Тип авторизации на сервере
 					const string type = "Basic";
-					// Выполняем поиск Basic авторизации
-					size_t pos = header.find(type);
+					// Выполняем поиск схемы авторизации без учёта регистра (RFC 7235: digest и Digest — одна схема)
+					string lower = header;
+					// Переводим копию заголовка в нижний регистр (сам заголовок не трогаем: nonce и response чувствительны к регистру)
+					this->_fmk->transform(lower, fmk_t::transform_t::LOWER);
+					// Позиция схемы авторизации
+					size_t pos = lower.find("basic");
 					// Если авторизация получена
 					if((pos != string::npos) && ((pos + type.length()) < header.length())){
 						// Получаем значение заголовка для дешифрования
@@ -785,6 +789,8 @@ awh::server::Auth::operator string() noexcept {
 								this->_hash.hashing(AWH_SITE, awh::hash_t::type_t::SHA512, this->_digest.opaque);
 						} break;
 					}
+					// Название алгоритма по RFC 7616 (SHA-256, а не SHA256: иначе браузеры и curl запрос авторизации не принимают)
+					algorithm = this->algorithm(this->_digest.hash);
 					// Если требуется создать новый ключ клиента
 					if(createNonce){
 						/**
@@ -797,7 +803,7 @@ awh::server::Auth::operator string() noexcept {
 					}
 					// Создаём строку запроса авторизации
 					result = this->_fmk->format(
-						"Digest realm=\"%s\", qop=\"%s\", stale=%s, algorithm=\"%s\", nonce=\"%s\", opaque=\"%s\"",
+						"Digest realm=\"%s\", qop=\"%s\", stale=%s, algorithm=%s, nonce=\"%s\", opaque=\"%s\"",
 						this->_digest.realm.c_str(),
 						this->_digest.qop.c_str(),
 						stale.c_str(), algorithm.c_str(),

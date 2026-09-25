@@ -91,6 +91,32 @@ void awh::client::Auth::pass(const string & pass) noexcept {
 	this->_pass = pass;
 }
 /**
+ * @brief Функция поиска схемы авторизации в заголовке запроса авторизации
+ *
+ * @param header заголовок в нижнем регистре
+ * @param name   название схемы в нижнем регистре
+ * @return       позиция схемы или string::npos, если схема не найдена
+ */
+static size_t scheme(const string & header, const string & name) noexcept {
+	// Флаг нахождения внутри кавычек
+	bool quoted = false;
+	// Переходим по всему заголовку
+	for(size_t i = 0; i < header.size(); i++){
+		// Если найдена кавычка, которая не экранирована
+		if((header[i] == '"') && ((i == 0) || (header[i - 1] != '\\')))
+			// Меняем флаг нахождения внутри кавычек
+			quoted = !quoted;
+		// Если вне кавычек начинается название схемы отдельным словом
+		else if(!quoted && (header.compare(i, name.size(), name) == 0) &&
+		       ((i == 0) || (header[i - 1] == ' ') || (header[i - 1] == ',')) &&
+		       (((i + name.size()) == header.size()) || (header[i + name.size()] == ' ')))
+			// Выводим позицию схемы
+			return i;
+	}
+	// Схема не найдена
+	return string::npos;
+}
+/**
  * @brief Метод установки параметров авторизации из заголовков
  *
  * @param header заголовок HTTP с параметрами авторизации
@@ -111,12 +137,13 @@ void awh::client::Auth::header(const string & header) noexcept {
 			string lower = header;
 			// Переводим копию заголовка в нижний регистр
 			this->_fmk->transform(lower, fmk_t::transform_t::LOWER);
-			// Если тип авторизации Basic получен
-			if((pos = lower.find("basic")) != string::npos)
-				// Устанавливаем тип авторизации
-				this->_type = type_t::BASIC;
-			// Если тип авторизации Digest получен
-			else if((pos = lower.find("digest")) != string::npos) {
+			// Сбрасываем флаг устаревшего ключа: он действует только для этого запроса авторизации
+			this->_stale = false;
+			/**
+			 * Схема ищется как отдельное слово вне кавычек: realm="basic zone" не делает запрос Basic.
+			 * Если сервер предлагает обе схемы, выбирается Digest — пароль по сети не передаётся
+			 */
+			if((pos = ::scheme(lower, "digest")) != string::npos) {
 				// Устанавливаем тип авторизации
 				this->_type = type_t::DIGEST;
 				// Если после типа авторизации переданы параметры
@@ -125,84 +152,51 @@ void awh::client::Auth::header(const string & header) noexcept {
 					const string & digest = header.substr(pos + 7);
 					// Если параметры дайджест авторизации получены
 					if(!digest.empty()){
-						// Список параметров
-						vector <string> params;
-						// Выполняем разделение параметров расширений
-						if(!this->_fmk->split(digest, ",", params).empty()){
-							// Ключ и значение параметра
-							string key = "", value = "";
-							// Переходим по всему списку параметров
-							for(auto & param : params){
-								// Ищем разделитель параметров
-								if((pos = param.find("=")) != string::npos){
-									// Получаем ключ параметра
-									key = this->_fmk->transform(param.substr(0, pos), fmk_t::transform_t::TRIM);
-									// Получаем значение параметра
-									value = this->_fmk->transform(param.substr(pos + 1), fmk_t::transform_t::TRIM);
-									/**
-									 * Кавычки снимаются только если значение ими обрамлено:
-									 * пустое или однобуквенное значение от сервера раньше роняло клиент исключением
-									 */
-									if((value.size() >= 2) && (value.front() == '"') && (value.back() == '"'))
-										// Удаляем кавычки
-										value = value.substr(1, value.size() - 2);
-									// Если параметр является идентификатором сайта
-									if(this->_fmk->compare(key, "realm"))
-										// Устанавливаем relam
-										this->_digest.realm = value;
-									// Если параметр является ключём сгенерированным сервером
-									else if(this->_fmk->compare(key, "nonce")) {
-										// Если ключ сервера изменился
-										if(this->_digest.nonce.compare(value) != 0)
-											// Выполняем сброс счётчика запросов для нового ключа
-											this->_digest.nc = "00000000";
-										// Устанавливаем nonce
-										this->_digest.nonce = value;
-									// Если параметр является ключём сервера
-									} else if(this->_fmk->compare(key, "opaque"))
-										// Устанавливаем opaque
-										this->_digest.opaque = value;
-									// Если параметр является алгоритмом
-									else if(this->_fmk->compare(key, "algorithm")) {
-										// Если алгоритм является MD5
-										if(this->_fmk->compare(value, "MD5"))
-											// Выполняем установку типа хэша MD5
-											this->_digest.hash = hash_t::MD5;
-										// Если алгоритм является SHA1
-										else if(this->_fmk->compare(value, "SHA1"))
-											// Выполняем установку типа хэша SHA1
-											this->_digest.hash = hash_t::SHA1;
-										// Если алгоритм является SHA224
-										else if(this->_fmk->compare(value, "SHA224"))
-											// Выполняем установку типа хэша SHA224
-											this->_digest.hash = hash_t::SHA224;
-										// Если алгоритм является SHA256
-										else if(this->_fmk->compare(value, "SHA256"))
-											// Выполняем установку типа хэша SHA256
-											this->_digest.hash = hash_t::SHA256;
-										// Если алгоритм является SHA384
-										else if(this->_fmk->compare(value, "SHA384"))
-											// Выполняем установку типа хэша SHA384
-											this->_digest.hash = hash_t::SHA384;
-										// Если алгоритм является SHA512
-										else if(this->_fmk->compare(value, "SHA512"))
-											// Выполняем установку типа хэша SHA512
-											this->_digest.hash = hash_t::SHA512;
-									// Если параметр является типом авторизации
-									} else if(this->_fmk->compare(key, "qop")) {
-										// Переводим значение в нижний регистр
-										this->_fmk->transform(value, fmk_t::transform_t::LOWER);
-										// Если тип авторизации передан верно
-										if(value.find("auth") != string::npos)
-											// Выполняем установку типа авторизации
-											this->_digest.qop = "auth";
-									}
-								}
+						// Переходим по всем параметрам (значения в кавычках могут содержать запятые: realm="Example, Inc")
+						for(auto & param : this->params(digest)){
+							// Получаем ключ параметра
+							const string & key = param.first;
+							// Получаем значение параметра
+							string value = param.second;
+							// Если параметр является идентификатором сайта
+							if(this->_fmk->compare(key, "realm"))
+								// Устанавливаем relam
+								this->_digest.realm = value;
+							// Если параметр является ключём сгенерированным сервером
+							else if(this->_fmk->compare(key, "nonce")) {
+								// Если ключ сервера изменился
+								if(this->_digest.nonce.compare(value) != 0)
+									// Выполняем сброс счётчика запросов для нового ключа
+									this->_digest.nc = "00000000";
+								// Устанавливаем nonce
+								this->_digest.nonce = value;
+							// Если параметр является ключём сервера
+							} else if(this->_fmk->compare(key, "opaque"))
+								// Устанавливаем opaque
+								this->_digest.opaque = value;
+							// Если параметр является флагом устаревшего ключа
+							else if(this->_fmk->compare(key, "stale"))
+								// Запоминаем, что ключ устарел, а пароль верный
+								this->_stale = this->_fmk->compare(value, "true");
+							// Если параметр является алгоритмом (принимаются и SHA-256 по RFC 7616, и прежнее SHA256)
+							else if(this->_fmk->compare(key, "algorithm"))
+								// Устанавливаем тип хэша
+								this->algorithm(value, this->_digest.hash);
+							// Если параметр является типом авторизации
+							else if(this->_fmk->compare(key, "qop")) {
+								// Переводим значение в нижний регистр
+								this->_fmk->transform(value, fmk_t::transform_t::LOWER);
+								// Если тип авторизации передан верно
+								if(value.find("auth") != string::npos)
+									// Выполняем установку типа авторизации
+									this->_digest.qop = "auth";
 							}
 						}
 					}
 				}
-			}
+			} else if(::scheme(lower, "basic") != string::npos)
+				// Устанавливаем тип авторизации
+				this->_type = type_t::BASIC;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -222,6 +216,15 @@ void awh::client::Auth::header(const string & header) noexcept {
 			#endif
 		}
 	}
+}
+/**
+ * @brief Метод проверки устаревшего ключа в последнем запросе авторизации сервера
+ *
+ * @return результат проверки
+ */
+bool awh::client::Auth::stale() const noexcept {
+	// Выводим флаг устаревшего ключа
+	return this->_stale;
 }
 /**
  * @brief Метод получения строки авторизации HTTP-заголовка
@@ -281,11 +284,12 @@ string awh::client::Auth::auth(const string & method) noexcept {
 						if(!response.empty())
 							// Создаём строку запроса авторизации
 							result = this->_fmk->format(
-								"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"",
+								"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", algorithm=%s, qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"",
 								this->_user.c_str(),
 								this->_digest.realm.c_str(),
 								this->_digest.nonce.c_str(),
 								this->_digest.uri.c_str(),
+								this->algorithm(this->_digest.hash).c_str(),
 								this->_digest.qop.c_str(),
 								this->_digest.nc.c_str(),
 								this->_digest.cnonce.c_str(),

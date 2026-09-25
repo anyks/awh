@@ -45,10 +45,20 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 			if(!auth.empty()){
 				// Устанавливаем заголовок HTTP в параметры авторизации
 				this->_auth.client.header(auth);
-				// Просим повторить авторизацию ещё раз
-				result = status_t::RETRY;
+				/**
+				 * Запрос повторяется с логином и паролем только в ответ на первый отказ или на отказ с stale=true
+				 * (пароль верный, устарел ключ nonce). Повторный отказ без stale означает неверные логин или пароль:
+				 * ответ 401 отдаётся приложению, а не повторяется по кругу, нагружая сервер и блокировку перебора
+				 */
+				if((this->_unauthorized == 0) || (this->_auth.client.stale() && (this->_unauthorized < 3)))
+					// Просим повторить авторизацию ещё раз
+					result = status_t::RETRY;
+				// Увеличиваем количество отказов подряд
+				this->_unauthorized++;
 			}
-		} break;
+			// Выводим результат
+			return result;
+		}
 		// Если нужно произвести редирект
 		case 201:
 		case 301:
@@ -80,6 +90,8 @@ awh::Http::status_t awh::client::Http::status() noexcept {
 		case 205:
 		case 206: result = status_t::GOOD; break;
 	}
+	// Сбрасываем количество отказов в авторизации подряд
+	this->_unauthorized = 0;
 	// Выводим результат
 	return result;
 }
@@ -114,6 +126,8 @@ void awh::client::Http::user(const string & user, const string & pass) noexcept 
 		this->_auth.client.user(user);
 		// Устанавливаем пароль пользователя
 		this->_auth.client.pass(pass);
+		// С новыми логином и паролем отказы считаются заново
+		this->_unauthorized = 0;
 	}
 }
 /**
@@ -132,7 +146,7 @@ void awh::client::Http::authType(const awh::auth_t::type_t type, const awh::auth
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::client::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log) {
+awh::client::Http::Http(const fmk_t * fmk, const log_t * log) noexcept : awh::http_t(fmk, log), _unauthorized(0) {
 	// Выполняем установку идентичность клиента к протоколу HTTP
 	this->_identity = identity_t::HTTP;
 	// Устанавливаем тип HTTP-парсера

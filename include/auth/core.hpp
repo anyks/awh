@@ -19,6 +19,8 @@
  * Стандартные модули
  */
 #include <string>
+#include <vector>
+#include <utility>
 
 /**
  * Наши модули
@@ -123,6 +125,39 @@ namespace awh {
 			 * @return       ответ в 16-м виде
 			 */
 			string response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept;
+		protected:
+			/**
+			 * @brief Метод разбора параметров заголовка авторизации (RFC 7616, раздел 3.3)
+			 *
+			 * Параметры разделяются запятыми, но значение в кавычках может само содержать запятые
+			 * (uri="/api?ids=1,2", realm="Example, Inc"), а кавычки и обратная косая черта внутри него
+			 * экранируются обратной косой чертой
+			 *
+			 * @param text строка параметров после названия схемы авторизации
+			 * @return     список пар ключ-значение, значения без кавычек и экранирования
+			 */
+			vector <std::pair <string, string>> params(const string & text) const noexcept;
+		protected:
+			/**
+			 * @brief Метод получения названия алгоритма хэширования для заголовков Digest авторизации
+			 *
+			 * Для MD5 и SHA-256 используются названия из RFC 7616 (их понимают браузеры и curl),
+			 * для остальных алгоритмов, которых в RFC нет, сохраняются прежние названия AWH
+			 *
+			 * @param hash алгоритм хэширования
+			 * @return     название алгоритма
+			 */
+			string algorithm(const hash_t hash) const noexcept;
+			/**
+			 * @brief Метод определения алгоритма хэширования по названию из заголовка Digest авторизации
+			 *
+			 * Принимаются и названия RFC 7616 (SHA-256), и прежние названия AWH (SHA256)
+			 *
+			 * @param name название алгоритма
+			 * @param hash полученный алгоритм хэширования
+			 * @return     результат определения
+			 */
+			bool algorithm(const string & name, hash_t & hash) const noexcept;
 		public:
 			/**
 			 * @brief Метод получени типа авторизации

@@ -57,6 +57,8 @@ awh::Http::status_t awh::server::Http::status() noexcept {
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->_auth.server.header(auth);
+			// Задаём адрес запроса для сверки с uri из ответа Digest (для CONNECT адресом служит хост:порт — сверка не выполняется)
+			this->_auth.server.uri(this->_web.request().method != web_t::method_t::CONNECT ? this->_web.request().url : uri_t::url_t());
 			/**
 			 * Определяем метод запроса
 			 */

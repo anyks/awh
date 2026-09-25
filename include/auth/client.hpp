@@ -62,6 +62,9 @@ namespace awh {
 				string _user;
 				// Пароль пользователя
 				string _pass;
+			private:
+				// Флаг устаревшего ключа nonce в последнем запросе авторизации сервера (stale=true)
+				bool _stale;
 			public:
 				/**
 				 * @brief Метод извлечения данных авторизации
@@ -104,6 +107,16 @@ namespace awh {
 				void header(const string & header) noexcept;
 			public:
 				/**
+				 * @brief Метод проверки устаревшего ключа в последнем запросе авторизации сервера
+				 *
+				 * Сервер с stale=true сообщает, что пароль верный, а ключ nonce устарел: запрос нужно
+				 * повторить с новым ключом. Без stale повторный отказ означает неверные логин или пароль
+				 *
+				 * @return результат проверки
+				 */
+				bool stale() const noexcept;
+			public:
+				/**
 				 * @brief Метод получения строки авторизации HTTP-заголовка
 				 *
 				 * @param method метод HTTP-запроса
@@ -117,7 +130,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""} {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user{""}, _pass{""}, _stale(false) {}
 		} auth_t;
 	};
 };

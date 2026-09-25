@@ -19,6 +19,7 @@
  * Наши модули
  */
 #include "core.hpp"
+#include "../net/uri.hpp"
 #include "../sys/callback.hpp"
 
 /**
@@ -76,6 +77,19 @@ namespace awh {
 				digest_t _locale;
 				// Хранилище функций обратного вызова
 				callback_t _callback;
+			private:
+				// Адрес запроса для сверки с uri из ответа Digest (путь с параметрами)
+				string _target;
+				// Объект работы с URI
+				uri_t _uri;
+			private:
+				/**
+				 * @brief Метод приведения адреса запроса к виду для сверки
+				 *
+				 * @param url адрес запроса
+				 * @return    путь с завершающим слэшем и параметрами в едином кодировании
+				 */
+				string target(const uri_t::url_t & url) const noexcept;
 			public:
 				/**
 				 * @brief Метод извлечения данных авторизации
@@ -97,6 +111,16 @@ namespace awh {
 				 * @return       результат проверки авторизации
 				 */
 				bool check(const string & method) noexcept;
+				/**
+				 * @brief Метод установки адреса запроса для сверки с uri из ответа Digest (RFC 7616, раздел 3.4.6)
+				 *
+				 * Ответ Digest действителен только для того адреса, для которого рассчитан. Адрес сравнивается
+				 * после разбора: путь, завершающий слэш и параметры, поэтому полный адрес (http://хост/путь)
+				 * и разное кодирование символов (, и %2C) сверку проходят. Пустой адрес сверку отключает
+				 *
+				 * @param url адрес запроса
+				 */
+				void uri(const uri_t::url_t & url) noexcept;
 			public:
 				/**
 				 * @brief Метод установки название сервера
@@ -145,7 +169,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Auth(const fmk_t * fmk, const log_t * log) noexcept :
-				 auth_t(fmk, log), _user{""}, _pass{""}, _stale(false), _callback(log) {}
+				 auth_t(fmk, log), _user{""}, _pass{""}, _stale(false), _callback(log), _target{""}, _uri(fmk, log) {}
 		} auth_t;
 	};
 };

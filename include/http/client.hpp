@@ -41,6 +41,9 @@ namespace awh {
 		 */
 		typedef class AWH_SHARED_EXPORT Http : public awh::http_t {
 			private:
+				// Количество отказов в авторизации подряд (401 и 407)
+				uint8_t _unauthorized;
+			private:
 				/**
 				 * @brief Метод проверки текущего статуса
 				 *

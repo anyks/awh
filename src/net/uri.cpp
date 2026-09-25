@@ -71,6 +71,37 @@ static bool percentByte(const string & text, const size_t pos, char & result) no
 	// Выводим результат
 	return true;
 }
+/**
+ * @brief Функция проверки завершающего слэша в пути запроса (/api/, /api/., /api/..)
+ *
+ * По RFC 3986 (раздел 5.2.4) путь, оканчивающийся разделителем или точечным сегментом,
+ * после разбора оканчивается разделителем: /a/b/ и /a/b/.. — это каталоги, а не файлы
+ *
+ * @param path  путь запроса в исходном виде
+ * @param delim разделитель частей пути
+ * @return      результат проверки
+ */
+static bool trailingSlash(const string & path, const char delim = '/') noexcept {
+	// Если путь пустой или состоит из одного разделителя, завершающего слэша нет
+	if(path.size() < 2)
+		// Сообщаем, что завершающего слэша нет
+		return false;
+	// Если путь оканчивается разделителем
+	if(path.back() == delim)
+		// Сообщаем, что завершающий слэш есть
+		return true;
+	// Позиция последнего разделителя
+	const size_t pos = path.rfind(delim);
+	// Если последняя часть пути является точечным сегментом
+	if(pos != string::npos){
+		// Получаем последнюю часть пути
+		const string & name = path.substr(pos + 1);
+		// Сообщаем, является ли последняя часть пути точечным сегментом
+		return ((name.compare(".") == 0) || (name.compare("..") == 0));
+	}
+	// Сообщаем, что завершающего слэша нет
+	return false;
+}
 
 /**
  * @brief Метод очистки
@@ -79,6 +110,8 @@ static bool percentByte(const string & text, const size_t pos, char & result) no
 void awh::URI::URL::clear() noexcept {
 	// Выполняем сброс порта
 	this->port = 0;
+	// Выполняем сброс флага завершающего слэша
+	this->trailing = false;
 	// Выполняем очистку IP-адреса
 	this->ip.clear();
 	// Выполняем очистку хоста сервера
@@ -149,6 +182,8 @@ awh::URI::URL & awh::URI::URL::operator = (url_t && url) noexcept {
 		this->port = url.port;
 		// Выполняем копирование протокола интернета
 		this->family = url.family;
+		// Выполняем копирование флага завершающего слэша
+		this->trailing = url.trailing;
 		// Если IP-адрес передан
 		if(!url.ip.empty())
 			// Выполняем копирование IP-адреса
@@ -258,6 +293,8 @@ awh::URI::URL & awh::URI::URL::operator = (const url_t & url) noexcept {
 		this->port = url.port;
 		// Выполняем копирование протокола интернета
 		this->family = url.family;
+		// Выполняем копирование флага завершающего слэша
+		this->trailing = url.trailing;
 		// Если IP-адрес передан
 		if(!url.ip.empty())
 			// Выполняем копирование IP-адреса
@@ -363,6 +400,7 @@ bool awh::URI::URL::operator == (const url_t & url) noexcept {
 	bool result = (
 		(this->port == url.port) &&
 		(this->family == url.family) &&
+		(this->trailing == url.trailing) &&
 		(this->ip.compare(url.ip) == 0) &&
 		(this->host.compare(url.host) == 0) &&
 		(this->user.compare(url.user) == 0) &&
@@ -390,10 +428,12 @@ bool awh::URI::URL::operator == (const url_t & url) noexcept {
 				for(size_t i = 0; i < this->params.size(); i++){
 					// Получаем текущее значение параметра
 					const auto & params = this->params.at(i);
+					// Получаем значение параметра сравниваемого адреса
+					const auto & other = url.params.at(i);
 					// Если параметры соответствуют
 					result = (
-						(params.first.compare(params.first) == 0) &&
-						(params.second.compare(params.second) == 0)
+						(params.first.compare(other.first) == 0) &&
+						(params.second.compare(other.second) == 0)
 					);
 					// Если пути не соответствуют
 					if(!result)
@@ -420,6 +460,8 @@ awh::URI::URL::URL(url_t && url) noexcept {
 		this->port = url.port;
 		// Выполняем копирование протокола интернета
 		this->family = url.family;
+		// Выполняем копирование флага завершающего слэша
+		this->trailing = url.trailing;
 		// Если IP-адрес передан
 		if(!url.ip.empty())
 			// Выполняем копирование IP-адреса
@@ -526,6 +568,8 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 		this->port = url.port;
 		// Выполняем копирование протокола интернета
 		this->family = url.family;
+		// Выполняем копирование флага завершающего слэша
+		this->trailing = url.trailing;
 		// Если IP-адрес передан
 		if(!url.ip.empty())
 			// Выполняем копирование IP-адреса
@@ -625,7 +669,7 @@ awh::URI::URL::URL(const url_t & url) noexcept {
 awh::URI::URL::URL() noexcept :
  port(0), family(AF_INET), ip{""}, host{""},
  user{""}, pass{""}, domain{""}, schema{""},
- anchor{""}, callback(nullptr) {}
+ anchor{""}, trailing(false), callback(nullptr) {}
 /**
  * @brief Метод получения параметров URL-запроса
  *
@@ -665,8 +709,13 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 						result.path = this->splitPath(i->second);
 						// Устанавливаем доменное имя
 						result.host = ::move(i->second);
-					// Выполняем извлечение пути запроса
-					} else result.path = this->splitPath(i->second);
+					// Если путь принадлежит сетевому адресу
+					} else {
+						// Выполняем извлечение пути запроса
+						result.path = this->splitPath(i->second);
+						// Запоминаем завершающий слэш (/api/): в списке частей пути он теряется
+						result.trailing = (!result.path.empty() && ::trailingSlash(i->second));
+					}
 				}
 				// Выполняем поиск параметров запроса
 				i = uri.find(flag_t::PARAMS);
@@ -1068,7 +1117,11 @@ string awh::URI::query(const url_t & url) const noexcept {
 		 */
 		try {
 			// Выполняем сборку пути запроса
-			const string & path = this->joinPath(url.path);
+			string path = this->joinPath(url.path);
+			// Если путь оканчивался слэшем, возвращаем его на место (/api/ остаётся /api/)
+			if(url.trailing && !url.path.empty())
+				// Добавляем завершающий слэш
+				path.append(1, '/');
 			// Выполняем сборку параметров запроса
 			const string & params = this->joinParams(url.params);
 			// Выполняем сборку якоря запроса
@@ -1228,9 +1281,12 @@ void awh::URI::create(url_t & dest, const url_t & src) const noexcept {
 			dest.pass = src.pass;
 		}
 		// Если путь запроса указан
-		if(dest.path.empty() && !src.path.empty())
+		if(dest.path.empty() && !src.path.empty()){
 			// Выполняем установку пути запроса
 			dest.path.assign(src.path.begin(), src.path.end());
+			// Выполняем установку флага завершающего слэша
+			dest.trailing = src.trailing;
+		}
 		// Если параметры запроса указаны
 		if(dest.params.empty() && !src.params.empty())
 			// Выполняем установку параметров запроса
@@ -1309,6 +1365,8 @@ void awh::URI::combine(url_t & dest, const url_t & src) const noexcept {
 			dest.path.assign(src.path.begin(), src.path.end());
 		// Выполняем очистку пути запроса
 		else dest.path.clear();
+		// Выполняем установку флага завершающего слэша
+		dest.trailing = (!dest.path.empty() && src.trailing);
 		// Если параметры запроса указаны
 		if(!src.params.empty())
 			// Выполняем установку параметров запроса
@@ -1359,6 +1417,8 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 				if((i != uri.end()) && (i->second.compare("/") != 0)){
 					// Выполняем извлечение пути запроса
 					url.path = this->splitPath(i->second);
+					// Запоминаем завершающий слэш (/api/): в списке частей пути он теряется
+					url.trailing = (!url.path.empty() && !this->_fmk->compare(url.schema, "unix") && ::trailingSlash(i->second));
 					// Если схема протокола принадлежит unix-сокету
 					if(this->_fmk->compare(url.schema, "unix"))
 						// Устанавливаем доменное имя

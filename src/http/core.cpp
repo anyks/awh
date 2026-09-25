@@ -2026,8 +2026,8 @@ string awh::Http::auth(const process_t flag, const web_t::provider_t & prov) con
 				const web_t::req_t & req = static_cast <const web_t::req_t &> (prov);
 				// Если параметры REST-запроса переданы
 				if(!req.url.empty() && (req.method != web_t::method_t::NONE)){
-					// Устанавливаем параметры REST-запроса
-					this->_auth.client.uri(this->_uri.url(req.url));
+					// Адрес для Digest авторизации — ровно строка запроса (RFC 7616): путь с параметрами, для CONNECT — хост:порт
+					this->_auth.client.uri((req.method == web_t::method_t::CONNECT) ? this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port) : this->_uri.query(req.url));
 					/**
 					 * Определяем метод запроса
 					 */
@@ -3064,8 +3064,8 @@ awh::buffer_t awh::Http::proxy(const web_t::req_t & req) const noexcept {
 			if(!this->_web.isHeader("proxy-connection"))
 				// Добавляем поддержку постоянного подключения для прокси-сервера
 				const_cast <http_t *> (this)->header("Proxy-Connection", "keep-alive");
-			// Устанавливаем параметры REST-запроса
-			this->_auth.client.uri(this->_uri.url(req.url));
+			// Адрес для Digest авторизации — ровно строка запроса (RFC 7616): путь с параметрами, для CONNECT — хост:порт
+			this->_auth.client.uri((req.method == web_t::method_t::CONNECT) ? this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port) : this->_uri.query(req.url));
 			// Устанавливаем парарметр запроса
 			this->_web.request(req);
 			// Выполняем создание запроса
@@ -3113,8 +3113,8 @@ vector <std::pair <string, string>> awh::Http::proxy2(const web_t::req_t & req) 
 		const_cast <http_t *> (this)->blacklist("Accept-Encoding");
 		// Добавляем заголовок протокола подключения
 		const_cast <http_t *> (this)->header(":protocol", "proxy");
-		// Устанавливаем параметры REST-запроса
-		this->_auth.client.uri(this->_uri.url(req.url));
+		// Адрес для Digest авторизации — ровно строка запроса (RFC 7616): путь с параметрами, для CONNECT — хост:порт
+		this->_auth.client.uri((req.method == web_t::method_t::CONNECT) ? this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port) : this->_uri.query(req.url));
 		// Устанавливаем парарметр запроса
 		this->_web.request(req);
 		// Выполняем создание запроса
@@ -3457,8 +3457,8 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 							uint64_t length = 0;
 							// Устанавливаем парарметры запроса
 							this->_web.request(req);
-							// Устанавливаем параметры REST-запроса
-							this->_auth.client.uri(this->_uri.url(req.url));
+							// Адрес для Digest авторизации — ровно строка запроса (RFC 7616): путь с параметрами, для CONNECT — хост:порт
+							this->_auth.client.uri((req.method == web_t::method_t::CONNECT) ? this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port) : this->_uri.query(req.url));
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
@@ -4581,8 +4581,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							};
 							// Устанавливаем парарметры запроса
 							this->_web.request(req);
-							// Устанавливаем параметры REST-запроса
-							this->_auth.client.uri(this->_uri.url(req.url));
+							// Адрес для Digest авторизации — ровно строка запроса (RFC 7616): путь с параметрами, для CONNECT — хост:порт
+							this->_auth.client.uri((req.method == web_t::method_t::CONNECT) ? this->_fmk->format("%s:%u", req.url.host.c_str(), req.url.port) : this->_uri.query(req.url));
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
 							// Переходим по всему списку заголовков
