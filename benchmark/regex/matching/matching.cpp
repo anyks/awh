@@ -36,8 +36,37 @@
  * Стандартные заголовочные файлы
  */
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <sys/log.hpp>
+
+/**
+ * Запрет подстановки функции телом вызывающей
+ *
+ * @details Прокладка стека действует лишь тогда, когда функция, её несущая,
+ *          держит собственный кадр: подставленная телом вызывающей, она слилась
+ *          бы с его кадром, и положение стека у всякого прохода осталось бы одним.
+ *
+ */
+#if !defined(AWH_BENCHMARK_NOINLINE)
+	/**
+	 * Если компилятор является Visual Studio
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Запрет подстановки средствами Visual Studio
+		 */
+		#define AWH_BENCHMARK_NOINLINE __declspec(noinline)
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Запрет подстановки средствами GCC и Clang
+		 */
+		#define AWH_BENCHMARK_NOINLINE __attribute__((noinline))
+	#endif
+#endif
 
 /**
  * Если сборка выполняется со сравнением с эталонной реализацией
@@ -143,43 +172,169 @@ namespace {
 		return chrono::duration <double, micro> (chrono::steady_clock::now().time_since_epoch()).count();
 	}
 	/**
+	 * @brief Функция записи отношения двумя знаками после запятой
+	 *
+	 * @param value записываемое отношение
+	 * @return      запись отношения
+	 *
+	 */
+	string ratio(const double value) noexcept {
+		// Буфер записи отношения
+		char buffer[32];
+		// Выполняем запись отношения двумя знаками после запятой
+		::snprintf(buffer, sizeof(buffer), "%.2f", value);
+		// Выводим запись отношения
+		return buffer;
+	}
+	/**
+	 * @brief Итог измерения прохода при нескольких положениях стека
+	 *
+	 */
+	typedef struct Timing {
+		// Наименьшее время прохода набора повторений при всяком положении стека
+		double best;
+		/**
+		 * Отношение времени худшего положения стека к времени лучшего
+		 *
+		 * @details Время положения есть наименьшее из его проходов. Единица
+		 *          означает меру, от положения стека не зависящую; эталон
+		 *          на коротком тексте даёт до трёх.
+		 *
+		 */
+		double spread;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Timing() noexcept : best(0.0), spread(0.0) {}
+	} timing_t;
+	/**
+	 * @brief Приёмник прокладки стека
+	 *
+	 * @details Вызов через изменчивый указатель собирателю непрозрачен: приёмник
+	 *          вправе читать прокладку целиком, и собиратель обязан разместить
+	 *          её в кадре всю. Прокладку с обращением к одному лишь октету он
+	 *          сжимал до этого октета, кадры всех положений выходили равными,
+	 *          и связыватель сливал их в одну функцию - стек не сдвигался вовсе.
+	 *
+	 */
+	void (* volatile sink)(uint8_t *, const size_t) noexcept = [](uint8_t *, const size_t) noexcept -> void {};
+	/**
+	 * @brief Функция прохода набора повторений при сдвинутом стеке
+	 *
+	 * @details Прокладка кадра сдвигает стек всякого вызова из тела повторения
+	 *          на свою длину: кадр функции лежит выше кадров вызываемых ею.
+	 *          Передача прокладки приёмнику не даёт собирателю её сжать. Тело
+	 *          принимается копией намеренно: захваченное им держится тогда
+	 *          в кадре этой функции, и собиратель вправе хранить его в регистрах
+	 *          на весь проход, как хранил, пока проход подставлялся в сценарий.
+	 *
+	 * @tparam Shift величина сдвига стека в октетах
+	 * @param  rounds количество повторений прохода
+	 * @param  body   тело повторения
+	 * @return        время прохода в микросекундах
+	 *
+	 */
+	template <size_t Shift, typename Body>
+	AWH_BENCHMARK_NOINLINE double shifted(const size_t rounds, Body body) noexcept {
+		// Прокладка кадра, сдвигающая стек тела повторения
+		uint8_t pad[Shift + 16];
+		// Выполняем передачу прокладки приёмнику
+		sink(pad, sizeof(pad));
+		// Получаем время начала прохода
+		const double begin = moment();
+		/**
+		 * Выполняем проход набора повторений
+		 */
+		for(size_t i = 0; i < rounds; i++)
+			// Выполняем тело повторения
+			body();
+		// Выводим время прохода
+		return (moment() - begin);
+	}
+	/**
 	 * @brief Функция измерения наименьшего времени прохода набора повторений
 	 *
 	 * @details Шаблон, а не объект функции: вызов через объект функции стоит
 	 *          пары наносекунд на повторение, а короткий текст эталон проходит
 	 *          за шестьдесят - поправка вышла бы заметной долей замера.
 	 *
+	 *          Проходы ведутся при нескольких положениях стека по кругу, и
+	 *          принимается наименьшее время из всех. Скорость эталона от
+	 *          положения стека зависит, а положение задаёт длина среды
+	 *          запуска: прогоны разных сеансов ловили его то в быстром режиме,
+	 *          то в медленном, - смотрите «SHIFTS». Наша сторона меряется так
+	 *          же, и отношение худшего положения к лучшему выводится обеим.
+	 *
 	 * @param rounds количество повторений прохода
 	 * @param body   тело повторения
-	 * @return       наименьшее время прохода в микросекундах
+	 * @return       итог измерения прохода
 	 *
 	 */
 	template <typename Body>
-	double fastest(const size_t rounds, Body && body) noexcept {
-		// Наименьшее время прохода набора повторений
-		double result = 0.0;
+	timing_t fastest(const size_t rounds, Body && body) noexcept {
+		/**
+		 * Число положений стека согласовано с выбором ниже
+		 */
+		static_assert(SHIFTS == 4, "matching::fastest: положений стека иное число, нежели ветвей выбора");
+		// Создаём итог измерения прохода
+		timing_t result;
+		// Наименьшее время прохода при каждом положении стека
+		double times[SHIFTS] = {0.0, 0.0, 0.0, 0.0};
 		/**
 		 * Выполняем измерение прохода набора повторений
 		 */
 		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
-			// Получаем время начала прохода
-			const double begin = moment();
+			// Получаем номер положения стека прохода
+			const size_t index = (attempt % SHIFTS);
+			// Время прохода набора повторений
+			double spent = 0.0;
 			/**
-			 * Выполняем проход набора повторений
+			 * Определяем положение стека прохода
 			 */
-			for(size_t i = 0; i < rounds; i++)
-				// Выполняем тело повторения
-				body();
-			// Получаем время завершения прохода
-			const double finish = moment();
+			switch(index) {
+				// Выполняем проход без сдвига стека
+				case 0: spent = shifted <0> (rounds, body); break;
+				// Выполняем проход со сдвигом стека на шаг
+				case 1: spent = shifted <SHIFT> (rounds, body); break;
+				// Выполняем проход со сдвигом стека на два шага
+				case 2: spent = shifted <(SHIFT * 2)> (rounds, body); break;
+				// Выполняем проход со сдвигом стека на три шага
+				default: spent = shifted <(SHIFT * 3)> (rounds, body);
+			}
 			/**
-			 * Если проход выполнен быстрее прежних
+			 * Если проход при этом положении стека выполнен быстрее прежних
 			 */
-			if((result == 0.0) || ((finish - begin) < result))
-				// Выполняем установку времени прохода
-				result = (finish - begin);
+			if((times[index] == 0.0) || (spent < times[index]))
+				// Выполняем установку времени прохода положения стека
+				times[index] = spent;
 		}
-		// Выводим наименьшее время прохода
+		// Наибольшее время прохода из лучших при каждом положении стека
+		double worst = 0.0;
+		/**
+		 * Выполняем обход положений стека
+		 */
+		for(size_t i = 0; i < SHIFTS; i++) {
+			/**
+			 * Если положение стека прошло быстрее прежних
+			 */
+			if((result.best == 0.0) || (times[i] < result.best))
+				// Выполняем установку наименьшего времени прохода
+				result.best = times[i];
+			/**
+			 * Если положение стека прошло медленнее прежних
+			 */
+			if(times[i] > worst)
+				// Выполняем установку наибольшего времени прохода
+				worst = times[i];
+		}
+		/**
+		 * Если время прохода измерено верно
+		 */
+		if(result.best > 0.0)
+			// Выполняем установку отношения худшего положения стека к лучшему
+			result.spread = (worst / result.best);
+		// Выводим итог измерения прохода
 		return result;
 	}
 	/**
@@ -246,29 +401,15 @@ namespace {
 			// Выводим результат измерения сценария
 			return result;
 		}
-		// Наименьшее время прохода набора повторений
-		double best = 0.0;
 		/**
 		 * Выполняем измерение пропускной способности сценария
 		 */
-		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
-			// Получаем время начала прохода
-			const double begin = moment();
-			/**
-			 * Выполняем проход набора повторений
-			 */
-			for(size_t i = 0; i < rounds; i++)
-				// Выполняем сопоставление регулярного выражения движком
-				engine.exec(expression, body, 0, captures);
-			// Получаем время завершения прохода
-			const double finish = moment();
-			/**
-			 * Если проход выполнен быстрее прежних
-			 */
-			if((best == 0.0) || ((finish - begin) < best))
-				// Выполняем установку времени прохода
-				best = (finish - begin);
-		}
+		const timing_t interpretation = fastest(rounds, [&engine, &expression, &body, &captures]() noexcept {
+			// Выполняем сопоставление регулярного выражения движком
+			engine.exec(expression, body, 0, captures);
+		});
+		// Наименьшее время прохода набора повторений
+		const double best = interpretation.best;
 		/**
 		 * Если время прохода измерено неверно
 		 */
@@ -282,6 +423,15 @@ namespace {
 		}
 		// Выполняем установку пропускной способности сценария
 		result.value = ((rounds / best) * 1e6);
+		/**
+		 * Разброс времени прохода по положениям стека
+		 *
+		 * @details Выводится хвостом сведений сценария, словом «эталон», а не
+		 *          именем эталона: разбор вывода ищет числа эталона по имени,
+		 *          и отношения разброса за них не принимаются.
+		 *
+		 */
+		string spread = ("наш разбор ×" + ratio(interpretation.spread));
 		// Наименьшее время прохода набора повторений порождённым кодом
 		double machine = 0.0;
 		/**
@@ -319,10 +469,12 @@ namespace {
 				 */
 				if(codegen.exec(body, 0, bounds) == scenario.matches) {
 					// Выполняем измерение пропускной способности порождённого кода
-					machine = fastest(rounds, [&codegen, &body, &bounds]() noexcept {
+					const timing_t generated = fastest(rounds, [&codegen, &body, &bounds]() noexcept {
 						// Выполняем сопоставление регулярного выражения порождённым кодом
 						codegen.exec(body, 0, bounds);
 					});
+					// Получаем наименьшее время прохода порождённым кодом
+					machine = generated.best;
 					/**
 					 * Если время прохода порождённым кодом измерено верно
 					 *
@@ -330,10 +482,13 @@ namespace {
 					 *          быстрее правой: больше единицы - впереди левая.
 					 *
 					 */
-					if(machine > 0.0)
+					if(machine > 0.0) {
 						// Выполняем установку сведений о порождённом машинном коде
 						result.details = ("код " + to_string(static_cast <size_t> ((rounds / machine) * 1e6)) +
 						 " совпадений/с, доля к разбору " + to_string(best / machine) + "; ");
+						// Выполняем учёт разброса порождённого кода по положениям стека
+						spread += (", наш код ×" + ratio(generated.spread));
+					}
 				}
 			}
 		}
@@ -375,20 +530,25 @@ namespace {
 				 *          пока его не вскрыл Эльбрус, где кода у эталона нет.
 				 *
 				 */
-				const double interpreted = fastest(rounds, [reference, &body, data]() noexcept {
+				const timing_t parsed = fastest(rounds, [reference, &body, data]() noexcept {
 					// Выполняем сопоставление эталонного выражения разбором программы
 					::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (body.data()), body.size(), 0, PCRE2_NO_JIT, data, nullptr);
 				});
+				// Получаем наименьшее время прохода эталонным разбором
+				const double interpreted = parsed.best;
 				/**
 				 * Если время прохода эталонным разбором измерено верно
 				 *
 				 * @details Первая пара сличения: наш разбор против разбора эталона.
 				 *
 				 */
-				if(interpreted > 0.0)
+				if(interpreted > 0.0) {
 					// Выполняем установку сведений о сличении разборов
 					result.details += ("pcre2 разбором " + to_string(static_cast <size_t> ((rounds / interpreted) * 1e6)) +
 					 " совпадений/с, доля разборов " + to_string(interpreted / best));
+					// Выполняем учёт разброса эталонного разбора по положениям стека
+					spread += (", эталон разбором ×" + ratio(parsed.spread));
+				}
 				/**
 				 * Если эталон машинный код породил
 				 *
@@ -399,16 +559,20 @@ namespace {
 				 */
 				if(machined) {
 					// Выполняем измерение эталона порождённым кодом
-					const double compiled = fastest(rounds, [reference, &body, data]() noexcept {
+					const timing_t jitted = fastest(rounds, [reference, &body, data]() noexcept {
 						// Выполняем сопоставление эталонного выражения порождённым кодом
 						::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (body.data()), body.size(), 0, 0, data, nullptr);
 					});
+					// Получаем наименьшее время прохода эталонным кодом
+					const double compiled = jitted.best;
 					/**
 					 * Если время прохода эталонным кодом измерено верно
 					 */
 					if(compiled > 0.0) {
 						// Выполняем установку сведений о коде эталона
 						result.details += ("; pcre2 кодом " + to_string(static_cast <size_t> ((rounds / compiled) * 1e6)) + " совпадений/с");
+						// Выполняем учёт разброса эталонного кода по положениям стека
+						spread += (", эталон кодом ×" + ratio(jitted.spread));
 						/**
 						 * Если наш машинный код измерен
 						 */
@@ -433,6 +597,19 @@ namespace {
 				::pcre2_code_free(reference);
 			}
 		#endif
+		/**
+		 * Если сведения сценария не пусты и разделителем не окончены
+		 *
+		 * @details Сведения нашего кода оканчиваются разделителем сами: за ними
+		 *          следуют сведения эталона, а без эталона разделитель остаётся.
+		 *
+		 */
+		if(!result.details.empty() && ((result.details.size() < 2) ||
+		 (result.details.compare(result.details.size() - 2, 2, "; ") != 0)))
+			// Выполняем установку разделителя сведений
+			result.details += "; ";
+		// Выполняем установку сведений о разбросе по положениям стека
+		result.details += ("разброс по стеку: " + spread);
 		// Выводим результат измерения сценария
 		return result;
 	}
@@ -449,32 +626,17 @@ namespace {
 		const char * pattern = "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3}) - (\\w+) \\[([^\\]]+)\\] \"(\\w+) (\\S+)\"";
 		// Создаём объект движка регулярных выражений
 		awh::regex::engine_t engine;
-		// Наименьшее время прохода набора повторений
-		double best = 0.0;
 		/**
 		 * Выполняем измерение сборки регулярного выражения
 		 */
-		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
-			// Получаем время начала прохода
-			const double begin = moment();
-			/**
-			 * Выполняем проход набора повторений сборки
-			 */
-			for(size_t i = 0; i < BUILD_ROUNDS; i++) {
-				// Создаём собираемое регулярное выражение
-				awh::regex::expression_t expression;
-				// Выполняем сборку регулярного выражения
-				engine.build(pattern, 0, expression);
-			}
-			// Получаем время завершения прохода
-			const double finish = moment();
-			/**
-			 * Если проход выполнен быстрее прежних
-			 */
-			if((best == 0.0) || ((finish - begin) < best))
-				// Выполняем установку времени прохода
-				best = (finish - begin);
-		}
+		const timing_t native = fastest(BUILD_ROUNDS, [&engine, pattern]() noexcept {
+			// Создаём собираемое регулярное выражение
+			awh::regex::expression_t expression;
+			// Выполняем сборку регулярного выражения
+			engine.build(pattern, 0, expression);
+		});
+		// Наименьшее время прохода набора повторений
+		const double best = native.best;
 		/**
 		 * Если время прохода измерено неверно
 		 */
@@ -488,12 +650,12 @@ namespace {
 		}
 		// Выполняем установку скорости сборки регулярного выражения
 		result.value = ((BUILD_ROUNDS / best) * 1e6);
+		// Разброс времени прохода по положениям стека
+		string spread = ("наша сборка ×" + ratio(native.spread));
 		/**
 		 * Если сборка выполняется со сравнением с эталонной реализацией
 		 */
 		#if defined(AWH_BENCHMARK_PCRE2)
-			// Наименьшее время прохода набора повторений эталонной реализацией
-			double rival = 0.0;
 			/**
 			 * Выполняем измерение скорости сборки эталонной реализацией
 			 *
@@ -503,43 +665,35 @@ namespace {
 			 *          измерение с ним мерило бы два действия разом
 			 *
 			 */
-			for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
-				// Получаем время начала прохода
-				const double begin = moment();
+			const timing_t compiling = fastest(BUILD_ROUNDS, [pattern]() noexcept {
+				// Код ошибки сборки эталонного регулярного выражения
+				int code = 0;
+				// Положение ошибки сборки эталонного регулярного выражения
+				PCRE2_SIZE offset = 0;
+				// Выполняем сборку эталонного регулярного выражения
+				pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern), ::strlen(pattern), 0, &code, &offset, nullptr);
 				/**
-				 * Выполняем проход набора повторений сборки эталонной реализацией
+				 * Если сборка эталонного регулярного выражения выполнена
 				 */
-				for(size_t i = 0; i < BUILD_ROUNDS; i++) {
-					// Код ошибки сборки эталонного регулярного выражения
-					int code = 0;
-					// Положение ошибки сборки эталонного регулярного выражения
-					PCRE2_SIZE offset = 0;
-					// Выполняем сборку эталонного регулярного выражения
-					pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern), ::strlen(pattern), 0, &code, &offset, nullptr);
-					/**
-					 * Если сборка эталонного регулярного выражения выполнена
-					 */
-					if(reference != nullptr)
-						// Выполняем освобождение эталонного регулярного выражения
-						::pcre2_code_free(reference);
-				}
-				// Получаем время завершения прохода
-				const double finish = moment();
-				/**
-				 * Если проход выполнен быстрее прежних
-				 */
-				if((rival == 0.0) || ((finish - begin) < rival))
-					// Выполняем установку времени прохода эталонной реализацией
-					rival = (finish - begin);
-			}
+				if(reference != nullptr)
+					// Выполняем освобождение эталонного регулярного выражения
+					::pcre2_code_free(reference);
+			});
+			// Наименьшее время прохода набора повторений эталонной реализацией
+			const double rival = compiling.best;
 			/**
 			 * Если время прохода эталонной реализацией измерено верно
 			 */
-			if(rival > 0.0)
+			if(rival > 0.0) {
 				// Выполняем установку сведений о сравнении с эталонной реализацией
 				result.details = ("pcre2 " + to_string(static_cast <size_t> ((BUILD_ROUNDS / rival) * 1e6)) +
-				 " сборок/с, доля " + to_string(rival / best));
+				 " сборок/с, доля " + to_string(rival / best) + "; ");
+				// Выполняем учёт разброса сборки эталона по положениям стека
+				spread += (", сборка эталона ×" + ratio(compiling.spread));
+			}
 		#endif
+		// Выполняем установку сведений о разбросе по положениям стека
+		result.details += ("разброс по стеку: " + spread);
 		// Выводим результат измерения сценария
 		return result;
 	}
@@ -589,32 +743,17 @@ namespace {
 			// Выводим результат измерения сценария
 			return result;
 		}
-		// Наименьшее время прохода набора повторений
-		double best = 0.0;
 		/**
 		 * Выполняем измерение восстановления выражения из записи
 		 */
-		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
-			// Получаем время начала прохода
-			const double begin = moment();
-			/**
-			 * Выполняем проход набора повторений восстановления
-			 */
-			for(size_t i = 0; i < BUILD_ROUNDS; i++) {
-				// Набор восстановленных выражений
-				vector <awh::regex::storage_t::exp_t> restored;
-				// Выполняем восстановление собранного выражения из записи
-				storage.load(record, restored);
-			}
-			// Получаем время завершения прохода
-			const double finish = moment();
-			/**
-			 * Если проход выполнен быстрее прежних
-			 */
-			if((best == 0.0) || ((finish - begin) < best))
-				// Выполняем установку времени прохода
-				best = (finish - begin);
-		}
+		const timing_t loading = fastest(BUILD_ROUNDS, [&storage, &record]() noexcept {
+			// Набор восстановленных выражений
+			vector <awh::regex::storage_t::exp_t> restored;
+			// Выполняем восстановление собранного выражения из записи
+			storage.load(record, restored);
+		});
+		// Наименьшее время прохода набора повторений
+		const double best = loading.best;
 		/**
 		 * Если время прохода измерено неверно
 		 */
@@ -628,8 +767,8 @@ namespace {
 		}
 		// Выполняем установку скорости восстановления выражения из записи
 		result.value = ((BUILD_ROUNDS / best) * 1e6);
-		// Выполняем установку сведений о размере записи хранилища
-		result.details = ("запись " + to_string(record.size()) + " байт");
+		// Выполняем установку сведений о размере записи хранилища и разбросе по положениям стека
+		result.details = ("запись " + to_string(record.size()) + " байт; разброс по стеку: восстановление ×" + ratio(loading.spread));
 		// Выводим результат измерения сценария
 		return result;
 	}
