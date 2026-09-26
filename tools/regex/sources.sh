@@ -47,11 +47,18 @@ STAND_SOURCES="src/regex src/encoding/unicode src/codec/json src/num/lexical
 #
 # @warning Из «src/sys» берётся не всё: там лежат части, тянущие за собою прочую
 #          библиотеку. Отбор ведётся поимённо
+#
+# @warning Выдача поиска сортируется: порядок её задаёт порядок связки, а с ним
+#          и раскладку кода. Поиск выдаёт файлы в порядке каталога, и на FreeBSD
+#          он у всякой копии дерева свой: варианты, собранные в разных копиях,
+#          были связаны в разном порядке, и строки, правки не касающиеся, ходили
+#          у них до шестнадцати процентов. Смотрите «Порядок связки у щупов»
+#          в «benchmark/regex/COMPARISON.md»
 ##
 stand_sources() {
 	find src/regex src/encoding/unicode src/codec/json src/num/lexical \
 		src/encoding/charset src/alloc src/alloc/capture \
-		-maxdepth 1 -name '*.cpp' ! -name 'obsd.cpp'
+		-maxdepth 1 -name '*.cpp' ! -name 'obsd.cpp' | LC_ALL=C sort
 	echo src/sys/log.cpp
 	echo src/sys/chrono.cpp
 	echo src/sys/fmk.cpp

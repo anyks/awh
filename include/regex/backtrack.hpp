@@ -121,9 +121,10 @@
  *          проверка без кода оттого, что
  *          пометка у прочих символьных кодов нулевая по построению - операнды
  *          размещаемой инструкции обнулены конструктором, а зазор их пишет
- *          лишь пометка литерала, - и поверка записи иной не принимает. Метод сличения подстановке запрещён:
- *          подставленный, на x86-64 он отнимал у восьми строк от 1.6 до 6.9
- *          процента, отдельный - ни у одной. Обрыв
+ *          лишь пометка литерала, - и поверка записи иной не принимает. Метод сличения подстановке запрещён
+ *          всюду, кроме LCC: подставленный, на x86-64 он отнимал у восьми строк
+ *          от 1.6 до 6.9 процента, отдельный - ни у одной; перемер - в решении
+ *          о месте быстрых путей ниже. Обрыв
  *          отказывает сразу, не исполняя инструкции несовпавшего байта:
  *          выбор ветвей литералов, «alpha|bravo|...», иначе оплачивал сличение
  *          дважды и терял от пяти до семнадцати процентов, а так выигрывает
@@ -174,6 +175,51 @@
  *          «Regex.EngineLiteralRun», «Regex.EngineLiteralPlacement»
  *          и «Regex.StorageForgedLiteral»; путь, какой машине не достался,
  *          проверяется сборкой с признаком переопределённым.
+ *
+ *          <b>Проход ряда подставляется телом цикла исполнения у Clang
+ *          на x86-64 и ведётся вызовом у прочих; проход цепочки ведётся
+ *          вызовом всюду, сличение литерала - всюду, кроме LCC.</b> Правило
+ *          «быстрый путь заводить сразу методом» стояло на двух доводах, и
+ *          перемер 26.09.2026 снял оба. Просадка литеральных сценариев
+ *          на четверть принадлежала раскладке прохода парой байтов
+ *          в «prefilter.cpp», а не росту тела цикла. Цена вызова -
+ *          «[0-9]{512}» 458 нс методом против 331 телом цикла - не
+ *          воспроизводится: девяноста кругами вперемежку оба пути идут
+ *          153 и 152 нс. Место всякого пути решает с тех пор замер
+ *          по собирателю: сборка, где всякий блок выровнен по шестидесяти
+ *          четырём байтам и раскладка из опыта изъята, вместе со сборкой
+ *          обычной.
+ *
+ *          Проход ряда, подставленный у Clang на ARM64, отнимает у строк
+ *          исполнения с возвратом от 6 до 10 процентов и в выровненной
+ *          сборке; у LCC тесный цикл ряда внутри цикла исполнения идёт втрое
+ *          медленнее - «[0-9]{512}» 4413 нс против 1351. У Clang на x86-64
+ *          та же подстановка выигрывает в выровненной сборке двадцати трём
+ *          строкам набора до 15 процентов, теряя у одной 2.1, а в обычной -
+ *          до 13. GCC подставляет метод сам, и запрет подстановки стоил бы
+ *          ему до 4 процентов. Место задаёт признак «AWH_REGEX_SERIES_INLINE»
+ *          в файле исполнения. Проход
+ *          цепочки, подставленный, не выигрывает ни на одной машине, а у LCC
+ *          строки с цепочками теряют до 9.3 процента. Сличение литерала,
+ *          подставленное, у Clang на ARM64 выигрывает строкам литерала
+ *          от 3 до 7 процентов в выровненной сборке, но в обычной девятнадцать
+ *          строк исполнения с возвратом теряли от 4 до 10 процентов всеми
+ *          пятью парами; у Clang на x86-64 в выровненной сборке выигрывает
+ *          одна строка и теряют две, а в обычной теряют три, до 6.5 процента;
+ *          у GCC выигрыш одних строк уравновешен потерей других, - запрет
+ *          подстановки у них оставлен. У LCC, чей код от раскладки не зависит,
+ *          подставленное сличение выигрывает двадцати пяти строкам всего
+ *          набора до 2.9 процента и теряет у девяти не более 0.4, - запрет
+ *          снят признаком «AWH_REGEX_LITERAL_NOINLINE».
+ *
+ *          Счёт команд приговора не выносит: подставленный проход ряда
+ *          прибавляет обращений к стеку в «run» и у Clang на ARM64, где
+ *          проигрывает, и у Clang на x86-64, где выигрывает. Проверкой решение
+ *          не закрепляется - подстановку проверка не видит. Сверять его
+ *          разборкой «Backtrack::run»: у Clang на ARM64 он обязан звать
+ *          вызовом «consume», «chain» и «literal», у Clang на x86-64 и у GCC -
+ *          лишь «chain» и «literal», у LCC - «consume» и «chain». Числа
+ *          и условия замеров - в «benchmark/regex/COMPARISON.md».
  *
  *          <b>Проверка допустимого объёма памяти ждёт рубежа, а не шага,
  *          кратного двумстам пятидесяти шести.</b> Счётчик шагов прибавляется
@@ -302,9 +348,10 @@
  *          without it. The check without the code is safe because the mark of the
  *          other character codes is zero by construction — the operands of a placed
  *          instruction are zeroed by the constructor, and only the mark of a literal
- *          writes their gap, — and the verification of the record accepts no other. The comparison method is forbidden to be inlined:
- *          inlined, on x86-64 it took from 1.6 to 6.9 per cent from eight rows,
- *          separate — from none. A break refuses at once, without executing the
+ *          writes their gap, — and the verification of the record accepts no other. The comparison method is forbidden to be inlined
+ *          everywhere except LCC: inlined, on x86-64 it took from 1.6 to 6.9 per cent
+ *          from eight rows, separate — from none; the re-measurement is in the
+ *          decision on the place of fast paths below. A break refuses at once, without executing the
  *          instruction of the non-matching byte: an alternation of literals,
  *          «alpha|bravo|...», otherwise paid for the comparison twice and lost from
  *          five to seventeen per cent, and so it gains sixteen.
@@ -354,6 +401,55 @@
  *          «Regex.EngineLiteralRun», «Regex.EngineLiteralPlacement» and
  *          «Regex.StorageForgedLiteral» tests; the path a machine did not get is
  *          checked by a build with the flag overridden.
+ *
+ *          <b>The walk of a row is placed into the body of the execution loop
+ *          with Clang on x86-64 and is done by a call elsewhere; the walk of a
+ *          chain is done by a call everywhere, the comparison of a literal —
+ *          everywhere except LCC.</b> The rule «make a fast path a method right away»
+ *          stood on two arguments, and the re-measurement of 26.09.2026 removed
+ *          both. The drop of the literal scenarios by a quarter belonged to the
+ *          placement of the walk by a pair of bytes in «prefilter.cpp» rather
+ *          than to the growth of the loop body. The price of the call —
+ *          «[0-9]{512}» 458 ns as a method against 331 in the loop body — does
+ *          not reproduce: over ninety interleaved rounds both paths take 153
+ *          and 152 ns. Since then the place of every path is decided by a
+ *          measurement per compiler: a build where every block is aligned to
+ *          sixty-four bytes and the layout is taken out of the experiment,
+ *          together with the ordinary build.
+ *
+ *          The walk of a row placed into the loop with Clang on ARM64 takes from
+ *          6 to 10 per cent from the rows of backtracking execution in the
+ *          aligned build as well; with LCC the tight loop of a row inside the
+ *          execution loop runs three times slower — «[0-9]{512}» 4413 ns
+ *          against 1351. With Clang on x86-64 the same placement gains twenty-three
+ *          rows of the set up to 15 per cent in the aligned build, losing 2.1 on
+ *          one, and up to 13 in the ordinary one. GCC places the method by
+ *          itself, and forbidding that would cost it up to 4 per cent. The place
+ *          is set by the «AWH_REGEX_SERIES_INLINE» flag in the implementation
+ *          file. The walk
+ *          of a chain placed into the loop gains on no machine, and with LCC
+ *          the rows with chains lose up to 9.3 per cent. The comparison of a
+ *          literal placed into the loop gains the literal rows from 3 to 7 per
+ *          cent with Clang on ARM64 in the aligned build, but in the ordinary
+ *          one nineteen rows of backtracking execution lost from 4 to 10 per
+ *          cent in all five pairs; with Clang on x86-64 one row gains and two
+ *          lose in the aligned build, while three lose in the ordinary one, by
+ *          up to 6.5 per cent; with GCC the gain of some rows is balanced by
+ *          the loss of others, — the prohibition of placement is kept for them.
+ *          With LCC, whose code does not depend on the layout, the placed
+ *          comparison gains twenty-five rows of the whole set up to 2.9 per cent
+ *          and loses at most 0.4 on nine, — the prohibition is lifted by the
+ *          «AWH_REGEX_LITERAL_NOINLINE» flag.
+ *
+ *          Counting instructions gives no verdict: the placed walk of a row
+ *          adds stack accesses to «run» both with Clang on ARM64, where it
+ *          loses, and with Clang on x86-64, where it gains. The decision is not
+ *          pinned by a test — a test does not see placement. It is checked by
+ *          disassembling «Backtrack::run»: with Clang on ARM64 it must call
+ *          «consume», «chain» and «literal», with Clang on x86-64 and with GCC —
+ *          only «chain» and «literal», with LCC — «consume» and «chain». The
+ *          numbers and the conditions of the measurements are in
+ *          «benchmark/regex/COMPARISON.md».
  *
  *          <b>The check of the admissible amount of memory waits for a checkpoint
  *          rather than for a step that is a multiple of two hundred fifty-six.</b>
@@ -1963,8 +2059,8 @@ namespace awh {
 				 *          иное проходится по инструкциям, о чём и говорит выдача
 				 *
 				 * @note Метод отделён от цикла исполнения намеренно и отделён замером:
-				 *       внесённый телом цикла, он обобрал соседей своих по единице
-				 *       трансляции на четверть скорости
+				 *       подставленный телом цикла, он не выигрывает цепочке ни на одной
+				 *       машине, а у LCC строки с цепочками теряют до 9.3 процента
 				 *
 				 * @param instruction переход, цепочку возглавляющий
 				 * @param pc          адрес перехода в программе регулярного выражения
@@ -1980,8 +2076,9 @@ namespace awh {
 				 *          mode; another body is walked by instructions, which is what the return
 				 *          value tells
 				 * @note The method is separated from the execution loop deliberately, and it is
-				 *       separated by measurement: placed into the body of the loop, it robbed
-				 *       its neighbours in the translation unit of a quarter of their speed
+				 *       separated by measurement: placed into the body of the loop, it gains the
+				 *       chain nothing on any machine, while with LCC the rows with chains lose
+				 *       up to 9.3 per cent
 				 * @param instruction the jump heading the chain
 				 * @param pc          address of the jump in the program of the regular expression
 				 * @param from        position of the start of the walk in the matching text
