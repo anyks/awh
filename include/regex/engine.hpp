@@ -73,6 +73,14 @@
  *          попытки устраняет, и тогда исполнение с возвратом даёт превосходство
  *          вдвое на выражении «.*needle» при равенстве на прочих.
  *
+ *          Выражению, к позиции начала поиска привязанному, проход этот не нужен:
+ *          позиция начала у него известна заранее - это позиция поиска, - попытка
+ *          единственна, и исполнение с возвратом пускается сразу при участке любой
+ *          длины. Прежде проход обратный шёл и ему, проходя текст целиком ради
+ *          ответа известного: на «^[a-z ]+X» с совпадением в двадцать килобайтов
+ *          по тексту в шестьдесят четыре - 190 микросекунд против 53 ныне.
+ *          Закреплено тестом «Regex.EngineAnchoredLong».
+ *
  *          <b>Выражение с ведущим литералом сопоставляется исполнением с возвратом
  *          прежде проверки наличия совпадения детерминированным исполнением.</b>
  *          Порядок выглядит отказом от быстрой проверки наличия совпадения, но
@@ -116,6 +124,25 @@
  *          путь, исполнения этого не зовущий, оставил бы вхождение своего
  *          текста сопоставлению чужому. Порядок закреплён тестом
  *          «Regex.EngineLocatedHandoff».
+ *
+ *          <b>Развёрнутая программа строится не всякому выражению без ведущего
+ *          литерала.</b> Отсутствие её выглядит утратой поиска позиции начала,
+ *          но поиск этот таким выражениям недоступен ни при каком тексте либо
+ *          ответ его известен заранее. Недоступен он, когда детерминированное
+ *          исполнение к выражению неприменимо - режимы UTF-8 и свойств Юникода,
+ *          классы со свойствами, соглашение о переводе строки не умолчания, -
+ *          и когда пустое совпадение совпадением не считается: метод поиска
+ *          отдаёт такое выражение исполнению без возврата прежде выбора прохода
+ *          обратного. Известен ответ у выражения, к позиции начала поиска
+ *          привязанного, причём привязка берётся признаком программы, выводимым
+ *          и самим выражением - «^» вне «MULTILINE», «\A», «\G», - а не одним
+ *          режимом сборки. Мера на стенде замеров: сборка выражения
+ *          «^(\d{1,3})\.…» быстрее на треть, восстановление записи - на пятую
+ *          долю, запись короче с 5514 байт до 3242; набор из 353 выражений
+ *          в режиме UTF-8 строил развёрнутую программу 114 выражениям, и всем
+ *          впустую - две пятых их сборки. Закреплено тестом
+ *          «Regex.EngineReverseUnreachable»: выражения этих родов программы
+ *          не получают, а соседние, привязки и режимов лишённые, - получают.
  *
  * \~english
  * @brief Header file of the regular expression engine — the Engine class, which unites parsing,
@@ -171,6 +198,13 @@
  *          and the change log. A known position where the match begins removes the repetition
  *          of the attempt, and then execution with backtracking gives a twofold advantage
  *          on the «.*needle» expression while being equal on the others.
+ *          An expression anchored to the position where the search begins needs no such pass:
+ *          the position of its beginning is known in advance — it is the position of the search, —
+ *          the attempt is a single one, and execution with backtracking is started at once for a
+ *          stretch of any length. Formerly the backward pass went for it as well, walking the whole
+ *          text for the sake of a known answer: on «^[a-z ]+X» with a match of twenty kilobytes over
+ *          a text of sixty-four — 190 microseconds against 53 now. Pinned by the test
+ *          «Regex.EngineAnchoredLong».
  *          <b>An expression with a leading literal is matched by execution with backtracking
  *          before checking the presence of a match by deterministic execution.</b>
  *          The order looks like giving up the fast check of the presence of a match, but
@@ -211,6 +245,23 @@
  *          a path that does not call that execution would leave the occurrence of its own
  *          text to someone else's match. The order is fixed by the
  *          «Regex.EngineLocatedHandoff» test.
+ *          <b>The reverse program is not built for every expression without a leading
+ *          literal.</b> Its absence looks like a loss of the search for the position of the
+ *          beginning, but such expressions cannot reach that search with any text, or its answer
+ *          is known in advance. It is unreachable when deterministic execution does not apply
+ *          to the expression — the UTF-8 and Unicode property modes, classes with properties,
+ *          a non-default newline convention, — and when an empty match does not count as a
+ *          match: the search method hands such an expression over to execution without
+ *          backtracking before choosing the backward pass. The answer is known for an expression
+ *          anchored to the position where the search begins, the anchoring being taken from the
+ *          indication of the program, which is derived from the expression itself as well —
+ *          «^» outside «MULTILINE», «\A», «\G», — rather than from the build mode alone.
+ *          Measured on the measuring stand: building the expression «^(\d{1,3})\.…» is faster
+ *          by a third, restoring the record by a fifth, the record is shorter, from 5514 bytes
+ *          down to 3242; the set of 353 expressions in the UTF-8 mode built a reverse program
+ *          for 114 expressions, all of them in vain — two fifths of their build. Pinned by the
+ *          test «Regex.EngineReverseUnreachable»: expressions of these kinds receive no program,
+ *          while the neighbouring ones, without the anchoring and the modes, do receive it.
  *
  * \~
  *

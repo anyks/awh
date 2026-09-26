@@ -17,10 +17,121 @@
  *        допустимых в начале совпадения, и обязательный литерал совпадения, позволяющие
  *        пропускать участки текста без запуска конечного автомата
  *
+ * @section prefilter_decisions Намеренные решения
+ *
+ * @details Перечисленное ниже выглядит несообразностью, но выбрано осознанно и
+ *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
+ *          каждый раз с одних и тех же выводов.
+ *
+ *          <b>Проход текста парой байтов начинается с границы тридцати двух
+ *          байтов.</b> Функция прохода несёт атрибут выравнивания начала -
+ *          макрос «AWH_REGEX_ALIGNED» в файле реализации. Без того начало её
+ *          задаёт длина кода, связанного прежде, и правка любой иной единицы
+ *          трансляции его сдвигает. На Apple M4 Max главный оборот прохода -
+ *          двадцать две команды, восемьдесят восемь байтов - ложился от такого
+ *          сдвига то в два отрезка по шестьдесят четыре байта, то в три, и восемь
+ *          строк поиска литерала теряли от 13 до 23 процентов при коде функции,
+ *          совпавшем до байта: правка развёрнутой программы, к поиску литерала
+ *          отношения не имеющая, сдвинула начало прохода в сборке стенда с 52
+ *          на 16 по модулю шестидесяти четырёх. С выравниванием эти строки
+ *          вровень с исходной сборкой: пять пар полных прогонов вперемежку дали
+ *          им от минус 1.5 до плюс 0.7 процента обеими мерами, а середине всех
+ *          строк - минус 0.1 процента разбором и плюс 0.2 кодом.
+ *
+ *          Граница - тридцать два байта, а не шестьдесят четыре, хотя отрезок
+ *          выборки команд - шестьдесят четыре. Выравнивание по шестидесяти
+ *          четырём поднимает выравнивание всего раздела кода, и в сборке стенда,
+ *          где раздел начинается на тридцати двух по модулю шестидесяти четырёх,
+ *          весь код сдвигался на тридцать два байта: пять пар полных прогонов
+ *          удержали тогда просадку разбора у восемнадцати строк исполнения
+ *          с возвратом, от 3.5 до 10.3 процента. Граница в тридцать два раздела
+ *          не сдвигает, а голова оборота - сорок байтов от начала по модулю
+ *          шестидесяти четырёх - при начале прохода на нуле ложится на сорок,
+ *          при начале на тридцати двух - на восемь: оборот умещается в два
+ *          отрезка при обоих положениях, при первом - впритык.
+ *
+ *          Закреплён один проход. Отбор позиции по литералу держит ещё
+ *          «(?:fox|dog)trot» на тексте протокола, но граница в тридцать два
+ *          кладёт его и на положение худшее: сборка, где вместе с проходом
+ *          выровнены отбор, поиск по якорному байту и поиск байта из набора,
+ *          теряла на этой строке 3.7 процента разбором и 5.5 кодом, а сборка
+ *          с одним проходом - 0.7 и 2.6.
+ *
+ *          На x86-64 (FreeBSD, Clang 19) главный оборот прохода длиною в сто
+ *          тридцать три байта и занимает три отрезка при всяком положении, и
+ *          строки поиска литерала к раскладке почти нечувствительны: во всех
+ *          сличениях, при всяком порядке связки, они держались в пределах трёх
+ *          процентов. Visual Studio выравнивания начала функции не знает, а LCC
+ *          атрибут принимает молча и не исполняет; макрос у обоих пуст, код же
+ *          Эльбруса от положения не зависит. Выравнивание головы самого оборота
+ *          атрибутом «clang::code_align» испытано и отвергнуто: Clang 19
+ *          на x86-64 у этого оборота его не исполнил.
+ *
+ *          Проход объявлен в пространстве модуля со связью внешней, а открытым
+ *          договором не объявлен: связь нужна проверке, берущей его адрес, и код
+ *          от неё не зависит - разделы кода совпали побайтно. Закрепляется
+ *          положение против правок чужих, но не своих: правка самой функции
+ *          двигает оборот внутри неё, и голову его надлежит после того сверить
+ *          разборкой. Числа и условия замеров - в «benchmark/regex/COMPARISON.md».
+ *          Закреплено проверкой «Regex.PrefilterAligned».
+ *
  * \~english
  * @brief Header file of the preliminary selection of matching positions — the set of bytes
  *        admissible at the beginning of a match and the mandatory literal of a match, which allow
  *        skipping stretches of the text without starting the finite automaton
+ *
+ * @section prefilter_decisions Deliberate decisions
+ *
+ * @details What is listed below looks like an incongruity, but it was chosen consciously
+ *          and is not subject to correction. The section exists so that an analysis of the code
+ *          does not start each time from the same conclusions.
+ *
+ *          <b>The pass through the text by a pair of bytes begins at a thirty-two-byte
+ *          boundary.</b> The function of the pass carries the attribute aligning its
+ *          beginning - the «AWH_REGEX_ALIGNED» macro in the implementation file. Without it
+ *          its beginning is set by the length of the code linked before it, and an edit of any
+ *          other translation unit shifts it. On Apple M4 Max the main loop of the pass - twenty-two
+ *          instructions, eighty-eight bytes - fell under such a shift now into two sixty-four-byte
+ *          stretches, now into three, and eight rows of the literal search lost from 13 to 23
+ *          percent while the code of the function matched to the byte: an edit of the reversed
+ *          program, having nothing to do with the literal search, moved the beginning of the pass
+ *          in the stand build from 52 to 16 modulo sixty-four. With the alignment these rows
+ *          are level with the original build: five pairs of interleaved full runs gave them from
+ *          minus 1.5 to plus 0.7 percent by both measures, and the median of all rows minus 0.1
+ *          percent by interpretation and plus 0.2 by code.
+ *
+ *          The boundary is thirty-two bytes rather than sixty-four, although the instruction
+ *          fetch stretch is sixty-four. Aligning to sixty-four raises the alignment of the whole
+ *          code section, and in the stand build, where the section begins at thirty-two modulo
+ *          sixty-four, all the code shifted by thirty-two bytes: five pairs of full runs then held
+ *          a drop of interpretation on eighteen rows of backtracking execution, from 3.5 to 10.3
+ *          percent. A thirty-two-byte boundary does not shift the section, and the head of the
+ *          loop - forty bytes from the beginning modulo sixty-four - falls at forty when the pass
+ *          begins at zero and at eight when it begins at thirty-two: the loop fits into two
+ *          stretches at both placements, at the first - exactly.
+ *
+ *          Only the pass is pinned. The selection by the literal also holds «(?:fox|dog)trot» on
+ *          the protocol text, but a thirty-two-byte boundary also puts it at a worse placement:
+ *          the build where the selection, the search by an anchor byte and the search for a byte
+ *          of a set are aligned together with the pass lost 3.7 percent by interpretation and 5.5
+ *          by code on this row, while the build with the pass alone lost 0.7 and 2.6.
+ *
+ *          On x86-64 (FreeBSD, Clang 19) the main loop of the pass is one hundred and thirty-three
+ *          bytes long and takes three stretches at any placement, and the rows of the literal
+ *          search are almost insensitive to the layout: in all comparisons, at any link order,
+ *          they stayed within three percent. Visual Studio does not know the alignment of
+ *          a function's beginning, while LCC accepts the attribute silently and does not execute
+ *          it; the macro is empty for both, and the code of Elbrus does not depend on the
+ *          placement. Aligning the head of the loop itself with the «clang::code_align» attribute
+ *          was tried and rejected: Clang 19 on x86-64 did not execute it for this loop.
+ *
+ *          The pass is declared in the namespace of the module with external linkage while the
+ *          public contract does not declare it: the linkage is needed by the test that takes its
+ *          address, and the code does not depend on it - the code sections matched byte for byte.
+ *          The placement is pinned against the edits of others, not against one's own: an edit of
+ *          the function itself moves the loop within it, and its head must then be checked by
+ *          disassembly. The numbers and conditions of the measurements are in
+ *          «benchmark/regex/COMPARISON.md». Pinned by the «Regex.PrefilterAligned» test.
  *
  * \~
  *

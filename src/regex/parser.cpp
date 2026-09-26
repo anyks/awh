@@ -328,6 +328,16 @@ uint32_t awh::regex::Parser::captures() const noexcept {
 	return this->_captures;
 }
 /**
+ * @brief Метод извлечения количества классов символов
+ *
+ * @return количество классов символов в хранилище классов
+ *
+ */
+uint32_t awh::regex::Parser::classes() const noexcept {
+	// Выводим количество классов символов в хранилище классов
+	return static_cast <uint32_t> (this->_classes.size());
+}
+/**
  * @brief Метод извлечения предела шагов сопоставления выражения
  *
  * @return предел шагов сопоставления либо нуль при его отсутствии

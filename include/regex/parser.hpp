@@ -475,6 +475,24 @@ namespace awh {
 				uint32_t captures() const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод извлечения количества классов символов
+				 *
+				 * @details Всякий узел класса символов заводит в хранилище классов
+				 *          запись свою, отчего номер записи узлу и отвечает.
+				 *
+				 * @return количество классов символов в хранилище классов
+				 *
+				 * \~english
+				 * @brief Method of getting the number of character classes
+				 * @details Every node of a character class creates its own record in the
+				 *          class storage, which is why the number of the record answers the node.
+				 * @return number of character classes in the class storage
+				 *
+				 * \~
+				 */
+				uint32_t classes() const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод извлечения предела шагов сопоставления выражения
 				 *
 				 * @return предел шагов сопоставления либо нуль при его отсутствии

@@ -239,7 +239,8 @@ int main(int argc, char ** argv) {
 		"JITTED", "PLAIN", "SEEKING", "CACHING", "PIKING", "TRACKING",
 		"BOUNDING", "PRESUMING", "DENYING", "VERIFYING", "SWEEPING",
 		"HALTING", "REUSING", "SUBSETTING", "TABULATING", "PROBING",
-		"LINING", "SOLIDING", "BARRING", "SLIDING", "CHAINING", "YIELDING"
+		"LINING", "SOLIDING", "BARRING", "SLIDING", "CHAINING", "YIELDING",
+		"RECALLING"
 	};
 	static_assert(
 		(sizeof(PATHS) / sizeof(PATHS[0])) == static_cast <size_t> (awh::regex::path_t::COUNT),

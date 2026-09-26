@@ -71,6 +71,34 @@
  *          пометка сличается с определением литерала, а у развёрнутой программы
  *          проверяется её отсутствие.
  *
+ *          <b>Развёрнутой программе пометки повторений, рядов и цепочек не ставятся,
+ *          а переход по двум ветвям рождается с недействительным адресом тела.</b>
+ *          Первое выглядит недосмотром: у прямой программы пометки есть, у развёрнутой
+ *          их нет. Развёрнутую программу исполняет одно лишь детерминированное
+ *          исполнение, а оно ведёт наборы состояний по графу инструкций и пометок
+ *          не читает вовсе; восстановление записи отсутствие их принимает. Проходы
+ *          пометки стоили развёрнутой компиляции пятой доли - 321.8 микросекунды
+ *          против 256.3 на наборе из 353 выражений, образцов Grok и выражений стенда
+ *          замеров, - а образцу «SECOND» четырёх пятых. Второе выглядит лишним:
+ *          пометку проход ставит и сам. Но нуль в поле пометки - адрес тела, а не
+ *          отсутствие его, и развёрнутая программа, прохода лишённая, несла бы
+ *          у всякого перехода пометку ложную, «тело по адресу нулевому», какую
+ *          проверка записи хранилища пропускает. Закреплено тестом
+ *          «Regex.EngineReverseUnmarked»: у развёрнутой программы пометок нет ни
+ *          одной, а у прямой программы тех же выражений они есть.
+ *
+ *          <b>Номер размещённого класса символов запоминается по номеру класса
+ *          разбора, хотя отсев повторов тот же номер находит и сам.</b> Отсев
+ *          разыскивал его перебором размещённых классов на всякой копии счётного
+ *          повторения: на наборе образцов Grok размещений 77 055 при классах
+ *          различных 1 389, и образцам, повторяющим класс тысячами копий, розыск
+ *          стоил двух пятых сборки. Запомненный номер есть ровно тот, какой вернул
+ *          бы отсев: разбор заводит запись класса на всякий узел, а в ключе хранятся
+ *          и режимы, отсевом различаемые, - программа выходит та же до байта,
+ *          что сличено отпечатком 237 381 программы, прямых и развёрнутых. Закреплено
+ *          тестом «Regex.EngineClassRecall»: копии повторения берут номер путём
+ *          «RECALLING», а класс под режимами иными получает номер свой.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -125,6 +153,35 @@
  *          a par with a building that sets no mark at all. Pinned by the test
  *          «Regex.EngineLiteralPlacement»: the mark is compared with the definition of a
  *          literal, and its absence is checked in the reverse program.
+ *
+ *          <b>The reverse program receives no marks of repetitions, runs and chains,
+ *          and a two-branch jump is born with an invalid address of the body.</b>
+ *          The first looks like an oversight: the forward program has the marks, the
+ *          reverse one does not. The reverse program is executed by the deterministic
+ *          execution alone, which walks the sets of states over the graph of the
+ *          instructions and does not read the marks at all; the restoration of a record
+ *          accepts their absence. The marking passes cost the reverse compilation a fifth —
+ *          321.8 microseconds against 256.3 over a set of 353 expressions, the Grok patterns
+ *          and the expressions of the measuring stand, — and four fifths for the «SECOND»
+ *          pattern. The second looks redundant: the pass sets the mark by itself. But a zero
+ *          in the mark field is the address of a body rather than its absence, and a reverse
+ *          program deprived of the pass would carry at every jump a false mark, «the body at
+ *          address zero», which the check of a storage record lets through. Pinned by the
+ *          test «Regex.EngineReverseUnmarked»: the reverse program carries no mark at all,
+ *          while the forward program of the same expressions does carry them.
+ *
+ *          <b>The number of a placed character class is remembered by the class number of
+ *          the parser, although the folding of duplicates finds the same number by itself.</b>
+ *          The folding searched for it by walking the placed classes at every copy of a counted
+ *          repetition: the set of Grok patterns has 77 055 placements against 1 389 distinct
+ *          classes, and for the patterns repeating a class by thousands of copies the search
+ *          cost two fifths of the build. The remembered number is exactly the one the folding
+ *          would return: the parser creates a class record for every node, and the key also
+ *          keeps the modes that the folding tells apart, — the program comes out the same
+ *          to the byte, which was compared by the fingerprint of 237 381 programs, forward and
+ *          reverse. Pinned by the test «Regex.EngineClassRecall»: the copies of a repetition
+ *          take the number by the «RECALLING» path, while a class under other modes receives
+ *          its own number.
  *
  * \~
  *
@@ -499,6 +556,46 @@ namespace awh {
 				 * \~
 				 */
 				vector <uint32_t> _modes;
+			private:
+				/**
+				 * \~russian
+				 * Соответствие номеров классов разбора номерам классов программы
+				 *
+				 * @details Счётное повторение компилируется копиями, и всякая копия
+				 *          класса символов звала размещение, а размещение сличало
+				 *          класс со всеми размещёнными прежде: отсев повторов
+				 *          возвращал номер тот же, но разыскивал его заново на всякой
+				 *          копии. У набора образцов Grok размещений 77 055, а классов
+				 *          различных - 1 389, и у образцов, повторяющих класс тысячами
+				 *          копий, розыск этот стоил двух пятых сборки.
+				 *
+				 *          Ряд держится плотным по номеру класса разбора: всякий узел
+				 *          класса заводит запись свою, и номер записи узлу отвечает.
+				 *          Хранит ряд номер класса программы и режимы, с какими класс
+				 *          размещён: отсев различает режимы, и запомненный номер годен
+				 *          лишь размещению с режимами теми же. Отсутствие записи
+				 *          означено приметою `INVALID_CLASS`.
+				 *
+				 * \~english
+				 * Correspondence of the class numbers of the parser to the class numbers of the program
+				 * @details A counted repetition is compiled by copies, and every copy of a
+				 *          character class called the placement, while the placement compared
+				 *          the class with all the ones placed before: the folding of duplicates
+				 *          returned the same number, but searched for it anew at every copy.
+				 *          The set of Grok patterns has 77 055 placements and 1 389 distinct
+				 *          classes, and for the patterns repeating a class by thousands of
+				 *          copies that search cost two fifths of the build.
+				 *
+				 *          The sequence is kept dense by the class number of the parser: every
+				 *          class node creates its own record, and the number of the record answers
+				 *          the node. The sequence keeps the class number of the program and the
+				 *          modes with which the class was placed: the folding tells the modes apart,
+				 *          and a remembered number fits only a placement with the same modes. The
+				 *          absence of a record is marked by the sign `INVALID_CLASS`.
+				 *
+				 * \~
+				 */
+				vector <pair <uint32_t, uint32_t>> _stored;
 			private:
 				// Код ошибки последней операции компиляции
 				error_t _error;

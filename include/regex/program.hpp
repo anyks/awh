@@ -97,6 +97,17 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Значение номера отсутствующего класса символов программы
+		 *
+		 * \~english
+		 * @brief Index value of a missing character class of the program
+		 *
+		 * \~
+		 */
+		constexpr uint32_t INVALID_CLASS = static_cast <uint32_t> (~0u);
+
+		/**
+		 * \~russian
 		 * @brief Наибольшее допустимое количество инструкций программы
 		 *
 		 * \~english
