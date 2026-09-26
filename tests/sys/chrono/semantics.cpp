@@ -3285,3 +3285,23 @@ TEST_F(ChronoFixture, ExecutionLowerCaseDelimitersChronoTest){
 	// Расширенная форма ISO 8601 со строчным разделителем пригодной не считается
 	ASSERT_FALSE(this->_chrono->validate("2003-10-11t22:14:15Z", awh::chrono_t::standard_t::ISO8601));
 }
+/**
+ * @brief Тест разбора негодной записи в число
+ *
+ * @details Признак пригодности и число передаются раздельно: запись RFC 3339 без
+ *          зоны стандарту не отвечает, но читаема, и разбор отдаёт её момент в зоне
+ *          окружения, а не нуль. Нуль отказом служить не может - это законная дата
+ *
+ */
+TEST_F(ChronoFixture, ExecutionUnfitRecordYieldsNumberChronoTest){
+	// Признак пригодности записи
+	bool valid = true;
+	// Выполняем разбор записи, стандарту не отвечающей
+	const uint64_t stamp = this->_chrono->parse("2003-10-11T22:14:15", awh::chrono_t::standard_t::RFC3339, valid, awh::chrono_t::storage_t::GLOBAL);
+	// Запись без зоны стандарту RFC 3339 не отвечает
+	ASSERT_FALSE(valid);
+	// Разбор отдаёт момент записи в зоне окружения фикстуры, а не нуль
+	ASSERT_EQ(stamp, static_cast <uint64_t> (1065910455000));
+	// Проверка пригодности записи отказ подтверждает
+	ASSERT_FALSE(this->_chrono->validate("2003-10-11T22:14:15", awh::chrono_t::standard_t::RFC3339));
+}

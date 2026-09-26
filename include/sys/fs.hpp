@@ -478,10 +478,11 @@ namespace awh {
 			 *       криптографии: `MoveFileEx` с признаками `MOVEFILE_REPLACE_EXISTING` и
 			 *       `MOVEFILE_WRITE_THROUGH`. Первый дозволяет замену на месте, второй велит
 			 *       дождаться, пока запись ляжет на устройство, - иначе подмена считается
-			 *       свершённой прежде времени. Зовётся узкий вид (`MoveFileExA`), а не широкий:
-			 *       пути ходят здесь `std::string`, и широкий их не примет
+			 *       свершённой прежде времени. Зовётся широкий вид (`MoveFileExW`), а не узкий:
+			 *       узкий читает пути в кодовой странице ANSI, и путь UTF-8 с символами вне
+			 *       неё до файла не доходит - пути перекладываются в UTF-16 через fmk::convert
 			 *
-			 * @note Тело живёт в `src/codec/replace.cpp`, а не здесь, - по общему правилу
+			 * @note Тело живёт в `src/sys/fs.cpp`, а не здесь, - по общему правилу
 			 *       дерева о чистых заголовочных файлах. Порядок этот важен не только видом:
 			 *       `windows.h` приносит макросы `ERROR`, `DELETE`, `TEXT`, и, стой включение
 			 *       в заголовке, они расходились бы по всякому кодеку, его включившему. В
@@ -513,10 +514,11 @@ namespace awh {
 			 *       `MoveFileEx` with the attributes `MOVEFILE_REPLACE_EXISTING` and `MOVEFILE_WRITE_THROUGH`.
 			 *       The first allows replacement on the spot, the second tells you to wait until the recording
 			 *       is transferred to the device, otherwise the replacement is considered completed ahead of time.
-			 *       The name is the narrow view (`MoveFileExA`), not the wide one: the paths go here `std::string`,
-			 *       and the wide one will not accept them
+			 *       The wide view (`MoveFileExW`) is called, not the narrow one: the narrow one reads paths in the ANSI
+			 *       code page, and a UTF-8 path with characters outside it does not reach the file - the paths
+			 *       are converted to UTF-16 through fmk::convert
 			 *
-			 * @note The body lives in `src/codec/replace.cpp`, and not here - according to the general tree rule
+			 * @note The body lives in `src/sys/fs.cpp`, and not here - according to the general tree rule
 			 *       about pure header files. This order is important not only in appearance:
 			 *       `windows.h` brings the macros `ERROR`, `DELETE`, `TEXT`, and if included in the header,
 			 *       they would diverge for any codec that included it. In the source code,

@@ -1314,3 +1314,73 @@ TEST_F(FSFixture, TruncateCutsAndCreatesEmptyTest){
 	// Удаляем проверяемый файл
 	ASSERT_TRUE(this->_fs->unlink(file));
 }
+
+/**
+ * @brief Тест адреса, поданного представлением без завершающего нуля
+ *
+ * @details Представление строки завершающего нуля не гарантирует, и прежде его
+ *          указатель уходил в системные вызовы как есть: stat и unlink читали адрес
+ *          до первого нуля за пределами представления. Удаление отсутствующего файла
+ *          «…_a», поданного представлением, вырезанным из строки «…_ab», сносило
+ *          соседний файл «…_ab», а определение вида отвечало, что файл есть
+ *
+ */
+TEST_F(FSFixture, AddressViewWithoutTerminatorTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Файл, из адреса которого вырезается представление
+	const std::string file = "test_view_unit_ab";
+	// Адрес без последнего символа указывает на отсутствующий файл
+	const std::string_view view(file.data(), file.size() - 1);
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Заводим проверяемый файл
+	ASSERT_TRUE(this->_fs->write(file, "data", 4));
+	// Отсутствующий файл обязан определяться отсутствующим
+	ASSERT_EQ(this->_fs->type(view), awh::fs_t::type_t::NONE);
+	// Удаление отсутствующего файла обязано ответить отказом
+	ASSERT_FALSE(this->_fs->unlink(view, true));
+	// Соседний файл обязан уцелеть
+	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Тест записи в существующий пустой файл
+ *
+ * @details У MS Windows разрешение адреса пробовало ярлыком всякий файл, и файл
+ *          нулевой длины IPersistFile::Load принимал за пустой ярлык: адрес
+ *          сводился к пустой строке, и запись в существующий пустой файл, его
+ *          чтение и усечение отказывали. Разрешённый адрес обязан быть непустым и
+ *          не нести завершающего нуля внутри строки
+ *
+ */
+TEST_F(FSFixture, WriteIntoExistingEmptyFileTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_empty_unit.txt";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Заводим пустой файл
+	ASSERT_TRUE(this->_fs->truncate(file));
+	// Длина заведённого файла обязана быть нулевой
+	ASSERT_EQ(this->_fs->size(file), 0u);
+	// Разрешённый адрес существующего пустого файла
+	const std::string address = this->_fs->fullpath(file, true);
+	// Адрес обязан быть получен
+	ASSERT_FALSE(address.empty());
+	// Завершающего нуля внутри адреса быть не должно
+	ASSERT_EQ(address.find('\0'), std::string::npos);
+	// Запись в существующий пустой файл обязана пройти
+	ASSERT_TRUE(this->_fs->write(file, "abc", 3));
+	// Записанное обязано читаться
+	ASSERT_EQ(this->_fs->read <std::string> (file), "abc");
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}

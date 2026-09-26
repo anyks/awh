@@ -345,6 +345,43 @@ namespace awh {
 				// Признак вычисления длины с разрешением вызовов подпрограмм
 				bool _resolving;
 			private:
+				/**
+				 * \~russian
+				 * Набор видов глаголов управления, разбором заведённых
+				 *
+				 * @details Разряд набора отвечает виду глагола: номер разряда есть
+				 *          значение вида. Разбор ставит разряд, заводя узел глагола,
+				 *          а построитель по набору решает, искать ли глагол обходом
+				 *          дерева: выражению, узла глагола нужного вида не заведшему,
+				 *          обход не нужен вовсе.
+				 *
+				 * @note Поле лежит в зазоре за признаком вычисления длины намеренно:
+				 *       размер объекта и смещения полей прочих остаются прежними.
+				 *       Вставленное за хранилищем имён, оно сдвигало поля разбора
+				 *       на 4-8 байт, и разбор набора из 353 выражений шёл медленнее
+				 *       на 0.7 процента в 35 кругах из 40; последним - растило объект
+				 *       на 8 байт, и на столько же сдвигались поля движка, за объектом
+				 *       разбора лежащие, - автоматы и исполнители сопоставления
+				 *
+				 * \~english
+				 * Set of the kinds of the control verbs created by the parsing
+				 * @details A bit of the set answers a kind of verb: the number of the bit is
+				 *          the value of the kind. The parsing sets the bit when it creates
+				 *          the node of a verb, and the compiler decides by the set whether
+				 *          to search for a verb by walking the tree: an expression that has
+				 *          created no node of a verb of the needed kind needs no walk at all.
+				 * @note The field lies in the gap after the flag of length computation
+				 *       deliberately: the size of the object and the offsets of the other fields
+				 *       stay as before. Inserted after the storage of names, it shifted the
+				 *       fields of the parser by 4-8 bytes, and parsing the set of 353 expressions
+				 *       went 0.7 per cent slower in 35 rounds out of 40; standing last, it grew
+				 *       the object by 8 bytes, and the fields of the engine lying after the parser
+				 *       object — the automata and the matching executors — shifted by as much
+				 *
+				 * \~
+				 */
+				uint32_t _verbs;
+			private:
 				// Соответствие имён групп их номерам
 				unordered_map <string, vector <uint32_t>> _groups;
 			public:
@@ -491,6 +528,30 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t classes() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения набора видов глаголов управления
+				 *
+				 * @details Разряд набора ставится, когда разбор заводит узел глагола
+				 *          вида, разряду отвечающего: номер разряда есть значение вида.
+				 *          Набор говорит об узлах заведённых, а не о достижимых: разряд
+				 *          поставленный узла в дереве не обещает, тогда как разряд
+				 *          снятый обещает наверное, что узла того вида нет вовсе.
+				 *
+				 * @return набор видов глаголов управления, разбором заведённых
+				 *
+				 * \~english
+				 * @brief Method of getting the set of the kinds of the control verbs
+				 * @details A bit of the set is set when the parsing creates the node of a verb
+				 *          of the kind answering the bit: the number of the bit is the value of
+				 *          the kind. The set tells about the created nodes rather than the
+				 *          reachable ones: a set bit does not promise a node in the tree, whereas
+				 *          a clear bit surely promises that there is no node of that kind at all.
+				 * @return set of the kinds of the control verbs created by the parsing
+				 *
+				 * \~
+				 */
+				uint32_t verbs() const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения предела шагов сопоставления выражения

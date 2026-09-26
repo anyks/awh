@@ -110,7 +110,7 @@ namespace {
  */
 awh::regex::Parser::Parser() noexcept :
  _pos(0), _root(INVALID_NODE), _depth(0), _captures(0), _total(0), _stepLimit(~0u), _depthLimit(~0u), _heapLimit(~0u), _convention(newline_t::LF), _restricted(false),
- _flags(0), _options(0), _look(0), _error(error_t::NONE), _errorPos(0), _barrier(false), _resolving(false) {
+ _flags(0), _options(0), _look(0), _error(error_t::NONE), _errorPos(0), _barrier(false), _resolving(false), _verbs(0) {
 	// Резервируем память под арену узлов синтаксического дерева
 	this->_nodes.reserve(64);
 }
@@ -163,6 +163,8 @@ void awh::regex::Parser::reset() noexcept {
 	this->_restricted = false;
 	// Выполняем очистку хранилища имён отметок глаголов управления
 	this->_markers.clear();
+	// Выполняем сброс набора видов глаголов управления
+	this->_verbs = 0;
 	// Выполняем очистку хранилища классов символов
 	this->_classes.clear();
 	// Выполняем очистку хранилища имён именованных групп
@@ -336,6 +338,16 @@ uint32_t awh::regex::Parser::captures() const noexcept {
 uint32_t awh::regex::Parser::classes() const noexcept {
 	// Выводим количество классов символов в хранилище классов
 	return static_cast <uint32_t> (this->_classes.size());
+}
+/**
+ * @brief Метод извлечения набора видов глаголов управления
+ *
+ * @return набор видов глаголов управления, разбором заведённых
+ *
+ */
+uint32_t awh::regex::Parser::verbs() const noexcept {
+	// Выводим набор видов глаголов управления, разбором заведённых
+	return this->_verbs;
 }
 /**
  * @brief Метод извлечения предела шагов сопоставления выражения
@@ -3776,6 +3788,8 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			const node_id_t result = this->createNode(node_t::CONTROL);
 			// Выполняем установку вида глагола управления возвратом
 			this->_nodes.at(result).control.type = control_t::MARK;
+			// Выполняем отметку вида глагола в наборе видов, разбором заведённых
+			this->_verbs |= (1u << static_cast <uint8_t> (control_t::MARK));
 			// Выполняем установку смещения имени отметки в хранилище имён
 			this->_nodes.at(result).control.offset = spot;
 			// Выполняем установку длины имени отметки
@@ -3855,6 +3869,8 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			this->_nodes.at(result).control.type = ((name == "ACCEPT") ? control_t::ACCEPT :
 			 ((name == "COMMIT") ? control_t::COMMIT : ((name == "PRUNE") ? control_t::PRUNE :
 			 ((name == "SKIP") ? control_t::SKIP : control_t::THEN))));
+			// Выполняем отметку вида глагола в наборе видов, разбором заведённых
+			this->_verbs |= (1u << static_cast <uint8_t> (this->_nodes.at(result).control.type));
 			// Выполняем установку смещения имени отметки в хранилище имён
 			this->_nodes.at(result).control.offset = spot;
 			// Выполняем установку длины имени отметки
@@ -3951,6 +3967,8 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			const node_id_t marker = this->createNode(node_t::CONTROL);
 			// Выполняем установку вида глагола управления возвратом
 			this->_nodes.at(marker).control.type = control_t::MARK;
+			// Выполняем отметку вида глагола в наборе видов, разбором заведённых
+			this->_verbs |= (1u << static_cast <uint8_t> (control_t::MARK));
 			// Выполняем установку смещения имени отметки в хранилище имён
 			this->_nodes.at(marker).control.offset = spot;
 			// Выполняем установку длины имени отметки

@@ -99,6 +99,35 @@
  *          тестом «Regex.EngineClassRecall»: копии повторения берут номер путём
  *          «RECALLING», а класс под режимами иными получает номер свой.
  *
+ *          <b>Глагол управления построение ищет обходом дерева лишь тогда, когда
+ *          разбор завёл узел глагола нужного вида.</b> Набор видов, разбором
+ *          заведённых, выглядит дублем: дерево несёт узлы глаголов и само,
+ *          а разряд говорит об узле заведённом, а не о достижимом. Обход же
+ *          стоил дорого: глагол перехода к ветви следующей искался на всякой
+ *          ветви всякого выбора и на всякой копии счётного повторения, а глаголы
+ *          завершения и управления прочие формирование отбора искало обходом
+ *          дерева целиком. На наборе из 353 выражений, образцов Grok и выражений
+ *          стенда замеров, поиск глагола перехода брал 16.4 процента собственного
+ *          времени сборки, поиски отбора - ещё 5.1; с набором видов сборка набора
+ *          быстрее на 21.4 процента - 4822 микросекунды против 6136, сорок кругов
+ *          вперемежку, - у 331 выражения быстрее не менее чем на два процента,
+ *          а медленнее на столько же - ни у одного. Разряд снятый обещает
+ *          отсутствие узла наверное, и ответ выходит тот же, что дал бы обход;
+ *          разряд поставленный ведёт к обходу прежнему. Закреплено тестом
+ *          «Regex.EngineVerbWaiving»: отказ от обхода учитывается путём «WAIVING»,
+ *          а исходы, отбором позиций решаемые, сличаются с ожиданиями эталона.
+ *
+ *          <b>Глагол перехода к ветви следующей ищется в ветви одной, а не цепочкой
+ *          от неё, как ищутся глаголы прочие.</b> Обход цепочкой выглядел бы
+ *          единообразнее, но ветви выбора связаны цепочкой одною, и обход её от
+ *          ветви захватывал все ветви, за нею следующие: ветвь без глагола получала
+ *          отметку начала оттого лишь, что глагол несла ветвь соседняя, а выбор из
+ *          многих ветвей проверялся за квадрат их числа. Исходов лишняя отметка не
+ *          меняет: 150 000 случайных выражений с глаголами дали исходы, границы,
+ *          захваты и имя отметки те же до одного, а отметок ушло 9 260 у 7 735
+ *          программ. Закреплено тестом «Regex.EngineBranchMark»: отметок у выбора
+ *          столько, сколько ветвей несут глагол, а исходы сличены с эталоном.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -182,6 +211,37 @@
  *          reverse. Pinned by the test «Regex.EngineClassRecall»: the copies of a repetition
  *          take the number by the «RECALLING» path, while a class under other modes receives
  *          its own number.
+ *
+ *          <b>The compiler searches for a control verb by walking the tree only when the
+ *          parsing has created the node of a verb of the needed kind.</b> The set of the kinds
+ *          created by the parsing looks like a duplicate: the tree carries the nodes of the
+ *          verbs by itself, and a bit tells about a created node rather than a reachable one.
+ *          The walk, however, cost dearly: the verb of moving to the next branch was searched
+ *          for at every branch of every alternation and at every copy of a counted repetition,
+ *          while the forming of the prefilter searched for the completing verb and for the
+ *          other control verbs by walking the whole tree. Over a set of 353 expressions, the
+ *          Grok patterns and the expressions of the measuring stand, the search for the verb
+ *          of moving took 16.4 per cent of the own time of the build, the searches of the
+ *          prefilter another 5.1; with the set of kinds the build of the set is 21.4 per cent
+ *          faster — 4822 microseconds against 6136, forty interleaved rounds, — 331 expressions
+ *          are faster by at least two per cent, and none is slower by as much. A clear bit
+ *          surely promises the absence of a node, and the answer is the same the walk would
+ *          give; a set bit leads to the former walk. Pinned by the test
+ *          «Regex.EngineVerbWaiving»: giving up the walk is accounted for by the «WAIVING»
+ *          path, and the outcomes decided by the prefilter are compared with the expectations
+ *          of the reference.
+ *
+ *          <b>The verb of moving to the next branch is searched for in one branch rather than
+ *          along the chain from it, as the other verbs are searched for.</b> Walking the chain
+ *          would look more uniform, but the branches of an alternation are linked by one chain,
+ *          and walking it from a branch took in all the branches following it: a branch without
+ *          the verb received the mark of its beginning merely because a neighbouring branch
+ *          carried the verb, and an alternation of many branches was checked in the square of
+ *          their number. The extra mark does not change the outcomes: 150 000 random expressions
+ *          with verbs gave the same outcomes, boundaries, captures and mark names to the last
+ *          one, while 9 260 marks were removed from 7 735 programs. Pinned by the test
+ *          «Regex.EngineBranchMark»: an alternation has as many marks as there are branches
+ *          carrying the verb, and the outcomes are compared with the reference.
  *
  * \~
  *
@@ -1067,11 +1127,36 @@ namespace awh {
 				address_t marking(const uint32_t offset, const uint32_t length, const uint32_t flags, const bool named) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод проверки наличия у выражения глаголов управления видов заданных
+				 *
+				 * @details Разбор отмечает виды глаголов, узлы каких заводит, и дерево
+				 *          в поисках глагола обходится лишь при разряде нужного вида.
+				 *          Отказ от обхода учитывается путём «WAIVING».
+				 *
+				 * @param kinds набор разрядов видов глаголов управления
+				 * @return      результат проверки наличия глаголов видов заданных
+				 *
+				 * \~english
+				 * @brief Method of checking whether the expression carries control verbs of the given kinds
+				 * @details The parsing marks the kinds of the verbs whose nodes it creates, and the tree
+				 *          is walked in search of a verb only when the bit of the needed kind is set.
+				 *          Giving up the walk is accounted for by the «WAIVING» path.
+				 * @param kinds set of the bits of the kinds of control verbs
+				 * @return      result of checking whether verbs of the given kinds are present
+				 *
+				 * \~
+				 */
+				bool carries(const uint32_t kinds) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод проверки наличия глагола перехода к ветви следующей
 				 *
 				 * @details Ветвь, глагола этого не несущая, отметки начала своего
 				 *          не требует: отметка размещается лишь там, где возврат
-				 *          в глагол её и употребит.
+				 *          в глагол её и употребит. Проверяется сам узел и узлы,
+				 *          в него вложенные, а соседи его в проверку не входят:
+				 *          ветви выбора связаны одною цепочкой, и обход её захватывал
+				 *          бы все ветви, за проверяемой следующие.
 				 *
 				 * @param id индекс проверяемого узла в арене узлов
 				 * @return   результат проверки наличия глагола перехода
@@ -1080,6 +1165,10 @@ namespace awh {
 				 * @brief Method of checking the presence of the verb of moving to the next branch
 				 * @details A branch that does not carry that verb requires no mark of its beginning:
 				 *          the mark is placed only where backtracking into the verb will use it.
+				 *          The node itself and the nodes nested in it are checked, while its
+				 *          neighbours are not: the branches of an alternation are linked by one
+				 *          chain, and walking it would take in all the branches following
+				 *          the checked one.
 				 * @param id index of the checked node in the node arena
 				 * @return   result of checking the presence of the verb of moving
 				 *

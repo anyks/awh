@@ -1562,12 +1562,19 @@ namespace awh {
 			 *          Прежде разреза не было, а debug() был шаблоном и передавал доводы прямою
 			 *          пачкою `args...`; шаблон же вынуждал держать сборку записи в заголовочном файле
 			 *
+			 * @warning Отладочная обвязка (название метода и его доводы) подаётся отдельно,
+			 *          доводом prefix, и приклеивается к уже сформированному тексту. Прежде
+			 *          она вклеивалась в саму строку формата, и довод, несущий знак процента
+			 *          (адрес вида "/tmp/100%d"), разбирался vsnprintf как переменная формата:
+			 *          переменные съедали настоящие доводы и читали мусор со стека
+			 *
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 * @param args   заведённый список аргументов формирования записи
+			 * @param prefix готовый текст, предваряющий сформированную запись
 			 *
 			 */
-			void emit(string_view format, log::flag_t flag, va_list args) noexcept {
+			void emit(string_view format, log::flag_t flag, va_list args, string_view prefix = string_view()) noexcept {
 				// Если формат передан и уровень логирования соответствует
 				if(!format.empty() && allowed(flag)){
 					// Создаём текст для логирования
@@ -1576,6 +1583,8 @@ namespace awh {
 					vector <char> buffer(1024);
 					// Результирующая строка логирования
 					string result;
+					// Признак сформированной записи
+					bool formatted = false;
 					/**
 					 * Выполняем формирование строки лога с учётом списка аргументов
 					 */
@@ -1596,6 +1605,8 @@ namespace awh {
 						if(static_cast <size_t> (res) < buffer.size()){
 							// Копируем сформированную строку
 							result.assign(buffer.data(), static_cast <size_t> (res));
+							// Запись сформирована
+							formatted = true;
 							// Выходим из цикла
 							break;
 						}
@@ -1603,13 +1614,15 @@ namespace awh {
 						buffer.resize(static_cast <size_t> (res) + 1);
 					}
 					// Если результирующая строка сформирована
-					if(!result.empty()){
+					if(formatted && (!result.empty() || !prefix.empty())){
 						// Создаём объект полезной нагрузки
 						payload_t payload;
 						// Устанавливаем флаг логирования
 						payload.flag = flag;
+						// Устанавливаем обвязку сообщения
+						payload.text.assign(prefix);
 						// Устанавливаем данные сообщения
-						payload.text = ::move(result);
+						payload.text.append(result);
 						// Фиксируем дату формирования сообщения в момент вызова
 						payload.date = state()._chrono.format(state()._format);
 						// Выполняем маршрутизацию полезной нагрузки в приёмники
@@ -1623,9 +1636,10 @@ namespace awh {
 			 * @param format формат строки вывода
 			 * @param flag   флаг типа логирования
 			 * @param args   заведённый список аргументов формирования записи
+			 * @param prefix готовый текст, предваряющий сформированную запись
 			 *
 			 */
-			void emit(wstring_view format, log::flag_t flag, va_list args) noexcept {
+			void emit(wstring_view format, log::flag_t flag, va_list args, string_view prefix = string_view()) noexcept {
 				// Если формат передан и уровень логирования соответствует
 				if(!format.empty() && allowed(flag)){
 					// Создаём текст для логирования
@@ -1634,6 +1648,8 @@ namespace awh {
 					vector <wchar_t> buffer(1024);
 					// Результирующая строка логирования
 					wstring result;
+					// Признак сформированной записи
+					bool formatted = false;
 					/**
 					 * Выполняем формирование строки лога с учётом списка аргументов
 					 */
@@ -1650,6 +1666,8 @@ namespace awh {
 						if((res >= 0) && (static_cast <size_t> (res) < buffer.size())){
 							// Копируем сформированную строку
 							result.assign(buffer.data(), static_cast <size_t> (res));
+							// Запись сформирована
+							formatted = true;
 							// Выходим из цикла
 							break;
 						}
@@ -1665,13 +1683,15 @@ namespace awh {
 						buffer.resize(buffer.size() * 2);
 					}
 					// Если результирующая строка сформирована
-					if(!result.empty()){
+					if(formatted && (!result.empty() || !prefix.empty())){
 						// Создаём объект полезной нагрузки
 						payload_t payload;
 						// Устанавливаем флаг логирования
 						payload.flag = flag;
+						// Устанавливаем обвязку сообщения
+						payload.text.assign(prefix);
 						// Устанавливаем данные сообщения
-						payload.text = fmk::convert(result);
+						payload.text.append(fmk::convert(result));
 						// Фиксируем дату формирования сообщения в момент вызова
 						payload.date = state()._chrono.format(state()._format);
 						// Выполняем маршрутизацию полезной нагрузки в приёмники
@@ -1716,19 +1736,24 @@ namespace awh {
 				return result;
 			}
 			/**
-			 * @brief Функция сборки отладочной записи
+			 * @brief Функция сборки обвязки отладочной записи
 			 *
 			 * @details Сборка эта прежде стояла в заголовочном файле, в телах самих шаблонов
 			 *          debug(), и разбиралась заново каждою единицей трансляции, хотя от видов
 			 *          доводов не зависит ни единою своей частью
 			 *
-			 * @param format формат строки вывода
+			 * @warning Обвязка - готовый текст, а не часть строки формата: название метода
+			 *          и доводы несут знаки процента (адрес "/tmp/100%d", operator%) и
+			 *          доллара (адрес "/tmp/$1"), и в строке формата vsnprintf и подстановка
+			 *          по списку разбирали их как свои обозначения. Сообщение формируется
+			 *          отдельно, а обвязка приклеивается к уже сформированному тексту
+			 *
 			 * @param method название вызываемого метода
 			 * @param params доводы, переданные в метод
-			 * @return       собранная отладочная запись
+			 * @return       обвязка отладочной записи
 			 *
 			 */
-			string assemble(string_view format, string_view method, std::initializer_list <log::arg_t> params) noexcept {
+			string assemble(string_view method, std::initializer_list <log::arg_t> params) noexcept {
 				// Сведённые доводы метода
 				const string & arguments = serialization(params);
 				// Собираемая отладочная запись
@@ -1750,9 +1775,7 @@ namespace awh {
 					// Добавляем заголовок самого сообщения
 					result.append("\x1B[1mMessage:\x1B[0m" AWH_STRING_BREAK);
 				}
-				// Добавляем формат сообщения
-				result.append(format);
-				// Выводим собранную отладочную запись
+				// Выводим собранную обвязку отладочной записи
 				return result;
 			}
 		};
@@ -1956,12 +1979,7 @@ void awh::log::debug(string_view format, string_view method, std::initializer_li
 	/**
 	 * Если название вызываемого метода передано
 	 */
-	else {
-		// Выполняем сборку отладочной записи
-		const string & record = assemble(format, method, params);
-		// Пишем собранную отладочную запись
-		emit(string_view(record), flag, args);
-	}
+	else emit(format, flag, args, assemble(method, params));
 	// Завершаем список аргументов
 	va_end(args);
 }
@@ -1992,12 +2010,7 @@ void awh::log::debug(wstring_view format, string_view method, std::initializer_l
 	/**
 	 * Если название вызываемого метода передано
 	 */
-	else {
-		// Выполняем сборку записи, обратив формат узкою записью рамкою
-		const string & record = assemble(string_view(awh::fmk::convert(wstring(format))), method, params);
-		// Пишем собранную отладочную запись широким выводом
-		emit(wstring_view(awh::fmk::convert(record)), flag, args);
-	}
+	else emit(format, flag, args, assemble(method, params));
 	// Завершаем список аргументов
 	va_end(args);
 }
@@ -2025,8 +2038,21 @@ void awh::log::debug(string_view format, string_view method, std::initializer_li
 		// Выходим из функции
 		return;
 	}
-	// Пишем собранную отладочную запись
-	print(string_view(assemble(format, method, params)), flag, args);
+	// Если доводы подстановки переданы и уровень логирования соответствует
+	if(!args.empty() && allowed(flag)){
+		// Создаём объект полезной нагрузки
+		payload_t payload;
+		// Устанавливаем флаг логирования
+		payload.flag = flag;
+		// Устанавливаем обвязку сообщения
+		payload.text = assemble(method, params);
+		// Устанавливаем данные сообщения, сформированные без обвязки
+		payload.text.append(awh::fmk::format(format, args));
+		// Фиксируем дату формирования сообщения в момент вызова
+		payload.date = state()._chrono.format(state()._format);
+		// Выполняем маршрутизацию полезной нагрузки в приёмники
+		dispatch(::move(payload));
+	}
 }
 /**
  * @brief Функция вывода отладочной информации в консоль или файл
@@ -2052,10 +2078,21 @@ void awh::log::debug(wstring_view format, string_view method, std::initializer_l
 		// Выходим из функции
 		return;
 	}
-	// Выполняем сборку записи, обратив формат узкою записью рамкою
-	const string & record = assemble(string_view(awh::fmk::convert(wstring(format))), method, params);
-	// Пишем собранную отладочную запись широким выводом: широки и доводы подстановки
-	print(wstring_view(awh::fmk::convert(record)), flag, args);
+	// Если доводы подстановки переданы и уровень логирования соответствует
+	if(!args.empty() && allowed(flag)){
+		// Создаём объект полезной нагрузки
+		payload_t payload;
+		// Устанавливаем флаг логирования
+		payload.flag = flag;
+		// Устанавливаем обвязку сообщения
+		payload.text = assemble(method, params);
+		// Устанавливаем данные сообщения, сформированные без обвязки
+		payload.text.append(awh::fmk::convert(awh::fmk::format(format, args)));
+		// Фиксируем дату формирования сообщения в момент вызова
+		payload.date = state()._chrono.format(state()._format);
+		// Выполняем маршрутизацию полезной нагрузки в приёмники
+		dispatch(::move(payload));
+	}
 }
 /**
  * @brief Функция вывода текстовой информации в консоль или файл

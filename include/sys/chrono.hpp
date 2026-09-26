@@ -34,14 +34,36 @@
  *       обозначения зон разбираются по неизменяемой таблице внутри самого модуля,
  *       а метод addTimeZone заводит отдельный реестр своих обозначений, изначально
  *       пустой; очистка реестра методом clearTimeZones встроенных обозначений не
- *       затрагивает. Смещение зоны окружения берётся через tzset, поэтому переходы
- *       на летнее время сторонних зон модуль сам не отслеживает
+ *       затрагивает. Смещение зоны окружения спрашивается у системы на ту самую дату,
+ *       которая записывается либо разбирается, а не на текущий миг: переходы на летнее
+ *       время и историю смены правил зоны знает система, собственных правил для зоны
+ *       окружения модуль не заводит. У MS Windows летнее время определяется по дате,
+ *       а стандартное смещение берётся нынешнее - истории смены правил зоны её
+ *       библиотека не несёт. У систем Sun разложение мига само выставляет timezone и
+ *       altzone по этому мигу, и история зоны там соблюдается
  *
  * @section chrono_decisions Намеренные решения
  *
  * @details Перечисленное ниже выглядит несообразностью, но выбрано осознанно и
  *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
  *          каждый раз с одних и тех же выводов.
+ *
+ *          <b>Негодная запись разбирается в число, а не в нуль.</b> Разбор отдаёт
+ *          момент и для записи, признанной негодной: признак пригодности и число
+ *          передаются раздельно, как failbit у std::chrono::parse. Нуль отказом служить
+ *          не может - это законная дата, а негодность охватывает и записи лишь нестрогие,
+ *          но читаемые: RFC 3339 без зоны, секунду координации при её запрете. Об отказе
+ *          сообщает признак пригодности у перегрузок с ним и метод validate.
+ *
+ *          <b>Запись без зоны в складке перехода читается первым мигом, а в провале -
+ *          переносится вперёд.</b> Местное время складки повторяется дважды, провала -
+ *          не существует вовсе, и однозначного ответа такая запись не имеет. Выбран тот
+ *          же, что дают mktime при неизвестном признаке летнего времени и Python при
+ *          fold=0: в складке - большее смещение, то есть первый из двух мигов, в провале
+ *          - смещение, действовавшее до перехода, отчего «02:30» берлинского 29 марта
+ *          читается как «03:30 +0200». Отказ такой записи в пригодности был бы строже,
+ *          но отвергал бы и правдивые записи часа складки, которые не ошибочны, а лишь
+ *          неоднозначны.
  *
  *          <b>Разбор обрывается первым полем образца, которого в записи нет.</b>
  *          Остальные поля образца после этого не разбираются, как то делает strptime.
@@ -393,8 +415,13 @@
  *       designations of the zones are parsed by an immutable table inside the module itself,
  *       and the addTimeZone method starts a separate registry of one's own designations, initially
  *       empty; clearing that registry by the clearTimeZones method does not touch the built-in
- *       designations. The offset of the environment zone is taken through tzset, and therefore the
- *       module does not track the daylight saving time transitions of foreign zones by itself
+ *       designations. The offset of the environment zone is asked of the system for the very date
+ *       being written or parsed, and not for the current instant: the daylight saving time transitions
+ *       and the history of the changes of the rules of a zone are known to the system, and the module
+ *       starts no rules of its own for the environment zone. On MS Windows the daylight saving time is
+ *       determined by the date, and the standard offset is taken the present one - its library carries
+ *       no history of the changes of the rules of a zone. On the Sun systems the decomposition of an
+ *       instant itself sets timezone and altzone by that instant, and the history of a zone is kept there
  * @section chrono_decisions Deliberate decisions
  * @details What is listed below looks like an inconsistency, but it is chosen deliberately and
  *          is not subject to correction. The section is started so that reading the code would not
@@ -675,6 +702,22 @@
  *          by its tail alone — "1h" was discarded silently, and the check approved such
  *          a record. A record read halfway is worse than a rejected one: it
  *          gives a quantity whose substitution the calling side will not learn about.
+ *
+ *          <b>An unfit record is parsed into a number, and not into zero.</b> The parsing gives out
+ *          a moment for a record recognized unfit as well: the sign of fitness and the number are
+ *          passed separately, as the failbit of std::chrono::parse. Zero cannot serve as a refusal -
+ *          it is a legal date, and unfitness also covers records merely non-strict but readable:
+ *          RFC 3339 without a zone, a leap second when it is forbidden. The refusal is reported by
+ *          the sign of fitness of the overloads having it and by the validate method.
+ *
+ *          <b>A record without a zone in the fold of a transition is read as the first instant, and in the gap
+ *          is carried forward.</b> The local time of a fold repeats twice, that of a gap does not
+ *          exist at all, and such a record has no unambiguous answer. The one chosen is the same
+ *          that mktime gives with an unknown daylight saving sign and Python with fold=0: in a fold -
+ *          the larger offset, that is the first of the two instants, in a gap - the offset in effect
+ *          before the transition, and therefore "02:30" of Berlin March 29 is read as "03:30 +0200".
+ *          Refusing such a record its validity would be stricter, but would also reject the truthful
+ *          records of the hour of a fold, which are not erroneous but merely ambiguous.
  *
  *          <b>Parsing stops at the first pattern field absent from the record.</b>
  *          Remaining fields are not parsed, the way strptime behaves. Soft skipping was
@@ -2163,6 +2206,77 @@ namespace awh {
 			 * \~
 			 */
 			uint64_t baseStamp(const dt_t & dt) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод получения смещения временной зоны окружения на заданный миг
+			 *
+			 * @details Смещение зоны окружения спрашивается у системы на тот самый миг,
+			 *          который записывается, а не на текущий: прежде оно снималось на
+			 *          «сейчас» и прикладывалось ко всякой дате, отчего январская запись,
+			 *          сформированная летом в зоне Europe/Berlin, выходила с летним
+			 *          смещением +0200 и уезжала на час, а октябрь 2003 года в зоне
+			 *          Europe/Moscow получал нынешнее +0300 вместо тогдашнего +0400.
+			 *          Собственных правил переходов модуль при этом не заводит - их знает
+			 *          система, и её достаточно спросить про саму дату
+			 *
+			 * @note У MS Windows летнее время определяется по дате, а стандартное смещение
+			 *       берётся нынешнее: истории смены правил зоны её библиотека не несёт. У
+			 *       систем Sun разложение мига само выставляет timezone и altzone по этому
+			 *       мигу, и история зоны соблюдается - проверено у Solaris 11.4 и OpenIndiana
+			 *
+			 * @param stamp миг в секундах от начала эпохи
+			 * @return      смещение временной зоны окружения в секундах
+			 *
+			 * \~english
+			 * @brief Method of getting the offset of the environment time zone at the given instant
+			 * @details The offset of the environment zone is asked of the system for the very instant
+			 *          being written, and not for the current one: formerly it was taken for
+			 *          "now" and applied to every date, and therefore a January record formed
+			 *          in summer in the Europe/Berlin zone came out with the summer
+			 *          offset +0200 and drifted by an hour, and October 2003 in the
+			 *          Europe/Moscow zone received today's +0300 instead of the then +0400.
+			 *          The module at that does not start transition rules of its own - the
+			 *          system knows them, and it suffices to ask it about the date itself
+			 * @note On MS Windows the daylight saving time is determined by the date, and the standard offset
+			 *       is taken the present one: its library carries no history of the changes of the rules of a
+			 *       zone. On the Sun systems the decomposition of an instant itself sets timezone and altzone by
+			 *       that instant, and the history of a zone is kept - verified on Solaris 11.4 and OpenIndiana
+			 * @param stamp instant in seconds since the beginning of the epoch
+			 * @return      offset of the environment time zone in seconds
+			 *
+			 * \~
+			 */
+			int32_t environZone(const time_t stamp) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод получения смещения временной зоны окружения по местному времени
+			 *
+			 * @details Запись без зоны несёт местное время, а смещение зависит от мига,
+			 *          который из этого времени ещё только выводится. Смещение берётся
+			 *          то, при котором миг, им выведенный, в зоне окружения даёт то же
+			 *          местное время. В складке перехода местное время повторяется, и
+			 *          берётся первый из двух мигов - летнее смещение; в провале перехода
+			 *          его нет вовсе, и берётся смещение, действовавшее до перехода, так
+			 *          что запись переносится вперёд на величину перевода часов
+			 *
+			 * @param dt объект даты и времени с местными полями записи
+			 * @return   смещение временной зоны окружения в секундах
+			 *
+			 * \~english
+			 * @brief Method of getting the offset of the environment time zone by the local time
+			 * @details A record without a zone carries local time, and the offset depends on the instant
+			 *          that is only yet derived from this time. The offset taken is
+			 *          the one at which the instant derived by it gives the same local time
+			 *          in the environment zone. In the fold of a transition the local time repeats itself, and
+			 *          the first of the two instants is taken - the summer offset; in the gap of a transition
+			 *          it does not exist at all, and the offset in effect before the transition is taken, so
+			 *          that the record is carried forward by the size of the clock change
+			 * @param dt object of the date and the time with the local fields of the record
+			 * @return   offset of the environment time zone in seconds
+			 *
+			 * \~
+			 */
+			int32_t wallZone(const dt_t & dt) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод определения летнего времени по местному времени зоны
@@ -4028,6 +4142,14 @@ namespace awh {
 			 *       разбор выводит началом эпохи, а проверка validate признаёт негодной.
 			 *       Тем же началом эпохи выводится и местная полночь первого дня эпохи в
 			 *       зоне восточнее UTC: момент этот приходится на время до её начала
+			 * @warning Перегрузка признака пригодности не отдаёт, а число возвращается
+			 *          всегда - и для записи, строго образцу не отвечающей, и для мусора,
+			 *          в котором не нашлось ни одного поля: тогда это текущий момент,
+			 *          от честного результата неотличимый. Нуль признаком отказа служить
+			 *          не может - это законная дата 1 января 1970 года. Записи из
+			 *          недоверенного источника разбираются перегрузкой с признаком
+			 *          пригодности либо проверяются методом validate
+			 *
 			 * @param date    строка даты
 			 * @param format  формат даты
 			 * @param storage хранение значение времени
@@ -4094,6 +4216,13 @@ namespace awh {
 			 *       the parsing yields as the beginning of the epoch, and the validate check recognizes it as unfit.
 			 *       By the same beginning of the epoch the local midnight of the first day of the epoch in
 			 *       a zone to the east of UTC is yielded as well: that moment falls on the time before its beginning
+			 * @warning The overload does not give out the sign of fitness, and a number is returned
+			 *          always - both for a record not strictly answering the pattern and for garbage
+			 *          in which not a single field has been found: then it is the current moment,
+			 *          indistinguishable from an honest result. Zero cannot serve as a sign of refusal -
+			 *          it is the legal date of the 1st of January 1970. Records from an untrusted
+			 *          source are parsed by the overload with the sign of fitness or checked by the
+			 *          validate method
 			 * @param date    string of the date
 			 * @param format  format of the date
 			 * @param storage storage of the value of the time
@@ -4127,6 +4256,14 @@ namespace awh {
 			 *          Разновидности перебираются по порядку, и берётся первая, дающая
 			 *          пригодную запись.
 			 *
+			 * @warning Перегрузка признака пригодности не отдаёт, а число возвращается
+			 *          всегда - и для записи, строго образцу не отвечающей, и для мусора,
+			 *          в котором не нашлось ни одного поля: тогда это текущий момент,
+			 *          от честного результата неотличимый. Нуль признаком отказа служить
+			 *          не может - это законная дата 1 января 1970 года. Записи из
+			 *          недоверенного источника разбираются перегрузкой с признаком
+			 *          пригодности либо проверяются методом validate
+			 *
 			 * @param date     строка даты для парсинга
 			 * @param standard стандарт записи даты
 			 * @param storage  хранение значение времени
@@ -4148,6 +4285,13 @@ namespace awh {
 			 *          the fraction of a second, ISO 8601 knows the basic and the extended forms of the record.
 			 *          The varieties are gone over in order, and the first one giving
 			 *          a fit record is taken.
+			 * @warning The overload does not give out the sign of fitness, and a number is returned
+			 *          always - both for a record not strictly answering the pattern and for garbage
+			 *          in which not a single field has been found: then it is the current moment,
+			 *          indistinguishable from an honest result. Zero cannot serve as a sign of refusal -
+			 *          it is the legal date of the 1st of January 1970. Records from an untrusted
+			 *          source are parsed by the overload with the sign of fitness or checked by the
+			 *          validate method
 			 * @param date     string of the date to parse
 			 * @param standard standard of the record of the date
 			 * @param storage  storage of the value of the time

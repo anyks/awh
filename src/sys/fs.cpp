@@ -1571,6 +1571,64 @@ namespace {
 		 *
 		 */
 		using com_guard_t = ComGuard <T>;
+		/**
+		 * @brief Класс инициализации библиотеки COM в пределах области видимости (RAII)
+		 *
+		 * @details Освобождение CoUninitialize обязано парой успешной CoInitialize и
+		 *          только ей: вызов, ответивший отказом (в том числе RPC_E_CHANGED_MODE,
+		 *          когда поток уже выставлен вызывающей стороной в иной режим), счётчика
+		 *          инициализаций не поднимает, и прежнее безусловное освобождение снимало
+		 *          чужую инициализацию потока.
+		 *
+		 * @warning Объект заводится ПРЕЖДЕ объектов com_guard_t: те уничтожаются раньше
+		 *          и освобождают свои интерфейсы, пока библиотека ещё действует. Прежде
+		 *          освобождение библиотеки звалось в той же области видимости до выхода
+		 *          из неё, и Release интерфейсов исполнялся уже после CoUninitialize
+		 *
+		 */
+		class ComScope {
+			private:
+				// Результат инициализации библиотеки COM
+				const HRESULT _init;
+			public:
+				/**
+				 * @brief Метод проверки успешности инициализации
+				 *
+				 * @return результат проверки
+				 *
+				 */
+				bool valid() const noexcept {
+					// Выводим результат проверки
+					return SUCCEEDED(this->_init);
+				}
+			public:
+				/**
+				 * @brief Оператор копирования (запрещён)
+				 *
+				 */
+				ComScope & operator = (const ComScope &) = delete;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				ComScope() noexcept : _init(::CoInitialize(nullptr)) {}
+				/**
+				 * @brief Конструктор копирования (запрещён)
+				 *
+				 */
+				ComScope(const ComScope &) = delete;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				~ComScope() noexcept {
+					// Если библиотека COM инициализирована этим объектом
+					if(SUCCEEDED(this->_init))
+						// Выполняем освобождение библиотеки COM
+						::CoUninitialize();
+				}
+		};
 	/**
 	 * Помощник этот заведён для систем POSIX и только для них
 	 *
@@ -1791,12 +1849,12 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 				const string & filename = this->fullpath(first, true);
 				// Если файл передан
 				if(!filename.empty()){
-					// Выполняем инициализацию результата
-					HRESULT hres = ::CoInitialize(nullptr);
+					// Выполняем инициализацию библиотеки COM (заводится прежде интерфейсов, освобождается после них)
+					const ComScope com;
 					// Создаём объект проверки наличия ярлыка
 					com_guard_t <IShellLinkW> psl;
 					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
+					HRESULT hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 					// Если инициализация выполнена
 					if(SUCCEEDED(hres) && psl){
 						// Позиция разделителя каталога
@@ -1846,8 +1904,6 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 							}
 						}
 					}
-					// Выполняем очистку объекта результата
-					::CoUninitialize();
 				}
 			#endif
 		/**
@@ -2158,7 +2214,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 					 */
 					#else
 						// Выполняем удаление переданного пути
-						result = (::unlink(addr.data()) == 0);
+						result = (::unlink(string(addr).c_str()) == 0);
 					#endif
 				}
 			}
@@ -2234,8 +2290,10 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			#else
 				// Структура проверка статистики
 				struct stat info{};
+				// Адрес с завершающим нулём: представление строки его не гарантирует
+				const string address(addr);
 				// Выполняем извлечение данных статистики
-				const int32_t status = ::stat(addr.data(), &info);
+				const int32_t status = ::stat(address.c_str(), &info);
 			#endif
 			// Если тип определён
 			if(status == 0){
@@ -2305,7 +2363,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 							 */
 							@autoreleasepool {
 								// Преобразуем путь в NSString
-								NSString * path = [NSString stringWithUTF8String:addr.data()];
+								NSString * path = [NSString stringWithUTF8String:address.c_str()];
 								// Если путь не существует
 								if(!path || ![[NSFileManager defaultManager] fileExistsAtPath:path])
 									// Возвращаем значение по умолчанию
@@ -2338,7 +2396,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Если тип определён
-					if(::lstat(addr.data(), &info) == 0){
+					if(::lstat(address.c_str(), &info) == 0){
 						// Если это символьная ссылка
 						if(S_ISLNK(info.st_mode))
 							// Получаем тип файловой системы
@@ -2350,12 +2408,12 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				#else
 					// Ярлыки Windows всегда имеют расширение .lnk — иначе дорогой COM-вызов не требуется
 					if((address.size() > 4) && (::_wcsicmp(address.c_str() + (address.size() - 4), L".lnk") == 0)){
-						// Выполняем инициализацию результата
-						HRESULT hres = ::CoInitialize(nullptr);
+						// Выполняем инициализацию библиотеки COM (заводится прежде интерфейсов, освобождается после них)
+						const ComScope com;
 						// Создаём объект проверки наличия ярлыка
 						com_guard_t <IShellLinkW> psl;
 						// Выполняем инициализацию объекта для проверки ярлыков
-						hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
+						HRESULT hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 						// Если инициализация выполнена
 						if(SUCCEEDED(hres) && psl){
 							// Создаём объект проверки файла
@@ -2372,8 +2430,6 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 									result = type_t::LINK;
 							}
 						}
-						// Выполняем очистку объекта результата
-						::CoUninitialize();
 					}
 				#endif
 			}
@@ -2440,7 +2496,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Выполняем извлечение адресов из переменных окружений
-			::ExpandEnvironmentStringsW(fmk::convert(addr.data()).c_str(), buffer, ARRAYSIZE(buffer));
+			::ExpandEnvironmentStringsW(fmk::convert(addr).c_str(), buffer, ARRAYSIZE(buffer));
 			// Устанавливаем результат
 			result = fmk::convert(buffer);
 			// Заполняем буфер нулями
@@ -2449,14 +2505,20 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 			if(::_wfullpath(buffer, fmk::convert(result).c_str(), _MAX_PATH) != nullptr){
 				// Получаем полный адрес пути
 				result = fmk::convert(buffer);
-				// Если адрес пути получен
-				if(resolve && !result.empty()){
+				/**
+				 * Ярлыком разбирается лишь файл с расширением .lnk, как то делает и метод type
+				 *
+				 * @warning Прежде ярлыком пробовался ЛЮБОЙ адрес, а IPersistFile::Load принимает
+				 *          файл нулевой длины за пустой ярлык: адрес пустого файла сводился к пустой
+				 *          строке, и запись, чтение и усечение существующего пустого файла отказывали
+				 */
+				if(resolve && (result.size() > 4) && fmk::compare(".lnk", string_view(result).substr(result.size() - 4))){
+					// Выполняем инициализацию библиотеки COM (заводится прежде интерфейсов, освобождается после них)
+					const ComScope com;
 					// Создаём объект проверки наличия ярлыка
 					com_guard_t <IShellLinkW> psl;
-					// Выполняем инициализацию результата
-					HRESULT hres = ::CoInitialize(nullptr);
 					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
+					HRESULT hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
 					// Если инициализация выполнена
 					if(SUCCEEDED(hres)){
 						// Создаём объект проверки файла
@@ -2482,17 +2544,25 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 										// Создаём буфер для извлечения полного адреса ярлыка
 										WCHAR achPath[MAX_PATH] = {0};
 										// Выполняем извлечение полного адреса ярлыка
-										hres = ::StringCbCopyW(achPath, _countof(achPath), szGotPath);
+										hres = ::StringCbCopyW(achPath, sizeof(achPath), szGotPath);
 										// Если полный адрес ярлыка извлечён
 										if(SUCCEEDED(hres)){
 											// Определяем размер полученных данных
 											const int32_t size = ::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, 0, 0, 0, 0);
-											// Если размер извлекаемых данных получен
-											if(size > 0){
-												// Выполняем выделение памяти для результирующего буфера
-												result.resize(static_cast <size_t> (size), 0);
+											/**
+											 * Размер при длине -1 включает завершающий ноль: прежде он оставался
+											 * внутри строки, и сравнение, склейка и поиск по адресу расходились
+											 */
+											// Если адрес ярлыка не пустой
+											if(size > 1){
+												// Буфер адреса, на который указывает ярлык
+												string target(static_cast <size_t> (size), '\0');
 												// Выполняем извлечение полного адреса ярлыка
-												::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, result.data(), static_cast <int32_t> (result.size()), 0, 0);
+												::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, target.data(), size, 0, 0);
+												// Удаляем завершающий ноль
+												target.resize(static_cast <size_t> (size - 1));
+												// Устанавливаем адрес, на который указывает ярлык
+												result = ::move(target);
 											}
 										}
 									}
@@ -2500,8 +2570,6 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 							}
 						}
 					}
-					// Выполняем очистку объекта результата
-					::CoUninitialize();
 				}
 			}
 			// Выполняем перекодирование адреса
@@ -2513,7 +2581,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 			// Если нужно выполнять резолвинг символьных ссылок
 			if(resolve && !addr.empty()){
 				// Устанавливаем переданный путь адреса
-				result = addr.data();
+				result.assign(addr);
 				// Создаём буфер данных для получения адреса
 				char buffer[PATH_MAX];
 				// Если адрес существует
@@ -2662,7 +2730,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 			// Создаём объект информационных данных файла или каталога
 			struct stat info{};
 			// Выполняем чтение информационных данных файла
-			if(!(result = (::stat(addr.data(), &info) == 0)) && (errno != 0)){
+			if(!(result = (::stat(string(addr).c_str(), &info) == 0)) && (errno != 0)){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -2752,13 +2820,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Если группа пользователя передана
 			if(!group.empty()){
 				// Идентификатор пользователя
-				const uid_t uid = this->_os.uid(user.data());
+				const uid_t uid = this->_os.uid(user);
 				// Идентификатор группы
-				const gid_t gid = this->_os.group(group.data());
+				const gid_t gid = this->_os.group(group);
 				// Устанавливаем права на каталог
 				if((result = (uid && gid))){
 					// Выполняем установку владельца
-					if(!(result = (::chown(addr.data(), uid, gid) == 0)) && (errno != 0)){
+					if(!(result = (::chown(string(addr).c_str(), uid, gid) == 0)) && (errno != 0)){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -2784,9 +2852,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Получаем путь к файлу
-			wstring fileName = fmk::convert(addr.data());
+			wstring fileName = fmk::convert(addr);
 			// Получаем имя пользователя
-			wstring userName = fmk::convert(user.data());
+			wstring userName = fmk::convert(user);
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, userName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
@@ -2800,13 +2868,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print(L"%s", log::flag_t::CRITICAL, message);
+					log::print(L"%ls", log::flag_t::CRITICAL, message);
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2853,13 +2921,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print(L"%s", log::flag_t::CRITICAL, message);
+					log::print(L"%ls", log::flag_t::CRITICAL, message);
 				#endif
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
@@ -2877,13 +2945,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print(L"%s", log::flag_t::CRITICAL, message);
+					log::print(L"%ls", log::flag_t::CRITICAL, message);
 				#endif
 				// Освобождаем дескриптор системы безопасности
 				::LocalFree(sd);
@@ -2903,13 +2971,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log::print(L"%s", log::flag_t::CRITICAL, message);
+					log::print(L"%ls", log::flag_t::CRITICAL, message);
 				#endif
 			}
 			// Освобождаем дескриптор системы безопасности
@@ -3127,7 +3195,7 @@ bool awh::Filesystem::replaceAddress(string_view temporary, string_view filename
 		/**
 		 * Выполняем подмену целевого файла временным с заменою на месте
 		 *
-		 * @note Зовётся узкий вид, а не широкий: пути ходят здесь `std::string`
+		 * @note Зовётся широкий вид: узкий читает пути в кодовой странице ANSI, а не в UTF-8
 		 */
 		return (::MoveFileExW(fmk::convert(temporary).c_str(), fmk::convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
 	#endif
@@ -3272,13 +3340,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 									 */
 									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
-										log::debug(L"%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, message);
+										log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log::print(L"%s", log::flag_t::CRITICAL, message);
+										log::print(L"%ls", log::flag_t::CRITICAL, message);
 									#endif
 									// Выполняем закрытие файла
 									::CloseHandle(file);
@@ -3379,7 +3447,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 												// Получаем обёртку полученного пути
 												string_view path = address;
 												// Получаем расширение файла
-												const string & extension = fmk::format(".%s", ext.data());
+												const string & extension = fmk::format(".%s", string(ext).c_str());
 												// Файл учитывается только если его расширение совпадает с фильтром
 												allowed = ((path.size() > extension.size()) && fmk::compare(path.substr(path.size() - extension.size()).data(), extension));
 											}
@@ -3570,7 +3638,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 											// Получаем обёртку полученного пути
 											string_view path = address;
 											// Получаем расширение файла
-											const string & extension = fmk::format(".%s", ext.data());
+											const string & extension = fmk::format(".%s", string(ext).c_str());
 											// Если расширение не выше полного адреса
 											if(path.size() > extension.size()){
 												// Если расширение файла найдено
@@ -3627,13 +3695,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::WARNING, addr.data());
+			log::debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::WARNING, string(addr).c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Address name: \"%s\" is not dir", log::flag_t::WARNING, addr.data());
+			log::print("Address name: \"%s\" is not dir", log::flag_t::WARNING, string(addr).c_str());
 		#endif
 	}
 	// Возвращаем результат
@@ -3737,13 +3805,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								log::debug(L"%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
+								log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log::print(L"%s", log::flag_t::CRITICAL, message);
+								log::print(L"%ls", log::flag_t::CRITICAL, message);
 							#endif
 						}
 					/**
@@ -3759,13 +3827,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
+							log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log::print(L"%s", log::flag_t::CRITICAL, message);
+							log::print(L"%ls", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -3924,13 +3992,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
+									log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print(L"%s", log::flag_t::CRITICAL, message);
+									log::print(L"%ls", log::flag_t::CRITICAL, message);
 								#endif
 							}
 						}
@@ -3947,13 +4015,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
+							log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log::print(L"%s", log::flag_t::CRITICAL, message);
+							log::print(L"%ls", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -4272,13 +4340,13 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, message);
+							log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log::print(L"%s", log::flag_t::CRITICAL, message);
+							log::print(L"%ls", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -4555,13 +4623,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, message);
+									log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print(L"%s", log::flag_t::CRITICAL, message);
+									log::print(L"%ls", log::flag_t::CRITICAL, message);
 								#endif
 							}
 						}
@@ -4790,13 +4858,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
+								log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log::print(L"%s", log::flag_t::CRITICAL, message);
+								log::print(L"%ls", log::flag_t::CRITICAL, message);
 							#endif
 							// Выходим из метода (дескриптор будет закрыт автоматически)
 							return;
@@ -4816,13 +4884,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
+									log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print(L"%s", log::flag_t::CRITICAL, message);
+									log::print(L"%ls", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода (дескрипторы будут закрыты автоматически)
 								return;
@@ -4840,13 +4908,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
+									log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print(L"%s", log::flag_t::CRITICAL, message);
+									log::print(L"%ls", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода (дескрипторы будут закрыты автоматически)
 								return;
@@ -5246,13 +5314,13 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
+							log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log::print(L"%s", log::flag_t::CRITICAL, message);
+							log::print(L"%ls", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -5515,13 +5583,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
+									log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print(L"%s", log::flag_t::CRITICAL, message);
+									log::print(L"%ls", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода
 								return;
@@ -5551,13 +5619,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 									 */
 									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
-										log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
+										log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log::print(L"%s", log::flag_t::CRITICAL, message);
+										log::print(L"%ls", log::flag_t::CRITICAL, message);
 									#endif
 									// Выходим из метода
 									return;
@@ -5817,13 +5885,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
+									log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log::print(L"%s", log::flag_t::CRITICAL, message);
+									log::print(L"%ls", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода
 								return;
@@ -5853,13 +5921,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 									 */
 									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
-										log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
+										log::debug(L"%ls", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log::print(L"%s", log::flag_t::CRITICAL, message);
+										log::print(L"%ls", log::flag_t::CRITICAL, message);
 									#endif
 									// Выходим из метода
 									return;
@@ -6242,7 +6310,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 							// Если расширение файла передано
 							if(!ext.empty()){
 								// Получаем расширение файла
-								const string & extension = fmk::format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", string(ext).c_str());
 								// Если расширение не выше полного адреса
 								if(address.size() > extension.length()){
 									// Получаем хвост адреса длиною в расширение
@@ -6304,13 +6372,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
+			log::debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, string(path).c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Path name: \"%s\" is not found", log::flag_t::WARNING, path.data());
+			log::print("Path name: \"%s\" is not found", log::flag_t::WARNING, string(path).c_str());
 		#endif
 	}
 	// Выводим результат
@@ -6377,7 +6445,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 							// Если расширение файла передано
 							if(!ext.empty()){
 								// Получаем расширение файла
-								const string & extension = fmk::format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", string(ext).c_str());
 								// Если расширение не выше полного адреса
 								if(address.size() > extension.length()){
 									// Получаем хвост адреса длиною в расширение
@@ -6441,13 +6509,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, string(path).c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, string(path).c_str());
 		#endif
 	}
 	// Выводим результат
@@ -6515,7 +6583,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 							// Если расширение файла передано
 							if(!ext.empty()){
 								// Получаем расширение файла
-								const string & extension = fmk::format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", string(ext).c_str());
 								// Если расширение не выше полного адреса
 								if(address.size() > extension.length()){
 									// Получаем хвост адреса длиною в расширение
@@ -6579,13 +6647,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, string(path).c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, string(path).c_str());
 		#endif
 	}
 	// Выводим результат
@@ -6652,7 +6720,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 								// Получаем путь до файла в нижнем регистре
 								string_view path = address;
 								// Получаем расширение файла
-								const string & extension = fmk::format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", string(ext).c_str());
 								// Если расширение не выше полного адреса
 								if(path.size() > extension.length()){
 									// Если расширение файла найдено
@@ -6698,13 +6766,13 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, string(path).c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, string(path).c_str());
 		#endif
 	}
 }
@@ -6744,7 +6812,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 								// Получаем путь до файла в нижнем регистре
 								string_view path = address;
 								// Получаем расширение файла
-								const string & extension = fmk::format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", string(ext).c_str());
 								// Если расширение не выше полного адреса
 								if(path.size() > extension.length()){
 									// Если расширение файла найдено
@@ -6790,13 +6858,13 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, string(path).c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, string(path).c_str());
 		#endif
 	}
 }

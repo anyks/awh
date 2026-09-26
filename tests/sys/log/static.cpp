@@ -134,3 +134,67 @@ TEST_F(LogFixture, OtherLogTest){
 	// Проверяем успешное выполнение методов
 	ASSERT_TRUE(true);
 }
+
+/**
+ * @brief Тест доводов отладочной записи, несущих знаки формата
+ *
+ * @details Название метода и его доводы прежде вклеивались в строку формата, и довод
+ *          со знаком процента (адрес "/tmp/100%d%d%x") разбирался vsnprintf как
+ *          переменные: те съедали настоящий довод сообщения, печатали мусор со стека,
+ *          а переменная самого сообщения читала произвольный указатель - замерено
+ *          щупом: запись выходила с "(null)" вместо адреса. Так же подстановка по
+ *          списку подменяла "$1" внутри доводов. Проверка ведётся по всем четырём
+ *          видам отладочной записи: узкому и широкому, с доводами «...» и списком
+ *
+ */
+TEST_F(LogFixture, DebugArgumentsAreNotFormatLogTest){
+	// Последняя дошедшая до подписчика запись
+	std::string text;
+	// Счётчик записей, дошедших до подписчика
+	uint16_t received = 0;
+	// Выводим записи синхронно, чтобы запись дошла до выхода из вызова
+	awh::log::async(false);
+	// Разрешаем вывод записей в функцию обратного вызова
+	awh::log::mode({awh::log::mode_t::DEFERRED});
+	// Подписываемся на получение записей
+	awh::log::subscribe([&](const awh::log::flag_t, std::string_view record) noexcept -> void {
+		// Запоминаем, что запись до подписчика дошла
+		received++;
+		// Запоминаем текст записи
+		text.assign(record);
+	});
+	// Узкая запись с доводами «...»
+	awh::log::debug("Path: \"%s\"", "method%d()", {"/tmp/100%d%d%x"}, awh::log::flag_t::WARNING, "/tmp/message%s");
+	// Запись обязана дойти
+	ASSERT_EQ(received, static_cast <uint16_t> (1));
+	// Название метода обязано выйти дословно
+	ASSERT_NE(text.find("method%d()"), std::string::npos) << text;
+	// Довод метода обязан выйти дословно
+	ASSERT_NE(text.find("(/tmp/100%d%d%x)"), std::string::npos) << text;
+	// Сообщение обязано сформироваться по своему формату
+	ASSERT_NE(text.find("Path: \"/tmp/message%s\""), std::string::npos) << text;
+	// Широкая запись с доводами «...»
+	awh::log::debug(L"Path: \"%ls\"", "method()", {"/tmp/100%d%x"}, awh::log::flag_t::WARNING, L"/tmp/wide");
+	// Запись обязана дойти
+	ASSERT_EQ(received, static_cast <uint16_t> (2));
+	// Довод метода обязан выйти дословно
+	ASSERT_NE(text.find("(/tmp/100%d%x)"), std::string::npos) << text;
+	// Сообщение обязано сформироваться по своему формату
+	ASSERT_NE(text.find("Path: \"/tmp/wide\""), std::string::npos) << text;
+	// Узкая запись со списком подстановки
+	awh::log::debug("Path: $1", "method()", {"/tmp/$1$2"}, awh::log::flag_t::WARNING, std::vector <std::string> {"list"});
+	// Запись обязана дойти
+	ASSERT_EQ(received, static_cast <uint16_t> (3));
+	// Довод метода обязан выйти дословно
+	ASSERT_NE(text.find("(/tmp/$1$2)"), std::string::npos) << text;
+	// Сообщение обязано сформироваться по своему формату
+	ASSERT_NE(text.find("Path: list"), std::string::npos) << text;
+	// Широкая запись со списком подстановки
+	awh::log::debug(L"Path: $1", "method()", {"/tmp/$1"}, awh::log::flag_t::WARNING, std::vector <std::wstring> {L"wide"});
+	// Запись обязана дойти
+	ASSERT_EQ(received, static_cast <uint16_t> (4));
+	// Довод метода обязан выйти дословно
+	ASSERT_NE(text.find("(/tmp/$1)"), std::string::npos) << text;
+	// Сообщение обязано сформироваться по своему формату
+	ASSERT_NE(text.find("Path: wide"), std::string::npos) << text;
+}
