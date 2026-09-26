@@ -404,3 +404,35 @@ TEST_F(FmkFixture, FormattedWideGrowsBeyondInitialBufferTest){
 	// Выполняем проверку содержимого построенной строки
 	ASSERT_EQ(result.back(), L']');
 }
+
+/**
+ * @brief Тест подстановки записей списка по обозначениям «$N»
+ *
+ * @details Прежде записи подставлялись поочерёдно заменой по всему тексту: вставленная
+ *          запись «a$2» получала на месте своего «$2» вторую запись, «$10» при десяти
+ *          записях читался как «$1» и «0», пустая запись оставляла в тексте само
+ *          обозначение. Замерено щупом на библиотеке: "ab | b", "10" и "[$1]"
+ *
+ */
+TEST_F(FmkFixture, ListSubstitutionIsSinglePassTest){
+	// Вставленный текст повторно не разбирается
+	ASSERT_EQ(awh::fmk::format("$1 | $2", std::vector <std::string> {"a$2", "b"}), "a$2 | b");
+	// Список из десяти записей
+	const std::vector <std::string> ten = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "ten"};
+	// Двузначный номер при десяти записях - десятая запись
+	ASSERT_EQ(awh::fmk::format("$10", ten), "ten");
+	// Двузначный номер при девяти записях - первая запись и символ «0», как прежде
+	ASSERT_EQ(awh::fmk::format("$10", std::vector <std::string> (ten.begin(), ten.end() - 1)), "10");
+	// Пустая запись вставляется пустой
+	ASSERT_EQ(awh::fmk::format("[$1]", std::vector <std::string> {""}), "[]");
+	// Удвоенный знак доллара даёт одиночный
+	ASSERT_EQ(awh::fmk::format("$$1 = $1", std::vector <std::string> {"x"}), "$1 = x");
+	// Обозначение без записи в списке остаётся как есть
+	ASSERT_EQ(awh::fmk::format("$0 $3 $ $1", std::vector <std::string> {"x"}), "$0 $3 $ x");
+	// Управляющие записи раскрываются в формате, но не в записях
+	ASSERT_EQ(awh::fmk::format("$1\\n", std::vector <std::string> {"a\\tb"}), "a\\tb\n");
+	// Прежний вид подстановки сохраняется
+	ASSERT_EQ(awh::fmk::format("$1 $2$3 ($1)", std::vector <std::string> {"Hello", "World", "!!!"}), "Hello World!!! (Hello)");
+	// Широкая перегрузка ведёт себя так же
+	ASSERT_EQ(awh::fmk::format(L"$1 | $2", std::vector <std::wstring> {L"a$2", L"b"}), L"a$2 | b");
+}

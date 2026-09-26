@@ -2864,6 +2864,12 @@ namespace awh {
 		 *          сколько бы раз обозначение ни встретилось. Записи «\r», «\n»
 		 *          и «\t» при этом раскрываются в соответствующие им символы.
 		 *
+		 * @note Формат проходится один раз, и вставленный текст повторно не разбирается:
+		 *       запись с «$2» внутри вставляется дословно. Номер читается самым длинным,
+		 *       какой есть в списке («$10» при десяти записях - десятая запись, при девяти -
+		 *       первая и символ «0»). Пустая запись вставляется пустой, «$$» даёт одиночный
+		 *       знак доллара, обозначение без записи в списке остаётся как есть
+		 *
 		 * @note Типов доводов запись не задаёт, отчего несоответствия доводов
 		 *       записи, свойственного «printf», здесь не возникает
 		 *
@@ -2888,6 +2894,11 @@ namespace awh {
 		 *          of the list, starting from one. The records are substituted all over the text,
 		 *          however many times the designation may occur. The records «\r», «\n»
 		 *          and «\t» are at that expanded into the characters corresponding to them.
+		 *
+		 * @note The format is passed once, and the inserted text is not parsed again: a record with «$2»
+		 *       inside is inserted verbatim. The number is read the longest one present in the list («$10»
+		 *       with ten records is the tenth record, with nine - the first one and the character «0»). An empty
+		 *       record is inserted empty, «$$» gives a single dollar sign, a designation without a record stays as is
 		 *
 		 * @note The record does not set the types of the arguments, and therefore the discrepancy of the arguments
 		 *       to the record, inherent to «printf», does not arise here

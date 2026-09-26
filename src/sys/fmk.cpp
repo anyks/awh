@@ -6294,103 +6294,120 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 	return result;
 }
 /**
- * @brief Функция реализации функции формирования форматированной строки
+ * @brief Шаблон подстановки записей списка по обозначениям «$N»
+ *
+ * @tparam C тип символа строки
+ *
+ */
+template <typename C>
+/**
+ * @brief Функция подстановки записей списка по обозначениям «$N» за один проход
+ *
+ * @details Прежде записи подставлялись поочерёдно заменой по всему тексту, и подстановка
+ *          разбирала уже вставленный текст: запись «a$2» на месте «$1» получала на месте
+ *          своего «$2» вторую запись, «$10» при десяти записях читался как «$1» и «0», а
+ *          пустая запись не подставлялась вовсе, оставляя в тексте само обозначение.
+ *          Теперь формат проходится один раз, и вставленный текст повторно не разбирается.
+ *
+ * @note Номер после знака доллара читается самым длинным, какой есть в списке: при десяти
+ *       записях «$10» - десятая запись, при девяти - первая запись и символ «0», как и
+ *       прежде. Обозначение без записи в списке («$0», номер за его пределами) и знак
+ *       доллара без номера остаются в тексте как есть; «$$» даёт одиночный знак доллара.
+ *       Записи «\r», «\n» и «\t» раскрываются только в самом формате, а не в записях.
  *
  * @param format формат строки вывода
- * @param items  список аргументов строки
+ * @param items  список записей подстановки
  * @return       сформированная строка
  *
  */
-string awh::fmk::format(string_view format, const vector <string> & items) noexcept {
-	// Переменная результата
-	string result(format);
-	// Если данные переданы
-	if(!format.empty() && !items.empty()){
-		/**
-		 * @brief Функция заменты подстроки в строке
-		 *
-		 * @param str  строка в которой нужно произвести замену
-		 * @param from строка которую нужно заменить
-		 * @param to   строка на которую нужно заменить
-		 *
-		 */
-		auto replaceFn = [&](string & str, const string & from, const string & to) noexcept {
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
-				// Если строка пустая, выходим
-				if(from.empty() || to.empty())
-					// Выходим из функции
-					return;
-				// Позиция подстроки в строке
-				size_t pos = 0;
-				/**
-				 * Выполняем поиск подстроки в стркое
-				 */
-				while((pos = str.find(from, pos)) != string::npos){
-					// Заменяем подстроку в строке
-					str.replace(pos, from.length(), to);
-					// Увеличиваем позицию для поиска в строке
-					pos += to.length();
-				}
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {format, items.size()}, awh::log::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
-				#endif
+static basic_string <C> substitute(basic_string_view <C> format, const vector <basic_string <C>> & items){
+	// Результат подстановки
+	basic_string <C> result;
+	// Резервируем память под формат
+	result.reserve(format.size());
+	// Длина формата
+	const size_t length = format.size();
+	/**
+	 * Выполняем перебор символов формата
+	 */
+	for(size_t i = 0; i < length; ++i){
+		// Текущий символ формата
+		const C letter = format[i];
+		// Если встретилась обратная косая черта с управляющей буквой
+		if((letter == static_cast <C> ('\\')) && ((i + 1) < length)){
+			// Следующий символ формата
+			const C next = format[i + 1];
+			// Если это перевод каретки
+			if(next == static_cast <C> ('r')){
+				// Добавляем перевод каретки
+				result.push_back(static_cast <C> ('\r'));
+				// Пропускаем управляющую букву
+				++i;
+				// Переходим к следующему символу
+				continue;
+			// Если это перевод строки
+			} else if(next == static_cast <C> ('n')) {
+				// Добавляем перевод строки
+				result.push_back(static_cast <C> ('\n'));
+				// Пропускаем управляющую букву
+				++i;
+				// Переходим к следующему символу
+				continue;
+			// Если это табуляция
+			} else if(next == static_cast <C> ('t')) {
+				// Добавляем табуляцию
+				result.push_back(static_cast <C> ('\t'));
+				// Пропускаем управляющую букву
+				++i;
+				// Переходим к следующему символу
+				continue;
 			}
-		};
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Индекс в массиве
-			uint16_t index = 1;
-			// Исправляем возврат каретки
-			replaceFn(result, "\\r", "\r");
-			// Исправляем перенос строки
-			replaceFn(result, "\\n", "\n");
-			// Исправляем табуляцию
-			replaceFn(result, "\\t", "\t");
-			/**
-			 * Перебираем весь список аргументов
-			 */
-			for(auto & item : items)
-				// Выполняем замену индекса аргумента на указанный аргумент
-				replaceFn(result, "$" + std::to_string(index++), item);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {format, items.size()}, awh::log::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
-			#endif
 		}
+		// Если встретился знак доллара
+		if((letter == static_cast <C> ('$')) && ((i + 1) < length)){
+			// Если знак доллара удвоен
+			if(format[i + 1] == static_cast <C> ('$')){
+				// Добавляем одиночный знак доллара
+				result.push_back(letter);
+				// Пропускаем второй знак доллара
+				++i;
+				// Переходим к следующему символу
+				continue;
+			}
+			// Номер записи и позиция конца самого длинного годного номера
+			size_t number = 0, index = 0, end = 0;
+			/**
+			 * Читаем цифры номера, запоминая самый длинный номер, который есть в списке
+			 */
+			for(size_t j = (i + 1); (j < length) && (format[j] >= static_cast <C> ('0')) && (format[j] <= static_cast <C> ('9')); ++j){
+				// Накапливаем номер
+				number = ((number * 10) + static_cast <size_t> (format[j] - static_cast <C> ('0')));
+				// Если номер вышел за пределы списка, дальше читать незачем
+				if(number > items.size())
+					// Выходим из цикла
+					break;
+				// Если номер годен
+				if(number > 0){
+					// Запоминаем номер записи
+					index = number;
+					// Запоминаем конец номера
+					end = (j + 1);
+				}
+			}
+			// Если годный номер найден
+			if(index > 0){
+				// Добавляем запись списка
+				result.append(items[index - 1]);
+				// Переходим за конец номера
+				i = (end - 1);
+				// Переходим к следующему символу
+				continue;
+			}
+		}
+		// Добавляем символ формата как есть
+		result.push_back(letter);
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -6401,97 +6418,77 @@ string awh::fmk::format(string_view format, const vector <string> & items) noexc
  * @return       сформированная строка
  *
  */
-wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) noexcept {
-	// Переменная результата
-	wstring result(format);
-	// Если данные переданы
-	if(!format.empty() && !items.empty()){
+string awh::fmk::format(string_view format, const vector <string> & items) noexcept {
+	// Если формат или список записей не переданы, формат выводится как есть
+	if(format.empty() || items.empty())
+		// Выводим формат
+		return string(format);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем подстановку записей за один проход
+		return substitute(format, items);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
 		/**
-		 * @brief Функция заменты подстроки в строке
-		 *
-		 * @param str  строка в которой нужно произвести замену
-		 * @param from строка которую нужно заменить
-		 * @param to   строка на которую нужно заменить
-		 *
+		 * Если включён режим отладки
 		 */
-		auto replaceFn = [&](wstring & str, const wstring & from, const wstring & to) noexcept {
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
-				// Если строка пустая, выходим
-				if(from.empty() || to.empty())
-					// Выходим из функции
-					return;
-				// Позиция подстроки в строке
-				size_t pos = 0;
-				/**
-				 * Выполняем поиск подстроки в стркое
-				 */
-				while((pos = str.find(from, pos)) != string::npos){
-					// Заменяем подстроку в строке
-					str.replace(pos, from.length(), to);
-					// Увеличиваем позицию для поиска в строке
-					pos += to.length();
-				}
-			/**
-			 * Если возникает ошибка
-			 */
-			} catch(const exception & error) {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format), items.size()}, awh::log::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
-				#endif
-			}
-		};
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {items.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
-		 * Выполняем отлов ошибок
+		 * Если режим отладки не включён
 		 */
-		try {
-			// Индекс в массиве
-			uint16_t index = 1;
-			// Исправляем возврат каретки
-			replaceFn(result, L"\\r", L"\r");
-			// Исправляем перенос строки
-			replaceFn(result, L"\\n", L"\n");
-			// Исправляем табуляцию
-			replaceFn(result, L"\\t", L"\t");
-			/**
-			 * Перебираем весь список аргументов
-			 */
-			for(auto & item : items)
-				// Выполняем замену индекса аргумента на указанный аргумент
-				replaceFn(result, L"$" + std::to_wstring(index++), item);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format), items.size()}, awh::log::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
-			#endif
-		}
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
-	// Возвращаем результат
-	return result;
+	// Выводим формат как есть
+	return string(format);
+}
+/**
+ * @brief Функция реализации функции формирования форматированной строки
+ *
+ * @param format формат строки вывода
+ * @param items  список аргументов строки
+ * @return       сформированная строка
+ *
+ */
+wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) noexcept {
+	// Если формат или список записей не переданы, формат выводится как есть
+	if(format.empty() || items.empty())
+		// Выводим формат
+		return wstring(format);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем подстановку записей за один проход
+		return substitute(format, items);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {items.size()}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим формат как есть
+	return wstring(format);
 }
 /**
  * @brief Функция проверки существования слова в тексте
