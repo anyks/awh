@@ -157,14 +157,23 @@ else
 	exit 1
 fi
 
+# Значение комманды установки по умолчанию
+INSTALL_CMD=""
 # Если сборка производится в операционной системе MacOS X
 if [ $OS = "Darwin" ]; then
 	INSTALL_CMD="ditto -v"
-# Если сборка производится в операционной системе Windows, Linux или Solaris
-elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
+# Если сборка производится в операционной системе Windows или Linux
+elif [ $OS = "Windows" ] || [ $OS = "Linux" ]; then
 	INSTALL_CMD="install -D -m 0644"
-# Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
-elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+# Если сборка производится в операционной системе Solaris
+elif [ $OS = "SunOS" ]; then
+	if [ -x "/usr/gnu/bin/install" ]; then
+		INSTALL_CMD="/usr/gnu/bin/install -D -m 0644"
+	else
+		INSTALL_CMD="install -D -m 0644"
+	fi
+# Если сборка производится в операционной системе FreeBSD, DragonFly, NetBSD или OpenBSD
+elif [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
 	INSTALL_CMD="install -m 0644"
 # Если операционная система не определена
 else
@@ -924,14 +933,14 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 		cd "$ROOT/submodules" || exit 1
 
 		# Выполняем копирование архива исходников LibIconv
-		cp "$ROOT/tar/libiconv-1.17.tar.gz" "$ROOT/submodules/libiconv.tar.gz"
+		cp "$ROOT/tar/libiconv-1.18.tar.gz" "$ROOT/submodules/libiconv.tar.gz"
 
 		# Если архив с исходниками получен
 		if [ -f "$ROOT/submodules/libiconv.tar.gz" ]; then
 			# Выполняем распаковку архива с исходниками
 			tar -xzvf "$ROOT/submodules/libiconv.tar.gz"
 			# Выполняем переименование каталога
-			mv "$ROOT/submodules/libiconv-1.17" "$src"
+			mv "$ROOT/submodules/libiconv-1.18" "$src"
 			# Удаляем уже ненужный архив
 			rm "$ROOT/submodules/libiconv.tar.gz"
 			# Переходим в каталог сборки
