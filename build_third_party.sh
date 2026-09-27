@@ -143,7 +143,10 @@ if [ $OS = "Darwin" ]; then
 		# Устанавливаем версию операционной системы
 		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
 	fi
-	# Устанавливаем тип компилятора
+	# Устанавливаем тип процессора для сборки
+	export CFLAGS="-arch $(uname -m)"
+	export CXXFLAGS="-arch $(uname -m)"
+	# Устанавливаем тип процессора для cmake
 	export CMAKE_OSX_ARCHITECTURES="$(uname -m)"
 # Если сборка производится в операционной системе Windows, Linux или Solaris
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
@@ -1105,40 +1108,40 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
-		-DCMAKE_SYSTEM_NAME=Windows \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DPCRE2_STATIC_PIC="ON" \
-		-DBUILD_STATIC_LIBS="ON" \
-		-DPCRE2_BUILD_TESTS="OFF" \
-		-DPCRE2_SUPPORT_UNICODE="ON" \
-		-DPCRE2_BUILD_PCRE2_8="ON" \
-		-DPCRE2_BUILD_PCRE2_16="ON" \
-		-DPCRE2_BUILD_PCRE2_32="ON" \
-		-DPCRE2_SUPPORT_JIT="OFF" \
-		-DPCRE2_SUPPORT_LIBZ="OFF" \
-		-DPCRE2_SUPPORT_LIBBZ2="OFF" \
-		-DPCRE2_SUPPORT_LIBEDIT="OFF" \
-		-DPCRE2_SUPPORT_LIBREADLINE="OFF" \
-		-DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		-G "MSYS Makefiles" \
-		.. || exit 1
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DPCRE2_STATIC_PIC="ON" \
+		 -DBUILD_STATIC_LIBS="ON" \
+		 -DPCRE2_BUILD_TESTS="OFF" \
+		 -DPCRE2_SUPPORT_UNICODE="ON" \
+		 -DPCRE2_BUILD_PCRE2_8="ON" \
+		 -DPCRE2_BUILD_PCRE2_16="ON" \
+		 -DPCRE2_BUILD_PCRE2_32="ON" \
+		 -DPCRE2_SUPPORT_JIT="OFF" \
+		 -DPCRE2_SUPPORT_LIBZ="OFF" \
+		 -DPCRE2_SUPPORT_LIBBZ2="OFF" \
+		 -DPCRE2_SUPPORT_LIBEDIT="OFF" \
+		 -DPCRE2_SUPPORT_LIBREADLINE="OFF" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MSYS Makefiles" \
+		 .. || exit 1
 	else
 		cmake \
-		-DCMAKE_BUILD_TYPE=Release \
-		-DPCRE2_STATIC_PIC="ON" \
-		-DBUILD_STATIC_LIBS="ON" \
-		-DPCRE2_BUILD_TESTS="OFF" \
-		-DPCRE2_SUPPORT_UNICODE="ON" \
-		-DPCRE2_BUILD_PCRE2_8="ON" \
-		-DPCRE2_BUILD_PCRE2_16="ON" \
-		-DPCRE2_BUILD_PCRE2_32="ON" \
-		-DPCRE2_SUPPORT_JIT="OFF" \
-		-DPCRE2_SUPPORT_LIBZ="OFF" \
-		-DPCRE2_SUPPORT_LIBBZ2="OFF" \
-		-DPCRE2_SUPPORT_LIBEDIT="OFF" \
-		-DPCRE2_SUPPORT_LIBREADLINE="OFF" \
-		-DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		.. || exit 1
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DPCRE2_STATIC_PIC="ON" \
+		 -DBUILD_STATIC_LIBS="ON" \
+		 -DPCRE2_BUILD_TESTS="OFF" \
+		 -DPCRE2_SUPPORT_UNICODE="ON" \
+		 -DPCRE2_BUILD_PCRE2_8="ON" \
+		 -DPCRE2_BUILD_PCRE2_16="ON" \
+		 -DPCRE2_BUILD_PCRE2_32="ON" \
+		 -DPCRE2_SUPPORT_JIT="OFF" \
+		 -DPCRE2_SUPPORT_LIBZ="OFF" \
+		 -DPCRE2_SUPPORT_LIBBZ2="OFF" \
+		 -DPCRE2_SUPPORT_LIBEDIT="OFF" \
+		 -DPCRE2_SUPPORT_LIBREADLINE="OFF" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
 	fi
 
 	# Выполняем сборку на всех логических ядрах
