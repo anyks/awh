@@ -2079,7 +2079,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 							 */
 							#if defined(_WIN32) || defined(_WIN64)
 								// Структура проверка статистики
-								struct _stat info{};
+								struct _stat64 info{};
 								// Создаем указатель на содержимое каталога
 								dir::_wdirent * ptr = nullptr;
 								/**
@@ -2127,7 +2127,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 										// Конвертируем адрес в формат wstring
 										const wstring & path = fmk::convert(child);
 										// Если статистика извлечена
-										if(!::_wstat(path.c_str(), &info)){
+										if(!::_wstat64(path.c_str(), &info)){
 											// Если дочерний элемент является директорией
 											if(S_ISDIR(info.st_mode))
 												// Выполняем удаление подкаталогов
@@ -2279,11 +2279,11 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Структура проверка статистики
-				struct _stat info{};
+				struct _stat64 info{};
 				// Выполняем извлечение актуального значения адреса
 				const wstring & address = fmk::convert(this->fullpath(addr));
 				// Выполняем извлечение данных статистики
-				const int32_t status = (!address.empty() ? ::_wstat(address.c_str(), &info) : -1);
+				const int32_t status = (!address.empty() ? ::_wstat64(address.c_str(), &info) : -1);
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
@@ -2491,20 +2491,42 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		 * Для операционной системы MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Создаём буфер для полного адреса
-			wchar_t buffer[_MAX_PATH];
-			// Заполняем буфер нулями
-			::memset(buffer, 0, sizeof(buffer));
-			// Выполняем извлечение адресов из переменных окружений
-			::ExpandEnvironmentStringsW(fmk::convert(addr).c_str(), buffer, ARRAYSIZE(buffer));
+			// Исходный адрес
+			const wstring source = fmk::convert(addr);
+			/**
+			 * Выполняем извлечение адресов из переменных окружений
+			 *
+			 * @note Размер буфера берётся из первого вызова: в буфер постоянного размера (_MAX_PATH)
+			 *       длинный адрес не помещался, вызов отказывал, и адрес сводился к пустому, а пустой
+			 *       адрес _wfullpath превращал в текущий каталог - работа уходила по чужому адресу
+			 */
+			const DWORD need = ::ExpandEnvironmentStringsW(source.c_str(), nullptr, 0);
+			// Адрес с раскрытыми переменными окружения
+			wstring expanded = source;
+			// Если размер буфера получен
+			if(need > 0){
+				// Буфер раскрытого адреса
+				wstring buffer(static_cast <size_t> (need), L'\0');
+				// Выполняем раскрытие переменных окружения
+				const DWORD size = ::ExpandEnvironmentStringsW(source.c_str(), buffer.data(), need);
+				// Если адрес раскрыт полностью
+				if((size > 0) && (size <= need)){
+					// Удаляем завершающий ноль
+					buffer.resize(static_cast <size_t> (size - 1));
+					// Устанавливаем раскрытый адрес
+					expanded = ::move(buffer);
+				}
+			}
 			// Устанавливаем результат
-			result = fmk::convert(buffer);
-			// Заполняем буфер нулями
-			::memset(buffer, 0, sizeof(buffer));
+			result = fmk::convert(expanded);
+			// Получаем полный адрес (буфер нужной длины выделяется самой функцией)
+			wchar_t * full = (!expanded.empty() ? ::_wfullpath(nullptr, expanded.c_str(), 0) : nullptr);
 			// Если адрес существует
-			if(::_wfullpath(buffer, fmk::convert(result).c_str(), _MAX_PATH) != nullptr){
+			if(full != nullptr){
 				// Получаем полный адрес пути
-				result = fmk::convert(buffer);
+				result = fmk::convert(wstring(full));
+				// Освобождаем буфер полного адреса
+				::free(full);
 				/**
 				 * Ярлыком разбирается лишь файл с расширением .lnk, как то делает и метод type
 				 *
@@ -2779,7 +2801,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 		 */
 		#else
 			// Выполняем установку метаданных файла
-			if(!(result = (::chmod(addr.data(), static_cast <mode_t> (mode)) == 0)) && (errno != 0)){
+			if(!(result = (::chmod(string(addr).c_str(), static_cast <mode_t> (mode)) == 0)) && (errno != 0)){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -3019,10 +3041,26 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 					if(!buffer.empty() && (buffer.back() == AWH_FS_SEPARATOR[0]))
 						// Удаляем завершающий сепаратор
 						buffer.pop_back();
+					// Позиция, с которой создаются каталоги
+					size_t start = 1;
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Сетевой адрес \\сервер\ресурс\...: сервер и общий ресурс создать нельзя, каталоги создаются после них
+						if((buffer.size() > 2) && (buffer[0] == '\\') && (buffer[1] == '\\')){
+							// Позиция разделителя после имени сервера
+							const size_t server = buffer.find('\\', 2);
+							// Позиция разделителя после имени общего ресурса
+							const size_t share = ((server != string::npos) ? buffer.find('\\', server + 1) : string::npos);
+							// Устанавливаем позицию начала создания каталогов
+							start = ((share != string::npos) ? (share + 1) : buffer.length());
+						}
+					#endif
 					/**
 					 * Переходим по всем символам адреса, создавая каталоги по мере прохождения
 					 */
-					for(size_t i = 1; i < buffer.length(); ++i){
+					for(size_t i = start; i < buffer.length(); ++i){
 						// Если найден сепаратор
 						if(buffer[i] == AWH_FS_SEPARATOR[0]){
 							// Временно обрываем строку нулём, чтобы получить промежуточный путь
@@ -3458,9 +3496,9 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 												 */
 												#if defined(_WIN32) || defined(_WIN64)
 													// Структура проверка статистики
-													struct _stat info{};
+													struct _stat64 info{};
 													// Если статистика извлечена
-													if(!::_wstat(fmk::convert(address).c_str(), &info))
+													if(!::_wstat64(fmk::convert(address).c_str(), &info))
 												/**
 												 * Для операционной системы не являющейся MS Windows
 												 */
@@ -3481,9 +3519,9 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 											 */
 											#if defined(_WIN32) || defined(_WIN64)
 												// Структура проверка статистики
-												struct _stat info{};
+												struct _stat64 info{};
 												// Если статистика извлечена
-												if(!::_wstat(fmk::convert(address).c_str(), &info))
+												if(!::_wstat64(fmk::convert(address).c_str(), &info))
 											/**
 											 * Для операционной системы не являющейся MS Windows
 											 */
@@ -4577,10 +4615,18 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
 							break;
 							// Если смещение от конца файла
-							case static_cast <uint8_t> (seek_t::END):
-								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
-							break;
+							case static_cast <uint8_t> (seek_t::END): {
+								// Полный размер файла
+								LARGE_INTEGER total;
+								// Смещение от конца отсчитывается назад, как у POSIX: читаются последние offset байт
+								if(::GetFileSizeEx(file, &total)){
+									// Вычисляем позицию от начала файла
+									li.QuadPart = ((static_cast <LONGLONG> (offset) < total.QuadPart) ? (total.QuadPart - static_cast <LONGLONG> (offset)) : 0);
+									// Выполняем установку позиции в файле
+									li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
+								// Размер файла получить не удалось
+								} else li.QuadPart = -1;
+							} break;
 							// Если тип смещения не определён
 							default: li.LowPart = 0;
 						}
@@ -4593,11 +4639,11 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							// Объект для хранения полного размера файла
 							LARGE_INTEGER fileSize;
 							// Если размер файла получить не удалось либо смещение находится за пределами файла
-							if(!::GetFileSizeEx(file, &fileSize) || (offset >= static_cast <size_t> (fileSize.QuadPart)))
+							if(!::GetFileSizeEx(file, &fileSize) || (li.QuadPart >= fileSize.QuadPart))
 								// Выходим из метода (дескриптор будет закрыт автоматически)
 								return;
-							// Определяем размер читаемых данных
-							size_t size = (static_cast <size_t> (fileSize.QuadPart) - offset);
+							// Определяем размер читаемых данных (от установленной позиции до конца файла)
+							size_t size = static_cast <size_t> (fileSize.QuadPart - li.QuadPart);
 							// Если объект результата пустой
 							if(result.empty())
 								// Устанавливаем размер буфера
@@ -4605,7 +4651,28 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							// Если объект результата уже задан — читаем min(размер буфера, size)
 							else size = ::min(size, result.size());
 							// Выполняем чтение из файла в буфер данные
-							if(!::ReadFile(file, static_cast <LPVOID> (&result[0]), static_cast <DWORD> (size), 0, nullptr)){
+							// Количество прочитанных байт
+							size_t done = 0;
+							// Результат чтения
+							bool ok = true;
+							/**
+							 * Выполняем чтение из файла в буфер частями: ReadFile читает не более DWORD байт за вызов
+							 * и вправе вернуть меньше запрошенного
+							 */
+							while(done < size){
+								// Количество байт прочитанных за вызов
+								DWORD bytes = 0;
+								// Размер читаемой части
+								const DWORD part = static_cast <DWORD> (::min <size_t> ((size - done), static_cast <size_t> (0x7FFFFFFF)));
+								// Если часть не прочитана либо достигнут конец файла
+								if(!(ok = (::ReadFile(file, static_cast <LPVOID> (&result[done]), part, &bytes, nullptr) != FALSE)) || (bytes == 0))
+									// Выходим из цикла
+									break;
+								// Увеличиваем количество прочитанных байт
+								done += static_cast <size_t> (bytes);
+							}
+							// Если файл прочитан не полностью
+							if(!ok || (done < size)){
 								/**
 								 * Выполняем очистку буфера результата
 								 *
@@ -5717,9 +5784,9 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						/**
 						 * Читаем файл по частям до тех пор, пока не достигнем конца файла
 						 */
-						while(position < length){
-							// Читаем часть файла в буфер
-							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
+						while(position < static_cast <off_t> (info.st_size)){
+							// Читаем часть файла в буфер (позиция абсолютная, остаток считается от конца файла)
+							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), static_cast <off_t> (info.st_size) - position)), position);
 							// Если прочитать часть файла не удалось
 							if(bytes <= 0)
 								// Выходим из цикла чтения файла
@@ -6019,9 +6086,9 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						/**
 						 * Читаем файл по частям до тех пор, пока не достигнем конца файла
 						 */
-						while(position < length){
-							// Читаем часть файла в буфер
-							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
+						while(position < static_cast <off_t> (info.st_size)){
+							// Читаем часть файла в буфер (позиция абсолютная, остаток считается от конца файла)
+							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), static_cast <off_t> (info.st_size) - position)), position);
 							// Если прочитать часть файла не удалось
 							if(bytes <= 0)
 								// Выходим из цикла чтения файла

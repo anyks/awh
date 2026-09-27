@@ -1384,3 +1384,122 @@ TEST_F(FSFixture, WriteIntoExistingEmptyFileTest){
 	// Удаляем проверяемый файл
 	ASSERT_TRUE(this->_fs->unlink(file));
 }
+
+/**
+ * Для операционных систем кроме MS Windows (там chmod устанавливает атрибуты файла)
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+/**
+ * @brief Тест установки прав по адресу-представлению без завершающего нуля
+ *
+ * @details Права устанавливались вызовом ::chmod по указателю представления, и адрес
+ *          читался за границей представления: существует укороченный адрес, а права
+ *          пытались установить соседнему, отсутствующему
+ */
+TEST_F(FSFixture, ChmodAddressViewWithoutTerminatorTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Адрес, из которого вырезается представление
+	const std::string file = "test_chmod_unit_ab";
+	// Представление без последнего символа
+	const std::string_view view(file.data(), file.size() - 1);
+	// Существующий файл, на который указывает представление
+	const std::string target(view);
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(target) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(target));
+	// Заводим проверяемый файл
+	ASSERT_TRUE(this->_fs->write(target, "data", 4));
+	// Соседнего файла быть не должно
+	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::NONE);
+	// Установка прав существующему файлу обязана пройти
+	ASSERT_TRUE(this->_fs->chmod(view, 0600));
+	// Права обязаны быть установлены
+	ASSERT_EQ(this->_fs->chmod(view), 0600u);
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(target));
+}
+#endif
+
+/**
+ * @brief Тест чтения файла со смещением
+ *
+ * @details Цикл чтения сравнивал абсолютную позицию с размером остатка: со смещением
+ *          больше половины файла не читалось ничего, а с меньшим читался не весь остаток
+ */
+TEST_F(FSFixture, ReadfileFromOffsetTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_readfile_offset_unit.bin";
+	// Содержимое файла
+	const std::string data(100, 'x');
+	// Заводим проверяемый файл
+	ASSERT_TRUE(this->_fs->write(file, data.data(), data.size()));
+	// Выполняем перебор смещений
+	for(const size_t offset : {size_t(0), size_t(30), size_t(60), size_t(99)}){
+		// Количество прочитанных байт
+		size_t total = 0;
+		// Выполняем чтение файла блоками
+		this->_fs->readfile(file, 16, [&total](const void *, const size_t size) noexcept -> void {
+			// Считаем прочитанные байты
+			total += size;
+		}, awh::fs_t::seek_t::BEGIN, offset);
+		// Прочитан обязан быть весь остаток файла
+		ASSERT_EQ(total, data.size() - offset) << "offset " << offset;
+		// Сбрасываем счётчик
+		total = 0;
+		// Выполняем чтение файла строками
+		this->_fs->readfile(file, [&total](std::string_view line) noexcept -> void {
+			// Считаем прочитанные байты
+			total += line.size();
+		}, awh::fs_t::seek_t::BEGIN, offset);
+		// Прочитан обязан быть весь остаток файла
+		ASSERT_EQ(total, data.size() - offset) << "offset " << offset;
+	}
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Тест чтения файла со смещением от конца
+ *
+ * @details Смещение от конца отсчитывается назад, как у POSIX: читаются последние байты.
+ *          У MS Windows позиция уходила за конец файла, а размер чтения считался от начала,
+ *          и вместо хвоста файла возвращался буфер нулей
+ */
+TEST_F(FSFixture, ReadFromEndTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_read_end_unit.bin";
+	// Содержимое файла
+	std::string data(100, 'x');
+	// Хвост файла отличается от начала
+	data.replace(90, 10, "0123456789");
+	// Заводим проверяемый файл
+	ASSERT_TRUE(this->_fs->write(file, data.data(), data.size()));
+	// Читаются последние десять байт
+	ASSERT_EQ(this->_fs->read <std::string> (file, awh::fs_t::seek_t::END, 10), "0123456789");
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Тест полного адреса длиннее MAX_PATH
+ *
+ * @details У MS Windows адрес раскрывался в буфер постоянного размера: длинный адрес в него
+ *          не помещался, сводился к пустому, а пустой адрес становился текущим каталогом
+ */
+TEST_F(FSFixture, FullpathLongAddressTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Название длиннее MAX_PATH
+	const std::string name = ("long_" + std::string(300, 'a'));
+	// Полный адрес
+	const std::string address = this->_fs->fullpath(name, false);
+	// Полный адрес обязан оканчиваться переданным названием
+	ASSERT_GE(address.size(), name.size());
+	ASSERT_EQ(address.compare(address.size() - name.size(), name.size(), name), 0);
+}
