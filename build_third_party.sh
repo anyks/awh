@@ -143,6 +143,8 @@ if [ $OS = "Darwin" ]; then
 		# Устанавливаем версию операционной системы
 		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
 	fi
+	# Устанавливаем тип компилятора
+	export CMAKE_OSX_ARCHITECTURES="$(uname -m)"
 # Если сборка производится в операционной системе Windows, Linux или Solaris
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
 	# Устанавливаем количество ядер системы
