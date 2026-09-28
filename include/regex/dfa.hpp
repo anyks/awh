@@ -79,10 +79,14 @@
  *          Граница - тридцать два байта по доводу прохода парой байтов:
  *          выравнивание по шестидесяти четырём поднимает выравнивание всего
  *          раздела кода, а для прохода автомата обе границы опытом вровень.
- *          @@ПАРЫ-RU@@ На x86-64 закрепление строк
- *          не сдвигает: семь строк стенда без эталона у FreeBSD (clang 19)
- *          и Fedora (GCC 16) вровень в пределах 2.8 процента. Visual Studio
- *          и LCC выравнивания начала функции не исполняют, и макрос у них пуст.
+ *          Пять пар полных прогонов вперемежку против исходной сборки
+ *          с закреплением просадок не держат: ни одна строка не медленнее
+ *          во всех пяти парах больше чем на три процента, середина по строкам -
+ *          плюс 0.8 процента разбором и плюс 1.1 кодом, «word-long» минус 1.2
+ *          [−8.4 +3.1]. На x86-64 закрепление строк не сдвигает: семь строк
+ *          стенда без эталона у FreeBSD (clang 19) и Fedora (GCC 16) вровень
+ *          в пределах 2.8 процента. Visual Studio и LCC выравнивания начала
+ *          функции не исполняют, и макрос у них пуст.
  *          Закреплено тестом «Regex.AutomatonScanAligned».
  *
  * \~english
@@ -145,7 +149,11 @@
  *          cent below the luckiest accidental position and a sixth above the unlucky one.
  *          The boundary is thirty-two bytes by the argument of the pass by a pair of bytes:
  *          alignment to sixty-four raises the alignment of the whole code section, while for
- *          the pass of the automaton both boundaries are level by experiment. @@ПАРЫ-EN@@
+ *          the pass of the automaton both boundaries are level by experiment. Five pairs of full
+ *          interleaved runs against the original build hold no losses with the pinning: no
+ *          line is slower in all five pairs by more than three per cent, the median over the
+ *          lines is plus 0.8 per cent of interpretation and plus 1.1 of code, «word-long»
+ *          minus 1.2 [−8.4 +3.1].
  *          On x86-64 the pinning does not shift the lines: seven lines of the stand without
  *          the reference on FreeBSD (clang 19) and Fedora (GCC 16) are level within 2.8 per
  *          cent. Visual Studio and LCC do not perform the alignment of the beginning of a

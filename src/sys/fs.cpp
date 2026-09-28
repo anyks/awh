@@ -2956,8 +2956,12 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				const uid_t uid = this->_os.uid(user);
 				// Идентификатор группы
 				const gid_t gid = this->_os.group(group);
-				// Устанавливаем права на каталог
-				if((result = (uid && gid))){
+				// Если пользователь либо группа не найдены (нуль - это root и wheel, а не отказ)
+				if(!(result = ((uid != static_cast <uid_t> (-1)) && (gid != static_cast <gid_t> (-1)))))
+					// Выводим сообщение об ошибке
+					log::print("Owner \"%s:%s\" of \"%s\" cannot be set: %s is not found", log::flag_t::CRITICAL, string(user).c_str(), string(group).c_str(), string(addr).c_str(), ((uid == static_cast <uid_t> (-1)) ? "user" : "group"));
+				// Устанавливаем владельца
+				else {
 					// Выполняем установку владельца
 					if(!(result = (::chown(string(addr).c_str(), uid, gid) == 0)) && (errno != 0)){
 						/**

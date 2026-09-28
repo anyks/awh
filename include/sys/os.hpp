@@ -542,12 +542,12 @@ namespace awh {
 			 * @brief Метод получения идентификатора группы пользователя
 			 *
 			 * @param name название группы пользователя
-			 * @return     идентификатор группы пользователя
+			 * @return     идентификатор группы пользователя либо (gid_t) -1, если группа не найдена
 			 *
 			 * \~english
 			 * @brief Method of getting the identifier of the group of a user
 			 * @param name name of the group of the user
-			 * @return     identifier of the group of the user
+			 * @return     identifier of the group of the user or (gid_t) -1 if the group is not found
 			 *
 			 * \~
 			 */
@@ -558,12 +558,12 @@ namespace awh {
 			 * @brief Метод вывода идентификатора пользователя
 			 *
 			 * @param name имя пользователя
-			 * @return     полученный идентификатор пользователя
+			 * @return     полученный идентификатор пользователя либо (uid_t) -1, если пользователь не найден
 			 *
 			 * \~english
 			 * @brief Method of yielding the identifier of a user
 			 * @param name name of the user
-			 * @return     the obtained identifier of the user
+			 * @return     the obtained identifier of the user or (uid_t) -1 if the user is not found
 			 *
 			 * \~
 			 */
@@ -573,12 +573,12 @@ namespace awh {
 			 * @brief Метод вывода идентификатора группы пользователя
 			 *
 			 * @param name имя пользователя
-			 * @return     полученный идентификатор группы пользователя
+			 * @return     полученный идентификатор группы пользователя либо (gid_t) -1, если пользователь не найден
 			 *
 			 * \~english
 			 * @brief Method of yielding the identifier of the group of a user
 			 * @param name name of the user
-			 * @return     the obtained identifier of the group of the user
+			 * @return     the obtained identifier of the group of the user or (gid_t) -1 if the user is not found
 			 *
 			 * \~
 			 */

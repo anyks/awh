@@ -1552,3 +1552,41 @@ TEST_F(FSFixture, LongAddressTest){
 	ASSERT_TRUE(this->_fs->unlink(root));
 	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
 }
+
+/**
+ * Для операционных систем семейства Unix
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <grp.h>
+	#include <pwd.h>
+	#include <unistd.h>
+
+	/**
+	 * @brief Смена владельца: к себе выполняется, к несуществующему пользователю - отказ
+	 */
+	TEST_F(FSFixture, ChownIdentifierTest){
+		// Если объект работы с ФС создан
+		ASSERT_TRUE(this->_fs != nullptr);
+		// Адрес временного файла
+		const std::string file = "chown_identifier_test.txt";
+		// Создаём временный файл
+		ASSERT_TRUE(this->_fs->write(file, "x"));
+		// Данные пользователя процесса
+		const struct passwd * me = ::getpwuid(::getuid());
+		// Данные группы процесса
+		const struct group * mine = ::getgrgid(::getgid());
+		// Имена процесса обязаны быть
+		ASSERT_TRUE((me != nullptr) && (mine != nullptr));
+		// Смена владельца на себя выполняется
+		ASSERT_TRUE(this->_fs->chown(file, me->pw_name, mine->gr_name));
+		// Смена владельца на несуществующего пользователя - отказ
+		ASSERT_FALSE(this->_fs->chown(file, "no-such-user-zz", mine->gr_name));
+		// Смена владельца на несуществующую группу - отказ
+		ASSERT_FALSE(this->_fs->chown(file, me->pw_name, "no-such-group-zz"));
+		// Удаляем временный файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	}
+#endif

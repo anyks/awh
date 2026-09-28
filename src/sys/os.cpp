@@ -1847,18 +1847,18 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::debug("Group \"%s\" is not found", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, groupname.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("Group \"%s\" is not found", awh::log::flag_t::CRITICAL, groupname.c_str());
 				#endif
 			}
 		}
-		// Возвращаем результат
-		return 0;
+		// Сообщаем, что группа не найдена: нуль - это root, а не отказ
+		return static_cast <gid_t> (-1);
 	}
 	/**
 	 * @brief Метод вывода идентификатора пользователя
@@ -1889,18 +1889,18 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::debug("User \"%s\" is not found", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, username.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("User \"%s\" is not found", awh::log::flag_t::CRITICAL, username.c_str());
 				#endif
 			}
 		}
-		// Возвращаем результат
-		return 0;
+		// Сообщаем, что пользователь не найден: нуль - это root, а не отказ
+		return static_cast <uid_t> (-1);
 	}
 	/**
 	 * @brief Метод вывода идентификатора группы пользователя
@@ -1931,18 +1931,18 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::debug("User \"%s\" is not found", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, username.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("User \"%s\" is not found", awh::log::flag_t::CRITICAL, username.c_str());
 				#endif
 			}
 		}
-		// Возвращаем результат
-		return 0;
+		// Сообщаем, что пользователь не найден: нуль - это root, а не отказ
+		return static_cast <gid_t> (-1);
 	}
 	/**
 	 * @brief Получение списка групп пользователя

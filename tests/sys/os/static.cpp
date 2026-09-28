@@ -190,3 +190,40 @@ TEST_F(OSFixture, ArchitectureOSTest){
 		break;
 	}
 }
+
+/**
+ * Для операционных систем семейства Unix
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Системные заголовочные файлы
+	 */
+	#include <grp.h>
+
+	/**
+	 * @brief Нуль - законный идентификатор, отказ - (uid_t) -1
+	 *
+	 * @details Прежде отказ разрешения имени тоже был нулём, и отличить его от root
+	 *          (и от группы с идентификатором 0: wheel в BSD и macOS, root в Linux) было
+	 *          нельзя: chown к root молча не выполнялся, а к несуществующему пользователю
+	 *          отказывал без сообщения о причине
+	 */
+	TEST_F(OSFixture, IdentifierNotFoundTest){
+		// Если объект работы с ОС создан
+		ASSERT_TRUE(this->_os != nullptr);
+		// Название группы с идентификатором 0
+		const struct group * zero = ::getgrgid(0);
+		// Группа с идентификатором 0 обязана быть
+		ASSERT_TRUE(zero != nullptr);
+		// Идентификатор root - нуль
+		ASSERT_EQ(this->_os->uid("root"), static_cast <uid_t> (0));
+		// Идентификатор группы 0 - нуль
+		ASSERT_EQ(this->_os->group(zero->gr_name), static_cast <gid_t> (0));
+		// Несуществующий пользователь - отказ
+		ASSERT_EQ(this->_os->uid("no-such-user-zz"), static_cast <uid_t> (-1));
+		// Группа несуществующего пользователя - отказ
+		ASSERT_EQ(this->_os->gid("no-such-user-zz"), static_cast <gid_t> (-1));
+		// Несуществующая группа - отказ
+		ASSERT_EQ(this->_os->group("no-such-group-zz"), static_cast <gid_t> (-1));
+	}
+#endif
