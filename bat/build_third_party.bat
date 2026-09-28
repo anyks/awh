@@ -67,7 +67,13 @@ rem  Средство вправе быть позвано из чужой об�
 rem  системных приёмов. Оснастка Visual Studio дополняет путь, а не заменяет его, и
 rem  чужие двойники оказываются впереди: набор Windows тогда не находится вовсе, а
 rem  отказ приходит в виде "rc: no such file or directory" - далеко от причины
+rem
+rem  Прежний путь не выбрасывается, а запоминается: CMake и Ninja, поставленные
+rem  отдельно от Visual Studio, ищутся и в нём - иначе сброс пути прятал бы их, и
+rem  на машине без части CMake в составе Visual Studio сборка отказывала бы в
+rem  средстве, какое лежит на месте
 rem ----------------------------------------------------------------------------
+set "AWH_PATH=%PATH%"
 set "PATH=%SystemRoot%\System32;%SystemRoot%;%SystemRoot%\System32\Wbem"
 
 rem ----------------------------------------------------------------------------
@@ -130,19 +136,49 @@ if errorlevel 1 (
 rem ----------------------------------------------------------------------------
 rem  Средства сборки
 rem
-rem  CMake и Ninja берутся из состава Visual Studio, если своих в пути нет: ставить
-rem  их отдельно ради сборки зависимостей потребителю незачем.
+rem  Порядок поиска: заданное вручную (AWH_CMAKE, AWH_NINJA), часть CMake
+rem  в составе Visual Studio, отдельная установка CMake, путь, с каким средство
+rem  позвано. Часть CMake в установщике Visual Studio необязательна, и её может не
+rem  быть вовсе - тогда годится CMake, поставленный отдельно.
+rem
+rem  Ninja нет - сборка идёт генератором "NMake Makefiles" из состава оснастки: она
+rem  медленнее, в одно задание, но не отказывает. Молчать об этом нельзя: сборка,
+rem  ставшая вчетверо дольше без объяснения, разыскивается потом как чужая беда
 rem ----------------------------------------------------------------------------
-set "CMAKE=cmake"
-where cmake > nul 2>&1 || set "CMAKE=%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+set "CMAKE="
+if defined AWH_CMAKE set "CMAKE=%AWH_CMAKE%"
+if not defined CMAKE if exist "%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" set "CMAKE=%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
+if not defined CMAKE if exist "%ProgramFiles%\CMake\bin\cmake.exe" set "CMAKE=%ProgramFiles%\CMake\bin\cmake.exe"
+if not defined CMAKE for %%I in (cmake.exe) do if not "%%~$AWH_PATH:I"=="" set "CMAKE=%%~$AWH_PATH:I"
 
-set "NINJA=ninja"
-where ninja > nul 2>&1 || set "NINJA=%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe"
-
-if not exist "%CMAKE%" if /i not "%CMAKE%"=="cmake" (
-	echo [AWH] CMake not found neither in PATH nor in the Visual Studio installation
+if not defined CMAKE (
+	echo [AWH] CMake not found: install the "C++ CMake tools for Windows" component of Visual Studio,
+	echo [AWH] install CMake separately or set AWH_CMAKE to cmake.exe
 	exit /b 1
 )
+
+set "NINJA="
+if defined AWH_NINJA set "NINJA=%AWH_NINJA%"
+if not defined NINJA if exist "%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" set "NINJA=%VSPATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe"
+if not defined NINJA for %%I in (ninja.exe) do if not "%%~$AWH_PATH:I"=="" set "NINJA=%%~$AWH_PATH:I"
+
+if defined NINJA (
+	set "GENERATOR=Ninja"
+) else (
+	set "GENERATOR=NMake Makefiles"
+	echo [AWH] Ninja not found: building with NMake in a single job, which is slower
+	echo [AWH] install Ninja or set AWH_NINJA to ninja.exe to build in parallel
+)
+
+rem ----------------------------------------------------------------------------
+rem  Совместимость с CMake 4
+rem
+rem  CMake 4 отверг проекты, заявляющие совместимость ниже 3.5, а часть
+rem  зависимостей (snappy 1.2.1) заявляет именно такую: настройка отказывает ещё
+rem  до сборки. Переменная та же, что у sh/build_third_party.sh, - CMake читает её
+rem  из окружения, и прежним версиям она ничем не мешает
+rem ----------------------------------------------------------------------------
+set "CMAKE_POLICY_VERSION_MINIMUM=3.5"
 
 rem Число заданий сборки по числу вычислителей машины
 set "JOBS=%NUMBER_OF_PROCESSORS%"
@@ -164,6 +200,8 @@ echo [AWH] Visual Studio: %VSPATH%
 echo [AWH] Architecture:  %AWH_ARCH%
 echo [AWH] Prefix:        %PREFIX%
 echo [AWH] Jobs:          %JOBS%
+echo [AWH] CMake:         %CMAKE%
+echo [AWH] Generator:     %GENERATOR%
 echo.
 
 rem Создаём каталоги, куда ляжет собранное

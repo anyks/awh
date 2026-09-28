@@ -70,23 +70,31 @@
  *          до 15.8 процента разбором во всех пяти парах полных прогонов при коде
  *          прохода, совпавшем до байта; доля прохода в образце стека выросла
  *          с половины до трёх пятых. Сборки обеих сторон с выравниванием всего
- *          кода по шестидесяти четырём сдвиг сняли: «word-long» плюс 1.2
- *          процента. С закреплённым началом проход от чужих правок не зависит:
- *          у сборок с правкой и без неё «word-long» вровень - 1155 и 1153
- *          совпадения в секунду при начале прохода на тридцати двух и на нуле
- *          по модулю шестидесяти четырёх, - что на два процента ниже самого
- *          удачного положения случайного и на шестую долю выше неудачного.
+ *          кода по шестидесяти четырём сдвиг сняли: «word-long» плюс 2.1
+ *          процента за шесть кругов. С закреплённым началом проход от чужих
+ *          правок не зависит: у сборок с правкой и без неё «word-long» вровень -
+ *          1155 и 1153 совпадения в секунду при начале прохода на тридцати двух
+ *          и на нуле по модулю шестидесяти четырёх, - что на два процента ниже
+ *          самого удачного положения случайного и на шестую долю выше неудачного.
  *          Граница - тридцать два байта по доводу прохода парой байтов:
  *          выравнивание по шестидесяти четырём поднимает выравнивание всего
  *          раздела кода, а для прохода автомата обе границы опытом вровень.
  *          Пять пар полных прогонов вперемежку против исходной сборки
- *          с закреплением просадок не держат: ни одна строка не медленнее
- *          во всех пяти парах больше чем на три процента, середина по строкам -
- *          плюс 0.8 процента разбором и плюс 1.1 кодом, «word-long» минус 1.2
- *          [−8.4 +3.1]. На x86-64 закрепление строк не сдвигает: семь строк
- *          стенда без эталона у FreeBSD (clang 19) и Fedora (GCC 16) вровень
- *          в пределах 2.8 процента. Visual Studio и LCC выравнивания начала
- *          функции не исполняют, и макрос у них пуст.
+ *          с закреплением: середина по строкам - плюс 0.8 процента разбором
+ *          и плюс 1.1 кодом, «word-long» минус 1.2 [−8.4 +3.1]; шесть мер
+ *          быстрее во всех пяти парах больше чем на три процента, до 5.4,
+ *          а три строки разбором медленнее во всех пяти - «digits-short»
+ *          на 4.0 процента [−6.6 −2.6], «lookbehind-heavy» на 2.8
+ *          и «lazy-short» на 1.5. Эти три - раскладка: в сборках обеих сторон
+ *          с выравниванием всего кода по шестидесяти четырём они вровень,
+ *          от 0.0 до плюс 0.4 процента за восемь кругов, а исходная сборка
+ *          с выравниванием на них сама медленнее обычной на 2.7-5.7 процента.
+ *          На x86-64 закрепление строк устойчиво не сдвигает: у FreeBSD
+ *          (clang 19) и Fedora (GCC 16) строки стенда без эталона вровень,
+ *          от минус 1.9 до плюс 2.3 процента, кроме «lookbehind-heavy» кодом
+ *          у Fedora - минус 3.2, а в выровненных сборках плюс 3.3. Visual
+ *          Studio и LCC выравнивания начала функции не исполняют, и макрос
+ *          у них пуст.
  *          Закреплено тестом «Regex.AutomatonScanAligned».
  *
  * \~english
@@ -142,23 +150,30 @@
  *          of interpretation on Apple M4 Max in all five pairs of full runs, with the code
  *          of the pass identical to the byte; the share of the pass in the stack sample
  *          grew from a half to three fifths. Builds of both sides with all code aligned to
- *          sixty-four removed the shift: «word-long» plus 1.2 per cent. With the beginning
- *          pinned the pass does not depend on the edits of others: in the builds with the
- *          edit and without it «word-long» is level — 1155 and 1153 matches per second with
- *          the beginning of the pass at thirty-two and at zero modulo sixty-four, — two per
- *          cent below the luckiest accidental position and a sixth above the unlucky one.
+ *          sixty-four removed the shift: «word-long» plus 2.1 per cent over six rounds. With
+ *          the beginning pinned the pass does not depend on the edits of others: in the
+ *          builds with the edit and without it «word-long» is level — 1155 and 1153 matches
+ *          per second with the beginning of the pass at thirty-two and at zero modulo
+ *          sixty-four, — two per cent below the luckiest accidental position and a sixth
+ *          above the unlucky one.
  *          The boundary is thirty-two bytes by the argument of the pass by a pair of bytes:
  *          alignment to sixty-four raises the alignment of the whole code section, while for
  *          the pass of the automaton both boundaries are level by experiment. Five pairs of full
- *          interleaved runs against the original build hold no losses with the pinning: no
- *          line is slower in all five pairs by more than three per cent, the median over the
+ *          interleaved runs against the original build with the pinning: the median over the
  *          lines is plus 0.8 per cent of interpretation and plus 1.1 of code, «word-long»
- *          minus 1.2 [−8.4 +3.1].
- *          On x86-64 the pinning does not shift the lines: seven lines of the stand without
- *          the reference on FreeBSD (clang 19) and Fedora (GCC 16) are level within 2.8 per
- *          cent. Visual Studio and LCC do not perform the alignment of the beginning of a
- *          function, and the macro is empty for them. Pinned by the
- *          «Regex.AutomatonScanAligned» test.
+ *          minus 1.2 [−8.4 +3.1]; six measures are faster in all five pairs by more than
+ *          three per cent, up to 5.4, while three lines of interpretation are slower in all
+ *          five — «digits-short» by 4.0 per cent [−6.6 −2.6], «lookbehind-heavy» by 2.8 and
+ *          «lazy-short» by 1.5. These three are the layout: in the builds of both sides with
+ *          all code aligned to sixty-four they are level, from 0.0 to plus 0.4 per cent over
+ *          eight rounds, while the original build with the alignment is itself slower on them
+ *          than the ordinary one by 2.7-5.7 per cent.
+ *          On x86-64 the pinning does not shift the lines steadily: on FreeBSD (clang 19) and
+ *          Fedora (GCC 16) the lines of the stand without the reference are level, from minus
+ *          1.9 to plus 2.3 per cent, except «lookbehind-heavy» of code on Fedora — minus 3.2,
+ *          while in the aligned builds it is plus 3.3. Visual Studio and LCC do not perform
+ *          the alignment of the beginning of a function, and the macro is empty for them.
+ *          Pinned by the «Regex.AutomatonScanAligned» test.
  *
  * \~
  *

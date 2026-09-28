@@ -14,7 +14,7 @@ rem    call "%~dp0_common.bat" :checkout "<имя>"
 rem    call "%~dp0_common.bat" :build "<имя>" "<версия>" "<настройки CMake>"
 rem    call "%~dp0_common.bat" :clean "<имя>"
 rem
-rem  Ожидает заведённого окружения: PREFIX, SUBMODULES, CMAKE, NINJA, JOBS.
+rem  Ожидает заведённого окружения: PREFIX, SUBMODULES, CMAKE, GENERATOR, NINJA, JOBS.
 rem ============================================================================
 
 if "%~1"=="" exit /b 1
@@ -180,8 +180,12 @@ rem ----------------------------------------------------------------------------
 	if not exist "%SRC%\build-msvc" mkdir "%SRC%\build-msvc" > nul 2>&1
 	pushd "%SRC%\build-msvc" > nul
 
-	"%CMAKE%" -G Ninja ^
-	 -DCMAKE_MAKE_PROGRAM="%NINJA%" ^
+	rem Средство сборки указывается лишь у Ninja: NMake оснастка находит сама, и на
+	rem его месте стоит безвредная настройка - пустой довод CMake принял бы за путь
+	if defined NINJA ( set "MAKEPROGRAM=-DCMAKE_MAKE_PROGRAM=%NINJA%" ) else ( set "MAKEPROGRAM=-DCMAKE_VERBOSE_MAKEFILE=OFF" )
+
+	"%CMAKE%" -G "%GENERATOR%" ^
+	 "!MAKEPROGRAM!" ^
 	 -DCMAKE_C_COMPILER=cl.exe ^
 	 -DCMAKE_CXX_COMPILER=cl.exe ^
 	 -DCMAKE_BUILD_TYPE=Release ^
