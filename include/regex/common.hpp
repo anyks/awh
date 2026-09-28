@@ -82,6 +82,64 @@
 #endif
 
 /**
+ * Если принудительная подстановка ещё не определена
+ *
+ * @details Ограждение и довод к нему - см. prefilter.hpp: определение это
+ *          несут два заголовочных файла, подключаемых в разном порядке, - этот
+ *          и prefilter.hpp, общих определений не подключающий. Прочие
+ *          заголовочные файлы модуля берут определение отсюда.
+ *
+ */
+#if !defined(AWH_REGEX_INLINE)
+	/**
+	 * Если используется компилятор Microsoft Visual C++
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Microsoft Visual C++
+		 */
+		#define AWH_REGEX_INLINE inline __forceinline
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
+#endif
+
+/**
+ * Если запрет подстановки метода телом вызывающего ещё не определён
+ *
+ * @details Запрет нужен исполнению с возвратом и медленному пути пополнения
+ *          набора записей ниже. Определение ведётся здесь одним местом:
+ *          файл этот подключают все заголовочные файлы модуля, кроме
+ *          prefilter.hpp, а тому запрет не нужен.
+ *
+ */
+#if !defined(AWH_REGEX_NOINLINE)
+	/**
+	 * Если компилятор является Visual Studio
+	 */
+	#if defined(_MSC_VER)
+		/**
+		 * Запрет подстановки средствами Visual Studio
+		 */
+		#define AWH_REGEX_NOINLINE __declspec(noinline)
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Запрет подстановки средствами GCC и Clang
+		 */
+		#define AWH_REGEX_NOINLINE __attribute__((noinline))
+	#endif
+#endif
+
+/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
@@ -897,6 +955,32 @@ namespace awh {
 					// Выполняем установку размещённого количества записей
 					this->_capacity = static_cast <uint32_t> (required);
 				}
+				/**
+				 * \~russian
+				 * @brief Метод расширения набора под запись, добавляемую в конец
+				 *
+				 * @details Медленный путь размещения записи: набор обозревающий
+				 *          обращается во владеющий, а владеющий, места лишённый,
+				 *          размещает записи заново. Путь вынесен из размещения
+				 *          записи и подстановке запрещён намеренно - см. метод
+				 *          размещения записи в конце набора.
+				 *
+				 * \~english
+				 * @brief Method of expanding the sequence for a record appended to the end
+				 * @details The slow path of constructing a record: a viewing sequence is turned
+				 *          into an owning one, and an owning one that lacks room allocates its
+				 *          records anew. The path is taken out of constructing a record and is
+				 *          forbidden from inlining deliberately - see the method of constructing
+				 *          a record at the end of the sequence.
+				 *
+				 * \~
+				 */
+				AWH_REGEX_NOINLINE void expand() noexcept {
+					// Выполняем обращение набора обозревающего во владеющий
+					this->detach();
+					// Выполняем размещение записей набора
+					this->grow(static_cast <size_t> (this->_count) + 1);
+				}
 			public:
 				/**
 				 * \~russian
@@ -1207,7 +1291,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				void push_back(const T & record) {
+				AWH_REGEX_INLINE void push_back(const T & record) {
 					// Выполняем размещение записи в конце набора
 					this->emplace_back(record);
 				}
@@ -1215,32 +1299,110 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод размещения записи в конце набора
 				 *
+				 * @details Размещение ведётся двумя путями. Быстрый - место есть,
+				 *          и набор им владеет, - стоит одного сравнения и самой
+				 *          записи и подставляется телом вызывающего. Медленный -
+				 *          набор обозревающий либо места лишённый - вынесен в метод
+				 *          расширения, подстановке запрещённый. Условие быстрого
+				 *          пути одно на оба признака: у набора обозревающего место
+				 *          равно нулю и количества не превышает.
+				 *
+				 *          Устройство это заведено ради сборки программы: всякая
+				 *          инструкция её размещается здесь, и сборка набора образцов
+				 *          Grok с выражениями стенда размещает их за круг двести
+				 *          семьдесят тысяч. Метод размещения целиком прежде
+				 *          подстановке не поддавался: медленный путь делал его велик,
+				 *          и вызов на всякую инструкцию стоил 8% времени всей сборки.
+				 *          Запрет подстановки медленного пути ставится явно:
+				 *          Clang выносит его и сам, а GCC и LCC без запрета
+				 *          подставляли его в размещение, и то снова разрасталось.
+				 *
+				 *          Размещение отдаёт указание на запись, а не принимает её
+				 *          собранной в стороне: запись, собранную в стороне, GCC
+				 *          складывал в стеке по полям и переносил чтениями шире
+				 *          записей, её наполнивших, а такое чтение на x86-64 ждёт
+				 *          завершения записей. Сборка набора у GCC выходила оттого
+				 *          медленнее прежней, тогда как у Clang, раскладывавшего
+				 *          запись по регистрам, - быстрее. Поля, дописанные через
+				 *          указание, ложатся на место сразу у всякого собирателя.
+				 *
+				 *          Количество записей читается однажды, до записи: запись
+				 *          инструкции ведётся и байтами, а байт вправе совпасть
+				 *          с полем набора, отчего чтение после неё собиратель
+				 *          обязан повторить.
+				 *
 				 * @tparam Args типы параметров размещаемой записи
 				 * @param  args параметры размещаемой записи набора
+				 * @return      указание на размещённую запись либо nullptr, если места
+				 *              под запись набор не получил; указание годно, покуда
+				 *              набор не растёт
 				 *
 				 * \~english
 				 * @brief Method of constructing a record at the end of the sequence
+				 * @details A record is constructed by one of two paths. The fast one - there is
+				 *          room and the sequence owns it - costs one comparison and the write
+				 *          itself and is inlined into the caller. The slow one - a viewing
+				 *          sequence or one lacking room - is taken out into the method of
+				 *          expansion, which is forbidden from inlining. The condition of the fast
+				 *          path is one for both signs: a viewing sequence has zero room, which
+				 *          does not exceed the count.
+				 *
+				 *          The arrangement is introduced for building a program: every
+				 *          instruction of it is constructed here, and building the set of Grok
+				 *          patterns with the expressions of the benchmark stand constructs two
+				 *          hundred seventy thousand of them per round. The method of
+				 *          construction as a whole previously did not yield to inlining: the slow
+				 *          path made it large, and a call per instruction cost 8% of the time of
+				 *          the whole build. Inlining of the slow path is forbidden explicitly:
+				 *          Clang takes it out by itself, while GCC and LCC without the prohibition
+				 *          inlined it into the construction, and the latter grew large again.
+				 *
+				 *          The construction hands out a pointer to the record rather than taking
+				 *          the record assembled aside: a record assembled aside was put together
+				 *          by GCC on the stack field by field and moved by reads wider than the
+				 *          writes that filled it, and such a read on x86-64 waits for the writes
+				 *          to complete. The build of the set with GCC came out slower than before
+				 *          because of that, while with Clang, which laid the record out in registers,
+				 *          it came out faster. Fields written through the pointer land in place at
+				 *          once with every compiler.
+				 *
+				 *          The count of records is read once, before the write: the write of an
+				 *          instruction is done by bytes as well, and a byte may coincide with a field
+				 *          of the sequence, so the compiler is obliged to repeat a read made after it.
+				 *
 				 * @tparam Args parameter types of the record to construct
 				 * @param  args parameters of the record of the sequence to construct
+				 * @return      pointer to the constructed record or nullptr if the sequence did not
+				 *              obtain room for the record; the pointer stays valid as long as the
+				 *              sequence does not grow
 				 *
 				 * \~
 				 */
 				template <typename... Args>
-				void emplace_back(Args &&... args) {
-					// Выполняем обращение набора обозревающего во владеющий
-					this->detach();
-					// Выполняем размещение записей набора
-					this->grow(static_cast <size_t> (this->_count) + 1);
+				AWH_REGEX_INLINE T * emplace_back(Args &&... args) {
 					/**
-					 * Если размещения записей набора не достаёт
+					 * Если места под запись нет либо набор обозревающий
 					 */
-					if(this->_capacity <= this->_count)
-						// Выходим из метода размещения записи
-						return;
+					if(this->_capacity <= this->_count) {
+						// Выполняем расширение набора медленным путём
+						this->expand();
+						/**
+						 * Если размещения записей набора не достаёт
+						 */
+						if(this->_capacity <= this->_count)
+							// Выводим отсутствие размещённой записи
+							return nullptr;
+					}
+					// Получаем количество записей набора
+					const uint32_t count = this->_count;
+					// Получаем указание на место размещаемой записи
+					T * const record = (const_cast <T *> (this->_records) + count);
 					// Выполняем размещение записи в конце набора
-					new (const_cast <T *> (this->_records) + this->_count) T(std::forward <Args> (args)...);
+					new (record) T(std::forward <Args> (args)...);
 					// Выполняем увеличение количества записей набора
-					this->_count++;
+					this->_count = (count + 1);
+					// Выводим указание на размещённую запись
+					return record;
 				}
 				/**
 				 * \~russian

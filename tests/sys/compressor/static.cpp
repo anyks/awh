@@ -2121,3 +2121,65 @@ TEST_F(CompressorFixture, MaxRatioFramesDecodeTest){
 	// Проверяем что кадр Snappy, объявляющий гигабайт на шести октетах, отвергнут
 	ASSERT_TRUE(this->_compressor->decompress <std::string> (std::string("\x80\x80\x80\x80\x04\x00", 6), awh::compressor::method_t::SNAPPY).empty());
 }
+
+/**
+ * @brief Тест возвращающих значение перегрузок от сырого указателя
+ *
+ * @details Публичные перегрузки compress/decompress, принимающие указатель с размером
+ *          и возвращающие контейнер, отчётом о покрытии показаны непройденными вовсе:
+ *          проверки звали перегрузки от контейнера и четырёхдоводные. Заодно через них
+ *          проходит распаковка Snappy в векторы - та ветвь драйвера тоже стояла нетронутой
+ *
+ */
+TEST_F(CompressorFixture, BlockRawPointerValueOverloadsTest){
+	// Формируем текст для компрессии
+	std::string text;
+	/**
+	 * Наполняем буфер данными переменной повторяемости
+	 */
+	for(uint32_t i = 0; text.size() < 8192; i++){
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework raw pointer overload payload ");
+		// Добавляем переменную часть порции данных
+		text.append(std::to_string(i * 2654435761u));
+	}
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LZMA,
+		awh::compressor::method_t::ZSTD,
+		awh::compressor::method_t::GZIP,
+		awh::compressor::method_t::ZLIB,
+		awh::compressor::method_t::BZIP2,
+		awh::compressor::method_t::BROTLI,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::SNAPPY,
+		awh::compressor::method_t::DENSITY,
+		awh::compressor::method_t::DEFLATE
+	};
+	/**
+	 * Выполняем перебор методов компрессии
+	 */
+	for(auto & method : methods){
+		// Выполняем компрессию в вектор символов перегрузкой от сырого указателя
+		const std::vector <char> packed = this->_compressor->compress <std::vector <char>> (text.data(), text.size(), method);
+		// Проверяем что компрессия выполнена
+		ASSERT_FALSE(packed.empty()) << "method = " << static_cast <uint16_t> (method);
+		// Выполняем декомпрессию в вектор байт перегрузкой от сырого указателя
+		const std::vector <uint8_t> bytes = this->_compressor->decompress <std::vector <uint8_t>> (packed.data(), packed.size(), method);
+		// Проверяем что данные восстановлены в вектор байт
+		ASSERT_EQ(text, std::string(bytes.begin(), bytes.end())) << "method = " << static_cast <uint16_t> (method);
+		// Выполняем декомпрессию в вектор символов перегрузкой от сырого указателя
+		const std::vector <char> chars = this->_compressor->decompress <std::vector <char>> (packed.data(), packed.size(), method);
+		// Проверяем что данные восстановлены в вектор символов
+		ASSERT_EQ(text, std::string(chars.begin(), chars.end())) << "method = " << static_cast <uint16_t> (method);
+		/**
+		 * Перегрузки от string_view выбираются лишь при подаче самого string_view:
+		 * строку и векторы забирает шаблон от контейнера, и эти две оставались непройденными
+		 */
+		// Выполняем компрессию перегрузкой от string_view
+		const std::string viewed = this->_compressor->compress <std::string> (std::string_view(text), method);
+		// Проверяем что данные восстановлены перегрузкой от string_view
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (std::string_view(viewed), method)) << "method = " << static_cast <uint16_t> (method);
+	}
+}

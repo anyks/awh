@@ -87,33 +87,6 @@
 #include "common.hpp"
 
 /**
- * Если принудительная подстановка ещё не определена
- *
- * @details Ограждение и довод к нему - см. prefilter.hpp: определение это
- *          несут два заголовочных файла, подключаемых в разном порядке.
- *
- */
-#if !defined(AWH_REGEX_INLINE)
-	/**
-	 * Если используется компилятор Microsoft Visual C++
-	 */
-	#if defined(_MSC_VER)
-		/**
-		 * Принудительная подстановка средствами Microsoft Visual C++
-		 */
-		#define AWH_REGEX_INLINE inline __forceinline
-	/**
-	 * Если компилятор принадлежит к семейству GCC или Clang
-	 */
-	#else
-		/**
-		 * Принудительная подстановка средствами GCC и Clang
-		 */
-		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
-	#endif
-#endif
-
-/**
  * \~russian
  * @brief Основное пространство имён
  *

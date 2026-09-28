@@ -399,6 +399,22 @@ using namespace std;
 	 */
 	#if defined(__OpenBSD__)
 		/**
+		 * Таблицы названий настроек ядра OpenBSD (CTL_NAMES и родственные) объявляют
+		 * поле ctl_name как char *, а заполняют его строковыми литералами. Исправить
+		 * это можно лишь в системных заголовках, поэтому предупреждение о записываемых
+		 * строках снимается только на время разбора названий
+		 */
+		#if defined(__clang__)
+			#pragma clang diagnostic push
+			#pragma clang diagnostic ignored "-Wwritable-strings"
+		/**
+		 * Для компилятора GCC
+		 */
+		#elif defined(__GNUC__)
+			#pragma GCC diagnostic push
+			#pragma GCC diagnostic ignored "-Wwrite-strings"
+		#endif
+		/**
 		 * @brief Функция разрешения названия настройки ядра в числовой указатель
 		 *
 		 * @details Разрешения названий у OpenBSD нет: функции sysctlbyname там не
@@ -618,6 +634,17 @@ using namespace std;
 			// Выводим отрицательный результат
 			return false;
 		}
+		/**
+		 * Возвращаем прежний набор предупреждений компилятора
+		 */
+		#if defined(__clang__)
+			#pragma clang diagnostic pop
+		/**
+		 * Для компилятора GCC
+		 */
+		#elif defined(__GNUC__)
+			#pragma GCC diagnostic pop
+		#endif
 	#endif
 
 	static void sysctl(string_view name, vector <char> & buffer) noexcept {

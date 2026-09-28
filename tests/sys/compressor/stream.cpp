@@ -678,6 +678,67 @@ TEST_P(CompressorStreamParameterizedFixture, StreamChunkLargerThanWorkBufferTest
 }
 
 /**
+ * @brief Тест параметризованной проверки подачи в контейнер std::vector <char>
+ *
+ * @details Для контейнера std::vector <char> подача идёт отдельной ветвью: кодер пишет
+ *          прямо в контейнер вызывающей стороны, без переиспользуемого промежуточного
+ *          буфера. Прежние проверки подавали в строку и в std::vector <uint8_t>, и эта
+ *          ветвь оставалась непройденной - отчёт о покрытии показал её нетронутой.
+ *          Подача идёт через перегрузку со string_view, также не проходившуюся
+ *
+ */
+TEST_P(CompressorStreamParameterizedFixture, StreamCharVectorContainerTest){
+	// Формируем тестовые данные
+	const std::string data = makeStreamPayload();
+	// Буфер выхода очередной порции в виде вектора символов
+	std::vector <char> part;
+	// Результат компрессии данных
+	std::vector <char> compressed;
+	// Создаём потоковую сессию компрессии
+	awh::compressor::stream_t encoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::ENCODE);
+	// Проверяем что поток компрессии валиден
+	ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name;
+	// Размер порции обработки
+	const size_t chunk = 32;
+	/**
+	 * Выполняем компрессию данных порциями
+	 */
+	for(size_t i = 0; i < data.size(); i += chunk){
+		// Подаём порцию данных в поток компрессии через перегрузку со string_view
+		encoder.push(std::string_view(data.data() + i, std::min(chunk, data.size() - i)), part);
+		// Дописываем полученный выход в результат компрессии
+		compressed.insert(compressed.end(), part.begin(), part.end());
+	}
+	// Финализируем поток компрессии
+	encoder.finish(part);
+	// Дописываем хвост в результат компрессии
+	compressed.insert(compressed.end(), part.begin(), part.end());
+	// Проверяем что поток компрессии подачу пережил
+	ASSERT_TRUE(encoder.valid()) << "Method: " << this->_parameter.name;
+	// Результат декомпрессии данных
+	std::vector <char> restored;
+	// Создаём потоковую сессию декомпрессии
+	awh::compressor::stream_t decoder = this->_compressor->stream(this->_parameter.method, awh::compressor::event_t::DECODE);
+	// Проверяем что поток декомпрессии валиден
+	ASSERT_TRUE(decoder.valid()) << "Method: " << this->_parameter.name;
+	/**
+	 * Выполняем декомпрессию данных порциями
+	 */
+	for(size_t i = 0; i < compressed.size(); i += chunk){
+		// Подаём порцию данных в поток декомпрессии через перегрузку со string_view
+		decoder.push(std::string_view(compressed.data() + i, std::min(chunk, compressed.size() - i)), part);
+		// Дописываем полученный выход в результат декомпрессии
+		restored.insert(restored.end(), part.begin(), part.end());
+	}
+	// Финализируем поток декомпрессии
+	decoder.finish(part);
+	// Дописываем остаток в результат декомпрессии
+	restored.insert(restored.end(), part.begin(), part.end());
+	// Проверяем что восстановленные данные совпадают с исходными
+	ASSERT_EQ(data, std::string(restored.begin(), restored.end())) << "Method: " << this->_parameter.name;
+}
+
+/**
  * @brief Инициализация параметров теста потоковой компрессии/декомпрессии
  *
  */

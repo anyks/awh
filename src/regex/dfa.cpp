@@ -39,6 +39,35 @@ using namespace std;
 using namespace awh;
 
 /**
+ * Если выравнивание начала функции ещё не определено
+ *
+ * @details Определение то же до знака, что у прохода парой байтов в prefilter.cpp,
+ *          и ведётся так же - в файле реализации, заголовками не разносясь.
+ *          Довод к закреплению прохода автомата по тексту - в разделе
+ *          «Намеренные решения» заголовочного файла.
+ *
+ */
+#if !defined(AWH_REGEX_ALIGNED)
+	/**
+	 * Если компилятор является Visual Studio либо собирателем МЦСТ
+	 */
+	#if defined(_MSC_VER) || defined(__LCC__)
+		/**
+		 * Выравнивание начала функции не исполняется
+		 */
+		#define AWH_REGEX_ALIGNED
+	/**
+	 * Если компилятор принадлежит к семейству GCC или Clang
+	 */
+	#else
+		/**
+		 * Выравнивание начала функции средствами GCC и Clang
+		 */
+		#define AWH_REGEX_ALIGNED __attribute__((aligned(32)))
+	#endif
+#endif
+
+/**
  * @brief Пространство имён вспомогательных значений исполнения
  *
  */
@@ -844,7 +873,34 @@ uint32_t awh::regex::Dfa::initial(string_view text, const size_t from) const noe
 	return result;
 }
 /**
+ * @brief Метод извлечения адреса начала прохода по тексту
+ *
+ * @return адрес начала метода прохода по тексту
+ *
+ */
+uintptr_t awh::regex::Dfa::entry() noexcept {
+	// Получаем указание на метод прохода по тексту
+	bool (Dfa::* const method)(string_view, const size_t, size_t &) noexcept = &Dfa::scan;
+	// Адрес начала метода прохода по тексту
+	uintptr_t result = 0;
+	/**
+	 * Выполняем извлечение адреса из указания на метод
+	 *
+	 * @details Указание на метод невиртуальный несёт адрес метода первым
+	 *          словом у GCC и Clang, а у Visual Studio при наследовании
+	 *          одиночном - единственным. Приведением к числу указание
+	 *          на метод не обращается, и адрес берётся переносом памяти.
+	 *
+	 */
+	::memcpy(&result, &method, sizeof(result));
+	// Выводим адрес начала метода прохода по тексту
+	return result;
+}
+/**
  * @brief Метод прохода по тексту с построением состояний автомата
+ *
+ * @details Начало метода выровнено на тридцать два байта - смотрите
+ *          «Намеренные решения» заголовочного файла.
  *
  * @param text   текст для сопоставления
  * @param from   позиция начала прохода по тексту
@@ -852,7 +908,7 @@ uint32_t awh::regex::Dfa::initial(string_view text, const size_t from) const noe
  * @return       результат прохода по тексту
  *
  */
-bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result) noexcept {
+AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result) noexcept {
 	// Выполняем сброс позиции обнаруженного совпадения
 	result = string_view::npos;
 	// Получаем размер текста сопоставления

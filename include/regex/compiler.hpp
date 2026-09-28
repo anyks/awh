@@ -147,6 +147,38 @@
  *          обходом посещённый, и отметок не больше, чем узлов, а удаление
  *          сличается со значениями прежнего обхода в режиме байтов и UTF-8.
  *
+ *          <b>Инструкция заполняется на месте через указание, выданное размещением,
+ *          а быстрый путь размещения записи в наборе подставляется телом
+ *          вызывающего.</b> Дописывание полей через последнюю запись набора
+ *          выглядит проще, сборка инструкции в стороне с переносом - чище, а запрет
+ *          подстановки пути медленному - излишним: собиратель решает о подстановке
+ *          и сам. Но всякое обращение к записи набора изменяемого проверяет владение
+ *          набором, а размещение целиком подстановке не поддавалось: медленный путь -
+ *          перенос записей на место новое - делал его велик, и вызов на всякую
+ *          инструкцию стоил 8 процентов собственного времени сборки набора из 353
+ *          выражений. Быстрый путь один, без записи на месте, сборку замедлял на 0.8
+ *          процента: построение, дописывавшее поля через последнюю запись, от
+ *          подстановки раздувалось, и собиратель переставал подставлять его самого.
+ *          Сборку в стороне GCC складывал в стеке по полям и переносил чтениями шире
+ *          записей, её наполнивших, - на x86-64 такое чтение ждёт завершения
+ *          записей, - и сборка набора у GCC 16 выходила медленнее прежней на 6.8
+ *          процента, тогда как у Clang, раскладывавшего инструкцию по регистрам, -
+ *          быстрее на 7. С записью на месте сборка набора быстрее на 6.6 процента
+ *          на ARM64, на 7.6 у FreeBSD (clang 19), на 11.3 у Fedora (GCC 16) и на 10.2
+ *          на Эльбрусе (LCC 1.27), двадцать кругов вперемежку - у Эльбруса десять, -
+ *          и ни одно выражение не медленнее. Запрет подстановки пути медленного
+ *          ставится явно: Clang выносит его и сам, а GCC и LCC без запрета подставляют
+ *          его в размещение, и сборка набора у GCC 16 от того медленнее на 2.1
+ *          процента. Программы выходят теми же до байта: отпечатки 314 347 программ,
+ *          прямых и развёрнутых, сошлись с прежними. Отказ размещения прежде проходил
+ *          молча - поля дописывались инструкции предыдущей, - а ныне размещение
+ *          отвечает недействительным адресом и внутренней ошибкой компиляции.
+ *          Закреплено тестом
+ *          «Regex.StaticSequenceAppendPaths»: набор обозревающий и набор полный
+ *          уходят путём медленным, участок обозреваемый остаётся нетронутым, набор
+ *          сброшенный наполняется в месте прежнем, а указание, размещением выданное,
+ *          ведёт на запись, размещённую последней.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -281,6 +313,38 @@
  *          «SPANNING» path marks every node visited by a walk, and there are no more marks
  *          than nodes, while the distance is compared with the values of the former walk
  *          in the byte mode and in UTF-8.
+ *
+ *          <b>An instruction is filled in place through the pointer handed out by the
+ *          placement, and the fast path of placing a record in a sequence is inlined into
+ *          the caller.</b> Filling in the fields through the last record of the sequence
+ *          looks simpler, assembling the instruction aside and moving it looks cleaner, and
+ *          forbidding the slow path from inlining looks superfluous: the compiler decides on
+ *          inlining by itself. But every access to a record of a mutable sequence checks the
+ *          ownership of the sequence, while the placement as a whole did not yield to
+ *          inlining: the slow path — moving the records to a new place — made it large, and a
+ *          call per instruction cost 8 per cent of the own time of building the set of 353
+ *          expressions. The fast path alone, without writing in place, slowed the build down
+ *          by 0.8 per cent: the construction that filled in the fields through the last
+ *          record swelled from inlining, and the compiler stopped inlining the construction
+ *          itself. An instruction assembled aside was put together by GCC on the stack field
+ *          by field and moved by reads wider than the writes that filled it — on x86-64 such
+ *          a read waits for the writes to complete, — and the build of the set with GCC 16
+ *          came out 6.8 per cent slower than before, while with Clang, which laid the
+ *          instruction out in registers, it came out 7 per cent faster. With the writing in
+ *          place the build of the set is 6.6 per cent faster on ARM64, 7.6 on FreeBSD
+ *          (clang 19), 11.3 on Fedora (GCC 16) and 10.2 on Elbrus (LCC 1.27), twenty
+ *          interleaved rounds — ten on Elbrus, — and no expression is slower. Inlining of the
+ *          slow path is forbidden explicitly: Clang takes it out by itself, while GCC and LCC
+ *          without the prohibition inline it into the placement, and the build of the set
+ *          with GCC 16 is 2.1 per cent slower because of that. The programs come out the
+ *          same to the byte: the fingerprints of 314 347 programs, forward and reverse,
+ *          matched the former ones. A failure of the placement previously passed silently —
+ *          the fields were written into the previous instruction, — and now the placement
+ *          answers with an invalid address and an internal compilation error. Pinned by the
+ *          test «Regex.StaticSequenceAppendPaths»: a viewing sequence and a full sequence
+ *          take the slow path, the viewed span stays untouched, a reset sequence is filled
+ *          in its former place, and the pointer handed out by the placement leads to the
+ *          record placed last.
  *
  * \~
  *

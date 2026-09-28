@@ -57,6 +57,34 @@
  *          более чем в двадцать раз, признак закреплён тестом
  *          «Regex.EngineAnchored».
  *
+ *          <b>Проход по тексту начинается с границы тридцати двух байтов.</b>
+ *          Метод прохода несёт атрибут выравнивания начала - макрос
+ *          «AWH_REGEX_ALIGNED» в файле реализации, тот же, что у прохода парой
+ *          байтов отбора позиций. Без того начало прохода задаёт длина кода,
+ *          связанного прежде, и правка любой иной единицы трансляции его
+ *          сдвигает. Так и вышло: правка построения программы, к исполнению
+ *          отношения не имеющая, сократила построитель на 860 байтов и сдвинула
+ *          начало прохода в сборке стенда с 48 на 20 по модулю шестидесяти
+ *          четырёх, и три строки стенда, исполняемые автоматом, - «word-long»,
+ *          «captures-long» и «lazy-long» - потеряли на Apple M4 Max от 14.8
+ *          до 15.8 процента разбором во всех пяти парах полных прогонов при коде
+ *          прохода, совпавшем до байта; доля прохода в образце стека выросла
+ *          с половины до трёх пятых. Сборки обеих сторон с выравниванием всего
+ *          кода по шестидесяти четырём сдвиг сняли: «word-long» плюс 1.2
+ *          процента. С закреплённым началом проход от чужих правок не зависит:
+ *          у сборок с правкой и без неё «word-long» вровень - 1155 и 1153
+ *          совпадения в секунду при начале прохода на тридцати двух и на нуле
+ *          по модулю шестидесяти четырёх, - что на два процента ниже самого
+ *          удачного положения случайного и на шестую долю выше неудачного.
+ *          Граница - тридцать два байта по доводу прохода парой байтов:
+ *          выравнивание по шестидесяти четырём поднимает выравнивание всего
+ *          раздела кода, а для прохода автомата обе границы опытом вровень.
+ *          @@ПАРЫ-RU@@ На x86-64 закрепление строк
+ *          не сдвигает: семь строк стенда без эталона у FreeBSD (clang 19)
+ *          и Fedora (GCC 16) вровень в пределах 2.8 процента. Visual Studio
+ *          и LCC выравнивания начала функции не исполняют, и макрос у них пуст.
+ *          Закреплено тестом «Regex.AutomatonScanAligned».
+ *
  * \~english
  * @brief Header file of the deterministic execution of regular expressions — the Dfa class,
  *        which builds the states of a deterministic automaton as they become necessary and determines
@@ -96,6 +124,33 @@
  *          Measurement on the expression «^[A-Za-z0-9-]+: .+$» yielded an advantage
  *          of more than twentyfold, the indication is fixed by the
  *          «Regex.EngineAnchored» test.
+ *
+ *          <b>The pass over the text begins at a thirty-two-byte boundary.</b> The
+ *          method of the pass carries the attribute aligning its beginning — the
+ *          «AWH_REGEX_ALIGNED» macro in the implementation file, the same as that of
+ *          the pass by a pair of bytes of the position filter. Without it the beginning
+ *          of the pass is set by the length of the code linked before, and an edit of any
+ *          other translation unit shifts it. So it happened: an edit of the construction
+ *          of the program, unrelated to execution, shortened the constructor by 860 bytes
+ *          and moved the beginning of the pass in the build of the stand from 48 to 20
+ *          modulo sixty-four, and three lines of the stand executed by the automaton —
+ *          «word-long», «captures-long» and «lazy-long» — lost from 14.8 to 15.8 per cent
+ *          of interpretation on Apple M4 Max in all five pairs of full runs, with the code
+ *          of the pass identical to the byte; the share of the pass in the stack sample
+ *          grew from a half to three fifths. Builds of both sides with all code aligned to
+ *          sixty-four removed the shift: «word-long» plus 1.2 per cent. With the beginning
+ *          pinned the pass does not depend on the edits of others: in the builds with the
+ *          edit and without it «word-long» is level — 1155 and 1153 matches per second with
+ *          the beginning of the pass at thirty-two and at zero modulo sixty-four, — two per
+ *          cent below the luckiest accidental position and a sixth above the unlucky one.
+ *          The boundary is thirty-two bytes by the argument of the pass by a pair of bytes:
+ *          alignment to sixty-four raises the alignment of the whole code section, while for
+ *          the pass of the automaton both boundaries are level by experiment. @@ПАРЫ-EN@@
+ *          On x86-64 the pinning does not shift the lines: seven lines of the stand without
+ *          the reference on FreeBSD (clang 19) and Fedora (GCC 16) are level within 2.8 per
+ *          cent. Visual Studio and LCC do not perform the alignment of the beginning of a
+ *          function, and the macro is empty for them. Pinned by the
+ *          «Regex.AutomatonScanAligned» test.
  *
  * \~
  *
@@ -393,6 +448,26 @@ namespace awh {
 				 * \~
 				 */
 				static bool available(const program_t & program) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения адреса начала прохода по тексту
+				 *
+				 * @details Начало прохода закреплено выравниванием - смотрите
+				 *          «Намеренные решения», - и проверка закрепления читает
+				 *          адрес здесь: сам метод прохода закрыт.
+				 *
+				 * @return адрес начала метода прохода по тексту
+				 *
+				 * \~english
+				 * @brief Method of getting the address of the beginning of the pass over the text
+				 * @details The beginning of the pass is pinned by alignment - see
+				 *          «Deliberate decisions», - and the check of the pinning reads
+				 *          the address here: the method of the pass itself is private.
+				 * @return address of the beginning of the method of the pass over the text
+				 *
+				 * \~
+				 */
+				static uintptr_t entry() noexcept;
 			public:
 				/**
 				 * \~russian
