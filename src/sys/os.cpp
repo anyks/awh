@@ -20,6 +20,7 @@
 	 * Стандартные модули
 	 */
 	#include <queue>
+	#include <cstddef>
 	#include <linux/sysctl.h>
 /**
  * Если операционной системой является FreeBSD, NetBSD и OpenBSD
