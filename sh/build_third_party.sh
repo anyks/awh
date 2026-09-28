@@ -196,7 +196,10 @@ if [ $OS = "Darwin" ]; then
 		# Устанавливаем версию операционной системы
 		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)
 	fi
-	# Устанавливаем тип компилятора
+	# Устанавливаем тип процессора для сборки
+	export CFLAGS="-arch $(uname -m)"
+	export CXXFLAGS="-arch $(uname -m)"
+	# Устанавливаем тип процессора для cmake
 	export CMAKE_OSX_ARCHITECTURES="$(uname -m)"
 # Если сборка производится в операционной системе Windows, Linux или Solaris
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then

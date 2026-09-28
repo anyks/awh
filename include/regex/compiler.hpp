@@ -128,6 +128,25 @@
  *          программ. Закреплено тестом «Regex.EngineBranchMark»: отметок у выбора
  *          столько, сколько ветвей несут глагол, а исходы сличены с эталоном.
  *
+ *          <b>Наибольшую длину узла, нужную удалению обязательного литерала, разбор
+ *          литерала выводит сам, а не зовёт обход поддерева.</b> Два пути к одной
+ *          длине выглядят дублем: обход её и так выводит, и разбор мог бы звать его.
+ *          Но разбор ведётся цепочкой на всяком уровне вложенности, и обход,
+ *          зовомый на всякий узел цепочки, посещал узел глубины d по d раз -
+ *          сборка платила размером дерева на глубину его. На наборе из 353
+ *          выражений, образцов Grok и выражений стенда замеров, обход брал 6.9
+ *          процента собственного времени сборки; с длиной, выводимой разбором, -
+ *          2.4, а сборка набора быстрее на 4.7 процента, двадцать кругов
+ *          вперемежку, у 252 выражений быстрее не менее чем на два процента.
+ *          Обход остаётся узлам, куда разбор не спускается, - выбору, повторению
+ *          без нижнего предела, листьям, - и всякое поддерево обходится
+ *          единожды. Формула длины повторения одна на оба пути. Удаление выходит
+ *          тем же до байта: отпечатки 314 347 программ, прямых и развёрнутых,
+ *          с удалением в их числе, сошлись с прежними. Закреплено тестом
+ *          «Regex.EngineSpanningOnce»: путь «SPANNING» отмечает всякий узел,
+ *          обходом посещённый, и отметок не больше, чем узлов, а удаление
+ *          сличается со значениями прежнего обхода в режиме байтов и UTF-8.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -242,6 +261,26 @@
  *          one, while 9 260 marks were removed from 7 735 programs. Pinned by the test
  *          «Regex.EngineBranchMark»: an alternation has as many marks as there are branches
  *          carrying the verb, and the outcomes are compared with the reference.
+ *
+ *          <b>The greatest length of a node, needed by the distance of the mandatory literal,
+ *          is derived by the analysis of the literal itself rather than by calling the walk
+ *          of the subtree.</b> Two ways to one length look like a duplicate: the walk derives
+ *          it anyway, and the analysis could call it. But the analysis goes along a chain at
+ *          every level of nesting, and the walk called for every node of a chain visited a
+ *          node of depth d d times — the build paid the size of the tree times its depth.
+ *          Over a set of 353 expressions, the Grok patterns and the expressions of the
+ *          measuring stand, the walk took 6.9 per cent of the own time of the build; with
+ *          the length derived by the analysis it takes 2.4, and the build of the set is
+ *          4.7 per cent faster, twenty interleaved rounds, 252 expressions faster by at
+ *          least two per cent. The walk remains for the nodes the analysis does not
+ *          descend into — an alternation, a repetition without a lower bound, leaves, —
+ *          and every subtree is walked once. The formula of the length of a repetition is
+ *          one for both ways. The distance comes out the same to the byte: the
+ *          fingerprints of 314 347 programs, forward and reverse, the distance among them,
+ *          matched the former ones. Pinned by the test «Regex.EngineSpanningOnce»: the
+ *          «SPANNING» path marks every node visited by a walk, and there are no more marks
+ *          than nodes, while the distance is compared with the values of the former walk
+ *          in the byte mode and in UTF-8.
  *
  * \~
  *
@@ -1608,6 +1647,36 @@ namespace awh {
 				string required(const node_id_t id, size_t & distance) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод извлечения обязательного литерала цепочки узлов с удалением его и длиной цепочки
+				 *
+				 * @details Наибольшая длина цепочки выводится попутно разбору литерала
+				 *          и равна той, какую вывел бы обход цепочки: предок берёт
+				 *          её выводом, и поддерево узла обходится не более одного
+				 *          раза за разбор, а не столько раз, сколько у узла предков.
+				 *
+				 * @param id       индекс первого узла цепочки в арене узлов
+				 * @param distance наибольшее удаление литерала от начала совпадения
+				 * @param span     наибольшая длина сопоставления цепочки узлов в байтах
+				 * @return         обязательный литерал совпадения цепочки узлов
+				 *
+				 * \~english
+				 * @brief Method of getting the mandatory literal of a chain of nodes with its distance and the chain length
+				 *
+				 * @details The greatest length of the chain is derived along with the analysis of the
+				 *          literal and equals the one a walk of the chain would derive: an ancestor takes
+				 *          it from the result, and the subtree of a node is walked at most once per
+				 *          analysis rather than as many times as the node has ancestors.
+				 *
+				 * @param id       index of the first node of the chain in the node arena
+				 * @param distance the greatest distance of the literal from the beginning of a match
+				 * @param span     the greatest matching length of the chain of nodes in bytes
+				 * @return         mandatory literal of a match of the chain of nodes
+				 *
+				 * \~
+				 */
+				string required(const node_id_t id, size_t & distance, size_t & span) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод извлечения наибольшей длины сопоставления узла
 				 *
 				 * @details Длина выводится в байтах текста. Значение
@@ -1673,6 +1742,38 @@ namespace awh {
 				 * \~
 				 */
 				string requiredNode(const node_id_t id, size_t & distance) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения обязательного литерала узла с удалением его и длиной узла
+				 *
+				 * @details Длина узла выводится тем же спуском, каким ищется литерал.
+				 *          Узлу, куда спуск не ведётся, - выбору, повторению без
+				 *          нижнего предела, листьям - она берётся обходом поддерева,
+				 *          и лишь при требовании: без него обход стоил бы впустую.
+				 *
+				 * @param id       индекс узла в арене узлов
+				 * @param distance наибольшее удаление литерала от начала сопоставления узла
+				 * @param span     наибольшая длина сопоставления узла в байтах
+				 * @param need     требование наибольшей длины сопоставления узла
+				 * @return         обязательный литерал совпадения узла
+				 *
+				 * \~english
+				 * @brief Method of getting the mandatory literal of a node with its distance and the node length
+				 *
+				 * @details The length of the node is derived by the same descent by which the literal is
+				 *          sought. For a node the descent does not enter - an alternation, a repetition
+				 *          without a lower bound, leaves - it is taken by a walk of the subtree, and only
+				 *          when required: without the requirement the walk would be wasted.
+				 *
+				 * @param id       index of the node in the node arena
+				 * @param distance the greatest distance of the literal from the beginning of the node match
+				 * @param span     the greatest matching length of the node in bytes
+				 * @param need     requirement of the greatest matching length of the node
+				 * @return         mandatory literal of a match of the node
+				 *
+				 * \~
+				 */
+				string requiredNode(const node_id_t id, size_t & distance, size_t & span, const bool need) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения литерала, сопоставляемого узлом целиком

@@ -1984,3 +1984,140 @@ TEST_F(CompressorFixture, StreamNullLogTest){
 	// Проверяем что данные восстановлены
 	ASSERT_EQ(text, restored);
 }
+
+/**
+ * @brief Тест сохранения окна LZ77 после блока с BFINAL = 1 (RFC 7692)
+ *
+ * @details Раздел 7.2.3.4 RFC 7692 разбирает как законное сообщение, сжатое блоком с
+ *          BFINAL = 1, за которым следует ещё заголовок пустого блока. Раздел 7.2.2 при
+ *          этом требует разбирать каждое следующее сообщение с тем же окном LZ77. Блок
+ *          с BFINAL закрывал поток движка, и переиспользуемый контекст отвечал на все
+ *          следующие сообщения пустым результатом. Октеты взяты из примеров самого
+ *          RFC: «Hello» с BFINAL (7.2.3.4) и второе сообщение, целиком состоящее из
+ *          ссылки назад на «Hello» прежнего сообщения (7.2.3.2). Хвост 00 00 FF FF
+ *          дописывается, как того требует раздел 7.2.2 от принимающей стороны
+ *
+ */
+TEST_F(CompressorFixture, DeflateFinalBlockKeepsWindowTest){
+	// Хвост, дописываемый принимающей стороной к каждому сообщению
+	const std::string tail("\x00\x00\xFF\xFF", 4);
+	// Сообщение «Hello», сжатое блоком с BFINAL = 1 (RFC 7692, 7.2.3.4)
+	const std::string final = (std::string("\xF3\x48\xCD\xC9\xC9\x07\x00\x00", 8) + tail);
+	// Сообщение «Hello», сжатое со сбросом Z_SYNC_FLUSH (RFC 7692, 7.2.3.1)
+	const std::string sync = (std::string("\xF2\x48\xCD\xC9\xC9\x07\x00", 7) + tail);
+	// Сообщение, целиком ссылающееся на «Hello» прежнего сообщения (RFC 7692, 7.2.3.2)
+	const std::string shared = (std::string("\xF2\x00\x11\x00\x00", 5) + tail);
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+	// Проверяем что сообщение с BFINAL разбирается и без переиспользования контекста
+	ASSERT_EQ("Hello", this->_compressor->decompress <std::string> (final, awh::compressor::method_t::DEFLATE));
+	// Включаем переиспользование контекста декомпрессии
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true));
+	/**
+	 * Сверка самой постановки: пара сообщений без BFINAL из примера 7.2.3.2
+	 * обязана разбираться, иначе проверка ниже ничего не доказывала бы
+	 */
+	ASSERT_EQ("Hello", this->_compressor->decompress <std::string> (sync, awh::compressor::method_t::DEFLATE));
+	// Проверяем что ссылка на окно прежнего сообщения разрешается
+	ASSERT_EQ("Hello", this->_compressor->decompress <std::string> (shared, awh::compressor::method_t::DEFLATE));
+	// Перезаводим контекст декомпрессии с пустым окном
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true));
+	// Проверяем что сообщение с BFINAL разбирается на переиспользуемом контексте
+	ASSERT_EQ("Hello", this->_compressor->decompress <std::string> (final, awh::compressor::method_t::DEFLATE));
+	// Проверяем что окно пережило блок с BFINAL и следующее сообщение на него ссылается
+	ASSERT_EQ("Hello", this->_compressor->decompress <std::string> (shared, awh::compressor::method_t::DEFLATE));
+	// Проверяем что поток и после этого продолжает работать
+	ASSERT_EQ("Hello", this->_compressor->decompress <std::string> (shared, awh::compressor::method_t::DEFLATE));
+	// Снимаем переиспользование контекста декомпрессии
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, false));
+}
+
+/**
+ * @brief Тест отказа на сообщении Deflate, оборванном посреди блока
+ *
+ * @details Сжатое сообщение, обрезанное вдвое, разбиралось до обрыва и отдавалось
+ *          наружу успехом: половина данных выглядела целым сообщением. Формат длины
+ *          сообщения не несёт, но обрыв посреди блока движок видит - разбор стоит
+ *          не на границе блока. Проверяются оба способа работы: на своём контексте
+ *          и на переиспользуемом, где после отказа поток обязан остаться годным
+ *
+ */
+TEST_F(CompressorFixture, DeflateTruncatedMessageTest){
+	// Формируем данные для компрессии
+	std::string text;
+	/**
+	 * Наполняем буфер данными переменной повторяемости
+	 */
+	for(uint32_t i = 0; text.size() < 200000; i++){
+		// Добавляем очередную порцию данных
+		text.append("Anyks Framework truncated deflate message ");
+		// Добавляем переменную часть порции данных
+		text.append(std::to_string(i * 2654435761u));
+	}
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+	// Выполняем компрессию данных
+	const std::string compressed = this->_compressor->compress <std::string> (text, awh::compressor::method_t::DEFLATE);
+	// Проверяем что компрессия выполнена
+	ASSERT_FALSE(compressed.empty());
+	// Обрываем сообщение посередине
+	const std::string truncated = compressed.substr(0, compressed.size() / 2);
+	/**
+	 * Выполняем перебор обоих способов работы
+	 */
+	for(uint16_t takeover = 0; takeover < 2; takeover++){
+		// Включаем либо отключаем переиспользование контекста декомпрессии
+		ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, takeover > 0));
+		// Проверяем что оборванное сообщение отвергнуто, а не выдано обрывком
+		ASSERT_TRUE(this->_compressor->decompress <std::string> (truncated, awh::compressor::method_t::DEFLATE).empty()) << "takeover = " << takeover;
+		// Проверяем что целое сообщение после отказа разбирается
+		ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE)) << "takeover = " << takeover;
+	}
+	// Снимаем переиспользование контекста декомпрессии
+	ASSERT_TRUE(this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, false));
+}
+
+/**
+ * @brief Тест распаковки законных кадров предельной степени сжатия
+ *
+ * @details У LZ4 и Snappy распакованный размер сверяется со степенью сжатия, которую
+ *          формат вообще способен дать (255:1 и 64:3), чтобы испорченный кадр не отводил
+ *          гигабайт. Обратная сторона такой сверки - риск отвергнуть честный кадр,
+ *          сжатый до предела. Нули сжимаются обоими движками до самой степени формата,
+ *          и кадры из нулей всех размеров обязаны распаковываться. Испорченные же
+ *          кадры - шестнадцать октетов 0xFF у LZ4 и шесть октетов с объявленным
+ *          гигабайтом у Snappy - обязаны отвергаться
+ *
+ */
+TEST_F(CompressorFixture, MaxRatioFramesDecodeTest){
+	// Список проверяемых методов компрессии
+	const awh::compressor::method_t methods[] = {
+		awh::compressor::method_t::LZ4,
+		awh::compressor::method_t::LIZARD,
+		awh::compressor::method_t::SNAPPY
+	};
+	// Список проверяемых размеров
+	const size_t sizes[] = {1, 13, 0x10000, (8 * 1024 * 1024)};
+	/**
+	 * Выполняем перебор методов компрессии
+	 */
+	for(auto & method : methods){
+		/**
+		 * Выполняем перебор размеров
+		 */
+		for(auto & size : sizes){
+			// Формируем кадр из нулей
+			const std::string text(size, '\0');
+			// Выполняем компрессию данных
+			const std::string compressed = this->_compressor->compress <std::string> (text, method);
+			// Проверяем что компрессия выполнена
+			ASSERT_FALSE(compressed.empty()) << "method = " << static_cast <uint16_t> (method) << ", size = " << size;
+			// Проверяем что кадр предельного сжатия распаковывается
+			ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, method)) << "method = " << static_cast <uint16_t> (method) << ", size = " << size;
+		}
+	}
+	// Проверяем что испорченный кадр LZ4 отвергнут
+	ASSERT_TRUE(this->_compressor->decompress <std::string> (std::string(16, '\xFF'), awh::compressor::method_t::LZ4).empty());
+	// Проверяем что кадр Snappy, объявляющий гигабайт на шести октетах, отвергнут
+	ASSERT_TRUE(this->_compressor->decompress <std::string> (std::string("\x80\x80\x80\x80\x04\x00", 6), awh::compressor::method_t::SNAPPY).empty());
+}

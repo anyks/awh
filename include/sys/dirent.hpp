@@ -2,7 +2,7 @@
  * @file: dirent.hpp
  * @date: 2026-09-12
  *
- * @brief Обход каталогов приёмами POSIX для оснастки MSVC
+ * @brief Обход каталогов приёмами POSIX для MS Windows
  *
  * @author Forman <info@anyks.com>
  * @copyright Copyright © 2026
@@ -23,6 +23,13 @@
  *          приёмами - их около полусотни обращений в двух файлах, - и переписывать их на
  *          средства системы значило бы завести второе устройство обхода ради одной оснастки
  *
+ * @note Под MinGW устройство тоже своё, а не из `dirent.h` системы: `_wopendir` у MinGW
+ *       собирает полный адрес в буфер длиной MAX_PATH и каталог длиннее 260 знаков не
+ *       открывает вовсе - ни с приставкой «\\?\», ни без неё. Своё открытие передаёт
+ *       адрес FindFirstFileW как есть, и длинный адрес с приставкой проходит. Доказано
+ *       проверкой FSFixture.LongAddressTest на стенде Windows 28.09.2026: с `dirent.h`
+ *       MinGW обход и удаление длинного каталога отказывали, создание и чтение проходили
+ *
  * @note Приёмы заведены обоими рядами, узким и широким: узкий держит пути в UTF-8, как
  *       того требует остальная библиотека, а широкий отдаёт названия так, как их хранит
  *       сама система. Узкий ряд опирается на широкий, а не на средства кодовой страницы:
@@ -39,13 +46,19 @@
  *          means - about fifty calls in two files - and rewriting them onto the system facilities
  *          would mean introducing a second traversal design for the sake of one toolchain
  *
+ * @note Under MinGW the design is also its own, not the one from the system `dirent.h`: the MinGW
+ *       `_wopendir` assembles the full address into a MAX_PATH buffer and does not open a directory
+ *       longer than 260 characters at all - neither with the "\\?\" prefix nor without it. The own
+ *       opening passes the address to FindFirstFileW as is, and a long prefixed address goes through.
+ *       Proven by FSFixture.LongAddressTest on the Windows stand on 28.09.2026
+ *
  * \~
  */
 
 /**
- * Если сборка выполняется оснасткою Visual Studio
+ * Если сборка выполняется под MS Windows (MSVC и MinGW)
  */
-#if defined(_MSC_VER)
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Стандартные заголовочные файлы
 	 */
@@ -56,7 +69,7 @@
 	 */
 	#include "macro/win32.hpp"
 /**
- * Если сборка выполняется не оснасткою Visual Studio
+ * Если сборка выполняется не под MS Windows
  */
 #else
 	/**
@@ -113,12 +126,12 @@ namespace awh {
 	 */
 	namespace dir {
 		/**
-		 * Если сборка выполняется оснасткою Visual Studio
+		 * Если сборка выполняется под MS Windows
 		 *
-		 * @details Заголовка `dirent.h` у неё нет вовсе: он принадлежит наречиям POSIX, а
-		 *          MinGW несёт его своей частью. Оттого устройство обхода заводится здесь
+		 * @details Заголовка `dirent.h` у оснастки MSVC нет вовсе, а у MinGW обход ограничен
+		 *          длиной MAX_PATH. Оттого устройство обхода заводится здесь для обеих
 		 */
-		#if defined(_MSC_VER)
+		#if defined(_WIN32) || defined(_WIN64)
 			/**
 			 * @brief Запись широкого каталога
 			 *
@@ -448,23 +461,6 @@ namespace awh {
 			#if defined(__sun) || defined(__sun__) || defined(sun)
 				// Вносим имя, в какое системный макрос разворачивает перемотку каталога
 				using ::seekdir;
-			#endif
-			/**
-			 * Если сборка выполняется под MS Windows
-			 *
-			 * @details Широкий ряд несёт один лишь MinGW: прочим системам POSIX он не
-			 *          нужен вовсе, названия у них и без того приходят октетами
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				/**
-				 * Вносим имена широкого ряда из заголовка системы
-				 */
-				using ::_WDIR;
-				using ::_wdirent;
-				using ::_wopendir;
-				using ::_wreaddir;
-				using ::_wclosedir;
-				using ::_wrewinddir;
 			#endif
 		#endif
 	}

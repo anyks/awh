@@ -132,6 +132,19 @@ namespace awh {
 		 *             (permessage-deflate): контекст переиспользуется между сообщениями, и Z_FINISH
 		 *             закрыл бы поток. Снятие хвоста — дело вызывающей стороны, знающей, отдаёт ли
 		 *             она сообщение в кадр WebSocket или хранит его целиком.
+		 *             На распаковку, напротив, хвост обязан прийти: принимающая сторона дописывает
+		 *             его к сообщению сама (RFC 7692, раздел 7.2.2). Сообщение, чей разбор кончился
+		 *             посреди блока, отвергается как оборванное; обрыв ровно на границе блока от
+		 *             целого сообщения не отличим ничем. Блок с BFINAL = 1 сообщения не закрывает:
+		 *             разбор продолжается с тем же окном LZ77, как того требует раздел 7.2.2.
+		 *
+		 *          7. Предел AWH_COMPRESSOR_MAX_OUTPUT ограничивает размер выхода, а не пик памяти.
+		 *             Движки, не знающие размера выхода наперёд, наращивают буфер удвоением, и пик
+		 *             выше выхода: на macOS распаковка 768 МиБ даёт пик около 2 ГиБ. Где формат
+		 *             ограничивает степень сжатия, объявленный либо угадываемый размер сверяется с
+		 *             нею: LZ4 не более 255:1, Snappy не более 64:3. У Lizard такой границы нет, и
+		 *             испорченный блок вправе обойтись отводом во весь предел; ограничить это можно
+		 *             самим пределом либо потоковым режимом, где память растёт вслед за выписанным.
 		 *
 		 *          Полный перечень намеренных решений, реестр отклонённых находок и список
 		 *          открытых вопросов — в src/compressor/README.md. Разбор модуля следует
@@ -181,6 +194,19 @@ namespace awh {
 		 *             exactly that (permessage-deflate): the context is reused between messages, and Z_FINISH
 		 *             would close the stream. Stripping the tail is the business of the calling side, which
 		 *             knows whether it hands the message into a WebSocket frame or stores it whole.
+		 *             For decompression, on the contrary, the tail must be present: the receiving side
+		 *             appends it to the message itself (RFC 7692, section 7.2.2). A message whose parsing
+		 *             ends inside a block is rejected as truncated; a cut exactly at a block boundary cannot
+		 *             be told from a whole message by any means. A block with BFINAL = 1 does not close the
+		 *             message: parsing continues with the same LZ77 window, as section 7.2.2 requires.
+		 *
+		 *          7. The AWH_COMPRESSOR_MAX_OUTPUT limit bounds the output size, not peak memory. Engines
+		 *             that do not know the output size in advance grow the buffer by doubling, and the peak
+		 *             exceeds the output: on macOS decompressing 768 MiB peaks at about 2 GiB. Where the
+		 *             format bounds the compression ratio, the declared or guessed size is checked against it:
+		 *             LZ4 at most 255:1, Snappy at most 64:3. Lizard has no such bound, and a corrupted block
+		 *             may cost an allocation up to the full limit; this can be bounded only by the limit
+		 *             itself or by the streaming mode, where memory grows with the output actually written.
 		 *
 		 *          The full list of deliberate decisions, the registry of rejected findings and the list of
 		 *          open questions are in src/compressor/README.md. Examination of the module should begin

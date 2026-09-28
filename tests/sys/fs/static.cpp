@@ -1503,3 +1503,52 @@ TEST_F(FSFixture, FullpathLongAddressTest){
 	ASSERT_GE(address.size(), name.size());
 	ASSERT_EQ(address.compare(address.size() - name.size(), name.size(), name), 0);
 }
+
+/**
+ * @brief Работа с адресом длиннее MAX_PATH
+ *
+ * @details Функции MS Windows отказывали на адресе длиннее 260 знаков: каталог не создавался,
+ *          файл не открывался и не удалялся. Здесь адрес длиннее 300 знаков проходит весь путь:
+ *          создание каталогов, запись, тип, размер, чтение, обход и рекурсивное удаление
+ */
+TEST_F(FSFixture, LongAddressTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корень проверки
+	const std::string root = "long_address_test";
+	// Если корень остался от прошлого прогона
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем его
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Собираем адрес каталога длиннее MAX_PATH
+	std::string dir = root;
+	// Шесть уровней по пятьдесят знаков
+	for(int i = 0; i < 6; i++)
+		dir.append(AWH_FS_SEPARATOR).append(std::string(50, static_cast <char> ('a' + i)));
+	// Полный адрес каталога обязан быть длиннее MAX_PATH
+	ASSERT_GT(this->_fs->fullpath(dir, false).size(), static_cast <size_t> (300));
+	// Создаём каталоги
+	ASSERT_TRUE(this->_fs->mkdir(dir));
+	ASSERT_EQ(this->_fs->type(dir), awh::fs_t::type_t::DIR);
+	// Адрес файла
+	const std::string file = (dir + AWH_FS_SEPARATOR + "f.txt");
+	// Записываем файл
+	ASSERT_TRUE(this->_fs->write(file, "hello"));
+	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	ASSERT_EQ(this->_fs->size(file), static_cast <uintmax_t> (5));
+	ASSERT_EQ(this->_fs->read <std::string> (file), "hello");
+	// Обход находит файл
+	size_t found = 0;
+	this->_fs->readdir(root, "", true, [&](const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
+		// Если найден записанный файл
+		if((type == awh::fs_t::type_t::FILE) && (name.size() >= 5) && (name.substr(name.size() - 5) == "f.txt"))
+			// Считаем находку
+			found++;
+	});
+	ASSERT_EQ(found, static_cast <size_t> (1));
+	ASSERT_EQ(this->_fs->count(root), static_cast <uintmax_t> (1));
+	ASSERT_EQ(this->_fs->size(root), static_cast <uintmax_t> (5));
+	// Рекурсивное удаление
+	ASSERT_TRUE(this->_fs->unlink(root));
+	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
+}

@@ -1459,6 +1459,117 @@ namespace {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		/**
+		 * @brief Функция перевода адреса в форму без предела длины MAX_PATH
+		 *
+		 * @details Функции Windows отказывают на адресе длиннее MAX_PATH (260 знаков), пока
+		 *          адрес не записан с приставкой «\\?\»: она снимает предел (около 32 767
+		 *          знаков) и не требует ни записи LongPathsEnabled в реестре, ни манифеста
+		 *          приложения. Приставка выключает разбор адреса системой, поэтому адрес
+		 *          прежде приводится к полному виду GetFullPathNameW (у неё предела нет):
+		 *          снимаются «.», «..» и прямые косые. Короткий адрес не трогается и ведёт
+		 *          себя как прежде. Порог 248 знаков - столько допускает создание каталога
+		 *          (MAX_PATH за вычетом имени 8.3).
+		 *
+		 * @param path адрес в кодировке wide
+		 *
+		 * @return адрес, пригодный для функций Windows при любой длине
+		 *
+		 */
+		static wstring __awh_longpath__(const wstring & path) noexcept {
+			/**
+			 * Выполняем перехват ошибок
+			 */
+			try {
+				// Если адрес короткий либо уже записан с приставкой - оставляем как есть
+				if((path.length() < 248) || (path.compare(0, 4, L"\\\\?\\") == 0) || (path.compare(0, 4, L"\\\\.\\") == 0))
+					// Выводим адрес без изменений
+					return path;
+				// Запрашиваем размер буфера полного адреса
+				const DWORD need = ::GetFullPathNameW(path.c_str(), 0, nullptr, nullptr);
+				// Если размер не получен
+				if(need == 0)
+					// Выводим адрес без изменений
+					return path;
+				// Буфер полного адреса
+				wstring full(static_cast <size_t> (need), L'\0');
+				// Получаем полный адрес
+				const DWORD size = ::GetFullPathNameW(path.c_str(), need, &full[0], nullptr);
+				// Если полный адрес не получен
+				if((size == 0) || (size >= need))
+					// Выводим адрес без изменений
+					return path;
+				// Убираем завершающий ноль
+				full.resize(static_cast <size_t> (size));
+				// Если адрес сетевой (\\server\share)
+				if(full.compare(0, 2, L"\\\\") == 0)
+					// Выводим сетевой адрес с приставкой
+					return (L"\\\\?\\UNC\\" + full.substr(2));
+				// Выводим адрес с приставкой
+				return (L"\\\\?\\" + full);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception &) {
+				// Выводим адрес без изменений
+				return path;
+			}
+		}
+		/**
+		 * @brief Функция получения сведений о файле при любой длине адреса
+		 *
+		 * @details _wstat64 из msvcrt (MinGW) адрес с приставкой «\\?\» не принимает, поэтому
+		 *          для такого адреса сведения берутся у GetFileAttributesExW. Заполняются тип,
+		 *          права по признаку «только чтение», размер и времена - то, что читает этот модуль.
+		 *
+		 * @param path адрес в кодировке wide
+		 * @param info сведения о файле
+		 *
+		 * @return 0 при успехе, -1 при ошибке (как у _wstat64)
+		 *
+		 */
+		static int32_t __awh_stat__(const wstring & path, struct _stat64 & info) noexcept {
+			// Получаем адрес без предела длины
+			const wstring & address = __awh_longpath__(path);
+			// Если сведения получены штатно
+			if(::_wstat64(address.c_str(), &info) == 0)
+				// Выводим успех
+				return 0;
+			// Если адрес без приставки - ошибка настоящая
+			if(address.compare(0, 4, L"\\\\?\\") != 0)
+				// Выводим ошибку
+				return -1;
+			// Сведения о файле
+			WIN32_FILE_ATTRIBUTE_DATA data{};
+			// Если сведения не получены
+			if(!::GetFileAttributesExW(address.c_str(), GetFileExInfoStandard, &data))
+				// Выводим ошибку
+				return -1;
+			// Функция перевода времени Windows во время UNIX
+			auto seconds = [](const FILETIME & time) noexcept -> __time64_t {
+				// Выводим число секунд от 1970 года
+				return static_cast <__time64_t> (((static_cast <uint64_t> (time.dwHighDateTime) << 32) | time.dwLowDateTime) / 10000000ULL) - 11644473600LL;
+			};
+			// Сбрасываем сведения
+			info = {};
+			// Устанавливаем тип и права
+			info.st_mode = static_cast <unsigned short> (((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? _S_IFDIR : _S_IFREG) | _S_IREAD | ((data.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ? 0 : _S_IWRITE));
+			// Устанавливаем число ссылок
+			info.st_nlink = 1;
+			// Устанавливаем размер
+			info.st_size = static_cast <__int64> ((static_cast <uint64_t> (data.nFileSizeHigh) << 32) | data.nFileSizeLow);
+			// Устанавливаем времена
+			info.st_atime = seconds(data.ftLastAccessTime);
+			info.st_mtime = seconds(data.ftLastWriteTime);
+			info.st_ctime = seconds(data.ftCreationTime);
+			// Выводим успех
+			return 0;
+		}
+	#endif
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
 		 * @brief Шаблон класса для автоматического управления COM-интерфейсами (RAII)
 		 *
 		 * @tparam T тип интерфейса
@@ -1990,7 +2101,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 					// Получаем полный адрес создаваемой ссылки
 					const wstring & filename = fmk::convert(this->fullpath(second, true));
 					// Выполняем создание жёсткой ссылки средствами системы
-					if(!::CreateHardLinkW(filename.c_str(), target.c_str(), nullptr))
+					if(!::CreateHardLinkW(__awh_longpath__(filename).c_str(), __awh_longpath__(target).c_str(), nullptr))
 						// Если система жёсткую ссылку завести не смогла - заводим ярлык
 						this->symlink(first, second);
 				}
@@ -2064,7 +2175,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Открываем указанный каталог
-							HandleDir dir(dir::_wopendir(fmk::convert(address).c_str()));
+							HandleDir dir(dir::_wopendir(__awh_longpath__(fmk::convert(address)).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
@@ -2127,17 +2238,17 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 										// Конвертируем адрес в формат wstring
 										const wstring & path = fmk::convert(child);
 										// Если статистика извлечена
-										if(!::_wstat64(path.c_str(), &info)){
+										if(!__awh_stat__(path, info)){
 											// Если дочерний элемент является директорией
 											if(S_ISDIR(info.st_mode))
 												// Выполняем удаление подкаталогов
 												result = this->unlink(child, resolve);
 											// Если дочерний элемент является файлом то удаляем его
-											else result = (::_wunlink(path.c_str()) == 0);
+											else result = (::_wunlink(__awh_longpath__(path).c_str()) == 0);
 										// Если путь является символьной ссылкой
 										} else if(this->type(child) == type_t::LINK)
 											// Выполняем удаление символьной ссылки
-											result = (::_wunlink(path.c_str()) == 0);
+											result = (::_wunlink(__awh_longpath__(path).c_str()) == 0);
 									/**
 									 * Для операционной системы не являющейся MS Windows
 									 */
@@ -2168,7 +2279,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 							 */
 							#if defined(_WIN32) || defined(_WIN64)
 								// Получаем количество дочерних элементов
-								result = (::_wrmdir(fmk::convert(address).c_str()) == 0);
+								result = (::_wrmdir(__awh_longpath__(fmk::convert(address)).c_str()) == 0);
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
@@ -2187,7 +2298,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Выполняем удаление переданного пути
-							result = (::_wunlink(fmk::convert(address).c_str()) == 0);
+							result = (::_wunlink(__awh_longpath__(fmk::convert(address)).c_str()) == 0);
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
@@ -2208,7 +2319,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						// Если адрес получен правильный
 						if(!address.empty())
 							// Выполняем удаление переданного пути
-							result = (::_wunlink(fmk::convert(address).c_str()) == 0);
+							result = (::_wunlink(__awh_longpath__(fmk::convert(address)).c_str()) == 0);
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
@@ -2283,7 +2394,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				// Выполняем извлечение актуального значения адреса
 				const wstring & address = fmk::convert(this->fullpath(addr));
 				// Выполняем извлечение данных статистики
-				const int32_t status = (!address.empty() ? ::_wstat64(address.c_str(), &info) : -1);
+				const int32_t status = (!address.empty() ? __awh_stat__(address, info) : -1);
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
@@ -2337,7 +2448,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 					 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 					 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 					 */
-					HANDLE file = ::CreateFileW(address.c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+					HANDLE file = ::CreateFileW(__awh_longpath__(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 					// Если файл открыт нормально
 					if(file != INVALID_HANDLE_VALUE){
 						// Если файл является сокетом
@@ -2744,7 +2855,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Извлекаем все атрибуты файла
-				return static_cast <uint32_t> (::GetFileAttributesW(fmk::convert(address).c_str()));
+				return static_cast <uint32_t> (::GetFileAttributesW(__awh_longpath__(fmk::convert(address)).c_str()));
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
@@ -2795,7 +2906,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Выполняем установку атрибутов файла
-				return ::SetFileAttributesW(fmk::convert(address).c_str(), static_cast <DWORD> (mode));
+				return ::SetFileAttributesW(__awh_longpath__(fmk::convert(address)).c_str(), static_cast <DWORD> (mode));
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
@@ -2874,7 +2985,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Получаем путь к файлу
-			wstring fileName = fmk::convert(addr);
+			wstring fileName = __awh_longpath__(fmk::convert(addr));
 			// Получаем имя пользователя
 			wstring userName = fmk::convert(user);
 			// Первый вызов — получаем размеры буферов
@@ -3083,7 +3194,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 									continue;
 								}
 								// Создаем каталог
-								result = (::_wmkdir(fmk::convert(buffer.c_str()).c_str()) == 0);
+								result = (::_wmkdir(__awh_longpath__(fmk::convert(buffer.c_str())).c_str()) == 0);
 							#endif
 							// Если каталог уже существует
 							if(!result && (errno == EEXIST))
@@ -3108,7 +3219,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 									// Выходим из цикла
 									break;
 								// Создаем каталог
-								result = (::_wmkdir(fmk::convert(buffer.c_str()).c_str()) == 0);
+								result = (::_wmkdir(__awh_longpath__(fmk::convert(buffer.c_str())).c_str()) == 0);
 							#endif
 							// Если каталог уже существует
 							if(!result && (errno == EEXIST))
@@ -3235,7 +3346,7 @@ bool awh::Filesystem::replaceAddress(string_view temporary, string_view filename
 		 *
 		 * @note Зовётся широкий вид: узкий читает пути в кодовой странице ANSI, а не в UTF-8
 		 */
-		return (::MoveFileExW(fmk::convert(temporary).c_str(), fmk::convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
+		return (::MoveFileExW(__awh_longpath__(fmk::convert(temporary)).c_str(), __awh_longpath__(fmk::convert(filename)).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
 	#endif
 }
 /**
@@ -3362,7 +3473,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 							 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 							 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 							 */
-							HANDLE file = ::CreateFileW(fmk::convert(path.data()).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+							HANDLE file = ::CreateFileW(__awh_longpath__(fmk::convert(path.data())).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 							// Если файл открыт нормально
 							if(file != INVALID_HANDLE_VALUE){
 								// Объект для хранения размера файла
@@ -3415,7 +3526,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Открываем указанный каталог
-							HandleDir dir(dir::_wopendir(fmk::convert(path.data()).c_str()));
+							HandleDir dir(dir::_wopendir(__awh_longpath__(fmk::convert(path.data())).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
@@ -3498,7 +3609,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 													// Структура проверка статистики
 													struct _stat64 info{};
 													// Если статистика извлечена
-													if(!::_wstat64(fmk::convert(address).c_str(), &info))
+													if(!__awh_stat__(fmk::convert(address), info))
 												/**
 												 * Для операционной системы не являющейся MS Windows
 												 */
@@ -3521,7 +3632,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 												// Структура проверка статистики
 												struct _stat64 info{};
 												// Если статистика извлечена
-												if(!::_wstat64(fmk::convert(address).c_str(), &info))
+												if(!__awh_stat__(fmk::convert(address), info))
 											/**
 											 * Для операционной системы не являющейся MS Windows
 											 */
@@ -3608,7 +3719,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Открываем указанный каталог
-					HandleDir dir(dir::_wopendir(fmk::convert(path.data()).c_str()));
+					HandleDir dir(dir::_wopendir(__awh_longpath__(fmk::convert(path.data())).c_str()));
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
@@ -3817,7 +3928,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						 *       пустой файл, а `CREATE_ALWAYS` усекал бы и то, что усекать
 						 *       не велено
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -4001,7 +4112,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 * @note Сброс требует права записи: описатель, открытый на одно лишь
 						 *       чтение, `FlushFileBuffers` отвергает отказом ERROR_ACCESS_DENIED
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						/**
@@ -4347,7 +4458,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Число октетов, легших в файл
@@ -4593,7 +4704,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -4909,7 +5020,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Объект для хранения полного размера файла
@@ -5318,7 +5429,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 *       лишь `GENERIC_WRITE`, чтение тем же объектом отвечало бы отказом
 						 *       ERROR_ACCESS_DENIED под MS Windows и проходило бы под POSIX
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -5602,7 +5713,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -5904,7 +6015,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -6188,7 +6299,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Открываем корень обхода
-						dir.set(dir::_wopendir(fmk::convert(root).c_str()));
+						dir.set(dir::_wopendir(__awh_longpath__(fmk::convert(root)).c_str()));
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
@@ -6351,7 +6462,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 								 */
 								#if defined(_WIN32) || defined(_WIN64)
 									// Открываем вложенный каталог
-									dir::_WDIR * nested = dir::_wopendir(fmk::convert(address).c_str());
+									dir::_WDIR * nested = dir::_wopendir(__awh_longpath__(fmk::convert(address)).c_str());
 								/**
 								 * Для операционной системы не являющейся MS Windows
 								 */
