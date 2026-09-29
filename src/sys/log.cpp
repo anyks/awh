@@ -587,7 +587,7 @@ namespace awh {
 			 * @return        текущий объект полезной нагрузки
 			 *
 			 */
-			Payload & Payload::operator = (const payload_t & payload) noexcept {
+			[[maybe_unused]] Payload & Payload::operator = (const payload_t & payload) noexcept {
 				// Выполняем установку флага
 				this->flag = payload.flag;
 				// Выполняем копирование текста
@@ -604,7 +604,7 @@ namespace awh {
 			 * @return        результат сравнения
 			 *
 			 */
-			bool Payload::operator == (const payload_t & payload) noexcept {
+			[[maybe_unused]] bool Payload::operator == (const payload_t & payload) noexcept {
 				// Выполняем проверку полезной нагрузки
 				return (
 					(this->flag == payload.flag) &&

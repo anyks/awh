@@ -4075,7 +4075,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
  * @return         признак того, что сброс выполнен
  *
  */
-bool awh::Filesystem::flush(string_view filename, const bool durable, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::flush(string_view filename, [[maybe_unused]] const bool durable, const handle_file_t & handle) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если адрес файла передан
