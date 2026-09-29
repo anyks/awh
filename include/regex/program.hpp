@@ -834,7 +834,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Instruction() noexcept : type(opcode_t::MATCH), repeat(1), flags(0), letter{0} {}
+			Instruction() noexcept : type(opcode_t::MATCH), repeat(1), flags(0), letter{} {}
 		} instruction_t;
 
 		/**

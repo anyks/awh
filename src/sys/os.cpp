@@ -862,10 +862,13 @@ using namespace std;
 				if(file != nullptr){
 					// Выполняем запись значения параметра ядра
 					const size_t bytes = ::fwrite(buffer, sizeof(char), size, file);
-					// Закрываем файл параметра ядра
-					::fclose(file);
+					/**
+					 * Запись буферизована: fwrite лишь кладёт байты в буфер и сообщает успех, а ядро
+					 * проверяет значение при сбросе буфера в fclose и отвергает неверное там (EINVAL)
+					 */
+					const bool closed = (::fclose(file) == 0);
 					// Сообщаем результат записи значения параметра ядра
-					return (bytes == size);
+					return (closed && (bytes == size));
 				}
 				// Сообщаем, что значение параметра ядра не установлено
 				return false;

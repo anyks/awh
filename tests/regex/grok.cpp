@@ -132,7 +132,7 @@ TEST(Grok, PatternsBuild) {
 		                   << static_cast <uint32_t> (grok.error());
 	}
 	// Выполняем проверку количества шаблонов набора
-	EXPECT_EQ(grok::PATTERNS_COUNT, 307);
+	EXPECT_EQ(grok::PATTERNS_COUNT, static_cast <size_t> (307));
 }
 /**
  * @brief Тест извлечения именованных полей из текста
@@ -201,7 +201,7 @@ TEST(Grok, FieldKinds) {
 	// Получаем набор полей собранного шаблона
 	const auto & fields = grok.fields(exp);
 	// Выполняем проверку количества полей собранного шаблона
-	ASSERT_EQ(fields.size(), 3);
+	ASSERT_EQ(fields.size(), static_cast <size_t> (3));
 	// Выполняем проверку видов значений полей
 	EXPECT_EQ(fields.at(0).name, "name");
 	EXPECT_EQ(fields.at(0).kind, grok_t::kind_t::TEXT);
@@ -259,7 +259,7 @@ TEST(Grok, DuplicateNames) {
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!exp);
 	// Выполняем проверку количества полей собранного шаблона
-	EXPECT_EQ(grok.fields(exp).size(), 2);
+	EXPECT_EQ(grok.fields(exp).size(), static_cast <size_t> (2));
 }
 /**
  * @brief Тест пользовательских шаблонов реестра
@@ -410,7 +410,7 @@ TEST(Grok, FieldNotCaptured) {
 	ASSERT_TRUE(grok.exec("node", exp, fields));
 	// Выполняем проверку извлечённых полей
 	EXPECT_EQ(fields["name"], "node");
-	EXPECT_EQ(fields.count("code"), 0);
+	EXPECT_EQ(fields.count("code"), static_cast <size_t> (0));
 	// Выполняем извлечение именованных полей из текста
 	ASSERT_TRUE(grok.exec("node 42", exp, fields));
 	// Выполняем проверку извлечённых полей
@@ -492,7 +492,7 @@ TEST(Grok, ValuesExtract) {
 	// Выполняем извлечение значений полей из текста
 	ASSERT_TRUE(grok.exec("alpha-bravo 42 3.14", exp, values));
 	// Выполняем проверку количества извлечённых значений полей
-	ASSERT_EQ(values.size(), 4);
+	ASSERT_EQ(values.size(), static_cast <size_t> (4));
 	// Выполняем проверку сохранения порядка и повторов названий
 	EXPECT_EQ(values.at(0).name, "tag");
 	EXPECT_EQ(values.at(0).value, "alpha");
@@ -510,7 +510,7 @@ TEST(Grok, ValuesExtract) {
 	// Выполняем извлечение именованных полей из текста
 	ASSERT_TRUE(grok.exec("alpha-bravo 42 3.14", exp, fields));
 	// Выполняем проверку потери повтора названия выдачей набором соответствий
-	EXPECT_EQ(fields.size(), 3);
+	EXPECT_EQ(fields.size(), static_cast <size_t> (3));
 	// Выполняем проверку отсутствия совпадения с текстом
 	EXPECT_FALSE(grok.exec("совпадения здесь нет", exp, values));
 	// Выполняем проверку пустоты набора извлечённых значений полей
@@ -704,7 +704,7 @@ TEST(Grok, JsonValueOutput) {
 	// Выполняем проверку вида значения
 	EXPECT_TRUE(value.is(awh::codec::json::type_t::OBJECT));
 	// Выполняем проверку количества полей значения
-	EXPECT_EQ(value.size(), 2);
+	EXPECT_EQ(value.size(), static_cast <size_t> (2));
 	// Извлекаемое название поля
 	string name;
 	// Выполняем извлечение значения поля названия
@@ -754,7 +754,7 @@ TEST(Grok, JsonDuplicateNames) {
 	// Выполняем извлечение значений полей из текста
 	ASSERT_TRUE(grok.exec("alpha-bravo node", exp, values));
 	// Выполняем проверку сохранения повтора извлечением набором значений
-	ASSERT_EQ(values.size(), 3);
+	ASSERT_EQ(values.size(), static_cast <size_t> (3));
 	EXPECT_EQ(values.at(0).value, "alpha");
 	EXPECT_EQ(values.at(1).value, "bravo");
 }
@@ -782,7 +782,7 @@ TEST(Grok, ReadSet) {
 		"ШАБЛОН_БЕЗ_ТЕЛА\n"
 		"NGINXLINE  %{IP:client} \\[%{NGINXSTAMP:stamp}\\] %{NGINXCODE}\n";
 	// Выполняем наполнение реестра набором шаблонов
-	ASSERT_EQ(grok.read(set), 3);
+	ASSERT_EQ(grok.read(set), static_cast <size_t> (3));
 	// Выполняем проверку наличия шаблонов в реестре
 	EXPECT_TRUE(grok.has("NGINXSTAMP"));
 	EXPECT_TRUE(grok.has("NGINXCODE"));
@@ -806,11 +806,11 @@ TEST(Grok, ReadSet) {
 	EXPECT_EQ(values["stamp"], "04/Aug/2026:12:30:00");
 	EXPECT_EQ(values["code"], "200");
 	// Выполняем проверку замещения шаблона реестра прочитанным
-	EXPECT_EQ(grok.read("NGINXCODE %{NUMBER:status:int}"), 1);
+	EXPECT_EQ(grok.read("NGINXCODE %{NUMBER:status:int}"), static_cast <size_t> (1));
 	// Выполняем проверку замещения текста шаблона реестра
 	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:status:int}");
 	// Выполняем проверку пропуска набора, шаблонов не несущего
-	EXPECT_EQ(grok.read("# одни лишь примечания\n\n#\n"), 0);
+	EXPECT_EQ(grok.read("# одни лишь примечания\n\n#\n"), static_cast <size_t> (0));
 }
 /**
  * @brief Тест записи и восстановления собранных шаблонов

@@ -205,9 +205,14 @@ rm -f "$OUT/regex-tests" "$OUT/regex-tests.exe"
 # а стенд проверок шёл с «-O2» и судил тем самым сборку, какой потребитель
 # не получает. Правки горячего цикла уровни различают даже знаком замера, и
 # поведение, неопределённое стандартом, «-O3» вскрывает там, где «-O2» его щадит.
-# Утверждений «assert» модуль не несёт, и «-DNDEBUG» проверок не ослабляет
+# Утверждений «assert» модуль не несёт, и «-DNDEBUG» проверок не ослабляет.
+#
+# Предупреждения ведутся ключами «-Wall -Wextra», какими проект собирается
+# в «CMakeLists.txt»: без них стенд не видел того, что видит сборка проекта, -
+# так прошли незаданное поле в начальном значении инструкции и сравнения
+# беззнакового размера со знаковым числом в проверках
 ##
-$CXX -std=c++17 -O3 -DNDEBUG -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
+$CXX -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
  -o "$OUT/regex-tests" $LANGUAGE $SOURCES $RELEASE $LIBRARY \
  -L"$GTEST/lib" -lgmock -lgtest -lgtest_main $LIBS > "$OUT/build.log" 2>&1
 head -40 "$OUT/build.log"

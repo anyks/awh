@@ -2598,7 +2598,7 @@ TEST(Regex, CodegenStorageForeign) {
 	// Выполняем запись порождённого сопоставителя
 	ASSERT_TRUE(fresh.save(record));
 	// Выполняем проверку непустоты записи сопоставителя
-	ASSERT_GT(record.size(), 1);
+	ASSERT_GT(record.size(), static_cast <size_t> (1));
 	/**
 	 * Выполняем проверку отказа восстановления записи набора команд иного
 	 */

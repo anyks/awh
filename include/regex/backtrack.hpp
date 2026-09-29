@@ -1089,15 +1089,15 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				size_t _saves;
+				[[maybe_unused]] size_t _saves;
 				// Количество выполненных проверок принадлежности байта классу символов
-				size_t _checks;
+				[[maybe_unused]] size_t _checks;
 				// Количество размещённых точек возврата
-				size_t _points_spent;
+				[[maybe_unused]] size_t _points_spent;
 				// Количество заведённых кадров вызова подвыражения
-				size_t _frames_spent;
+				[[maybe_unused]] size_t _frames_spent;
 				// Количество обходов цикла исполнения с возвратом
-				size_t _rounds;
+				[[maybe_unused]] size_t _rounds;
 			private:
 				/**
 				 * \~russian

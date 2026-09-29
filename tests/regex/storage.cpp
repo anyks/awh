@@ -250,12 +250,12 @@ TEST(Regex, StorageMachine) {
 	// Выполняем восстановление собранных выражений
 	ASSERT_TRUE(storage.load(record, restored));
 	// Выполняем проверку количества восстановленных выражений
-	ASSERT_EQ(restored.size(), 1);
+	ASSERT_EQ(restored.size(), static_cast <size_t> (1));
 	// Выполняем сличение границ совпадения восстановленного выражения
 	EXPECT_EQ(regexp.match("пишите на forman@anyks.com сегодня", exp),
 	 regexp.match("пишите на forman@anyks.com сегодня", restored.front()));
 	// Выполняем проверку извлечения захваченных групп
-	EXPECT_EQ(regexp.exec("forman@anyks.com", restored.front()).size(), 3);
+	EXPECT_EQ(regexp.exec("forman@anyks.com", restored.front()).size(), static_cast <size_t> (3));
 }
 /**
  * @brief Тест отказа восстановления записи испорченной
@@ -450,7 +450,7 @@ TEST(Regex, StoragePlatform) {
 	// Выполняем запись собранных выражений
 	ASSERT_TRUE(storage.save({exp}, record));
 	// Выполняем проверку размера записи хранилища
-	ASSERT_GT(record.size(), 32);
+	ASSERT_GT(record.size(), static_cast <size_t> (32));
 	// Набор восстановленных выражений
 	vector <regex::storage_t::exp_t> restored;
 	// Выполняем проверку восстановления записи нетронутой
@@ -531,11 +531,11 @@ TEST(Regex, StorageAdopt) {
 		string().swap(record);
 	}
 	// Выполняем проверку количества восстановленных выражений
-	ASSERT_EQ(restored.size(), 1);
+	ASSERT_EQ(restored.size(), static_cast <size_t> (1));
 	// Выполняем сличение границ совпадения восстановленного выражения
 	const auto bounds = regexp.match("пишите на forman@anyks.com сегодня", restored.front());
 	// Выполняем проверку наличия совпадения восстановленного выражения
-	ASSERT_EQ(bounds.size(), 3);
+	ASSERT_EQ(bounds.size(), static_cast <size_t> (3));
 	// Выполняем проверку захваченного текста восстановленного выражения
 	EXPECT_EQ(string("forman@anyks.com").size(), (bounds.front().second - bounds.front().first));
 }
@@ -573,7 +573,7 @@ TEST(Regex, StorageLifetime) {
 		string().swap(record);
 	}
 	// Выполняем проверку количества восстановленных выражений
-	ASSERT_EQ(restored.size(), 1);
+	ASSERT_EQ(restored.size(), static_cast <size_t> (1));
 	// Выполняем проверку сопоставления восстановленного выражения
 	EXPECT_TRUE(regexp.test("узел 192.168.5.150 отвечает", restored.front()));
 	EXPECT_FALSE(regexp.test("узел 192.168.5 отвечает", restored.front()));
@@ -1670,7 +1670,7 @@ TEST(Regex, StorageCipher) {
 	// Выполняем восстановление собранных выражений
 	ASSERT_TRUE(storage.load(record, restored)) << "код " << static_cast <uint32_t> (storage.error());
 	// Выполняем проверку количества восстановленных выражений
-	ASSERT_EQ(restored.size(), 1);
+	ASSERT_EQ(restored.size(), static_cast <size_t> (1));
 	// Выполняем сличение границ совпадения восстановленного выражения
 	EXPECT_EQ(regexp.match(text, exp), regexp.match(text, restored.front()));
 	/**

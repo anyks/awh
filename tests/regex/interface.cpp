@@ -3335,10 +3335,11 @@ TEST(Regex, InterfaceDollarEnd) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(sample.matched)
+			if(sample.matched) {
 				// Выполняем проверку начальной границы совпадения
 				EXPECT_EQ(bounds.front().first, sample.begin)
 				 << sample.pattern << " на «" << sample.text << "»" << (jit ? ", машинный код" : "");
+			}
 		}
 	}
 	/**
@@ -3528,10 +3529,11 @@ TEST(Regex, InterfaceLineBreakAtomic) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(sample.matched)
+			if(sample.matched) {
 				// Выполняем проверку конечной границы совпадения
 				EXPECT_EQ(bounds.front().second, sample.finish)
 				 << sample.pattern << (jit ? ", машинный код" : "");
+			}
 		}
 	}
 }

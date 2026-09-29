@@ -841,10 +841,11 @@ TEST(Regex, EmitterIndexed) {
 				/**
 				 * Если место записью не занято
 				 */
-				if(i != written)
+				if(i != written) {
 					// Выполняем проверку неприкосновенности места
 					EXPECT_EQ(region[i], static_cast <size_t> (0))
 					 << "запись " << written << " чтение " << read << " место " << i;
+				}
 			}
 		}
 	}

@@ -2399,9 +2399,10 @@ TEST(Regex, EngineReverseUnreachable) {
 		/**
 		 * Если развёрнутой программы у выражения быть не должно
 		 */
-		if(!sample.reversible)
+		if(!sample.reversible) {
 			// Выполняем проверку того, что программа и не строилась
 			EXPECT_TRUE(expression.backward.instructions.empty()) << sample.pattern << ", режимы " << sample.flags;
+		}
 		// Набор границ, движком установленных
 		vector <pair <size_t, size_t>> received;
 		// Набор границ, исполнением без возврата установленных
@@ -2992,7 +2993,7 @@ TEST(Regex, MatchingAtomicRecursion) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(expected > 0)
+			if(expected > 0) {
 				/**
 				 * Выполняем проверку конечной границы совпадения
 				 *
@@ -3006,6 +3007,7 @@ TEST(Regex, MatchingAtomicRecursion) {
 				 */
 				EXPECT_EQ(captures.front().second, expected)
 				 << "длина " << length << (jit ? ", машинный код" : "");
+			}
 		}
 	}
 }
@@ -5913,18 +5915,20 @@ TEST(Regex, EngineLiteralRun) {
 				 * Если инструкция сопоставляет символ иного рода
 				 */
 				if((instruction.type == regex::opcode_t::CLASS) || (instruction.type == regex::opcode_t::ANY) ||
-				   (instruction.type == regex::opcode_t::CODEUNIT) || (instruction.type == regex::opcode_t::GRAPHEME))
+				   (instruction.type == regex::opcode_t::CODEUNIT) || (instruction.type == regex::opcode_t::GRAPHEME)) {
 					// Выполняем проверку отсутствия пометки литерала
 					EXPECT_EQ(instruction.letter.length, 0) << sample.pattern << ", инструкция " << i;
+				}
 				// Переходим к следующей инструкции программы
 				continue;
 			}
 			/**
 			 * Если пометка стоит у символа, байтом дословно не сопоставляемого
 			 */
-			if(!regex::verbatim(instruction))
+			if(!regex::verbatim(instruction)) {
 				// Выполняем проверку отсутствия пометки литерала
 				EXPECT_EQ(instruction.letter.length, 0) << sample.pattern << ", инструкция " << i;
+			}
 			// Выполняем учёт наибольшей длины литерала
 			longest = ((static_cast <size_t> (instruction.letter.length) > longest) ? static_cast <size_t> (instruction.letter.length) : longest);
 			// Выполняем снятие пометки литерала

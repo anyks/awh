@@ -511,10 +511,11 @@ TEST(Regex, PrefilterBoundedPositional) {
 				/**
 				 * Если совпадение в тексте обнаружено
 				 */
-				if(obtained)
+				if(obtained) {
 					// Выполняем проверку положения обнаруженного совпадения
 					ASSERT_EQ(bounds.front().first, nearest)
 						<< "«" << text << "» с позиции " << start;
+				}
 			}
 		}
 	}
@@ -967,10 +968,11 @@ TEST(Regex, AlternateFolding) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(!received.empty() && !expected.empty())
+			if(!received.empty() && !expected.empty()) {
 				// Выполняем проверку совпадения границ совпадения
 				ASSERT_EQ(received.front(), expected.front())
 					<< item.first << " по тексту «" << text << "»";
+			}
 		}
 	}
 }
