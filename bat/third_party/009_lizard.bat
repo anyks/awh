@@ -85,12 +85,28 @@ rem
 rem  Правила выдачи предупреждений у чужой библиотеки свои, и ужесточать их мы не
 rem  вправе: сборка зависимости не должна валиться от того, что НАШИ мерки строже
 rem  её собственных
+rem
+rem  Библиотека CRT задаётся явно (/MD): cl.exe без ключа берёт статическую
+rem  (/MT), а прочие зависимости и сама библиотека собираются CMake с
+rem  динамической. Смешение даёт при связывании LNK4098 и два набора CRT в
+rem  одном процессе - память, выделенная одним, освобождается другим
+rem
+rem  lizard_frame.c переводится без оптимизации (/Od): оптимизатор SSA у cl.exe
+rem  14.51 (Visual Studio 2026) переводит LizardF_decompress неверно - признак
+rem  несжатого блока (старший бит его размера) после «размер & 0x7FFFFFFF» теряется,
+rem  несжатый блок раскрывается как сжатый, и кадр с несжимаемыми данными отвергается
+rem  (ERROR_GENERIC). Исходник верен: GCC, Clang и cl.exe с /Od либо /d2SSAOptimizer-
+rem  раскрывают его правильно. Цены у обхода нет - в файле лишь разбор кадра, а
+rem  раскрытие блоков в lizard_decompress.c остаётся с /O2: 16 МиБ текста 1944 МБ/с с
+rem  /O2 и 1943 МБ/с с /Od (замер 29.09.2026)
 rem ----------------------------------------------------------------------------
 set "OBJECTS="
 set "COUNT=0"
 
 for /r "%SRC%\lib" %%C in (*.c) do (
-	cl.exe /nologo /c /O2 /DNDEBUG /W0 /I "%SRC%\lib" /I "%SRC%\lib\entropy" /I "%SRC%\lib\xxhash" /Fo:"%WORK%\!COUNT!_%%~nC.obj" "%%~fC" > nul || (
+	set "OPT=/O2"
+	if /i "%%~nC"=="lizard_frame" set "OPT=/Od"
+	cl.exe /nologo /c !OPT! /MD /DNDEBUG /W0 /I "%SRC%\lib" /I "%SRC%\lib\entropy" /I "%SRC%\lib\xxhash" /Fo:"%WORK%\!COUNT!_%%~nC.obj" "%%~fC" > nul || (
 		echo [AWH] %NAME%: failed to compile %%~nxC
 		popd > nul
 		exit /b 1
