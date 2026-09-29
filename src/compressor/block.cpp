@@ -367,12 +367,13 @@ namespace driver {
 	 *
 	 * @param result контейнер с распакованными данными
 	 * @param tag    название движка для записи в лог
+	 * @param limit  допустимый предел распакованных данных
 	 * @return       результат проверки
 	 *
 	 */
-	static bool overflowed(const T & result, const char * tag) noexcept {
+	static bool overflowed(const T & result, const char * tag, const size_t limit) noexcept {
 		// Если объём распакованных данных допустимого предела не превышает
-		if(static_cast <uint64_t> (result.size()) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
+		if(static_cast <uint64_t> (result.size()) <= static_cast <uint64_t> (limit))
 			// Выводим отрицательный результат
 			return false;
 		// Записываем ошибку в лог
@@ -389,12 +390,13 @@ namespace driver {
 	 *
 	 * @param produced объём распакованных данных
 	 * @param tag      название движка для записи в лог
+	 * @param limit    допустимый предел распакованных данных
 	 * @return         результат проверки
 	 *
 	 */
-	static bool overflowed(const size_t produced, const char * tag) noexcept {
+	static bool overflowed(const uint64_t produced, const char * tag, const size_t limit) noexcept {
 		// Если объём распакованных данных допустимого предела не превышает
-		if(static_cast <uint64_t> (produced) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
+		if(produced <= static_cast <uint64_t> (limit))
 			// Выводим отрицательный результат
 			return false;
 		// Записываем ошибку в лог
@@ -417,9 +419,10 @@ namespace driver {
 	 * @param level  пресет компрессии (0 - 9)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void lzma(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void lzma(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -494,64 +497,110 @@ namespace driver {
 					} break;
 					// Если необходимо выполнить декомпрессию данных
 					case static_cast <uint8_t> (compressor::event_t::DECODE): {
-						// Указатель позиции в буфере для распаковки
-						char * ptr = nullptr;
-						// Индекс потока LZma компрессора
-						lzma_index * index = nullptr;
+						// Начало входного буфера
+						const uint8_t * input = reinterpret_cast <const uint8_t *> (buffer);
 						// Лимит доступной памяти
 						uint64_t memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
-						// Позиции в буферах и актуальный размер данных результата
-						size_t inpos = 0, outpos = 0, actual = 0;
+						// Позиция записи в буфере и актуальный размер данных результата
+						size_t outpos = 0, actual = 0;
 						// Размер распакованных данных в разрядности движка
 						uint64_t expected = 0;
 						/**
-						 * Подвал контейнера занимает 12 октетов, и на входе короче него
-						 * вычитание ушло бы за ноль беззнаковой разрядностью, уводя указатель за буфер
+						 * Файл .xz по спецификации формата (раздел 2) есть ряд потоков, идущих
+						 * подряд, с заполнением из нулей кратным четырём октетам между ними и
+						 * после них; утилита xz разбирает его весь. Разбор одного лишь первого
+						 * потока молча терял бы остальные, поэтому размер складывается по всем
+						 * потокам. Потоки обходятся с конца: подвал каждого указывает на его
+						 * индекс, индекс - на полный размер потока, и так до начала буфера.
+						 * Размеры приходят от отправляющей стороны и до разбора ничем не
+						 * подтверждены, поэтому служат лишь для сверки с пределом и отвода
+						 * памяти; сверку данных с индексами делает сам движок
 						 */
-						if(size < 12)
-							// Переходим к выводу ошибки
-							goto Error;
-						// Смещаем указатель в буфере на подвал
-						ptr = (const_cast <char *> (reinterpret_cast <const char *> (buffer)) + (size - 12));
-						// Список флагов потока LZma
-						lzma_stream_flags flags;
-						// Пытаемся декодировать подвал архива
-						if(::lzma_stream_footer_decode(&flags, reinterpret_cast <uint8_t *> (ptr)) != LZMA_OK)
-							// Переходим к выводу ошибки
-							goto Error;
-						/**
-						 * Сличаем смещения, а не указатели: вычитание испорченного размера
-						 * увело бы указатель за начало буфера ещё до сравнения, а такая
-						 * арифметика неопределена сама по себе, независимо от того, чем кончится сличение
-						 */
-						if(flags.backward_size > (size - 12))
-							// Переходим к выводу ошибки
-							goto Error;
-						// Смещаем указатель в буфере на начало индекса
-						ptr -= flags.backward_size;
-						// Выполняем декодирование буфера LZma
-						if(::lzma_index_buffer_decode(&index, &memlimit, nullptr, reinterpret_cast <uint8_t *> (ptr), &inpos, size - (ptr - reinterpret_cast <const char *> (buffer))) != LZMA_OK)
-							// Переходим к выводу ошибки
-							goto Error;
-						// Сбрасываем позицию во входящем буфере
-						inpos = 0;
-						// Сбрасываем лимит доступной памяти
-						memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
-						/**
-						 * Размер снимается в разрядность движка, а не в разрядность памяти:
-						 * приведение к размеру памяти на 32-разрядной сборке обрезало бы
-						 * старшую половину, и подделанный подвал прошёл бы стража с обрезком
-						 */
-						// Получаем размер результирующего буфера данных
-						expected = ::lzma_index_uncompressed_size(index);
-						/**
-						 * Отвергаем нулевой размер и размер свыше допустимого предела: и то,
-						 * и другое означает подделанный подвал. Нулевой распакованный размер
-						 * законным контейнером не бывает — пустой вход модуль до движка не доводит
-						 */
-						if((expected == 0) || (expected > static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT)) || (expected > static_cast <uint64_t> (SIZE_MAX)))
-							// Переходим к выводу ошибки
-							goto Error;
+						{
+							// Конец ещё не пройденной части буфера
+							size_t end = size;
+							// Количество найденных потоков
+							size_t streams = 0;
+							/**
+							 * Обходим потоки от конца буфера к началу
+							 */
+							while(end > 0){
+								// Пропускаем заполнение из нулей, кратное четырём октетам
+								while((end >= 4) && (::memcmp(input + (end - 4), "\x00\x00\x00\x00", 4) == 0))
+									// Смещаем конец на заполнение
+									end -= 4;
+								// Если до начала буфера осталось одно заполнение
+								if(end == 0)
+									// Выходим из цикла
+									break;
+								/**
+								 * Подвал потока занимает 12 октетов, и на входе короче него
+								 * вычитание ушло бы за ноль беззнаковой разрядностью, уводя указатель за буфер
+								 */
+								if(end < 12)
+									// Переходим к выводу ошибки
+									goto Error;
+								// Список флагов потока LZma
+								lzma_stream_flags flags;
+								// Пытаемся декодировать подвал потока
+								if(::lzma_stream_footer_decode(&flags, input + (end - 12)) != LZMA_OK)
+									// Переходим к выводу ошибки
+									goto Error;
+								/**
+								 * Сличаем смещения, а не указатели: вычитание испорченного размера
+								 * увело бы указатель за начало буфера ещё до сравнения, а такая
+								 * арифметика неопределена сама по себе, независимо от того, чем кончится сличение
+								 */
+								if(flags.backward_size > (end - 12))
+									// Переходим к выводу ошибки
+									goto Error;
+								// Индекс потока LZma
+								lzma_index * index = nullptr;
+								// Позиция начала индекса в буфере
+								size_t inpos = ((end - 12) - static_cast <size_t> (flags.backward_size));
+								// Сбрасываем лимит доступной памяти
+								memlimit = AWH_COMPRESSOR_LZMA_MEMLIMIT;
+								// Если индекс потока декодировать не удалось
+								if(::lzma_index_buffer_decode(&index, &memlimit, nullptr, input, &inpos, end - 12) != LZMA_OK)
+									// Переходим к выводу ошибки
+									goto Error;
+								// Полный размер потока вместе с заголовком и подвалом
+								const lzma_vli length = ::lzma_index_stream_size(index);
+								/**
+								 * Размер снимается в разрядность движка, а не в разрядность памяти:
+								 * приведение к размеру памяти обрезало бы старшую половину, и
+								 * подделанный подвал прошёл бы стража с обрезком
+								 */
+								const lzma_vli unpacked = ::lzma_index_uncompressed_size(index);
+								// Выполняем закрытие индекса компрессора LZma
+								::lzma_index_end(index, nullptr);
+								// Если поток длиннее оставшейся части буфера либо размер не извлечён
+								if((length == LZMA_VLI_UNKNOWN) || (unpacked == LZMA_VLI_UNKNOWN) || (length > static_cast <lzma_vli> (end)))
+									// Переходим к выводу ошибки
+									goto Error;
+								// Если сумма размеров превысит допустимый предел
+								if(unpacked > (static_cast <uint64_t> (limit) - ::min <uint64_t> (expected, static_cast <uint64_t> (limit)))){
+									// Записываем ошибку в лог
+									awh::log::print("%s: %s", awh::log::flag_t::WARNING, "LZMA", "Decompressed data exceeds the allowed limit");
+									// Переходим к выводу ошибки
+									goto Error;
+								}
+								// Учитываем размер потока
+								expected += unpacked;
+								// Смещаем конец на начало потока
+								end -= static_cast <size_t> (length);
+								// Увеличиваем количество найденных потоков
+								streams++;
+							}
+							/**
+							 * Отвергаем вход без потоков и нулевой размер: и то, и другое
+							 * означает подделанный подвал. Нулевой распакованный размер
+							 * законным контейнером не бывает — пустой вход модуль до движка не доводит
+							 */
+							if((streams == 0) || (expected == 0) || (expected > static_cast <uint64_t> (SIZE_MAX)))
+								// Переходим к выводу ошибки
+								goto Error;
+						}
 						// Снимаем размер в разрядность памяти сборки
 						actual = static_cast <size_t> (expected);
 						/**
@@ -580,8 +629,12 @@ namespace driver {
 							result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (actual), ::max <uint64_t> (static_cast <uint64_t> (size) * 64, static_cast <uint64_t> (STEP)))));
 							// Поток декодера LZma
 							lzma_stream strm = LZMA_STREAM_INIT;
+							/**
+							 * Декодер заводится разбором ряда потоков: без признака LZMA_CONCATENATED
+							 * он встал бы на конце первого и прочие молча отбросил
+							 */
 							// Если декодер создать не удалось
-							if(::lzma_stream_decoder(&strm, memlimit, 0) != LZMA_OK)
+							if(::lzma_stream_decoder(&strm, AWH_COMPRESSOR_LZMA_MEMLIMIT, LZMA_CONCATENATED) != LZMA_OK)
 								// Переходим к выводу ошибки
 								goto Error;
 							// Гарантируем освобождение декодера при любом выходе из области видимости
@@ -602,8 +655,8 @@ namespace driver {
 								// Если записываемая часть буфера исчерпана
 								if(outpos == result.size()){
 									/**
-									 * Поток выписал уже всё, что объявлено индексом, а конца не
-									 * достиг: кадр расходится с собственным индексом. Однократный
+									 * Поток выписал уже всё, что объявлено индексами, а конца не
+									 * достиг: кадр расходится с собственными индексами. Однократный
 									 * разбор отказал бы здесь же, упершись в размер буфера
 									 */
 									if(result.size() >= actual)
@@ -646,16 +699,12 @@ namespace driver {
 								 */
 								// Корректируем размер результирующего буфера по выписанному движком
 								result.resize(outpos);
-								// Выполняем закрытие индекса компрессора LZma
-								::lzma_index_end(index, nullptr);
 								// Выходим из функции
 								return;
 							}
 						}
 						// Устанавливаем метку вывода ошибки
 						Error:
-						// Выполняем закрытие индекса компрессора LZma
-						::lzma_index_end(index, nullptr);
 						// Выполняем очистку результата
 						result.clear();
 						/**
@@ -726,9 +775,10 @@ namespace driver {
 	 * @param level  размер рабочего блока в единицах по 100 килобайт (1 - 9)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void bzip2(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void bzip2(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -924,17 +974,22 @@ namespace driver {
 						 * догадка не забрала памяти больше, чем работе позволено выдать
 						 */
 						// Начальный размер буфера — эвристика
-						const size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (1024, static_cast <uint64_t> (size) * 2), static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT)));
+						const size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (1024, static_cast <uint64_t> (size) * 2), static_cast <uint64_t> (limit)));
 						// Выделяем память на результирующий буфер
 						result.resize(capacity, 0);
 						// Результат выполнения компрессии
 						int32_t ret = BZ_OK;
 						/**
+						 * Объём, собранный прежними потоками ряда: счётчик движка у каждого
+						 * заведённого заново потока начинается с нуля
+						 */
+						uint64_t base = 0;
+						/**
 						 * Выполняем компрессию всех данных
 						 */
 						do {
 							// Получаем собранный движком объём данных
-							const size_t collected = static_cast <size_t> (driver::produced(stream));
+							const size_t collected = static_cast <size_t> (base + driver::produced(stream));
 							// Запоминаем остаток неразобранного входа до захода
 							const uint32_t remaining = stream.avail_in;
 							// Убедимся, что есть место для записи
@@ -946,7 +1001,7 @@ namespace driver {
 								 * предела не дошедший
 								 */
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(collected, "Bzip2")){
+								if(driver::overflowed(static_cast <uint64_t> (collected), "Bzip2", limit)){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -957,7 +1012,7 @@ namespace driver {
 								 * данные повреждёнными, отводим буфер ровно по пределу и пробуем ещё раз
 								 */
 								// Увеличиваем буфер в два раза, не выходя за допустимый предел
-								result.resize(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (result.size()) * 2, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+								result.resize(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (result.size()) * 2, static_cast <uint64_t> (limit))));
 								// Если места под запись не прибавилось, предел исчерпан
 								if(collected >= result.size()){
 									// Записываем ошибку в лог
@@ -1019,7 +1074,7 @@ namespace driver {
 							 * октета выхода, не разберёт его и впредь: доводы захода те же самые.
 							 * Тот же страж стоит у потокового кодека
 							 */
-							if((ret != BZ_STREAM_END) && (stream.avail_in > 0) && (stream.avail_in == remaining) && (static_cast <size_t> (driver::produced(stream)) == collected)){
+							if((ret != BZ_STREAM_END) && (stream.avail_in > 0) && (stream.avail_in == remaining) && (static_cast <size_t> (base + driver::produced(stream)) == collected)){
 								// Выполняем очистку буфера данных
 								result.clear();
 								/**
@@ -1038,12 +1093,46 @@ namespace driver {
 								// Выходим из функции
 								return;
 							}
+							/**
+							 * Файл bzip2 может нести несколько потоков подряд, и утилита bzip2
+							 * разбирает их все. Конец потока при неразобранном входе - начало
+							 * следующего: поток заводится заново, и разбор продолжается. Хвост,
+							 * потоком не являющийся, движок отвергнет как порчу - молча
+							 * отбросить его значило бы выдать неполные данные за целые
+							 */
+							if((ret == BZ_STREAM_END) && (stream.avail_in > 0)){
+								// Учитываем объём, собранный разобранным потоком
+								base += driver::produced(stream);
+								// Запоминаем неразобранный вход
+								char * next = stream.next_in;
+								// Запоминаем размер неразобранного входа
+								const uint32_t avail = stream.avail_in;
+								// Выполняем завершение работы с разобранным потоком
+								::BZ2_bzDecompressEnd(&stream);
+								// Обнуляем объект потока
+								stream = bz_stream{};
+								// Если поток завести заново не удалось
+								if(::BZ2_bzDecompressInit(&stream, 0, 0) != BZ_OK){
+									// Выполняем очистку буфера данных
+									result.clear();
+									// Записываем ошибку в лог
+									awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data decompression");
+									// Выходим из функции
+									return;
+								}
+								// Возвращаем неразобранный вход
+								stream.next_in = next;
+								// Возвращаем размер неразобранного входа
+								stream.avail_in = avail;
+								// Продолжаем разбор следующего потока
+								ret = BZ_OK;
+							}
 						/**
 						 * Если данные ещё не извлечены
 						 */
 						} while(ret != BZ_STREAM_END);
 						// Обрезаем до фактически распакованного размера
-						result.resize(static_cast <size_t> (driver::produced(stream)));
+						result.resize(static_cast <size_t> (base + driver::produced(stream)));
 					} break;
 				}
 			/**
@@ -1083,9 +1172,10 @@ namespace driver {
 	 * @param level  качество компрессии (0 - 11)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void brotli(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void brotli(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1223,7 +1313,7 @@ namespace driver {
 							::BrotliDecoderDestroyInstance(decoder);
 						});
 						// Резервируем память под результат для снижения числа реаллокаций, не больше допустимого предела выхода
-						result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (sizeInput) * 3, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+						result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (sizeInput) * 3, static_cast <uint64_t> (limit))));
 						/**
 						 * Если декодеру есть с чем работать
 						 */
@@ -1263,7 +1353,7 @@ namespace driver {
 								// Формируем результирующий буфер бинарных данных
 								result.insert(result.end(), chunk, chunk + produced);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Brotli")){
+								if(driver::overflowed(result, "Brotli", limit)){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -1350,9 +1440,10 @@ namespace driver {
 	 * @param size   размер данных для компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void snappy(const void * buffer, const size_t size, const compressor::event_t event, T & result) noexcept {
+	static void snappy(const void * buffer, const size_t size, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1379,7 +1470,7 @@ namespace driver {
 						return;
 					}
 					// Если распакованные данные превысят допустимый предел
-					if(driver::overflowed(expected, "Snappy"))
+					if(driver::overflowed(static_cast <uint64_t> (expected), "Snappy", limit))
 						// Выходим из функции
 						return;
 					/**
@@ -1500,9 +1591,10 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void density(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void density(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1511,8 +1603,6 @@ namespace driver {
 			try {
 				// Выполняем очистку блока с результатом
 				result.clear();
-				// Максимальный размер выходного буфера
-				constexpr uint64_t MAX_OUTPUT_SIZE = AWH_COMPRESSOR_MAX_OUTPUT;
 				/**
 				 * Определяем событие выполнения операции
 				 */
@@ -1585,6 +1675,14 @@ namespace driver {
 						 * наращивается, пока движку хватает места
 						 */
 						uint_fast64_t expected = (static_cast <uint_fast64_t> (size) * 4);
+						/**
+						 * Движку нужен выходной буфер с запасом сверх самих данных: без запаса он
+						 * встаёт на нехватке места, даже когда данные в буфер уже укладываются.
+						 * Потому буфер ограничивается пределом вместе с запасом, а сам предел
+						 * сверяется с выписанным движком - иначе кадр ровно по пределу, переданному
+						 * вызывающей стороной, отвергался бы
+						 */
+						const uint64_t ceiling = static_cast <uint64_t> (::density_decompress_safe_size(static_cast <uint_fast64_t> (limit)));
 						// Признак попытки на всём допустимом пределе
 						bool clamped = false;
 						/**
@@ -1599,14 +1697,14 @@ namespace driver {
 							 * пробуем ещё раз - тот же порядок у LZ4 и Lizard
 							 */
 							// Если предположение предел перешагнуло, а попытки на нём ещё не было
-							if((actual > MAX_OUTPUT_SIZE) && !clamped){
+							if((actual > ceiling) && !clamped){
 								// Отводим буфер ровно по допустимому пределу
-								actual = MAX_OUTPUT_SIZE;
+								actual = ceiling;
 								// Отмечаем попытку на всём допустимом пределе
 								clamped = true;
 							}
 							// Если размер выделить не удалось либо он превышает допустимый предел
-							if((actual == 0) || (actual > MAX_OUTPUT_SIZE)){
+							if((actual == 0) || (actual > ceiling)){
 								// Выполняем очистку блока с результатом
 								result.clear();
 								/**
@@ -1656,6 +1754,13 @@ namespace driver {
 								// Выходим из функции
 								return;
 							}
+							// Если распакованные данные превысили допустимый предел
+							if(driver::overflowed(static_cast <uint64_t> (status.bytesWritten), "Density", limit)){
+								// Выполняем очистку блока с результатом
+								result.clear();
+								// Выходим из функции
+								return;
+							}
 							// Корректируем размер результирующего буфера
 							result.resize(static_cast <size_t> (status.bytesWritten));
 							// Выходим из цикла
@@ -1700,9 +1805,10 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void lizard(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void lizard(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1774,19 +1880,19 @@ namespace driver {
 						/**
 						 * Верхний предел размера выходного буфера (защита от повреждённых данных).
 						 *
-						 * Общий предел режется здесь разрядностью самого движка: длина буфера
+						 * Допустимый предел режется здесь разрядностью самого движка: длина буфера
 						 * уходит ему знаковым 32-разрядным числом, и предел выше этой величины -
-						 * а он настраивается сборкой - обратился бы при передаче в отрицательный
-						 */
-						constexpr size_t MAX_OUTPUT_SIZE = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT), static_cast <uint64_t> (INT32_MAX)));
-						/**
+						 * а он настраивается сборкой и вызывающей стороной - обратился бы при
+						 * передаче в отрицательный.
+						 *
 						 * Предел по размеру входа здесь не ставится: у формата Lizard длины кодируются
 						 * многобайтно, и степень сжатия сверху ничем не ограничена - замер дал 3275:1 на
 						 * законном кадре, и кратный предел отвергал бы его. Испорченный кадр поэтому
-						 * вправе обойтись отводом во весь общий предел; ограничить это можно лишь им самим
+						 * вправе обойтись отводом во весь допустимый предел; ограничить это можно лишь
+						 * им самим - вызывающая сторона, знающая размер кадра, передаёт его пределом, -
 						 * либо потоковым режимом, где память растёт вслед за выписанным
 						 */
-						constexpr size_t limit = MAX_OUTPUT_SIZE;
+						const size_t ceiling = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (limit), static_cast <uint64_t> (INT32_MAX)));
 						/**
 						 * Начальная догадка взята с запасом: движок отвечает одним отрицательным
 						 * числом и на нехватку места, и на порчу, поэтому каждая недостача стоит
@@ -1794,7 +1900,7 @@ namespace driver {
 						 * обычной степени сжатия, и честный кадр платил бы несколькими заходами
 						 */
 						// Начальный размер выходного буфера
-						size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (static_cast <uint64_t> (size) * 4, 0x10000), static_cast <uint64_t> (limit)));
+						size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (static_cast <uint64_t> (size) * 4, 0x10000), static_cast <uint64_t> (ceiling)));
 						/**
 						 * Выполняем извлечение данных пока не извлечём
 						 */
@@ -1809,7 +1915,7 @@ namespace driver {
 								 * Попытка шла уже во весь допустимый предел: места больше не прибавить,
 								 * и отказ движка означает порчу данных, а не нехватку места
 								 */
-								if(capacity >= limit){
+								if(capacity >= ceiling){
 									// Выполняем очистку блока с результатом
 									result.clear();
 									/**
@@ -1832,7 +1938,7 @@ namespace driver {
 								 * Удвоение режется пределом: попытка на самом пределе делается ровно
 								 * одна, и заход того же размера повторно не выполняется
 								 */
-								capacity = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (capacity) * 2, static_cast <uint64_t> (limit)));
+								capacity = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (capacity) * 2, static_cast <uint64_t> (ceiling)));
 							}
 							// Если декомпрессия не выполнена
 							else if(actual == 0) {
@@ -1900,9 +2006,10 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void lz4(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void lz4(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1980,11 +2087,12 @@ namespace driver {
 						/**
 						 * Верхний предел размера выходного буфера (защита от повреждённых данных).
 						 *
-						 * Общий предел режется здесь разрядностью самого движка: длина буфера
+						 * Допустимый предел режется здесь разрядностью самого движка: длина буфера
 						 * уходит ему знаковым 32-разрядным числом, и предел выше этой величины -
-						 * а он настраивается сборкой - обратился бы при передаче в отрицательный
+						 * а он настраивается сборкой и вызывающей стороной - обратился бы при
+						 * передаче в отрицательный
 						 */
-						constexpr size_t MAX_OUTPUT_SIZE = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT), static_cast <uint64_t> (INT32_MAX)));
+						const size_t bounded = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (limit), static_cast <uint64_t> (INT32_MAX)));
 						/**
 						 * Формат LZ4 степень сжатия сверху ограничивает: длина совпадения растёт не
 						 * более чем на 255 за октет входа, а литералы на выходе не длиннее, чем на входе
@@ -1992,7 +2100,7 @@ namespace driver {
 						 * Предел по входу не даёт шестнадцати испорченным октетам отвести гигабайт, а
 						 * законный кадр любой степени сжатия под него укладывается
 						 */
-						const size_t limit = static_cast <size_t> (::min <uint64_t> ((static_cast <uint64_t> (size) * 255) + 0x40, static_cast <uint64_t> (MAX_OUTPUT_SIZE)));
+						const size_t ceiling = static_cast <size_t> (::min <uint64_t> ((static_cast <uint64_t> (size) * 255) + 0x40, static_cast <uint64_t> (bounded)));
 						/**
 						 * Начальная догадка взята с запасом: движок отвечает одним отрицательным
 						 * числом и на нехватку места, и на порчу, поэтому каждая недостача стоит
@@ -2000,7 +2108,7 @@ namespace driver {
 						 * обычной степени сжатия, и честный кадр платил бы несколькими заходами
 						 */
 						// Начальный размер выходного буфера
-						size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (static_cast <uint64_t> (size) * 4, 0x10000), static_cast <uint64_t> (limit)));
+						size_t capacity = static_cast <size_t> (::min <uint64_t> (::max <uint64_t> (static_cast <uint64_t> (size) * 4, 0x10000), static_cast <uint64_t> (ceiling)));
 						/**
 						 * Выполняем извлечение данных пока не извлечём
 						 */
@@ -2015,7 +2123,7 @@ namespace driver {
 								 * Попытка шла уже во весь допустимый предел: места больше не прибавить,
 								 * и отказ движка означает порчу данных, а не нехватку места
 								 */
-								if(capacity >= limit){
+								if(capacity >= ceiling){
 									// Выполняем очистку блока с результатом
 									result.clear();
 									/**
@@ -2038,7 +2146,7 @@ namespace driver {
 								 * Удвоение режется пределом: попытка на самом пределе делается ровно
 								 * одна, и заход того же размера повторно не выполняется
 								 */
-								capacity = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (capacity) * 2, static_cast <uint64_t> (limit)));
+								capacity = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (capacity) * 2, static_cast <uint64_t> (ceiling)));
 							}
 							// Если декомпрессия не выполнена
 							else if(actual == 0) {
@@ -2106,9 +2214,10 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void zstd(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
+	static void zstd(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2248,7 +2357,7 @@ namespace driver {
 							driver::zstdContexts().resetDecompress();
 						});
 						// Резервируем память под результат для снижения числа реаллокаций, не больше допустимого предела выхода
-						result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+						result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (limit))));
 						// Выполняем инициализацию потока
 						size_t status = ::ZSTD_initDStream(ctx);
 						// Если мы получили ошибку инициализации
@@ -2320,7 +2429,7 @@ namespace driver {
 								// Выполняем формирование полученных данных
 								result.insert(result.end(), data.get(), data.get() + output.pos);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Zstandard")){
+								if(driver::overflowed(result, "Zstandard", limit)){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -2393,7 +2502,7 @@ namespace driver {
 								// Выполняем формирование полученных данных
 								result.insert(result.end(), data.get(), data.get() + output.pos);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Zstandard")){
+								if(driver::overflowed(result, "Zstandard", limit)){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -2470,9 +2579,10 @@ namespace driver {
 	 * @param wbits  размер скользящего окна
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void gzip(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result) noexcept {
+	static void gzip(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2586,7 +2696,7 @@ namespace driver {
 							// Устанавливаем буфер входящих данных
 							zs.next_in = reinterpret_cast <Bytef *> (const_cast <void *> (buffer));
 							// Резервируем память под результат для снижения числа реаллокаций, не больше допустимого предела выхода
-							result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+							result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (limit))));
 							// Буфер для извлечённых данных
 							vector <uint8_t> output(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE, 0);
 							// Результат проверки декомпрессии
@@ -2639,12 +2749,32 @@ namespace driver {
 									// Формируем результирующий буфер бинарных данных
 									result.insert(result.end(), &output[0], &output[0] + produced);
 									// Если распакованные данные превысили допустимый предел
-									if(driver::overflowed(result, "GZip")){
+									if(driver::overflowed(result, "GZip", limit)){
 										// Выполняем очистку результата
 										result.clear();
 										// Выходим из функции
 										return;
 									}
+								}
+								/**
+								 * Файл gzip по RFC 1952 (раздел 2.2) есть ряд членов, идущих подряд,
+								 * и gunzip разбирает его весь. Конец члена при неразобранном входе -
+								 * начало следующего: поток заводится заново, и разбор продолжается.
+								 * Хвост, членом не являющийся, движок отвергнет как порчу - молча
+								 * отбросить его значило бы выдать неполные данные за целые
+								 */
+								if((ret == Z_STREAM_END) && (zs.avail_in > 0)){
+									// Если поток завести заново не удалось
+									if(::inflateReset(&zs) != Z_OK){
+										// Выполняем очистку результата
+										result.clear();
+										// Записываем ошибку в лог
+										awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Error initializing decompression stream");
+										// Выходим из функции
+										return;
+									}
+									// Продолжаем разбор следующего члена
+									ret = Z_OK;
 								}
 							/**
 							 * Если данные ещё не извлечены
@@ -2730,9 +2860,10 @@ namespace driver {
 	 * @param wbits  размер скользящего окна
 	 * @param event  событие выполнения операции
 	 * @param result выходной контейнер
+	 * @param limit  допустимый предел распакованных данных
 	 *
 	 */
-	static void zlib(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result) noexcept {
+	static void zlib(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2848,7 +2979,7 @@ namespace driver {
 							// Заполняем входные данные буфера
 							zs.next_in = reinterpret_cast <Bytef *> (const_cast <void *> (buffer));
 							// Резервируем память под результат для снижения числа реаллокаций, не больше допустимого предела выхода
-							result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+							result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (limit))));
 							// Создаём временный буфер данных
 							vector <Bytef> data(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE, 0);
 							// Переменная результата
@@ -2901,7 +3032,7 @@ namespace driver {
 									// Добавляем декомпрессированные данные в результат
 									result.insert(result.end(), chunk, chunk + produced);
 									// Если распакованные данные превысили допустимый предел
-									if(driver::overflowed(result, "Zlib")){
+									if(driver::overflowed(result, "Zlib", limit)){
 										// Выполняем очистку результата
 										result.clear();
 										// Выходим из функции
@@ -3001,9 +3132,10 @@ namespace driver {
 	 * @param stream    объект потока zlib
 	 * @param event     событие выполнения операции
 	 * @param result    выходной контейнер
+	 * @param limit     допустимый предел распакованных данных
 	 *
 	 */
-	static void deflate(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const bool streaming, z_stream & stream, const compressor::event_t event, T & result) noexcept {
+	static void deflate(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const bool streaming, z_stream & stream, const compressor::event_t event, T & result, const size_t limit = static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT)) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -3231,7 +3363,7 @@ namespace driver {
 						// Устанавливаем буфер входящих данных
 						zs->next_in = reinterpret_cast <Bytef *> (const_cast <void *> (buffer));
 						// Резервируем память под результат для снижения числа реаллокаций, не больше допустимого предела выхода
-						result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))));
+						result.reserve(static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size) * 3, static_cast <uint64_t> (limit))));
 						// Переменная подсчёта декомпрессированных данных
 						size_t produced = 0;
 						// Признак остановки разбора на законной границе: перед заголовком блока либо на конце потока
@@ -3290,7 +3422,7 @@ namespace driver {
 								// Добавляем декомпрессированные данные в результат
 								result.insert(result.end(), &output[0], &output[0] + produced);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Deflate")){
+								if(driver::overflowed(result, "Deflate", limit)){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -3818,10 +3950,11 @@ bool awh::compressor::Block::streamable(const method_t method) noexcept {
  *
  * @param method метод компрессии
  * @param event  направление операции
+ * @param limit  предел распакованных данных всей сессии (0 - общий предел на подачу)
  * @return       объект потоковой сессии
  *
  */
-awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, const event_t event) const noexcept {
+awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, const event_t event, const size_t limit) const noexcept {
 	// Если метод не поддерживает потоковый режим, возвращаем невалидный поток
 	if(!block_t::streamable(method))
 		// Возвращаем невалидный поток
@@ -3884,6 +4017,8 @@ awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, 
 			params.level = this->_level[5].load(std::memory_order_acquire);
 		break;
 	}
+	// Устанавливаем предел распакованных данных всей сессии
+	params.limit = limit;
 	// Создаём и возвращаем потоковую сессию
 	return stream_t(method, event, params);
 }
@@ -4392,16 +4527,17 @@ template <typename T>
  *
  * @param buffer буфер данных для декомпрессии
  * @param method метод компрессии
+ * @param limit  предел распакованных данных (0 - общий предел)
  * @return       результат декомпрессии
  *
  */
-auto awh::compressor::Block::decompress(string_view buffer, const method_t method) const noexcept -> T {
+auto awh::compressor::Block::decompress(string_view buffer, const method_t method, const size_t limit) const noexcept -> T {
 	// Переменная результата
 	T result;
 	// Если буфер данных передан
 	if(!buffer.empty())
 		// Выполняем декомпрессию
-		this->decompress(&buffer[0], buffer.size(), method, result);
+		this->decompress(&buffer[0], buffer.size(), method, result, limit);
 	// Возвращаем результат
 	return result;
 }
@@ -4409,17 +4545,17 @@ auto awh::compressor::Block::decompress(string_view buffer, const method_t metho
  * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в строку
  *
  */
-template string awh::compressor::Block::decompress(string_view, const method_t) const noexcept;
+template string awh::compressor::Block::decompress(string_view, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в буфер
  *
  */
-template vector <char> awh::compressor::Block::decompress(string_view, const method_t) const noexcept;
+template vector <char> awh::compressor::Block::decompress(string_view, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::compressor::Block::decompress(string_view, const method_t) const noexcept;
+template vector <uint8_t> awh::compressor::Block::decompress(string_view, const method_t, const size_t) const noexcept;
 /**
  * @brief Шаблон метода декомпрессии данных
  *
@@ -4433,16 +4569,17 @@ template <typename A, typename B>
  *
  * @param buffer буфер данных для декомпрессии
  * @param method метод компрессии
+ * @param limit  предел распакованных данных (0 - общий предел)
  * @return       результат декомпрессии
  *
  */
-auto awh::compressor::Block::decompress(const B & buffer, const method_t method) const noexcept -> A {
+auto awh::compressor::Block::decompress(const B & buffer, const method_t method, const size_t limit) const noexcept -> A {
 	// Переменная результата
 	A result;
 	// Если буфер данных передан
 	if(!buffer.empty())
 		// Выполняем декомпрессию
-		this->decompress(&buffer[0], buffer.size(), method, result);
+		this->decompress(&buffer[0], buffer.size(), method, result, limit);
 	// Возвращаем результат
 	return result;
 }
@@ -4450,47 +4587,47 @@ auto awh::compressor::Block::decompress(const B & buffer, const method_t method)
  * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в строку
  *
  */
-template string awh::compressor::Block::decompress(const string &, const method_t) const noexcept;
+template string awh::compressor::Block::decompress(const string &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из буфера с выводом результата в строку
  *
  */
-template string awh::compressor::Block::decompress(const vector <char> &, const method_t) const noexcept;
+template string awh::compressor::Block::decompress(const vector <char> &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из бинарного буфера с выводом результата в строку
  *
  */
-template string awh::compressor::Block::decompress(const vector <uint8_t> &, const method_t) const noexcept;
+template string awh::compressor::Block::decompress(const vector <uint8_t> &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в буфер
  *
  */
-template vector <char> awh::compressor::Block::decompress(const string &, const method_t) const noexcept;
+template vector <char> awh::compressor::Block::decompress(const string &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из буфера с выводом результата в буфер
  *
  */
-template vector <char> awh::compressor::Block::decompress(const vector <char> &, const method_t) const noexcept;
+template vector <char> awh::compressor::Block::decompress(const vector <char> &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из бинарного буфера с выводом результата в буфер
  *
  */
-template vector <char> awh::compressor::Block::decompress(const vector <uint8_t> &, const method_t) const noexcept;
+template vector <char> awh::compressor::Block::decompress(const vector <uint8_t> &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из строки с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::compressor::Block::decompress(const string &, const method_t) const noexcept;
+template vector <uint8_t> awh::compressor::Block::decompress(const string &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из буфера с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::compressor::Block::decompress(const vector <char> &, const method_t) const noexcept;
+template vector <uint8_t> awh::compressor::Block::decompress(const vector <char> &, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных из бинарного буфера с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::compressor::Block::decompress(const vector <uint8_t> &, const method_t) const noexcept;
+template vector <uint8_t> awh::compressor::Block::decompress(const vector <uint8_t> &, const method_t, const size_t) const noexcept;
 /**
  * @brief Шаблон метода декомпрессии данных
  *
@@ -4504,16 +4641,17 @@ template <typename T>
  * @param buffer буфер данных для декомпрессии
  * @param size   размер данных для декомпрессии
  * @param method метод компрессии
+ * @param limit  предел распакованных данных (0 - общий предел)
  * @return       результат декомпрессии
  *
  */
-auto awh::compressor::Block::decompress(const void * buffer, const size_t size, const method_t method) const noexcept -> T {
+auto awh::compressor::Block::decompress(const void * buffer, const size_t size, const method_t method, const size_t limit) const noexcept -> T {
 	// Переменная результата
 	T result;
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем декомпрессию
-		this->decompress(buffer, size, method, result);
+		this->decompress(buffer, size, method, result, limit);
 	// Возвращаем результат
 	return result;
 }
@@ -4521,17 +4659,17 @@ auto awh::compressor::Block::decompress(const void * buffer, const size_t size, 
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в строку
  *
  */
-template string awh::compressor::Block::decompress(const void *, const size_t, const method_t) const noexcept;
+template string awh::compressor::Block::decompress(const void *, const size_t, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в буфер
  *
  */
-template vector <char> awh::compressor::Block::decompress(const void *, const size_t, const method_t) const noexcept;
+template vector <char> awh::compressor::Block::decompress(const void *, const size_t, const method_t, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в бинарный буфер
  *
  */
-template vector <uint8_t> awh::compressor::Block::decompress(const void *, const size_t, const method_t) const noexcept;
+template vector <uint8_t> awh::compressor::Block::decompress(const void *, const size_t, const method_t, const size_t) const noexcept;
 /**
  * @brief Шаблон метода декомпрессии данных
  *
@@ -4546,9 +4684,10 @@ template <typename T>
  * @param size   размер данных для декомпрессии
  * @param method метод компрессии
  * @param result контейнер куда следует положить результат
+ * @param limit  предел распакованных данных (0 - общий предел)
  *
  */
-void awh::compressor::Block::decompress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept {
+void awh::compressor::Block::decompress(const void * buffer, const size_t size, const method_t method, T & result, const size_t limit) const noexcept {
 	/**
 	 * Очищаем результат до всякой проверки: наружу не должно уйти прежнее содержимое
 	 * контейнера ни на пустом входе, ни на незаданном методе
@@ -4597,13 +4736,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			return;
 		}
 		/**
+		 * Предел, переданный вызывающей стороной, сужает общий, но не расширяет его:
+		 * ноль означает, что своего предела у вызывающей стороны нет. Сторона, знающая
+		 * размер распакованных данных наперёд, передаёт его - и испорченный либо
+		 * подделанный кадр отвергается, не забрав памяти сверх этого размера
+		 */
+		const size_t ceiling = (((limit > 0) && (static_cast <uint64_t> (limit) < static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))) ? limit : static_cast <size_t> (AWH_COMPRESSOR_MAX_OUTPUT));
+		/**
 		 * Определяем метод декомпрессии данных
 		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если метод декомпрессии установлен LZ4
 			case static_cast <uint8_t> (method_t::LZ4): {
 				// Выполняем декомпрессию данных методом LZ4
-				driver::lz4(buffer, size, this->_level[0], event_t::DECODE, result);
+				driver::lz4(buffer, size, this->_level[0], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4624,7 +4770,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен LZMA
 			case static_cast <uint8_t> (method_t::LZMA): {
 				// Выполняем декомпрессию данных методом LZMA
-				driver::lzma(buffer, size, this->_level[6], event_t::DECODE, result);
+				driver::lzma(buffer, size, this->_level[6], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4645,7 +4791,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Zstandard
 			case static_cast <uint8_t> (method_t::ZSTD): {
 				// Выполняем декомпрессию данных методом Zstandard
-				driver::zstd(buffer, size, this->_level[2], event_t::DECODE, result);
+				driver::zstd(buffer, size, this->_level[2], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4666,7 +4812,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен GZip
 			case static_cast <uint8_t> (method_t::GZIP): {
 				// Выполняем декомпрессию данных методом GZip
-				driver::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::DECODE, result);
+				driver::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4687,7 +4833,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Bzip2
 			case static_cast <uint8_t> (method_t::BZIP2): {
 				// Выполняем декомпрессию данных методом Bzip2
-				driver::bzip2(buffer, size, this->_level[7], event_t::DECODE, result);
+				driver::bzip2(buffer, size, this->_level[7], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4708,7 +4854,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Lizard
 			case static_cast <uint8_t> (method_t::LIZARD): {
 				// Выполняем декомпрессию данных методом Lizard
-				driver::lizard(buffer, size, this->_level[3], event_t::DECODE, result);
+				driver::lizard(buffer, size, this->_level[3], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4729,7 +4875,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Snappy
 			case static_cast <uint8_t> (method_t::SNAPPY): {
 				// Выполняем декомпрессию данных методом Snappy
-				driver::snappy(buffer, size, event_t::DECODE, result);
+				driver::snappy(buffer, size, event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4750,7 +4896,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Density
 			case static_cast <uint8_t> (method_t::DENSITY): {
 				// Выполняем декомпрессию данных методом Density
-				driver::density(buffer, size, this->_level[4], event_t::DECODE, result);
+				driver::density(buffer, size, this->_level[4], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4771,7 +4917,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Brotli
 			case static_cast <uint8_t> (method_t::BROTLI): {
 				// Выполняем декомпрессию данных методом Brotli
-				driver::brotli(buffer, size, this->_level[5], event_t::DECODE, result);
+				driver::brotli(buffer, size, this->_level[5], event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4792,7 +4938,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
-				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.decompress.load(std::memory_order_acquire), this->_deflate.buffer.decompress->stream, event_t::DECODE, result);
+				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.decompress.load(std::memory_order_acquire), this->_deflate.buffer.decompress->stream, event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4813,7 +4959,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен Zlib (RFC 1950)
 			case static_cast <uint8_t> (method_t::ZLIB): {
 				// Выполняем декомпрессию данных методом Zlib
-				driver::zlib(buffer, size, this->_level[1], this->_zlib.wbits, event_t::DECODE, result);
+				driver::zlib(buffer, size, this->_level[1], this->_zlib.wbits, event_t::DECODE, result, ceiling);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4832,10 +4978,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 				}
 			} break;
 			// Если метод декомпрессии не установлен
-			case static_cast <uint8_t> (method_t::NONE):
+			case static_cast <uint8_t> (method_t::NONE): {
+				/**
+				 * Предел договор распаковки, а не движков: несжатые данные сверх него
+				 * отвергаются так же, как сжатые, иначе выбор метода обходил бы предел
+				 */
+				if(static_cast <uint64_t> (size) > static_cast <uint64_t> (ceiling)){
+					// Записываем ошибку в лог
+					awh::log::print("%s: %s", awh::log::flag_t::WARNING, "Compressor", "Decompressed data exceeds the allowed limit");
+					// Выходим из функции
+					return;
+				}
 				// Возвращаем переданный буфер данных
 				result.assign(reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
-			break;
+			} break;
 			/**
 			 * Значение вне перечисления методов получить можно только приведением,
 			 * и сквозным проходом оно быть не должно: результат остаётся пустым
@@ -4862,17 +5018,17 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в строку
  *
  */
-template void awh::compressor::Block::decompress(const void *, const size_t, const method_t, string &) const noexcept;
+template void awh::compressor::Block::decompress(const void *, const size_t, const method_t, string &, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в буфер
  *
  */
-template void awh::compressor::Block::decompress(const void *, const size_t, const method_t, vector <char> &) const noexcept;
+template void awh::compressor::Block::decompress(const void *, const size_t, const method_t, vector <char> &, const size_t) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода декомпрессии данных с выводом результата в бинарный буфер
  *
  */
-template void awh::compressor::Block::decompress(const void *, const size_t, const method_t, vector <uint8_t> &) const noexcept;
+template void awh::compressor::Block::decompress(const void *, const size_t, const method_t, vector <uint8_t> &, const size_t) const noexcept;
 /**
  * @brief Конструктор
  *

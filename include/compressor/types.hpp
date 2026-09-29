@@ -238,6 +238,28 @@ namespace awh {
 			int32_t level;
 			/**
 			 * \~russian
+			 * @brief Предел распакованных данных всей сессии
+			 *
+			 * @details Ноль означает, что своего предела у вызывающей стороны нет, и действует
+			 *          общий AWH_COMPRESSOR_MAX_OUTPUT на каждую подачу. Ненулевое значение
+			 *          ограничивает суммарный выход сессии и шире общего предела не бывает:
+			 *          сторона, знающая наибольший размер данных, передаёт его, и сессия
+			 *          рвётся, не собрав больше
+			 *
+			 * \~english
+			 * @brief Limit of the decompressed data of the whole session
+			 *
+			 * @details Zero means that the calling side has no limit of its own, and the common
+			 *          AWH_COMPRESSOR_MAX_OUTPUT applies to each portion. A non-zero value bounds the
+			 *          total output of the session and is never wider than the common limit: the side
+			 *          knowing the largest size of the data passes it, and the session is torn down
+			 *          without collecting more
+			 *
+			 * \~
+			 */
+			size_t limit;
+			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * \~english

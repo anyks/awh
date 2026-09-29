@@ -332,8 +332,12 @@ namespace awh {
 				 *
 				 * @details Единой политики обращения с хвостом за концом кадра нет: движок либо
 				 *          отбрасывает посторонние октеты, либо считает их порчей и рвёт сессию.
-				 *          Границы кадра задаёт вызывающая сторона, и разбор нескольких кадров
-				 *          подряд одной сессией не предполагается — сессия обслуживает один поток.
+				 *          Границы кадра задаёт вызывающая сторона. Исключение - форматы, несущие
+				 *          ряд кадров подряд (GZip, xz, BZip2, Zstandard, кадры LZ4 и Lizard): у них
+				 *          сессия разбирает ряд целиком, done() истинен на границе кадра, подача
+				 *          следом продолжает разбор, а хвост, кадром не являющийся, рвёт сессию.
+				 *          Предел распакованных данных, переданный в Block::stream, считается по
+				 *          всему выходу сессии; превысившая его подача сессию рвёт.
 				 *
 				 *          Отвергнутая порция — пустой буфер при ненулевом размере либо размер,
 				 *          не умещающийся в разрядность движка — сессию не рвёт: это ошибка
@@ -350,8 +354,12 @@ namespace awh {
 				 *
 				 * @details There is no single policy for handling the tail beyond the end of the frame: an
 				 *          engine either discards the extraneous octets or treats them as corruption and tears
-				 *          the session down. Frame boundaries are set by the calling side, and parsing several
-				 *          frames in a row within one session is not intended — a session serves a single stream.
+				 *          the session down. Frame boundaries are set by the calling side. The exception is the
+				 *          formats carrying a series of frames in a row (GZip, xz, BZip2, Zstandard, LZ4 and
+				 *          Lizard frames): for them the session parses the whole series, done() is true at a frame
+				 *          boundary, a portion fed afterwards continues parsing, and a tail that is not a frame
+				 *          tears the session down. The limit of decompressed data passed to Block::stream counts
+				 *          the whole output of the session; a portion exceeding it tears the session down.
 				 *
 				 *          A rejected portion — an empty buffer with a non-zero size, or a size not fitting the
 				 *          width of the engine — does not tear the session down: this is an error of the calling

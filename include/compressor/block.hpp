@@ -125,7 +125,11 @@ namespace awh {
 		 *             отбрасывает посторонние октеты, либо считает их порчей и отвергает кадр.
 		 *             Работа получает длину буфера от вызывающей стороны и сама границы кадра
 		 *             не ищет, поэтому подавать следует ровно кадр. Гарантируется одно: работа
-		 *             завершается, а выданные данные не искажены.
+		 *             завершается, а выданные данные не искажены. Исключение - форматы, несущие
+		 *             ряд кадров подряд: GZip (RFC 1952, раздел 2.2), xz, BZip2 и Zstandard
+		 *             (RFC 8878, раздел 3) разбираются рядом целиком, как это делают утилиты
+		 *             формата, а хвост, кадром не являющийся, у них отвергается: выдать данные
+		 *             первого кадра за весь ряд значило бы молча потерять остальные.
 		 *
 		 *          6. Метод DEFLATE завершает сообщение Z_SYNC_FLUSH, а не Z_FINISH, и потому
 		 *             оставляет в конце результата четыре октета 00 00 FF FF. Так требует RFC 7692
@@ -148,6 +152,9 @@ namespace awh {
 		 *             нею: LZ4 не более 255:1, Snappy не более 64:3. У Lizard такой границы нет, и
 		 *             испорченный блок вправе обойтись отводом во весь предел; ограничить это можно
 		 *             самим пределом либо потоковым режимом, где память растёт вслед за выписанным.
+		 *             Предел сужается последним доводом decompress: сторона, знающая размер
+		 *             распакованных данных наперёд, передаёт его, и кадр сверх него отвергается,
+		 *             не забрав памяти больше переданного. Ноль означает общий предел.
 		 *
 		 *          Полный перечень намеренных решений, реестр отклонённых находок и список
 		 *          открытых вопросов — в src/compressor/README.md. Разбор модуля следует
@@ -190,7 +197,11 @@ namespace awh {
 		 *             either discards the extraneous octets or treats them as corruption and rejects the frame.
 		 *             The routine receives the buffer length from the calling side and does not look for frame
 		 *             boundaries itself, therefore exactly one frame should be fed. One thing is guaranteed:
-		 *             the routine terminates, and the data produced is not distorted.
+		 *             the routine terminates, and the data produced is not distorted. The exception is the
+		 *             formats carrying a series of frames in a row: GZip (RFC 1952, section 2.2), xz, BZip2
+		 *             and Zstandard (RFC 8878, section 3) are parsed as a whole series, as the utilities of
+		 *             the format do, and a tail that is not a frame is rejected for them: handing out the data
+		 *             of the first frame as the whole series would silently lose the rest.
 		 *
 		 *          6. The DEFLATE method terminates a message with Z_SYNC_FLUSH rather than Z_FINISH, and
 		 *             therefore leaves four octets 00 00 FF FF at the end of the result. RFC 7692 requires
@@ -213,6 +224,9 @@ namespace awh {
 		 *             LZ4 at most 255:1, Snappy at most 64:3. Lizard has no such bound, and a corrupted block
 		 *             may cost an allocation up to the full limit; this can be bounded only by the limit
 		 *             itself or by the streaming mode, where memory grows with the output actually written.
+		 *             The limit is narrowed by the last argument of decompress: the side knowing the size of
+		 *             the decompressed data in advance passes it, and a frame beyond it is rejected without
+		 *             taking more memory than passed. Zero means the common limit.
 		 *
 		 *          The full list of deliberate decisions, the registry of rejected findings and the list of
 		 *          open questions are in src/compressor/README.md. Examination of the module should begin
@@ -513,6 +527,7 @@ namespace awh {
 				 *
 				 * @param method метод компрессии
 				 * @param event  направление операции
+				 * @param limit  предел распакованных данных всей сессии (0 - общий предел на подачу)
 				 * @return       объект потоковой сессии
 				 *
 				 * \~english
@@ -524,11 +539,12 @@ namespace awh {
 				 *
 				 * @param method compression method
 				 * @param event  operation direction
+				 * @param limit  limit of the decompressed data of the whole session (0 - the common per-portion limit)
 				 * @return       streaming session object
 				 *
 				 * \~
 				 */
-				stream_t stream(const method_t method, const event_t event) const noexcept;
+				stream_t stream(const method_t method, const event_t event, const size_t limit = 0) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -686,6 +702,7 @@ namespace awh {
 				 *
 				 * @param buffer буфер данных для декомпрессии
 				 * @param method метод компрессии
+				 * @param limit  предел распакованных данных (0 - общий предел)
 				 * @return       результат декомпрессии
 				 *
 				 * \~english
@@ -693,11 +710,12 @@ namespace awh {
 				 *
 				 * @param buffer data buffer to decompress
 				 * @param method compression method
+				 * @param limit  limit of the decompressed data (0 - the common limit)
 				 * @return       decompression result
 				 *
 				 * \~
 				 */
-				auto decompress(string_view buffer, const method_t method) const noexcept -> T;
+				auto decompress(string_view buffer, const method_t method, const size_t limit = 0) const noexcept -> T;
 				/**
 				 * \~russian
 				 * @brief Шаблон метода декомпрессии данных
@@ -720,6 +738,7 @@ namespace awh {
 				 *
 				 * @param buffer буфер данных для декомпрессии
 				 * @param method метод компрессии
+				 * @param limit  предел распакованных данных (0 - общий предел)
 				 * @return       результат декомпрессии
 				 *
 				 * \~english
@@ -727,11 +746,12 @@ namespace awh {
 				 *
 				 * @param buffer data buffer to decompress
 				 * @param method compression method
+				 * @param limit  limit of the decompressed data (0 - the common limit)
 				 * @return       decompression result
 				 *
 				 * \~
 				 */
-				auto decompress(const B & buffer, const method_t method) const noexcept -> A;
+				auto decompress(const B & buffer, const method_t method, const size_t limit = 0) const noexcept -> A;
 				/**
 				 * \~russian
 				 * @brief Шаблон метода декомпрессии данных
@@ -753,6 +773,7 @@ namespace awh {
 				 * @param buffer буфер данных для декомпрессии
 				 * @param size   размер данных для декомпрессии
 				 * @param method метод компрессии
+				 * @param limit  предел распакованных данных (0 - общий предел)
 				 * @return       результат декомпрессии
 				 *
 				 * \~english
@@ -761,11 +782,12 @@ namespace awh {
 				 * @param buffer data buffer to decompress
 				 * @param size   size of the data to decompress
 				 * @param method compression method
+				 * @param limit  limit of the decompressed data (0 - the common limit)
 				 * @return       decompression result
 				 *
 				 * \~
 				 */
-				auto decompress(const void * buffer, const size_t size, const method_t method) const noexcept -> T;
+				auto decompress(const void * buffer, const size_t size, const method_t method, const size_t limit = 0) const noexcept -> T;
 			public:
 				/**
 				 * \~russian
@@ -789,6 +811,7 @@ namespace awh {
 				 * @param size   размер данных для декомпрессии
 				 * @param method метод компрессии
 				 * @param result контейнер куда следует положить результат
+				 * @param limit  предел распакованных данных (0 - общий предел)
 				 *
 				 * \~english
 				 * @brief Data decompression method
@@ -797,10 +820,11 @@ namespace awh {
 				 * @param size   size of the data to decompress
 				 * @param method compression method
 				 * @param result container the result should be placed into
+				 * @param limit  limit of the decompressed data (0 - the common limit)
 				 *
 				 * \~
 				 */
-				void decompress(const void * buffer, const size_t size, const method_t method, T & result) const noexcept;
+				void decompress(const void * buffer, const size_t size, const method_t method, T & result, const size_t limit = 0) const noexcept;
 			public:
 				/**
 				 * \~russian

@@ -63,4 +63,4 @@ bool awh::compressor::fits(const size_t size, const method_t method) noexcept {
  * @brief Конструктор
  *
  */
-awh::compressor::Params::Params() noexcept : wbits(15), level(-1) {}
+awh::compressor::Params::Params() noexcept : wbits(15), level(-1), limit(0) {}
