@@ -179,6 +179,32 @@
  *          сброшенный наполняется в месте прежнем, а указание, размещением выданное,
  *          ведёт на запись, размещённую последней.
  *
+ *          <b>Подстановка размещения инструкции задаётся явно по собирателю: Clang
+ *          размещение подставляет во всякое место вызова, GCC и LCC не подставляют
+ *          нигде.</b> Решение о подстановке естественно оставить собирателю, но судит
+ *          он о ней по единице трансляции целиком, а мест вызова у размещения пятьдесят
+ *          одно. Правка анализа отбора позиций, ни одного из них не коснувшаяся,
+ *          переменила решения GCC 16 в сборке повторения и узла, и три крупнейших
+ *          образца Grok - «HTTPDUSER», «EMAILLOCALPART», «EMAILADDRESS» - стали
+ *          собираться медленнее на 3.4-3.8 процента, в сборках, выровненных по 64
+ *          байтам, тоже. Выгода же подстановки у собирателей разная. Clang без
+ *          подстановки собирает набор из 353 выражений медленнее на 4.9 процента на
+ *          ARM64 и на 5.0 у FreeBSD (clang 19), во всех кругах, а с подстановкой
+ *          всюду - быстрее, чем по своему усмотрению, на 0.7 и 1.4 процента, в сборках
+ *          выровненных - на 2.1. GCC 15 без подстановки собирает набор быстрее на 1.1
+ *          процента, в сборках выровненных - на 1.4; GCC 16 - вровень в пределах
+ *          раскладки, от 1.1 процента быстрее до 1.3 медленнее, но три крупнейших
+ *          образца быстрее на 3.3-4.1 процента, в сборках выровненных - на 2.9-3.4,
+ *          и замедление их правкой анализа снято. LCC размещения не подставляет и сам -
+ *          размеры функций сборки с запретом и без него совпадают до байта, - а
+ *          подстановка принудительная замедляет у него сборку набора на 1.2 процента.
+ *          Собиратели, на стендах не мерившиеся, судят сами. Закреплено тестом
+ *          «Regex.EnginePlacingChoice»: раскрытие указания подстановки сличается
+ *          с выбором для собирателя. Отказ размещения по пределу размера программы
+ *          стережёт тест «Regex.EngineProgramLimit»: программа ровно в предел
+ *          собирается всеми тремя сборками, а превысившая его на одну инструкцию
+ *          отвергается кодом «PATTERN_TOO_LARGE».
+ *
  *          <b>Обязательный литерал разбор описывает узлами, а строку формирует однажды
  *          и записью разом.</b> Строка на всяком уровне вложенности выглядит проще
  *          описания: литерал цепочки тут же и готов. Но разбор сличает литералы одною
@@ -389,6 +415,32 @@
  *          in its former place, and the pointer handed out by the placement leads to the
  *          record placed last.
  *
+ *          <b>The inlining of the placing of an instruction is set explicitly per compiler:
+ *          Clang inlines the placing into every call site, GCC and LCC inline it
+ *          nowhere.</b> It is natural to leave the decision on inlining to the compiler, but
+ *          the compiler judges it by the whole translation unit, and the placing has fifty
+ *          one call sites. The change of the analysis for the selection of positions, which
+ *          touched none of them, altered the decisions of GCC 16 in the build of a repetition
+ *          and of a node, and the three largest Grok patterns - «HTTPDUSER», «EMAILLOCALPART»,
+ *          «EMAILADDRESS» - came to be built 3.4-3.8 per cent slower, in builds aligned to 64
+ *          bytes as well. The benefit of inlining, on the other hand, differs between
+ *          compilers. Without inlining Clang builds the set of 353 expressions 4.9 per cent
+ *          slower on ARM64 and 5.0 on FreeBSD (clang 19), in every round, while with inlining
+ *          everywhere it builds it faster than at its own discretion by 0.7 and 1.4 per cent,
+ *          in aligned builds by 2.1. Without inlining GCC 15 builds the set 1.1 per cent
+ *          faster, in aligned builds 1.4; GCC 16 builds it on a par within the layout, from
+ *          1.1 per cent faster to 1.3 slower, but the three largest patterns 3.3-4.1 per cent
+ *          faster, in aligned builds 2.9-3.4, and their slowdown by the change of the
+ *          analysis is removed. LCC does not inline the placing by itself either - the sizes
+ *          of the build functions with the prohibition and without it match to the byte, -
+ *          while forced inlining slows its build of the set by 1.2 per cent. Compilers not
+ *          measured on the stands judge by themselves. Pinned by the test
+ *          «Regex.EnginePlacingChoice»: the expansion of the inlining mark is compared with
+ *          the choice for the compiler. The refusal of the placing at the limit of the size of
+ *          the program is guarded by the test «Regex.EngineProgramLimit»: a program exactly
+ *          at the limit is built by all three builds, while one exceeding it by one instruction
+ *          is refused with the code «PATTERN_TOO_LARGE».
+ *
  *          <b>The analysis describes the mandatory literal by nodes and forms the string once and
  *          by writing it at one go.</b> A string at every level of nesting looks simpler than
  *          a description: the literal of the chain is ready at once. But the analysis compares
@@ -459,6 +511,61 @@
  */
 #include "parser.hpp"
 #include "program.hpp"
+
+/**
+ * \~russian
+ * @brief Подстановка размещения инструкции программы
+ *
+ * @details Размещение инструкции сборка зовёт из пятидесяти одного места, и выгода
+ *          подстановки его разнится у собирателей: Clang с подстановкой собирает набор
+ *          быстрее, чем с вызовом, а GCC и LCC - медленнее. О подстановке же собиратель
+ *          судит по единице трансляции целиком, и правка, мест вызова не касавшаяся,
+ *          решение его меняла. Выбор оттого ставится явно по собирателю - см. раздел
+ *          «Намеренные решения» компилятора; собиратели, на стендах не мерившиеся, судят
+ *          сами. Потребитель вправе задать выбор свой, определив «AWH_REGEX_PLACING»
+ *          ключом сборки.
+ *
+ * \~english
+ * @brief Inlining of the placing of a program instruction
+ *
+ * @details The build calls the placing of an instruction from fifty one sites, and the
+ *          benefit of inlining it differs between compilers: with inlining Clang builds the
+ *          set faster than with a call, while GCC and LCC build it slower. A compiler judges
+ *          inlining by the whole translation unit, and a change that did not touch the call
+ *          sites altered its decision. The choice is therefore set explicitly per compiler -
+ *          see the section «Deliberate decisions» of the compiler; compilers not measured on
+ *          the stands judge by themselves. A consumer may set a choice of its own by defining
+ *          «AWH_REGEX_PLACING» with a build flag.
+ *
+ * \~
+ */
+#if !defined(AWH_REGEX_PLACING)
+	/**
+	 * Если сборка ведётся собирателем Clang
+	 */
+	#if defined(__clang__)
+		/**
+		 * Размещение подставляется во всякое место вызова
+		 */
+		#define AWH_REGEX_PLACING AWH_REGEX_INLINE
+	/**
+	 * Если сборка ведётся собирателем GCC либо LCC
+	 */
+	#elif defined(__GNUC__)
+		/**
+		 * Размещение не подставляется нигде
+		 */
+		#define AWH_REGEX_PLACING AWH_REGEX_NOINLINE
+	/**
+	 * Если сборка ведётся прочими собирателями
+	 */
+	#else
+		/**
+		 * О подстановке размещения судит собиратель
+		 */
+		#define AWH_REGEX_PLACING
+	#endif
+#endif
 
 /**
  * \~russian
@@ -2073,19 +2180,24 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод размещения инструкции программы
 				 *
+				 * @details Подстановка размещения задаётся явно по собирателю - см.
+				 *          «AWH_REGEX_PLACING» и раздел «Намеренные решения».
+				 *
 				 * @param type  код операции размещаемой инструкции
 				 * @param flags набор режимов компиляции инструкции
 				 * @return      адрес размещённой инструкции программы
 				 *
 				 * \~english
 				 * @brief Method of placing a program instruction
+				 * @details The inlining of the placing is set explicitly per compiler - see
+				 *          «AWH_REGEX_PLACING» and the section «Deliberate decisions».
 				 * @param type  operation code of the placed instruction
 				 * @param flags set of compilation modes of the instruction
 				 * @return      address of the placed program instruction
 				 *
 				 * \~
 				 */
-				address_t emit(const opcode_t type, const uint32_t flags) noexcept;
+				AWH_REGEX_PLACING address_t emit(const opcode_t type, const uint32_t flags) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод размещения класса символов в программе

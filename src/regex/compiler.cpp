@@ -371,7 +371,7 @@ awh::regex::address_t awh::regex::Compiler::position() const noexcept {
  * @return      адрес размещённой инструкции программы
  *
  */
-awh::regex::address_t awh::regex::Compiler::emit(const opcode_t type, const uint32_t flags) noexcept {
+AWH_REGEX_PLACING awh::regex::address_t awh::regex::Compiler::emit(const opcode_t type, const uint32_t flags) noexcept {
 	// Получаем адрес размещаемой инструкции программы
 	const address_t result = this->position();
 	/**
