@@ -282,6 +282,97 @@ TEST(Regex, Captures) {
 }
 
 /**
+ * @brief Проверка хранилища классов символов, переживающего разборы
+ *
+ * @details Проверка закрепляет намеренное решение: сброс разбора записей
+ *          хранилища классов не уничтожает, и класс разбора следующего
+ *          формируется в записи прежней, место её рядов наследуя. Запись
+ *          обязана очищаться получением: отрицание, диапазоны и свойства
+ *          класса прежнего в класс новый не переходят, как не переходят
+ *          и остатки класса, формирование которого прервано ошибкой разбора.
+ *          Количество классов считается разбором текущим, а не записями
+ *          хранилища, и запись за счётом классом не выдаётся.
+ *
+ */
+TEST(Regex, StaticParserClassStorage) {
+	// Создаём объект разбора регулярного выражения
+	regex::parser_t parser;
+	// Выполняем разбор выражения с классом отрицающим о восьми диапазонах и классом свойства
+	ASSERT_TRUE(parser.parse("[^a-bd-eg-hj-km-np-qs-tv-w]\\p{Lu}", 0));
+	// Выполняем проверку количества классов символов
+	ASSERT_EQ(parser.classes(), 2u);
+	// Выполняем проверку отрицания первого класса
+	EXPECT_TRUE(parser.charClass(0).negative);
+	// Выполняем проверку количества диапазонов первого класса
+	EXPECT_EQ(parser.charClass(0).ranges.size(), static_cast <size_t> (8));
+	// Выполняем проверку свойства второго класса
+	EXPECT_EQ(parser.charClass(1).properties.size(), static_cast <size_t> (1));
+	// Выполняем разбор выражения с классом о двух диапазонах и сокращённым классом
+	ASSERT_TRUE(parser.parse("[bq]c\\d", 0));
+	// Выполняем проверку количества классов символов
+	ASSERT_EQ(parser.classes(), 2u);
+	// Получаем первый класс разбора текущего
+	const regex::class_t & first = parser.charClass(0);
+	// Выполняем проверку снятия отрицания класса прежнего
+	EXPECT_FALSE(first.negative);
+	// Выполняем проверку количества диапазонов первого класса
+	ASSERT_EQ(first.ranges.size(), static_cast <size_t> (2));
+	// Выполняем проверку диапазонов первого класса
+	EXPECT_EQ(first.ranges.at(0).begin, static_cast <uint32_t> ('b'));
+	EXPECT_EQ(first.ranges.at(0).end, static_cast <uint32_t> ('b'));
+	EXPECT_EQ(first.ranges.at(1).begin, static_cast <uint32_t> ('q'));
+	EXPECT_EQ(first.ranges.at(1).end, static_cast <uint32_t> ('q'));
+	// Выполняем проверку отсутствия свойств у первого класса
+	EXPECT_TRUE(first.properties.empty());
+	/**
+	 * Выполняем проверку наследования места рядов записью прежней
+	 *
+	 * @details Два диапазона собственного места на восемь не отводят: место
+	 *          о восьми диапазонах есть место класса прежнего, записью
+	 *          сохранённое.
+	 *
+	 */
+	EXPECT_GE(first.ranges.capacity(), static_cast <size_t> (8));
+	// Получаем второй класс разбора текущего
+	const regex::class_t & second = parser.charClass(1);
+	// Выполняем проверку отрицания второго класса
+	EXPECT_FALSE(second.negative);
+	// Выполняем проверку количества диапазонов второго класса
+	ASSERT_EQ(second.ranges.size(), static_cast <size_t> (1));
+	// Выполняем проверку диапазона десятичных цифр второго класса
+	EXPECT_EQ(second.ranges.at(0).begin, static_cast <uint32_t> ('0'));
+	EXPECT_EQ(second.ranges.at(0).end, static_cast <uint32_t> ('9'));
+	// Выполняем проверку снятия свойства класса прежнего
+	EXPECT_TRUE(second.properties.empty());
+	// Выполняем проверку отказа разбора класса незавершённого
+	EXPECT_FALSE(parser.parse("[^k-m", 0));
+	// Выполняем проверку отсутствия классов у разбора, прерванного ошибкой
+	EXPECT_EQ(parser.classes(), 0u);
+	// Выполняем разбор выражения с классом о двух диапазонах
+	ASSERT_TRUE(parser.parse("[np]", 0));
+	// Выполняем проверку количества классов символов
+	ASSERT_EQ(parser.classes(), 1u);
+	// Получаем класс разбора текущего
+	const regex::class_t & third = parser.charClass(0);
+	// Выполняем проверку снятия отрицания класса незавершённого
+	EXPECT_FALSE(third.negative);
+	// Выполняем проверку количества диапазонов класса
+	ASSERT_EQ(third.ranges.size(), static_cast <size_t> (2));
+	// Выполняем проверку диапазонов класса без остатков класса незавершённого
+	EXPECT_EQ(third.ranges.at(0).begin, static_cast <uint32_t> ('n'));
+	EXPECT_EQ(third.ranges.at(0).end, static_cast <uint32_t> ('n'));
+	EXPECT_EQ(third.ranges.at(1).begin, static_cast <uint32_t> ('p'));
+	EXPECT_EQ(third.ranges.at(1).end, static_cast <uint32_t> ('p'));
+	// Выполняем разбор выражения без классов символов
+	ASSERT_TRUE(parser.parse("x", 0));
+	// Выполняем проверку отсутствия классов у разбора текущего
+	EXPECT_EQ(parser.classes(), 0u);
+	// Выполняем проверку выдачи записи за счётом пустым классом
+	EXPECT_TRUE(parser.charClass(0).ranges.empty());
+	EXPECT_FALSE(parser.charClass(0).negative);
+}
+
+/**
  * @brief Проверка отказа привязки к позиции за пределами текста
  *
  * @details Проверка закрепляет намеренное решение: позиция за размером текста

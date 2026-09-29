@@ -17,10 +17,59 @@
  *        преобразующий текст регулярного выражения синтаксиса PCRE в синтаксическое дерево,
  *        размещаемое в арене узлов, без выделения памяти на каждый узел и без выбрасывания исключений
  *
+ * @section parser_decisions Намеренные решения
+ *
+ * @details Перечисленное ниже выглядит несообразностью, но выбрано осознанно и
+ *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
+ *          каждый раз с одних и тех же выводов.
+ *
+ *          <b>Хранилище классов символов переживает разборы.</b> Сброс разбора
+ *          обнуляет лишь счёт классов, а записи хранилища с рядами диапазонов
+ *          и свойств остаются, и класс разбора следующего формируется в записи
+ *          прежней, место её рядов наследуя. Выглядит это удержанием памяти
+ *          впрок, однако место самих записей хранилище удерживало и прежде -
+ *          очистка ряда ёмкости его не касается, - а места рядов прибавилось
+ *          немного: разобрав набор из 353 выражений - образцов Grok и выражений
+ *          стенда, - хранилище держит 81 856 байтов против 68 472, какие прежде
+ *          держал наибольший разбор, о 925 классах. Уничтожение же записей
+ *          стоило освобождения рядов всякого класса, а формирование их заново -
+ *          размещения: разбор набора заводит 17 978 классов, почти всякий об
+ *          одном диапазоне, и размещал 24 326 раз на круг, а ныне - 31. Сборка
+ *          набора от этого быстрее на 11.8 процента на ARM64, на 7.5 у FreeBSD
+ *          (clang 19), на 6.1 у openSUSE (GCC 15) и на 6.7 на Эльбрусе.
+ *          Запись под формируемый класс выдаёт метод «acquireClass», очищая её,
+ *          а счёт классов прибавляет заведение узла класса - метод «makeClass»;
+ *          запись класса, формирование которого прервано ошибкой разбора, за
+ *          счётом остаётся и получением следующим очищается вновь. Закреплено
+ *          тестом «Regex.StaticParserClassStorage».
+ *
  * \~english
  * @brief Header file of the syntax parsing of regular expressions — the Parser class,
  *        which converts the text of a regular expression of the PCRE syntax into a syntax tree
  *        placed in the node arena, without allocating memory for every node and without throwing exceptions
+ * @section parser_decisions Deliberate decisions
+ * @details What is listed below looks like an incongruity, but was chosen deliberately and
+ *          is not subject to correction. The section is introduced so that reading the code does not start
+ *          every time from the same conclusions.
+ *          <b>The storage of the character classes outlives parsings.</b> A reset of the
+ *          parsing zeroes only the count of the classes, while the records of the storage with
+ *          their sequences of ranges and properties stay, and a class of the next parsing is
+ *          formed in a former record, inheriting the room of its sequences. This looks like
+ *          holding memory in reserve, yet the room of the records themselves was held by the
+ *          storage before as well — clearing a sequence does not touch its capacity — and the
+ *          room of the sequences adds little: having parsed the set of 353 expressions — Grok
+ *          patterns and expressions of the stand — the storage holds 81 856 bytes against
+ *          68 472 held before by the largest parsing, of 925 classes. Destroying the records,
+ *          on the other hand, cost freeing the sequences of every class, and forming them anew
+ *          cost allocating them: parsing the set creates 17 978 classes, almost every one of
+ *          a single range, and allocated 24 326 times per round, and now 31 times. Building
+ *          the set is faster by this by 11.8 percent on ARM64, by 7.5 on FreeBSD (clang 19),
+ *          by 6.1 on openSUSE (GCC 15) and by 6.7 on Elbrus. The record for a class being
+ *          formed is given by the «acquireClass» method, which clears it, while the count of
+ *          the classes is increased by creating the class node — the «makeClass» method; the
+ *          record of a class whose forming was interrupted by a parsing error stays past the
+ *          count and is cleared again by the next getting. Pinned by the
+ *          «Regex.StaticParserClassStorage» test.
  *
  * \~
  *
@@ -276,8 +325,31 @@ namespace awh {
 				 */
 				vector <node_id_t> _items;
 			private:
-				// Хранилище классов символов
+				/**
+				 * \~russian
+				 * @brief Хранилище классов символов
+				 *
+				 * @details Хранилище разборы переживает: сброс обнуляет лишь счёт
+				 *          классов, а записи с их рядами остаются на месте, и класс
+				 *          разбора следующего формируется в записи прежней, место
+				 *          её рядов наследуя. Записи за счётом - остатки разборов
+				 *          прежних, классами разбора текущего не являющиеся.
+				 *
+				 * \~english
+				 * @brief Storage of the character classes
+				 * @details The storage outlives parsings: a reset zeroes only the count
+				 *          of the classes, while the records with their sequences stay
+				 *          in place, and a class of the next parsing is formed in a former
+				 *          record, inheriting the room of its sequences. The records past
+				 *          the count are leftovers of former parsings and are not classes
+				 *          of the current parsing.
+				 *
+				 * \~
+				 */
 				vector <class_t> _classes;
+			private:
+				// Количество классов символов текущего разбора
+				uint32_t _classCount;
 			private:
 				// Хранилище имён именованных групп
 				vector <string> _names;
@@ -1085,6 +1157,59 @@ namespace awh {
 				 * \~
 				 */
 				node_id_t makeAny() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения записи под формируемый класс символов
+				 *
+				 * @details Запись берётся из хранилища классов вслед за последней
+				 *          заведённой и очищается: ряды её пусты, а место их,
+				 *          разбором прежним отведённое, сохранено. Заводится запись
+				 *          узлом класса - методом «makeClass»; запись, заведением
+				 *          не завершённая, - разбор прерван ошибкой - получением
+				 *          следующим очищается вновь. Формируется разом один класс:
+				 *          получение вправе расширить хранилище, и ссылки на прочие
+				 *          записи оно делает недействительными.
+				 *
+				 * @return запись под формируемый класс символов
+				 *
+				 * \~english
+				 * @brief Method of getting a record for a character class being formed
+				 * @details The record is taken from the class storage right after the last
+				 *          created one and is cleared: its sequences are empty, while their
+				 *          room, allotted by a former parsing, is kept. The record is created
+				 *          by a class node — by the «makeClass» method; a record whose creation
+				 *          was not completed — the parsing was interrupted by an error — is
+				 *          cleared again by the next getting. One class is formed at a time:
+				 *          the getting may extend the storage, and it invalidates the references
+				 *          to the other records.
+				 * @return record for the character class being formed
+				 *
+				 * \~
+				 */
+				class_t & acquireClass() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод создания узла класса символов
+				 *
+				 * @details Класс приводится к нормальному виду и заводится в хранилище
+				 *          классов. Класс, сформированный в записи, методом
+				 *          «acquireClass» полученной, заводится счётом, без переноса;
+				 *          класс, собранный на стороне, переносится в запись владением.
+				 *
+				 * @param value класс символов, заводимый в хранилище классов
+				 * @return      индекс созданного узла в арене узлов
+				 *
+				 * \~english
+				 * @brief Method of creating a node of a character class
+				 * @details The class is brought to the normal form and created in the class
+				 *          storage. A class formed in a record got by the «acquireClass» method
+				 *          is created by the count, without a transfer; a class assembled
+				 *          elsewhere is transferred into a record by ownership.
+				 * @param value character class created in the class storage
+				 * @return      index of the created node in the node arena
+				 *
+				 * \~
+				 */
 				node_id_t makeClass(class_t & value) noexcept;
 				/**
 				 * \~russian

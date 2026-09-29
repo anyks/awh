@@ -110,7 +110,7 @@ namespace {
  */
 awh::regex::Parser::Parser() noexcept :
  _pos(0), _root(INVALID_NODE), _depth(0), _captures(0), _total(0), _stepLimit(~0u), _depthLimit(~0u), _heapLimit(~0u), _convention(newline_t::LF), _restricted(false),
- _flags(0), _options(0), _look(0), _error(error_t::NONE), _errorPos(0), _barrier(false), _resolving(false), _verbs(0) {
+ _flags(0), _options(0), _look(0), _error(error_t::NONE), _errorPos(0), _classCount(0), _barrier(false), _resolving(false), _verbs(0) {
 	// Резервируем память под арену узлов синтаксического дерева
 	this->_nodes.reserve(64);
 }
@@ -165,8 +165,16 @@ void awh::regex::Parser::reset() noexcept {
 	this->_markers.clear();
 	// Выполняем сброс набора видов глаголов управления
 	this->_verbs = 0;
-	// Выполняем очистку хранилища классов символов
-	this->_classes.clear();
+	/**
+	 * Выполняем сброс количества классов символов
+	 *
+	 * @details Записи хранилища классов сбросом не уничтожаются: ряды их
+	 *          сохраняют место, и классы разбора следующего формируются
+	 *          в нём. Уничтожение записей стоило освобождения рядов всякого
+	 *          класса, а формирование их заново - размещения.
+	 *
+	 */
+	this->_classCount = 0;
 	// Выполняем очистку хранилища имён именованных групп
 	this->_names.clear();
 	// Выполняем очистку хранилища последовательностей символов
@@ -336,8 +344,8 @@ uint32_t awh::regex::Parser::captures() const noexcept {
  *
  */
 uint32_t awh::regex::Parser::classes() const noexcept {
-	// Выводим количество классов символов в хранилище классов
-	return static_cast <uint32_t> (this->_classes.size());
+	// Выводим количество классов символов текущего разбора
+	return this->_classCount;
 }
 /**
  * @brief Метод извлечения набора видов глаголов управления
@@ -451,7 +459,7 @@ const awh::regex::class_t & awh::regex::Parser::charClass(const uint32_t index) 
 	/**
 	 * Если индекс класса находится за пределами хранилища классов
 	 */
-	if(index >= static_cast <uint32_t> (this->_classes.size()))
+	if(index >= this->_classCount)
 		// Выводим пустой класс символов
 		return empty;
 	// Выводим класс символов регулярного выражения
@@ -782,8 +790,8 @@ awh::regex::node_id_t awh::regex::Parser::makeAny() noexcept {
 	if(this->_convention == newline_t::LF)
 		// Выводим индекс созданного узла любого символа
 		return this->createNode(node_t::ANY);
-	// Создаём формируемый класс завершений строк соглашения
-	class_t value;
+	// Получаем запись под формируемый класс завершений строк соглашения
+	class_t & value = this->acquireClass();
 	// Выполняем установку отрицания класса символов
 	value.negative = true;
 	/**
@@ -829,9 +837,33 @@ awh::regex::node_id_t awh::regex::Parser::makeAny() noexcept {
 	return this->makeClass(value);
 }
 /**
+ * @brief Метод получения записи под формируемый класс символов
+ *
+ * @return запись под формируемый класс символов
+ *
+ */
+awh::regex::class_t & awh::regex::Parser::acquireClass() noexcept {
+	/**
+	 * Если записи за последней заведённой в хранилище классов нет
+	 */
+	if(this->_classCount >= this->_classes.size())
+		// Выполняем добавление записи в хранилище классов
+		this->_classes.emplace_back();
+	// Получаем запись под формируемый класс символов
+	class_t & result = this->_classes[this->_classCount];
+	// Выполняем сброс флага отрицания класса символов
+	result.negative = false;
+	// Выполняем очистку набора диапазонов с сохранением места
+	result.ranges.clear();
+	// Выполняем очистку набора свойств с сохранением места
+	result.properties.clear();
+	// Выводим запись под формируемый класс символов
+	return result;
+}
+/**
  * @brief Метод создания узла класса символов
  *
- * @param value класс символов, размещаемый в хранилище
+ * @param value класс символов, заводимый в хранилище классов
  * @return      индекс созданного узла в арене узлов
  *
  */
@@ -839,18 +871,21 @@ awh::regex::node_id_t awh::regex::Parser::makeClass(class_t & value) noexcept {
 	// Выполняем приведение класса символов к нормальному виду
 	this->normalize(value);
 	// Получаем индекс класса символов в хранилище классов
-	const uint32_t index = static_cast <uint32_t> (this->_classes.size());
+	const uint32_t index = this->_classCount;
 	/**
-	 * Выполняем размещение класса символов в хранилище классов
+	 * Если класс символов собран вне записи хранилища
 	 *
-	 * @details Класс передаётся владением, а не снимком: у всех зовущих он
-	 *          после размещения мёртв - узел ссылается на хранилище номером.
-	 *          Снимок же стоил размещения рядов заново на каждый класс
-	 *          выражения, и копирующий конструктор класса выходил в образце
-	 *          стека наравне с самим разбором.
+	 * @details Зовущие формируют класс в записи, методом «acquireClass»
+	 *          полученной, и заведение сводится к счёту. Класс, собранный
+	 *          на стороне, переносится в запись владением, а не снимком:
+	 *          снимок стоил бы размещения рядов заново.
 	 *
 	 */
-	this->_classes.push_back(::move(value));
+	if((index >= this->_classes.size()) || (&value != &this->_classes[index]))
+		// Выполняем перенос класса символов в запись хранилища
+		this->acquireClass() = ::move(value);
+	// Выполняем заведение класса символов в хранилище классов
+	this->_classCount = (index + 1);
 	// Выполняем создание узла класса символов
 	const node_id_t result = this->createNode(node_t::CLASS);
 	// Выполняем установку индекса класса символов
@@ -2531,8 +2566,8 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 	const size_t offset = this->_pos;
 	// Переходим к символу за открывающей квадратной скобкой
 	this->_pos++;
-	// Создаём формируемый класс символов
-	class_t result;
+	// Получаем запись под формируемый класс символов
+	class_t & result = this->acquireClass();
 	/**
 	 * Выполняем пропуск последовательностей прозрачных в начале класса
 	 *
@@ -2896,8 +2931,8 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 		case 'v': case 'V': {
 			// Переходим к следующему символу регулярного выражения
 			this->_pos++;
-			// Создаём формируемый класс символов
-			class_t result;
+			// Получаем запись под формируемый класс символов
+			class_t & result = this->acquireClass();
 			/**
 			 * Если добавление сокращённого класса символов не выполнено
 			 */
@@ -2911,8 +2946,8 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 		case 'p': case 'P': {
 			// Переходим к следующему символу регулярного выражения
 			this->_pos++;
-			// Создаём формируемый класс символов
-			class_t result;
+			// Получаем запись под формируемый класс символов
+			class_t & result = this->acquireClass();
 			/**
 			 * Если разбор свойства Юникода не выполнен
 			 */
@@ -2984,8 +3019,8 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			const vector <uint32_t> codes = {0x0D, 0x0A};
 			// Выполняем создание узла последовательности возврата каретки
 			const node_id_t sequence = this->makeString(codes);
-			// Создаём формируемый класс вертикальных пробельных символов
-			class_t vertical;
+			// Получаем запись под формируемый класс вертикальных пробельных символов
+			class_t & vertical = this->acquireClass();
 			/**
 			 * Если охват последовательности перевода строки ограничен
 			 *
