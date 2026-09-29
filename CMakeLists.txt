@@ -116,6 +116,7 @@ if (CMAKE_AWH_LOCALE)
     message(STATUS "Build with locale: ${CMAKE_AWH_LOCALE}\n")
 endif (CMAKE_AWH_LOCALE)
 
+##
  # Приведение доменных имён модулем awh::idna вместо средств операционной системы
  #
  # Средствами операционной системы доменные имена приводятся лишь на MS Windows,
@@ -1156,9 +1157,11 @@ endif()
  # системе её собственный распределитель: cmake -DCMAKE_BUILD_ALLOCATOR=OFF ..
  ##
 option(CMAKE_BUILD_ALLOCATOR "Capture process memory allocation by the built-in allocator" ON)
+# Если сборка аллокатора памяти не разрешена
 if (NOT CMAKE_BUILD_ALLOCATOR)
     # Запрещаем подмену имён библиотеки времени исполнения
     add_definitions(-DAWH_ALLOC_DISABLED)
+    # Выводим сообщение, что сборка аллокатора памяти не разрешена
     message(STATUS "Built-in allocator capture is DISABLED")
 endif()
 

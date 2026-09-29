@@ -1334,6 +1334,100 @@ TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
 	ASSERT_EQ(offset, 0u);
 }
 /**
+ * @brief Проверка того, что содержимое длиннее объявленного отвергается пределом разжатия
+ *
+ * @details Объявленная длина исходного отдаётся разжимателю пределом. Кадр, объявивший
+ *          исходное короче настоящего, разжиматель отвергает пустым ответом, не отведя
+ *          памяти сверх предела, и отказ объявляется неудачей сжатия
+ *
+ * @note Проверка ЗРЯЧА по коду отказа: без передачи предела разжатие проходит целиком,
+ *       и тот же кадр отвергается уже сличением длины после разжатия - кодом
+ *       INVALID_CHUNK, а не COMPRESSION_FAILED. Разница в памяти этим и отражена
+ */
+TEST_F(ChunkFixture, ContentLongerThanDeclaredIsRefusedByTheLimit) {
+	// Укладчик кадров
+	abc::packer_t packer;
+	// Выполняем установку модуля сжатия
+	packer.compressor(this->_compressor.get());
+	// Укладываемое хорошо сжимаемое содержимое
+	const string payload = repeated(200);
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Выполняем укладку кадра
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+		<< "код отказа: " << abc::message(packer.error());
+	// Выполняем проверку того, что кадр уложен сжатым
+	ASSERT_NE(static_cast <compressor::method_t> (record.at(0)), compressor::method_t::NONE);
+	// Выполняем проверку того, что объявлена настоящая длина исходного
+	ASSERT_EQ(abc::gather(record.data() + 8, 4), payload.size());
+	// Выполняем занижение объявленной длины исходного
+	abc::fixed(record.data() + 8, payload.size() - 1, 4);
+	{
+		// Выполняем получение длины уложенного содержимого кадра
+		const size_t length = static_cast <size_t> (abc::gather(record.data() + 4, 4));
+		// Выполняем укладку обновлённой контрольной суммы кадра
+		abc::fixed(record.data() + abc::CHUNK_DIGEST,
+		 abc::digest(record.data(), abc::CHUNK_HEADER + length), 8);
+	}
+	// Смещение снятия кадра
+	size_t offset = 0;
+	// Снятое содержимое кадра
+	vector <uint8_t> content;
+	// Снятые сведения о кадре
+	abc::chunk_t chunk;
+	// Выполняем проверку того, что снятие кадра отвечено отказом
+	ASSERT_FALSE(packer.unpack(record.data(), record.size(), offset, content, chunk));
+	// Выполняем проверку того, что отказ дан разжимателем по пределу
+	ASSERT_EQ(packer.error(), abc::error_t::COMPRESSION_FAILED) << abc::message(packer.error());
+	// Выполняем проверку того, что смещение снятия осталось нетронутым
+	ASSERT_EQ(offset, 0u);
+}
+/**
+ * @brief Проверка того, что сжатый кадр, объявивший пустое исходное, отвергается
+ *
+ * @details Укладка такого кадра не даёт, и отвергается он ДО разжатия: нулевой предел
+ *          разжимателю означает общий предел в 1 ГиБ
+ *
+ * @note Исходом заслон НЕ ЗРЯЧ: без него тот же кадр отвергается сличением длины тем же
+ *       кодом INVALID_CHUNK. Проверка закрепляет отказ, а не место его
+ */
+TEST_F(ChunkFixture, CompressedChunkDeclaringNoOriginIsRefused) {
+	// Укладчик кадров
+	abc::packer_t packer;
+	// Выполняем установку модуля сжатия
+	packer.compressor(this->_compressor.get());
+	// Укладываемое хорошо сжимаемое содержимое
+	const string payload = repeated(200);
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Выполняем укладку кадра
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+		<< "код отказа: " << abc::message(packer.error());
+	// Выполняем проверку того, что кадр уложен сжатым
+	ASSERT_NE(static_cast <compressor::method_t> (record.at(0)), compressor::method_t::NONE);
+	// Выполняем обнуление объявленной длины исходного
+	abc::fixed(record.data() + 8, 0, 4);
+	{
+		// Выполняем получение длины уложенного содержимого кадра
+		const size_t length = static_cast <size_t> (abc::gather(record.data() + 4, 4));
+		// Выполняем укладку обновлённой контрольной суммы кадра
+		abc::fixed(record.data() + abc::CHUNK_DIGEST,
+		 abc::digest(record.data(), abc::CHUNK_HEADER + length), 8);
+	}
+	// Смещение снятия кадра
+	size_t offset = 0;
+	// Снятое содержимое кадра
+	vector <uint8_t> content;
+	// Снятые сведения о кадре
+	abc::chunk_t chunk;
+	// Выполняем проверку того, что снятие кадра отвечено отказом
+	ASSERT_FALSE(packer.unpack(record.data(), record.size(), offset, content, chunk));
+	// Выполняем проверку того, что отказ объявлен неопознанием кадра
+	ASSERT_EQ(packer.error(), abc::error_t::INVALID_CHUNK) << abc::message(packer.error());
+	// Выполняем проверку того, что смещение снятия осталось нетронутым
+	ASSERT_EQ(offset, 0u);
+}
+/**
  * @brief Проверка того, что воронка отказа укладчика доносит причину журналу
  *
  * @details Воронка `Packer::fail` заводит код отказа и объявляет его журналу. Объявление

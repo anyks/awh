@@ -1337,13 +1337,13 @@ namespace dns {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Возвращаем результат
@@ -1766,7 +1766,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 				// Если кэш DNS-резолвера не пустой
 				if(!::__awh_cache__.domains.empty()){
 					// Получаем текущую метку времени
-					const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+					const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 					// Сохраняем имя файла дампа кэша
 					filename = ::__awh_cache__.filename;
 					// Очищаем бинарный контейнер для хранения кэша доменных имён
@@ -1819,7 +1819,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 									break;
 								}
 								// Добавляем запись в контейнер
-								dumpBox.add(awh::fmk::format("RECORD_%u", count++), &record, sizeof(record));
+								dumpBox.add(fmk::format("RECORD_%u", count++), &record, sizeof(record));
 								// Продолжаем перебор кэша
 								++i;
 							// Продолжаем перебор кэша
@@ -1844,13 +1844,13 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1872,7 +1872,7 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 			// Блокируем доступ к глобальному кэшу DNS
 			const locker_t <std::shared_mutex> lock(::__awh_dns_cache_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Получаем текущую метку времени
-			const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+			const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 			// Если в кэше есть IPv4-адреса
 			if(!::__awh_cache__.ipv4.empty()){
 				/**
@@ -1957,13 +1957,13 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status)}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2300,13 +2300,13 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+						log::debug("%s", __PRETTY_FUNCTION__, {str}, log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+						log::print("%s", log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			};
@@ -2373,13 +2373,13 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {data, size}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {data, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2876,7 +2876,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если сервер DNS не смог интерпретировать запрос
 			case 1: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = awh::fmk::format("DNS query format error to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS query format error to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2890,20 +2890,20 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+						log::print("%s", log::flag_t::WARNING, error.c_str());
 					#endif
 				}
 			} break;
 			// Если проблемы возникли на DNS-сервере
 			case 2: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = awh::fmk::format("DNS server failure %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS server failure %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2917,20 +2917,20 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+						log::print("%s", log::flag_t::WARNING, error.c_str());
 					#endif
 				}
 			} break;
 			// Если доменное имя, указанное в запросе, не существует
 			case 3: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = awh::fmk::format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), this->_io->getTarget(eid).c_str());
+				const string error = fmk::format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), this->_io->getTarget(eid).c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2944,20 +2944,20 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+						log::print("%s", log::flag_t::WARNING, error.c_str());
 					#endif
 				}
 			} break;
 			// Если DNS-сервер не поддерживает подобный тип запросов
 			case 4: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = awh::fmk::format("DNS server is not implemented at %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS server is not implemented at %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2971,20 +2971,20 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+						log::print("%s", log::flag_t::WARNING, error.c_str());
 					#endif
 				}
 			} break;
 			// Если DNS-сервер отказался выполнять наш запрос (например, по политическим причинам)
 			case 5: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
-				const string error = awh::fmk::format("DNS request is refused to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				const string error = fmk::format("DNS request is refused to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 				// Выполняем получение идентификатора функции обратного вызова
 				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
@@ -2998,13 +2998,13 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::WARNING, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+						log::print("%s", log::flag_t::WARNING, error.c_str());
 					#endif
 				}
 			} break;
@@ -3018,7 +3018,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Если в очереди на отправку есть пакеты
 			if(!this->_transfer.packets.empty()){
 				// Если время жизни пакета ещё не истекло
-				if(this->_transfer.packets.front().alive > awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS)){
+				if(this->_transfer.packets.front().alive > fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS)){
 					// Получаем указатель на заголовок DNS
 					::dns::head_t * queuedHeader = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 					/**
@@ -3060,13 +3060,13 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3166,7 +3166,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						// Если в очереди на отправку есть пакеты
 						if(!this->_transfer.packets.empty()){
 							// Если время жизни пакета ещё не истекло
-							if(this->_transfer.packets.front().alive > awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS)){
+							if(this->_transfer.packets.front().alive > fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS)){
 								// Получаем указатель на заголовок DNS
 								::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 								/**
@@ -3215,11 +3215,11 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug(
+						log::debug(
 							"DNS resolver timeout for domain '%s' (attempts: %u)",
 							__PRETTY_FUNCTION__,
 							{eid, static_cast <uint16_t> (action), delay},
-							awh::log::flag_t::WARNING,
+							log::flag_t::WARNING,
 							domain.c_str(), attempt
 						);
 					/**
@@ -3227,7 +3227,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("DNS resolver timeout for domain '%s' (attempts: %u)", awh::log::flag_t::WARNING, domain.c_str(), attempt);
+						log::print("DNS resolver timeout for domain '%s' (attempts: %u)", log::flag_t::WARNING, domain.c_str(), attempt);
 					#endif
 				}
 				// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
@@ -3243,13 +3243,13 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action), delay}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action), delay}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Продолжаем ожидание ответа
@@ -3351,7 +3351,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 				// Результирующий буфер данных
 				wchar_t buffer[0xFF];
 				// Выполняем кодирование доменного имени
-				if(::IdnToAscii(0, awh::fmk::convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
+				if(::IdnToAscii(0, fmk::convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
@@ -3361,16 +3361,16 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, awh::fmk::convert(wstring{message}).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, fmk::convert(wstring{message}).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, awh::fmk::convert(wstring{message}).c_str());
+						log::print("%s", log::flag_t::CRITICAL, fmk::convert(wstring{message}).c_str());
 					#endif
 				// Получаем результат кодирования
-				} else result = awh::fmk::convert(wstring{buffer});
+				} else result = fmk::convert(wstring{buffer});
 			/**
 			 * Выполняем работу для остальных операционных систем
 			 */
@@ -3388,13 +3388,13 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+						log::print("%s", log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
 					#endif
 				}
 			#endif
@@ -3408,13 +3408,13 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3450,7 +3450,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 				// Результирующий буфер данных
 				wchar_t buffer[0xFF];
 				// Выполняем декодирование доменного имени
-				if(::IdnToUnicode(0, awh::fmk::convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
+				if(::IdnToUnicode(0, fmk::convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0){
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
@@ -3460,16 +3460,16 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, awh::fmk::convert(wstring{message}).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, fmk::convert(wstring{message}).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, awh::fmk::convert(wstring{message}).c_str());
+						log::print("%s", log::flag_t::CRITICAL, fmk::convert(wstring{message}).c_str());
 					#endif
 				// Получаем результат декодирования
-				} else result = awh::fmk::convert(wstring{buffer});
+				} else result = fmk::convert(wstring{buffer});
 			/**
 			 * Выполняем работу для остальных операционных систем
 			 */
@@ -3487,13 +3487,13 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
+						log::print("%s", log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
 					#endif
 				}
 			#endif
@@ -3507,13 +3507,13 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3587,13 +3587,13 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3625,13 +3625,13 @@ void awh::unit::DNS::clearBlacklist() noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3676,13 +3676,13 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3738,13 +3738,13 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {ip}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {ip}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3796,13 +3796,13 @@ void awh::unit::DNS::removeAddressInBlacklist(const net::addr_t * ip) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3865,13 +3865,13 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3920,13 +3920,13 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {ip}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {ip}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3970,13 +3970,13 @@ void awh::unit::DNS::pushAddressToBlacklist(const net::addr_t * ip) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4031,13 +4031,13 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4085,13 +4085,13 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {ip}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {ip}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4136,13 +4136,13 @@ bool awh::unit::DNS::checkAddressInBlacklist(const net::addr_t * ip) const noexc
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4214,13 +4214,13 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4437,13 +4437,13 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -4493,7 +4493,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя соответствует удаляемому, то удаляем его из кэша
-						if(!j->local && awh::fmk::compare(domain, j->domain))
+						if(!j->local && fmk::compare(domain, j->domain))
 							// Удаляем запись IPv4-адреса из кэша
 							j = i->second.erase(j);
 						// Если доменное имя не соответствует удаляемому, то пропускаем его
@@ -4518,7 +4518,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя соответствует удаляемому, то удаляем его из кэша
-						if(!j->local && awh::fmk::compare(domain, j->domain))
+						if(!j->local && fmk::compare(domain, j->domain))
 							// Удаляем запись IPv6-адреса из кэша
 							j = i->second.erase(j);
 						// Если доменное имя не соответствует удаляемому, то пропускаем его
@@ -4541,13 +4541,13 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {domain}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4624,7 +4624,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 							 */
 							for(auto j = i->second.begin(); j != i->second.end();){
 								// Если доменное имя соответствует удаляемому, то удаляем его из кэша
-								if(!j->local && awh::fmk::compare(domain, j->domain))
+								if(!j->local && fmk::compare(domain, j->domain))
 									// Удаляем запись IPv4-адреса из кэша
 									j = i->second.erase(j);
 								// Если доменное имя не соответствует удаляемому, то пропускаем его
@@ -4652,7 +4652,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 							 */
 							for(auto j = i->second.begin(); j != i->second.end();){
 								// Если доменное имя соответствует удаляемому, то удаляем его из кэша
-								if(!j->local && awh::fmk::compare(domain, j->domain))
+								if(!j->local && fmk::compare(domain, j->domain))
 									// Удаляем запись IPv6-адреса из кэша
 									j = i->second.erase(j);
 								// Если доменное имя не соответствует удаляемому, то пропускаем его
@@ -4677,13 +4677,13 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4712,7 +4712,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 			// Если в кэше доменное имя найдено
 			if(i != ::__awh_cache__.domains.end()){
 				// Получаем текущую метку времени
-				const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				/**
 				 * Выполняем перебор всех записей доменного имени
 				 */
@@ -4757,13 +4757,13 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4795,7 +4795,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 			// Если в кэше доменное имя найдено
 			if(i != ::__awh_cache__.domains.end()){
 				// Получаем текущую метку времени
-				const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				/**
 				 * Выполняем перебор всех записей доменного имени
 				 */
@@ -4848,13 +4848,13 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4905,7 +4905,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 			// Если в кэше доменное имя найдено
 			if(i != ::__awh_cache__.domains.end()){
 				// Получаем текущую метку времени
-				const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				// Создаём объект записи
 				EntryIP record;
 				// Если время жизни кэша установлено
@@ -4986,7 +4986,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 				// Создаём список записей IP-адресов
 				vector <EntryIP> entry(1);
 				// Получаем текущую метку времени
-				const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				// Устанавливаем время жизни
 				entry.back().life = ::cacheLifeFromTtl(now, ttl);
 				/**
@@ -5068,13 +5068,13 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {domain, ttl}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {domain, ttl}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5146,7 +5146,7 @@ void awh::unit::DNS::setPrefixEnvironment(string_view prefix) noexcept {
 	// Если префикс переменной окружения передан
 	if(!prefix.empty())
 		// Устанавливаем префикс переменной окружения
-		this->_resolver.prefix = awh::fmk::transform(prefix, awh::fmk::transform_t::UPPER_CASE);
+		this->_resolver.prefix = fmk::transform(prefix, fmk::transform_t::UPPER_CASE);
 	// Если префикс переменной окружения не передан, очищаем префикс переменной окружения
 	else this->_resolver.prefix.clear();
 }
@@ -5182,13 +5182,13 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("Failed to set options for hosts file event", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL);
+								log::debug("Failed to set options for hosts file event", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("Failed to set options for hosts file event", awh::log::flag_t::CRITICAL);
+								log::print("Failed to set options for hosts file event", log::flag_t::CRITICAL);
 							#endif
 						}
 					// Если мы успешно установили опции события
@@ -5206,13 +5206,13 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("[%s] host address cannot be established", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, filename);
+					log::debug("[%s] host address cannot be established", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, filename);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("[%s] host address cannot be established", awh::log::flag_t::CRITICAL, filename);
+					log::print("[%s] host address cannot be established", log::flag_t::CRITICAL, filename);
 				#endif
 			}
 			// Удаляем событие
@@ -5227,13 +5227,13 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {filename}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5264,13 +5264,13 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 				// Бинарный буфер для загрузки кэша доменных имён
 				uint8_t * buffer = nullptr;
 				// Получаем текущую метку времени
-				const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+				const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 				/**
 				 * Выполняем обработку всех записей из контейнера для загрузки кэша доменных имён
 				 */
 				for(uint32_t i = 0; i < this->_binbox.get <uint32_t> ("COUNT"); i++){
 					// Если запись загружена из контейнера
-					if(this->_binbox.get(awh::fmk::format("RECORD_%u", i), &buffer, &size)){
+					if(this->_binbox.get(fmk::format("RECORD_%u", i), &buffer, &size)){
 						// Если размер загруженных данных записи совпадает с размером объекта записи
 						if(size == sizeof(record)){
 							// Выполняем копирование данных записи в объект записи
@@ -5351,13 +5351,13 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, {filename, interval}, awh::log::flag_t::CRITICAL);
+							log::debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, {filename, interval}, log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("Failed to start cache dump interval", awh::log::flag_t::CRITICAL);
+							log::print("Failed to start cache dump interval", log::flag_t::CRITICAL);
 						#endif
 					}
 				}
@@ -5382,13 +5382,13 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {filename, interval}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {filename, interval}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5432,13 +5432,13 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {delay}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5476,13 +5476,13 @@ uint16_t awh::unit::DNS::resolvers(const event::family_t family) const noexcept 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -5546,7 +5546,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								// Если префикс для переменных окружения установлен
 								if(!this->_resolver.prefix.empty()){
 									// Получаем значение переменной
-									const char * env = ::getenv(awh::fmk::format("%s_DNS_IPV4_SERVER", this->_resolver.prefix.c_str()).c_str());
+									const char * env = ::getenv(fmk::format("%s_DNS_IPV4_SERVER", this->_resolver.prefix.c_str()).c_str());
 									// Если IP-адрес из переменной окружения получен
 									if(env != nullptr)
 										// Устанавливаем адрес сервера назначения
@@ -5584,13 +5584,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, awh::log::flag_t::CRITICAL);
+									log::debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("Failed to set options for DNS resolver event", awh::log::flag_t::CRITICAL);
+									log::print("Failed to set options for DNS resolver event", log::flag_t::CRITICAL);
 								#endif
 							}
 							// Пропускаем неудачно инициализированный резолвер
@@ -5641,7 +5641,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								// Если префикс для переменных окружения установлен
 								if(!this->_resolver.prefix.empty()){
 									// Получаем значение переменной
-									const char * env = ::getenv(awh::fmk::format("%s_DNS_IPV6_SERVER", this->_resolver.prefix.c_str()).c_str());
+									const char * env = ::getenv(fmk::format("%s_DNS_IPV6_SERVER", this->_resolver.prefix.c_str()).c_str());
 									// Если IP-адрес из переменной окружения получен
 									if(env != nullptr)
 										// Устанавливаем адрес сервера назначения
@@ -5679,13 +5679,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								 */
 								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
-									awh::log::debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, awh::log::flag_t::CRITICAL);
+									log::debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									awh::log::print("Failed to set options for DNS resolver event", awh::log::flag_t::CRITICAL);
+									log::print("Failed to set options for DNS resolver event", log::flag_t::CRITICAL);
 								#endif
 							}
 							// Пропускаем неудачно инициализированный резолвер
@@ -5709,13 +5709,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -5780,13 +5780,13 @@ void awh::unit::DNS::setTargetPort(const uint16_t port) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {port}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {port}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5858,13 +5858,13 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {server}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5924,13 +5924,13 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6008,13 +6008,13 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6061,13 +6061,13 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {server}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6113,13 +6113,13 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6172,13 +6172,13 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6273,13 +6273,13 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6385,13 +6385,13 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6481,13 +6481,13 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), servers.size()}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), servers.size()}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6538,13 +6538,13 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {source}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6596,13 +6596,13 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6655,13 +6655,13 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6736,7 +6736,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 						// Если в кэше IP-адрес найден
 						if(i != ::__awh_cache__.ipv4.end()){
 							// Получаем текущую метку времени
-							const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+							const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 							/**
 							 * Выполняем перебор всех записей IP-адреса в кэше
 							 */
@@ -6767,7 +6767,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 						// Если в кэше IP-адрес найден
 						if(i != ::__awh_cache__.ipv6.end()){
 							// Получаем текущую метку времени
-							const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+							const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 							/**
 							 * Выполняем перебор всех записей IP-адреса в кэше
 							 */
@@ -6819,7 +6819,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Если очередь ожидания выполнения запроса переполнена
 					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 						// Формируем текст сообщения об ошибке DNS-резолвера
-						const string error = awh::fmk::format("DNS resolver queue is full for domain %s", domain.c_str());
+						const string error = fmk::format("DNS resolver queue is full for domain %s", domain.c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
 							// Идентификатор события клиента DNS-резолвера
@@ -6841,13 +6841,13 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, alive}, awh::log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {id, alive}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+								log::print("%s", log::flag_t::WARNING, error.c_str());
 							#endif
 						}
 						// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
@@ -6865,7 +6865,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
-						this->_transfer.packets.back().alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+						this->_transfer.packets.back().alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 						return true;
 					}
@@ -6881,7 +6881,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					ret.first->second.alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 				// Если пакет не добавлен в контейнер активных пакетов
 				} else {
 					// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
@@ -6893,7 +6893,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					this->_transfer.packets.back().alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					this->_transfer.packets.back().alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 					// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 					return true;
 				}
@@ -6920,13 +6920,13 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, alive}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, alive}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -6991,13 +6991,13 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), ip, alive}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), ip, alive}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -7037,7 +7037,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Если очередь ожидания выполнения запроса переполнена
 				if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 					// Формируем текст сообщения об ошибке DNS-резолвера
-					const string error = awh::fmk::format("DNS resolver queue is full for domain %s", string(domain).c_str());
+					const string error = fmk::format("DNS resolver queue is full for domain %s", string(domain).c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error")){
 						// Идентификатор события клиента DNS-резолвера
@@ -7059,13 +7059,13 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain, alive}, awh::log::flag_t::WARNING, error.c_str());
+							log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain, alive}, log::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+							log::print("%s", log::flag_t::WARNING, error.c_str());
 						#endif
 					}
 					// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
@@ -7083,7 +7083,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					this->_transfer.packets.back().alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					this->_transfer.packets.back().alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 					// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 					return true;
 				}
@@ -7099,7 +7099,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 				::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 				// Устанавливаем время жизни пакета для отслеживания его выполнения
-				ret.first->second.alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+				ret.first->second.alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 			// Если пакет не добавлен в контейнер активных пакетов
 			} else {
 				// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
@@ -7111,7 +7111,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 				::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 				// Устанавливаем время жизни пакета для отслеживания его выполнения
-				this->_transfer.packets.back().alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+				this->_transfer.packets.back().alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 				// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 				return true;
 			}
@@ -7137,13 +7137,13 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain, alive}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain, alive}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -7201,7 +7201,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 				// Если в кэше доменное имя найдено
 				if(i != ::__awh_cache__.domains.end()){
 					// Получаем текущую метку времени
-					const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+					const uint64_t now = fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS);
 					/**
 					 * Выполняем перебор всех записей доменного имени
 					 */
@@ -7280,7 +7280,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Если семейство события не определено
 					default: {
 						// Формируем текст сообщения об ошибке DNS-резолвера
-						const string error = awh::fmk::format("DNS resolver family is undefined for domain %s", string(domain).c_str());
+						const string error = fmk::format("DNS resolver family is undefined for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
 							// Идентификатор события клиента DNS-резолвера
@@ -7302,13 +7302,13 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, awh::log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+								log::print("%s", log::flag_t::WARNING, error.c_str());
 							#endif
 						}
 						// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
@@ -7330,7 +7330,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Если очередь ожидания выполнения запроса переполнена
 					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 						// Формируем текст сообщения об ошибке DNS-резолвера
-						const string error = awh::fmk::format("DNS resolver queue is full for domain %s", string(domain).c_str());
+						const string error = fmk::format("DNS resolver queue is full for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
 							// Идентификатор события клиента DNS-резолвера
@@ -7352,13 +7352,13 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, awh::log::flag_t::WARNING, error.c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
+								log::print("%s", log::flag_t::WARNING, error.c_str());
 							#endif
 						}
 						/**
@@ -7389,7 +7389,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
-						this->_transfer.packets.back().alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+						this->_transfer.packets.back().alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 						return true;
 					}
@@ -7405,7 +7405,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					ret.first->second.alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 				// Если пакет не добавлен в контейнер активных пакетов
 				} else {
 					// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
@@ -7417,7 +7417,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					this->_transfer.packets.back().alive = (awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					this->_transfer.packets.back().alive = (fmk::timestamp <uint64_t> (fmk::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 					// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 					return true;
 				}
@@ -7444,13 +7444,13 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию

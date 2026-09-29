@@ -2056,8 +2056,12 @@ namespace compressor {
 	 *
 	 */
 	static int32_t decompressionZlib(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
-		// Если объекты переданы верно
-		if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+		/**
+		 * Если объекты переданы верно. Пустой сертификат в сжатом виде законно не приходит (RFC 8879, раздел 4),
+		 * а нулевой предел компрессор понимает как «своего предела нет» - и распаковка снова пошла бы до общего
+		 * AWH_COMPRESSOR_MAX_OUTPUT по воле недоверенного узла
+		 */
+		if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0) && (length > 0)){
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 			// Создаём охранника участника обмена защищёнными данными
@@ -2066,8 +2070,12 @@ namespace compressor {
 			awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 			// Буфер для хранения данных после декомпрессии
 			::local::certBuffer.clear();
-			// Выполняем декомпрессию данных
-			compressor->decompress(in, size, awh::compressor::method_t::ZLIB, ::local::certBuffer);
+			/**
+			 * Выполняем декомпрессию данных. Объявленный размер uncompressed_length идёт пределом: без него узел
+			 * рукопожатия заставлял отвести до общего предела компрессора, и отказ сверки наступал лишь после этого.
+			 * Предел отсекает выход длиннее объявленного, а короче - ловит сверка ниже
+			 */
+			compressor->decompress(in, size, awh::compressor::method_t::ZLIB, ::local::certBuffer, length);
 			// Если размер декомпрессированных данных не соответствует ожидаемому
 			if(::local::certBuffer.size() != length)
 				// Возвращаем отрицательный результат
@@ -2094,8 +2102,12 @@ namespace compressor {
 	 *
 	 */
 	static int32_t decompressionBrotli(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
-		// Если объекты переданы верно
-		if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+		/**
+		 * Если объекты переданы верно. Пустой сертификат в сжатом виде законно не приходит (RFC 8879, раздел 4),
+		 * а нулевой предел компрессор понимает как «своего предела нет» - и распаковка снова пошла бы до общего
+		 * AWH_COMPRESSOR_MAX_OUTPUT по воле недоверенного узла
+		 */
+		if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0) && (length > 0)){
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 			// Создаём охранника участника обмена защищёнными данными
@@ -2104,8 +2116,12 @@ namespace compressor {
 			awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 			// Буфер для хранения данных после декомпрессии
 			::local::certBuffer.clear();
-			// Выполняем декомпрессию данных
-			compressor->decompress(in, size, awh::compressor::method_t::BROTLI, ::local::certBuffer);
+			/**
+			 * Выполняем декомпрессию данных. Объявленный размер uncompressed_length идёт пределом: без него узел
+			 * рукопожатия заставлял отвести до общего предела компрессора, и отказ сверки наступал лишь после этого.
+			 * Предел отсекает выход длиннее объявленного, а короче - ловит сверка ниже
+			 */
+			compressor->decompress(in, size, awh::compressor::method_t::BROTLI, ::local::certBuffer, length);
 			// Если размер декомпрессированных данных не соответствует ожидаемому
 			if(::local::certBuffer.size() != length)
 				// Возвращаем отрицательный результат
@@ -2132,8 +2148,12 @@ namespace compressor {
 	 *
 	 */
 	static int32_t decompressionZstandard(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
-		// Если объекты переданы верно
-		if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+		/**
+		 * Если объекты переданы верно. Пустой сертификат в сжатом виде законно не приходит (RFC 8879, раздел 4),
+		 * а нулевой предел компрессор понимает как «своего предела нет» - и распаковка снова пошла бы до общего
+		 * AWH_COMPRESSOR_MAX_OUTPUT по воле недоверенного узла
+		 */
+		if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0) && (length > 0)){
 			// Получаем объект контекста модуля
 			auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 			// Создаём охранника участника обмена защищёнными данными
@@ -2142,8 +2162,12 @@ namespace compressor {
 			awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 			// Буфер для хранения данных после декомпрессии
 			::local::certBuffer.clear();
-			// Выполняем декомпрессию данных
-			compressor->decompress(in, size, awh::compressor::method_t::ZSTD, ::local::certBuffer);
+			/**
+			 * Выполняем декомпрессию данных. Объявленный размер uncompressed_length идёт пределом: без него узел
+			 * рукопожатия заставлял отвести до общего предела компрессора, и отказ сверки наступал лишь после этого.
+			 * Предел отсекает выход длиннее объявленного, а короче - ловит сверка ниже
+			 */
+			compressor->decompress(in, size, awh::compressor::method_t::ZSTD, ::local::certBuffer, length);
 			// Если размер декомпрессированных данных не соответствует ожидаемому
 			if(::local::certBuffer.size() != length)
 				// Возвращаем отрицательный результат
