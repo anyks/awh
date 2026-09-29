@@ -20,6 +20,11 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <random>
+
+/**
  * Подключаем заголовочный файлы проекта
  */
 #include "compressor.hpp"
@@ -2182,4 +2187,127 @@ TEST_F(CompressorFixture, BlockRawPointerValueOverloadsTest){
 		// Проверяем что данные восстановлены перегрузкой от string_view
 		ASSERT_EQ(text, this->_compressor->decompress <std::string> (std::string_view(viewed), method)) << "method = " << static_cast <uint16_t> (method);
 	}
+}
+
+/**
+ * @brief Тест отказа на сообщении Deflate, срезанном по краю хранимого блока
+ *
+ * @details Несжимаемые данные движок пишет хранимыми блоками, а те выровнены по
+ *          октету: срез ровно по их краю ставил разбор на границу блока, и обрывок
+ *          проходил успехом - перебор всех срезов нашёл шесть таких на 200 000
+ *          случайных октетов, с потерей до 167 КБ. Целым сообщение теперь считается,
+ *          лишь если поток закрыт блоком с BFINAL на последнем октете либо вход
+ *          кончается хвостом 00 00 FF FF на границе блока. Блочное сжатие
+ *          промежуточных сбросов не делает, поэтому законно целым не может быть ни
+ *          один собственный срез сообщения. Перебираются окна вокруг краёв блоков
+ *
+ */
+TEST_F(CompressorFixture, DeflateStoredBlockCutTest){
+	// Генератор псевдослучайных октетов с постоянным зерном
+	std::mt19937 generator(0x5EED);
+	// Формируем несжимаемые данные
+	std::string text(200000, '\0');
+	/**
+	 * Наполняем буфер псевдослучайными октетами
+	 */
+	for(auto & octet : text)
+		// Записываем очередной октет
+		octet = static_cast <char> (generator() & 0xFF);
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+	// Выполняем компрессию данных
+	const std::string compressed = this->_compressor->compress <std::string> (text, awh::compressor::method_t::DEFLATE);
+	// Проверяем что данные сжаты хранимыми блоками и не ужались
+	ASSERT_GE(compressed.size(), text.size());
+	// Проверяем что целое сообщение разбирается
+	ASSERT_EQ(text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE));
+	// Количество проверенных срезов
+	size_t checked = 0;
+	/**
+	 * Перебираем окна вокруг краёв хранимых блоков
+	 */
+	for(size_t edge = 0x8000; edge < compressed.size(); edge += 0x8000){
+		/**
+		 * Перебираем срезы внутри окна
+		 */
+		for(size_t cut = (edge - 0x40); (cut <= (edge + 0x40)) && (cut < compressed.size()); cut++){
+			// Выполняем декомпрессию среза сообщения
+			const std::string restored = this->_compressor->decompress <std::string> (compressed.data(), cut, awh::compressor::method_t::DEFLATE);
+			// Проверяем что срез не выдан за целое сообщение
+			ASSERT_TRUE(restored.empty()) << "cut = " << cut << ", restored = " << restored.size();
+			// Учитываем проверенный срез
+			checked++;
+		}
+	}
+	// Проверяем что перебор вообще состоялся
+	ASSERT_GT(checked, 500u);
+}
+
+/**
+ * @brief Тест сохранения окна LZ77 после блока с BFINAL = 1 в потоковой сессии
+ *
+ * @details Двойник DeflateFinalBlockKeepsWindowTest для потокового режима. Сессия
+ *          «сырого» Deflate после блока с BFINAL объявляла себя завершённой и всё
+ *          поданное следом выбрасывала молча: результат пустой, сессия валидна,
+ *          признака отказа нет. RFC 7692 (разделы 7.2.3.4 и 7.2.2) требует разбирать
+ *          следующее сообщение с тем же окном. Октеты - из примеров самого RFC
+ *
+ */
+TEST_F(CompressorFixture, StreamDeflateFinalBlockKeepsWindowTest){
+	// Хвост, дописываемый принимающей стороной к каждому сообщению
+	const std::string tail("\x00\x00\xFF\xFF", 4);
+	// Сообщение «Hello», сжатое блоком с BFINAL = 1 (RFC 7692, 7.2.3.4)
+	const std::string final = (std::string("\xF3\x48\xCD\xC9\xC9\x07\x00\x00", 8) + tail);
+	// Сообщение, целиком ссылающееся на «Hello» прежнего сообщения (RFC 7692, 7.2.3.2)
+	const std::string shared = (std::string("\xF2\x00\x11\x00\x00", 5) + tail);
+	// Устанавливаем размер скользящего окна Deflate
+	ASSERT_TRUE(this->_compressor->wbitsDeflate(15));
+	// Создаём потоковую сессию декомпрессии
+	awh::compressor::stream_t decoder = this->_compressor->stream(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::DECODE);
+	// Проверяем что потоковая сессия заведена
+	ASSERT_TRUE(decoder.valid());
+	// Буфер выхода очередной порции
+	std::string part;
+	// Подаём сообщение с BFINAL
+	decoder.push(final.data(), final.size(), part);
+	// Проверяем что сообщение с BFINAL разобрано
+	ASSERT_EQ("Hello", part);
+	/**
+	 * Подаём дважды сообщение, ссылающееся на окно: второе опирается уже на
+	 * окно первого, и оба обязаны разбираться
+	 */
+	for(uint16_t i = 0; i < 2; i++){
+		// Подаём сообщение, ссылающееся на окно прежнего
+		decoder.push(shared.data(), shared.size(), part);
+		// Проверяем что окно пережило блок с BFINAL
+		ASSERT_EQ("Hello", part) << "message = " << i;
+		// Проверяем что сессия осталась годной
+		ASSERT_TRUE(decoder.valid()) << "message = " << i;
+	}
+	/**
+	 * Два потока с BFINAL в одной подаче: второй обязан разобраться следом за первым
+	 */
+	const std::string twice = (std::string("\xF3\x48\xCD\xC9\xC9\x07\x00", 7) + std::string("\xF3\x48\xCD\xC9\xC9\x07\x00\x00", 8) + tail);
+	// Подаём оба потока одной порцией
+	decoder.push(twice.data(), twice.size(), part);
+	// Проверяем что разобраны оба потока
+	ASSERT_EQ("HelloHello", part);
+	/**
+	 * Сообщение, разрезанное доставкой ровно после блока с BFINAL: первая порция
+	 * кончается концом потока движка, и сессия на миг становится завершённой, а
+	 * вторая порция несёт остаток сообщения и обязана быть разобрана, а не выброшена
+	 */
+	decoder.push(final.data(), 7, part);
+	// Проверяем что первая порция выдала данные
+	ASSERT_EQ("Hello", part);
+	// Подаём остаток сообщения
+	decoder.push(final.data() + 7, final.size() - 7, part);
+	// Проверяем что остаток разобран без отказа и без выхода
+	ASSERT_TRUE(decoder.valid());
+	// Подаём сообщение, ссылающееся на окно
+	decoder.push(shared.data(), shared.size(), part);
+	// Проверяем что остаток не был выброшен и окно по-прежнему на месте
+	ASSERT_EQ("Hello", part);
+	// Проверяем что сессия не объявила себя завершённой посреди обмена
+	ASSERT_FALSE(decoder.done());
 }

@@ -133,10 +133,13 @@ namespace awh {
 		 *             закрыл бы поток. Снятие хвоста — дело вызывающей стороны, знающей, отдаёт ли
 		 *             она сообщение в кадр WebSocket или хранит его целиком.
 		 *             На распаковку, напротив, хвост обязан прийти: принимающая сторона дописывает
-		 *             его к сообщению сама (RFC 7692, раздел 7.2.2). Сообщение, чей разбор кончился
-		 *             посреди блока, отвергается как оборванное; обрыв ровно на границе блока от
-		 *             целого сообщения не отличим ничем. Блок с BFINAL = 1 сообщения не закрывает:
-		 *             разбор продолжается с тем же окном LZ77, как того требует раздел 7.2.2.
+		 *             его к сообщению сама (RFC 7692, раздел 7.2.2). Сообщение признаётся целым,
+		 *             если разбор дошёл до конца потока (блок с BFINAL) ровно на последнем октете
+		 *             либо встал на границе блока при входе, кончающемся хвостом 00 00 FF FF.
+		 *             Иное отвергается как оборванное; неотличим лишь срез ровно по промежуточному
+		 *             Z_SYNC_FLUSH отправителя. Блок с BFINAL = 1 сообщения не закрывает: разбор
+		 *             продолжается с тем же окном LZ77, как того требует раздел 7.2.2, - в блочном
+		 *             режиме и в потоковой сессии одинаково.
 		 *
 		 *          7. Предел AWH_COMPRESSOR_MAX_OUTPUT ограничивает размер выхода, а не пик памяти.
 		 *             Движки, не знающие размера выхода наперёд, наращивают буфер удвоением, и пик
@@ -195,10 +198,13 @@ namespace awh {
 		 *             would close the stream. Stripping the tail is the business of the calling side, which
 		 *             knows whether it hands the message into a WebSocket frame or stores it whole.
 		 *             For decompression, on the contrary, the tail must be present: the receiving side
-		 *             appends it to the message itself (RFC 7692, section 7.2.2). A message whose parsing
-		 *             ends inside a block is rejected as truncated; a cut exactly at a block boundary cannot
-		 *             be told from a whole message by any means. A block with BFINAL = 1 does not close the
-		 *             message: parsing continues with the same LZ77 window, as section 7.2.2 requires.
+		 *             appends it to the message itself (RFC 7692, section 7.2.2). A message is taken as whole
+		 *             if parsing reached the end of the stream (a BFINAL block) exactly at the last octet, or
+		 *             stopped at a block boundary with the input ending in the 00 00 FF FF tail. Anything else
+		 *             is rejected as truncated; only a cut exactly at an intermediate Z_SYNC_FLUSH of the
+		 *             sender is indistinguishable. A block with BFINAL = 1 does not close the message: parsing
+		 *             continues with the same LZ77 window, as section 7.2.2 requires, in the block mode and in
+		 *             a streaming session alike.
 		 *
 		 *          7. The AWH_COMPRESSOR_MAX_OUTPUT limit bounds the output size, not peak memory. Engines
 		 *             that do not know the output size in advance grow the buffer by doubling, and the peak

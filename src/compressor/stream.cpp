@@ -191,6 +191,8 @@ namespace {
 			bool _init;
 			// Флаг завершённости потока
 			bool _done;
+			// Флаг «сырого» потока Deflate (RFC 1951) без заголовка и конца файла
+			bool _raw;
 			// Флаг направления (компрессия)
 			event_t _event;
 		private:
@@ -232,10 +234,17 @@ namespace {
 				if(!this->_init)
 					// Выводим отрицательный результат
 					return false;
-				// Если поток уже завершён
-				if(this->_done)
+				/**
+				 * Поток уже завершён. Исключение одно - распаковка «сырого» Deflate: блок с
+				 * BFINAL = 1 закрывает поток движка, но не обмен (RFC 7692, раздел 7.2.3.4),
+				 * и всё поданное следом обязано разбираться с прежним окном (раздел 7.2.2).
+				 * Окно к этому часу уже перенесено, и разбор продолжается
+				 */
+				if(this->_done && !(this->_raw && (this->_event == event_t::DECODE) && (size > 0)))
 					// Выводим положительный результат (ничего не делаем)
 					return true;
+				// Снимаем признак завершённости: разбор продолжается
+				this->_done = false;
 				// Результат операции
 				int32_t ret = Z_OK;
 				// Рабочий буфер
@@ -330,9 +339,34 @@ namespace {
 									return false;
 							}
 							// Если поток завершён
-							if((this->_done = (ret == Z_STREAM_END)))
+							if((this->_done = (ret == Z_STREAM_END))){
+								/**
+								 * У «сырого» Deflate конец потока - лишь конец блока с BFINAL: за ним
+								 * по RFC 7692 (раздел 7.2.3.4) следуют октеты того же сообщения, а
+								 * следующее сообщение разбирается с тем же окном LZ77 (раздел 7.2.2).
+								 * Поток заводится заново с прежним окном - тем же приёмом, что и в
+								 * блочном режиме, - и разбор продолжается, пока есть вход
+								 */
+								if(this->_raw){
+									// Длина окна LZ77 разобранного потока
+									uInt length = 0;
+									// Буфер под окно LZ77 наибольшего допустимого размера
+									vector <Bytef> window(static_cast <size_t> (1) << MAX_WBITS);
+									// Если окно не удалось перенести в заведённый заново поток
+									if((::inflateGetDictionary(&this->_zs, window.data(), &length) != Z_OK) || (::inflateReset(&this->_zs) != Z_OK) || ((length > 0) && (::inflateSetDictionary(&this->_zs, window.data(), length) != Z_OK)))
+										// Выводим отрицательный результат
+										return false;
+									// Если вход сообщения ещё не разобран
+									if(this->_zs.avail_in > 0){
+										// Снимаем признак завершённости
+										this->_done = false;
+										// Продолжаем разбор оставшихся октетов
+										continue;
+									}
+								}
 								// Выходим из цикла
 								break;
+							}
 							// Если больше нет входных данных, выходим
 							if((ret == Z_BUF_ERROR) && (this->_zs.avail_in == 0))
 								// Выходим из цикла
@@ -365,7 +399,7 @@ namespace {
 			 *
 			 */
 			explicit zlib_coder_t(const method_t method, const event_t event, const params_t & params) noexcept :
-			 _init(false), _done(false), _event(event) {
+			 _init(false), _done(false), _raw(method == method_t::DEFLATE), _event(event) {
 				// Вычисляем размер скользящего окна в зависимости от метода
 				int32_t windowBits = 0;
 				// Обнуляем весь поток Zlib
