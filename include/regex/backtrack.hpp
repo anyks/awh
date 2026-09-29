@@ -566,6 +566,48 @@
 
 /**
  * \~russian
+ * @brief Отметка полей мер работы, приращаемых одним разысканием
+ *
+ * @details Поля мер работы приращает лишь сборка с признаком «AWH_REGEX_PROBING»,
+ *          а сборка без признака их не читает, и Clang отвечает на такое закрытое
+ *          поле предупреждением. Отметка «[[maybe_unused]]» у нестатического поля
+ *          допустима стандартом C++17, но GCC до 11 её не принимает и отвечает
+ *          предупреждением об атрибуте отброшенном - у GCC 10.5 стенда NetBSD пятью
+ *          предупреждениями на всякую единицу трансляции, заголовок включающую.
+ *          О закрытом поле без чтения GCC не предупреждает вовсе, и отметка ему
+ *          не нужна; Clang, LCC и Visual Studio её принимают.
+ *
+ * \~english
+ * @brief Mark of the fields of the measures of work incremented by the investigation alone
+ *
+ * @details The fields of the measures of work are incremented only by a build with the
+ *          «AWH_REGEX_PROBING» flag, while a build without the flag does not read them, and
+ *          Clang answers such a private field with a warning. The «[[maybe_unused]]» mark on
+ *          a non-static data member is allowed by the C++17 standard, but GCC before 11 does
+ *          not accept it and answers with a warning about an ignored attribute - with GCC 10.5
+ *          of the NetBSD stand by five warnings per every translation unit including the
+ *          header. GCC does not warn about a private field that is never read at all and
+ *          needs no mark; Clang, LCC and Visual Studio accept it.
+ *
+ * \~
+ */
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__LCC__) && (__GNUC__ < 11)
+	/**
+	 * Поля не отмечаются: GCC до 11 отметки у поля не принимает
+	 */
+	#define AWH_REGEX_PROBED
+/**
+ * Если сборка ведётся прочими собирателями
+ */
+#else
+	/**
+	 * Поля отмечаются возможным отсутствием чтения
+	 */
+	#define AWH_REGEX_PROBED [[maybe_unused]]
+#endif
+
+/**
+ * \~russian
  * @brief Основное пространство имён
  *
  *
@@ -1089,15 +1131,15 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[maybe_unused]] size_t _saves;
+				AWH_REGEX_PROBED size_t _saves;
 				// Количество выполненных проверок принадлежности байта классу символов
-				[[maybe_unused]] size_t _checks;
+				AWH_REGEX_PROBED size_t _checks;
 				// Количество размещённых точек возврата
-				[[maybe_unused]] size_t _points_spent;
+				AWH_REGEX_PROBED size_t _points_spent;
 				// Количество заведённых кадров вызова подвыражения
-				[[maybe_unused]] size_t _frames_spent;
+				AWH_REGEX_PROBED size_t _frames_spent;
 				// Количество обходов цикла исполнения с возвратом
-				[[maybe_unused]] size_t _rounds;
+				AWH_REGEX_PROBED size_t _rounds;
 			private:
 				/**
 				 * \~russian

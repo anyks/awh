@@ -179,6 +179,49 @@
  *          сброшенный наполняется в месте прежнем, а указание, размещением выданное,
  *          ведёт на запись, размещённую последней.
  *
+ *          <b>Обязательный литерал разбор описывает узлами, а строку формирует однажды
+ *          и записью разом.</b> Строка на всяком уровне вложенности выглядит проще
+ *          описания: литерал цепочки тут же и готов. Но разбор сличает литералы одною
+ *          длиной, а строка нужна единственному - победившему; строки же формировались на
+ *          всяком уровне, дописыванием по байту, звавшим библиотеку на всякий байт,
+ *          и копировались при всякой смене наибольшего. Литерал описывается первым узлом
+ *          цепочки, числом смежных узлов литералов и длиной: смежные узлы лежат одной
+ *          цепочкой, и строку по описанию формирует обход её, отведя место разом
+ *          и записывая символы прямо. Запись разом не прихоть: у выражения из одного
+ *          литерала описание узлами есть проход лишний, и с дописыванием по байту такие
+ *          выражения у Clang на x86-64 собирались на 2-3.7 процента медленнее прежнего.
+ *          На выражении сценария сборки стенда разбор литерала брал 12.8 процента сборки,
+ *          ныне берёт 9.0. Закреплено тестом «Regex.EngineLiteralSpelling»: путь
+ *          «SPELLING» отмечает всякий узел, переведённый в строку литерала, и отметок
+ *          у выражения ровно столько, сколько узлов у литерала победившего, а литерал
+ *          и удаление сличаются с прежними в режиме байтов и UTF-8.
+ *
+ *          <b>Набор допустимых начальных байтов проходится без перехода на всяком байте,
+ *          а допустимые байты считаются словами по восемь байтов.</b> Класс символов
+ *          переносится в набор сложением принадлежности, а не записью по условию;
+ *          допустимые байты считаются сложением набора словами, а первый из них
+ *          отыскивается поиском значения истины. Перебор с переходом выглядит яснее,
+ *          а сумма по байту - проще суммы словами, но у выражения, начатого классом,
+ *          двести пятьдесят шесть переходов шли дважды - переносом класса и подсчётом, -
+ *          а сумму по байту Clang на x86-64 с одним SSE2 ведёт побайтно же, двумястами
+ *          пятьюдесятью шестью чтениями. Допустимость есть единица либо нуль - таково
+ *          представление значения логического у всех двоичных соглашений, под какие
+ *          модуль собирается, - и всякий байт суммы слов считает свою полосу, не больше
+ *          тридцати двух, без переноса в соседнюю. На выражении сценария сборки стенда
+ *          подсчёт брал 5.7 процента сборки, ныне 0.3, а набор байтов - 5.6, ныне 1.9.
+ *          Вместе с описанием литерала узлами сборка выражения сценария стенда быстрее на
+ *          11.0 процента на ARM64, на 11.6 у FreeBSD (clang 19), на 11.5 у openSUSE
+ *          (GCC 15), на 8.5 у Fedora (GCC 16) и на 1.9 на Эльбрусе (LCC 1.27), а у набора
+ *          из 353 выражений, образцов Grok и выражений стенда замеров, середина по
+ *          выражениям быстрее на 10.0 процента на ARM64, на 6.5-9.0 на x86-64 и на 1.4 на
+ *          Эльбрусе. Программы выходят теми же до байта: отпечатки 328 092 программ,
+ *          прямых и развёрнутых, - набора и 300 000 случайных выражений,
+ *          последовательности «\Q...\E» и «\R» в их числе, - сошлись с прежними.
+ *          Закреплено тестом «Regex.EnginePrefilterBytes»: набор, единственность и первый
+ *          байт сличаются с прежними, выбор с классом в первой ветви стережёт сложение -
+ *          ветвь вторая обходится прежде, - а выражение, оба допустимых байта которого
+ *          ложатся в одну полосу слова, стережёт сумму словами.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -346,6 +389,51 @@
  *          in its former place, and the pointer handed out by the placement leads to the
  *          record placed last.
  *
+ *          <b>The analysis describes the mandatory literal by nodes and forms the string once and
+ *          by writing it at one go.</b> A string at every level of nesting looks simpler than
+ *          a description: the literal of the chain is ready at once. But the analysis compares
+ *          literals by their length alone, while the string is needed by only one of them - the
+ *          winning one; the strings, on the contrary, were formed at every level by appending
+ *          a byte at a time, which called the library for every byte, and were copied at every
+ *          change of the longest one. The literal is described by the first node of the chain,
+ *          the number of adjacent literal nodes and the length: adjacent nodes lie in one chain,
+ *          and a walk along it forms the string from the description, reserving the room at once
+ *          and writing the characters directly. Writing at one go is not a whim: for an
+ *          expression made of a single literal the description by nodes is an extra pass, and
+ *          with appending a byte at a time such expressions were built 2-3.7 per cent slower than
+ *          before with Clang on x86-64. On the expression of the build scenario of the stand the
+ *          analysis of the literal took 12.8 per cent of the build and now takes 9.0. Pinned by
+ *          the test «Regex.EngineLiteralSpelling»: the «SPELLING» path marks every node turned
+ *          into the string of the literal, and an expression has exactly as many marks as the
+ *          winning literal has nodes, while the literal and the distance are compared with the
+ *          former ones in the byte mode and in UTF-8.
+ *
+ *          <b>The set of admissible starting bytes is walked without a branch on every byte, and
+ *          the admissible bytes are counted in words of eight bytes.</b> A character class is
+ *          carried into the set by adding the membership rather than by a conditional store; the
+ *          admissible bytes are counted by adding the set in words, and the first of them is
+ *          found by a search for the value of truth. A walk with a branch looks clearer, and
+ *          a bytewise sum simpler than a sum in words, but for an expression opened by a class
+ *          the two hundred and fifty six branches ran twice - carrying the class and counting, -
+ *          while Clang on x86-64 with SSE2 alone carries out a bytewise sum bytewise as well, by
+ *          two hundred and fifty six reads. The admissibility is one or zero - such is the
+ *          representation of a boolean value in every binary convention the module is built
+ *          for, - and every byte of the sum of words counts its own lane, not above thirty two,
+ *          without a carry into the next one. On the expression of the build scenario of the
+ *          stand the counting took 5.7 per cent of the build, now 0.3, and the set of bytes 5.6,
+ *          now 1.9. Together with the description of the literal by nodes the build of the stand
+ *          scenario expression is 11.0 per cent faster on ARM64, 11.6 on FreeBSD (clang 19), 11.5
+ *          on openSUSE (GCC 15), 8.5 on Fedora (GCC 16) and 1.9 on Elbrus (LCC 1.27), while for
+ *          the set of 353 expressions, Grok patterns and the expressions of the stand, the median
+ *          over the expressions is 10.0 per cent faster on ARM64, 6.5-9.0 on x86-64 and 1.4 on
+ *          Elbrus. The programs come out the same to the byte: the fingerprints of 328 092
+ *          programs, forward and reverse, - of the set and of 300 000 random expressions, with
+ *          «\Q...\E» and «\R» sequences among them, - matched the former ones. Pinned by the test
+ *          «Regex.EnginePrefilterBytes»: the set, the uniqueness and the first byte are compared
+ *          with the former ones, an alternation with a class in its first branch guards the
+ *          addition - the second branch is walked first, - and an expression both admissible
+ *          bytes of which fall into one lane of a word guards the sum in words.
+ *
  * \~
  *
  * @copyright Copyright © 2026
@@ -423,6 +511,51 @@ namespace awh {
 		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Compiler {
+			private:
+				/**
+				 * \~russian
+				 * @brief Литерал, описанный узлами синтаксического дерева
+				 *
+				 * @details Разбор обязательного литерала сличает литералы одною лишь
+				 *          длиной, а байты нужны единственному из них - победившему.
+				 *          Литерал описывается поэтому узлами: первым узлом цепочки,
+				 *          числом смежных узлов литералов, считая от него, и длиной
+				 *          в байтах, - а строка формируется однажды, по завершении
+				 *          разбора. Смежные узлы литералов лежат одной цепочкой,
+				 *          и первого узла с их числом довольно, чтобы литерал
+				 *          восстановить.
+				 *
+				 * \~english
+				 * @brief A literal described by the nodes of the syntax tree
+				 * @details The analysis of the mandatory literal compares literals by their length
+				 *          alone, while the bytes are needed by only one of them - the winning one.
+				 *          The literal is therefore described by nodes: the first node of the chain,
+				 *          the number of adjacent literal nodes counting from it, and the length in
+				 *          bytes, - and the string is formed once, when the analysis is over.
+				 *          Adjacent literal nodes lie in one chain, and the first node together
+				 *          with their number suffices to restore the literal.
+				 *
+				 * \~
+				 */
+				typedef struct Piece {
+					// Индекс первого узла литерала в арене узлов
+					node_id_t first;
+					// Количество смежных узлов литерала в цепочке
+					uint32_t count;
+					// Длина литерала в байтах
+					size_t length;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Piece() noexcept : first(INVALID_NODE), count(0), length(0) {}
+				} piece_t;
 			private:
 				// Объект разбора, предоставляющий синтаксическое дерево
 				const Parser * _parser;
@@ -1718,10 +1851,13 @@ namespace awh {
 				 *          её выводом, и поддерево узла обходится не более одного
 				 *          раза за разбор, а не столько раз, сколько у узла предков.
 				 *
+				 *          Литерал выводится описанием узлами, а не строкою: строку
+				 *          формирует вызывающий, однажды и лишь литералу победившему.
+				 *
 				 * @param id       индекс первого узла цепочки в арене узлов
 				 * @param distance наибольшее удаление литерала от начала совпадения
 				 * @param span     наибольшая длина сопоставления цепочки узлов в байтах
-				 * @return         обязательный литерал совпадения цепочки узлов
+				 * @return         описание обязательного литерала совпадения цепочки узлами дерева
 				 *
 				 * \~english
 				 * @brief Method of getting the mandatory literal of a chain of nodes with its distance and the chain length
@@ -1731,14 +1867,17 @@ namespace awh {
 				 *          it from the result, and the subtree of a node is walked at most once per
 				 *          analysis rather than as many times as the node has ancestors.
 				 *
+				 *          The literal is returned as a description by nodes rather than as a string:
+				 *          the string is formed by the caller, once and only for the winning literal.
+				 *
 				 * @param id       index of the first node of the chain in the node arena
 				 * @param distance the greatest distance of the literal from the beginning of a match
 				 * @param span     the greatest matching length of the chain of nodes in bytes
-				 * @return         mandatory literal of a match of the chain of nodes
+				 * @return         description of the mandatory literal of a match of the chain by the tree nodes
 				 *
 				 * \~
 				 */
-				string required(const node_id_t id, size_t & distance, size_t & span) const noexcept;
+				piece_t required(const node_id_t id, size_t & distance, size_t & span) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения наибольшей длины сопоставления узла
@@ -1819,7 +1958,7 @@ namespace awh {
 				 * @param distance наибольшее удаление литерала от начала сопоставления узла
 				 * @param span     наибольшая длина сопоставления узла в байтах
 				 * @param need     требование наибольшей длины сопоставления узла
-				 * @return         обязательный литерал совпадения узла
+				 * @return         описание обязательного литерала совпадения узла узлами дерева
 				 *
 				 * \~english
 				 * @brief Method of getting the mandatory literal of a node with its distance and the node length
@@ -1833,11 +1972,11 @@ namespace awh {
 				 * @param distance the greatest distance of the literal from the beginning of the node match
 				 * @param span     the greatest matching length of the node in bytes
 				 * @param need     requirement of the greatest matching length of the node
-				 * @return         mandatory literal of a match of the node
+				 * @return         description of the mandatory literal of a match of the node by the tree nodes
 				 *
 				 * \~
 				 */
-				string requiredNode(const node_id_t id, size_t & distance, size_t & span, const bool need) const noexcept;
+				piece_t requiredNode(const node_id_t id, size_t & distance, size_t & span, const bool need) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения литерала, сопоставляемого узлом целиком
@@ -1877,6 +2016,58 @@ namespace awh {
 				 * \~
 				 */
 				bool literal(const node_id_t id, string & result) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод измерения литерала, сопоставляемого узлом целиком
+				 *
+				 * @details Условия те же, что у дополнения литерала: узел одиночного
+				 *          символа либо последовательности символов, сопоставляемый
+				 *          с учётом регистра и представимый символами набора ASCII.
+				 *          Литерал не формируется: разбор обязательного литерала
+				 *          сличает литералы длиною, а строку формирует лишь победившему.
+				 *
+				 * @param id     индекс узла в арене узлов
+				 * @param length длина литерала узла в байтах
+				 * @return       результат сопоставления узла литералом
+				 *
+				 * \~english
+				 * @brief Method of measuring the literal matched by a node as a whole
+				 * @details The conditions are those of appending the literal: a node of a single
+				 *          character or of a character sequence, matched case-sensitively and
+				 *          representable by the characters of the ASCII set. The literal is not
+				 *          formed: the analysis of the mandatory literal compares literals by length
+				 *          and forms the string only for the winning one.
+				 * @param id     index of the node in the node arena
+				 * @param length length of the literal of the node in bytes
+				 * @return       result of the node being matched by a literal
+				 *
+				 * \~
+				 */
+				bool literal(const node_id_t id, size_t & length) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод формирования литерала по описанию его узлами
+				 *
+				 * @details Узлы литерала обходятся цепочкой от первого, и литерал всякого
+				 *          дописывается в формируемый. Обойдённый узел учитывается путём
+				 *          «SPELLING»: разбор литерала формирует строку однажды, литералу
+				 *          победившему, и узлов обходится столько, сколько их у него.
+				 *
+				 * @param piece  описание литерала узлами синтаксического дерева
+				 * @param result дополняемый литерал совпадения
+				 *
+				 * \~english
+				 * @brief Method of forming a literal from its description by nodes
+				 * @details The nodes of the literal are walked along the chain from the first one, and
+				 *          the literal of each is appended to the one being formed. A walked node is
+				 *          accounted by the «SPELLING» path: the analysis of the literal forms the
+				 *          string once, for the winning literal, and as many nodes are walked as it has.
+				 * @param piece  description of the literal by the nodes of the syntax tree
+				 * @param result literal of the match being appended
+				 *
+				 * \~
+				 */
+				void spell(const piece_t & piece, string & result) const noexcept;
 			private:
 				/**
 				 * \~russian

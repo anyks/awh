@@ -865,6 +865,14 @@ namespace awh {
 			 *          поскольку перебор набора на каждом сопоставлении обошёлся бы
 			 *          дороже самого отбора позиций.
 			 *
+			 *          Допустимые байты считаются сложением набора словами по
+			 *          восемь байтов, а первый из них отыскивается поиском байта:
+			 *          оба прохода ведутся без перехода на всяком байте. Перебор
+			 *          с переходом на всяком из двухсот пятидесяти шести байтов
+			 *          стоил сборке выражения сценария стенда 5.7 процента, а сумма
+			 *          побайтная, какую Clang на ARM64 ведёт вектором, у Clang
+			 *          на x86-64 с одним SSE2 оставалась побайтной же.
+			 *
 			 * \~english
 			 * @brief Method of finishing the building of the position selection
 			 * @details The indication of a single admissible byte is determined from the
@@ -872,33 +880,17 @@ namespace awh {
 			 *          since walking the set on every match would cost
 			 *          more than the position selection itself.
 			 *
+			 *          The admissible bytes are counted by adding the set in words of eight
+			 *          bytes, and the first of them is found by a byte search: both passes
+			 *          run without a branch on every byte. A walk with a branch on every one
+			 *          of the two hundred and fifty six bytes cost the build of the stand
+			 *          scenario expression 5.7 per cent, while a bytewise sum, which Clang on
+			 *          ARM64 carries out with vectors, stayed bytewise with Clang on x86-64
+			 *          with SSE2 alone.
+			 *
 			 * \~
 			 */
-			void finalize() noexcept {
-				// Количество допустимых начальных байтов совпадения
-				size_t count = 0;
-				/**
-				 * Выполняем перебор набора допустимых начальных байтов
-				 */
-				for(size_t i = 0; i < 256; i++) {
-					/**
-					 * Если байт в начале совпадения недопустим
-					 */
-					if(!this->bytes[i])
-						// Переходим к следующему байту набора
-						continue;
-					// Увеличиваем количество допустимых начальных байтов
-					count++;
-					/**
-					 * Если допустимый байт обнаружен впервые
-					 */
-					if(count == 1)
-						// Выполняем установку единственного допустимого байта
-						this->letter = static_cast <char> (i);
-				}
-				// Выполняем установку признака единственного допустимого байта
-				this->unique = (count == 1);
-			}
+			void finalize() noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод очистки предварительного отбора позиций
