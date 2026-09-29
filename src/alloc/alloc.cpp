@@ -3370,6 +3370,14 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	/**
 	 * @brief Метод выдачи памяти с требуемым выравниванием
 	 *
+	 * @note Пустой memptr намеренно НЕ проверяется: это ошибка звавшего. POSIX такого
+	 *       вызова не определяет, glibc и DragonFly объявляют аргумент `nonnull`, и
+	 *       GCC по этому объявлению проверку выбрасывал молча (-Wnonnull-compare) -
+	 *       запись шла по нулю уже после выдачи памяти. Эталоны (glibc, musl,
+	 *       jemalloc, tcmalloc) не проверяют его тоже. Обход через копию, о какой
+	 *       компилятор ничего не знает, возвращал бы EINVAL вопреки объявлению
+	 *       системы, и поведение расходилось бы с любым другим распределителем
+	 *
 	 * @param memptr    место под адрес выданной памяти
 	 * @param alignment требуемое выравнивание в байтах
 	 * @param size      требуемый размер в байтах
@@ -3377,10 +3385,6 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	 *
 	 */
 	extern "C" int posix_memalign(void ** memptr, size_t alignment, size_t size) AWH_ALLOC_THROW {
-		// Если записывать некуда
-		if(memptr == nullptr)
-			// Отвечаем отказом
-			return EINVAL;
 		/**
 		 * Сверяем выравнивание по договору
 		 *
