@@ -295,8 +295,16 @@ TEST(Regex, PrefilterDistance) {
 	// Создаём набор проверяемых выражений
 	const vector <Item> items = {
 		// Литерал в начале совпадения: удаление нулевое
-		{"HTTP/", "HTTP/", 0}, {"^needle", "needle", 0}, {"needle$", "needle", 0},
+		{"HTTP/", "HTTP/", 0}, {"\\bneedle", "needle", 0}, {"needle$", "needle", 0},
 		{"(?:foo)+bar", "foo", 0},
+		/**
+		 * Выражение, привязанное к позиции начала поиска: литерала нет
+		 *
+		 * @details Поиск у такого выражения литерала не читает, и литерал ему
+		 *          не выводится - смотрите «Regex.EngineAnchoredLiteral».
+		 *
+		 */
+		{"^needle", "", 0},
 		// Литерал за узлами постоянной длины
 		{"(?:HT|TP)/", "/", 2}, {"(?:HT|TPX)/", "/", 3}, {"a.c/def", "c/def", 2},
 		{"(a)(b)needle", "needle", 2}, {"(?:x|yy)(?:z|ww)LIT", "LIT", 4},

@@ -626,8 +626,12 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
      # вынесены отдельно, и без неё сборка валится на неразрешённых именах уже при
      # сборке набора проверок, тогда как сама библиотека собирается молча. Ставить
      # её отдельно, как это делается у Linux, не требуется - она входит в состав обеих систем
+     #
+     # Библиотека libc явно не указывается: собиратель ставит её сам после libgcc_s. Явная
+     # -lc выводила её раньше, и _Unwind_Resume связывался с раскруткой libc, а не libgcc_s:
+     # исключение, проходящее через кадр с деструктором, завершало процесс
      ##
-    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lsctp -lc")
+    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lsctp")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "")

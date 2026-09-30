@@ -43,6 +43,31 @@
  *          счётом остаётся и получением следующим очищается вновь. Закреплено
  *          тестом «Regex.StaticParserClassStorage».
  *
+ *          <b>Разбор не делает работы, итог какой выражению не нужен: число групп
+ *          считается по требованию, пропуск пробелов и разбор кванторов зовутся лишь
+ *          тогда, когда им есть что делать, а разрешение ссылок обходит узлы лишь видов,
+ *          разбором заведённых.</b> Предварительный проход по выражению целиком шёл
+ *          всякому разбору, а число групп, им снимаемое, нужно одной ссылке с номером от
+ *          десяти - различить её с восьмеричной последовательностью; ныне проход зовётся
+ *          этой ссылкой, однажды на разбор. Пропуск пробелов разбор зовёт на всяком
+ *          элементе трижды, а разбор кванторов - за всяким элементом, и у выражения без
+ *          режима «EXTENDED» и без квантора за элементом оба вызова не делали ничего:
+ *          режим и знак квантора проверяются ныне на месте вызова. Разрешение ссылок
+ *          трижды обходило узлы дерева в поисках условий, ссылок и вызовов по номеру;
+ *          набор видов узлов, заведением узла копимый, обходы эти отменяет у выражения,
+ *          узлов таких не заводившего. Разбор набора из 353 выражений - образцов Grok
+ *          и выражений стенда - от этого быстрее на 25.3 процента на ARM64, на 15.9
+ *          у FreeBSD (clang 19), на 22.3 у openSUSE (GCC 15), на 20.9 у Fedora (GCC 16)
+ *          и на 17.2 на Эльбрусе (LCC 1.27), сборка набора - на 5.5-8.3 процента,
+ *          медленнее не стало ни одно выражение, а сборка выражения сценария стенда на
+ *          ARM64 стала быстрее эталонной. Поля прохода и набора видов лежат в зазорах
+ *          прежних полей: размер объекта разбора и смещения прочих полей те же.
+ *          Закреплено тестом «Regex.StaticParserOnDemand»: путь «PRESCANNING» отмечает
+ *          проход, «SPACING» - пропуск в режиме «EXTENDED», «QUANTIFYING» - разбор
+ *          кванторов, «RESOLVING» - обход узлов разрешением ссылок, и у выражения, работы
+ *          им не дающего, отметок нет, а ссылки, вызовы и условия на группы
+ *          несуществующие отвергаются по-прежнему.
+ *
  * \~english
  * @brief Header file of the syntax parsing of regular expressions — the Parser class,
  *        which converts the text of a regular expression of the PCRE syntax into a syntax tree
@@ -70,6 +95,34 @@
  *          record of a class whose forming was interrupted by a parsing error stays past the
  *          count and is cleared again by the next getting. Pinned by the
  *          «Regex.StaticParserClassStorage» test.
+ *
+ *          <b>The parsing does no work whose result the expression does not need: the
+ *          number of groups is counted on demand, the skipping of whitespace and the
+ *          parsing of quantifiers are called only when they have something to do, and the
+ *          resolution of references walks only the nodes of the kinds created by the
+ *          parsing.</b> The preliminary pass over the whole expression ran for every
+ *          parsing, while the number of groups it takes is needed by a single reference
+ *          with a number from ten - to tell it apart from an octal sequence; now that
+ *          reference calls the pass, once per parsing. The parsing calls the skipping of
+ *          whitespace three times at every item, and the parsing of quantifiers after every
+ *          item, and for an expression without the «EXTENDED» mode and without a quantifier
+ *          after the item both calls did nothing: the mode and the sign of the quantifier
+ *          are now checked at the call site. The resolution of references walked the nodes
+ *          of the tree three times in search of conditions, references and calls by number;
+ *          the set of kinds of nodes, gathered by creating a node, cancels those walks for
+ *          an expression that created no such nodes. Parsing the set of 353 expressions -
+ *          Grok patterns and expressions of the stand - is faster by this by 25.3 per cent
+ *          on ARM64, by 15.9 on FreeBSD (clang 19), by 22.3 on openSUSE (GCC 15), by 20.9
+ *          on Fedora (GCC 16) and by 17.2 on Elbrus (LCC 1.27), building the set by 5.5-8.3
+ *          per cent, no expression became slower, and the build of the expression of the
+ *          stand scenario on ARM64 became faster than the reference one. The fields of the
+ *          pass and of the set of kinds lie in the gaps of the former fields: the size of
+ *          the parsing object and the offsets of the other fields stay the same. Pinned by
+ *          the test «Regex.StaticParserOnDemand»: the «PRESCANNING» path marks the pass,
+ *          «SPACING» the skipping in the «EXTENDED» mode, «QUANTIFYING» the parsing of
+ *          quantifiers, «RESOLVING» a walk of the nodes by the resolution of references,
+ *          and an expression that gives them no work has no marks, while references, calls
+ *          and conditions to nonexistent groups are refused as before.
  *
  * \~
  *
@@ -218,7 +271,7 @@ namespace awh {
 				// Количество захватывающих групп, обнаруженных к текущей позиции разбора
 				uint32_t _captures;
 			private:
-				// Общее количество захватывающих групп, определённое предварительным проходом
+				// Общее количество захватывающих групп, определённое предварительным проходом по требованию
 				uint32_t _total;
 			private:
 				/**
@@ -350,6 +403,31 @@ namespace awh {
 			private:
 				// Количество классов символов текущего разбора
 				uint32_t _classCount;
+				/**
+				 * \~russian
+				 * @brief Набор видов узлов, разбором заведённых
+				 *
+				 * @details Разряд набора отвечает виду узла: номер разряда есть значение
+				 *          вида. Разряд выставляет заведение узла, и разрешение ссылок
+				 *          обходит узлы дерева в поисках условий, ссылок и вызовов по
+				 *          номеру лишь тогда, когда узел такого вида разбором заводился.
+				 * @note Поле лежит в зазоре за счётом классов намеренно: размер объекта
+				 *       и смещения прочих полей прежние - смотрите поле «_verbs».
+				 *
+				 * \~english
+				 * @brief Set of the kinds of nodes created by the parsing
+				 * @details A bit of the set answers a kind of node: the number of the bit is
+				 *          the value of the kind. Creating a node sets the bit, and the
+				 *          resolution of references walks the nodes of the tree in search of
+				 *          conditions, references and calls by number only when a node of such
+				 *          a kind was created by the parsing.
+				 * @note The field lies in the gap after the count of the classes deliberately:
+				 *       the size of the object and the offsets of the other fields stay as
+				 *       before - see the «_verbs» field.
+				 *
+				 * \~
+				 */
+				uint32_t _kinds;
 			private:
 				// Хранилище имён именованных групп
 				vector <string> _names;
@@ -385,6 +463,34 @@ namespace awh {
 				 * \~
 				 */
 				bool _barrier;
+				/**
+				 * \~russian
+				 * @brief Флаг выполненного предварительного прохода
+				 *
+				 * @details Предварительный проход считает захватывающие группы выражения,
+				 *          а число их нужно одной лишь ссылке с номером от десяти: её
+				 *          разбор различает с восьмеричной последовательностью по числу
+				 *          групп. Проход ведётся по требованию, первою такой ссылкой,
+				 *          и флаг отмечает, что число групп уже снято.
+				 * @note Поля прохода лежат в зазоре за признаком разрыва связи квантора
+				 *       намеренно: размер объекта и смещения прочих полей прежние.
+				 *
+				 * \~english
+				 * @brief Flag of the performed preliminary pass
+				 * @details The preliminary pass counts the capturing groups of the expression,
+				 *          while only a reference with a number from ten needs their number:
+				 *          the parsing tells it apart from an octal sequence by the number of
+				 *          groups. The pass is performed on demand, by the first such reference,
+				 *          and the flag marks that the number of groups is already taken.
+				 * @note The fields of the pass lie in the gap after the flag of the quantifier
+				 *       binding break deliberately: the size of the object and the offsets of
+				 *       the other fields stay as before.
+				 *
+				 * \~
+				 */
+				bool _counted;
+				// Позиция начала предварительного прохода: за начальными указаниями выражения
+				uint32_t _begin;
 			private:
 				// Набор отложенных ссылок на именованные группы
 				vector <deferred_t> _deferred;
@@ -1410,21 +1516,37 @@ namespace awh {
 				bool isQuantifier(const size_t pos) const noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод пропуска пробельных символов и комментариев
+				 * @brief Посредник пропуска пробельных символов и комментариев
 				 *
 				 * @details Пропуск выполняется только в режиме «EXTENDED», в котором
 				 *          пробельные символы выражения игнорируются, а символ «#»
-				 *          начинает комментарий до конца строки.
+				 *          начинает комментарий до конца строки. Режим проверяется
+				 *          на месте вызова, а пропуск ведёт «skipExtended»: разбор
+				 *          зовёт пропуск на всяком элементе выражения трижды, а режим
+				 *          этот у выражений почти всех снят.
 				 *
 				 * \~english
-				 * @brief Method of skipping whitespace characters and comments
+				 * @brief Intermediary of skipping whitespace characters and comments
 				 * @details The skipping is performed only in the «EXTENDED» mode, in which
 				 *          the whitespace characters of the expression are ignored, and the «#» character
-				 *          begins a comment up to the end of the line.
+				 *          begins a comment up to the end of the line. The mode is checked at
+				 *          the call site, while the skipping is done by «skipExtended»: the
+				 *          parsing calls the skipping three times at every item of the expression,
+				 *          while almost every expression has that mode off.
 				 *
 				 * \~
 				 */
-				void skipSpaces() noexcept;
+				AWH_REGEX_INLINE void skipSpaces() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод пропуска пробельных символов и комментариев в режиме «EXTENDED»
+				 *
+				 * \~english
+				 * @brief Method of skipping whitespace characters and comments in the «EXTENDED» mode
+				 *
+				 * \~
+				 */
+				void skipExtended() noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1473,7 +1595,9 @@ namespace awh {
 				 *
 				 * @details Проход определяет общее количество захватывающих групп выражения.
 				 *          Количество групп требуется для различения ссылок на захваченные
-				 *          группы и восьмеричных экранированных последовательностей.
+				 *          группы и восьмеричных экранированных последовательностей. Проход
+				 *          ведётся по требованию - методом «total» - и начинается с позиции
+				 *          за начальными указаниями выражения.
 				 *
 				 * @return результат выполнения предварительного прохода
 				 *
@@ -1481,12 +1605,59 @@ namespace awh {
 				 * @brief Method of the preliminary pass over the regular expression
 				 * @details The pass determines the total number of capturing groups of the expression.
 				 *          The number of groups is required to tell apart the references to captured
-				 *          groups and the octal escaped sequences.
+				 *          groups and the octal escaped sequences. The pass is performed on demand -
+				 *          by the «total» method - and starts from the position after the leading
+				 *          directives of the expression.
 				 * @return result of performing the preliminary pass
 				 *
 				 * \~
 				 */
 				bool prescan() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения общего количества захватывающих групп выражения
+				 *
+				 * @details Количество снимается предварительным проходом при первом
+				 *          обращении и запоминается: нужно оно одной лишь ссылке с номером
+				 *          от десяти, а проход по выражению целиком прежде шёл всякому
+				 *          разбору.
+				 *
+				 * @return общее количество захватывающих групп выражения
+				 *
+				 * \~english
+				 * @brief Method of extracting the total number of capturing groups of the expression
+				 * @details The number is taken by the preliminary pass at the first request and
+				 *          remembered: only a reference with a number from ten needs it, while
+				 *          the pass over the whole expression used to run for every parsing.
+				 * @return total number of capturing groups of the expression
+				 *
+				 * \~
+				 */
+				uint32_t total() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки нужды обхода узлов вида при разрешении ссылок
+				 *
+				 * @details Разрешение ссылок обходит узлы дерева в поисках условий, ссылок
+				 *          и вызовов по номеру, и обход нужен лишь тогда, когда узел такого
+				 *          вида разбором заводился. Всякий нужный обход отмечается путём
+				 *          исполнения «RESOLVING».
+				 *
+				 * @param type вид узлов синтаксического дерева
+				 * @return     результат проверки нужды обхода узлов
+				 *
+				 * \~english
+				 * @brief Method of checking the need to walk the nodes of a kind when resolving references
+				 * @details The resolution of references walks the nodes of the tree in search of
+				 *          conditions, references and calls by number, and a walk is needed only
+				 *          when a node of such a kind was created by the parsing. Every needed walk
+				 *          is marked by the «RESOLVING» execution path.
+				 * @param type kind of the nodes of the syntax tree
+				 * @return     result of checking the need to walk the nodes
+				 *
+				 * \~
+				 */
+				AWH_REGEX_INLINE bool walks(const node_t type) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод разбора начальных указаний регулярного выражения

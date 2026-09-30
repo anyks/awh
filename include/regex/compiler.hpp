@@ -248,6 +248,36 @@
  *          ветвь вторая обходится прежде, - а выражение, оба допустимых байта которого
  *          ложатся в одну полосу слова, стережёт сумму словами.
  *
+ *          <b>Обязательный литерал выражению, привязанному к позиции начала поиска, не
+ *          выводится, и привязка распознаётся оттого прежде анализа отбора позиций.</b>
+ *          Литерал - свойство выражения, и выводить его естественно всякому, но поиск
+ *          читает его лишь у выражения без привязки: привязанному проверка литералом не
+ *          дана намеренно - попытка у него одна и решает вопрос целиком, тогда как
+ *          проверка проходила бы текст до конца, - а исполнение с возвратом и порождённый
+ *          машинный код при привязке литерал минуют тоже. Эталон PCRE2 обязательный знак
+ *          выводит и привязанному выражению и сверяет его с текстом, если остаток текста
+ *          короче 5000 байтов; у нас проверки этой нет. Разбор же литерала - спуск по
+ *          дереву целиком, и выражению сценария сборки стенда, к началу привязанному, он
+ *          стоил 9.5 процента сборки. Без него сборка выражения этого быстрее на 10.9
+ *          процента на ARM64, на 13.1 у FreeBSD (clang 19), на 11.9 у openSUSE (GCC 15),
+ *          на 12.8 у Fedora (GCC 16) и на 9.8 на Эльбрусе (LCC 1.27); из набора в 353
+ *          выражения, образцов Grok и выражений стенда замеров, к началу привязаны пять,
+ *          и сумма набора вровень. Распознавание привязки читает одни лишь режимы
+ *          и дерево разбора, а из проходов, следующих за анализом, признак её читает одно
+ *          распознавание привязки к началу строки. Набор допустимых начальных байтов
+ *          и ведущий литерал привязанному выражению выводятся по-прежнему: отказ по байту
+ *          в позиции поиска и выбор пути исполнения их читают. Программы выходят теми же
+ *          до байта, кроме литерала и удаления у привязанных: отпечатки 716 361
+ *          программы - набора и 200 000 случайных выражений, всякое без приставки
+ *          и с пятью приставками начала, «^», «\A», «\G», «(?m)^» и «^(?:...)», - сошлись
+ *          с прежними. Закреплено тестом «Regex.EngineAnchoredLiteral»: у выражений,
+ *          привязанных знаком «^», последовательностями «\A» и «\G» и режимом «ANCHORED»,
+ *          литерал пуст, удаление нулевое и в строку литерала не переведён ни один узел,
+ *          а у выражений без привязки - начала строки в режиме многострочном и выбора
+ *          с ветвью непривязанной - литерал и удаление прежние. Получит поиск проверку
+ *          литералом и у выражения привязанного - литерал придётся выводить ему вновь,
+ *          и тест на то укажет.
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -485,6 +515,42 @@
  *          with the former ones, an alternation with a class in its first branch guards the
  *          addition - the second branch is walked first, - and an expression both admissible
  *          bytes of which fall into one lane of a word guards the sum in words.
+ *
+ *          <b>The mandatory literal is not derived for an expression anchored to the search
+ *          start position, and the anchoring is therefore recognised before the analysis of
+ *          the selection of positions.</b> The literal is a property of the expression, and
+ *          it is natural to derive it for every one, but the search reads it only for an
+ *          expression without anchoring: an anchored one is deliberately given no check by
+ *          the literal - it has a single attempt that settles the question entirely,
+ *          whereas the check would walk the text to its end, - while the backtracking
+ *          execution and the generated machine code skip the literal under anchoring as
+ *          well. The reference PCRE2 derives the mandatory code unit for an anchored
+ *          expression too and checks it against the text if the remainder of the text is
+ *          shorter than 5000 bytes; we have no such check. The analysis of the literal, on
+ *          the other hand, is a descent through the whole tree, and for the expression of
+ *          the build scenario of the stand, anchored to the start, it cost 9.5 per cent of
+ *          the build. Without it the build of that expression is 10.9 per cent faster on
+ *          ARM64, 13.1 on FreeBSD (clang 19), 11.9 on openSUSE (GCC 15), 12.8 on Fedora
+ *          (GCC 16) and 9.8 on Elbrus (LCC 1.27); of the set of 353 expressions, Grok
+ *          patterns and the expressions of the stand, five are anchored to the start, and
+ *          the sum over the set is on a par. The recognition of anchoring reads only the
+ *          modes and the syntax tree, and of the passes following the analysis only the
+ *          recognition of the anchoring to the start of a line reads its indication. The
+ *          set of admissible starting bytes and the leading literal are derived for an
+ *          anchored expression as before: the refusal by the byte at the search position
+ *          and the choice of the execution path read them. The programs come out the same
+ *          to the byte, save for the literal and the distance of anchored ones: the
+ *          fingerprints of 716 361 programs - of the set and of 200 000 random expressions,
+ *          each without a prefix and with five prefixes of the start, «^», «\A», «\G»,
+ *          «(?m)^» and «^(?:...)», - matched the former ones. Pinned by the test
+ *          «Regex.EngineAnchoredLiteral»: for expressions anchored by the «^» sign, by the
+ *          «\A» and «\G» sequences and by the «ANCHORED» mode the literal is empty, the
+ *          distance is zero and no node is turned into the string of the literal, while for
+ *          expressions without anchoring - the start of a line in the multiline mode and an
+ *          alternation with an unanchored branch - the literal and the distance are the
+ *          former ones. Should the search get a check by the literal for an anchored
+ *          expression too, the literal will have to be derived for it again, and the test
+ *          will point that out.
  *
  * \~
  *
@@ -1526,14 +1592,21 @@ namespace awh {
 				 * @details Метод определяет набор байтов, допустимых в начале совпадения,
 				 *          и обязательный литерал совпадения. Набор байтов не применяется,
 				 *          если выражение допускает совпадение нулевой длины, поскольку
-				 *          такое совпадение возможно в любой позиции текста.
+				 *          такое совпадение возможно в любой позиции текста. Литерал
+				 *          выводится лишь выражению, к позиции начала поиска не привязанному:
+				 *          у привязанного поиск литерала не читает, и признак привязки
+				 *          распознаётся прежде анализа. Смотрите раздел «Намеренные решения».
 				 *
 				 * \~english
 				 * @brief Method of building the preliminary selection of positions
 				 * @details The method determines the set of bytes admissible at the beginning of a match
 				 *          and the mandatory literal of a match. The set of bytes is not applied
 				 *          if the expression admits a match of zero length, since
-				 *          such a match is possible at any position of the text.
+				 *          such a match is possible at any position of the text. The literal
+				 *          is derived only for an expression not anchored to the search start position:
+				 *          for an anchored one the search does not read the literal, and the indication
+				 *          of anchoring is recognised before the analysis. See the section «Deliberate
+				 *          decisions».
 				 *
 				 * \~
 				 */
@@ -1738,13 +1811,17 @@ namespace awh {
 				 *
 				 * @details Признак устанавливается выражению, начинающемуся привязкой
 				 *          к началу текста на всех путях, а также выражению, сопоставляемому
-				 *          в режиме «ANCHORED».
+				 *          в режиме «ANCHORED». Распознавание идёт прежде анализа отбора
+				 *          позиций: по признаку этому анализ решает, выводить ли обязательный
+				 *          литерал.
 				 *
 				 * \~english
 				 * @brief Method of recognising an expression anchored to the position where the search starts
 				 * @details The indication is set for an expression beginning with an anchor
 				 *          to the beginning of the text on all paths, as well as for an expression matched
-				 *          in the «ANCHORED» mode.
+				 *          in the «ANCHORED» mode. The recognition runs before the analysis of the
+				 *          selection of positions: by this indication the analysis decides whether to
+				 *          derive the mandatory literal.
 				 *
 				 * \~
 				 */

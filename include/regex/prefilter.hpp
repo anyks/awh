@@ -776,7 +776,24 @@ namespace awh {
 			bool utf;
 			// Набор байтов, допустимых в начале совпадения
 			bool bytes[256];
-			// Литерал, присутствующий в любом совпадении выражения
+			/**
+			 * \~russian
+			 * Литерал, присутствующий в любом совпадении выражения
+			 *
+			 * @details Выражению, привязанному к позиции начала поиска, литерал
+			 *          не выводится и остаётся пустым: попытка у такого выражения
+			 *          одна, и поиск литерала у него не читает. Смотрите раздел
+			 *          «Намеренные решения» компилятора.
+			 *
+			 * \~english
+			 * Literal present in every match of the expression
+			 * @details For an expression anchored to the search start position the literal
+			 *          is not derived and stays empty: such an expression has a single
+			 *          attempt, and the search does not read its literal. See the section
+			 *          «Deliberate decisions» of the compiler.
+			 *
+			 * \~
+			 */
 			string literal;
 			/**
 			 * \~russian

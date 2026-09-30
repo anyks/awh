@@ -32,6 +32,7 @@
  */
 #include <regex/common.hpp>
 #include <regex/text.hpp>
+#include <regex/probe.hpp>
 #include <regex/parser.hpp>
 #include <regex/prefilter.hpp>
 
@@ -370,6 +371,123 @@ TEST(Regex, StaticParserClassStorage) {
 	// Выполняем проверку выдачи записи за счётом пустым классом
 	EXPECT_TRUE(parser.charClass(0).ranges.empty());
 	EXPECT_FALSE(parser.charClass(0).negative);
+}
+
+/**
+ * @brief Проверка работы разбора по требованию
+ *
+ * @details Проверка закрепляет намеренное решение: разбор не делает работы, итог
+ *          какой выражению не нужен. Предварительный проход, считающий группы,
+ *          ведётся лишь ссылкой с номером от десяти и однажды на разбор; пропуск
+ *          пробелов - лишь в режиме «EXTENDED»; разбор кванторов - лишь за
+ *          элементом, за каким следует знак квантора, либо в режиме «EXTENDED»;
+ *          разрешение ссылок обходит узлы лишь того вида, какой разбор заводил.
+ *          Всякая такая работа отмечается своим путём исполнения: разбор, звавший
+ *          работу всякому выражению, дал бы отметки там, где их быть не должно.
+ *          Разбор же, работу ошибочно снявший, выносит иной исход: число групп
+ *          различает ссылку «\10» с восьмеричной последовательностью, режим
+ *          «EXTENDED» отделяет квантор от элемента пробелом, а обход узлов
+ *          находит ссылки, вызовы и условия на группы несуществующие.
+ *
+ */
+TEST(Regex, StaticParserOnDemand) {
+	/**
+	 * Выполняем проверку заведения учёта путей исполнения
+	 *
+	 * @details Отказ здесь намеренный: набор проверок собирается с признаком
+	 *          «AWH_REGEX_PROBING» всегда, и молчаливый пропуск проверки равен
+	 *          молчаливому отключению того, что она стережёт.
+	 *
+	 */
+	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	// Получаем режим игнорирования пробельных символов
+	const uint32_t extended = static_cast <uint32_t> (regex::flag_t::EXTENDED);
+	// Число отметок, какое лишь больше нуля и точным не сличается
+	const int64_t some = -1;
+	/**
+	 * @brief Ожидания исхода разбора и отметок путей исполнения
+	 *
+	 * @details Разборы кванторов в режиме «EXTENDED» идут за всяким элементом,
+	 *          и число их сличается пределом снизу, а не точно.
+	 *
+	 */
+	const struct {
+		// Разбираемое регулярное выражение
+		const char * pattern;
+		// Режим разбора регулярного выражения
+		uint32_t flags;
+		// Ожидаемый исход разбора
+		bool parsed;
+		// Ожидаемое число предварительных проходов
+		int64_t prescanning;
+		// Ожидаемое число пропусков пробельных символов в режиме «EXTENDED»
+		int64_t spacing;
+		// Ожидаемое число разборов кванторов
+		int64_t quantifying;
+		// Ожидаемое число обходов узлов разрешением ссылок
+		int64_t resolving;
+	} samples[] = {
+		{"abc(d)e", 0, true, 0, 0, 0, 0},
+		{"a+b?c{2}", 0, true, 0, 0, 3, 0},
+		{"a{x", 0, true, 0, 0, 1, 0},
+		{"(a)\\1", 0, true, 0, 0, 0, 1},
+		{"(a)\\10\\11", 0, true, 1, 0, 0, 0},
+		{"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)\\10", 0, true, 1, 0, 0, 1},
+		{"(a)(?1)", 0, true, 0, 0, 0, 1},
+		{"(a)(?(1)b|c)", 0, true, 0, 0, 0, 1},
+		{"(a)(?(1)\\1|c)", 0, true, 0, 0, 0, 2},
+		{"(?x)a +b", 0, true, 0, some, some, 0},
+		{"a +b", extended, true, 0, some, some, 0},
+		{"(a)\\2", 0, false, 0, 0, 0, 1},
+		{"(a)(?2)", 0, false, 0, 0, 0, 1},
+		{"(a)(?(2)b|c)", 0, false, 0, 0, 0, 1}
+	};
+	// Создаём объект разбора регулярного выражения
+	regex::parser_t parser;
+	/**
+	 * Выполняем обход ожиданий
+	 */
+	for(const auto & sample : samples) {
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем проверку исхода разбора регулярного выражения
+		ASSERT_EQ(parser.parse(sample.pattern, sample.flags), sample.parsed) << sample.pattern;
+		/**
+		 * Если разбор выражения отвергнут
+		 */
+		if(!sample.parsed) {
+			// Выполняем проверку кода отказа ссылкой на группу несуществующую
+			EXPECT_EQ(parser.error(), regex::error_t::BAD_BACKREFERENCE) << sample.pattern;
+		}
+		/**
+		 * @brief Сличение числа отметок пути с ожиданием
+		 *
+		 * @details Ожидание «some» требует отметок больше нуля, прочие - числа точного.
+		 *
+		 */
+		auto expect = [&sample](const regex::path_t path, const int64_t wanted, const char * name) noexcept -> void {
+			// Получаем число отметок пути исполнения
+			const uint64_t count = regex::probe_t::count(path);
+			/**
+			 * Если ожидание требует отметок больше нуля
+			 */
+			if(wanted < 0) {
+				// Выполняем проверку наличия отметок
+				EXPECT_GT(count, static_cast <uint64_t> (0)) << name << ": " << sample.pattern;
+			/**
+			 * Если ожидание требует числа отметок точного
+			 */
+			} else {
+				// Выполняем проверку точного числа отметок
+				EXPECT_EQ(count, static_cast <uint64_t> (wanted)) << name << ": " << sample.pattern;
+			}
+		};
+		// Выполняем сличение отметок путей разбора
+		expect(regex::path_t::PRESCANNING, sample.prescanning, "PRESCANNING");
+		expect(regex::path_t::SPACING, sample.spacing, "SPACING");
+		expect(regex::path_t::QUANTIFYING, sample.quantifying, "QUANTIFYING");
+		expect(regex::path_t::RESOLVING, sample.resolving, "RESOLVING");
+	}
 }
 
 /**
