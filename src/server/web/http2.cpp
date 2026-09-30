@@ -77,6 +77,10 @@ void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid
 				// Выполняем удаление сессии подключения
 				this->_ws2._sessions.erase(j);
 		}
+		// Снимаем остановку отправки сессии
+		this->_blocked.erase(bid);
+		// Снимаем запланированное продолжение отправки
+		this->_unblocks.erase(bid);
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -230,6 +234,8 @@ void awh::server::Http2::writeEvents(const char * buffer, const size_t size, con
 				} break;
 				// Если протокол подключения соответствует HTTP/2
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Если отправка сессии остановлена заполненной очередью, планируем продолжение
+					this->unblocking(bid);
 					// Выполняем поиск агента которому соответствует клиент
 					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
@@ -244,8 +250,8 @@ void awh::server::Http2::writeEvents(const char * buffer, const size_t size, con
 								if(!options->close && options->stopped){
 									// Устанавливаем флаг закрытия подключения
 									options->close = !options->close;
-									// Принудительно выполняем отключение лкиента
-									const_cast <server::core_t *> (this->_core)->close(bid);
+									// Закрываем подключение после отправки очереди: остаток ответа может ещё не уйти в сокет
+									const_cast <server::core_t *> (this->_core)->finish(bid);
 								}
 							} break;
 							// Если протокол соответствует протоколу Websocket

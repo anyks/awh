@@ -402,7 +402,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 							/**
 							 * Выполняем перебор всего списка записей для которых есть неотправленные данные
 							 */
-							while(!record.second.empty()){
+							while(!record.second.empty() && !self->_wouldblock){
 								// Если на принимаемой стороне достаточно памяти для получения данных
 								if(self->available(record.first) >= record.second.front().first)
 									// Выполняем отправку данных полезной нагрузки для указанного потока
@@ -420,7 +420,7 @@ int32_t awh::Http2::frameRecv([[maybe_unused]] nghttp2_session * session, const 
 							/**
 							 * Выполняем перебор всего списка записей которые ещё не отправленны
 							 */
-							while(!i->second.empty()){
+							while(!i->second.empty() && !self->_wouldblock){
 								// Если на принимаемой стороне достаточно памяти для получения данных
 								if(self->available(i->first) >= i->second.front().first)
 									// Выполняем отправку записи для указанного потока
@@ -908,6 +908,20 @@ int32_t awh::Http2::header([[maybe_unused]] nghttp2_session * session, const ngh
 ssize_t awh::Http2::send([[maybe_unused]] nghttp2_session * session, const uint8_t * buffer, const size_t size, [[maybe_unused]] const int32_t flags, void * ctx) noexcept {
 	// Получаем объект родительского объекта
 	http2_t * self = reinterpret_cast <http2_t *> (ctx);
+	/**
+	 * Если очередь отправки заполнена, фрейм не отдаётся: nghttp2 сохраняет его и повторяет
+	 * при следующей отправке. Прежде фрейм уходил в заполненную очередь и выбрасывался
+	 */
+	if(self->_callback.is("writable") && !self->_callback.call <bool (const size_t)> ("writable", size)){
+		/**
+		 * Помечаем остановку отправки: пока она действует, новые данные потоков в сессию не
+		 * ставятся. Иначе цикл постановки записей крутился вхолостую: запись снимается только
+		 * при упаковке фрейма, а остановленная сессия фреймы не упаковывает
+		 */
+		self->_wouldblock = true;
+		// Сообщаем, что отправка откладывается
+		return NGHTTP2_ERR_WOULDBLOCK;
+	}
 	// Если функция обратного вызова установлена
 	if(self->_callback.is("send"))
 		// Выполняем функцию обратного вызова
@@ -1074,6 +1088,46 @@ bool awh::Http2::commit([[maybe_unused]] const event_t event) noexcept {
 	}
 	// Выводим результат
 	return true;
+}
+/**
+ * @brief Метод продолжения отправки фреймов, отложенных из-за заполненной очереди
+ *
+ * @note Если функция обратного вызова «writable» сообщает, что очередь отправки
+ *       заполнена, фрейм не отдаётся, а сессия сохраняет его до этого вызова
+ *
+ * @return результат отправки
+ */
+bool awh::Http2::resume() noexcept {
+	// Если сессия не инициализированна
+	if(this->_session == nullptr)
+		// Выводим результат
+		return false;
+	// Снимаем остановку отправки
+	this->_wouldblock = false;
+	// Выполняем активацию события отправки данных
+	this->activate(event_t::SEND_DATA);
+	// Выполняем отправку отложенных фреймов
+	const bool result = this->commit(event_t::SEND_DATA);
+	/**
+	 * Выполняем перебор записей потоков, данные которых ждали снятия остановки
+	 */
+	for(auto & record : this->_records){
+		/**
+		 * Выполняем постановку записей, пока отправка не остановлена снова
+		 */
+		while(result && !record.second.empty() && !this->_wouldblock){
+			// Если на принимаемой стороне достаточно памяти для получения данных
+			if(this->available(record.first) >= record.second.front().first)
+				// Выполняем отправку данных полезной нагрузки для указанного потока
+				this->submit(record.first, record.second.front().second);
+			// Если данных не достаточно, выходим
+			else break;
+		}
+	}
+	// Выполняем завершение события отправки данных
+	this->completed(event_t::SEND_DATA);
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод завершения выполнения операции
@@ -1797,7 +1851,7 @@ bool awh::Http2::sendData(const int32_t id, const uint8_t * buffer, const size_t
 						/**
 						 * Выполняем перебор всего списка записей которые ещё не отправленны
 						 */
-						while(!i->second.empty()){
+						while(!i->second.empty() && !this->_wouldblock){
 							// Если на принимаемой стороне достаточно памяти для получения данных
 							if(this->available(i->first) >= i->second.front().first)
 								// Выполняем отправку записи для указанного потока
@@ -2238,6 +2292,8 @@ void awh::Http2::callback(const callback_t & callback) noexcept {
 	} else {
 		// Устанавливаем функцию обратного вызова при отправки сообщения
 		this->_callback.set("send", callback);
+		// Устанавливаем функцию обратного вызова проверки места в очереди отправки
+		this->_callback.set("writable", callback);
 		// Устанавливаем функцию обратного вызова при закрытии потока
 		this->_callback.set("close", callback);
 		// Устанавливаем функцию обратного вызова начала открытии потока

@@ -2084,6 +2084,8 @@ void awh::server::Core::close(const uint64_t bid) noexcept {
 	const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
 	// Выполняем удаление таймера ожидания получения данных
 	this->clearTimeout(bid);
+	// Снимаем отложенное закрытие подключения
+	this->_finishing.erase(bid);
 	/**
 	 * Определяем тип сокета
 	 */
@@ -3111,7 +3113,42 @@ void awh::server::Core::write(const uint64_t bid) noexcept {
 					this->flush(bid, 5);
 				}
 			}
+			// Если подключение закрывается после отправки, а очередь полезной нагрузки опустела
+			if(this->has(bid) && (this->_finishing.count(bid) > 0)){
+				// Ещем для указанного потока очередь полезной нагрузки
+				auto i = this->_payloads.find(bid);
+				// Если вся полезная нагрузка отправлена
+				if((i == this->_payloads.end()) || i->second->empty())
+					// Выполняем закрытие подключения
+					this->close(bid);
+			}
 		}
+	}
+}
+/**
+ * @brief Метод закрытия подключения брокера после отправки очереди полезной нагрузки
+ *
+ * @note Закрытие выполняется из события готовности сокета к записи, а не из вызова
+ *       метода: обратный вызов записи приходит до того, как недописанный остаток
+ *       ответа встаёт в очередь, и немедленное закрытие отрезало бы этот остаток
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Core::finish(const uint64_t bid) noexcept {
+	// Если брокер существует
+	if(this->has(bid)){
+		// Выполняем блокировку потока
+		const lock_guard <std::recursive_mutex> lock(this->_mtx.close);
+		// Создаём бъект активного брокера подключения
+		awh::scheme_t::broker_t * broker = const_cast <awh::scheme_t::broker_t *> (this->broker(bid));
+		// Если сокет подключения активен
+		if(broker->addr.sock != INVALID_SOCKET){
+			// Помечаем подключение для закрытия после отправки очереди
+			this->_finishing.emplace(bid);
+			// Запускаем ожидание записи данных: закрытие выполнит обработчик записи
+			broker->events(awh::scheme_t::mode_t::ENABLED, engine_t::method_t::WRITE);
+		// Если сокет уже закрыт, закрываем подключение сразу
+		} else this->close(bid);
 	}
 }
 /**
@@ -3212,11 +3249,20 @@ size_t awh::server::Core::write(const char * buffer, const size_t size, const ui
 					// Выполняем отправку сообщения клиенту
 					const int64_t bytes = broker->ectx.write(buffer, (((size >= static_cast <size_t> (max)) && (this->_settings.sonet != scheme_t::sonet_t::UDP) && (this->_settings.sonet != scheme_t::sonet_t::DTLS)) ? static_cast <size_t> (max) : size));
 					// Если данные удачно отправленны
-					if(bytes > 0)
+					if(bytes > 0){
 						// Запоминаем количество записанных байт
 						result = static_cast <size_t> (bytes);
+						/**
+						 * Отдача данных тоже считается активностью подключения: клиент, скачивающий
+						 * большой файл, ничего не присылает, и таймер ожидания, взведённый после
+						 * чтения запроса, отключал его посреди ответа. Таймер продлевается, только
+						 * если он уже взведён
+						 */
+						if((broker->timeouts.wait > 0) && (this->_settings.sonet != scheme_t::sonet_t::DTLS) && (this->_receive.count(bid) > 0))
+							// Продлеваем таймер ожидания получения данных
+							this->createTimeout(i->first, bid, static_cast <uint32_t> (broker->timeouts.wait) * 1000, mode_t::RECEIVE);
 					// Если запись не выполнена, закрываем подключение
-					else if(bytes == 0)
+					} else if(bytes == 0)
 						// Выполняем закрытие подключения
 						this->close(bid);
 					// Если запись отложена, а тип сокета установлен как DTLS

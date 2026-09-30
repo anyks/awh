@@ -55,6 +55,8 @@ bool awh::server::Web2::session(const uint64_t bid, const uint16_t sid) noexcept
 				callback.on <int32_t (const int32_t)> ("begin", &web2_t::beginSignal, this, _1, bid);
 				// Выполняем установку функции обратного вызова при отправки сообщения на сервер
 				callback.on <void (const uint8_t *, const size_t)> ("send", &web2_t::sendSignal, this, bid, _1, _2);
+				// Выполняем установку функции обратного вызова проверки места в очереди отправки
+				callback.on <bool (const size_t)> ("writable", &web2_t::writableSignal, this, bid, _1);
 				// Выполняем установку функции обратного вызова при закрытии потока
 				callback.on <int32_t (const int32_t, const http2_t::error_t)> ("close", &web2_t::closedSignal, this, _1, bid, _2);
 				// Выполняем установку функции обратного вызова при получении чанка с сервера
@@ -119,6 +121,72 @@ void awh::server::Web2::sendSignal(const uint64_t bid, const uint8_t * buffer, c
 	if(this->_core != nullptr)
 		// Выполняем отправку заголовков ответа клиенту
 		const_cast <server::core_t *> (this->_core)->send(reinterpret_cast <const char *> (buffer), size, bid);
+}
+/**
+ * @brief Метод обратного вызова проверки места в очереди отправки брокера
+ *
+ * @param bid  идентификатор брокера
+ * @param size размер фрейма для отправки
+ * @return     результат проверки (ложь останавливает отправку сессии)
+ */
+bool awh::server::Web2::writableSignal(const uint64_t bid, const size_t size) noexcept {
+	// Если объект сетевого ядра не инициализирован
+	if(this->_core == nullptr)
+		// Разрешаем отправку
+		return true;
+	// Получаем предельный размер очереди отправки брокера
+	const size_t limit = this->_core->brokerAvailableSize();
+	// Получаем размер данных в очереди отправки брокера
+	const size_t queued = this->_core->brokerAvailableSize(bid);
+	// Если очередь пуста или фрейм в неё помещается
+	if((queued == 0) || ((queued < limit) && ((limit - queued) >= size)))
+		// Разрешаем отправку
+		return true;
+	// Помечаем, что отправка сессии остановлена
+	this->_blocked.emplace(bid);
+	// Запрещаем отправку
+	return false;
+}
+/**
+ * @brief Метод планирования продолжения отправки остановленной сессии
+ *
+ * @note Вызывается из обратного вызова записи в сокет. Отправка продолжается по
+ *       таймеру, а не из вызова: обратный вызов записи приходит до того, как
+ *       недописанный остаток встаёт в очередь
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Web2::unblocking(const uint64_t bid) noexcept {
+	// Если отправка сессии остановлена, а продолжение ещё не запланировано
+	if((this->_blocked.count(bid) > 0) && (this->_unblocks.count(bid) == 0)){
+		// Создаём таймер продолжения отправки с минимальной задержкой
+		const uint16_t tid = this->_sender.timeout(1);
+		// Если таймер создан
+		if(tid > 0){
+			// Помечаем, что продолжение запланировано
+			this->_unblocks.emplace(bid);
+			// Выполняем добавление функции обратного вызова
+			this->_sender.on(tid, &web2_t::unblock, this, bid);
+		}
+	}
+}
+/**
+ * @brief Метод продолжения отправки остановленной сессии
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Web2::unblock(const uint64_t bid) noexcept {
+	// Снимаем отметку запланированного продолжения
+	this->_unblocks.erase(bid);
+	// Если отправка сессии была остановлена
+	if(this->_blocked.erase(bid) > 0){
+		// Выполняем поиск брокера в списке активных сессий
+		auto i = this->_sessions.find(bid);
+		// Если активная сессия найдена, продолжаем отправку отложенных фреймов
+		if(i != this->_sessions.end())
+			// Выполняем продолжение отправки
+			i->second->resume();
+	}
 }
 /**
  * @brief Метод выполнения закрытия подключения
@@ -453,7 +521,9 @@ void awh::server::Web2::settings(const std::map <http2_t::settings_t, uint32_t> 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log) {
+awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(fmk, log), _sender(fmk, log) {
+	// Отключаем вывод информационных сообщений таймера
+	this->_sender.verbose(false);
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }
@@ -464,7 +534,9 @@ awh::server::Web2::Web2(const fmk_t * fmk, const log_t * log) noexcept : web_t(f
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::Web2::Web2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log) {
+awh::server::Web2::Web2(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : web_t(core, fmk, log), _sender(fmk, log) {
+	// Отключаем вывод информационных сообщений таймера
+	this->_sender.verbose(false);
 	// Выполняем установку список настроек протокола HTTP/2
 	this->settings();
 }

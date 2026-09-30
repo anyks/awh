@@ -200,8 +200,12 @@ void awh::server::Http1::readEvents(const char * buffer, const size_t size, cons
 void awh::server::Http1::process(const uint64_t bid, const uint16_t sid) noexcept {
 	// Получаем параметры активного клиента
 	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
-	// Если параметры активного клиента получены
-	if(options != nullptr){
+	/**
+	 * Пока отдаётся тело прежнего ответа, следующие запросы не разбираются: разбор запроса
+	 * и отдача ответа делят одно тело HTTP-парсера. Запросы ждут в буфере и разбираются
+	 * после отдачи тела
+	 */
+	if((options != nullptr) && (this->_bodies.count(bid) == 0)){
 			/**
 			 * Выполняем обработку полученных данных
 			 */
@@ -577,6 +581,10 @@ void awh::server::Http1::process(const uint64_t bid, const uint16_t sid) noexcep
 						break;
 				// Если данных для обработки недостаточно, выходим
 				} else break;
+				// Если тело ответа ещё отдаётся, следующий запрос разбирается после отдачи
+				if(this->_bodies.count(bid) > 0)
+					// Выходим из цикла
+					break;
 			}
 	}
 }
@@ -616,6 +624,169 @@ void awh::server::Http1::resume(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * @brief Метод отдачи тела ответа по мере освобождения очереди отправки брокера
+ *
+ * @note Вызывается из отправки ответа и по таймеру после записи в сокет, но не из
+ *       обратного вызова записи: он приходит до того, как недописанный остаток
+ *       встаёт в очередь, и новая часть тела легла бы в очередь раньше остатка
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Http1::pump(const uint64_t bid) noexcept {
+	// Снимаем отметку запланированной отдачи
+	this->_pumps.erase(bid);
+	// Если тело ответа брокера не отдаётся, выходим
+	if(this->_bodies.count(bid) == 0)
+		// Выходим из функции
+		return;
+	// Получаем параметры активного клиента
+	scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+	// Если сетевое ядро не работает или брокер уже отключён
+	if((this->_core == nullptr) || !this->_core->working() || (options == nullptr)){
+		// Снимаем отдачу тела
+		this->_bodies.erase(bid);
+		// Удаляем непоместившуюся часть тела
+		this->_holds.erase(bid);
+		// Выходим из функции
+		return;
+	}
+	// Получаем предельный размер очереди отправки брокера
+	const size_t limit = this->_core->brokerAvailableSize();
+	/**
+	 * @brief Функция проверки места в очереди отправки брокера
+	 *
+	 * @param size размер части тела
+	 * @return     результат проверки
+	 */
+	auto room = [limit, bid, this](const size_t size) noexcept -> bool {
+		// Получаем размер данных в очереди отправки брокера
+		const size_t queued = this->_core->brokerAvailableSize(bid);
+		// Пустая очередь принимает любую часть, иначе часть должна поместиться целиком
+		return ((queued == 0) || ((queued < limit) && ((limit - queued) >= size)));
+	};
+	// Тело полезной нагрузки
+	buffer_t payload(this->_fmk, this->_log);
+	/**
+	 * Выполняем отдачу частей тела, пока они помещаются в очередь
+	 */
+	for(;;){
+		// Часть тела для отправки
+		vector <char> part;
+		// Признак последней части тела
+		bool last = false;
+		// Выполняем поиск непоместившейся ранее части тела
+		auto i = this->_holds.find(bid);
+		// Если непоместившаяся часть есть, она уходит первой
+		if(i != this->_holds.end()){
+			// Получаем признак последней части
+			last = i->second.second;
+			// Забираем часть тела
+			part = ::move(i->second.first);
+			// Удаляем часть из списка
+			this->_holds.erase(i);
+		// Получаем следующую часть тела
+		} else if(!(payload = ::move(options->http.payload())).empty()) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение о выводе чанка полезной нагрузки
+				std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
+			#endif
+			// Получаем признак последней части
+			last = (options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0));
+			// Забираем часть тела
+			part.assign(static_cast <const char *> (payload), static_cast <const char *> (payload) + static_cast <size_t> (payload));
+		// Если тело ответа закончилось
+		} else break;
+		// Если часть не помещается в очередь, отдача продолжится после записи в сокет
+		if(!room(part.size())){
+			// Сохраняем часть тела
+			this->_holds.emplace(bid, std::make_pair(::move(part), last));
+			// Выходим из функции
+			return;
+		}
+		// Если отправляется последняя часть тела
+		if(last)
+			// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
+			options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+		// Отправляем тело ответа клиенту
+		const_cast <server::core_t *> (this->_core)->send(part.data(), part.size(), bid);
+		// Получаем параметры активного клиента повторно, отправка могла закрыть подключение
+		options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		// Если подключение закрыто (параметры брокера удаляются позже самого брокера)
+		if((options == nullptr) || (this->_core->sid(bid) == 0)){
+			// Снимаем отдачу тела
+			this->_bodies.erase(bid);
+			// Удаляем непоместившуюся часть тела
+			this->_holds.erase(bid);
+			// Выходим из функции
+			return;
+		}
+	}
+	// Если список трейлеров установлен
+	if(options->http.trailers() > 0){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим заголовок трейлеров
+			std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
+		#endif
+		/**
+		 * Получаем отправляемые трейлеры
+		 */
+		while(!(payload = ::move(options->http.trailer())).empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение о выводе чанка тела
+				std::cout << this->_fmk->format("%s", string(static_cast <const char *> (payload), static_cast <size_t> (payload)).c_str()) << std::flush;
+			#endif
+			// Если все трейлеры были отправлены
+			if(options->http.trailers() == 0)
+				// Устанавливаем флаг закрытия подключения
+				options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
+			// Выполняем отправку трейлера клиенту
+			const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
+		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим завершение вывода информации
+			std::cout << std::endl << std::endl << std::flush;
+		#endif
+	}
+	// Тело ответа отдано
+	this->_bodies.erase(bid);
+	// Если установлена функция отлова завершения запроса
+	if(this->_callback.is("end"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::SEND);
+	/**
+	 * Следующие запросы конвейера ждали, пока отдаётся тело: разбор продолжается через цикл
+	 * событий, если отдача закончилась вне разбора запросов этого брокера
+	 */
+	if((this->_busy != bid) && (this->_resumes.count(bid) == 0)){
+		// Получаем параметры активного клиента повторно, отправка могла закрыть подключение
+		options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
+		// Если в буфере остались данные, а подключение не закрывается
+		if((options != nullptr) && !options->close && !options->stopped && !options->buffer.empty()){
+			// Создаём таймер продолжения разбора с минимальной задержкой
+			const uint16_t tid = this->_resumer.timeout(1);
+			// Если таймер создан
+			if(tid > 0){
+				// Помечаем брокера как ожидающего продолжения разбора
+				this->_resumes.emplace(bid);
+				// Выполняем добавление функции обратного вызова
+				this->_resumer.on(tid, &http1_t::resume, this, bid);
+			}
+		}
+	}
+}
+/**
  * @brief Метод обратного вызова при записи сообщение брокеру
  *
  * @param buffer бинарный буфер содержащий сообщение
@@ -638,12 +809,24 @@ void awh::server::Http1::writeEvents(const char * buffer, const size_t size, con
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
+				// Если тело ответа ещё отдаётся, а следующая часть не запланирована
+				if((this->_bodies.count(bid) > 0) && (this->_pumps.count(bid) == 0)){
+					// Создаём таймер отдачи следующей части тела с минимальной задержкой
+					const uint16_t tid = this->_resumer.timeout(1);
+					// Если таймер создан
+					if(tid > 0){
+						// Помечаем, что отдача следующей части запланирована
+						this->_pumps.emplace(bid);
+						// Выполняем добавление функции обратного вызова
+						this->_resumer.on(tid, &http1_t::pump, this, bid);
+					}
+				}
 				// Если необходимо выполнить закрыть подключение
 				if(!options->close && options->stopped){
 					// Устанавливаем флаг закрытия подключения
 					options->close = !options->close;
-					// Принудительно выполняем отключение лкиента
-					const_cast <server::core_t *> (this->_core)->close(bid);
+					// Закрываем подключение после отправки очереди: остаток ответа может ещё не уйти в сокет
+					const_cast <server::core_t *> (this->_core)->finish(bid);
 				}
 			}
 		}
@@ -983,6 +1166,12 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			}
 			// Снимаем брокера с ожидания продолжения разбора
 			this->_resumes.erase(bid);
+			// Снимаем отдачу тела ответа
+			this->_bodies.erase(bid);
+			// Снимаем запланированную отдачу части тела
+			this->_pumps.erase(bid);
+			// Удаляем непоместившуюся часть тела
+			this->_holds.erase(bid);
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
 		};
@@ -1045,10 +1234,14 @@ void awh::server::Http1::pinging(const uint16_t tid) noexcept {
 						scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(agent.first));
 						// Если параметры активного клиента получены
 						if((options != nullptr) && ((!options->alive && !this->_service.alive) || options->close)){
-							// Если брокер давно должен был быть отключён, отключаем его
-							if(options->close || !options->http.is(http_t::state_t::ALIVE))
-								// Выполняем отключение клиента от сервера
-								const_cast <server::core_t *> (this->_core)->close(agent.first);
+							/**
+							 * Если брокер давно должен был быть отключён, отключаем его. Подключение, тело
+							 * ответа которого ещё отдаётся, не трогаем, а закрытие выполняется после
+							 * отправки очереди: немедленное закрытие обрезало загрузку медленного клиента
+							 */
+							if((this->_bodies.count(agent.first) == 0) && (options->close || !options->http.is(http_t::state_t::ALIVE)))
+								// Выполняем отключение клиента от сервера после отправки очереди
+								const_cast <server::core_t *> (this->_core)->finish(agent.first);
 						}
 					} break;
 					// Если агент соответствует серверу Websocket
@@ -1398,8 +1591,6 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 			scheme::web_t::options_t * options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 			// Если параметры активного клиента получены
 			if(options != nullptr){
-				// Тело полезной нагрузки
-				buffer_t payload(this->_fmk, this->_log);
 				// Получаем флаг постоянного подключения
 				const bool alive = options->http.is(http_t::state_t::ALIVE);
 				// Выполняем сброс состояния HTTP-парсера
@@ -1463,68 +1654,17 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 				const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 				// Если код ответа содержит тело ответа
 				if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
-					/**
-					 * Получаем данные тела полезной нагрузки
-					 */
-					while(!(payload = ::move(options->http.payload())).empty()){
-						// Если включён режим отладки
-						#if DEBUG_MODE
-							// Выводим сообщение о выводе чанка полезной нагрузки
-							std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
-						#endif
-						// Если тела данных для отправки больше не осталось
-						if(options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0))
-							// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
-							options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
-						// Отправляем тело ответа клиенту
-						const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
-					}
-					// Если список трейлеров установлен
-					if(options->http.trailers() > 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим заголовок трейлеров
-							std::cout << "<Trailers>" << std::endl << std::endl << std::flush;
-						#endif
-						/**
-						 * Получаем отправляемые трейлеры
-						 */
-						while(!(payload = ::move(options->http.trailer())).empty()){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение о выводе чанка тела
-								std::cout << this->_fmk->format("%s", string(static_cast <const char *> (payload), static_cast <size_t> (payload)).c_str()) << std::flush;
-							#endif
-							// Если все трейлеры были отправлены
-							if(options->http.trailers() == 0)
-								// Устанавливаем флаг закрытия подключения
-								options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
-							// Выполняем отправку трейлера клиенту
-							const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (payload), static_cast <size_t> (payload), bid);
-						}
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим завершение вывода информации
-							std::cout << std::endl << std::endl << std::flush;
-						#endif
-					}
-					// Если установлена функция отлова завершения запроса
-					if(this->_callback.is("end"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const int32_t, const uint64_t, const direct_t)> ("end", 1, bid, direct_t::SEND);
+					// Помечаем, что тело ответа отдаётся
+					this->_bodies.emplace(bid);
+					// Выполняем отдачу тела, сколько поместится в очередь отправки
+					this->pump(bid);
 				}
 				/**
 				 * Если ответ отправлен вне разбора запросов этого брокера (асинхронно), следующие запросы
 				 * конвейера уже лежат в буфере, а парсер сброшен: без продолжения они ждали бы следующего пакета.
 				 * Разбор продолжается через цикл событий, а не отсюда, чтобы не входить в разбор изнутри send()
 				 */
-				if((code >= 200) && (this->_busy != bid) && (this->_resumes.count(bid) == 0)){
+				if((code >= 200) && (this->_busy != bid) && (this->_resumes.count(bid) == 0) && (this->_bodies.count(bid) == 0)){
 					// Получаем параметры активного клиента повторно, отправка могла закрыть подключение
 					options = const_cast <scheme::web_t::options_t *> (this->_scheme.get(bid));
 					// Если в буфере остались данные, а подключение не закрывается

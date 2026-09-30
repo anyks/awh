@@ -5091,6 +5091,8 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 							this->_web.response(res);
 							// Список системных заголовков
 							std::unordered_set <string> systemHeaders;
+							// Размер тела, указанный приложением (ответ на HEAD сообщает размер без тела)
+							string length = "";
 							// Переходим по всему списку заголовков
 							for(auto & header : this->_web.headers()){
 								// Если заголовок не находится в чёрном списке и не является системным
@@ -5111,7 +5113,12 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 										case 3:  available[i] = this->_fmk->compare(header.first, "proxy-connection");   break;
 										case 4:  available[i] = this->_fmk->compare(header.first, "x-powered-by");       break;
 										case 5:  available[i] = this->_fmk->compare(header.first, "content-type");       break;
-										case 6:  available[i] = this->_fmk->compare(header.first, "content-length");     break;
+										case 6: {
+											// Если найден размер тела, запоминаем его
+											if((available[i] = this->_fmk->compare(header.first, "content-length")))
+												// Запоминаем размер тела
+												length = header.second;
+										} break;
 										case 7:  available[i] = this->_fmk->compare(header.first, "content-encoding");   break;
 										case 8:  available[i] = this->_fmk->compare(header.first, "transfer-encoding");  break;
 										case 9:  available[i] = this->_fmk->compare(header.first, "x-awh-encryption");   break;
@@ -5227,6 +5234,11 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									const_cast <http_t *> (this)->encrypt();
 									// Проверяем нужно ли передать тело разбив на чанки
 									this->_te.chunking = (this->_crypted || (this->_compressors.current != compressor_t::NONE));
+									// Если тело передаётся без сжатия и шифрования, его размер известен заранее: без него
+									// браузер не показывает размер и ход загрузки
+									if(!this->_te.chunking && !this->is(suite_t::BLACK, "content-length"))
+										// Устанавливаем размер тела
+										result.push_back(std::make_pair("content-length", std::to_string(this->_web.body().size())));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->is(suite_t::BLACK, "date"))
 										// Добавляем заголовок даты в ответ
@@ -5279,6 +5291,10 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 								} else {
 									// Проверяем нужно ли передать тело разбив на чанки
 									this->_te.chunking = (this->_encryption || (this->_compressors.selected != compressor_t::NONE));
+									// Если тела нет, а приложение указало его размер (ответ на HEAD), размер передаётся как есть
+									if(!this->_te.chunking && !length.empty() && !this->is(suite_t::BLACK, "content-length"))
+										// Устанавливаем размер тела
+										result.push_back(std::make_pair("content-length", length));
 									// Если заголовок не запрещён
 									if(!available[0] && !this->is(suite_t::BLACK, "date"))
 										// Добавляем заголовок даты в ответ

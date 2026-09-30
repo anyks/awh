@@ -202,6 +202,8 @@ namespace awh {
 		private:
 			// Флаг требования закрыть подключение
 			bool _close;
+			// Флаг остановки отправки: очередь отправки заполнена, фреймы ждут вызова resume()
+			bool _wouldblock;
 		private:
 			// Флаг идентификации сервиса
 			mode_t _mode;
@@ -440,6 +442,15 @@ namespace awh {
 			 * @return       результат чтения данных фрейма
 			 */
 			bool frame(const uint8_t * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод продолжения отправки фреймов, отложенных из-за заполненной очереди
+			 *
+			 * @note Если функция обратного вызова «writable» сообщает, что очередь отправки
+			 *       заполнена, фрейм не отдаётся, а сессия сохраняет его до этого вызова
+			 *
+			 * @return результат отправки
+			 */
+			bool resume() noexcept;
 		public:
 			/**
 			 * @brief Метод выполнения сброса подключения
@@ -681,7 +692,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Http2(const fmk_t * fmk, const log_t * log) noexcept :
-			 _close(false), _mode(mode_t::NONE), _event(event_t::NONE), _depth(0),
+			 _close(false), _wouldblock(false), _mode(mode_t::NONE), _event(event_t::NONE), _depth(0),
 			 _headersSize(0), _maxHeaderListSize(0), _socket(fmk, log),
 			 _callback(log), _session(nullptr), _fmk(fmk), _log(log) {}
 			/**
