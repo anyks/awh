@@ -3404,6 +3404,69 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	}
 }
 /**
+ * Если кадры исполнения отводятся от границы страницы
+ */
+#if AWH_REGEX_STACK_PAGE > 0
+	/**
+	 * @brief Функция получения положения указателя стека
+	 *
+	 * @details Положение читается командой, а не адресом переменной либо кадра:
+	 *          адрес их заставил бы вход «exec» завести кадр, тогда как вход
+	 *          обязан уходить в тело переходом, кадра не имея.
+	 *
+	 * @return положение указателя стека
+	 *
+	 */
+	static AWH_REGEX_INLINE uintptr_t stackPointer() noexcept {
+		// Положение указателя стека
+		uintptr_t result = 0;
+		/**
+		 * Если сборка ведётся под ARM64
+		 */
+		#if defined(__aarch64__)
+			// Выполняем чтение указателя стека
+			__asm__("mov %0, sp" : "=r" (result));
+		/**
+		 * Если сборка ведётся под x86-64
+		 */
+		#elif defined(__x86_64__)
+			// Выполняем чтение указателя стека
+			__asm__("mov %%rsp, %0" : "=r" (result));
+		/**
+		 * Если сборка ведётся под прочие архитектуры
+		 */
+		#else
+			// Выполняем получение адреса кадра взамен указателя стека
+			result = reinterpret_cast <uintptr_t> (__builtin_frame_address(0));
+		#endif
+		// Выводим положение указателя стека
+		return result;
+	}
+	/**
+	 * Если собиратель умеет снимать сторожа стека с функции
+	 *
+	 * @details Прокладке отвода сторож стека не нужен: её не пишет никто.
+	 *          Функции с массивом Apple clang ставит сторожа сам, и путь
+	 *          с прокладкой платил бы им два чтения, запись и сравнение
+	 *          на всяком входе. GCC до 11 указания не знает, но там и отвод
+	 *          не собирается: он лишь у ARM64, где собиратели новее.
+	 *
+	 */
+	#if defined(__has_attribute)
+		#if __has_attribute(no_stack_protector)
+			// Выполняем снятие сторожа стека с функции
+			#define AWH_REGEX_UNGUARDED __attribute__((no_stack_protector))
+		#endif
+	#endif
+	/**
+	 * Если снимать сторожа стека собиратель не умеет
+	 */
+	#if !defined(AWH_REGEX_UNGUARDED)
+		// Сторож стека остаётся на усмотрение собирателя
+		#define AWH_REGEX_UNGUARDED
+	#endif
+#endif
+/**
  * @brief Метод сопоставления регулярного выражения с текстом
  *
  * @param program  исполняемая программа регулярного выражения
@@ -3414,8 +3477,30 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
  *
  */
 bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept {
-	// Выводим результат сопоставления регулярного выражения с поиском по тексту
-	return this->exec(program, text, start, captures, mode_t::PLAIN);
+	/**
+	 * Если кадры исполнения отводятся от границы страницы
+	 *
+	 * @details Проверка стоит во входе самом, а не переходом во вход
+	 *          о пяти доводах: лишний переход стоил коротким строкам
+	 *          исполнения с возвратом до полунаносекунды на вызов.
+	 *
+	 */
+	#if AWH_REGEX_STACK_PAGE > 0
+		/**
+		 * Если запаса стека до границы страницы недостаёт
+		 */
+		if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < STACK_RESERVE)
+			// Выводим результат сопоставления под прокладкой стека
+			return this->padded(program, text, start, captures, mode_t::PLAIN);
+		// Выводим результат сопоставления регулярного выражения с поиском по тексту
+		return this->search(program, text, start, captures, mode_t::PLAIN);
+	/**
+	 * Если кадры исполнения от границы страницы не отводятся
+	 */
+	#else
+		// Выводим результат сопоставления регулярного выражения с поиском по тексту
+		return this->exec(program, text, start, captures, mode_t::PLAIN);
+	#endif
 }
 /**
  * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
@@ -3428,7 +3513,91 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
  * @return         результат поиска совпадения
  *
  */
+/**
+ * Если кадры исполнения отводятся от границы страницы
+ */
+#if AWH_REGEX_STACK_PAGE > 0
 bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+	/**
+	 * Если запаса стека до границы страницы недостаёт
+	 *
+	 * @details Вход кадра не заводит: положение стека читается командой,
+	 *          и оба пути уходят в тело переходом. Кадр входа сам лёг бы
+	 *          поперёк границы, от какой вход кадры отводит.
+	 *
+	 */
+	if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < STACK_RESERVE)
+		// Выводим результат сопоставления под прокладкой стека
+		return this->padded(program, text, start, captures, mode);
+	// Выводим результат сопоставления регулярного выражения
+	return this->search(program, text, start, captures, mode);
+}
+/**
+ * @brief Метод сопоставления регулярного выражения с текстом под прокладкой стека
+ *
+ * @param program  исполняемая программа регулярного выражения
+ * @param text     текст для сопоставления
+ * @param start    позиция начала поиска совпадения
+ * @param captures набор границ совпадения и захваченных групп
+ * @param mode     режим сопоставления регулярного выражения с текстом
+ * @return         результат поиска совпадения
+ *
+ */
+AWH_REGEX_UNGUARDED bool awh::regex::Backtrack::padded(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+	// Выполняем учёт отвода кадров исполнения за границу страницы
+	AWH_REGEX_TICK(path_t::PADDING);
+	/**
+	 * Прокладка кадра, отводящая кадры тела сопоставления за границу страницы
+	 *
+	 * @details Прокладка передаётся вставке затем, чтобы собиратель разместил
+	 *          её в кадре целиком: прокладку, какой никто не читает, он сжимает
+	 *          до нуля. Передача держит и кадр до возврата: адрес прокладки
+	 *          ушёл наружу, и вызов тела переходом, снявшим бы кадр прежде
+	 *          тела, собирателю запрещён - у Clang вызов остаётся вызовом
+	 *          и без сторожа стека.
+	 *
+	 */
+	uint8_t pad[STACK_RESERVE];
+	// Выполняем передачу прокладки вставке
+	__asm__ volatile("" : : "r" (pad));
+	// Выводим результат сопоставления регулярного выражения
+	return this->search(program, text, start, captures, mode);
+}
+/**
+ * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
+ *
+ * @param program  исполняемая программа регулярного выражения
+ * @param text     текст для сопоставления
+ * @param start    позиция начала поиска совпадения
+ * @param captures набор границ совпадения и захваченных групп
+ * @param mode     режим сопоставления регулярного выражения с текстом
+ * @return         результат поиска совпадения
+ *
+ */
+bool awh::regex::Backtrack::search(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+/**
+ * Если кадры исполнения от границы страницы не отводятся
+ */
+#else
+bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+#endif
+	/**
+	 * Если учёт путей исполнения заведён и кадры исполнения отводятся от границы страницы
+	 *
+	 * @details Учёт стережёт самый запас: тело входит, имея под собою до
+	 *          границы страницы запас за вычетом кадров своего и прокладки.
+	 *          Запас меньше трёх четвертей положенного значит, что отвод не
+	 *          сработал либо отвёл кадры недалеко.
+	 *
+	 */
+	#if defined(AWH_REGEX_PROBING) && (AWH_REGEX_STACK_PAGE > 0)
+		/**
+		 * Если запаса стека до границы страницы недостаёт
+		 */
+		if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < ((STACK_RESERVE / 4) * 3))
+			// Выполняем учёт входа в тело сопоставления без запаса
+			AWH_REGEX_TICK(path_t::CROWDING);
+	#endif
 	/**
 	 * @brief Сторож внесения мер работы в общий учёт
 	 *

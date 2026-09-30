@@ -331,12 +331,6 @@ namespace driver {
 			}
 	};
 	/**
-	 * @brief Функция извлечения контекстов Zstandard потока исполнения
-	 *
-	 * @return контексты Zstandard потока исполнения
-	 *
-	 */
-	/**
 	 * @brief Предел размера удерживаемого между кадрами контекста Zstandard
 	 *
 	 * @details Контекст уровня по умолчанию укладывается в единицы мегабайт, контекст
@@ -344,7 +338,12 @@ namespace driver {
 	 *
 	 */
 	static constexpr size_t ZSTD_CONTEXT_LIMIT = (8 * 1024 * 1024);
-
+	/**
+	 * @brief Функция извлечения контекстов Zstandard потока исполнения
+	 *
+	 * @return контексты Zstandard потока исполнения
+	 *
+	 */
 	static Zstd & zstdContexts() noexcept {
 		// Контексты Zstandard потока исполнения
 		static thread_local Zstd result;

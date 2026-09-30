@@ -562,6 +562,29 @@
  *          быстрее, непринятое - как прежде. Расширение подмножества - работа
  *          последующая, а не условие пригодности.
  *
+ *          <b>Примета отказа сопоставителя пишется прежде заполнения набора
+ *          границ, а сам набор выровнен по шестнадцати байтам.</b> За границами
+ *          совпадения набор несёт три места для сопоставителя: адрес области
+ *          записей, её предел и примету отказа. Записанные подряд, предел и
+ *          примету собиратель ARM64 сливал в одну запись пары по адресу, кратному
+ *          восьми, и при одном положении стека из 1024 на страницу в шестнадцать
+ *          килобайтов пара ложилась поперёк границы страницы. Сопоставитель,
+ *          читая предел, передачи от неё не получал и ждал ухода записи в память:
+ *          порождённым кодом «alternate-short» терял на таком положении 170
+ *          процентов, «request-short» - 88. Заполнение набора - вызов либо цикл -
+ *          стоит теперь между приметой и пределом, и слить их нельзя; адрес
+ *          и предел, если собиратель их сольёт, лежат по индексу чётному в наборе
+ *          выровненном, и пара их границы страницы не пересекает. У x86-64
+ *          и Эльбруса порядок прежний - признак «AWH_REGEX_REFUSAL_FIRST»:
+ *          записей пары там нет, а перенос приметы давал лишь раскладку,
+ *          в сборках, выровненных по шестидесяти четырём байтам, от минус 5.6
+ *          до плюс 4.1 процента у строк порождённого кода. Барьер собирателю
+ *          между записями ловушку снимал тоже, но стоил трёх процентов
+ *          на вызове в восемь наносекунд: он запрещал держать значения в регистрах.
+ *          Проверкой решение не закрепляется - пары проверка не видит. Сверять его
+ *          щупом «tools/regex/stackscan --jit» и разборкой «Codegen::exec»: записи
+ *          пары в набор границ на стеке быть не должно.
+ *
  * \~english
  * @brief Header file of the conversion of the program of a regular expression into machine code —
  *        the Codegen class, which generates a matcher for the subset of programs executable
@@ -834,6 +857,30 @@
  *          a subset of programs rather than every program: what is accepted is executed
  *          faster, what is not accepted as before. Extending the subset is subsequent
  *          work rather than a condition of fitness.
+ *
+ *          <b>The refusal marker of the matcher is written before the set of bounds
+ *          is filled, and the set itself is aligned to sixteen bytes.</b> Beyond the
+ *          bounds of the match the set carries three places for the matcher: the
+ *          address of the area of records, its limit and the refusal marker. Written in
+ *          a row, the limit and the marker were merged by the ARM64 compiler into one
+ *          pair store at an address that is a multiple of eight, and at one position of
+ *          the stack out of 1024 per sixteen-kilobyte page the pair lay across the
+ *          boundary of the page. The matcher, reading the limit, got no forwarding from
+ *          it and waited until the store left for memory: with generated code
+ *          «alternate-short» lost 170 per cent at such a position, «request-short» 88.
+ *          Filling the set - a call or a loop - now stands between the marker and the
+ *          limit, and they cannot be merged; the address and the limit, if the compiler
+ *          merges them, lie at an even index in the aligned set, and their pair crosses
+ *          no page boundary. With x86-64 and Elbrus the order is the former one - the
+ *          «AWH_REGEX_REFUSAL_FIRST» flag: there are no pair stores there, and moving the
+ *          marker gave only placement, from minus 5.6 to plus 4.1 per cent for the rows of
+ *          generated code in builds aligned to sixty-four bytes. A compiler barrier
+ *          between the stores removed the trap as
+ *          well, but cost three per cent on a call of eight nanoseconds: it forbade
+ *          keeping values in registers. The decision is not pinned by a test - a test
+ *          does not see the pair. It is checked by the «tools/regex/stackscan --jit»
+ *          probe and by disassembling «Codegen::exec»: there must be no pair store into
+ *          the set of bounds on the stack.
  *
  * \~
  *

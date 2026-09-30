@@ -240,6 +240,36 @@
  *          от минус 4.3 до плюс 12 процентов. Закреплено проверкой
  *          «Regex.EngineMemoryCheckpoint».
  *
+ *          <b>Кадры исполнения отводятся от границы страницы прокладкой стека,
+ *          а вход «exec» кадра своего не имеет.</b> Собиратель ARM64 кладёт на
+ *          стек две соседние переменные одной записью пары регистров и выравнивает
+ *          её по восьми байтам, а не по шестнадцати. У Clang в кадре «run» таких
+ *          пар две - одна несёт границу и длину текста, - и при одном положении
+ *          стека из 1024 на страницу в шестнадцать килобайтов запись пары ложится
+ *          поперёк границы страницы. Чтение этих переменных, идущее вскоре за нею,
+ *          передачи не получает и ждёт, пока запись уйдёт в память: на Apple M4 это
+ *          13-17 наносекунд на всяком входе в «run», и при таком положении стека
+ *          «lazy-short» терял 74 процента, «digits-short» - 66, «lookahead-heavy»,
+ *          у какого «run» проверки окружения входит многократно, - 139. Пары
+ *          выбирает собиратель, и правкой тела зависимость эта не снимается:
+ *          опытный отвод прямо в теле сопоставления перевёл его кадр на адресацию
+ *          от указателя кадра, там завелись три пары новые, и медленным стало
+ *          иное положение. Оттого вход «exec» тонок: он читает указатель стека
+ *          командой и переходом уходит в тело «search», а при запасе до границы
+ *          меньшем «STACK_RESERVE» - в «padded», чья прокладка той же длины
+ *          отводит кадры за границу. Прокладка неизменной длины, а не «alloca»:
+ *          отвод переменной длины Apple clang снабжает сторожем стека и зовом
+ *          «___chkstk_darwin» на всяком входе. Отвод включён лишь у ARM64 -
+ *          признак «AWH_REGEX_STACK_PAGE»: у x86-64 записей пары нет, и обрывов
+ *          такого рода замер не нашёл, у Эльбруса зависимости от положения стека
+ *          нет вовсе. Тот же род ловушки в пути порождённого кода снят иначе -
+ *          порядком записей, смотрите «Намеренные решения» кодогенерации.
+ *          Цены своей отвод не несёт: у десяти коротких строк середина по положениям
+ *          страницы в сборке, выровненной по шестидесяти четырём байтам, сдвинулась
+ *          на +0.6 процента, от минус 0.7 до плюс 2.3, в обычной - на минус 0.8,
+ *          где «alternate-short» минус 3.4 - раскладка.
+ *          Закреплено проверкой «Regex.EngineStackPage».
+ *
  * \~english
  * @brief Header file of the execution of regular expressions with backtracking — the Backtrack class,
  *        which executes the program by a single state while saving backtracking points,
@@ -471,6 +501,38 @@
  *          rows moved from minus 4.3 to plus 12 per cent. Pinned by the
  *          «Regex.EngineMemoryCheckpoint» test.
  *
+ *          <b>The frames of the execution are moved away from the boundary of a page
+ *          by a pad of the stack, and the «exec» entry has no frame of its own.</b>
+ *          The ARM64 compiler puts two neighbouring variables on the stack by a single
+ *          store of a pair of registers and aligns it to eight bytes rather than to
+ *          sixteen. With Clang the frame of «run» has two such pairs - one carries the
+ *          bound and the length of the text - and at one position of the stack out of
+ *          1024 per sixteen-kilobyte page the pair store lies across the boundary of the
+ *          page. A load of these variables coming soon after it gets no forwarding and
+ *          waits until the store leaves for memory: on Apple M4 that is 13-17 nanoseconds
+ *          on every entry to «run», and at such a position of the stack «lazy-short» lost
+ *          74 per cent, «digits-short» 66, and «lookahead-heavy», whose «run» of the
+ *          lookaround assertion is entered many times, 139. The pairs are chosen by the
+ *          compiler, and an edit of the body does not remove this dependence: an
+ *          experimental moving right in the body of matching switched its frame to
+ *          addressing from the frame pointer, three new pairs appeared there, and another
+ *          position became slow. The «exec» entry is therefore thin: it reads the stack
+ *          pointer by an instruction and leaves by a jump into the «search» body, and when
+ *          the reserve down to the boundary is smaller than «STACK_RESERVE» - into
+ *          «padded», whose pad of the same length moves the frames past the boundary. The
+ *          pad has a fixed length rather than «alloca»: Apple clang equips a moving of
+ *          variable length with a stack protector and a call of «___chkstk_darwin» on every
+ *          entry. The moving is enabled with ARM64 alone - the «AWH_REGEX_STACK_PAGE» flag:
+ *          x86-64 has no pair stores, and the measurement found no drops of this kind
+ *          there, and Elbrus shows no dependence on the position of the stack at all. The
+ *          same kind of trap on the path of generated code is removed otherwise - by the
+ *          order of the stores, see «Deliberate decisions» of code generation.
+ *          The moving carries no price of its own: for ten short rows the median over
+ *          the positions of the page moved by plus 0.6 per cent, from minus 0.7 to plus
+ *          2.3, in the build aligned to sixty-four bytes, and by minus 0.8 in the
+ *          ordinary one, where «alternate-short» minus 3.4 is placement.
+ *          Pinned by the «Regex.EngineStackPage» test.
+ *
  * \~
  *
  * @copyright Copyright © 2026
@@ -561,6 +623,83 @@
 		 * Литерал разбирается пометкой без кода операции
 		 */
 		#define AWH_REGEX_LITERAL_CASE 0
+	#endif
+#endif
+
+/**
+ * \~russian
+ * @brief Шаг границ страниц, каких кадры исполнения с возвратом не пересекают
+ *
+ * @details Собиратель ARM64 кладёт на стек две соседние переменные одной записью
+ *          пары регистров и выравнивает её по восьми байтам, а не по шестнадцати.
+ *          При одном положении кадра на страницу запись такая ложится поперёк
+ *          границы страницы, и чтение этих переменных, следующее за нею вскоре,
+ *          передачи от неё не получает - ждёт, пока запись уйдёт в память.
+ *          Исполнение оттого проверяет положение стека на входе и при запасе
+ *          до границы меньшем «STACK_RESERVE» отводит кадры за неё прокладкой -
+ *          смотрите «Намеренные решения».
+ *
+ *          Шаг равен размеру страницы: у Apple на ARM64 шестнадцать килобайтов,
+ *          у прочих систем ARM64 четыре - границы страниц в шестьдесят четыре
+ *          килобайта он покрывает тоже. Ноль отвод выключает: у x86-64 записей
+ *          пары нет, у Эльбруса зависимости от положения стека нет вовсе, а
+ *          у Visual Studio нет вставок, какими читается указатель стека.
+ *          Сборка переопределяет признак, «-DAWH_REGEX_STACK_PAGE=4096» либо
+ *          «=0», лишь у GCC и Clang: так проверяется отвод и на машине, какой
+ *          он не достался.
+ *
+ * \~english
+ * @brief Step of the page boundaries the frames of the execution with backtracking do not cross
+ *
+ * @details The ARM64 compiler puts two neighbouring variables on the stack by a single store
+ *          of a pair of registers and aligns it to eight bytes rather than to sixteen. At one
+ *          position of the frame per page such a store lies across the boundary of a page, and
+ *          a load of these variables following it soon gets no forwarding from it - it waits
+ *          until the store leaves for memory. The execution therefore checks the position of
+ *          the stack on entry, and when the reserve down to the boundary is smaller than
+ *          «STACK_RESERVE», it moves the frames past the boundary by a pad - see «Deliberate
+ *          decisions».
+ *
+ *          The step equals the size of the page: sixteen kilobytes with Apple on ARM64, four
+ *          with the other ARM64 systems - it covers the boundaries of sixty-four kilobyte pages
+ *          as well. Zero turns the moving off: x86-64 has no pair stores, Elbrus shows no
+ *          dependence on the position of the stack at all, and Visual Studio has no inline
+ *          assembly to read the stack pointer with. The build overrides the flag,
+ *          «-DAWH_REGEX_STACK_PAGE=4096» or «=0», with GCC and Clang only: this way the moving
+ *          is checked on a machine that did not get it as well.
+ *
+ * \~
+ */
+#if !defined(AWH_REGEX_STACK_PAGE)
+	/**
+	 * Если сборка ведётся собирателем GCC либо Clang под ARM64
+	 */
+	#if (defined(__GNUC__) || defined(__clang__)) && defined(__aarch64__)
+		/**
+		 * Если сборка ведётся под системы Apple
+		 */
+		#if defined(__APPLE__)
+			/**
+			 * Кадры не пересекают границ страниц в шестнадцать килобайтов
+			 */
+			#define AWH_REGEX_STACK_PAGE 16384
+		/**
+		 * Если сборка ведётся под прочие системы
+		 */
+		#else
+			/**
+			 * Кадры не пересекают границ страниц в четыре килобайта
+			 */
+			#define AWH_REGEX_STACK_PAGE 4096
+		#endif
+	/**
+	 * Если сборка ведётся под прочие архитектуры либо прочими собирателями
+	 */
+	#else
+		/**
+		 * Кадры от границ страниц не отводятся
+		 */
+		#define AWH_REGEX_STACK_PAGE 0
 	#endif
 #endif
 
@@ -791,6 +930,36 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_NESTED = 256;
+		/**
+		 * \~russian
+		 * @brief Запас стека под входом в исполнение, границы страницы не пересекающий
+		 *
+		 * @details Запас покрывает кадр тела сопоставления, кадр цикла исполнения
+		 *          и вложенные исполнения проверок окружения: у Clang на ARM64
+		 *          кадры их 224 и 416 байтов, и в запас ложатся тело, цикл и три
+		 *          вложенных исполнения. Кадры глубже запаса границу пересечь
+		 *          вправе - вложенность такая редка, а цена её та же, что была
+		 *          без отвода. Прокладка отвода той же длины: при страницах
+		 *          в четыре килобайта половина страницы даёт запас наибольший
+		 *          и на пути с прокладкой, и на пути без неё. Стек потока
+		 *          прокладка расходует сверх обычного на два килобайта с
+		 *          небольшим - на тех лишь входах, где отвод срабатывает.
+		 *
+		 * \~english
+		 * @brief Reserve of the stack below the entry to the execution that crosses no page boundary
+		 * @details The reserve covers the frame of the body of matching, the frame of the execution
+		 *          loop and nested executions of lookaround assertions: with Clang on ARM64 their
+		 *          frames are 224 and 416 bytes, and the body, the loop and three nested executions
+		 *          fit into the reserve. Frames deeper than the reserve may cross a boundary - such
+		 *          nesting is rare, and its cost is the same as it was without the moving. The pad
+		 *          of the moving has the same length: with four kilobyte pages a half of the page
+		 *          gives the largest reserve both on the path with the pad and on the path without it.
+		 *          The pad spends a little over two kilobytes of the stack of the thread beyond the
+		 *          usual - only on the entries where the moving takes effect.
+		 *
+		 * \~
+		 */
+		constexpr size_t STACK_RESERVE = 2048;
 
 		/**
 		 * \~russian
@@ -1571,6 +1740,13 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
 				 *
+				 * @details Где кадры отводятся от границы страницы - признак
+				 *          «AWH_REGEX_STACK_PAGE», - вход тонок намеренно: он читает
+				 *          положение стека и уходит переходом в тело «search», а при
+				 *          запасе до границы меньшем «STACK_RESERVE» - в «padded»,
+				 *          кадра своего не заводя. Где отвод выключен, вход и есть
+				 *          тело сопоставления, как было до отвода.
+				 *
 				 * @param program  исполняемая программа регулярного выражения
 				 * @param text     текст для сопоставления
 				 * @param start    позиция начала поиска совпадения
@@ -1580,6 +1756,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text in the given mode
+				 * @details Where the frames are moved away from the boundary of a page - the
+				 *          «AWH_REGEX_STACK_PAGE» flag - the entry is thin deliberately: it reads the
+				 *          position of the stack and leaves by a jump into the «search» body, and when
+				 *          the reserve down to the boundary is smaller than «STACK_RESERVE» - into
+				 *          «padded», without setting up a frame of its own. Where the moving is off, the
+				 *          entry is the body of matching itself, as it was before the moving.
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -1591,6 +1773,80 @@ namespace awh {
 				 */
 				bool exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept;
 			private:
+			#if AWH_REGEX_STACK_PAGE > 0
+				/**
+				 * \~russian
+				 * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
+				 *
+				 * @details Тело сопоставления вынесено из входа «exec» и подстановке
+				 *          запрещено: вход проверяет положение стека и уходит сюда
+				 *          переходом, кадра не заводя, - смотрите признак
+				 *          «AWH_REGEX_STACK_PAGE». Подставленное во вход, тело принесло
+				 *          бы туда свой кадр, и записи пар его ложились бы поперёк той
+				 *          самой границы, от какой вход кадры и отводит. Где отвод
+				 *          выключен, вход и есть тело, и метода этого нет.
+				 *
+				 * @param program  исполняемая программа регулярного выражения
+				 * @param text     текст для сопоставления
+				 * @param start    позиция начала поиска совпадения
+				 * @param captures набор границ совпадения и захваченных групп
+				 * @param mode     режим сопоставления регулярного выражения с текстом
+				 * @return         результат поиска совпадения
+				 *
+				 * \~english
+				 * @brief Method of matching a regular expression against a text in the given mode
+				 * @details The body of matching is moved out of the «exec» entry and is forbidden
+				 *          to be inlined: the entry checks the position of the stack and leaves
+				 *          here by a jump without setting up a frame - see the
+				 *          «AWH_REGEX_STACK_PAGE» flag. Inlined into the entry, the body would bring
+				 *          its frame there, and the pair stores of that frame would lie across the
+				 *          very boundary the entry moves the frames away from. Where the moving is
+				 *          off, the entry is the body itself, and this method does not exist.
+				 * @param program  program of the regular expression being executed
+				 * @param text     text to match
+				 * @param start    position to start the search for a match from
+				 * @param captures set of the boundaries of the match and of the captured groups
+				 * @param mode     mode of matching the regular expression against the text
+				 * @return         result of searching for a match
+				 *
+				 * \~
+				 */
+				AWH_REGEX_NOINLINE bool search(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод сопоставления регулярного выражения под прокладкой стека
+				 *
+				 * @details Прокладка длиной в «STACK_RESERVE» лежит в кадре метода и
+				 *          отводит кадры тела сопоставления и цикла исполнения за
+				 *          границу страницы. Подстановка запрещена: подставленная во
+				 *          вход, прокладка легла бы в его кадр при всяком положении
+				 *          стека, а не при одном лишь недостающем запасе.
+				 *
+				 * @param program  исполняемая программа регулярного выражения
+				 * @param text     текст для сопоставления
+				 * @param start    позиция начала поиска совпадения
+				 * @param captures набор границ совпадения и захваченных групп
+				 * @param mode     режим сопоставления регулярного выражения с текстом
+				 * @return         результат поиска совпадения
+				 *
+				 * \~english
+				 * @brief Method of matching a regular expression against a text under a pad of the stack
+				 * @details The pad of «STACK_RESERVE» length lies in the frame of the method and
+				 *          moves the frames of the body of matching and of the execution loop past
+				 *          the boundary of the page. Inlining is forbidden: inlined into the entry,
+				 *          the pad would lie in its frame at every position of the stack rather than
+				 *          only when the reserve falls short.
+				 * @param program  program of the regular expression being executed
+				 * @param text     text to match
+				 * @param start    position to start the search for a match from
+				 * @param captures set of the boundaries of the match and of the captured groups
+				 * @param mode     mode of matching the regular expression against the text
+				 * @return         result of searching for a match
+				 *
+				 * \~
+				 */
+				AWH_REGEX_NOINLINE bool padded(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept;
+			#endif
 				/**
 				 * \~russian
 				 * @brief Метод сопоставления символа одиночной инструкцией
