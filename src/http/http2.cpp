@@ -1090,6 +1090,18 @@ bool awh::Http2::commit([[maybe_unused]] const event_t event) noexcept {
 	return true;
 }
 /**
+ * @brief Метод получения размера данных потока, ещё не отданных в сеть
+ *
+ * @param id идентификатор потока
+ * @return   размер данных в байтах
+ */
+size_t awh::Http2::pending(const int32_t id) const noexcept {
+	// Выполняем поиск буфера полезной нагрузки потока
+	auto i = this->_payloads.find(id);
+	// Выводим размер данных в буфере
+	return ((i != this->_payloads.end()) ? i->second->size() : 0);
+}
+/**
  * @brief Метод продолжения отправки фреймов, отложенных из-за заполненной очереди
  *
  * @note Если функция обратного вызова «writable» сообщает, что очередь отправки

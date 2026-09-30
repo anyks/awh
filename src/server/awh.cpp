@@ -193,6 +193,26 @@ void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_
 	this->_http.send(sid, bid, code, mess, entity, headers);
 }
 /**
+ * @brief Метод отправки сообщения брокеру с телом из источника
+ *
+ * @note Тело читается из источника частями по мере освобождения очереди отправки и
+ *       в памяти целиком не держится. Размер тела передаётся клиенту в Content-Length,
+ *       поэтому тело не сжимается. При включённом шифровании размер тела заранее
+ *       неизвестен, и тело собирается из источника целиком
+ *
+ * @param sid     идентификатор потока HTTP
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
+ * @param mess    отправляемое сообщение об ошибке
+ * @param length  размер тела сообщения в байтах
+ * @param source  источник тела сообщения
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::AWH::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const uint64_t length, web_t::source_t source, const std::unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем отправку сообщения клиенту
+	this->_http.send(sid, bid, code, mess, length, ::move(source), headers);
+}
+/**
  * @brief Метод HTTP/2 отправки клиенту сообщения корректного завершения
  *
  * @param bid идентификатор брокера

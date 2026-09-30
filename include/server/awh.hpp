@@ -186,6 +186,23 @@ namespace awh {
 				 * @param headers HTTP заголовки сообщения
 				 */
 				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				/**
+				 * @brief Метод отправки сообщения брокеру с телом из источника
+				 *
+				 * @note Тело читается из источника частями по мере освобождения очереди отправки и
+				 *       в памяти целиком не держится. Размер тела передаётся клиенту в Content-Length,
+				 *       поэтому тело не сжимается. При включённом шифровании размер тела заранее
+				 *       неизвестен, и тело собирается из источника целиком
+				 *
+				 * @param sid     идентификатор потока HTTP
+				 * @param bid     идентификатор брокера
+				 * @param code    код сообщения для брокера
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param length  размер тела сообщения в байтах
+				 * @param source  источник тела сообщения
+				 * @param headers HTTP заголовки сообщения
+				 */
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const uint64_t length, web_t::source_t source, const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * @brief Метод HTTP/2 отправки клиенту сообщения корректного завершения

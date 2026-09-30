@@ -81,6 +81,12 @@ void awh::server::Http2::disconnectEvents(const uint64_t bid, const uint16_t sid
 		this->_blocked.erase(bid);
 		// Снимаем запланированное продолжение отправки
 		this->_unblocks.erase(bid);
+		// Снимаем запланированное чтение источников тела
+		this->_feeds.erase(bid);
+		// Освобождаем тело ответа, отдаваемое через HTTP/1.1
+		this->_http1.release(bid);
+		// Удаляем источники тела ответов брокера
+		this->_sources.erase(this->_sources.lower_bound(std::make_pair(bid, std::numeric_limits <int32_t>::min())), this->_sources.upper_bound(std::make_pair(bid, std::numeric_limits <int32_t>::max())));
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -236,6 +242,8 @@ void awh::server::Http2::writeEvents(const char * buffer, const size_t size, con
 				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
 					// Если отправка сессии остановлена заполненной очередью, планируем продолжение
 					this->unblocking(bid);
+					// Если тела ответов читаются из источников, планируем чтение следующих частей
+					this->feeding(bid);
 					// Выполняем поиск агента которому соответствует клиент
 					auto i = this->_agents.find(bid);
 					// Если активный агент клиента установлен
@@ -379,6 +387,8 @@ int32_t awh::server::Http2::beginSignal(const int32_t sid, const uint64_t bid) n
 int32_t awh::server::Http2::closedSignal(const int32_t sid, const uint64_t bid, [[maybe_unused]] const awh::http2_t::error_t error) noexcept {
 	// Выполняем закрытие потока
 	this->_scheme.closeStream(sid, bid);
+	// Удаляем источник тела ответа потока
+	this->_sources.erase(std::make_pair(bid, sid));
 	/**
 	 * Ошибка потока (RST_STREAM с кодом CANCEL, REFUSED_STREAM и т.д.) закрывает только этот поток:
 	 * браузеры отменяют потоки при обычной работе, и закрытие всего подключения обрывало бы остальные потоки.
@@ -1360,6 +1370,151 @@ void awh::server::Http2::websocket(const int32_t sid, const uint64_t bid) noexce
 				}
 				// Выполняем закрытие подключения
 				web2_t::close(bid);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод планирования чтения источников тела ответов брокера
+ *
+ * @note Вызывается из обратного вызова записи в сокет. Чтение выполняется по таймеру,
+ *       а не из вызова: обратный вызов записи приходит до того, как недописанный
+ *       остаток встаёт в очередь
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Http2::feeding(const uint64_t bid) noexcept {
+	// Если чтение источников ещё не запланировано
+	if(this->_feeds.count(bid) == 0){
+		// Выполняем поиск первого источника тела брокера
+		auto i = this->_sources.lower_bound(std::make_pair(bid, std::numeric_limits <int32_t>::min()));
+		// Если источник тела у брокера есть
+		if((i != this->_sources.end()) && (i->first.first == bid)){
+			// Создаём таймер чтения источников с минимальной задержкой
+			const uint16_t tid = this->_sender.timeout(1);
+			// Если таймер создан
+			if(tid > 0){
+				// Помечаем, что чтение запланировано
+				this->_feeds.emplace(bid);
+				// Выполняем добавление функции обратного вызова
+				this->_sender.on(tid, &http2_t::feed, this, bid);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод чтения источников тела ответов брокера
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Http2::feed(const uint64_t bid) noexcept {
+	// Снимаем отметку запланированного чтения
+	this->_feeds.erase(bid);
+	// Первый и последний возможные ключи источников брокера
+	const auto first = std::make_pair(bid, std::numeric_limits <int32_t>::min());
+	const auto last = std::make_pair(bid, std::numeric_limits <int32_t>::max());
+	// Выполняем поиск брокера в списке активных сессий
+	auto j = this->_sessions.find(bid);
+	// Если сессии нет или сетевое ядро не работает
+	if((j == this->_sessions.end()) || (this->_core == nullptr) || !this->_core->working()){
+		// Удаляем источники тела ответов брокера
+		this->_sources.erase(this->_sources.lower_bound(first), this->_sources.upper_bound(last));
+		// Выходим из функции
+		return;
+	}
+	// Получаем предельный размер очереди отправки брокера
+	const size_t limit = ((this->_core->brokerAvailableSize() > 0) ? this->_core->brokerAvailableSize() : AWH_PAYLOAD_SIZE);
+	// Размер части тела, читаемой из источника за один раз
+	const size_t portion = std::max(static_cast <size_t> (AWH_CHUNK_SIZE), limit / 4);
+	// Буфер части тела
+	vector <char> buffer;
+	// Список потоков брокера, тела которых читаются из источников
+	vector <int32_t> streams;
+	/**
+	 * Выполняем чтение частей тела по кругу, пока данные потоков, не отданные в сеть, не достигнут предела
+	 */
+	for(bool progress = true; progress;){
+		// Снимаем признак продвижения
+		progress = false;
+		// Размер данных потоков, ещё не отданных в сеть
+		size_t pending = 0;
+		// Очищаем список потоков
+		streams.clear();
+		/**
+		 * Выполняем перебор источников брокера
+		 */
+		for(auto i = this->_sources.lower_bound(first); (i != this->_sources.end()) && (i->first.first == bid); ++i){
+			// Добавляем поток в список
+			streams.push_back(i->first.second);
+			// Учитываем данные потока, ещё не отданные в сеть
+			pending += j->second->pending(i->first.second);
+		}
+		// Если данных, не отданных в сеть, достаточно, чтение продолжится после записи в сокет
+		if(pending >= limit)
+			// Выходим из цикла
+			break;
+		/**
+		 * Выполняем чтение по одной части тела каждого потока
+		 */
+		for(auto & sid : streams){
+			// Выполняем поиск источника тела потока
+			auto i = this->_sources.find(std::make_pair(bid, sid));
+			// Если источник уже удалён
+			if(i == this->_sources.end())
+				// Переходим к следующему потоку
+				continue;
+			// Размер читаемой части тела
+			const size_t size = static_cast <size_t> (std::min(i->second.first, static_cast <uint64_t> (portion)));
+			// Количество прочитанных байт
+			size_t bytes = 0;
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выделяем память под часть тела
+				buffer.resize(size);
+				// Выполняем чтение части тела из источника
+				bytes = i->second.second(buffer.data(), size);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				// Сообщаем, что часть тела не прочитана
+				bytes = 0;
+			}
+			// Если часть тела не прочитана
+			if((bytes == 0) || (bytes > size)){
+				// Удаляем источник тела ответа
+				this->_sources.erase(i);
+				// Выводим сообщение об ошибке
+				this->_log->print("Response body source returned %zu bytes of %zu", log_t::flag_t::WARNING, bytes, size);
+				// Клиенту обещан размер тела, дописать его нечем: сбрасываем поток
+				web2_t::reject(sid, bid, awh::http2_t::error_t::INTERNAL_ERROR);
+				// Переходим к следующему потоку
+				continue;
+			}
+			// Уменьшаем остаток тела
+			i->second.first -= static_cast <uint64_t> (bytes);
+			// Получаем признак последней части тела
+			const bool end = (i->second.first == 0);
+			// Если тело прочитано полностью
+			if(end)
+				// Удаляем источник тела ответа
+				this->_sources.erase(i);
+			// Если часть тела не отправлена (поток закрыт)
+			if(!this->send(sid, bid, buffer.data(), bytes, end))
+				// Удаляем источник тела ответа
+				this->_sources.erase(std::make_pair(bid, sid));
+			// Отмечаем продвижение
+			else progress = true;
+			// Если сессия брокера закрыта во время отправки
+			if((j = this->_sessions.find(bid)) == this->_sessions.end()){
+				// Удаляем источники тела ответов брокера
+				this->_sources.erase(this->_sources.lower_bound(first), this->_sources.upper_bound(last));
+				// Выходим из функции
+				return;
 			}
 		}
 	}
@@ -2497,6 +2652,102 @@ void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint3
 			this->send(sid, bid, code, mess, entity.data(), entity.size(), headers);
 		// Выполняем отправку ответа без тела сообщения
 		else this->send(sid, bid, code, mess, nullptr, 0, headers);
+	}
+}
+/**
+ * @brief Метод отправки сообщения брокеру с телом из источника
+ *
+ * @note Тело читается из источника частями по мере освобождения очереди отправки и
+ *       в памяти целиком не держится. Размер тела передаётся клиенту в Content-Length,
+ *       поэтому тело не сжимается. При включённом шифровании размер тела заранее
+ *       неизвестен, и тело собирается из источника целиком
+ *
+ * @param sid     идентификатор потока HTTP
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
+ * @param mess    отправляемое сообщение об ошибке
+ * @param length  размер тела сообщения в байтах
+ * @param source  источник тела сообщения
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::Http2::send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const uint64_t length, source_t source, const std::unordered_multimap <string, string> & headers) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Получаем параметры активного клиента
+		scheme::web2_t::options_t * options = const_cast <scheme::web2_t::options_t *> (this->_scheme.get(bid));
+		// Если параметры активного клиента получены
+		if(options != nullptr){
+			/**
+			 * Определяем протокола подключения
+			 */
+			switch(static_cast <uint8_t> (options->proto)){
+				// Если протокол подключения соответствует HTTP/1.1
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP1_1): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto i = this->_http1._agents.find(bid);
+					// Если активный агент клиента установлен и соответствует HTTP-протоколу
+					if((i != this->_http1._agents.end()) && (i->second == agent_t::HTTP))
+						// Выполняем передачу ответа через протокол HTTP/1.1
+						this->_http1.send(bid, code, mess, length, ::move(source), headers);
+				} break;
+				// Если протокол подключения соответствует HTTP/2
+				case static_cast <uint8_t> (engine_t::proto_t::HTTP2): {
+					// Выполняем поиск агента которому соответствует клиент
+					auto i = this->_agents.find(bid);
+					// Если активный агент клиента не соответствует HTTP-протоколу
+					if((i == this->_agents.end()) || (i->second != agent_t::HTTP))
+						// Выходим из функции
+						return;
+					// Заголовки ответа с размером тела из источника
+					std::unordered_multimap <string, string> result;
+					/**
+					 * Переносим заголовки приложения, кроме размера и кодирования тела: их определяет источник
+					 */
+					for(auto & header : headers){
+						// Если заголовок не задаёт размер или кодирование тела
+						if(!this->_fmk->compare(header.first, "content-length") && !this->_fmk->compare(header.first, "content-encoding"))
+							// Добавляем заголовок ответа
+							result.emplace(header.first, header.second);
+					}
+					// Если тела у ответа нет
+					if((length == 0) || (source == nullptr) || (code < 200) || (code == 204) || (code == 304))
+						// Выполняем отправку ответа без тела сообщения
+						this->send(sid, bid, code, mess, nullptr, 0, result);
+					/**
+					 * Шифрованное тело передаётся без размера: его размер после шифрования неизвестен,
+					 * поэтому тело собирается из источника и отправляется обычным ответом
+					 */
+					else if(this->_encryption.mode) {
+						// Собранное тело ответа
+						vector <char> entity;
+						// Если тело собрано из источника полностью
+						if(web_t::collect(entity, length, source))
+							// Выполняем отправку ответа с телом сообщения
+							this->send(sid, bid, code, mess, entity.data(), entity.size(), result);
+						// Если тело не собрано, отвечаем ошибкой сервера
+						else this->send(sid, bid, 500, "", nullptr, 0, {});
+					// Если тело отдаётся из источника
+					} else {
+						// Устанавливаем размер тела
+						result.emplace("Content-Length", std::to_string(length));
+						// Тело отдаётся как есть: части тела не сжимаются по отдельности
+						result.emplace("Content-Encoding", "identity");
+						// Если заголовки ответа не отправлены
+						if(this->send(sid, bid, code, mess, result, false) < 0)
+							// Выходим из функции
+							return;
+						// Если поток закрыт во время отправки заголовков
+						if(this->_scheme.getStream(sid, bid) == nullptr)
+							// Выходим из функции
+							return;
+						// Устанавливаем источник тела ответа
+						this->_sources[std::make_pair(bid, sid)] = std::make_pair(length, ::move(source));
+						// Выполняем чтение первых частей тела
+						this->feed(bid);
+					}
+				} break;
+			}
+		}
 	}
 }
 /**

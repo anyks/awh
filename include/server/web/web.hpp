@@ -91,6 +91,24 @@ namespace awh {
 					WEBSOCKET_ENABLE      = 0x07, // Флаг разрешения использования Websocket-сервера
 					CONNECT_METHOD_ENABLE = 0x08  // Флаг разрешающий метод CONNECT для сервера
 				};
+				/**
+				 * @brief Источник тела ответа, отдаваемого по мере освобождения очереди отправки
+				 *
+				 * @note Получает буфер и его размер, записывает в буфер следующую часть тела и возвращает
+				 *       число записанных байт. Ноль означает ошибку чтения: ответ обрывается закрытием
+				 *       подключения, так как клиенту уже обещан размер тела в заголовке Content-Length
+				 */
+				typedef function <size_t (char *, const size_t)> source_t;
+			protected:
+				/**
+				 * @brief Метод сборки тела ответа из источника целиком
+				 *
+				 * @param entity собранное тело ответа
+				 * @param length размер тела в байтах
+				 * @param source источник тела ответа
+				 * @return       результат сборки (ложь, если источник не отдал тело полностью)
+				 */
+				static bool collect(vector <char> & entity, const uint64_t length, source_t & source) noexcept;
 			protected:
 				/**
 				 * @brief Структура идентификации сервиса

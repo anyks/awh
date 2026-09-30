@@ -93,6 +93,8 @@ namespace awh {
 				std::set <uint64_t> _pumps;
 				// Части тела, не поместившиеся в очередь отправки (данные и признак последней части)
 				std::map <uint64_t, std::pair <vector <char>, bool>> _holds;
+				// Источники тела ответа (сколько байт осталось прочитать и сам источник)
+				std::map <uint64_t, std::pair <uint64_t, source_t>> _sources;
 			private:
 				/**
 				 * @brief Метод обратного вызова при подключении к серверу
@@ -151,6 +153,24 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void pump(const uint64_t bid) noexcept;
+				/**
+				 * @brief Метод чтения следующей части тела ответа из источника
+				 *
+				 * @param bid     идентификатор брокера
+				 * @param limit   предельный размер очереди отправки брокера
+				 * @param options параметры активного клиента
+				 * @return        результат чтения (ложь, если источник не отдал обещанную часть тела)
+				 */
+				bool fetch(const uint64_t bid, const size_t limit, scheme::web_t::options_t * options) noexcept;
+				/**
+				 * @brief Метод освобождения отдаваемого тела ответа отключившегося брокера
+				 *
+				 * @note Параметры брокера удаляются позже его отключения, а источник тела держит
+				 *       ресурс (например, открытый файл): он освобождается сразу
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void release(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод отлавливания событий контейнера функций обратного вызова
@@ -304,6 +324,22 @@ namespace awh {
 				 * @param headers HTTP заголовки сообщения
 				 */
 				void send(const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				/**
+				 * @brief Метод отправки сообщения брокеру с телом из источника
+				 *
+				 * @note Тело читается из источника частями по мере освобождения очереди отправки и
+				 *       в памяти целиком не держится. Размер тела передаётся клиенту в Content-Length,
+				 *       поэтому тело не сжимается. При включённом шифровании размер тела заранее
+				 *       неизвестен, и тело собирается из источника целиком
+				 *
+				 * @param bid     идентификатор брокера
+				 * @param code    код сообщения для брокера
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param length  размер тела сообщения в байтах
+				 * @param source  источник тела сообщения
+				 * @param headers HTTP заголовки сообщения
+				 */
+				void send(const uint64_t bid, const uint32_t code, const string & mess, const uint64_t length, source_t source, const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

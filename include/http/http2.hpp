@@ -451,6 +451,13 @@ namespace awh {
 			 * @return результат отправки
 			 */
 			bool resume() noexcept;
+			/**
+			 * @brief Метод получения размера данных потока, ещё не отданных в сеть
+			 *
+			 * @param id идентификатор потока
+			 * @return   размер данных в байтах
+			 */
+			size_t pending(const int32_t id) const noexcept;
 		public:
 			/**
 			 * @brief Метод выполнения сброса подключения

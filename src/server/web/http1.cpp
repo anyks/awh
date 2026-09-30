@@ -126,6 +126,8 @@ void awh::server::Http1::connectEvents(const uint64_t bid, const uint16_t sid) n
 void awh::server::Http1::disconnectEvents(const uint64_t bid, const uint16_t sid) noexcept {
 	// Если данные переданы верные
 	if((bid > 0) && (sid > 0)){
+		// Освобождаем отдаваемое тело ответа
+		this->release(bid);
 		// Выполняем отключение подключившегося брокера
 		this->disconnect(bid);
 		// Если функция обратного вызова при подключении/отключении установлена
@@ -624,6 +626,89 @@ void awh::server::Http1::resume(const uint64_t bid) noexcept {
 	}
 }
 /**
+ * @brief Метод освобождения отдаваемого тела ответа отключившегося брокера
+ *
+ * @note Параметры брокера удаляются позже его отключения, а источник тела держит
+ *       ресурс (например, открытый файл): он освобождается сразу
+ *
+ * @param bid идентификатор брокера
+ */
+void awh::server::Http1::release(const uint64_t bid) noexcept {
+	// Снимаем отдачу тела ответа
+	this->_bodies.erase(bid);
+	// Удаляем непоместившуюся часть тела
+	this->_holds.erase(bid);
+	// Удаляем источник тела ответа
+	this->_sources.erase(bid);
+}
+/**
+ * @brief Метод чтения следующей части тела ответа из источника
+ *
+ * @param bid     идентификатор брокера
+ * @param limit   предельный размер очереди отправки брокера
+ * @param options параметры активного клиента
+ * @return        результат чтения (ложь, если источник не отдал обещанную часть тела)
+ */
+bool awh::server::Http1::fetch(const uint64_t bid, const size_t limit, scheme::web_t::options_t * options) noexcept {
+	// Выполняем поиск источника тела ответа
+	auto i = this->_sources.find(bid);
+	// Если источника нет, читать нечего
+	if(i == this->_sources.end())
+		// Сообщаем, что ошибки нет
+		return true;
+	// Размер читаемой части: не больше очереди отправки брокера и не больше остатка тела
+	const size_t size = static_cast <size_t> (std::min(i->second.first, static_cast <uint64_t> ((limit > 0) ? limit : AWH_PAYLOAD_SIZE)));
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Буфер части тела
+		vector <char> buffer(size);
+		// Выполняем чтение части тела из источника
+		const size_t bytes = i->second.second(buffer.data(), buffer.size());
+		// Если часть тела не прочитана
+		if((bytes == 0) || (bytes > size)){
+			// Удаляем источник тела ответа
+			this->_sources.erase(i);
+			// Выводим сообщение об ошибке
+			this->_log->print("Response body source returned %zu bytes of %zu", log_t::flag_t::WARNING, bytes, size);
+			// Сообщаем об ошибке
+			return false;
+		}
+		// Уменьшаем остаток тела
+		i->second.first -= static_cast <uint64_t> (bytes);
+		// Если тело прочитано полностью
+		if(i->second.first == 0)
+			// Удаляем источник тела ответа
+			this->_sources.erase(i);
+		// Добавляем часть тела в HTTP-парсер
+		options->http.body(buffer.data(), bytes);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Удаляем источник тела ответа
+		this->_sources.erase(bid);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(bid, limit), log_t::flag_t::CRITICAL, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+		// Сообщаем об ошибке
+		return false;
+	}
+	// Сообщаем, что часть тела прочитана
+	return true;
+}
+/**
  * @brief Метод отдачи тела ответа по мере освобождения очереди отправки брокера
  *
  * @note Вызывается из отправки ответа и по таймеру после записи в сокет, но не из
@@ -647,6 +732,8 @@ void awh::server::Http1::pump(const uint64_t bid) noexcept {
 		this->_bodies.erase(bid);
 		// Удаляем непоместившуюся часть тела
 		this->_holds.erase(bid);
+		// Удаляем источник тела
+		this->_sources.erase(bid);
 		// Выходим из функции
 		return;
 	}
@@ -684,6 +771,14 @@ void awh::server::Http1::pump(const uint64_t bid) noexcept {
 			part = ::move(i->second.first);
 			// Удаляем часть из списка
 			this->_holds.erase(i);
+		// Если тело в парсере закончилось, а часть тела из источника не прочитана
+		} else if(options->http.empty(awh::http_t::suite_t::BODY) && !this->fetch(bid, limit, options)) {
+			// Снимаем отдачу тела
+			this->_bodies.erase(bid);
+			// Клиенту обещан размер тела, дописать его нечем: закрываем подключение
+			const_cast <server::core_t *> (this->_core)->close(bid);
+			// Выходим из функции
+			return;
 		// Получаем следующую часть тела
 		} else if(!(payload = ::move(options->http.payload())).empty()) {
 			/**
@@ -694,7 +789,7 @@ void awh::server::Http1::pump(const uint64_t bid) noexcept {
 				std::cout << this->_fmk->format("<chunk %zu>", payload.size()) << std::endl << std::endl << std::flush;
 			#endif
 			// Получаем признак последней части
-			last = (options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0));
+			last = (options->http.empty(awh::http_t::suite_t::BODY) && (options->http.trailers() == 0) && (this->_sources.count(bid) == 0));
 			// Забираем часть тела
 			part.assign(static_cast <const char *> (payload), static_cast <const char *> (payload) + static_cast <size_t> (payload));
 		// Если тело ответа закончилось
@@ -720,6 +815,8 @@ void awh::server::Http1::pump(const uint64_t bid) noexcept {
 			this->_bodies.erase(bid);
 			// Удаляем непоместившуюся часть тела
 			this->_holds.erase(bid);
+			// Удаляем источник тела
+			this->_sources.erase(bid);
 			// Выходим из функции
 			return;
 		}
@@ -1172,6 +1269,8 @@ void awh::server::Http1::erase(const uint64_t bid) noexcept {
 			this->_pumps.erase(bid);
 			// Удаляем непоместившуюся часть тела
 			this->_holds.erase(bid);
+			// Удаляем источник тела ответа
+			this->_sources.erase(bid);
 			// Выполняем удаление параметров брокера
 			this->_scheme.rm(bid);
 		};
@@ -1646,14 +1745,14 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 					// Выводим параметры ответа
 					std::cout << string(static_cast <const char *> (response), static_cast <size_t> (response)) << std::endl << std::endl << std::flush;
 				#endif
-				// Если тело данных не установлено для отправки
-				if(options->http.empty(awh::http_t::suite_t::BODY))
+				// Если тело данных не установлено для отправки и не читается из источника
+				if(options->http.empty(awh::http_t::suite_t::BODY) && (this->_sources.count(bid) == 0))
 					// Если подключение не установлено как постоянное, устанавливаем флаг завершения работы
 					options->stopped = (!this->_service.alive && !options->alive && !options->http.is(http_t::state_t::ALIVE));
 				// Отправляем серверу сообщение
 				const_cast <server::core_t *> (this->_core)->send(static_cast <const char *> (response), static_cast <size_t> (response), bid);
 				// Если код ответа содержит тело ответа
-				if((code >= 200) && !options->http.empty(awh::http_t::suite_t::BODY)){
+				if((code >= 200) && (!options->http.empty(awh::http_t::suite_t::BODY) || (this->_sources.count(bid) > 0))){
 					// Помечаем, что тело ответа отдаётся
 					this->_bodies.emplace(bid);
 					// Выполняем отдачу тела, сколько поместится в очередь отправки
@@ -1702,6 +1801,69 @@ void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const str
 			this->send(bid, code, mess, entity.data(), entity.size(), headers);
 		// Выполняем отправку ответа без тела сообщения
 		else this->send(bid, code, mess, nullptr, 0, headers);
+	}
+}
+/**
+ * @brief Метод отправки сообщения брокеру с телом из источника
+ *
+ * @note Тело читается из источника частями по мере освобождения очереди отправки и
+ *       в памяти целиком не держится. Размер тела передаётся клиенту в Content-Length,
+ *       поэтому тело не сжимается. При включённом шифровании размер тела заранее
+ *       неизвестен, и тело собирается из источника целиком
+ *
+ * @param bid     идентификатор брокера
+ * @param code    код сообщения для брокера
+ * @param mess    отправляемое сообщение об ошибке
+ * @param length  размер тела сообщения в байтах
+ * @param source  источник тела сообщения
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::server::Http1::send(const uint64_t bid, const uint32_t code, const string & mess, const uint64_t length, source_t source, const std::unordered_multimap <string, string> & headers) noexcept {
+	// Если подключение выполнено
+	if((this->_core != nullptr) && this->_core->working()){
+		// Заголовки ответа с размером тела из источника
+		std::unordered_multimap <string, string> result;
+		/**
+		 * Переносим заголовки приложения, кроме размера и кодирования тела: их определяет источник
+		 */
+		for(auto & header : headers){
+			// Если заголовок не задаёт размер или кодирование тела
+			if(!this->_fmk->compare(header.first, "content-length") && !this->_fmk->compare(header.first, "content-encoding"))
+				// Добавляем заголовок ответа
+				result.emplace(header.first, header.second);
+		}
+		// Если тела у ответа нет
+		if((length == 0) || (source == nullptr) || (code < 200) || (code == 204) || (code == 304))
+			// Выполняем отправку ответа без тела сообщения
+			this->send(bid, code, mess, nullptr, 0, result);
+		/**
+		 * Шифрованное тело передаётся чанками целиком: его размер после шифрования неизвестен,
+		 * поэтому тело собирается из источника и отправляется обычным ответом
+		 */
+		else if(this->_encryption.mode) {
+			// Собранное тело ответа
+			vector <char> entity;
+			// Если тело собрано из источника полностью
+			if(web_t::collect(entity, length, source))
+				// Выполняем отправку ответа с телом сообщения
+				this->send(bid, code, mess, entity.data(), entity.size(), result);
+			// Если тело не собрано, отвечаем ошибкой сервера
+			else this->send(bid, 500, "", nullptr, 0, {});
+		// Если тело отдаётся из источника
+		} else {
+			// Устанавливаем размер тела
+			result.emplace("Content-Length", std::to_string(length));
+			// Тело отдаётся как есть: части тела не сжимаются по отдельности
+			result.emplace("Content-Encoding", "identity");
+			// Устанавливаем источник тела ответа
+			this->_sources[bid] = std::make_pair(length, ::move(source));
+			// Выполняем отправку ответа, тело отдаётся из источника
+			this->send(bid, code, mess, nullptr, 0, result);
+			// Если отдача тела не началась (подключение закрыто), источник больше не нужен
+			if(this->_bodies.count(bid) == 0)
+				// Удаляем источник тела ответа
+				this->_sources.erase(bid);
+		}
 	}
 }
 /**

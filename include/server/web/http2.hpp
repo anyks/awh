@@ -78,6 +78,15 @@ namespace awh {
 				std::unordered_multimap <string, string> _headers;
 			private:
 				/**
+				 * Тело ответа из источника читается частями, пока данные потоков брокера, ещё
+				 * не отданные в сеть, не достигнут предела очереди отправки брокера
+				 */
+				// Источники тела ответов (брокер и поток, сколько байт осталось прочитать и сам источник)
+				std::map <std::pair <uint64_t, int32_t>, std::pair <uint64_t, source_t>> _sources;
+				// Список брокеров, для которых запланировано чтение источников тела
+				std::set <uint64_t> _feeds;
+			private:
+				/**
 				 * @brief Метод обратного вызова при подключении к серверу
 				 *
 				 * @param bid идентификатор брокера
@@ -192,6 +201,23 @@ namespace awh {
 				 * @param bid идентификатор брокера
 				 */
 				void websocket(const int32_t sid, const uint64_t bid) noexcept;
+			private:
+				/**
+				 * @brief Метод планирования чтения источников тела ответов брокера
+				 *
+				 * @note Вызывается из обратного вызова записи в сокет. Чтение выполняется по таймеру,
+				 *       а не из вызова: обратный вызов записи приходит до того, как недописанный
+				 *       остаток встаёт в очередь
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void feeding(const uint64_t bid) noexcept;
+				/**
+				 * @brief Метод чтения источников тела ответов брокера
+				 *
+				 * @param bid идентификатор брокера
+				 */
+				void feed(const uint64_t bid) noexcept;
 			private:
 				/**
 				 * @brief Метод удаления отключившихся брокеров
@@ -350,6 +376,23 @@ namespace awh {
 				 * @param headers HTTP заголовки сообщения
 				 */
 				void send(const int32_t sid, const uint64_t bid, const uint32_t code = 200, const string & mess = "", const vector <char> & entity = {}, const std::unordered_multimap <string, string> & headers = {}) noexcept;
+				/**
+				 * @brief Метод отправки сообщения брокеру с телом из источника
+				 *
+				 * @note Тело читается из источника частями по мере освобождения очереди отправки и
+				 *       в памяти целиком не держится. Размер тела передаётся клиенту в Content-Length,
+				 *       поэтому тело не сжимается. При включённом шифровании размер тела заранее
+				 *       неизвестен, и тело собирается из источника целиком
+				 *
+				 * @param sid     идентификатор потока HTTP
+				 * @param bid     идентификатор брокера
+				 * @param code    код сообщения для брокера
+				 * @param mess    отправляемое сообщение об ошибке
+				 * @param length  размер тела сообщения в байтах
+				 * @param source  источник тела сообщения
+				 * @param headers HTTP заголовки сообщения
+				 */
+				void send(const int32_t sid, const uint64_t bid, const uint32_t code, const string & mess, const uint64_t length, source_t source, const std::unordered_multimap <string, string> & headers) noexcept;
 			public:
 				/**
 				 * @brief Метод HTTP/2 отправки клиенту сообщения корректного завершения

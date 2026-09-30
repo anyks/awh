@@ -28,6 +28,51 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Метод сборки тела ответа из источника целиком
+ *
+ * @param entity собранное тело ответа
+ * @param length размер тела в байтах
+ * @param source источник тела ответа
+ * @return       результат сборки (ложь, если источник не отдал тело полностью)
+ */
+bool awh::server::Web::collect(vector <char> & entity, const uint64_t length, source_t & source) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выделяем память под тело ответа
+		entity.resize(static_cast <size_t> (length));
+		// Количество собранных байт
+		size_t offset = 0;
+		/**
+		 * Выполняем чтение тела, пока оно не собрано
+		 */
+		while(offset < entity.size()){
+			// Выполняем чтение части тела из источника
+			const size_t bytes = source(entity.data() + offset, entity.size() - offset);
+			// Если часть тела не прочитана
+			if((bytes == 0) || (bytes > (entity.size() - offset))){
+				// Очищаем тело ответа
+				entity.clear();
+				// Сообщаем об ошибке
+				return false;
+			}
+			// Увеличиваем количество собранных байт
+			offset += bytes;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception &) {
+		// Очищаем тело ответа
+		entity.clear();
+		// Сообщаем об ошибке
+		return false;
+	}
+	// Сообщаем, что тело собрано
+	return true;
+}
+/**
  * @brief Метод обратного вызова при запуске работы
  *
  * @param sid идентификатор схемы сети
