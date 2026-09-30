@@ -89,6 +89,62 @@ static bool verifyHostParam(SSL * ssl, const string & host) noexcept {
 	return (::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(ssl), host.c_str(), 0) > 0);
 }
 /**
+ * Шифры TLS 1.2 сервера по умолчанию (набор Mozilla «intermediate»): только ECDHE/DHE с шифрованием AEAD.
+ * Шифры TLS 1.3 задаёт OpenSSL, список ниже их не касается. Свой список устанавливается методом ciphers()
+ */
+#define AWH_TLS_SERVER_CIPHERS "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305"
+/**
+ * @brief Функция проверки, что контекст создан для DTLS
+ *
+ * @param ctx контекст OpenSSL
+ * @return    результат проверки
+ */
+static bool sslDatagram(const SSL_CTX * ctx) noexcept {
+	// Получаем метод контекста
+	const SSL_METHOD * method = ::SSL_CTX_get_ssl_method(ctx);
+	// Выводим результат
+	return ((method == ::DTLS_method()) || (method == ::DTLS_server_method()) || (method == ::DTLS_client_method()));
+}
+/**
+ * @brief Функция установки диапазона версий протокола
+ *
+ * Контекст создаётся гибким методом (TLS_method / DTLS_method), версия ограничивается снизу TLS 1.2 (DTLS 1.2),
+ * сверху — наибольшей версией, известной OpenSSL (TLS 1.3). Методы TLSv1_2_*_method фиксировали версию на TLS 1.2,
+ * и клиенты, предлагающие только TLS 1.3, получали отказ в рукопожатии
+ *
+ * @param ctx контекст OpenSSL
+ * @return    результат установки
+ */
+static bool sslVersions(SSL_CTX * ctx) noexcept {
+	// Выполняем установку диапазона версий протокола
+	return (
+		(::SSL_CTX_set_min_proto_version(ctx, (sslDatagram(ctx) ? DTLS1_2_VERSION : TLS1_2_VERSION)) == 1) &&
+		(::SSL_CTX_set_max_proto_version(ctx, 0) == 1)
+	);
+}
+/**
+ * @brief Функция получения списка групп обмена ключами в порядке предпочтения
+ *
+ * X25519 (RFC 7748) предлагают по умолчанию все современные клиенты, без неё рукопожатие шло только на P-256.
+ * С OpenSSL 3.5 первой идёт гибридная постквантовая группа X25519MLKEM768 (только TLS 1.3)
+ *
+ * @param ctx контекст OpenSSL
+ * @return    список групп
+ */
+static const char * sslGroups(const SSL_CTX * ctx) noexcept {
+	/**
+	 * Если версия OpenSSL соответствует или выше версии 3.5.0
+	 */
+	#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+		// Если контекст создан не для DTLS, добавляем постквантовую группу
+		if(!sslDatagram(ctx))
+			// Выводим список групп
+			return "X25519MLKEM768:X25519:P-256:P-384:P-521";
+	#endif
+	// Выводим список групп
+	return "X25519:P-256:P-384:P-521";
+}
+/**
  * Буфер секретного слова печенок
  */
 uint8_t awh::Engine::_cookies[16];
@@ -4060,12 +4116,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::DTLSv1_2_server_method());
+						target._ctx = ::SSL_CTX_new(::DTLS_server_method());
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::TLSv1_2_server_method());
+						target._ctx = ::SSL_CTX_new(::TLS_server_method());
 					break;
 				}
 			/**
@@ -4073,7 +4129,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 */
 			#else
 				// Получаем контекст OpenSSL
-				target._ctx = ::SSL_CTX_new(::TLSv1_2_server_method());
+				target._ctx = ::SSL_CTX_new(::TLS_server_method());
 			#endif
 			// Если контекст не создан
 			if(target._ctx == nullptr){
@@ -4084,10 +4140,15 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Устанавливаем опции запроса
 			::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-			// Устанавливаем минимально-возможную версию TLS
-			::SSL_CTX_set_min_proto_version(target._ctx, 0);
-			// Устанавливаем максимально-возможную версию TLS
-			::SSL_CTX_set_max_proto_version(target._ctx, TLS1_3_VERSION);
+			// Если диапазон версий протокола не установлен
+			if(!sslVersions(target._ctx)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Set SSL protocol versions: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+				// Выходим
+				return;
+			}
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -4101,6 +4162,14 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				}
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
 				::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+			// Если алгоритмы шифрования не заданы, устанавливаем алгоритмы сервера по умолчанию
+			} else if(::SSL_CTX_set_cipher_list(target._ctx, AWH_TLS_SERVER_CIPHERS) < 1) {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+				// Выходим
+				return;
 			}
 			// Получаем идентификатор процесса
 			const pid_t pid = ::getpid();
@@ -4108,10 +4177,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, P-384 и P-521
-				if(::SSL_CTX_set1_curves_list(target._ctx, "P-521:P-384:P-256") != 1){
+				// Выполняем установку групп обмена ключами (X25519, P-256, P-384, P-521)
+				if(::SSL_CTX_set1_groups_list(target._ctx, sslGroups(target._ctx)) != 1){
 					// Выводим в лог сообщение
-					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+					this->_log->print("Set SSL groups list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -4356,12 +4425,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(DTLSv1_2_client_method());
+							target._ctx = ::SSL_CTX_new(DTLS_client_method());
 						break;
 						// Если приложение является сервером
 						case static_cast <uint8_t> (type_t::SERVER):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(DTLSv1_2_server_method());
+							target._ctx = ::SSL_CTX_new(DTLS_server_method());
 						break;
 					}
 				} break;
@@ -4374,12 +4443,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(TLSv1_2_client_method());
+							target._ctx = ::SSL_CTX_new(TLS_client_method());
 						break;
 						// Если приложение является сервером
 						case static_cast <uint8_t> (type_t::SERVER):
 							// Получаем контекст OpenSSL
-							target._ctx = ::SSL_CTX_new(TLSv1_2_server_method());
+							target._ctx = ::SSL_CTX_new(TLS_server_method());
 						break;
 					}
 				} break;
@@ -4393,10 +4462,15 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 			}
 			// Устанавливаем опции запроса
 			::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
-			// Устанавливаем минимально-возможную версию TLS
-			::SSL_CTX_set_min_proto_version(target._ctx, 0);
-			// Устанавливаем максимально-возможную версию TLS
-			::SSL_CTX_set_max_proto_version(target._ctx, TLS1_3_VERSION);
+			// Если диапазон версий протокола не установлен
+			if(!sslVersions(target._ctx)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Set SSL protocol versions: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+				// Выходим
+				return;
+			}
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -4412,15 +4486,23 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type, cons
 				if(type == type_t::SERVER)
 					// Заставляем серверные алгоритмы шифрования использовать в приоритете
 					::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+			// Если алгоритмы шифрования не заданы и приложение является сервером, устанавливаем алгоритмы сервера по умолчанию
+			} else if((type == type_t::SERVER) && (::SSL_CTX_set_cipher_list(target._ctx, AWH_TLS_SERVER_CIPHERS) < 1)) {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Set SSL ciphers: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+				// Выходим
+				return;
 			}
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, P-384 и P-521
-				if(::SSL_CTX_set1_curves_list(target._ctx, "P-521:P-384:P-256") != 1){
+				// Выполняем установку групп обмена ключами (X25519, P-256, P-384, P-521)
+				if(::SSL_CTX_set1_groups_list(target._ctx, sslGroups(target._ctx)) != 1){
 					// Выводим в лог сообщение
-					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+					this->_log->print("Set SSL groups list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -4780,12 +4862,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::DTLSv1_2_client_method());
+						target._ctx = ::SSL_CTX_new(::DTLS_client_method());
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
 						// Получаем контекст OpenSSL
-						target._ctx = ::SSL_CTX_new(::TLSv1_2_client_method());
+						target._ctx = ::SSL_CTX_new(::TLS_client_method());
 					break;
 				}
 			/**
@@ -4793,7 +4875,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			 */
 			#else
 				// Получаем контекст OpenSSL
-				target._ctx = ::SSL_CTX_new(::TLSv1_2_client_method());
+				target._ctx = ::SSL_CTX_new(::TLS_client_method());
 			#endif
 			// Если контекст не создан
 			if(target._ctx == nullptr){
@@ -4804,14 +4886,23 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const string & host) no
 			}
 			// Устанавливаем опции запроса
 			::SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
+			// Если диапазон версий протокола не установлен
+			if(!sslVersions(target._ctx)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("Set SSL protocol versions: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+				// Выходим
+				return;
+			}
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-				// Выполняем установку кривых P-256, P-384 и P-521
-				if(::SSL_CTX_set1_curves_list(target._ctx, "P-521:P-384:P-256") != 1){
+				// Выполняем установку групп обмена ключами (X25519, P-256, P-384, P-521)
+				if(::SSL_CTX_set1_groups_list(target._ctx, sslGroups(target._ctx)) != 1){
 					// Выводим в лог сообщение
-					this->_log->print("Set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
+					this->_log->print("Set SSL groups list failed: %s", log_t::flag_t::CRITICAL, ::ERR_error_string(::ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -5155,54 +5246,11 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	#endif
 	// Выполняем установку сертификата центра сертификации (CA-файла)
 	this->_cert.ca = this->_fs.realPath(this->_cert.ca, false);
-	// Выполняем установку алгоритмов шифрования
-	this->ciphers({
-		"ECDHE+AESGCM",
-		"ECDHE+CHACHA20",
-		"ECDHE-RSA-AES128-GCM-SHA256",
-		"ECDHE-ECDSA-AES128-GCM-SHA256",
-		"ECDHE-RSA-AES256-GCM-SHA384",
-		"ECDHE-ECDSA-AES256-GCM-SHA384",
-		"DHE-RSA-AES128-GCM-SHA256",
-		"DHE-DSS-AES128-GCM-SHA256",
-		"kEDH+AESGCM",
-		"ECDHE-RSA-AES128-SHA256",
-		"ECDHE-ECDSA-AES128-SHA256",
-		"ECDHE-RSA-AES128-SHA",
-		"ECDHE-ECDSA-AES128-SHA",
-		"ECDHE-RSA-AES256-SHA384",
-		"ECDHE-ECDSA-AES256-SHA384",
-		"ECDHE-RSA-AES256-SHA",
-		"ECDHE-ECDSA-AES256-SHA",
-		"DHE-RSA-AES128-SHA256",
-		"DHE-RSA-AES128-SHA",
-		"DHE-DSS-AES128-SHA256",
-		"DHE-RSA-AES256-SHA256",
-		"DHE-DSS-AES256-SHA",
-		"DHE-RSA-AES256-SHA",
-		"DHE+AESGCM",
-		"DHE+CHACHA20",
-		"AES128-GCM-SHA256",
-		"AES256-GCM-SHA384",
-		"AES128-SHA256",
-		"AES256-SHA256",
-		"AES128-SHA",
-		"AES256-SHA",
-		"AES",
-		"CAMELLIA",
-		"DES-CBC3-SHA",
-		"!aNULL",
-		"!eNULL",
-		"!EXPORT",
-		"!DES",
-		"!RC4",
-		"!MD5",
-		"!PSK",
-		"!aECDH",
-		"!EDH-DSS-DES-CBC3-SHA",
-		"!EDH-RSA-DES-CBC3-SHA",
-		"!KRB5-DES-CBC3-SHA"
-	});
+	/**
+	 * Алгоритмы шифрования по умолчанию не задаются: сервер без списка от приложения берёт набор
+	 * AWH_TLS_SERVER_CIPHERS (только ECDHE/DHE с AEAD), клиент — набор OpenSSL по умолчанию. Прежний список
+	 * допускал 3DES, CAMELLIA и обмен ключами RSA без прямой секретности
+	 */
 	/**
 	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
