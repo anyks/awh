@@ -122,14 +122,46 @@ PROGRAM=$(command -v "$MAKE")
  # сам, и спрашивается он у него же - пробой препроцессора, а не перечнем имён
  # машин: перечень отстал бы от sljit молча, а проба с ним не расходится никогда.
  #
- # Эталон без кода сличается на равных и там: наш модуль на такой машине кода
- # не порождает тоже, и обе стороны идут толкователем
+ # Эталон без кода сличается своим толкователем. Наш модуль может порождать код
+ # и на такой машине, как на Эльбрусе: эта пара выводится под отдельным именем
  ##
 JIT=ON
 if ! printf '#include "sljitConfigCPU.h"\n#if defined SLJIT_CONFIG_UNSUPPORTED && SLJIT_CONFIG_UNSUPPORTED\n#error\n#endif\n' \
    | ${CC:-cc} -E -I"$PCRE/deps/sljit/sljit_src" -x c - > /dev/null 2>&1; then
 	JIT=OFF
 	echo "эталон PCRE2 собирается БЕЗ порождения машинного кода: sljit набору команд $(uname -m) не обучен" >&2
+fi
+
+##
+ # У NetBSD и OpenBSD исполняемая память эталону отводится распределителем особым
+ #
+ # Обе системы запрещают отображение, разом пишущееся и исполняемое: NetBSD - через
+ # PaX MPROTECT, OpenBSD - через W^X. Распределитель sljit по умолчанию просит именно
+ # такое, и `pcre2_jit_compile` отвечал на всякое выражение -48 («no more memory»):
+ # отказ порождения эталон молча переживает разбором программы, и стенд сличал наш
+ # машинный код с его толкователем. У sljit на оба случая есть распределитель свой.
+ # У NetBSD это двойное отображение (`MAP_REMAPDUP`: страницы пишутся одним
+ # отображением, исполняются другим). Включается оно признаком
+ # `PCRE2_SUPPORT_JIT_SEALLOC` - тем же, что у Linux ведает распределителем для SELinux.
+ # У OpenBSD это смена прав страниц после порождения (`SLJIT_WX_EXECUTABLE_ALLOCATOR`).
+ # Признака сборки у PCRE2 на него нет, и передаётся он собирателю напрямую.
+ # Системные пакеты эталона у обеих систем (pkgsrc и порты) собраны без порождения
+ # кода вовсе; стенд же сличает с эталоном в лучшем его виде. Метка сборки несёт
+ # распределитель: сборка без него, какую стенд оставил прежде, с нынешней не спутается
+ ##
+ALLOCATOR=""
+MARK=""
+if [ "$JIT" = "ON" ]; then
+	case "$(uname -s)" in
+		NetBSD)
+			ALLOCATOR="-DPCRE2_SUPPORT_JIT_SEALLOC=ON"
+			MARK="-sealloc"
+		;;
+		OpenBSD)
+			ALLOCATOR="-DCMAKE_C_FLAGS=-DSLJIT_WX_EXECUTABLE_ALLOCATOR=1"
+			MARK="-wx"
+		;;
+	esac
 fi
 
 ##
@@ -147,7 +179,7 @@ fi
  ##
 SOURCE=$(echo "$STATE" | awk '{print $1}' | tr -d 'U+-')
 [ -n "$SOURCE" ] || SOURCE=$(cat "$PCRE/src/pcre2.h.generic" "$PCRE/CMakeLists.txt" | cksum | awk '{print $1}')
-BUILD="$OUT/$(echo "$SOURCE" | cut -c1-12)-jit-$JIT"
+BUILD="$OUT/$(echo "$SOURCE" | cut -c1-12)-jit-$JIT$MARK"
 
 if [ ! -f "$BUILD/libpcre2-8.a" ]; then
 	echo "--- сборка эталона PCRE2 ($PROGRAM $GENERATOR) в $BUILD" >&2
@@ -160,7 +192,7 @@ if [ ! -f "$BUILD/libpcre2-8.a" ]; then
 	 # сличение обратилось бы в похвальбу
 	 ##
 	( cd "$BUILD" && cmake "$PCRE" "$GENERATOR" -DCMAKE_MAKE_PROGRAM="$PROGRAM" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
-	   -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_SUPPORT_JIT=$JIT \
+	   -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_SUPPORT_JIT=$JIT $ALLOCATOR \
 	   -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF > cmake.log 2>&1 \
 	  && $MAKE $JOBS > make.log 2>&1 ) || { echo "ОТКАЗ СБОРКИ эталона, смотрите $BUILD/make.log и cmake.log" >&2; exit 1; }
 fi
