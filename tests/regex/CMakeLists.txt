@@ -73,6 +73,7 @@ if (${GTest_FOUND})
             assembly.cpp
             emitter.cpp
             codegen.cpp
+            range.cpp
             engine.cpp
             reference.cpp
             interface.cpp

@@ -1105,6 +1105,39 @@ namespace awh {
 				 * \~
 				 */
 				void load(const reg_t target, const reg_t base, const reg_t offset) noexcept;
+				#if defined(__x86_64__) || defined(_M_X64)
+					/**
+					 * \~russian
+					 * @brief Метод размещения поиска первого байта непрерывного диапазона
+					 *
+					 * @details Поиск начинается с KEEPER в тексте TEXT размером SIZE.
+					 *          Найденная позиция остаётся в KEEPER; выполняется переход
+					 *          ready либо empty. Меняются LETTER, SCRATCH, SPARE и XMM0..3.
+					 *          SSE2 читает только полные векторы внутри участка.
+					 *          При lower > upper устанавливается признак отказа порождения.
+					 *
+					 * @param lower нижняя граница диапазона включительно
+					 * @param upper верхняя граница диапазона включительно
+					 * @param ready метка найденного кандидата
+					 * @param empty метка отсутствия кандидата
+					 *
+					 * \~english
+					 * @brief Emit a search for the first byte in a continuous range
+					 *
+					 * @details Search TEXT of SIZE bytes from KEEPER, update KEEPER and
+					 *          branch to ready or empty. Clobber LETTER, SCRATCH, SPARE
+					 *          and XMM0..3. SSE2 loads only complete vectors in the range.
+					 *          If lower > upper, mark code generation as failed.
+					 *
+					 * @param lower inclusive lower byte bound
+					 * @param upper inclusive upper byte bound
+					 * @param ready label for a found candidate
+					 * @param empty label for an exhausted range
+					 *
+					 * \~
+					 */
+					void ranging(const uint8_t lower, const uint8_t upper, const size_t ready, const size_t empty) noexcept;
+				#endif
 				/**
 				 * \~russian
 				 * @brief Метод размещения чтения значения обстановки исполнения

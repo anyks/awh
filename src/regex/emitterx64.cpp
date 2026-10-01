@@ -1039,4 +1039,159 @@ bool awh::regex::Emitter::resolve() noexcept {
 	return true;
 }
 
+	/**
+	 * @brief Метод размещения поиска байта непрерывного диапазона средствами SSE2
+	 *
+	 * @param lower нижняя граница диапазона включительно
+	 * @param upper верхняя граница диапазона включительно
+	 * @param ready метка найденного кандидата
+	 * @param empty метка отсутствия кандидата
+	 *
+	 */
+	void awh::regex::Emitter::ranging(const uint8_t lower, const uint8_t upper, const size_t ready, const size_t empty) noexcept {
+		/**
+		 * Если границы диапазона заданы неверно
+		 */
+		if(lower > upper){
+			// Выполняем установку признака отказа порождения
+			this->_failed = true;
+			// Выходим из метода размещения поиска
+			return;
+		}
+		// Проверяем наличие хотя бы одного байта до вычитания позиции из размера
+		this->compare(reg_t::KEEPER, reg_t::SIZE);
+		// Выполняем переход к отсутствию кандидата при исчерпании текста
+		this->branch(cond_t::ABOVE, empty);
+		/**
+		 * Если диапазон содержит все значения байта
+		 */
+		if((lower == 0) && (upper == 0xFF)){
+			// Выполняем переход к первому байту участка
+			this->jump(ready);
+			// Выходим из метода размещения поиска
+			return;
+		}
+		// Получаем номера рабочих регистров
+		const uint32_t text = static_cast <uint32_t> (reg_t::TEXT);
+		const uint32_t keeper = static_cast <uint32_t> (reg_t::KEEPER);
+		const uint32_t spare = static_cast <uint32_t> (reg_t::SPARE);
+		const uint32_t scratch = static_cast <uint32_t> (reg_t::SCRATCH);
+		const uint32_t letter = static_cast <uint32_t> (reg_t::LETTER);
+		// Получаем ширину допустимого диапазона
+		const uint32_t width = (static_cast <uint32_t> (upper) - lower + 1);
+		// Заводим метки векторного прохода, хвоста и найденного вектора
+		const size_t scan = this->label(), tail = this->label(), found = this->label();
+		// Получаем количество байтов, оставшихся до конца текста
+		this->move(reg_t::SPARE, reg_t::SIZE);
+		// Выполняем вычитание текущей позиции из оставшегося размера: sub spare, keeper
+		emit8(this->_code, rex(true, keeper, 0, spare));
+		emit8(this->_code, 0x29);
+		emit8(this->_code, modrm(0x03, keeper, spare));
+		// Проверяем наличие полного вектора перед чтением памяти
+		this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
+		// Выполняем переход к побайтному хвосту при коротком остатке
+		this->branch(cond_t::BELOW, tail);
+		/**
+		 * Выполняем подготовку двух векторных постоянных
+		 *
+		 * @details Сложение байта с 128 - lower переводит разность без знака
+		 *          в порядок знаковых байтов. Сравнение с width - 128 тогда
+		 *          принимает ровно исходный диапазон, включая его края.
+		 *          XMM0..XMM3 затираются вызываемым и в System V, и в Windows.
+		 *
+		 */
+		for(uint32_t index = 0; index < 2; index++){
+			// Получаем байт постоянной в знаковом представлении сравнения
+			const uint8_t value = static_cast <uint8_t> ((index == 0) ? (128 - lower) : (width - 128));
+			// Размножаем постоянную по четырём байтам целого регистра
+			this->move(reg_t::LETTER, (static_cast <uint32_t> (value) * 0x01010101u));
+			// Переносим младшие четыре байта в XMM: movd xmm, letter
+			emit8(this->_code, 0x66);
+			emit8(this->_code, rex(false, index, 0, letter));
+			emit8(this->_code, 0x0F);
+			emit8(this->_code, 0x6E);
+			emit8(this->_code, modrm(0x03, index, letter));
+			// Размножаем постоянную по всему вектору: pshufd xmm, xmm, 0
+			emit8(this->_code, 0x66);
+			emit8(this->_code, 0x0F);
+			emit8(this->_code, 0x70);
+			emit8(this->_code, modrm(0x03, index, index));
+			emit8(this->_code, 0x00);
+		}
+		// Выполняем расстановку метки векторного прохода
+		this->place(scan);
+		// Читаем полный невыровненный вектор: movdqu xmm2, [text + keeper]
+		emit8(this->_code, 0xF3);
+		emit8(this->_code, rex(false, 2, keeper, text));
+		emit8(this->_code, 0x0F);
+		emit8(this->_code, 0x6F);
+		emit8(this->_code, modrm(0x00, 2, STACK_POINTER));
+		emit8(this->_code, sib(0x00, keeper, text));
+		// Переводим значения байтов в порядок знакового сравнения: paddb xmm2, xmm0
+		emit8(this->_code, 0x66);
+		emit8(this->_code, 0x0F);
+		emit8(this->_code, 0xFC);
+		emit8(this->_code, modrm(0x03, 2, 0));
+		// Копируем верхнюю границу перед сравнением: movdqa xmm3, xmm1
+		emit8(this->_code, 0x66);
+		emit8(this->_code, 0x0F);
+		emit8(this->_code, 0x6F);
+		emit8(this->_code, modrm(0x03, 3, 1));
+		// Сравниваем байты с шириной диапазона: pcmpgtb xmm3, xmm2
+		emit8(this->_code, 0x66);
+		emit8(this->_code, 0x0F);
+		emit8(this->_code, 0x64);
+		emit8(this->_code, modrm(0x03, 3, 2));
+		// Получаем маску допустимых байтов: pmovmskb scratch, xmm3
+		emit8(this->_code, 0x66);
+		emit8(this->_code, rex(false, scratch, 0, 3));
+		emit8(this->_code, 0x0F);
+		emit8(this->_code, 0xD7);
+		emit8(this->_code, modrm(0x03, scratch, 3));
+		// Проверяем наличие кандидата в векторе
+		this->compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
+		// Выполняем переход к первому установленному разряду маски
+		this->branch(cond_t::NOTEQUAL, found);
+		// Переходим к следующему полному вектору
+		this->add(reg_t::KEEPER, reg_t::KEEPER, 16);
+		this->sub(reg_t::SPARE, reg_t::SPARE, 16);
+		// Проверяем размер остатка перед следующим чтением вектора
+		this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
+		// Продолжаем векторный проход лишь при наличии шестнадцати байтов
+		this->branch(cond_t::ABOVE, scan);
+		// Выполняем расстановку метки побайтного хвоста
+		this->place(tail);
+		// Проверяем наличие следующего байта перед чтением памяти
+		this->compare(reg_t::KEEPER, reg_t::SIZE);
+		// Выполняем переход к отсутствию кандидата при исчерпании хвоста
+		this->branch(cond_t::ABOVE, empty);
+		// Читаем очередной байт хвоста
+		this->load(reg_t::LETTER, reg_t::TEXT, reg_t::KEEPER);
+		// Если нижняя граница не нулевая, отсчитываем значение от неё
+		if(lower > 0)
+			// Выполняем вычитание нижней границы диапазона
+			this->sub(reg_t::LETTER, reg_t::LETTER, lower);
+		// Сравниваем смещение байта с шириной диапазона без учёта знака
+		this->compare(reg_t::LETTER, width);
+		// Выполняем переход к кандидату при принадлежности байта диапазону
+		this->branch(cond_t::BELOW, ready);
+		// Переходим к следующему байту хвоста
+		this->add(reg_t::KEEPER, reg_t::KEEPER, 1);
+		// Продолжаем побайтный проход
+		this->jump(tail);
+		// Выполняем расстановку метки вектора с найденным кандидатом
+		this->place(found);
+		// Находим первый установленный разряд ненулевой маски: bsf scratch, scratch
+		emit8(this->_code, rex(true, scratch, 0, scratch));
+		emit8(this->_code, 0x0F);
+		emit8(this->_code, 0xBC);
+		emit8(this->_code, modrm(0x03, scratch, scratch));
+		// Прибавляем смещение первого кандидата: add keeper, scratch
+		emit8(this->_code, rex(true, scratch, 0, keeper));
+		emit8(this->_code, 0x01);
+		emit8(this->_code, modrm(0x03, scratch, keeper));
+		// Выполняем переход к попытке сопоставления в найденной позиции
+		this->jump(ready);
+	}
+
 #endif // defined(__x86_64__) || defined(_M_X64)

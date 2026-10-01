@@ -172,11 +172,24 @@
  *          а предел ширины остаётся лишь границей применимости набора команд
  *          процессора.
  *
+ *          <b>На x86-64 непрерывный набор начальных байтов шире SPARSE
+ *          просеивается шестнадцатью байтами средствами SSE2.</b> Порождение
+ *          проверяет, что первый непрерывный участок содержит весь набор:
+ *          объединять разрыв одним диапазоном нельзя. Векторный ход размещён
+ *          прямо в сопоставителе, без вызова подпрограммы. Чтение разрешено
+ *          лишь при остатке не меньше шестнадцати байтов; короткий хвост
+ *          проходит побайтно. XMM0..3 допускают затирание в System V и Windows.
+ *          Признак AWH_REGEX_SCALAR сохраняет прежний табличный ход.
+ *          Точность отбора независимо от тела выражения держит проверка
+ *          «Regex.EmitterRangeCandidates», границы страниц —
+ *          «Regex.CodegenRangeGuardPages», разрывы и восстановление кода —
+ *          «Regex.CodegenRangeSifting».
+ *
  *          <b>На e2k набор допустимых начальных байтов широкий просеивается
  *          на месте окном, а за окном отбирается подпрограммой общего
- *          отбора.</b> Набору шире SPARSE поиск значений не годен, и прочим
- *          процессорам он просеивается на месте по всему тексту. У e2k же
- *          порождённый ход по тексту на порядок дороже хода, собранного LCC:
+ *          отбора.</b> Набору шире SPARSE поиск отдельных значений не годен;
+ *          без специального пути он просеивается на месте по всему тексту.
+ *          У e2k порождённый ход по тексту на порядок дороже хода, собранного LCC:
  *          порождение ставит по одной операции на широкую команду, и операции
  *          ждут одна другую, тогда как LCC прячет задержки конвейеризацией
  *          цикла. Замер поиска байта на мегабайте текста на Эльбрусе-8С2:
@@ -673,12 +686,25 @@
  *          width remains merely the boundary of applicability of the processor
  *          instruction set.
  *
+ *          <b>On x86-64 a continuous starting-byte set wider than SPARSE is
+ *          sifted sixteen bytes at a time using SSE2.</b> Generation checks
+ *          that the first continuous interval covers the entire set; a gap
+ *          must not be replaced by a single range. The vector loop is emitted
+ *          directly in the matcher, without a subroutine call. Loads require
+ *          at least sixteen remaining bytes; the short tail is scanned byte
+ *          by byte. XMM0..3 are volatile in both System V and Windows.
+ *          AWH_REGEX_SCALAR retains the original table loop.
+ *          «Regex.EmitterRangeCandidates» checks the filter independently of
+ *          the expression body, «Regex.CodegenRangeGuardPages» checks page
+ *          boundaries, and «Regex.CodegenRangeSifting» checks gaps and code
+ *          restoration.
+ *
  *          <b>On e2k a wide set of permitted starting bytes is sifted in place by
  *          a window, and beyond the window it is selected by the subroutine of the
  *          general prefilter.</b> A set wider than SPARSE does not suit the search
- *          for values, and on the other processors it is sifted in place over the
- *          whole text. On e2k, however, a generated walk over the text is an order
- *          of magnitude more expensive than a walk compiled by LCC: generation places
+ *          for individual values; without a specialized path it is sifted in place
+ *          over the whole text. On e2k, however, a generated walk over the text is
+ *          an order of magnitude more expensive than a walk compiled by LCC: generation places
  *          one operation per wide instruction, and the operations wait for one
  *          another, whereas LCC hides the latencies by pipelining the loop. The
  *          measurement of a byte search over a megabyte of text on Elbrus-8C2: the
