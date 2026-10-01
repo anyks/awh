@@ -407,7 +407,7 @@ namespace {
 			// Выводим позицию завершения прохода ряда
 			return size;
 		// Выполняем поиск значения байта, ряд ограничивающего
-		const void * found = ::memchr((text + pos), static_cast <int> (letter), (size - pos));
+		const void * found = awh::regex::findByte((text + pos), static_cast <int> (letter), (size - pos));
 		// Выводим позицию завершения прохода ряда
 		return ((found != nullptr) ? static_cast <size_t> (reinterpret_cast <const char *> (found) - text) : size);
 	}

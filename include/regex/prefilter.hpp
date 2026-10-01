@@ -23,6 +23,17 @@
  *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
  *          каждый раз с одних и тех же выводов.
  *
+ *          <b>Собственный поиск байта включён по умолчанию только на
+ *          OpenBSD x86-64.</b> У этой системы библиотечный memchr проходит
+ *          текст командой repnz scasb. Замена общего поиска на остальных
+ *          системах не обоснована: они сохраняют библиотечный вызов через
+ *          принудительно подставляемую обёртку. Макрос AWH_REGEX_BYTE_SEARCH
+ *          допускает явный выбор для сличений. Вектор читает лишь полные
+ *          шестнадцать байтов внутри участка, хвост читается побайтно;
+ *          выравнивание адреса и доступность соседней страницы не требуются.
+ *          SSE2, NEON и скалярный путь проверяются одним набором примеров,
+ *          включая защищённые страницы — Regex.ByteSearchGuardPages.
+ *
  *          <b>Проход текста парой байтов начинается с границы тридцати двух
  *          байтов.</b> Функция прохода несёт атрибут выравнивания начала -
  *          макрос «AWH_REGEX_ALIGNED» в файле реализации. Без того начало её
@@ -85,6 +96,17 @@
  * @details What is listed below looks like an incongruity, but it was chosen consciously
  *          and is not subject to correction. The section exists so that an analysis of the code
  *          does not start each time from the same conclusions.
+ *
+ *          <b>The native byte search is enabled by default only on
+ *          OpenBSD x86-64.</b> Its libc memchr scans text with repnz scasb.
+ *          Replacing libc on other systems has no measured justification;
+ *          they retain the library call through an always-inline wrapper.
+ *          AWH_REGEX_BYTE_SEARCH allows an explicit choice for comparisons.
+ *          Vector loads cover only complete sixteen-byte blocks within the
+ *          range, followed by a bytewise tail. Neither address alignment nor
+ *          access to an adjacent page is required. SSE2, NEON and the scalar
+ *          path share the same tests, including protected pages in
+ *          Regex.ByteSearchGuardPages.
  *
  *          <b>The pass through the text by a pair of bytes begins at a thirty-two-byte
  *          boundary.</b> The function of the pass carries the attribute aligning its
@@ -175,6 +197,26 @@
 #endif
 
 /**
+ * Выбор собственного поиска байта
+ *
+ * @details В OpenBSD на x86-64 библиотечный memchr проходит текст командой
+ *          repnz scasb. Собственный проход использует SSE2 и читает только
+ *          внутри заданного участка. На остальных системах сохраняется
+ *          библиотечный поиск. Значения 0 и 1 позволяют сличить оба пути
+ *          двумя сборками стенда; AWH_REGEX_SCALAR отключает векторный путь.
+ *
+ */
+#if !defined(AWH_REGEX_BYTE_SEARCH)
+	#if defined(__OpenBSD__) && defined(__x86_64__)
+		// Выполняем поиск байта средствами модуля
+		#define AWH_REGEX_BYTE_SEARCH 1
+	#else
+		// Выполняем поиск байта средствами библиотеки
+		#define AWH_REGEX_BYTE_SEARCH 0
+	#endif
+#endif
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <string>
@@ -213,7 +255,39 @@ namespace awh {
 	 * \~
 	 */
 	namespace regex {
-				/**
+		/**
+		 * \~russian
+		 * @brief Функция поиска первого вхождения байта в заданном участке
+		 *
+		 * @param text  начало участка поиска
+		 * @param value искомое значение, приводимое к беззнаковому байту
+		 * @param size  размер участка в байтах
+		 * @return      адрес первого вхождения либо nullptr
+		 * @note Собственный проход не читает за пределами участка. Указатель
+		 *       должен быть действительным и при нулевом размере.
+		 *
+		 * \~english
+		 * @brief Find the first occurrence of a byte within the supplied range
+		 *
+		 * @param text  start of the search range
+		 * @param value sought value converted to an unsigned byte
+		 * @param size  range size in bytes
+		 * @return      address of the first occurrence or nullptr
+		 * @note The native search does not read outside the range. The pointer
+		 *       must be valid even when the size is zero.
+		 *
+		 * \~
+		 */
+		#if AWH_REGEX_BYTE_SEARCH
+			__AWH_SHARED_EXPORT__ const void * findByte(const void * text, const int value, const size_t size) noexcept;
+		#else
+			AWH_REGEX_INLINE static const void * findByte(const void * text, const int value, const size_t size) noexcept {
+				// Выводим результат библиотечного поиска
+				return ::memchr(text, value, size);
+			}
+		#endif
+
+		/**
 		 * \~russian
 		 * @brief Наименьшее ожидаемое число участков со встречами, пробу окупающее
 		 *
@@ -583,9 +657,17 @@ namespace awh {
 			 *          в 6.26 наносекунды - дороже самого сопоставления.
 			 *
 			 */
-			if((what.size() == 1) && ((text.size() - pos) >= SHORTCUT))
-				// Выводим результат поиска байта в тексте
-				return text.find(what.front(), pos);
+			if((what.size() == 1) && ((text.size() - pos) >= SHORTCUT)){
+				#if AWH_REGEX_BYTE_SEARCH
+					// Выполняем поиск единственного байта в остатке текста
+					const void * found = findByte((text.data() + pos), what.front(), (text.size() - pos));
+					// Выводим позицию найденного байта либо признак его отсутствия
+					return ((found != nullptr) ? static_cast <size_t> (static_cast <const char *> (found) - text.data()) : string_view::npos);
+				#else
+					// Выводим результат библиотечного поиска байта в тексте
+					return text.find(what.front(), pos);
+				#endif
+			}
 			/**
 			 * Если искомое пусто
 			 */

@@ -423,13 +423,13 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes,
 	/**
 	 * Если искомое значение единственно
 	 *
-	 * @details Поиск единственного значения выполняется средством библиотеки:
-	 *          оно отлажено под набор команд машины лучше всякого своего.
+	 * @details Поиск единственного значения использует выбранный для системы
+	 *          проход: собственный на OpenBSD x86-64, библиотечный на остальных.
 	 *
 	 */
 	if(count == 1) {
 		// Выполняем поиск единственного искомого значения байта
-		const void * found = ::memchr((text.data() + pos), static_cast <int> (bytes[0]), (size - pos));
+		const void * found = awh::regex::findByte((text.data() + pos), static_cast <int> (bytes[0]), (size - pos));
 		// Выводим позицию найденного байта либо размер текста
 		return ((found != nullptr) ? static_cast <size_t> (reinterpret_cast <const char *> (found) - text.data()) : size);
 	}
@@ -542,8 +542,8 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
 	/**
 	 * Если байт искомого в пробе текста не встречен вовсе
 	 *
-	 * @details Поиск по такому байту ведётся средствами библиотеки С и обходит
-	 *          поиск по паре в полтора раза: проходят они текст шире вектора.
+	 * @details Поиск по такому байту использует выбранный для системы проход
+	 *          без построения маски совпадения пары байтов.
 	 *
 	 */
 	if(solitary(text, what, pos, solo)) {
@@ -556,7 +556,7 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
 		 */
 		while(current < bound) {
 			// Выполняем поиск выбранного байта в тексте сопоставления
-			const void * found = ::memchr(current, what[solo], static_cast <size_t> (bound - current));
+			const void * found = awh::regex::findByte(current, what[solo], static_cast <size_t> (bound - current));
 			/**
 			 * Если выбранный байт в тексте отсутствует
 			 */
@@ -1231,3 +1231,87 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 	// Выводим позицию вхождения обязательного литерала в тексте
 	return seek(text, this->literal, pos);
 }
+/**
+ * Если выбран собственный поиск байта
+ */
+#if AWH_REGEX_BYTE_SEARCH
+	/**
+	 * @brief Функция поиска первого вхождения байта в заданном участке
+	 *
+	 * @param text  начало участка поиска
+	 * @param value искомое значение, приводимое к беззнаковому байту
+	 * @param size  размер участка в байтах
+	 * @return      адрес первого вхождения либо nullptr
+	 *
+	 */
+	const void * awh::regex::findByte(const void * text, const int value, const size_t size) noexcept {
+		// Получаем адрес начала участка поиска
+		const uint8_t * source = static_cast <const uint8_t *> (text);
+		// Получаем искомое значение беззнакового байта
+		const uint8_t letter = static_cast <uint8_t> (value);
+		// Смещение очередного участка поиска
+		size_t pos = 0;
+		/**
+		 * Если поиск ведётся набором команд NEON
+		 */
+		#if defined(AWH_REGEX_NEON)
+			// Размножаем искомое значение по вектору
+			const uint8x16_t wanted = vdupq_n_u8(letter);
+			/**
+			 * Выполняем обход полных векторов без чтения за пределами участка
+			 */
+			while((size - pos) >= 16){
+				// Сравниваем шестнадцать байтов с искомым значением
+				const uint8x16_t equal = vceqq_u8(vld1q_u8(source + pos), wanted);
+				// Получаем маску совпадений, по четыре разряда на каждый байт
+				const uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(equal), 4)), 0);
+				/**
+				 * Если вектор содержит искомое значение
+				 */
+				if(hits != 0)
+					// Выводим адрес первого совпадения
+					return (source + pos + (trailing(hits) >> 2));
+				// Переходим к следующему вектору
+				pos += 16;
+			}
+		/**
+		 * Если поиск ведётся набором команд SSE2
+		 */
+		#elif defined(AWH_REGEX_SSE2)
+			// Размножаем искомое значение по вектору
+			const __m128i wanted = _mm_set1_epi8(static_cast <char> (letter));
+			/**
+			 * Выполняем обход полных векторов без чтения за пределами участка
+			 */
+			while((size - pos) >= 16){
+				// Получаем очередной вектор без требования к выравниванию адреса
+				const __m128i chunk = _mm_loadu_si128(reinterpret_cast <const __m128i *> (source + pos));
+				// Получаем маску совпадений, по одному разряду на каждый байт
+				const uint32_t hits = static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, wanted)));
+				/**
+				 * Если вектор содержит искомое значение
+				 */
+				if(hits != 0)
+					// Выводим адрес первого совпадения
+					return (source + pos + trailing(hits));
+				// Переходим к следующему вектору
+				pos += 16;
+			}
+		#endif
+		/**
+		 * Выполняем поиск в остатке участка либо во всём участке без векторов
+		 */
+		while(pos < size){
+			/**
+			 * Если очередной байт совпадает с искомым
+			 */
+			if(source[pos] == letter)
+				// Выводим адрес первого совпадения
+				return (source + pos);
+			// Переходим к следующему байту
+			pos++;
+		}
+		// Выводим признак отсутствия искомого байта
+		return nullptr;
+	}
+#endif

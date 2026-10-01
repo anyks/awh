@@ -1136,7 +1136,7 @@ bool awh::regex::Backtrack::advance(const instruction_t & instruction, size_t & 
 			// Получаем размер участка текста, оставшегося до его конца
 			const size_t remains = ((pos < size) ? (size - pos) : 0);
 			// Выполняем поиск ближайшего байта продолжения сопоставления
-			const void * found = ::memchr(source + pos, following, remains);
+			const void * found = awh::regex::findByte(source + pos, following, remains);
 			/**
 			 * Если тело повторения поглощает всякий байт
 			 *
@@ -1168,7 +1168,7 @@ bool awh::regex::Backtrack::advance(const instruction_t & instruction, size_t & 
 			 */
 			const size_t reach = ((found != nullptr) ? static_cast <size_t> (reinterpret_cast <const char *> (found) - (source + pos)) : remains);
 			// Выполняем поиск ближайшего перевода строки, ряд ограничивающего
-			const void * newline = ::memchr(source + pos, 0x0A, reach);
+			const void * newline = awh::regex::findByte(source + pos, 0x0A, reach);
 			/**
 			 * Если перевод строки байту продолжения предшествует
 			 *
@@ -1926,7 +1926,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							 */
 							else {
 								// Выполняем поиск ближайшего перевода строки
-								const void * newline = ::memchr(this->_text.data() + current, 0x0A, remains);
+								const void * newline = awh::regex::findByte(this->_text.data() + current, 0x0A, remains);
 								// Выполняем установку количества пройденных символов ряда
 								count = ((newline != nullptr) ? static_cast <size_t> (reinterpret_cast <const char *> (newline) - (this->_text.data() + current)) : remains);
 							}
