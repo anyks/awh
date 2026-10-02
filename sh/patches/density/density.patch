@@ -1,0 +1,137 @@
+diff --git a/src/algorithms/chameleon/core/chameleon_encode.c b/src/algorithms/chameleon/core/chameleon_encode.c
+index 589b644..9ec9c60 100644
+--- a/src/algorithms/chameleon/core/chameleon_encode.c
++++ b/src/algorithms/chameleon/core/chameleon_encode.c
+@@ -44,9 +44,9 @@
+ 
+ #include "chameleon_encode.h"
+ 
+-DENSITY_FORCE_INLINE void density_chameleon_encode_prepare_signature(uint8_t **DENSITY_RESTRICT out, density_chameleon_signature **DENSITY_RESTRICT signature_pointer, density_chameleon_signature *const DENSITY_RESTRICT signature) {
++DENSITY_FORCE_INLINE void density_chameleon_encode_prepare_signature(uint8_t **DENSITY_RESTRICT out, uint8_t **DENSITY_RESTRICT signature_pointer, density_chameleon_signature *const DENSITY_RESTRICT signature) {
+     *signature = 0;
+-    *signature_pointer = (density_chameleon_signature *) *out;
++    *signature_pointer = *out;
+     *out += sizeof(density_chameleon_signature);
+ }
+ 
+@@ -99,7 +99,7 @@ DENSITY_WINDOWS_EXPORT DENSITY_FORCE_INLINE density_algorithm_exit_status densit
+         return DENSITY_ALGORITHMS_EXIT_STATUS_OUTPUT_STALL;
+ 
+     density_chameleon_signature signature;
+-    density_chameleon_signature *signature_pointer;
++    uint8_t *signature_pointer;
+     uint32_t unit;
+ 
+     uint8_t *out_limit = *out + out_size - DENSITY_CHAMELEON_MAXIMUM_COMPRESSED_UNIT_SIZE;
+diff --git a/src/algorithms/cheetah/core/cheetah_encode.c b/src/algorithms/cheetah/core/cheetah_encode.c
+index 6305e48..1481cf3 100644
+--- a/src/algorithms/cheetah/core/cheetah_encode.c
++++ b/src/algorithms/cheetah/core/cheetah_encode.c
+@@ -45,9 +45,9 @@
+ 
+ #include "cheetah_encode.h"
+ 
+-DENSITY_FORCE_INLINE void density_cheetah_encode_prepare_signature(uint8_t **DENSITY_RESTRICT out, density_cheetah_signature **DENSITY_RESTRICT signature_pointer, density_cheetah_signature *const DENSITY_RESTRICT signature) {
++DENSITY_FORCE_INLINE void density_cheetah_encode_prepare_signature(uint8_t **DENSITY_RESTRICT out, uint8_t **DENSITY_RESTRICT signature_pointer, density_cheetah_signature *const DENSITY_RESTRICT signature) {
+     *signature = 0;
+-    *signature_pointer = (density_cheetah_signature *) *out;
++    *signature_pointer = *out;
+     *out += sizeof(density_cheetah_signature);
+ }
+ 
+@@ -121,7 +121,7 @@ DENSITY_WINDOWS_EXPORT DENSITY_FORCE_INLINE density_algorithm_exit_status densit
+         return DENSITY_ALGORITHMS_EXIT_STATUS_OUTPUT_STALL;
+ 
+     density_cheetah_signature signature;
+-    density_cheetah_signature *signature_pointer;
++    uint8_t *signature_pointer;
+     uint_fast16_t last_hash = 0;
+     uint32_t unit;
+ 
+diff --git a/src/algorithms/lion/core/lion_encode.c b/src/algorithms/lion/core/lion_encode.c
+index e491ec8..70c4cfb 100644
+--- a/src/algorithms/lion/core/lion_encode.c
++++ b/src/algorithms/lion/core/lion_encode.c
+@@ -44,9 +44,9 @@
+ 
+ #include "lion_encode.h"
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_prepare_signature(uint8_t **DENSITY_RESTRICT out, uint_fast64_t **DENSITY_RESTRICT signature_pointer, uint_fast64_t *const DENSITY_RESTRICT signature) {
++DENSITY_FORCE_INLINE void density_lion_encode_prepare_signature(uint8_t **DENSITY_RESTRICT out, uint8_t **DENSITY_RESTRICT signature_pointer, uint_fast64_t *const DENSITY_RESTRICT signature) {
+     *signature = 0;
+-    *signature_pointer = (density_lion_signature *) *out;
++    *signature_pointer = *out;
+     *out += sizeof(density_lion_signature);
+ }
+ 
+@@ -55,7 +55,7 @@ DENSITY_FORCE_INLINE void density_lion_encode_push_to_proximity_signature(uint_f
+     *shift += bits;
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_push_to_signature(uint8_t **DENSITY_RESTRICT out, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, const uint64_t content, const uint_fast8_t bits) {
++DENSITY_FORCE_INLINE void density_lion_encode_push_to_signature(uint8_t **DENSITY_RESTRICT out, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, const uint64_t content, const uint_fast8_t bits) {
+     if (DENSITY_LIKELY(*shift)) {
+         density_lion_encode_push_to_proximity_signature(signature, shift, content, bits);
+ 
+@@ -82,7 +82,7 @@ DENSITY_FORCE_INLINE void density_lion_encode_push_to_signature(uint8_t **DENSIT
+     }
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_push_zero_to_signature(uint8_t **DENSITY_RESTRICT out, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, const uint_fast8_t bits) {
++DENSITY_FORCE_INLINE void density_lion_encode_push_zero_to_signature(uint8_t **DENSITY_RESTRICT out, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, const uint_fast8_t bits) {
+     if (DENSITY_LIKELY(*shift)) {
+         *shift += bits;
+ 
+@@ -109,11 +109,11 @@ DENSITY_FORCE_INLINE void density_lion_encode_push_zero_to_signature(uint8_t **D
+     }
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_push_code_to_signature(uint8_t **DENSITY_RESTRICT out, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, const density_lion_entropy_code code) {
++DENSITY_FORCE_INLINE void density_lion_encode_push_code_to_signature(uint8_t **DENSITY_RESTRICT out, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, const density_lion_entropy_code code) {
+     density_lion_encode_push_to_signature(out, signature_pointer, signature, shift, code.value, code.bitLength);
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_kernel_4(uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, const uint16_t hash, density_lion_form_data *const data, const uint32_t unit) {
++DENSITY_FORCE_INLINE void density_lion_encode_kernel_4(uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, const uint16_t hash, density_lion_form_data *const data, const uint32_t unit) {
+     density_lion_dictionary_chunk_prediction_entry *const predictions = &dictionary->predictions[*last_hash];
+ 	DENSITY_PREFETCH(&dictionary->predictions[hash]);
+ 
+@@ -191,13 +191,13 @@ DENSITY_FORCE_INLINE void density_lion_encode_kernel_4(uint8_t **DENSITY_RESTRIC
+     *last_hash = hash;
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_4(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
++DENSITY_FORCE_INLINE void density_lion_encode_4(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
+     DENSITY_MEMCPY(unit, *in, sizeof(uint32_t));
+     density_lion_encode_kernel_4(out, last_hash, signature_pointer, signature, shift, dictionary, DENSITY_LION_HASH_ALGORITHM(DENSITY_LITTLE_ENDIAN_32(*unit)), data, *unit);
+     *in += sizeof(uint32_t);
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_generic(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, const uint_fast8_t chunks_per_process_unit, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
++DENSITY_FORCE_INLINE void density_lion_encode_generic(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, const uint_fast8_t chunks_per_process_unit, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
+ #ifdef __clang__
+     for (uint_fast8_t count = 0; count < (chunks_per_process_unit >> 2); count++) {
+         DENSITY_UNROLL_4(density_lion_encode_4(in, out, last_hash, signature_pointer, signature, shift, dictionary, data, unit));
+@@ -209,11 +209,11 @@ DENSITY_FORCE_INLINE void density_lion_encode_generic(const uint8_t **DENSITY_RE
+ #endif
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_32(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
++DENSITY_FORCE_INLINE void density_lion_encode_32(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
+     density_lion_encode_generic(in, out, last_hash, signature_pointer, signature, shift, dictionary, DENSITY_LION_CHUNKS_PER_PROCESS_UNIT_SMALL, data, unit);
+ }
+ 
+-DENSITY_FORCE_INLINE void density_lion_encode_256(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, density_lion_signature **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
++DENSITY_FORCE_INLINE void density_lion_encode_256(const uint8_t **DENSITY_RESTRICT in, uint8_t **DENSITY_RESTRICT out, uint_fast16_t *DENSITY_RESTRICT last_hash, uint8_t **DENSITY_RESTRICT signature_pointer, density_lion_signature *const DENSITY_RESTRICT signature, uint_fast8_t *const DENSITY_RESTRICT shift, density_lion_dictionary *const DENSITY_RESTRICT dictionary, density_lion_form_data *const data, uint32_t *DENSITY_RESTRICT unit) {
+     density_lion_encode_generic(in, out, last_hash, signature_pointer, signature, shift, dictionary, DENSITY_LION_CHUNKS_PER_PROCESS_UNIT_BIG, data, unit);
+ }
+ 
+@@ -222,7 +222,7 @@ DENSITY_WINDOWS_EXPORT DENSITY_FORCE_INLINE density_algorithm_exit_status densit
+         return DENSITY_ALGORITHMS_EXIT_STATUS_OUTPUT_STALL;
+ 
+     density_lion_signature signature = 0;
+-    density_lion_signature *signature_pointer = NULL;
++    uint8_t *signature_pointer = NULL;
+     uint_fast8_t shift = 0;
+     density_lion_form_data data;
+     density_lion_form_model_init(&data);

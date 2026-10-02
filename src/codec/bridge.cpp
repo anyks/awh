@@ -72,6 +72,33 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Метод проверки глубины дерева контейнера ABC
+	 *
+	 * @param value значение проверяемого дерева
+	 * @param limit предельная глубина перевода
+	 * @param depth текущая глубина, начиная с нуля у корня
+	 * @return      признак допустимой глубины дерева
+	 *
+	 */
+	bool within(const abc::value_t & value, const uint32_t limit, const uint32_t depth = 0) noexcept {
+		// Если текущий уровень превысил предел перевода
+		if(depth > limit)
+			// Сообщаем о превышении глубины
+			return false;
+		// Если значение содержит дочерние узлы
+		if(value.is(abc::type_t::CONTAINER)){
+			// Проверяем каждый дочерний узел без копирования дерева
+			for(size_t i = 0; i < value.size(); i++){
+				// Если глубина дочернего дерева недопустима
+				if(!::within(value[i], limit, depth + 1))
+					// Сообщаем о превышении глубины
+					return false;
+			}
+		}
+		// Сообщаем о допустимой глубине дерева
+		return true;
+	}
+	/**
 	 * @brief Метод обращения имени поля в имя, разметке годное
 	 *
 	 * @details Знаки, имени разметки негодные, записываются видом `_xHH_`, где HH
@@ -709,6 +736,15 @@ bool awh::codec::Bridge::native(const abc::value_t & value) const noexcept {
  *
  */
 bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) noexcept {
+	// Ограничиваем обход также безусловным пределом самого контейнера
+	const uint32_t depth = ((this->_settings.depth < abc::MAX_DEPTH) ? this->_settings.depth : abc::MAX_DEPTH);
+	// Если дерево превышает глубину перевода
+	if(!::within(value, depth)){
+		// Запоминаем причину отказа до сборки записи
+		this->_error = error_t::DEEP_TREE;
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
 	// Собираемая запись контейнера ABC
 	vector <uint8_t> buffer;
 	// Код отказа сборки записи контейнера
@@ -716,7 +752,7 @@ bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) 
 	// Если сборка записи контейнера отвечена отказом
 	if(!value.dump(buffer, error)){
 		// Запоминаем код отказа перевода
-		this->_error = error_t::WRITING;
+		this->_error = ((error == abc::error_t::DEPTH_EXCEEDED) ? error_t::DEEP_TREE : error_t::WRITING);
 		// Выводим сообщение об отказе сборки записи контейнера
 		awh::log::print("Запись контейнера ABC собрать не удалось: код отказа %u", awh::log::flag_t::WARNING, static_cast <uint16_t> (error));
 		// Выходим из метода, перевод отвечен отказом
@@ -746,14 +782,37 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
+	// Ограничиваем разбор также безусловным пределом самого контейнера
+	const uint32_t depth = ((this->_settings.depth < abc::MAX_DEPTH) ? this->_settings.depth : abc::MAX_DEPTH);
+	// Настройки разбора контейнера
+	abc::reader_t::settings_t settings;
+	/**
+	 * Контейнер считает открытые вместилища, а мост — уровни от корня.
+	 * Дополнительное вместилище допускает пустой узел на последнем уровне.
+	 * Нуль мостового предела не должен снимать ограничение разборщика ABC
+	 */
+	settings.maxDepth = ((depth < abc::MAX_DEPTH) ? (depth + 1) : abc::MAX_DEPTH);
+	// Дерево разбираемого документа с доступным кодом отказа
+	abc::document_t document;
 	// Если разбор записи контейнера отвечен отказом
-	if(!result.parse(text.data(), text.size())){
+	if(!document.parse(text.data(), text.size(), settings)){
 		// Выполняем очистку собранного дерева значений
 		result.clear();
 		// Запоминаем код отказа перевода
-		this->_error = error_t::PARSING;
+		this->_error = ((document.error() == abc::error_t::DEPTH_EXCEEDED) ? error_t::DEEP_TREE : error_t::PARSING);
 		// Выводим сообщение об отказе разбора записи контейнера
 		awh::log::print("Запись контейнера ABC разобрать не удалось", awh::log::flag_t::WARNING);
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
+	// Переносим разобранное дерево во владеющее значение
+	result.absorb(document.root());
+	// Проверяем точную глубину, включая скалярные листья
+	if(!::within(result, depth)){
+		// Снимаем дерево, которое не прошло ограничение перевода
+		result.clear();
+		// Запоминаем причину отказа
+		this->_error = error_t::DEEP_TREE;
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -2342,7 +2401,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *       и узел, ею названный, за пометку не принимается. Круг на таком
 				 *       дереве становится неподвижен
 				 */
-				} else if(!this->_settings.array.empty() && (name == this->_settings.array)){
+				} else if(!this->_settings.array.empty() && (name == this->_settings.array)) {
 					/**
 					 * Если узловой вид предел глубины перевода превосходит
 					 *

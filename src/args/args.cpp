@@ -1836,7 +1836,7 @@ vector <T> awh::args::Args::arr(const string_view key) const noexcept {
 	// Выполняем перебор всех значений вместимого
 	for(size_t i = 0; i < value.size(); i++)
 		// Добавляем извлечённое значение вместимого в контейнер
-		result.push_back(this->get <T> (awh::fmk::format("%s%c%zu", string(key).c_str(), this->_settings.delimiter, i)));
+		result.push_back(this->get <T> (string(key) + this->_settings.delimiter + to_string(i)));
 	// Выводим контейнер извлечённых значений вместимого
 	return result;
 }

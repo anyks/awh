@@ -2986,6 +2986,49 @@ TEST(CodecTomlValue, PathSurvivesSiblingGrowth) {
 	ASSERT_EQ(root["сосед63"].text(), "x");
 }
 /**
+ * @brief Проверка сохранения неопределённого значения при добавлении в перечень
+ *
+ */
+TEST(CodecTomlValue, PushCopiesUndefinedBeforeConversion) {
+	// Неопределённое значение, которое будет превращено в перечень
+	toml::value_t root;
+	// Сохраняем исходное значение до изменения типа
+	const toml::value_t expected(root);
+	// Добавляем исходное значение в него само
+	ASSERT_TRUE(root.push(root));
+	// Получаем перечень без возможности изменения при чтении
+	const toml::value_t & result = root;
+	// Проверяем тип полученного перечня
+	ASSERT_TRUE(result.is(toml::type_t::ARRAY));
+	// Проверяем количество добавленных значений
+	ASSERT_EQ(result.size(), 1u);
+	// Проверяем сохранение исходного неопределённого значения
+	ASSERT_TRUE(result[static_cast <size_t> (0)] == expected);
+}
+/**
+ * @brief Проверка сохранения строки при добавлении её копии в перечень
+ *
+ */
+TEST(CodecTomlValue, PushCopiesScalarBeforeConversion) {
+	/**
+	 * Проверяем пустую строку, короткую строку и строку с отдельным буфером
+	 */
+	for(const size_t length : {0u, 7u, 128u}){
+		// Строка, которая будет превращена в перечень
+		toml::value_t root(string(length, 'x'));
+		// Сохраняем исходное содержимое до очистки строки
+		const toml::value_t expected(root);
+		// Добавляем исходную строку в неё саму
+		ASSERT_TRUE(root.push(root));
+		// Получаем перечень без возможности изменения при чтении
+		const toml::value_t & result = root;
+		// Проверяем количество добавленных значений
+		ASSERT_EQ(result.size(), 1u);
+		// Проверяем сохранение исходного типа и содержимого строки
+		ASSERT_TRUE(result[static_cast <size_t> (0)] == expected);
+	}
+}
+/**
  * @brief Проверка добавления копии дерева в него само
  *
  * @details Новое имя не должно попадать в копию исходного дерева. Последующее

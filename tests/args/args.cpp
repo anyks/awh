@@ -2187,3 +2187,57 @@ TEST(Args, EmbeddedNullNamesKeepIndependentPriorities) {
 	ASSERT_EQ(args.get <uint32_t> ("parent.a"), 5u);
 	ASSERT_EQ(args.source("parent.a"), source_t::FILE);
 }
+
+/**
+ * @brief Проверка чтения повторных значений по имени с нулевым байтом
+ */
+TEST(Args, RepeatedNullNamesKeepTheirValues) {
+	// Проверяем нулевой байт в имени листа и родителя
+	for(const string & key : vector <string> {string("a\0b", 3), string("a\0b", 3) + ".child", "parent." + string("a\0b", 3)}){
+		args_t args;
+		ASSERT_TRUE(args.parse(vector <string> {"--" + key + "=7", "--" + key + "=9"}));
+		EXPECT_EQ(args.get <uint64_t> (key + ".0"), 7u);
+		EXPECT_EQ(args.get <uint64_t> (key + ".1"), 9u);
+		EXPECT_EQ(args.arr <uint64_t> (key), (vector <uint64_t> {7, 9}));
+	}
+}
+
+/**
+ * @brief Проверка независимости массива от соседа с коротким именем
+ */
+TEST(Args, NullArrayNamesDoNotReadTheirNeighbours) {
+	args_t args;
+	ASSERT_TRUE(args.config("{\"a\":[10,20],\"a\\u0000b\":[7,9]}", codec::Bridge::format_t::JSON));
+	EXPECT_EQ(args.arr <uint64_t> ("a"), (vector <uint64_t> {10, 20}));
+	EXPECT_EQ(args.arr <uint64_t> (string("a\0b", 3)), (vector <uint64_t> {7, 9}));
+}
+
+
+/**
+ * @brief Проверка отказа кодека по глубине до изменения настроек
+ */
+TEST(Args, DepthRejectionsPreserveValuesAndSources) {
+	codec::Bridge bridge;
+	codec::abc::value_t tree;
+	ASSERT_TRUE(bridge.decode("{\"node\":{\"child\":{\"leaf\":9}}}", tree, codec::Bridge::format_t::JSON));
+	for(const auto format : {codec::Bridge::format_t::ABC, codec::Bridge::format_t::JSON, codec::Bridge::format_t::YAML, codec::Bridge::format_t::TOML, codec::Bridge::format_t::XML}){
+		string record = "";
+		ASSERT_TRUE(bridge.encode(tree, record, format));
+		for(const uint32_t depth : {0u, 1u}){
+			args_t args;
+			ASSERT_TRUE(args.fallback("node", "before"));
+			string before = "", after = "";
+			ASSERT_TRUE(args.dump(before, codec::Bridge::format_t::ABC));
+			auto settings = args.bridge().settings();
+			settings.depth = depth;
+			args.bridge().settings(settings);
+			EXPECT_FALSE(args.config(record, format)) << static_cast <uint32_t> (format) << " depth=" << depth;
+			EXPECT_FALSE(args.errors().empty());
+			if(!args.errors().empty())
+				EXPECT_EQ(args.errors().back().first, error_t::CODEC);
+			EXPECT_EQ(args.source("node"), source_t::DEFAULT);
+			EXPECT_TRUE(bridge.encode(args.root(), after, codec::Bridge::format_t::ABC));
+			EXPECT_EQ(before, after);
+		}
+	}
+}

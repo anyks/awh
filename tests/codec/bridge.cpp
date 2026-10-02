@@ -45,6 +45,70 @@ using namespace awh;
 using namespace awh::codec;
 
 /**
+ * @brief Проверка границы глубины ABC по тем же правилам, что и у JSON
+ *
+ */
+TEST(CodecBridge, ABCDepthMatchesTheTreeLevels) {
+	// Перебираем скаляры, пустые контейнеры и деревья разной глубины
+	for(const string & sample : vector <string> {"7", "null", "{}", "[]", "[1]", "[[]]", "[[1]]", "{\"a\":{}}", "{\"a\":{\"b\":{\"c\":1}}}"}){
+		bridge_t original;
+		abc::value_t tree;
+		ASSERT_TRUE(original.decode(sample, tree, bridge_t::format_t::JSON));
+		string record = "";
+		ASSERT_TRUE(original.encode(tree, record, bridge_t::format_t::ABC));
+		for(uint32_t depth = 0; depth < 5; depth++){
+			// Назначаем одинаковое ограничение обеим дорогам
+			bridge_t bridge;
+			auto settings = bridge.settings();
+			settings.depth = depth;
+			bridge.settings(settings);
+			string reference = "", result = "previous";
+			const bool accepted = bridge.encode(tree, reference, bridge_t::format_t::JSON);
+			// Проверяем запись и отсутствие частичного результата при отказе
+			ASSERT_EQ(bridge.encode(tree, result, bridge_t::format_t::ABC), accepted) << sample << " depth=" << depth;
+			ASSERT_EQ(bridge.error(), (accepted ? bridge_t::error_t::NONE : bridge_t::error_t::DEEP_TREE));
+			if(accepted)
+				ASSERT_EQ(result, record);
+			else ASSERT_TRUE(result.empty());
+			// Проверяем чтение и очистку прежнего результата при отказе
+			abc::value_t decoded(string("previous"));
+			ASSERT_EQ(bridge.decode(record, decoded, bridge_t::format_t::ABC), accepted) << sample << " depth=" << depth;
+			ASSERT_EQ(bridge.error(), (accepted ? bridge_t::error_t::NONE : bridge_t::error_t::DEEP_TREE));
+			if(accepted)
+				ASSERT_EQ(decoded, tree);
+			else ASSERT_FALSE(decoded.valid());
+		}
+	}
+}
+
+/**
+ * @brief Проверка ограничения разбора ABC до чтения слишком глубокого содержимого
+ *
+ */
+TEST(CodecBridge, ABCDepthStopsBeforeTheDeeperBody) {
+	bridge_t bridge;
+	abc::value_t tree;
+	ASSERT_TRUE(bridge.decode("[[[1]]]", tree, bridge_t::format_t::JSON));
+	string record = "";
+	ASSERT_TRUE(bridge.encode(tree, record, bridge_t::format_t::ABC));
+	ASSERT_FALSE(record.empty());
+	// Удаляем лист: неограниченный разбор дошёл бы до обрыва записи
+	record.pop_back();
+	auto settings = bridge.settings();
+	settings.depth = 1;
+	bridge.settings(settings);
+	abc::value_t result(string("previous"));
+	ASSERT_FALSE(bridge.decode(record, result, bridge_t::format_t::ABC));
+	ASSERT_EQ(bridge.error(), bridge_t::error_t::DEEP_TREE);
+	ASSERT_FALSE(result.valid());
+	// Без тесного ограничения тот же обрыв должен быть ошибкой записи
+	settings.depth = 3;
+	bridge.settings(settings);
+	ASSERT_FALSE(bridge.decode(record, result, bridge_t::format_t::ABC));
+	ASSERT_EQ(bridge.error(), bridge_t::error_t::PARSING);
+}
+
+/**
  * @brief Проверка полной загрузки массивов независимо от предела индексного роста
  *
  */

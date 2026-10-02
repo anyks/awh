@@ -3122,6 +3122,26 @@ TEST(CodecYamlValue, SelfAssignmentAndSpecialNumbers) {
 	}
 }
 /**
+ * @brief Проверка сохранения неопределённого значения при добавлении в перечень
+ *
+ */
+TEST(CodecYamlValue, PushCopiesUndefinedBeforeConversion) {
+	// Неопределённое значение, которое будет превращено в перечень
+	yaml::value_t root;
+	// Сохраняем исходное значение до изменения вида
+	const yaml::value_t expected(root);
+	// Добавляем исходное значение в него само
+	ASSERT_TRUE(root.push(root));
+	// Получаем перечень без возможности изменения при чтении
+	const yaml::value_t & result = root;
+	// Проверяем вид полученного перечня
+	ASSERT_EQ(result.kind(), yaml::kind_t::SEQUENCE);
+	// Проверяем количество добавленных значений
+	ASSERT_EQ(result.size(), 1u);
+	// Проверяем сохранение исходного неопределённого значения
+	ASSERT_TRUE(result[static_cast <size_t> (0)] == expected);
+}
+/**
  * @brief Проверка добавления копии дерева в него само
  *
  * @details Новое имя не должно попадать в копию исходного дерева. Последующее
