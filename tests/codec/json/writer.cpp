@@ -2072,3 +2072,51 @@ TEST(CodecJsonWriter, EveryWordOfInfinityAndNotANumberIsWritten){
 		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER) << "[" << word << "]";
 	}
 }
+/**
+ * @brief Проверка собственных строк в значениях и именах JSON
+ *
+ */
+TEST(CodecJsonWriter, OwnBufferStrings) {
+	// Проверяем короткий буфер и буфер с перевыделением памяти
+	for(const size_t size : vector <size_t> {0, 4096}){
+		// Сравниваем результат с записью независимой копии
+		json::writer_t writer, reference;
+		ASSERT_TRUE(writer.object());
+		ASSERT_TRUE(reference.object());
+		ASSERT_TRUE(writer.key("first"));
+		ASSERT_TRUE(reference.key("first"));
+		ASSERT_TRUE(writer.value(string(size, 'x')));
+		ASSERT_TRUE(reference.value(string(size, 'x')));
+		// Имя берём из самого выходного буфера
+		const string name = reference.text();
+		ASSERT_TRUE(writer.key(writer.text()));
+		ASSERT_TRUE(reference.key(name));
+		// Значение также берём из самого выходного буфера
+		const string value = reference.text();
+		ASSERT_TRUE(writer.value(writer.text()));
+		ASSERT_TRUE(reference.value(value));
+		ASSERT_TRUE(writer.close());
+		ASSERT_TRUE(reference.close());
+		ASSERT_TRUE(writer.finish());
+		ASSERT_TRUE(reference.finish());
+		ASSERT_EQ(writer.text(), reference.text());
+		// Проверяем пригодность полученного текста для разбора
+		json::document_t document;
+		ASSERT_TRUE(document.parse(writer.text()));
+	}
+}
+/**
+ * @brief Проверка собственного буфера при записи готового числа после изъятия
+ *
+ */
+TEST(CodecJsonWriter, OwnBufferRawAfterTake) {
+	json::writer_t writer;
+	ASSERT_TRUE(writer.array());
+	const string first = writer.take();
+	ASSERT_TRUE(writer.value(7));
+	// Разделитель не должен попасть в исходную запись числа
+	ASSERT_TRUE(writer.raw(writer.text()));
+	ASSERT_TRUE(writer.close());
+	ASSERT_TRUE(writer.finish());
+	ASSERT_EQ(first + writer.text(), "[7,7]");
+}

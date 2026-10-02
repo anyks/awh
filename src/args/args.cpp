@@ -657,8 +657,12 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			/**
 			 * Выполняем слияние поля отображения вглубь: отображения сливаются
 			 * звено за звеном, а вместимые и одиночные значения ложатся целиком
+			 *
+			 * @note Путь собирается строковыми операциями, сохраняющими нулевые байты.
+			 *       Форматирование через `%s` обрезало имя и позволяло чужому полю
+			 *       совпасть с коротким именем параметра строгой схемы
 			 */
-			result = (this->merge(value[i], (path.empty() ? link : awh::fmk::format("%s/%s", path.c_str(), link.c_str())), source, derive) && result);
+			result = (this->merge(value[i], (path.empty() ? link : (path + '/' + link)), source, derive) && result);
 		}
 		// Выводим результат слияния полей отображения
 		return result;

@@ -120,6 +120,9 @@ if [ -n "$1" ]; then
 				exit 1
 			fi
 
+			# Применяем патч
+			apply_patch "density" "density.patch"
+
 			# Выполняем очистку сборки
 			$MAKE clean || exit 1
 			# Выполняем сборку на всех логических ядрах

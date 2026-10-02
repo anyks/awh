@@ -1454,9 +1454,9 @@ TEST(Args, TheMarkupCircleKeepsTheSoleLevel) {
  */
 TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis) {
 	// Выполняем заведение переменных окружения со знаками оси хранения
-	ASSERT_EQ(::setenv("AWHTEST_A/B", "1", 1), 0);
-	ASSERT_EQ(::setenv("AWHTEST_C~D", "2", 1), 0);
-	ASSERT_EQ(::setenv("AWHTEST_NET_PORT", "8080", 1), 0);
+	ASSERT_TRUE(::setupEnv("AWHTEST_A/B", "1"));
+	ASSERT_TRUE(::setupEnv("AWHTEST_C~D", "2"));
+	ASSERT_TRUE(::setupEnv("AWHTEST_NET_PORT", "8080"));
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Устанавливаем начало имён переменных окружения
@@ -1473,9 +1473,9 @@ TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis) {
 	ASSERT_TRUE(args.has("net.port")) << "подчёркивание перестало делить звенья пути";
 	ASSERT_EQ(args.get <uint32_t> ("net.port"), 8080u);
 	// Выполняем снятие заведённых переменных окружения
-	static_cast <void> (::unsetenv("AWHTEST_A/B"));
-	static_cast <void> (::unsetenv("AWHTEST_C~D"));
-	static_cast <void> (::unsetenv("AWHTEST_NET_PORT"));
+	static_cast <void> (::clearEnv("AWHTEST_A/B"));
+	static_cast <void> (::clearEnv("AWHTEST_C~D"));
+	static_cast <void> (::clearEnv("AWHTEST_NET_PORT"));
 }
 
 /**
@@ -2098,4 +2098,92 @@ TEST(Args, ConfigurationArraysAreNotTruncatedByTheGrowthLimit) {
 	// Обновление уже загруженного элемента за пределом роста остаётся допустимым
 	ASSERT_TRUE(args.parse(vector <string> {"--items.2.2=7"}));
 	ASSERT_EQ(args.get <uint32_t> ("items.2.2"), 7u);
+}
+
+/**
+ * @brief Проверка сохранения нулевого байта в имени поля и имени его родителя
+ *
+ */
+TEST(Args, EmbeddedNullNamesSurviveConfigurationRoundTrips) {
+	// Имя поля, длина которого не определяется нулевым байтом
+	const string name("a\0b", 3);
+	// Перебираем разные уровни пути и соседей с совпадающим началом имени
+	const vector <pair <string, string>> samples = {
+		{"{\"a\\u0000b\":7}", name},
+		{"{\"parent\":{\"a\\u0000b\":7,\"a\":5}}", "parent." + name},
+		{"{\"a\\u0000b\":{\"child\":7},\"a\":{\"child\":5}}", name + ".child"},
+		{"{\"a\\u0000b\":{\"c\\u0000d\":7}}", name + '.' + string("c\0d", 3)}
+	};
+	codec::Bridge bridge;
+	for(const auto & sample : samples){
+		// Получаем контрольное дерево напрямую из моста
+		codec::abc::value_t expected;
+		ASSERT_TRUE(bridge.decode(sample.first, expected, codec::Bridge::format_t::JSON));
+		string original = "";
+		ASSERT_TRUE(bridge.encode(expected, original, codec::Bridge::format_t::ABC));
+		// Проверяем текстовую и двоичную дороги загрузки настроек
+		for(const auto format : {codec::Bridge::format_t::JSON, codec::Bridge::format_t::ABC}){
+			string record = "";
+			ASSERT_TRUE(bridge.encode(expected, record, format));
+			args_t args;
+			ASSERT_TRUE(args.config(record, format));
+			// Проверяем точное имя параметра, его значение и источник
+			ASSERT_TRUE(args.has(sample.second));
+			ASSERT_EQ(args.get <uint32_t> (sample.second), 7u);
+			ASSERT_EQ(args.source(sample.second), source_t::FILE);
+			// Сравниваем всё дерево, включая отдельного соседа с коротким именем
+			string actual = "";
+			ASSERT_TRUE(args.dump(actual, codec::Bridge::format_t::ABC));
+			ASSERT_EQ(actual, original);
+			// Проверяем сохранность имён после выдачи и повторной загрузки
+			ASSERT_TRUE(args.dump(record, format));
+			args_t restored;
+			ASSERT_TRUE(restored.config(record, format));
+			ASSERT_TRUE(restored.dump(actual, codec::Bridge::format_t::ABC));
+			ASSERT_EQ(actual, original);
+		}
+	}
+}
+
+/**
+ * @brief Проверка строгой схемы по полному имени, содержащему нулевой байт
+ *
+ */
+TEST(Args, EmbeddedNullNamesCannotImpersonateSchemaParameters) {
+	// Объявляем короткое имя, не совпадающее с именем входного поля
+	args_t args;
+	ASSERT_TRUE(args.schema().add("parent.a", 'a', schema_t::value_t::OPTIONAL));
+	auto settings = args.settings();
+	settings.strict = true;
+	args.settings(settings);
+	// Поле с продолжением после нулевого байта обязано быть отвергнуто
+	ASSERT_FALSE(args.config("{\"parent\":{\"a\\u0000b\":7}}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(args.errors().size(), 1u);
+	ASSERT_EQ(args.errors().front().first, args::error_t::UNKNOWN);
+	ASSERT_TRUE(args.root().empty());
+	ASSERT_EQ(args.source("parent.a"), source_t::NONE);
+	// Полное имя может быть объявлено отдельным параметром схемы
+	const string key = ("parent." + string("a\0b", 3));
+	ASSERT_TRUE(args.schema().add(key, 'b', schema_t::value_t::OPTIONAL));
+	ASSERT_TRUE(args.config("{\"parent\":{\"a\\u0000b\":7}}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(args.get <uint32_t> (key), 7u);
+	ASSERT_EQ(args.source(key), source_t::FILE);
+	ASSERT_FALSE(args.has("parent.a"));
+}
+
+/**
+ * @brief Проверка приоритета источников у разных имён с общим началом до нуля
+ *
+ */
+TEST(Args, EmbeddedNullNamesKeepIndependentPriorities) {
+	// Укладываем значение старшего источника по полному имени
+	const string key = ("parent." + string("a\0b", 3));
+	args_t args;
+	ASSERT_TRUE(args.parse(vector <string> {"--" + key + "=9"}));
+	// Загружаем младшее значение того же поля и отдельного соседа
+	ASSERT_TRUE(args.config("{\"parent\":{\"a\\u0000b\":7,\"a\":5}}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(args.get <uint32_t> (key), 9u);
+	ASSERT_EQ(args.source(key), source_t::CLI);
+	ASSERT_EQ(args.get <uint32_t> ("parent.a"), 5u);
+	ASSERT_EQ(args.source("parent.a"), source_t::FILE);
 }

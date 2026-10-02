@@ -960,3 +960,127 @@ TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces) {
 		}
 	}
 }
+
+/**
+ * @brief Координаты всех событий сохраняются при повторном уплотнении хранилища
+ *
+ */
+TEST(CodecCefReader, PositionsSurviveRepeatedCompaction) {
+	// Перед каждой записью находятся две пустые строки, окончания строк имеют вид CRLF
+	const string record = ("CEF:0|V|P|1|100|Event|5|msg=" + string(1024, 'x'));
+	const string unit = ("\r\n \t\r\n" + record + "\r\n");
+	const size_t count = 160;
+	string text;
+	for(size_t i = 0; i < count; i++)
+		text.append(unit);
+	// Поток достаточен для нескольких уплотнений при подаче частями
+	ASSERT_GT(text.size(), static_cast <size_t> (0x20000));
+	const vector <size_t> chunks = {1, 17, 4093, 65536, text.size()};
+	for(const size_t chunk : chunks){
+		cef::reader_t reader;
+		size_t records = 0;
+		for(size_t offset = 0; offset < text.size();){
+			// Подаём текст с разрывами внутри записи и между CR и LF
+			const size_t size = std::min(chunk, text.size() - offset);
+			ASSERT_TRUE(reader.feed(text.data() + offset, size, (offset + size) == text.size()));
+			offset += size;
+			while(reader.next()){
+				// Окончание потока не является событием отдельной записи
+				if(reader.event() == cef::event_t::FINISH)
+					continue;
+				// Координаты выводятся из исходного текста независимо от читателя
+				ASSERT_LT(records, count);
+				ASSERT_EQ(reader.position().offset, records * unit.size() + 6) << "chunk=" << chunk;
+				ASSERT_EQ(reader.position().line, records * 3 + 3) << "chunk=" << chunk;
+				ASSERT_EQ(reader.position().column, 1u) << "chunk=" << chunk;
+				if(reader.event() == cef::event_t::RECORD)
+					records++;
+			}
+		}
+		EXPECT_EQ(records, count);
+		EXPECT_EQ(reader.state(), cef::state_t::FINISHED);
+		EXPECT_EQ(reader.error(), cef::error_t::NONE);
+	}
+}
+
+/**
+ * @brief Ошибка после нескольких уплотнений указывает место в исходном потоке
+ *
+ */
+TEST(CodecCefReader, ErrorPositionsSurviveRepeatedCompaction) {
+	// Поток содержит длинные записи, пустые строки и повреждённый хвост
+	const string unit = ("\r\n \t\r\nCEF:0|V|P|1|100|Event|5|msg=" + string(1024, 'x') + "\r\n");
+	const size_t count = 160;
+	string text;
+	for(size_t i = 0; i < count; i++)
+		text.append(unit);
+	const size_t expected = (text.size() + 6);
+	text.append("CEF:0|broken");
+	const vector <size_t> chunks = {17, 65536, text.size()};
+	for(const size_t chunk : chunks){
+		cef::reader_t reader;
+		size_t records = 0;
+		for(size_t offset = 0; offset < text.size();){
+			const size_t size = std::min(chunk, text.size() - offset);
+			ASSERT_TRUE(reader.feed(text.data() + offset, size, (offset + size) == text.size()));
+			offset += size;
+			while(reader.next()){
+				if(reader.event() == cef::event_t::RECORD)
+					records++;
+			}
+		}
+		EXPECT_EQ(records, count);
+		EXPECT_EQ(reader.state(), cef::state_t::FAILED);
+		EXPECT_EQ(reader.error(), cef::error_t::INCOMPLETE_HEADER);
+		EXPECT_EQ(reader.errorPosition().offset, expected) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorPosition().line, count * 3 + 1) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorPosition().column, 7u) << "chunk=" << chunk;
+	}
+}
+
+/**
+ * @brief Сброс читателя начинает отсчёт координат заново после уплотнения
+ *
+ */
+TEST(CodecCefReader, ResetRestoresPositionsAfterCompaction) {
+	// Первая запись заканчивается на точной границе уплотнения
+	string prefix = "CEF:0|V|P|1|100|Event|5|msg=";
+	prefix.append(0xFFFF - prefix.size(), 'x');
+	prefix.append(1, '\n');
+	cef::reader_t reader;
+	ASSERT_TRUE(reader.feed(prefix.data(), prefix.size(), false));
+	size_t initial = 0;
+	while(reader.next()){
+		if(reader.event() == cef::event_t::RECORD)
+			initial++;
+	}
+	ASSERT_EQ(initial, 1u);
+	ASSERT_EQ(reader.state(), cef::state_t::HUNGRY);
+	// Следующая подача удаляет первую запись из хранилища
+	ASSERT_TRUE(reader.feed("CEF:0|V|P|1|100|Event|5|msg=value\n"));
+	size_t records = 0;
+	while(reader.next()){
+		if(reader.event() == cef::event_t::RECORD){
+			EXPECT_EQ(reader.position().offset, prefix.size());
+			EXPECT_EQ(reader.position().line, 2u);
+			records++;
+		}
+	}
+	ASSERT_EQ(records, 1u);
+	// После сброса координаты ошибки относятся только к новому тексту
+	reader.reset();
+	ASSERT_TRUE(reader.feed("CEF:0|broken"));
+	EXPECT_FALSE(reader.next());
+	EXPECT_EQ(reader.error(), cef::error_t::INCOMPLETE_HEADER);
+	EXPECT_EQ(reader.errorPosition().offset, 6u);
+	EXPECT_EQ(reader.errorPosition().line, 1u);
+	EXPECT_EQ(reader.errorPosition().column, 7u);
+	// Повторный сброс после ошибки восстанавливает и координаты исправной записи
+	reader.reset();
+	ASSERT_TRUE(reader.feed("CEF:0|V|P|1|100|Event|5|msg=value\n"));
+	ASSERT_TRUE(reader.next());
+	EXPECT_EQ(reader.position().offset, 0u);
+	EXPECT_EQ(reader.position().line, 1u);
+	EXPECT_EQ(reader.position().column, 1u);
+	EXPECT_EQ(reader.error(), cef::error_t::NONE);
+}

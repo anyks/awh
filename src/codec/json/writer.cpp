@@ -582,6 +582,15 @@ bool awh::codec::json::Writer::close() noexcept {
  */
 bool awh::codec::json::Writer::key(const string & name) noexcept {
 	/**
+	 * Если входная строка является собственным выходным буфером
+	 *
+	 * @note Снимок нужен до записи разделителя: иначе вход меняется во время чтения.
+	 *
+	 */
+	if(&name == &this->_result)
+		// Повторяем операцию с независимой копией входной строки
+		return this->key(string(name));
+	/**
 	 * Если ни одно вместилище не открыто
 	 *
 	 * @note Три довода отказа разведены порознь нарочно: прежде они схлопывались в один
@@ -720,6 +729,15 @@ bool awh::codec::json::Writer::value(const char * value) noexcept {
  *
  */
 bool awh::codec::json::Writer::value(const string & value) noexcept {
+	/**
+	 * Если входная строка является собственным выходным буфером
+	 *
+	 * @note Снимок нужен до записи разделителя: иначе вход меняется во время чтения.
+	 *
+	 */
+	if(&value == &this->_result)
+		// Повторяем операцию с независимой копией входной строки
+		return this->value(string(value));
 	/**
 	 * Если отказ на негодную кодировку затребован, а содержимое ей не отвечает
 	 *
@@ -1158,6 +1176,15 @@ bool awh::codec::json::Writer::produced(const char * value, const size_t size) n
  * @brief Метод записи числа его готовой записью
  */
 bool awh::codec::json::Writer::raw(const string & value) noexcept {
+	/**
+	 * Если входная строка является собственным выходным буфером
+	 *
+	 * @note Снимок нужен до записи разделителя: иначе вход меняется во время чтения.
+	 *
+	 */
+	if(&value == &this->_result)
+		// Повторяем операцию с независимой копией входной строки
+		return this->raw(string(value));
 	/**
 	 * Если запись числа стандарту не отвечает
 	 */

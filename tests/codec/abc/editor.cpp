@@ -5105,3 +5105,112 @@ TEST_F(EditorFixture, TheRefusalFunnelReportsItsCauseToTheJournal) {
 	// Выполняем снятие подписки на журнал
 	awh::log::subscribe(nullptr);
 }
+
+/**
+ * @brief Проверяем снимки носителя при прерывании каждого отдельного октета записи
+ */
+TEST_F(EditorFixture, InterruptedWritesKeepACompleteGeneration){
+	// Заводим ключ для подписанной половины матрицы
+	ASSERT_TRUE(this->_crypto->generateKey("owner", crypto_t::signature_t::ED25519));
+	// Счётчик проверенных точек обрыва
+	size_t checked = 0;
+	/**
+	 * Проверяем контейнеры с подписью и без неё
+	 */
+	for(const bool signedContainer : {false, true}){
+		// Готовим прежнее поколение
+		Medium medium;
+		this->build(medium, {"first", "second", "third"});
+		if(signedContainer){
+			abc::editor_t signer;
+			ASSERT_TRUE(this->open(signer, medium));
+			ASSERT_TRUE(signer.sign(this->_crypto.get(), "owner"));
+			ASSERT_TRUE(signer.commit());
+		}
+		// Снимки прерванного носителя и описание точки прерывания
+		vector <vector <uint8_t>> snapshots;
+		vector <string> labels;
+		size_t writes = 0;
+		// Открываем правщик с записью промежуточных состояний носителя
+		abc::editor_t editor;
+		ASSERT_TRUE(editor.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+			// Передаём чтение носителю
+			return medium.read(offset, size, result);
+		}, [&medium, &snapshots, &labels, &writes](const uint64_t offset, const void * buffer, const size_t size) noexcept -> bool {
+			// Сохраняем носитель до каждого возможного обрыва внутри текущей записи
+			const uint8_t * bytes = reinterpret_cast <const uint8_t *> (buffer);
+			for(size_t count = 0; count <= size; count++){
+				// Создаём снимок после записи первых count октетов
+				auto snapshot = medium.data;
+				if(count > 0){
+					if(snapshot.size() < (offset + count))
+						snapshot.resize(offset + count);
+					::memcpy(snapshot.data() + offset, bytes, count);
+				}
+				snapshots.emplace_back(std::move(snapshot));
+				labels.emplace_back(std::to_string(writes) + ":" + std::to_string(offset) + ":" + std::to_string(count) + "/" + std::to_string(size));
+			}
+			// Завершаем настоящую запись для продолжения контрольной фиксации
+			writes++;
+			return medium.write(offset, buffer, size);
+		}, medium.data.size()));
+		const uint64_t oldGeneration = editor.header().generation;
+		if(signedContainer)
+			ASSERT_TRUE(editor.sign(this->_crypto.get(), "owner"));
+		// Одновременно заменяем прежнюю запись и дописываем новую
+		const auto replacement = abc::value_t(string("replaced")).dump();
+		const auto appended = abc::value_t(string("fourth")).dump();
+		ASSERT_TRUE(editor.replace(0, replacement.data(), replacement.size(), abc::payload_t::TEXT));
+		ASSERT_TRUE(editor.append(appended.data(), appended.size(), abc::payload_t::TEXT));
+		ASSERT_TRUE(editor.commit());
+		ASSERT_GT(writes, 3u);
+		/**
+		 * Повторное открытие не получает возможности выполнить откат оборванного правщика
+		 */
+		for(size_t i = 0; i < snapshots.size(); i++){
+			SCOPED_TRACE(string("signed=") + std::to_string(signedContainer) + ", write:offset:prefix=" + labels.at(i));
+			Medium interrupted;
+			interrupted.data = snapshots.at(i);
+			abc::editor_t recovered;
+			ASSERT_TRUE(this->open(recovered, interrupted)) << abc::message(recovered.error());
+			const bool current = (recovered.header().generation == (oldGeneration + 1));
+			ASSERT_TRUE(current || (recovered.header().generation == oldGeneration));
+			ASSERT_EQ(recovered.records(), (current ? 4u : 3u));
+			vector <uint8_t> content;
+			ASSERT_TRUE(recovered.record(0, content));
+			ASSERT_EQ(content, (current ? replacement : abc::value_t(string("first")).dump()));
+			ASSERT_TRUE(recovered.record(1, content));
+			ASSERT_EQ(content, abc::value_t(string("second")).dump());
+			ASSERT_TRUE(recovered.record(2, content));
+			ASSERT_EQ(content, abc::value_t(string("third")).dump());
+			if(current){
+				ASSERT_TRUE(recovered.record(3, content));
+				ASSERT_EQ(content, appended);
+			}
+			/**
+			 * Проверяем подпись поколения, выбранного при открытии
+			 *
+			 * @details Головной заголовок мог оборваться. Для проверки подписи подставляем
+			 *          выбранный правщиком заголовок в копию; тело и запись подписи не меняем
+			 */
+			if(signedContainer){
+				// Копия носителя с заголовком выбранного поколения
+				auto normalized = interrupted.data;
+				// Буфер заголовка выбранного поколения
+				vector <uint8_t> head;
+				// Укладываем заголовок, восстановленный правщиком
+				recovered.header().pack(head);
+				// Переносим заголовок в копию носителя
+				std::copy(head.begin(), head.end(), normalized.begin());
+				// Код отказа проверки подписи
+				abc::error_t error = abc::error_t::NONE;
+				// Проверяем подпись выбранного поколения
+				ASSERT_TRUE(abc::verify(* this->_crypto, "owner", normalized.data(), normalized.size(), error)) << abc::message(error);
+			}
+			// Учитываем проверенную точку обрыва
+			checked++;
+		}
+	}
+	// Проверяем, что обход достиг точек прерывания
+	ASSERT_GT(checked, 0u);
+}

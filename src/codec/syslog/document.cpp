@@ -533,6 +533,13 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 						break;
 				}
 			}
+			// Если предварительное чтение прекращено ошибкой
+			if(counter.state() == state_t::FAILED){
+				// Запоминаем ошибку, не подменяя файл первой исправной записью
+				this->_error = counter.error();
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
 			// Если содержимое файла несёт более одной записи
 			if(records > 1){
 				// Устанавливаем код ошибки многозаписного файла

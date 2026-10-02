@@ -90,13 +90,19 @@ namespace awh {
 			 * окончании, либо кусками по мере накопления - смотря по тому, держит ли
 			 * потребитель собранное в памяти или отправляет его дальше
 			 *
+			 * @note Входная строка может ссылаться на результат `text()`: её содержимое
+			 *       сохраняется до изменения буфера. Срезы входных данных должны быть действительны
+			 *       в момент вызова; хранить их после изменения выходного буфера нельзя.
+			 *
 			 * @par Порядок работы
 			 *
 			 * @par Потоковая запись
-			 * @note Запись пределов не проверяет и ошибок не заводит: собираемый текст
-			 * ошибочным не бывает, а поле, содержащее что угодно, всегда записывается
-			 * так, чтобы разобраться обратно неизменным. Договор этот закреплён
-			 * проверкой кругового прохода
+			 * @note Поле, непредставимое при выбранных настройках, отвергается с кодом
+			 *       `UNWRITABLE_FIELD`: отказ поля сохраняет текст и состояние до вызова.
+			 *       В начале записи кавычка и знак отмены не могут совпадать со знаком
+			 *       примечания, если они требуются для записи поля. Пустое первое поле
+			 *       при совпадении разделителя со знаком примечания требует кавычек.
+			 *       Отказ записи массива полей либо таблицы отменяет всю эту операцию.
 			 *
 			 *  @code{.cpp}
 			 *  writer_t writer();
@@ -126,10 +132,12 @@ namespace awh {
 			 * what has been assembled in the memory or sends it further on
 			 * @par Order of the work
 			 * @par Streaming writing
-			 * @note The writing does not check the limits and does not record errors: the text being assembled is
-			 * never erroneous, while a field containing anything at all is always written
-			 * so as to be parsed back unchanged. This contract is fixed by
-			 * a round-trip test
+			 * @note A field that cannot be represented with the selected settings is rejected with
+			 *       `UNWRITABLE_FIELD`, preserving the text and state from before the call.
+			 *       At the start of a record, a required quote or escape character must not
+			 *       match the comment character. An empty first field requires quoting when
+			 *       the separator matches the comment character. A failed record or table
+			 *       operation rolls back the entire operation.
 			 *
 			 *  @code{.cpp}
 			 *  writer_t writer();
@@ -409,11 +417,18 @@ namespace awh {
 					 * пропускает: круговой проход такой записи не сохраняет, и это не
 					 * упущение, а свойство самой записи CSV
 					 *
+					 * @note Единственное пустое поле требует кавычек. Если они запрещены,
+					 *       не заданы либо совпадают со знаком примечания, завершение
+					 *       устанавливает `UNWRITABLE_FIELD` и снимает текущую запись.
+					 *
 					 * \~english
 					 * @brief Method of completing the current record
 					 * @details A record without fields gives an empty line, while the parsing skips the empty
 					 * lines: a round trip does not preserve such a record, and this is not
 					 * an omission but a property of the CSV record itself
+					 * @note A single empty field requires quotes. If quoting is disabled, the quote
+					 *       character is unset or matches the comment character, completion sets
+					 *       `UNWRITABLE_FIELD` and discards the current record.
 					 *
 					 * \~
 					 */

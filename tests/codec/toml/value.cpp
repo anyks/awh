@@ -2986,6 +2986,163 @@ TEST(CodecTomlValue, PathSurvivesSiblingGrowth) {
 	ASSERT_EQ(root["сосед63"].text(), "x");
 }
 /**
+ * @brief Проверка добавления копии дерева в него само
+ *
+ * @details Новое имя не должно попадать в копию исходного дерева. Последующее
+ *          добавление пары проверяет согласованность имён и значений копии
+ *
+ */
+TEST(CodecTomlValue, InsertCopiesItsOwnValue) {
+	/**
+	 * Проверяем поиск перебором и через индекс
+	 */
+	for(const size_t count : {1u, 64u}){
+		// Исходное дерево с именованными парами
+		toml::value_t root;
+		/**
+		 * Заполняем дерево до выбранного размера
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Добавляем очередную пару дерева
+			ASSERT_TRUE(root.insert("key" + std::to_string(i), toml::value_t("payload")));
+		// Создаём индекс поиска при достижении его порога
+		ASSERT_TRUE(root.contains("key0"));
+		// Сохраняем ожидаемую копию до добавления новой пары
+		const toml::value_t expected(root);
+		// Добавляем исходное дерево в него само
+		ASSERT_TRUE(root.insert("copy", root));
+		// Проверяем сохранение размера исходной копии
+		ASSERT_EQ(root["copy"].size(), count);
+		// Проверяем сохранение содержимого исходной копии
+		ASSERT_TRUE(root["copy"] == expected);
+		// Добавляем новое поле во вложенную копию
+		ASSERT_TRUE(root["copy"].insert("other", toml::value_t("second")));
+		// Получаем вложенную копию без возможности изменения при чтении
+		const toml::value_t & child = root["copy"];
+		// Проверяем имя добавленной пары
+		ASSERT_EQ(child.key(count), "other");
+		// Проверяем содержимое добавленной пары
+		ASSERT_EQ(child["other"].text(), "second");
+		// Проверяем отсутствие имени, добавленного только во внешнее дерево
+		ASSERT_FALSE(child.contains("copy"));
+	}
+}
+/**
+ * @brief Проверка добавления копии дерева в него само
+ *
+ * @details Новое имя не должно попадать в копию исходного дерева. Последующее
+ *          добавление пары проверяет согласованность имён и значений копии
+ *
+ */
+TEST(CodecTomlValue, AppendCopiesItsOwnValue) {
+	/**
+	 * Проверяем поиск перебором и через индекс
+	 */
+	for(const size_t count : {1u, 64u}){
+		// Исходное дерево с именованными парами
+		toml::value_t root;
+		/**
+		 * Заполняем дерево до выбранного размера
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Добавляем очередную пару дерева
+			ASSERT_TRUE(root.insert("key" + std::to_string(i), toml::value_t("payload")));
+		// Создаём индекс поиска при достижении его порога
+		ASSERT_TRUE(root.contains("key0"));
+		// Сохраняем ожидаемую копию до добавления новой пары
+		const toml::value_t expected(root);
+		// Добавляем исходное дерево в него само
+		ASSERT_TRUE(root.append("copy", root));
+		// Проверяем сохранение размера исходной копии
+		ASSERT_EQ(root["copy"].size(), count);
+		// Проверяем сохранение содержимого исходной копии
+		ASSERT_TRUE(root["copy"] == expected);
+		// Добавляем новое поле во вложенную копию
+		ASSERT_TRUE(root["copy"].insert("other", toml::value_t("second")));
+		// Получаем вложенную копию без возможности изменения при чтении
+		const toml::value_t & child = root["copy"];
+		// Проверяем имя добавленной пары
+		ASSERT_EQ(child.key(count), "other");
+		// Проверяем содержимое добавленной пары
+		ASSERT_EQ(child["other"].text(), "second");
+		// Проверяем отсутствие имени, добавленного только во внешнее дерево
+		ASSERT_FALSE(child.contains("copy"));
+	}
+}
+/**
+ * @brief Проверка сохранения потомка при превращении перечня в таблицу
+ *
+ */
+TEST(CodecTomlValue, InsertCopiesDescendantBeforeConversion) {
+	// Перечень с вложенным значением
+	toml::value_t root(toml::type_t::ARRAY);
+	// Строка с отдельным буфером, освобождаемым при уничтожении потомка
+	const string payload(128, 'x');
+	// Добавляем значение, из которого будут взяты имя и содержимое пары
+	ASSERT_TRUE(root.push(toml::value_t(payload)));
+	// Получаем ссылку на потомка, уничтожаемого при очистке перечня
+	const toml::value_t & child = root[static_cast <size_t> (0)];
+	// Сохраняем ожидаемое значение до очистки перечня
+	const toml::value_t expected(child);
+	// Заменяем перечень таблицей, используя имя и значение его потомка
+	ASSERT_TRUE(root.insert(child.text(), child));
+	// Проверяем размер полученной таблицы
+	ASSERT_EQ(root.size(), 1u);
+	// Проверяем сохранение имени из уничтоженного потомка
+	ASSERT_EQ(root.key(0), payload);
+	// Проверяем сохранение значения уничтоженного потомка
+	ASSERT_TRUE(root[payload] == expected);
+}
+/**
+ * @brief Проверка сохранения строки при добавлении её копии в неё саму
+ *
+ */
+TEST(CodecTomlValue, InsertCopiesScalarBeforeConversion) {
+	// Строка, которая будет превращена в таблицу
+	toml::value_t root("payload");
+	// Сохраняем исходное значение
+	const toml::value_t expected(root);
+	// Используем содержимое строки как имя и значение новой пары
+	ASSERT_TRUE(root.insert(root.text(), root));
+	// Проверяем имя созданной пары
+	ASSERT_EQ(root.key(0), "payload");
+	// Проверяем сохранение исходного значения
+	ASSERT_TRUE(root["payload"] == expected);
+}
+/**
+ * @brief Проверка добавления свободного пустого имени без перезаписи занятого
+ *
+ */
+TEST(CodecTomlValue, AppendAcceptsEmptyName) {
+	/**
+	 * Проверяем пустое дерево и таблицу с индексом поиска
+	 */
+	for(const size_t count : {0u, 64u}){
+		// Исходное дерево
+		toml::value_t root;
+		/**
+		 * Заполняем дерево до выбранного размера
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Добавляем очередную именованную пару
+			ASSERT_TRUE(root.insert("key" + std::to_string(i), toml::value_t("payload")));
+		// Добавляем пару со свободным пустым именем
+		ASSERT_TRUE(root.append("", toml::value_t("first")));
+		// Проверяем увеличение количества пар
+		ASSERT_EQ(root.size(), count + 1);
+		// Проверяем содержимое пары с пустым именем
+		ASSERT_EQ(root[""].text(), "first");
+		// Проверяем отказ повторного добавления пустого имени
+		ASSERT_FALSE(root.append("", toml::value_t("second")));
+		// Проверяем сохранение количества пар после отказа
+		ASSERT_EQ(root.size(), count + 1);
+		// Проверяем сохранение прежнего значения после отказа
+		ASSERT_EQ(root[""].text(), "first");
+		// Проверяем запись пустого имени в кавычках
+		ASSERT_NE(root.dump().find("\"\" = \"first\""), string::npos);
+	}
+}
+/**
  * @brief Проверка присваивания значения из собственного потомка
  *
  * @details Источник присваивания лежит внутри прежнего вместилища назначения. Если

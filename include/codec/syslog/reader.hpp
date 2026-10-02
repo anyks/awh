@@ -118,6 +118,13 @@ namespace awh {
 			 *
 			 * @par Намеренные решения
 			 *
+			 * @li **Координаты отсчитываются от начала исходного потока.** Удаление
+			 * разобранной части хранилища сохраняет смещение, строку и столбец его
+			 * нового начала. Ход `reset()` начинает отсчёт заново. Закреплено
+			 * `CodecSysLogReader.PositionsSurviveRepeatedCompaction`,
+			 * `CodecSysLogReader.ErrorPositionsSurviveRepeatedCompaction` и
+			 * `CodecSysLogReader.ResetRestoresPositionsAfterCompaction`.
+			 *
 			 * @li **Описание записи, определённое самоопределением, ЗАПОМИНАЕТСЯ.** Спрос
 			 * `standard()` после разбора отвечает опознанным описанием, а не настройкой
 			 * `AUTO`, — то есть ровно так же, как если бы описание задали вручную.
@@ -208,6 +215,8 @@ namespace awh {
 					pos_t _errorPosition;
 					// Положение начала текущего события в исходном тексте
 					pos_t _position;
+					// Положение начала хранилища в исходном тексте
+					pos_t _origin;
 				private:
 					// Хранилище подаваемого текста
 					string _buffer;

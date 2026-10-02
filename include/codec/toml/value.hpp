@@ -971,9 +971,8 @@ namespace awh {
 					 * задан потребителем, и перестановка их при перезаписи меняла бы вид
 					 * записанного текста без его на то воли
 					 *
-					 * @note Имя пустое отвергается отказом, а не подставляется: пара без
-					 *       имени в таблице невозможна, и молчаливая подстановка скрыла бы
-					 *       ошибку у потребителя
+					 * @note Пустое имя допускается: при записи оно заключается в кавычки.
+					 *       Занятое пустое имя перезаписывается наравне с непустым
 					 *
 					 * @param name  имя устанавливаемой пары
 					 * @param value устанавливаемое значение
@@ -984,9 +983,8 @@ namespace awh {
 					 * @details An occupied name is overwritten in its former place: the order of the pairs is
 					 * given by the consumer, and their rearrangement at an overwriting would change the appearance
 					 * of the written text without its will for that
-					 * @note An empty name is rejected with a refusal rather than substituted: a pair without
-					 *       a name is impossible in a table, and a silent substitution would conceal
-					 *       a mistake of the consumer
+					 * @note Empty names are allowed and are quoted when written. An existing empty
+					 *       name is overwritten in the same way as a non-empty name
 					 * @param name  name of the pair being set
 					 * @param value value being set
 					 * @return sign of the success of the setting
@@ -1000,7 +998,8 @@ namespace awh {
 					 *
 					 * @note Отличие от установки в том, что имя занятое отвергается отказом:
 					 *       добавление есть заявление о новизне имени, и молчаливая
-					 *       перезапись противоречила бы ему
+					 *       перезапись противоречила бы ему. Пустое имя допускается, если
+					 *       оно ещё не занято
 					 *
 					 * @param name  имя добавляемой пары
 					 * @param value добавляемое значение
@@ -1010,7 +1009,7 @@ namespace awh {
 					 * @brief Method of the addition of a pair of a table without an overwriting
 					 * @note The difference from the setting is that an occupied name is rejected with a refusal:
 					 *       an addition is a declaration of the novelty of the name, and a silent overwriting
-					 *       would contradict it
+					 *       would contradict it. An empty name is allowed if it is not already present
 					 * @param name  name of the pair being added
 					 * @param value value being added
 					 * @return sign of the success of the addition

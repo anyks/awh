@@ -329,11 +329,11 @@ bool awh::codec::syslog::Reader::fail(const error_t error, const size_t offset) 
  */
 void awh::codec::syslog::Reader::place(const size_t offset, pos_t & result) const noexcept {
 	// Устанавливаем смещение в байтах от начала текста
-	result.offset = static_cast <uint64_t> (offset);
-	// Устанавливаем номер строки, считая от единицы
-	result.line = 1;
-	// Устанавливаем номер столбца, считая от единицы
-	result.column = 1;
+	result.offset = (this->_origin.offset + static_cast <uint64_t> (offset));
+	// Учитываем строки, удалённые при уплотнении хранилища
+	result.line = this->_origin.line;
+	// Устанавливаем номер столбца начала хранилища
+	result.column = this->_origin.column;
 	/**
 	 * Выполняем перебор знаков хранилища до искомого смещения
 	 */
@@ -1479,6 +1479,8 @@ void awh::codec::syslog::Reader::reset() noexcept {
 	this->_errorPosition = pos_t();
 	// Выполняем очистку положения начала текущего события
 	this->_position = pos_t();
+	// Сбрасываем положение начала хранилища
+	this->_origin = pos_t();
 	// Выполняем очистку хранилища подаваемого текста
 	this->_buffer.clear();
 	// Сбрасываем смещение разбора в хранилище
@@ -1541,6 +1543,11 @@ bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, co
 	if((buffer != nullptr) && (size > 0)){
 		// Если хранилище разбора уплотнить возможно
 		if(this->_offset >= COMPACT_THRESHOLD){
+			// Определяем положение нового начала хранилища до удаления текста
+			pos_t origin;
+			this->place(this->_offset, origin);
+			// Сохраняем координаты удалённого начала для последующих событий
+			this->_origin = origin;
 			// Выполняем удаление разобранного начала хранилища
 			this->_buffer.erase(0, this->_offset);
 			// Сбрасываем смещение разбора в хранилище

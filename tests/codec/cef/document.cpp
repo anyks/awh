@@ -2615,3 +2615,114 @@ TEST(CodecCefDocument, SaveThroughSymlinkCycleIsRefused) {
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
 	#endif
 }
+
+/**
+ * @brief Повреждённая вторая запись не теряется при загрузке
+ *
+ */
+TEST(CodecCefDocument, MalformedTailIsRefusedAndKeptWhole) {
+	// Создаём отдельный каталог, очищаемый после проверки
+	save_directory_t guard("./cef-MalformedTailIsRefusedAndKeptWhole");
+	ASSERT_TRUE(guard.created);
+	// Записываем исправную запись и недопустимый хвост
+	const string filename = (guard.address + "/journal.log");
+	const string record = "CEF:0|V|P|1|100|Event|5|src=10.0.0.2\n";
+	const string content = (record + "CEF:0|broken\n");
+	ASSERT_TRUE(guard.fs.write(filename, string(content)));
+	// Проверяем отказ загрузки и точный код ошибки хвоста
+	cef::document_t document;
+	EXPECT_FALSE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Пустой документ не должен затереть исходный файл первой записью
+	EXPECT_FALSE(document.save(filename));
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Отказ предварительного чтения сохраняет прежний документ
+	ASSERT_TRUE(document.parse(record));
+	const string before = document.dump();
+	EXPECT_FALSE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
+	EXPECT_EQ(document.dump(), before);
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Исправленная запись с пустой строкой в конце загружается после отказа
+	ASSERT_TRUE(guard.fs.unlink(filename));
+	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
+	ASSERT_TRUE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::NONE);
+	EXPECT_EQ(document.dump(), before);
+}
+
+/**
+ * @brief Повреждённый хвост без перевода строки не теряется при загрузке
+ *
+ */
+TEST(CodecCefDocument, UnterminatedTailIsRefusedAndKeptWhole) {
+	// Создаём отдельный каталог, очищаемый после проверки
+	save_directory_t guard("./cef-UnterminatedTailIsRefusedAndKeptWhole");
+	ASSERT_TRUE(guard.created);
+	// Записываем исправную запись и недопустимый хвост
+	const string filename = (guard.address + "/journal.log");
+	const string record = "CEF:0|V|P|1|100|Event|5|src=10.0.0.2\n";
+	const string content = (record + "CEF:0|broken");
+	ASSERT_TRUE(guard.fs.write(filename, string(content)));
+	// Проверяем отказ загрузки и точный код ошибки хвоста
+	cef::document_t document;
+	EXPECT_FALSE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Пустой документ не должен затереть исходный файл первой записью
+	EXPECT_FALSE(document.save(filename));
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Отказ предварительного чтения сохраняет прежний документ
+	ASSERT_TRUE(document.parse(record));
+	const string before = document.dump();
+	EXPECT_FALSE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::INCOMPLETE_HEADER);
+	EXPECT_EQ(document.dump(), before);
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Исправленная запись с пустой строкой в конце загружается после отказа
+	ASSERT_TRUE(guard.fs.unlink(filename));
+	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
+	ASSERT_TRUE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::NONE);
+	EXPECT_EQ(document.dump(), before);
+}
+
+/**
+ * @brief Превышение предела второй записью не скрывается при загрузке
+ *
+ */
+TEST(CodecCefDocument, OversizedTailIsRefusedAndKeptWhole) {
+	// Создаём отдельный каталог, очищаемый после проверки
+	save_directory_t guard("./cef-OversizedTailIsRefusedAndKeptWhole");
+	ASSERT_TRUE(guard.created);
+	// Записываем исправную запись и недопустимый хвост
+	const string filename = (guard.address + "/journal.log");
+	const string record = "CEF:0|V|P|1|100|Event|5|src=10.0.0.2\n";
+	const string content = (record + "CEF:0|V|P|1|100|Event|5|msg=" + string(128, 'x') + "\n");
+	ASSERT_TRUE(guard.fs.write(filename, string(content)));
+	// Проверяем отказ загрузки и точный код ошибки хвоста
+	cef::document_t document;
+	cef::reader_t::settings_t settings;
+	settings.maxRecord = 64;
+	ASSERT_TRUE(document.settings(settings));
+	EXPECT_FALSE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::RECORD_TOO_LONG);
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Пустой документ не должен затереть исходный файл первой записью
+	EXPECT_FALSE(document.save(filename));
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Отказ предварительного чтения сохраняет прежний документ
+	ASSERT_TRUE(document.parse(record));
+	const string before = document.dump();
+	EXPECT_FALSE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::RECORD_TOO_LONG);
+	EXPECT_EQ(document.dump(), before);
+	EXPECT_EQ(guard.fs.read <string> (filename), content);
+	// Исправленная запись с пустой строкой в конце загружается после отказа
+	ASSERT_TRUE(guard.fs.unlink(filename));
+	ASSERT_TRUE(guard.fs.write(filename, string(record + "\n")));
+	ASSERT_TRUE(document.load(filename));
+	EXPECT_EQ(document.error(), cef::error_t::NONE);
+	EXPECT_EQ(document.dump(), before);
+}

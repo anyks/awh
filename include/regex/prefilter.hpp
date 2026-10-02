@@ -100,6 +100,22 @@
  *          «Regex.CodegenSelectionRestore». Пять пар и остаточные
  *          потери отдельных сценариев описаны в «COMPARISON.md».
  *
+ *          <b>Двухбайтовый обязательный литерал получает отдельный поиск
+ *          на x86-64 с SSE2.</b> Начальная пара сравнивается до подготовки
+ *          векторов: ранняя находка не оплачивает общий оконный проход.
+ *          Вектор проверяет оба байта целиком, поэтому повторное сличение
+ *          найденного кандидата не требуется. Полный оборот проверяет
+ *          тридцать две позиции в тридцати трёх доступных байтах;
+ *          остаток читается только внутри текста. Маска последнего
+ *          перекрывающегося окна исключает позиции до начала поиска,
+ *          а восьмибайтовая загрузка исключает нули верхней половины.
+ *          Простое включение общего прохода пары без ближней проверки
+ *          отвергнуто: оно замедляло ранние находки. ARM64, Эльбрус
+ *          и скалярная сборка сохраняют прежний путь. Закреплено
+ *          проверками Regex.PrefilterLocateDoublet и
+ *          Regex.PrefilterLocateDoubletGuardPages. Полные парные замеры
+ *          и остаточные сдвиги других сценариев — в COMPARISON.md.
+ *
  * \~english
  * @brief Header file of the preliminary selection of matching positions — the set of bytes
  *        admissible at the beginning of a match and the mandatory literal of a match, which allow
@@ -181,6 +197,21 @@
  *          Regex.PrefilterSelectionGuardPages and
  *          Regex.CodegenSelectionRestore. Five paired runs and remaining
  *          losses in individual scenarios are documented in COMPARISON.md.
+ *
+ *          <b>A mandatory two-byte literal has a dedicated search on
+ *          x86-64 with SSE2.</b> The starting pair is compared before
+ *          preparing vectors, keeping an immediate match inexpensive.
+ *          Both bytes are checked in full, so a vector hit needs no
+ *          second comparison. The main loop checks thirty-two positions
+ *          within thirty-three available bytes; tails stay inside the
+ *          text. The final overlapping window masks positions before
+ *          the search start. The eight-byte load also masks its zeroed
+ *          upper half. An unconditional call to the general paired pass
+ *          was rejected because it slowed early matches. ARM64, Elbrus
+ *          and scalar builds retain their previous path. Covered by
+ *          Regex.PrefilterLocateDoublet and
+ *          Regex.PrefilterLocateDoubletGuardPages. Full paired results
+ *          and remaining shifts in other scenarios are in COMPARISON.md.
  *
  * \~
  *
@@ -1125,12 +1156,14 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод поиска вхождения обязательного литерала в оставшемся тексте
 			 *
-			 * @details Поиск ведётся единожды на сопоставление: сперва пробой первого
-			 *          байта в ближнем участке текста, затем, не найдя там искомого,
-			 *          поиском последовательности по остатку. Проверка возможности
-			 *          совпадения стоит на нём же, а исполнение с возвратом берёт
-			 *          найденное вхождение как есть: прежде оно разыскивало литерал
-			 *          заново, и сопоставление, пробою разрешённое, искало его дважды.
+			 * @details Поиск ведётся единожды на сопоставление. Двухбайтовый литерал
+			 *          на x86-64 с SSE2 получает отдельный проход с дешёвой проверкой
+			 *          начальной пары. Общий путь сперва проверяет первый байт
+			 *          в ближнем участке, затем ищет последовательность в остатке.
+			 *          Проверка возможности совпадения использует тот же поиск.
+			 *          Исполнение с возвратом берёт найденное вхождение как есть:
+			 *          прежде оно разыскивало литерал заново, и сопоставление,
+			 *          пробою разрешённое, искало его дважды.
 			 *
 			 * @param text текст сопоставления
 			 * @param pos  позиция начала проверяемого участка текста
@@ -1140,10 +1173,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of searching for an occurrence of the mandatory literal in the remaining text
-			 * @details The search is performed once per match: first by a probe of the first
-			 *          byte in the near stretch of the text, then, not having found the sought
-			 *          sequence there, by a search for the sequence over the remainder. The check
-			 *          of the possibility of a match stands on it, and the execution with
+			 * @details The search is performed once per match. On x86-64 with SSE2, a two-byte
+			 *          literal uses a dedicated pass with an inexpensive check of the starting pair.
+			 *          The general path first probes the initial byte in a nearby stretch and then
+			 *          searches for the sequence over the remainder. The possibility-of-match check
+			 *          uses the same search, and the execution with
 			 *          backtracking takes the found occurrence as is: formerly it searched for the
 			 *          literal anew, and a match resolved by the probe searched for it twice.
 			 * @param text text to match

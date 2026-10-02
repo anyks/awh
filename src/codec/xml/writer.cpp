@@ -20,6 +20,11 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <functional>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/writer.hpp>
@@ -35,6 +40,24 @@ using namespace std;
  *
  */
 namespace {
+	/**
+	 * @brief Функция проверки пересечения входного среза с выходным буфером
+	 *
+	 * @param buffer выходной буфер
+	 * @param text   входной срез
+	 * @return       признак пересечения
+	 *
+	 */
+	bool overlaps(const std::string & buffer, const std::string_view text) noexcept {
+		// Пустой срез не содержит байтов, требующих сохранения
+		if(text.empty())
+			// Выводим отсутствие пересечения
+			return false;
+		// Полный порядок указателей позволяет сравнивать разные области памяти
+		const std::less <const char *> before;
+		// Учитываем также завершающий нулевой байт строки
+		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
+	}
 	/**
 	 * Пространство имён контейнера XML
 	 */
@@ -599,6 +622,44 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
  *
  */
 bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> * declares, const string_view * preferred, const bool verbatim, const bool oneline) noexcept {
+	// Проверяем имена, которые могут ссылаться на собственный выходной буфер
+	bool shared = (::overlaps(this->_text, local) || ::overlaps(this->_text, uri) ||
+	               ((preferred != nullptr) && ::overlaps(this->_text, *preferred)));
+	// Проверяем объявления до записи открывающей метки
+	if(declares != nullptr){
+		// Перебираем все объявляемые пространства имён
+		for(const binding_t & item : *declares)
+			// Учитываем оба среза каждого объявления
+			shared = (shared || ::overlaps(this->_text, item.prefix) || ::overlaps(this->_text, item.uri));
+	}
+	// Если входные срезы пересекаются с выходным буфером
+	if(shared){
+		// Сохраняем имя, пространство имён и желаемый префикс
+		const string name(local), space(uri), choice(preferred != nullptr ? *preferred : string_view());
+		// Срез сохранённого желаемого префикса
+		const string_view selected(choice);
+		// Хранилище строк объявлений и их независимые срезы
+		vector <string> stored;
+		vector <binding_t> bindings;
+		// Если объявления переданы вызывающим
+		if(declares != nullptr){
+			// Отводим место заранее, чтобы перемещение строк не портило срезы
+			stored.reserve(declares->size() * 2);
+			bindings.resize(declares->size());
+			// Копируем объявления до изменения выходного буфера
+			for(size_t i = 0; i < declares->size(); i++){
+				// Сохраняем обе строки объявления
+				stored.emplace_back((*declares)[i].prefix);
+				stored.emplace_back((*declares)[i].uri);
+				// Связываем срезы с независимым хранилищем
+				bindings[i].prefix = stored[i * 2];
+				bindings[i].uri = stored[i * 2 + 1];
+			}
+		}
+		// Повторяем открытие с сохранёнными доводами
+		return this->open(name, space, (declares != nullptr ? &bindings : nullptr),
+		                  (preferred != nullptr ? &selected : nullptr), verbatim, oneline);
+	}
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -900,6 +961,10 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
  *
  */
 bool awh::codec::xml::Writer::attribute(const string_view local, const string_view value, const string_view uri, const bool verbatim) noexcept {
+	// Сохраняем все доводы до первого изменения общего выходного буфера
+	if(::overlaps(this->_text, local) || ::overlaps(this->_text, value) || ::overlaps(this->_text, uri))
+		// Временные строки живут до завершения вложенного вызова
+		return this->attribute(string(local), string(value), string(uri), verbatim);
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -930,6 +995,37 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	if(!verbatim && (local.compare("xmlns") == 0)){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_ATTRIBUTE);
+	}
+	/**
+	 * Проверяем расширенное имя независимо от выбранного префикса
+	 *
+	 * @note Новый префикс того же пространства имён не создаёт нового атрибута.
+	 *       Объявления xmlns учитываются отдельно, а дословный режим сохраняет
+	 *       имена без разрешения пространств имён, как и соответствующий разбор.
+	 */
+	if(!verbatim && !uri.empty()){
+		// Перебираем имена уже записанных атрибутов
+		for(const string & name : this->_opened[this->_depth - 1].names){
+			// Получаем границу префикса записанного имени
+			const size_t offset = name.find(':');
+			// Пропускаем имена без префикса, объявления и другие местные имена
+			if((offset == string::npos) || (name.compare(0, offset, "xmlns") == 0) ||
+			   (string_view(name).substr(offset + 1).compare(local) != 0))
+				// Переходим к следующему имени
+				continue;
+			// Ищем ближайшее связывание префикса записанного атрибута
+			for(size_t i = this->_bindings; i > 0; i--){
+				// Если найден действующий префикс
+				if(this->_scopes[i - 1].prefix.compare(string_view(name).substr(0, offset)) == 0){
+					// Если совпадает также пространство имён
+					if(this->_scopes[i - 1].uri.compare(uri) == 0)
+						// Отвергаем повторное расширенное имя
+						return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
+					// Более дальние связывания этого префикса уже перекрыты
+					break;
+				}
+			}
+		}
 	}
 	// Назначенный атрибуту префикс пространства имён
 	string prefix;
@@ -1002,6 +1098,10 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
  *
  */
 bool awh::codec::xml::Writer::binding(const string_view prefix, const string_view uri) noexcept {
+	// Сохраняем все доводы до первого изменения общего выходного буфера
+	if(::overlaps(this->_text, prefix) || ::overlaps(this->_text, uri))
+		// Временные строки живут до завершения вложенного вызова
+		return this->binding(string(prefix), string(uri));
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -1181,6 +1281,10 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
  *
  */
 bool awh::codec::xml::Writer::text(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до изменения выходного буфера
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->text(string(text));
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -1209,6 +1313,10 @@ bool awh::codec::xml::Writer::text(const string_view text) noexcept {
  *
  */
 bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до изменения выходного буфера
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->cdata(string(text));
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -1255,6 +1363,10 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
  *
  */
 bool awh::codec::xml::Writer::comment(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до изменения выходного буфера
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->comment(string(text));
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -1308,6 +1420,10 @@ bool awh::codec::xml::Writer::comment(const string_view text) noexcept {
  *
  */
 bool awh::codec::xml::Writer::processing(const string_view target, const string_view text) noexcept {
+	// Сохраняем все доводы до первого изменения общего выходного буфера
+	if(::overlaps(this->_text, target) || ::overlaps(this->_text, text))
+		// Временные строки живут до завершения вложенного вызова
+		return this->processing(string(target), string(text));
 	/**
 	 * Если запись уже прекращена ошибкой
 	 */
@@ -1391,6 +1507,10 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
  *
  */
 bool awh::codec::xml::Writer::element(const string_view local, const string_view value, const string_view uri) noexcept {
+	// Сохраняем все доводы до первого изменения общего выходного буфера
+	if(::overlaps(this->_text, local) || ::overlaps(this->_text, value) || ::overlaps(this->_text, uri))
+		// Временные строки живут до завершения вложенного вызова
+		return this->element(string(local), string(value), string(uri));
 	/**
 	 * Если открыть записываемый узел не удалось
 	 */

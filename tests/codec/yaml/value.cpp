@@ -3122,6 +3122,90 @@ TEST(CodecYamlValue, SelfAssignmentAndSpecialNumbers) {
 	}
 }
 /**
+ * @brief Проверка добавления копии дерева в него само
+ *
+ * @details Новое имя не должно попадать в копию исходного дерева. Последующее
+ *          добавление пары проверяет согласованность имён и значений копии
+ *
+ */
+TEST(CodecYamlValue, InsertCopiesItsOwnValue) {
+	/**
+	 * Проверяем поиск перебором и через индекс
+	 */
+	for(const size_t count : {1u, 64u}){
+		// Исходное дерево с именованными парами
+		yaml::value_t root;
+		/**
+		 * Заполняем дерево до выбранного размера
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Добавляем очередную пару дерева
+			ASSERT_TRUE(root.insert("key" + std::to_string(i), yaml::value_t("payload")));
+		// Создаём индекс поиска при достижении его порога
+		ASSERT_TRUE(root.contains("key0"));
+		// Сохраняем ожидаемую копию до добавления новой пары
+		const yaml::value_t expected(root);
+		// Добавляем исходное дерево в него само
+		ASSERT_TRUE(root.insert("copy", root));
+		// Проверяем сохранение размера исходной копии
+		ASSERT_EQ(root["copy"].size(), count);
+		// Проверяем сохранение содержимого исходной копии
+		ASSERT_TRUE(root["copy"] == expected);
+		// Добавляем новое поле во вложенную копию
+		ASSERT_TRUE(root["copy"].insert("other", yaml::value_t("second")));
+		// Получаем вложенную копию без возможности изменения при чтении
+		const yaml::value_t & child = root["copy"];
+		// Проверяем имя добавленной пары
+		ASSERT_EQ(child.key(count), "other");
+		// Проверяем содержимое добавленной пары
+		ASSERT_EQ(child["other"].text(), "second");
+		// Проверяем отсутствие имени, добавленного только во внешнее дерево
+		ASSERT_FALSE(child.contains("copy"));
+	}
+}
+/**
+ * @brief Проверка добавления копии дерева в него само
+ *
+ * @details Новое имя не должно попадать в копию исходного дерева. Последующее
+ *          добавление пары проверяет согласованность имён и значений копии
+ *
+ */
+TEST(CodecYamlValue, AppendCopiesItsOwnValue) {
+	/**
+	 * Проверяем поиск перебором и через индекс
+	 */
+	for(const size_t count : {1u, 64u}){
+		// Исходное дерево с именованными парами
+		yaml::value_t root;
+		/**
+		 * Заполняем дерево до выбранного размера
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Добавляем очередную пару дерева
+			ASSERT_TRUE(root.insert("key" + std::to_string(i), yaml::value_t("payload")));
+		// Создаём индекс поиска при достижении его порога
+		ASSERT_TRUE(root.contains("key0"));
+		// Сохраняем ожидаемую копию до добавления новой пары
+		const yaml::value_t expected(root);
+		// Добавляем исходное дерево в него само
+		ASSERT_TRUE(root.append("copy", root));
+		// Проверяем сохранение размера исходной копии
+		ASSERT_EQ(root["copy"].size(), count);
+		// Проверяем сохранение содержимого исходной копии
+		ASSERT_TRUE(root["copy"] == expected);
+		// Добавляем новое поле во вложенную копию
+		ASSERT_TRUE(root["copy"].insert("other", yaml::value_t("second")));
+		// Получаем вложенную копию без возможности изменения при чтении
+		const yaml::value_t & child = root["copy"];
+		// Проверяем имя добавленной пары
+		ASSERT_EQ(child.key(count), "other");
+		// Проверяем содержимое добавленной пары
+		ASSERT_EQ(child["other"].text(), "second");
+		// Проверяем отсутствие имени, добавленного только во внешнее дерево
+		ASSERT_FALSE(child.contains("copy"));
+	}
+}
+/**
  * @brief Проверка присваивания значения из собственного потомка
  *
  * @details Источник присваивания лежит внутри прежнего вместилища назначения. Если

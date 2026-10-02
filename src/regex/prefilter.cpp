@@ -1114,6 +1114,15 @@ void awh::regex::Prefilter::finalize() noexcept {
 	this->unique = (count == 1);
 }
 /**
+ * Если доступен отдельный поиск двухбайтового литерала на x86-64
+ */
+#if defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+	namespace {
+		// Вход короткого поиска, размещённый после общих проходов
+		AWH_REGEX_NOINLINE size_t doublet(const string_view text, const char * needle, const size_t pos) noexcept;
+	}
+#endif
+/**
  * @brief Метод поиска вхождения обязательного литерала в оставшемся тексте
  *
  * @param text текст сопоставления
@@ -1175,6 +1184,15 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 		if(what.size() < 2)
 			// Выводим позицию вхождения обязательного литерала в тексте
 			return seek(text, what, pos);
+		/**
+		 * Если доступен отдельный поиск двухбайтового литерала
+		 */
+		#if defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+			// Если литерал покрывается одной парой байтов
+			if(what.size() == 2)
+				// Выводим первое вхождение пары
+				return doublet(text, what.data(), pos);
+		#endif
 		// Получаем предел ближнего участка текста
 		const size_t horizon = (((pos + LOOKAHEAD) < text.size()) ? (pos + LOOKAHEAD) : text.size());
 		/**
@@ -1554,6 +1572,187 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 			case 8: return &selecting <8>;
 			// Для остальных длин сохраняем общий вход
 			default: return nullptr;
+		}
+	}
+#endif
+
+/**
+ * Если доступен отдельный поиск двухбайтового литерала на x86-64
+ */
+#if defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+	namespace {
+		/**
+		 * @brief Функция поиска первого вхождения двухбайтового литерала
+		 *
+		 * @details Начальная позиция проверяется до подготовки векторов.
+		 *          Два сравнения по байтам покрывают весь литерал, поэтому
+		 *          найденная вектором пара не требует повторного сравнения.
+		 *          Основной оборот проверяет тридцать две позиции в тридцати
+		 *          трёх доступных байтах. Короткий остаток проверяется вектором,
+		 *          заканчивающимся точно на границе текста, с маской начала.
+		 *
+		 * @param text   текст поиска
+		 * @param needle адрес двух байтов литерала
+		 * @param pos    позиция начала поиска
+		 * @return       позиция первого вхождения либо признак его отсутствия
+		 *
+		 */
+		AWH_REGEX_NOINLINE size_t doublet(const string_view text, const char * needle, const size_t pos) noexcept {
+			// Получаем размер текста поиска
+			const size_t size = text.size();
+			// Если литерал в остаток текста не помещается
+			if((size < 2) || (pos > (size - 2)))
+				// Выводим отсутствие литерала
+				return string_view::npos;
+			// Получаем начало текста
+			const char * base = text.data();
+			// Слова искомой пары и начальной позиции
+			uint16_t wanted = 0, current = 0;
+			// Читаем ровно два байта литерала и текста
+			::memcpy(&wanted, needle, sizeof(wanted));
+			::memcpy(&current, (base + pos), sizeof(current));
+			// Если начальная позиция уже содержит литерал
+			if(current == wanted)
+				// Выводим начальную позицию
+				return pos;
+			// Получаем исключающий предел начальных позиций пары
+			const size_t limit = (size - 1);
+			// Размножаем оба байта литерала по векторам
+			const __m128i first = _mm_set1_epi8(needle[0]);
+			const __m128i second = _mm_set1_epi8(needle[1]);
+			// Текущая позиция поиска
+			size_t at = pos;
+			/**
+			 * Выполняем поиск тридцати двух позиций пары за один оборот
+			 */
+			while((size - at) >= 33){
+				// Читаем участки под оба байта двух половин окна
+				const __m128i head = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				const __m128i tail = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 1));
+				const __m128i head2 = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+				const __m128i tail2 = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 17));
+				// Получаем признаки полного совпадения пары в обеих половинах
+				const __m128i equal = _mm_and_si128(_mm_cmpeq_epi8(head, first), _mm_cmpeq_epi8(tail, second));
+				const __m128i equal2 = _mm_and_si128(_mm_cmpeq_epi8(head2, first), _mm_cmpeq_epi8(tail2, second));
+				// Объединяем маски в порядке начальных позиций
+				const uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(equal)) |
+				 (static_cast <uint32_t> (_mm_movemask_epi8(equal2)) << 16));
+				// Если окно содержит полное совпадение
+				if(hits != 0)
+					// Выводим первую совпавшую позицию
+					return (at + trailing(hits));
+				// Переходим к следующему окну
+				at += 32;
+			}
+			/**
+			 * Если остаток содержит ровно два полных вектора
+			 */
+			if((size - at) == 32){
+				// Читаем обе половины без выхода за конец текста
+				const __m128i head = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				const __m128i tail = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+				// Собираем признаки первого и второго байтов в порядке текста
+				const uint32_t leading = (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(head, first))) |
+				 (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(tail, first))) << 16));
+				const uint32_t following = (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(head, second))) |
+				 (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(tail, second))) << 16));
+				// Сдвиг учитывает также пару на стыке двух половин
+				const uint32_t hits = (leading & (following >> 1));
+				// Выводим первое совпадение либо его отсутствие
+				return ((hits != 0) ? (at + trailing(hits)) : string_view::npos);
+			}
+			/**
+			 * Выполняем поиск пятнадцати позиций в одном векторе
+			 */
+			while((size - at) >= 16){
+				// Читаем шестнадцать доступных байтов
+				const __m128i chunk = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				// Сдвигаем признаки второго байта к позиции первого
+				const uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, first))) &
+				 (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, second))) >> 1));
+				// Если вектор содержит полное совпадение
+				if(hits != 0)
+					// Выводим первую совпавшую позицию
+					return (at + trailing(hits));
+				// Сохраняем последний байт для пары следующего окна
+				at += 15;
+			}
+			/**
+			 * Если текст позволяет прочитать последний вектор целиком
+			 */
+			if(size >= 16){
+				// Если остались непроверенные начальные позиции
+				if(at < limit){
+					// Получаем начало последнего полного вектора
+					const size_t begin = (size - 16);
+					// Читаем вектор, заканчивающийся точно на границе текста
+					const __m128i chunk = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + begin));
+					// Получаем позиции полного совпадения обоих байтов
+					uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, first))) &
+					 (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, second))) >> 1));
+					// Исключаем позиции перед заданным началом остатка
+					hits &= (static_cast <uint32_t> (0x7FFF) << (at - begin));
+					// Если остаток содержит полное совпадение
+					if(hits != 0)
+						// Выводим первую допустимую позицию
+						return (begin + trailing(hits));
+				}
+				// Выводим отсутствие пары в проверенном тексте
+				return string_view::npos;
+			}
+			/**
+			 * Если короткий текст вмещает половину вектора
+			 */
+			if(size >= 8){
+				/**
+				 * Выполняем поиск семи позиций в восьми доступных байтах
+				 */
+				while((size - at) >= 8){
+					// Читаем только нижние восемь байтов вектора
+					const __m128i chunk = _mm_loadl_epi64(reinterpret_cast <const __m128i *> (base + at));
+					// Исключаем нули, которыми команда заполнила верхнюю половину
+					const uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, first))) &
+					 (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, second))) >> 1) & 0x7F);
+					// Если половина вектора содержит полную пару
+					if(hits != 0)
+						// Выводим первую совпавшую позицию
+						return (at + trailing(hits));
+					// Сохраняем последний байт для следующей пары
+					at += 7;
+				}
+				// Если остались непроверенные позиции
+				if(at < limit){
+					// Читаем последние восемь байтов точно до границы текста
+					const size_t begin = (size - 8);
+					const __m128i chunk = _mm_loadl_epi64(reinterpret_cast <const __m128i *> (base + begin));
+					// Получаем признаки совпадения обоих байтов
+					uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, first))) &
+					 (static_cast <uint32_t> (_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, second))) >> 1));
+					// Оставляем только полные пары не раньше начала остатка
+					hits &= ((static_cast <uint32_t> (0x7F) << (at - begin)) & 0x7F);
+					// Если остаток содержит полную пару
+					if(hits != 0)
+						// Выводим первую допустимую позицию
+						return (begin + trailing(hits));
+				}
+				// Выводим отсутствие пары в коротком тексте
+				return string_view::npos;
+			}
+			/**
+			 * Выполняем поиск в остатке без чтения за пределами текста
+			 */
+			while(at < limit){
+				// Читаем ровно два доступных байта
+				::memcpy(&current, (base + at), sizeof(current));
+				// Если очередная пара совпадает с искомой
+				if(current == wanted)
+					// Выводим позицию первого совпадения
+					return at;
+				// Переходим к следующей паре
+				at++;
+			}
+			// Выводим отсутствие литерала
+			return string_view::npos;
 		}
 	}
 #endif

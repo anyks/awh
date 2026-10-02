@@ -75,6 +75,7 @@ if (${GTest_FOUND})
             codegen.cpp
             range.cpp
             window.cpp
+            doublet.cpp
             selection.cpp
             engine.cpp
             reference.cpp

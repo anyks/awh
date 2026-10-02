@@ -2057,3 +2057,125 @@ TEST(CodecXmlWriter, GeneratedPrefixClashingWithAVerbatimNameIsRefused) {
 	// Выполняем проверку того, что причина отказа названа
 	ASSERT_EQ(writer.error(), xml::error_t::DUPLICATE_ATTRIBUTE);
 }
+/**
+ * @brief Проверка повторного расширенного имени при добавлении нового префикса
+ *
+ */
+TEST(CodecXmlWriter, NamespaceAliasesCannotDuplicateAttributes) {
+	// Проверяем также сохранение имён после изъятия начала метки
+	for(const bool take : {false, true}){
+		xml::writer_t writer;
+		ASSERT_TRUE(writer.open("root"));
+		ASSERT_TRUE(writer.binding("a", "urn:same"));
+		ASSERT_TRUE(writer.attribute("x", "1", "urn:same"));
+		ASSERT_TRUE(writer.binding("b", "urn:same"));
+		if(take)
+			// Изъятие текста не снимает проверку имён
+			ASSERT_FALSE(writer.take().empty());
+		ASSERT_FALSE(writer.attribute("x", "2", "urn:same"));
+		ASSERT_EQ(writer.error(), xml::error_t::DUPLICATE_ATTRIBUTE);
+		ASSERT_TRUE(writer.text().empty());
+	}
+	// Разные местные имена и разные пространства остаются допустимыми
+	xml::writer_t writer;
+	ASSERT_TRUE(writer.open("root"));
+	ASSERT_TRUE(writer.binding("a", "urn:first"));
+	ASSERT_TRUE(writer.attribute("x", "1", "urn:first"));
+	ASSERT_TRUE(writer.binding("b", "urn:first"));
+	ASSERT_TRUE(writer.attribute("y", "2", "urn:first"));
+	ASSERT_TRUE(writer.binding("c", "urn:second"));
+	ASSERT_TRUE(writer.attribute("x", "3", "urn:second"));
+	ASSERT_TRUE(writer.attribute("x", "4"));
+	ASSERT_TRUE(writer.close());
+	xml::document_t document;
+	ASSERT_TRUE(document.parse(writer.text()));
+	ASSERT_EQ(document.element().attribute("x", "urn:first"), "1");
+	ASSERT_EQ(document.element().attribute("y", "urn:first"), "2");
+	ASSERT_EQ(document.element().attribute("x", "urn:second"), "3");
+	ASSERT_EQ(document.element().attribute("x"), "4");
+}
+/**
+ * @brief Проверка собственных срезов XML во всех способах записи содержимого
+ *
+ */
+TEST(CodecXmlWriter, OwnBufferContent) {
+	for(uint8_t mode = 0; mode < 5; mode++){
+		xml::writer_t writer, reference;
+		ASSERT_TRUE(writer.open("root"));
+		ASSERT_TRUE(reference.open("root"));
+		ASSERT_TRUE(writer.text(string(4096, 'x')));
+		ASSERT_TRUE(reference.text(string(4096, 'x')));
+		// Копия служит независимым образцом ожидаемого результата
+		const string before = reference.text();
+		const string_view input(writer.text());
+		switch(mode){
+			case 0: {
+				ASSERT_TRUE(writer.text(input));
+				ASSERT_TRUE(reference.text(before));
+			} break;
+			case 1: {
+				ASSERT_TRUE(writer.cdata(input));
+				ASSERT_TRUE(reference.cdata(before));
+			} break;
+			case 2: {
+				ASSERT_TRUE(writer.comment(input));
+				ASSERT_TRUE(reference.comment(before));
+			} break;
+			case 3: {
+				ASSERT_TRUE(writer.processing(input.substr(1, 4), input));
+				ASSERT_TRUE(reference.processing(string_view(before).substr(1, 4), before));
+			} break;
+			case 4: {
+				ASSERT_TRUE(writer.element(input.substr(1, 4), input, input.substr(6)));
+				ASSERT_TRUE(reference.element(string_view(before).substr(1, 4), before, string_view(before).substr(6)));
+			} break;
+		}
+		ASSERT_TRUE(writer.close());
+		ASSERT_TRUE(reference.close());
+		ASSERT_EQ(writer.text(), reference.text());
+		xml::document_t document;
+		ASSERT_TRUE(document.parse(writer.text()));
+	}
+}
+/**
+ * @brief Проверка собственных срезов XML в атрибутах и объявлениях
+ *
+ */
+TEST(CodecXmlWriter, OwnBufferNamesAndBindings) {
+	for(uint8_t mode = 0; mode < 3; mode++){
+		xml::writer_t writer, reference;
+		ASSERT_TRUE(writer.open("root"));
+		ASSERT_TRUE(reference.open("root"));
+		ASSERT_TRUE(writer.attribute("seed", string(4096, 'x')));
+		ASSERT_TRUE(reference.attribute("seed", string(4096, 'x')));
+		const string before = reference.text();
+		const string_view input(writer.text());
+		const string_view copied(before);
+		switch(mode){
+			case 0: {
+				ASSERT_TRUE(writer.attribute(input.substr(1, 4), input, input.substr(12, 4096)));
+				ASSERT_TRUE(reference.attribute(copied.substr(1, 4), copied, copied.substr(12, 4096)));
+			} break;
+			case 1: {
+				ASSERT_TRUE(writer.binding(input.substr(1, 4), input.substr(12, 4096)));
+				ASSERT_TRUE(reference.binding(copied.substr(1, 4), copied.substr(12, 4096)));
+			} break;
+			case 2: {
+				vector <xml::binding_t> bindings(1), expected(1);
+				bindings[0].prefix = input.substr(1, 4);
+				bindings[0].uri = input.substr(12, 4096);
+				expected[0].prefix = copied.substr(1, 4);
+				expected[0].uri = copied.substr(12, 4096);
+				ASSERT_TRUE(writer.open(input.substr(6, 4), bindings[0].uri, bindings, bindings[0].prefix));
+				ASSERT_TRUE(reference.open(copied.substr(6, 4), expected[0].uri, expected, expected[0].prefix));
+				ASSERT_TRUE(writer.close());
+				ASSERT_TRUE(reference.close());
+			} break;
+		}
+		ASSERT_TRUE(writer.close());
+		ASSERT_TRUE(reference.close());
+		ASSERT_EQ(writer.text(), reference.text());
+		xml::document_t document;
+		ASSERT_TRUE(document.parse(writer.text()));
+	}
+}

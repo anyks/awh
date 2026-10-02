@@ -23,6 +23,7 @@
  * Стандартные заголовочные файлы
  */
 #include <limits>
+#include <functional>
 #include <cstdio>
 #include <type_traits>
 
@@ -38,6 +39,24 @@
  * Используем стандартное пространство имён
  */
 namespace {
+	/**
+	 * @brief Функция проверки пересечения входного среза с выходным буфером
+	 *
+	 * @param buffer выходной буфер
+	 * @param text   входной срез
+	 * @return       признак пересечения
+	 *
+	 */
+	bool overlaps(const std::string & buffer, const std::string_view text) noexcept {
+		// Пустой срез не содержит байтов, требующих сохранения
+		if(text.empty())
+			// Выводим отсутствие пересечения
+			return false;
+		// Полный порядок указателей позволяет сравнивать разные области памяти
+		const std::less <const char *> before;
+		// Учитываем также завершающий нулевой байт строки
+		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
+	}
 	/**
 	 * @brief Таблица годности знаков области ASCII для записи в поле
 	 *
@@ -159,6 +178,10 @@ void awh::codec::csv::Writer::quoted(const string_view text) noexcept {
  *
  */
 bool awh::codec::csv::Writer::field(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до записи разделителя и кавычек
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->field(string(text));
 	/**
 	 * Снимок состояния сборщика, снимаемый до всякой его правки
 	 *
@@ -384,6 +407,10 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 		if(this->_settings.quote == '\0')
 			// Выполняем откат неудавшейся записи поля
 			return this->rollback(restore, beginning, opened, signature, error_t::SEPARATOR_CONFLICT);
+		// Если открывающая кавычка превращает всю запись в примечание
+		if(!started && (this->_settings.quote == this->_settings.comment))
+			// Отвергаем непредставимое поле без изменения состояния сборщика
+			return this->rollback(restore, beginning, opened, signature, error_t::UNWRITABLE_FIELD);
 		// Записываем содержимое поля с обрамлением кавычками
 		this->quoted(text);
 		// Выводим признак успешной записи поля
@@ -398,6 +425,13 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 	 *       между записью и разбором, а не часть договора
 	 */
 	if(this->_settings.quoting == quoting_t::NONE){
+		/**
+		 * Пустое первое поле нельзя защитить отменой следующего разделителя:
+		 * отменённый разделитель стал бы содержимым поля вместо его границы.
+		 */
+		if(commented && text.empty())
+			// Отвергаем поле, которому при этих настройках требуются кавычки
+			return this->rollback(restore, beginning, opened, signature, error_t::UNWRITABLE_FIELD);
 		/**
 		 * Если содержимое поля установленными настройками записи непредставимо
 		 *
@@ -432,17 +466,14 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 			}
 		}
 		/**
-		 * Если поле начинает запись знаком примечания либо меткой порядка байтов
+		 * Признак необходимости отмены первого знака поля
 		 *
-		 * @note Знак отмены ставится ПЕРЕД ними: строку, знаком примечания начатую,
-		 *       разбор числит примечанием и теряет всю запись, а метку, стоящую в
-		 *       самом начале текста, снимает признаком кодировки. Кавычек же здесь
-		 *       нет, и укрыть их можно лишь отменой. Найдено ворошителем, едва он
-		 *       стал порождать запись без кавычек вовсе
+		 * @note Начальный знак примечания либо метки порядка байтов отменяется
+		 *       вместе с прочими особыми знаками, ровно один раз. Отдельная отмена
+		 *       перед циклом удваивалась, если знак примечания был разделителем.
+		 *
 		 */
-		if(commented || signatured)
-			// Записываем знак отмены
-			this->_text.push_back('\\');
+		bool first = (commented || signatured);
 		/**
 		 * Выполняем перебор всех знаков содержимого поля
 		 */
@@ -455,12 +486,19 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 			 *       текста, отвечая `unterminated quoted field`. Найдено ворошителем,
 			 *       едва он стал порождать запись без кавычек вовсе
 			 */
-			if((letter == this->_settings.separator) || (letter == this->_settings.quote) ||
-			   (letter == '\r') || (letter == '\n') || (letter == '\\'))
+			if(first || (letter == this->_settings.separator) || (letter == this->_settings.quote) ||
+			   (letter == '\r') || (letter == '\n') || (letter == '\\')){
+				// Если знак отмены в начале записи будет прочитан как начало примечания
+				if(!started && (this->_settings.comment == '\\') && (this->_text.size() == this->_origin))
+					// Отвергаем поле, которое нельзя защитить знаком отмены
+					return this->rollback(restore, beginning, opened, signature, error_t::UNWRITABLE_FIELD);
 				// Записываем знак отмены
 				this->_text.push_back('\\');
+			}
 			// Записываем знак содержимого поля
 			this->_text.push_back(letter);
+			// Следующие знаки поля не начинают запись
+			first = false;
 		}
 		// Выводим признак успешной записи поля
 		return true;
@@ -661,9 +699,11 @@ void awh::codec::csv::Writer::record() noexcept {
 		 *
 		 * @note Отсутствующий знак кавычек также не позволяет сохранить пустое поле:
 		 *       запись двух NUL-байтов давала успех, но такой текст разбор отвергал.
+		 *       Совпадение кавычки со знаком примечания превращает запись в примечание.
 		 *
 		 */
-		if((this->_settings.quoting == quoting_t::NONE) || (this->_settings.quote == '\0')){
+		if((this->_settings.quoting == quoting_t::NONE) || (this->_settings.quote == '\0') ||
+		   (this->_settings.quote == this->_settings.comment)){
 			// Возвращаем собранный текст к виду, какой он имел до начала записи
 			this->_text.resize(this->_origin);
 			// Снимаем признак наличия полей у записи
@@ -760,6 +800,24 @@ bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
  *
  */
 bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexcept {
+	/**
+	 * Проверяем все поля до записи первого: оно может освободить память остальных
+	 */
+	for(const string_view value : fields){
+		// Если хотя бы одно поле ссылается на выходной буфер
+		if(::overlaps(this->_text, value)){
+			// Независимые копии полей всей записи
+			vector <string> stored;
+			// Отводим место под все поля
+			stored.reserve(fields.size());
+			// Сохраняем поля до изменения буфера
+			for(const string_view item : fields)
+				// Копируем содержимое очередного поля
+				stored.emplace_back(item);
+			// Записываем сохранённые поля с обычными правилами отката
+			return this->record(stored);
+		}
+	}
 	/**
 	 * Снимок состояния сборщика, снимаемый до всякой его правки
 	 *

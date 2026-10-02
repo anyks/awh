@@ -2139,3 +2139,88 @@ TEST(CodecAbcStorage, TheSourceWorkCatchesTheTruncationUnderfoot){
 	// Выполняем закрытие файла контейнера
 	storage.close();
 }
+
+/**
+ * @brief Проверяем частичную запись настоящего файла, открытие прежнего поколения и повтор фиксации
+ *
+ */
+TEST(CodecAbcStorage, PartialCommitKeepsOldGenerationAndCanRetry){
+	#if defined(_WIN32) || defined(_WIN64)
+		// Предел размера файла доступен лишь на POSIX
+		GTEST_SKIP() << "Проверка требует RLIMIT_FSIZE";
+	#else
+		// Гасим журнал на время намеренных отказов файловой системы
+		awh::log::mode({});
+		const string filename = unique("./abc-partial-commit.abc");
+		const Remover guard(filename);
+		const Remover partial(filename + ".part");
+		// Готовим небольшое исходное поколение
+		abc::assembler_t assembler;
+		const auto original = abc::value_t(string("original")).dump();
+		const auto appended = abc::value_t(string(16384, 'q')).dump();
+		ASSERT_TRUE(assembler.append(original.data(), original.size(), abc::payload_t::TEXT));
+		vector <uint8_t> baseline;
+		ASSERT_TRUE(assembler.complete(baseline));
+		// Измеряем размер полностью записанного нового поколения
+		uint64_t complete = 0;
+		{
+			abc::storage_t storage;
+			ASSERT_TRUE(storage.store(filename, baseline.data(), baseline.size()));
+			abc::editor_t editor;
+			ASSERT_TRUE(storage.bind(editor));
+			ASSERT_TRUE(editor.append(appended.data(), appended.size(), abc::payload_t::TEXT));
+			ASSERT_TRUE(editor.commit());
+			struct stat info = {};
+			ASSERT_EQ(::stat(filename.c_str(), &info), 0);
+			complete = static_cast <uint64_t> (info.st_size);
+		}
+		ASSERT_GT(complete, baseline.size() + 16384);
+		// Ограничиваем запись в начале нового кадра, его середине и возле конца фиксации
+		const vector <uint64_t> limits = {baseline.size(), baseline.size() + 1, baseline.size() + 64,
+		 baseline.size() + 4096, baseline.size() + 8192, complete - abc::HEADER_LENGTH - 1,
+		 complete - abc::HEADER_LENGTH, complete - 1};
+		for(const uint64_t ceiling : limits){
+			SCOPED_TRACE(ceiling);
+			abc::storage_t storage;
+			ASSERT_TRUE(storage.store(filename, baseline.data(), baseline.size()));
+			abc::editor_t editor;
+			ASSERT_TRUE(storage.bind(editor));
+			ASSERT_TRUE(editor.append(appended.data(), appended.size(), abc::payload_t::TEXT));
+			{
+				// Наводим отказ в настоящем системном вызове записи
+				const FileSizeLimit limit(ceiling);
+				struct rlimit actual = {};
+				ASSERT_EQ(::getrlimit(RLIMIT_FSIZE, &actual), 0);
+				ASSERT_EQ(actual.rlim_cur, ceiling);
+				ASSERT_FALSE(editor.commit());
+				ASSERT_EQ(editor.error(), abc::error_t::UNWRITABLE_SINK);
+			}
+			// Новый читатель должен восстановить прежнее полное поколение
+			{
+				abc::storage_t reopened;
+				ASSERT_TRUE(reopened.open(filename));
+				abc::editor_t recovered;
+				ASSERT_TRUE(reopened.bind(recovered)) << abc::message(recovered.error());
+				ASSERT_EQ(recovered.header().generation, 0u);
+				ASSERT_EQ(recovered.records(), 1u);
+				vector <uint8_t> output;
+				ASSERT_TRUE(recovered.record(0, output));
+				ASSERT_EQ(output, original);
+			}
+			// После снятия ограничения повторяем ту же фиксацию
+			ASSERT_TRUE(editor.commit()) << abc::message(editor.error());
+			storage.close();
+			abc::storage_t reopened;
+			ASSERT_TRUE(reopened.open(filename));
+			abc::editor_t recovered;
+			ASSERT_TRUE(reopened.bind(recovered));
+			ASSERT_EQ(recovered.header().generation, 1u);
+			ASSERT_EQ(recovered.records(), 2u);
+			vector <uint8_t> output;
+			ASSERT_TRUE(recovered.record(0, output));
+			ASSERT_EQ(output, original);
+			ASSERT_TRUE(recovered.record(1, output));
+			ASSERT_EQ(output, appended);
+		}
+	#endif
+}

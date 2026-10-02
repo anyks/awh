@@ -1018,10 +1018,21 @@ bool awh::codec::yaml::Value::push(const Value & value) noexcept {
 	 * Если значение неопределённым является
 	 */
 	if(this->_kind == kind_t::NONE){
+		/**
+		 * Сохраняем добавляемое значение до изменения вида текущего значения
+		 *
+		 * @note Аргумент может ссылаться на текущее значение. Его копия должна
+		 *       сохранить неопределённый вид до превращения дерева в перечень
+		 */
+		Value item = value;
 		// Назначаем значению вид перечня значений
 		this->_kind = kind_t::SEQUENCE;
 		// Назначаем значению вид хранения перечня значений
 		this->_type = type_t::SEQUENCE;
+		// Выполняем перенос подготовленной копии в конец перечня
+		this->_items.push_back(::move(item));
+		// Выводим признак успешного добавления
+		return true;
 	}
 	/**
 	 * Если значение перечнем значений не является
@@ -1048,6 +1059,21 @@ bool awh::codec::yaml::Value::push(const Value & value) noexcept {
  */
 bool awh::codec::yaml::Value::insert(const string & name, const Value & value) noexcept {
 	/**
+	 * Если значение не допускает добавления именованной пары
+	 */
+	if((this->_kind != kind_t::NONE) && (this->_kind != kind_t::MAPPING))
+		// Выводим признак неудачного добавления
+		return false;
+	// Сохраняем имя до изменения дерева, которому оно может принадлежать
+	string key = name;
+	/**
+	 * Сохраняем значение до изменения текущего дерева
+	 *
+	 * @note Источником может быть само дерево или его потомок. Копия должна
+	 *       предшествовать изменению вида дерева и добавлению имени новой пары
+	 */
+	Value item = value;
+	/**
 	 * Если значение неопределённым является
 	 */
 	if(this->_kind == kind_t::NONE){
@@ -1057,19 +1083,13 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
 		this->_type = type_t::MAPPING;
 	}
 	/**
-	 * Если значение отображением пар не является
-	 */
-	if(this->_kind != kind_t::MAPPING)
-		// Выводим признак неудачной установки
-		return false;
-	/**
 	 * Выполняем розыск поля отображения по имени его
 	 *
 	 * @note Розыск ведётся указателем, а не перебором: сборка отображения вызовами
 	 *       этими шла бы иначе квадратичной - всякая установка перебирала бы все
 	 *       заведённые прежде поля
 	 */
-	const size_t found = this->locate(name);
+	const size_t found = this->locate(key);
 	/**
 	 * Если поле отображения с таким именем уже заведено
 	 *
@@ -1079,18 +1099,18 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
 	 */
 	if(found < this->_names.size()){
 		// Выполняем перезапись значения поля отображения
-		this->_items.at(found) = value;
+		this->_items.at(found) = ::move(item);
 		// Выводим признак успешной установки
 		return true;
 	}
 	// Если указатель поиска заведён, ведём его приращением
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
-		this->_index->emplace(name, this->_names.size());
+		this->_index->emplace(key, this->_names.size());
 	// Выполняем добавление имени заводимого поля отображения
-	this->_names.push_back(name);
+	this->_names.push_back(::move(key));
 	// Выполняем добавление значения заводимого поля отображения
-	this->_items.push_back(value);
+	this->_items.push_back(::move(item));
 	// Выводим признак успешной установки
 	return true;
 }
@@ -1104,6 +1124,21 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
  */
 bool awh::codec::yaml::Value::append(const string & name, const Value & value) noexcept {
 	/**
+	 * Если значение не допускает добавления именованной пары
+	 */
+	if((this->_kind != kind_t::NONE) && (this->_kind != kind_t::MAPPING))
+		// Выводим признак неудачного добавления
+		return false;
+	// Сохраняем имя до изменения дерева, которому оно может принадлежать
+	string key = name;
+	/**
+	 * Сохраняем значение до изменения текущего дерева
+	 *
+	 * @note Источником может быть само дерево или его потомок. Копия должна
+	 *       предшествовать изменению вида дерева и добавлению имени новой пары
+	 */
+	Value item = value;
+	/**
 	 * Если значение неопределённым является
 	 */
 	if(this->_kind == kind_t::NONE){
@@ -1112,12 +1147,6 @@ bool awh::codec::yaml::Value::append(const string & name, const Value & value) n
 		// Назначаем значению вид хранения отображения пар
 		this->_type = type_t::MAPPING;
 	}
-	/**
-	 * Если значение отображением пар не является
-	 */
-	if(this->_kind != kind_t::MAPPING)
-		// Выводим признак неудачного добавления
-		return false;
 	/**
 	 * Выполняем добавление имени заводимого поля отображения
 	 *
@@ -1134,10 +1163,10 @@ bool awh::codec::yaml::Value::append(const string & name, const Value & value) n
 	 */
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
-		this->_index->emplace(name, this->_names.size());
-	this->_names.push_back(name);
+		this->_index->emplace(key, this->_names.size());
+	this->_names.push_back(::move(key));
 	// Выполняем добавление значения заводимого поля отображения
-	this->_items.push_back(value);
+	this->_items.push_back(::move(item));
 	// Выводим признак успешного добавления
 	return true;
 }
@@ -2692,25 +2721,25 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	this->_chomp = chomp;
 	// Выполняем копирование построения вместилища
 	this->_layout = layout;
-	// Выполняем копирование содержимого значения
+	// Выполняем перенос подготовленной копии содержимого значения
 	this->_text = ::std::move(text);
-	// Выполняем копирование якоря значения
+	// Выполняем перенос подготовленной копии якоря значения
 	this->_anchor = ::std::move(anchor);
-	// Выполняем копирование метки значения
+	// Выполняем перенос подготовленной копии метки значения
 	this->_tag = ::std::move(tag);
 	// Выполняем копирование признака местного вида метки
 	this->_local = local;
-	// Выполняем копирование метки узла, имени пары предпосланной
+	// Выполняем перенос подготовленной копии метки узла, имени пары предпосланной
 	this->_keyAnchor = ::std::move(keyAnchor);
-	// Выполняем копирование метки типа, имени пары предпосланной
+	// Выполняем перенос подготовленной копии метки типа, имени пары предпосланной
 	this->_keyTag = ::std::move(keyTag);
 	// Выполняем копирование признака местного вида метки типа имени пары
 	this->_keyLocal = keyLocal;
-	// Выполняем копирование имён полей отображения
+	// Выполняем перенос подготовленной копии имён полей отображения
 	this->_names = ::std::move(names);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
-	// Выполняем копирование значений вместилища
+	// Выполняем перенос подготовленной копии значений вместилища
 	this->_items = ::std::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
