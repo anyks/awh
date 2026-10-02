@@ -143,7 +143,7 @@ TEST_F(FSFixture, FSTest){
 	std::string hardLink = testDir + "/hardlink.txt";
 
 	// Создаем символьную ссылку
-	this->_fs->symlink(testFile, symLink);
+	ASSERT_TRUE(this->_fs->symlink(testFile, symLink));
 	/**
 	 * Для операционной системы MS Windows
 	 *
@@ -161,7 +161,7 @@ TEST_F(FSFixture, FSTest){
 	ASSERT_EQ(this->_fs->type(symLink), awh::fs_t::type_t::LINK);
 	
 	// Создаем жесткую ссылку
-	this->_fs->hardlink(testFile, hardLink);
+	ASSERT_TRUE(this->_fs->hardlink(testFile, hardLink));
 	ASSERT_EQ(this->_fs->type(hardLink), awh::fs_t::type_t::FILE); // Hardlink looks like a file
 	
 	// Проверяем чтение через симлинк
@@ -1646,4 +1646,148 @@ TEST_F(FSFixture, FullpathDanglingSymlinkTest) {
 		// Windows использует иной контракт ссылок
 		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
 	#endif
+}
+
+/**
+ * @brief Владелец, время изменения и расширенные атрибуты: чтение возвращает данные процесса,
+ *        установка применяется к самому объекту, атрибуты проходят круг установки и чтения
+ *
+ */
+TEST_F(FSFixture, OwnerMtimeXattrTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Адрес временного файла
+	const std::string file = "owner_mtime_xattr_test.txt";
+	// Создаём временный файл
+	ASSERT_TRUE(this->_fs->write(file, "x"));
+	/**
+	 * Владелец читается и устанавливается только под POSIX: на MS Windows метод чтения
+	 * возвращает номера -1, а установки ничего не делает
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Данные пользователя процесса
+		const struct passwd * me = ::getpwuid(::getuid());
+		// Данные группы процесса
+		const struct group * mine = ::getgrgid(::getgid());
+		// Имена процесса обязаны быть
+		ASSERT_TRUE((me != nullptr) && (mine != nullptr));
+		// Читаем владельца файла
+		const awh::fs_t::owner_t owner = this->_fs->owner(file);
+		// Владелец совпадает с пользователем процесса
+		EXPECT_EQ(owner.uid, static_cast <uint32_t> (::getuid()));
+		EXPECT_EQ(owner.gid, static_cast <uint32_t> (::getgid()));
+		EXPECT_EQ(owner.user, me->pw_name);
+		EXPECT_EQ(owner.group, mine->gr_name);
+		// Установка владельца по прочитанной структуре выполняется
+		EXPECT_TRUE(this->_fs->owner(file, owner));
+	#endif
+	// Время изменения читается
+	EXPECT_GT(this->_fs->mtime(file), static_cast <uint64_t> (0));
+	// Устанавливаем время изменения кратное целой секунде
+	const uint64_t date = 1234567890000ULL;
+	// Установка времени изменения выполняется
+	ASSERT_TRUE(this->_fs->mtime(file, date));
+	// Время изменения читается установленным
+	EXPECT_EQ(this->_fs->mtime(file), date);
+	/**
+	 * Расширенные атрибуты есть у macOS, Linux, FreeBSD и NetBSD: у macOS имя берётся
+	 * без приставки, у остальных - из пространства пользователя. У OpenBSD, DragonFly,
+	 * Solaris и MS Windows атрибутов в этом виде нет, и установка отвергает всё
+	 */
+	#if defined(__APPLE__) || defined(__MACH__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
+		/**
+		 * Для macOS
+		 */
+		#if defined(__APPLE__) || defined(__MACH__)
+			// Имя атрибута
+			const std::string name = "forman.awh.test";
+		/**
+		 * Для остальных систем
+		 */
+		#else
+			// Имя атрибута
+			const std::string name = "user.forman.awh.test";
+		#endif
+		// Значение атрибута
+		const std::string value = "attribute value";
+		// Список атрибутов для установки
+		const awh::fs_t::xattrs_t attrs = {{name, value}};
+		// Установка проходит без отказов
+		ASSERT_EQ(this->_fs->xattr(file, attrs), static_cast <size_t> (0));
+		// Читаем список атрибутов
+		const awh::fs_t::xattrs_t read = this->_fs->xattr(file);
+		// Установленный атрибут находится в списке со своим значением
+		bool found = false;
+		for(auto & attr : read){
+			// Если найден установленный атрибут
+			if(attr.first == name){
+				// Отмечаем находку
+				found = true;
+				// Значение совпадает с установленным
+				EXPECT_EQ(attr.second, value);
+			}
+		}
+		// Атрибут обязан найтись
+		EXPECT_TRUE(found);
+	/**
+	 * Для остальных систем
+	 */
+	#else
+		// Список атрибутов для установки
+		const awh::fs_t::xattrs_t attrs = {{"user.anything", "value"}};
+		// Установка отвергает всё
+		EXPECT_EQ(this->_fs->xattr(file, attrs), attrs.size());
+		// Список прочитанных атрибутов пуст
+		EXPECT_TRUE(this->_fs->xattr(file).empty());
+	#endif
+	// Удаляем временный файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Сведения о записи и жёсткая ссылка: жёсткая ссылка даёт ту же запись с числом имён два,
+ *        отказ цели оставляет ссылку несозданной
+ *
+ */
+TEST_F(FSFixture, InodeLinkTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Адрес временного файла
+	const std::string file = "inode_link_test.txt";
+	// Адрес жёсткой ссылки
+	const std::string hard = "inode_link_hard.txt";
+	// Адрес второй записи
+	const std::string copy = "inode_link_copy.txt";
+	// Создаём временный файл
+	ASSERT_TRUE(this->_fs->write(file, "data"));
+	// Сведения о записи файла
+	const awh::fs_t::inode_t info = this->_fs->inode(file);
+	// Номер записи назначен
+	EXPECT_GT(info.ino, static_cast <uint64_t> (0));
+	// У записи одно имя
+	EXPECT_EQ(info.nlink, static_cast <uint64_t> (1));
+	// Создаём жёсткую ссылку с отчётом о результате
+	ASSERT_TRUE(this->_fs->hardlink(file, hard));
+	// Ссылка читается тем же содержимым
+	EXPECT_EQ(this->_fs->read <std::string> (hard), "data");
+	// Сведения о записи ссылки
+	const awh::fs_t::inode_t alias = this->_fs->inode(hard);
+	// Ссылка живёт на том же устройстве
+	EXPECT_EQ(alias.dev, info.dev);
+	// Ссылка обозначает ту же запись
+	EXPECT_EQ(alias.ino, info.ino);
+	// У записи теперь два имени
+	EXPECT_EQ(alias.nlink, static_cast <uint64_t> (2));
+	// Создаём вторую запись с тем же содержимым
+	ASSERT_TRUE(this->_fs->write(copy, "data"));
+	// Вторая запись отличается номером
+	EXPECT_NE(this->_fs->inode(copy).ino, info.ino);
+	// Ссылка на отсутствующую цель отвергается
+	EXPECT_FALSE(this->_fs->hardlink("no-such-target-zz.txt", "inode_link_bad.txt"));
+	// Отказ не заводит нового имени
+	EXPECT_EQ(this->_fs->type("inode_link_bad.txt"), awh::fs_t::type_t::NONE);
+	// Удаляем временные файлы
+	ASSERT_TRUE(this->_fs->unlink(file));
+	ASSERT_TRUE(this->_fs->unlink(hard));
+	ASSERT_TRUE(this->_fs->unlink(copy));
 }

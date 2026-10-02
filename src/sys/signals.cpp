@@ -43,6 +43,7 @@
 	 */
 	#include <pwd.h>
 	#include <fcntl.h>
+	#include <setjmp.h>
 	#include <unistd.h>
 
 	/**
@@ -74,8 +75,8 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <sys/signals.hpp>
 #include <sys/log.hpp>
+#include <sys/signals.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -91,6 +92,7 @@ namespace signals {
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
+		__AWH_PACK_BEGIN__
 		/**
 		 * @brief Полезная нагрузка, передаваемая из обработчика сигнала в рабочий поток
 		 *
@@ -98,22 +100,21 @@ namespace signals {
 		 *          в самопайп атомарна и безопасна внутри обработчика сигнала.
 		 *
 		 */
-		__AWH_PACK_BEGIN__
 		typedef struct Payload {
-			// Адрес обращения, вызвавшего сбой
-			void * addr;
 			// Идентификатор процесса-отправителя
 			pid_t pid;
 			// Идентификатор пользователя-отправителя
 			uid_t uid;
 			// Номер полученного сигнала
 			int32_t sig;
+			// Адрес обращения, вызвавшего сбой
+			void * addr;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit Payload() noexcept :
-			 addr(nullptr), pid(0), uid(0), sig(0) {}
+			 pid(0), uid(0), sig(0), addr(nullptr) {}
 		} __AWH_PACKED__ payload_t;
 		__AWH_PACK_END__
 
@@ -124,6 +125,23 @@ namespace signals {
 		 */
 		static atomic_int32_t pipefd{-1};
 
+		// Флаг регистрации точки восстановления текущего потока
+		static thread_local bool busArmed = false;
+		// Флаг установленного обработчика сигнала SIGBUS
+		static std::atomic <bool> busInstalled {false};
+		/**
+		 * @brief Точка восстановления потока на сигнал SIGBUS
+		 *
+		 * @details Проекция файла, усечённая за своими пределами, отвечает сигналом SIGBUS,
+		 *          и прежде сбойный поток приостанавливался до конца процесса. Точка
+		 *          взводится на время одного чтения из проекции: обработчик возвращает
+		 *          управление в неё, и чтение отказывает честно, не трогая остальной
+		 *          процесс. Каждому потоку своя точка: сигнал синхронный и приходит
+		 *          в породивший его поток.
+		 *
+		 */
+		static thread_local sigjmp_buf * busPoint = nullptr;
+		
 		/**
 		 * @brief Функция проверки сигнала на принадлежность к сбоям обращения
 		 *
@@ -187,6 +205,20 @@ namespace signals {
 		static void handler(const int32_t sig, siginfo_t * info, [[maybe_unused]] void * ctx) noexcept {
 			// Запоминаем текущее значение errno, чтобы не повредить его в прерванном коде
 			const int32_t error = errno;
+			// Если файл за проекцией усечён либо носитель отказал, а точка восстановления зарегистрирована
+			if((sig == SIGBUS) && busArmed){
+				// Снимаем регистрацию: прыжок одноразовый, повторный сигнал в том же месте не зациклит его
+				busArmed = false;
+				/**
+				 * Помечаем обработчик требующим переустановки: в режиме отладки его снимает сам сигнал,
+				 * а сброс флага в прыжке стоит дешевле проверки сигнала при каждом взводе
+				 */
+				busInstalled.store(false, std::memory_order_relaxed);
+				// Восстанавливаем значение errno
+				errno = error;
+				// Возвращаем управление в живой кадр зарегистрировавшей функции (вызов async-signal-safe)
+				::siglongjmp(*busPoint, 1);
+			}
 			// Получаем дескриптор записи самопайпа
 			const int32_t fd = pipefd.load(std::memory_order_acquire);
 			// Если самопайп активен
@@ -256,6 +288,57 @@ namespace signals {
 			#endif
 			// Восстанавливаем значение errno
 			errno = error;
+		}
+		/**
+		 * @brief Функция установки обработчика сигнала SIGBUS
+		 *
+		 * @details Обработчик ставится и без запущенного наблюдателя сигналов: чтение из
+		 *          проекции файла обязано отказывать честно и в приложении, которое сигнальный
+		 *          модуль не завело. Ставится тот же обработчик, что и наблюдателю, поэтому
+		 *          точка восстановления работает и поверх запущенного наблюдателя. Установка
+		 *          сверяется по флагу: повторные взводы обходятся без системного вызова.
+		 *          В режиме отладки обработчик ставится с SA_RESETHAND, как у наблюдателя:
+		 *          подлинный сбой без взведённой точки обязан падать в core dump, а не
+		 *          зацикливаться в обработчике.
+		 *
+		 * @return результат установки обработчика
+		 *
+		 */
+		static bool installBus() noexcept {
+			// Если обработчик уже установлен, отдельной установки не требуется
+			if(busInstalled.load(std::memory_order_acquire))
+				// Выводим результат
+				return true;
+			// Обработчик сигнала SIGBUS
+			struct sigaction bus;
+			// Заполняем структуру обработчика нулями
+			::memset(&bus, 0, sizeof(bus));
+			// Устанавливаем функцию обработчика
+			bus.sa_sigaction = handler;
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Устанавливаем флаги обработчика
+				bus.sa_flags = (SA_SIGINFO | SA_RESETHAND);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Устанавливаем флаги обработчика
+				bus.sa_flags = SA_SIGINFO;
+			#endif
+			// Очищаем маску перехвата
+			sigemptyset(&bus.sa_mask);
+			// Если обработчик установлен
+			if(::sigaction(SIGBUS, &bus, nullptr) == 0){
+				// Помечаем выполненную установку
+				busInstalled.store(true, std::memory_order_release);
+				// Выводим результат
+				return true;
+			}
+			// Выводим результат
+			return false;
 		}
 	/**
 	 * Для операционной системы MS Windows
@@ -503,6 +586,48 @@ namespace signals {
 };
 
 /**
+ * @brief Конструктор: взводит точку восстановления потока
+ *
+ */
+awh::Signals::Bus::Bus(sigjmp_buf & point) noexcept : _armed(false) {
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если обработчик установлен и точка восстановления потока ещё не зарегистрирована
+		if(::signals::installBus() && !::signals::busArmed){
+			/**
+			 * Запоминаем регистрацию для деструктора: вложенные точки потоком не поддерживаются,
+			 * и снятие чужой регистрации оставило бы внешнее чтение без защиты
+			 */
+			this->_armed = true;
+			// Поднимаем флаг регистрации точки восстановления потока
+			::signals::busArmed = true;
+			// Запоминаем буфер точки возврата кадра вызывающей функции
+			::signals::busPoint = &point;
+		}
+	#endif
+}
+/**
+ * @brief Деструктор: снимает регистрацию точки восстановления
+ *
+ */
+awh::Signals::Bus::~Bus() noexcept {
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если эта точка регистрировала восстановление потока
+		if(this->_armed){
+			// Снимаем регистрацию точки восстановления потока
+			::signals::busArmed = false;
+			// Сбрасываем указатель буфера точки возврата
+			::signals::busPoint = nullptr;
+		}
+	#endif
+}
+
+/**
  * Для операционной системы MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -559,6 +684,8 @@ void awh::Signals::disarm() noexcept {
 			 *          сломало бы ему работу вернее, чем оставленное заглушение
 			 */
 			::sigaction(SIGPIPE, &this->_pipesig, nullptr);
+			// Обработчик SIGBUS снят: точка восстановления поставит его заново при первом взводе
+			::signals::busInstalled.store(false, std::memory_order_release);
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -680,13 +807,13 @@ void awh::Signals::disarm() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем в лог адрес обращения, вызвавшего сбой
-				awh::log::debug("Fault detected at address %p", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::CRITICAL, addr);
+				log::debug("Fault detected at address %p", __PRETTY_FUNCTION__, {sig, pid, uid}, log::flag_t::CRITICAL, addr);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем в лог адрес обращения, вызвавшего сбой
-				awh::log::print("Fault detected at address %p", awh::log::flag_t::CRITICAL, addr);
+				log::print("Fault detected at address %p", log::flag_t::CRITICAL, addr);
 			#endif
 		}
 		// Если произошло убийство приложения
@@ -724,13 +851,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
-						awh::log::debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, name.c_str(), user);
+						log::debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, log::flag_t::WARNING, name.c_str(), user);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						awh::log::print("Killer detected APP=%s, USER=%s", awh::log::flag_t::WARNING, name.c_str(), user);
+						log::print("Killer detected APP=%s, USER=%s", log::flag_t::WARNING, name.c_str(), user);
 					#endif
 				// Если имя пользователя не получено
 				} else {
@@ -739,13 +866,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
-						awh::log::debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, name.c_str(), uid);
+						log::debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, log::flag_t::WARNING, name.c_str(), uid);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						awh::log::print("Killer detected APP=%s, UID=%u", awh::log::flag_t::WARNING, name.c_str(), uid);
+						log::print("Killer detected APP=%s, UID=%u", log::flag_t::WARNING, name.c_str(), uid);
 					#endif
 				}
 			// Если название приложения не получено
@@ -757,13 +884,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
-						awh::log::debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, pid, user);
+						log::debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, log::flag_t::WARNING, pid, user);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						awh::log::print("Killer detected PID=%u, USER=%s", awh::log::flag_t::WARNING, pid, user);
+						log::print("Killer detected PID=%u, USER=%s", log::flag_t::WARNING, pid, user);
 					#endif
 				// Если имя пользователя не получено
 				} else {
@@ -772,13 +899,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
-						awh::log::debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, pid, uid);
+						log::debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, log::flag_t::WARNING, pid, uid);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						awh::log::print("Killer detected PID=%u, UID=%u", awh::log::flag_t::WARNING, pid, uid);
+						log::print("Killer detected PID=%u, UID=%u", log::flag_t::WARNING, pid, uid);
 					#endif
 				}
 			}
@@ -929,9 +1056,6 @@ void awh::Signals::stop() noexcept {
 		// Дожидаемся завершения рабочего потока ВНЕ замка
 		worker.join();
 		/**
-		 * Для операционной системы не являющейся MS Windows
-		 */
-		/**
 		 * Самопайп остановку ПЕРЕЖИВАЕТ и здесь не закрывается
 		 *
 		 * @warning Закрывать его тут нельзя. Обработчик сигнала, УЖЕ вошедший и
@@ -1029,9 +1153,6 @@ void awh::Signals::start() noexcept {
 		// Прекращаем дальнейшую работу
 		return;
 	/**
-	 * Для операционной системы не являющейся MS Windows
-	 */
-	/**
 	 * Самопайп прежнего подъёма не закрывается, а ПЕРЕИСПОЛЬЗУЕТСЯ
 	 *
 	 * @note Довод целиком изложен у закрытия в `stop()`: описатель переживает
@@ -1050,7 +1171,7 @@ void awh::Signals::start() noexcept {
 			if(::pipe(this->_pipe) != 0){
 				// Если создать самопайп не удалось, выводим сообщение об ошибке
 					// Записываем в лог сообщение об ошибке
-					awh::log::print("Signal pipe creation failed: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("Signal pipe creation failed: %s", log::flag_t::CRITICAL, ::strerror(errno));
 				// Прекращаем дальнейшую работу
 				return;
 			}
@@ -1269,6 +1390,8 @@ void awh::Signals::start() noexcept {
 		::sigaction(SIGABRT, &this->_events.sigabrt, nullptr);
 		::sigaction(SIGTERM, &this->_events.sigterm, nullptr);
 		::sigaction(SIGSEGV, &this->_events.sigsegv, nullptr);
+		// Обработчик SIGBUS установлен наблюдателем: точке восстановления отдельная установка не нужна
+		::signals::busInstalled.store(true, std::memory_order_release);
 	/**
 	 * Для операционной системы MS Windows
 	 */

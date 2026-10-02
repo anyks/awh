@@ -185,16 +185,16 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
+#include <sys/log.hpp>
 
 /**
  * Заголовочный файл своего распределителя памяти
  */
 #include <alloc/alloc.hpp>
 #include <encoding/ascii.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1163,19 +1163,19 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							// Создаём буфер сообщения ошибки
 							wchar_t message[0xFF] = {0};
 							// Выполняем формирование текста ошибки
-							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 							/**
 							 * Если включён режим отладки
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::convert(message).c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+								log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 							#endif
 						// Выполняем извлечение размера пика потребляемой памяти
 						} else result = static_cast <size_t> (info.WorkingSetSize);
@@ -1194,13 +1194,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, "Unable to access to determine memory consumption");
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, "Unable to access to determine memory consumption");
+								log::print("%s", log::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							#endif
 							// Возвращаем пустой результат
 							return result;
@@ -1261,13 +1261,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем пустой результат
 							return result;
@@ -1293,13 +1293,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем пустой результат
 							return result;
@@ -1311,13 +1311,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выполняем закрытие файлового дескриптора
 							::fclose(file);
@@ -1343,13 +1343,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Возвращаем пустой результат
 							return result;
@@ -1361,13 +1361,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
-								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выполняем закрытие файлового дескриптора
 							::close(sock);
@@ -1394,19 +1394,19 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						// Создаём буфер сообщения ошибки
 						wchar_t message[0xFF] = {0};
 						// Выполняем формирование текста ошибки
-						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::convert(message).c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+							log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 						#endif
 					// Выполняем извлечение размера пика потребляемой памяти
 					} else result = static_cast <size_t> (info.PeakWorkingSetSize);
@@ -1425,13 +1425,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем пустой результат
 						return result;
@@ -1443,13 +1443,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Выполняем закрытие файлового дескриптора
 						::close(sock);
@@ -1473,13 +1473,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если данные получили удачно
 					} else {
@@ -1509,13 +1509,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1533,13 +1533,13 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
+			log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
+			log::print("%s", log::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
 		#endif
 		// Выводить нечего
 		return;
@@ -1632,13 +1632,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {mode}, awh::log::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
+			log::debug("%s", __PRETTY_FUNCTION__, {mode}, log::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s", awh::log::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
+			log::print("%s", log::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
 		#endif
 		// Возвращаем отрицательный результат
 		return false;
@@ -1715,13 +1715,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 					// Очищаем список групп пользователя
 					result.clear();
@@ -1735,13 +1735,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Возвращаем результат
@@ -1772,13 +1772,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {uid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {uid}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Возвращаем результат
@@ -1809,13 +1809,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {gid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {gid}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Возвращаем результат
@@ -1850,13 +1850,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Group \"%s\" is not found", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, groupname.c_str());
+					log::debug("Group \"%s\" is not found", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, groupname.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("Group \"%s\" is not found", awh::log::flag_t::CRITICAL, groupname.c_str());
+					log::print("Group \"%s\" is not found", log::flag_t::CRITICAL, groupname.c_str());
 				#endif
 			}
 		}
@@ -1892,13 +1892,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("User \"%s\" is not found", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, username.c_str());
+					log::debug("User \"%s\" is not found", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, username.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("User \"%s\" is not found", awh::log::flag_t::CRITICAL, username.c_str());
+					log::print("User \"%s\" is not found", log::flag_t::CRITICAL, username.c_str());
 				#endif
 			}
 		}
@@ -1934,13 +1934,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("User \"%s\" is not found", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, username.c_str());
+					log::debug("User \"%s\" is not found", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, username.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("User \"%s\" is not found", awh::log::flag_t::CRITICAL, username.c_str());
+					log::print("User \"%s\" is not found", log::flag_t::CRITICAL, username.c_str());
 				#endif
 			}
 		}
@@ -1984,13 +1984,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {user}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Очищаем список групп пользователя
 						result.clear();
@@ -2004,13 +2004,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {user}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -2036,13 +2036,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {uid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {uid}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Возвращаем результат
@@ -2070,13 +2070,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {uid, gid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {uid, gid}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 			// Возвращаем отрицательный результат
@@ -2088,13 +2088,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {uid, gid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("%s", __PRETTY_FUNCTION__, {uid, gid}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
 		// Возвращаем результат
@@ -2142,13 +2142,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {user, group}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {user, group}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+						log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			// Если данные пользователя не извлечены
@@ -2158,13 +2158,13 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {user, group}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {user, group}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
@@ -2193,19 +2193,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Возвращаем результат
@@ -2224,19 +2224,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -2253,19 +2253,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -2312,19 +2312,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Возвращаем результат
@@ -2343,19 +2343,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -2372,19 +2372,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
@@ -2445,19 +2445,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {::convert(sid)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {::convert(sid)}, log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 					// Возвращаем результат
 					return result;
@@ -2490,19 +2490,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {::convert(sid)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {::convert(sid)}, log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 			}
@@ -2544,19 +2544,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2612,19 +2612,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::debug("%s", __PRETTY_FUNCTION__, {user}, log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+					log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2654,19 +2654,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {user}, log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Освобождаем ресурсы
@@ -2685,19 +2685,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {user}, log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен
@@ -2716,19 +2716,19 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					// Создаём буфер сообщения ошибки
 					wchar_t message[0xFF] = {0};
 					// Выполняем формирование текста ошибки
-					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::debug("%s", __PRETTY_FUNCTION__, {user}, log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::convert(message).c_str());
+						log::print("%s", log::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Закрываем токен

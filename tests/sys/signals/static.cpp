@@ -20,9 +20,10 @@
  */
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочные файлы
  */
 #include "signals.hpp"
+#include "../../../include/sys/fs.hpp"
 
 /**
  * Стандартные заголовочные файлы
@@ -39,6 +40,7 @@
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <unistd.h>
 	#include <sys/wait.h>
+	#include <sys/time.h>
 	#include <sys/resource.h>
 #endif
 
@@ -756,3 +758,124 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 		#endif
 	}
 #endif
+
+/**
+ * Для операционной системы не являющейся MS Windows: точка восстановления и её прыжок
+ * определены только там
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * @brief Тест точки восстановления на сигнал SIGBUS
+	 *
+	 * @details Прыжок из обработчика возвращает управление взводившему потоку, прыжок
+	 *          одноразовый, повторный взвод работает. Сигнал поднимается искусственно:
+	 *          доставляется он синхронно тому же потоку, и обработчику безразлично,
+	 *          файл ли усечён за проекцией либо носитель отказал
+	 *
+	 */
+	TEST_F(SignalsFixture, BusRecoveryTest){
+		// Количество выполненных прыжков
+		int32_t jumps = 0;
+		/**
+		 * Выполняем два цикла регистрации и прыжка
+		 */
+		for(int32_t i = 0; i < 2; i++){
+			// Буфер точки возврата живёт в кадре проверки
+			sigjmp_buf point;
+			// Возврат sigsetjmp храним в volatile: значение обычной локальной после прыжка не определено
+			volatile const int landed = ::sigsetjmp(point, 1);
+			// Регистрируем точку возврата кадра проверки
+			awh::signals_t::bus_t bus(point);
+			// Если прыжок ещё не произошёл
+			if(landed == 0){
+				// Поднимаем сигнал SIGBUS: прыжок вернёт управление к sigsetjmp
+				::raise(SIGBUS);
+				// После прыжка сюда вернуться нельзя
+				ADD_FAILURE() << "raise returned without jump";
+			}
+			// Увеличиваем количество прыжков
+			jumps++;
+		}
+		// Проверяем количество прыжков
+		ASSERT_EQ(2, jumps);
+	}
+
+	/**
+	 * @brief Тест чтения из проекции файла, прерванного сигналом SIGBUS
+	 *
+	 * @details Чтение обязано отказать честно, передав до прерывания только целые
+	 *          блоки, и не тронуть остальной процесс
+	 *
+	 */
+	TEST_F(SignalsFixture, BusMappedReadTest){
+		// Объект работы с файловой системой
+		awh::fs_t fs;
+		// Рабочий файл из двух блоков
+		const std::string file = "test_signals_mapped.bin";
+		// Данные файла
+		const std::string data(8 * 1024 * 1024, 'x');
+		// Записываем файл
+		fs.write(file, data.c_str(), data.size());
+		// Приёмник данных блока
+		char sink[1024] = {0};
+		// Количество прочитанных блоков
+		int32_t blocks = 0;
+		// Читаем файл блоками по четыре мегабайта
+		fs.read(file, 4 * 1024 * 1024, [&sink, &blocks]([[maybe_unused]] const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+			// Копируем данные блока
+			::memcpy(sink, buffer, std::min(size, sizeof(sink)));
+			// Увеличиваем количество прочитанных блоков
+			blocks++;
+			// Поднимаем сигнал SIGBUS: как если бы файл был усечён за проекцией
+			::raise(SIGBUS);
+			// Продолжаем чтение
+			return true;
+		});
+		// Проверяем отказ чтения после первого блока
+		ASSERT_EQ(1, blocks);
+		// Удаляем рабочий файл
+		fs.unlink(file);
+	}
+#endif
+
+/**
+ * @brief Тест записи во время доставки сигналов без SA_RESTART
+ *
+ * @details Прерывание системного вызова записи (EINTR) не должно отказывать
+ *          операцию: буфер обязан дойти до файла целиком
+ *
+ */
+TEST_F(SignalsFixture, InterruptedWriteTest){
+	// Объект работы с файловой системой
+	awh::fs_t fs;
+	// Рабочий файл
+	const std::string file = "test_signals_eintr.bin";
+	// Данные записи
+	const std::string data(64 * 1024 * 1024, 'x');
+	// Обработчик сигнала таймера: без SA_RESTART, чтобы прерывать системные вызовы
+	struct sigaction alarm;
+	// Заполняем структуру обработчика нулями
+	::memset(&alarm, 0, sizeof(alarm));
+	// Устанавливаем пустой обработчик
+	alarm.sa_handler = [](const int32_t){};
+	// Ставим обработчик сигнала таймера
+	::sigaction(SIGALRM, &alarm, nullptr);
+	// Повторяющийся таймер на одну миллисекунду
+	struct itimerval timer = {{0, 1000}, {0, 1000}};
+	// Запускаем таймер
+	::setitimer(ITIMER_REAL, &timer, nullptr);
+	// Записываем данные во время доставки сигналов
+	const bool written = fs.write(file, data.c_str(), data.size());
+	// Останавливаем таймер прежде обратного чтения: чтение EINTR не проверяется
+	struct itimerval off = {{0, 0}, {0, 0}};
+	// Останавливаем таймер
+	::setitimer(ITIMER_REAL, &off, nullptr);
+	// Восстанавливаем обработчик сигнала таймера по умолчанию
+	::signal(SIGALRM, SIG_DFL);
+	// Проверяем запись и обратное чтение
+	ASSERT_TRUE(written);
+	// Проверяем совпадение данных при обратном чтении
+	ASSERT_EQ(data, fs.read <std::string> (file));
+	// Удаляем рабочий файл
+	fs.unlink(file);
+}

@@ -804,15 +804,8 @@ namespace awh {
 							::gzclose(gz);
 							// Устанавливаем флаг успешности сжатия
 							success = true;
-						// Если произошла ошибка сжатия
-						} else {
-							// Создаём буфер сообщения ошибки
-							wchar_t message[0xFF] = {0};
-							// Выполняем формирование текста ошибки
-							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
-							// Возвращаем текст полученной ошибки
-							::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", fmk::convert(message).c_str());
-						}
+						// Если произошла ошибка сжатия: причина отказа gzopen_w лежит в errno, как и у ветви POSIX
+						} else ::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", ::strerror(errno));
 						// Выполняем закрытие исходного файла
 						::CloseHandle(file);
 						// Удаляем исходный файл логов только после успешного сжатия (во избежание потери данных)

@@ -271,9 +271,105 @@ namespace awh {
 			 * \~
 			 */
 			using components_t = pair <string, string>;
+			/**
+			 * \~russian
+			 * @brief Тип списка расширенных атрибутов: пары «имя - значение»
+			 *
+			 * \~english
+			 * @brief Type of the list of the extended attributes: pairs «name - value»
+			 *
+			 * \~
+			 */
+			using xattrs_t = vector <pair <string, string>>;
+		public:
+			/**
+			 * \~russian
+			 * @brief Структура владельца файла или каталога
+			 *
+			 * @note Имена хранятся рядом с номерами затем, что номера пользователей на разных
+			 *       машинах разные: владелец восстанавливается по имени, а номер нужен тогда,
+			 *       когда такого имени на машине нет
+			 *
+			 * \~english
+			 * @brief Structure of the owner of a file or a directory
+			 *
+			 * @note The names are kept next to the numbers because the numbers of the users differ
+			 *       between machines: the owner is restored by the name, and the number is needed when
+			 *       the machine has no such name
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Owner {
+				// Идентификатор пользователя
+				uint32_t uid;
+				// Идентификатор группы
+				uint32_t gid;
+				// Имя пользователя
+				string user;
+				// Название группы
+				string group;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Owner() noexcept;
+			} owner_t;
+			/**
+			 * \~russian
+			 * @brief Структура сведений о записи файловой системы: устройство, номер и число имён
+			 *
+			 * @note Два имени с одинаковыми устройством и номером есть одна запись - жёсткая ссылка
+			 *
+			 * \~english
+			 * @brief Structure of the information about a filesystem record: the device, the number and the number of names
+			 *
+			 * @note Two names with the same device and number are one record - a hard link
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Inode {
+				// Идентификатор устройства (тома)
+				uint64_t dev;
+				// Номер записи на устройстве
+				uint64_t ino;
+				// Количество имён записи
+				uint64_t nlink;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Inode() noexcept;
+			} inode_t;
 		private:
 			// Объект работы с операционной системой
 			os_t _os;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения сведений о записи файловой системы самого объекта (ссылка не разыменовывается)
+			 *
+			 * @param addr путь к файлу, каталогу либо ссылке
+			 * @return     сведения о записи (нули, если получить не удалось)
+			 *
+			 * \~english
+			 * @brief Method of getting the information about the filesystem record of the object itself (a link is not dereferenced)
+			 *
+			 * @param addr path to the file, the directory or the link
+			 * @return     the information about the record (zeros if it cannot be got)
+			 *
+			 * \~
+			 */
+			inode_t inode(string_view addr) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -281,32 +377,44 @@ namespace awh {
 			 *
 			 * @param first  адрес на который нужно сделать ссылку
 			 * @param second адрес где должна быть создана ссылка
+			 * @return       результат работы функции
 			 *
 			 * \~english
 			 * @brief Method of creating a symbolic link
 			 *
 			 * @param first  address the link should be made to
 			 * @param second address where the link should be created
+			 * @return       result of the work of the function
 			 *
 			 * \~
 			 */
-			void symlink(string_view first, string_view second) const noexcept;
+			bool symlink(string_view first, string_view second) const noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод создания жёстких ссылок
+			 * @brief Метод создания жёсткой ссылки с отчётом о результате
 			 *
-			 * @param first  адрес на который нужно сделать ссылку
-			 * @param second адрес где должна быть создана ссылка
+			 * @note При отказе системы ничего другого не заводит: ни ярлыка, ни копии.
+			 *       Отказ бывает между разными томами и на файловых системах без жёстких
+			 *       ссылок (FAT, exFAT) - решать, чем его заменить, вызывающему
+			 *
+			 * @param first  существующий файл
+			 * @param second адрес создаваемой ссылки
+			 * @return       результат работы функции
 			 *
 			 * \~english
-			 * @brief Method of creating hard links
+			 * @brief Method of creating a hard link with a report of the result
 			 *
-			 * @param first  address the link should be made to
-			 * @param second address where the link should be created
+			 * @note On a refusal of the system it creates nothing else: neither a shortcut nor
+			 *       a copy. A refusal happens between different volumes and on filesystems without hard links
+			 *       (FAT, exFAT) - what replaces it is decided by the caller
+			 *
+			 * @param first  existing file
+			 * @param second address of the link being created
+			 * @return       result of the work of the function
 			 *
 			 * \~
 			 */
-			void hardlink(string_view first, string_view second) const noexcept;
+			bool hardlink(string_view first, string_view second) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -428,6 +536,135 @@ namespace awh {
 			 * \~
 			 */
 			bool chown(string_view addr, string_view user, string_view group = "") const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения владельца файла, каталога либо самой символьной ссылки
+			 *
+			 * @param addr путь к файлу, каталогу либо ссылке
+			 * @return     владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
+			 *
+			 * \~english
+			 * @brief Method of getting the owner of a file, a directory or of the symbolic link itself
+			 *
+			 * @param addr path to the file, the directory or the link
+			 * @return     the owner (numbers -1 and empty names if it cannot be got or at MS Windows)
+			 *
+			 * \~
+			 */
+			owner_t owner(string_view addr) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки владельца файла, каталога либо самой символьной ссылки
+			 *
+			 * @note Владелец ищется по имени, а при отсутствии имени на машине - берётся номер.
+			 *       На MS Windows ничего не делает
+			 *
+			 * @param addr  путь к файлу, каталогу либо ссылке
+			 * @param owner владелец для установки
+			 * @return      результат работы функции
+			 *
+			 * \~english
+			 * @brief Method of setting the owner of a file, a directory or of the symbolic link itself
+			 *
+			 * @note The owner is looked up by the name, and when the machine has no such name the number
+			 *       is taken. Does nothing at MS Windows
+			 *
+			 * @param addr  path to the file, the directory or the link
+			 * @param owner the owner to set
+			 * @return      result of the work of the function
+			 *
+			 * \~
+			 */
+			bool owner(string_view addr, const owner_t & owner) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения времени изменения файла, каталога либо самой символьной ссылки
+			 *
+			 * @param addr путь к файлу, каталогу либо ссылке
+			 * @return     время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
+			 *
+			 * \~english
+			 * @brief Method of getting the modification time of a file, a directory or of the symbolic link itself
+			 *
+			 * @param addr path to the file, the directory or the link
+			 * @return     the modification time in milliseconds since the Unix epoch (0 if it cannot be got)
+			 *
+			 * \~
+			 */
+			uint64_t mtime(string_view addr) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки времени изменения файла, каталога либо самой символьной ссылки
+			 *
+			 * @note Время доступа не трогается
+			 *
+			 * @param addr путь к файлу, каталогу либо ссылке
+			 * @param date время изменения в миллисекундах от начала эпохи Unix
+			 * @return     результат работы функции
+			 *
+			 * \~english
+			 * @brief Method of setting the modification time of a file, a directory or of the symbolic link itself
+			 *
+			 * @note The access time is not touched
+			 *
+			 * @param addr path to the file, the directory or the link
+			 * @param date the modification time in milliseconds since the Unix epoch
+			 * @return     result of the work of the function
+			 *
+			 * \~
+			 */
+			bool mtime(string_view addr, const uint64_t date) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения расширенных атрибутов файла, каталога либо самой символьной ссылки
+			 *
+			 * @note Имена приводятся к виду Linux: атрибуты пространства пользователя BSD получают
+			 *       приставку «user.», имена macOS остаются как есть. На OpenBSD, DragonFly, Solaris и MS Windows
+			 *       расширенных атрибутов в этом виде нет, и список пуст
+			 *
+			 * @param addr путь к файлу, каталогу либо ссылке
+			 * @return     список расширенных атрибутов
+			 *
+			 * \~english
+			 * @brief Method of getting the extended attributes of a file, a directory or of the symbolic link itself
+			 *
+			 * @note The names are brought to the Linux form: the attributes of the BSD user namespace get the prefix
+			 *       «user.», the macOS names stay as they are. OpenBSD, DragonFly, Solaris and MS Windows have no extended
+			 *       attributes of this kind, and the list is empty
+			 *
+			 * @param addr path to the file, the directory or the link
+			 * @return     list of the extended attributes
+			 *
+			 * \~
+			 */
+			xattrs_t xattr(string_view addr) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки расширенных атрибутов файла, каталога либо самой символьной ссылки
+			 *
+			 * @note На BSD устанавливаются только атрибуты с приставкой «user.» - в пространство
+			 *       пользователя. Атрибут, какого система не принимает, пропускается
+			 *
+			 * @param addr  путь к файлу, каталогу либо ссылке
+			 * @param attrs список расширенных атрибутов
+			 * @return      количество атрибутов, которые установить не удалось
+			 *
+			 * \~english
+			 * @brief Method of setting the extended attributes of a file, a directory or of the symbolic link itself
+			 *
+			 * @note At BSD only the attributes with the prefix «user.» are set - into the user namespace.
+			 *       An attribute the system does not accept is skipped
+			 *
+			 * @param addr  path to the file, the directory or the link
+			 * @param attrs list of the extended attributes
+			 * @return      number of the attributes which could not be set
+			 *
+			 * \~
+			 */
+			size_t xattr(string_view addr, const xattrs_t & attrs) const noexcept;
 		public:
 			/**
 			 * \~russian

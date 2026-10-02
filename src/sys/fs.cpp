@@ -66,8 +66,9 @@
  */
 #if !defined(_MSC_VER)
 	/**
-	 * Подключаем системный заголовочный файл
+	 * Подключаем системные заголовочные файлы
 	 */
+	#include <setjmp.h>
 	#include <sys/file.h>
 #endif
 
@@ -98,6 +99,27 @@
 	#include <pwd.h>
 	#include <unistd.h>
 	#include <sys/mman.h>
+
+	/**
+	 * Расширенные атрибуты: macOS и Linux - xattr, FreeBSD и NetBSD - extattr. У OpenBSD их нет,
+	 * у Solaris они устроены иначе (каталог атрибутов через attropen), а libc DragonFly даёт лишь
+	 * extattr_get_file и extattr_set_file - без списка атрибутов и без работы с самой ссылкой
+	 * (extattr_list_link объявлен в заголовке, но при связывании не находится)
+	 */
+	#if defined(__APPLE__) || defined(__MACH__) || defined(__linux__)
+		/**
+		 * Подключаем системный заголовочный файл
+		 */
+		#include <sys/xattr.h>
+	/**
+	 * Для операционной системы FreeBSD или NetBSD
+	 */
+	#elif defined(__FreeBSD__) || defined(__NetBSD__)
+		/**
+		 * Подключаем системный заголовочный файл
+		 */
+		#include <sys/extattr.h>
+	#endif
 #endif
 
 /**
@@ -144,6 +166,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/dirent.hpp>
+#include <sys/signals.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1937,13 +1960,96 @@ namespace {
 };
 
 /**
+ * \~russian
+ * @brief Конструктор
+ *
+ * \~english
+ * @brief Constructor
+ *
+ * \~
+ */
+awh::Filesystem::Owner::Owner() noexcept :
+ uid(static_cast <uint32_t> (-1)),
+ gid(static_cast <uint32_t> (-1)),
+ user{""}, group{""} {}
+
+/**
+ * \~russian
+ * @brief Конструктор
+ *
+ * \~english
+ * @brief Constructor
+ *
+ * \~
+ */
+awh::Filesystem::Inode::Inode() noexcept :
+ dev(0), ino(0), nlink(0) {}
+
+/**
+ * @brief Метод получения сведений о записи файловой системы самого объекта (ссылка не разыменовывается)
+ *
+ * @param addr путь к файлу, каталогу либо ссылке
+ * @return     сведения о записи (нули, если получить не удалось)
+ *
+ */
+awh::Filesystem::inode_t awh::Filesystem::inode(string_view addr) const noexcept {
+	// Результат работы функции
+	inode_t result;
+	// Если путь передан
+	if(!addr.empty()){
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Открываем объект без прав доступа к данным (каталогу нужен флаг резервного копирования, ссылке - открытие её самой)
+			HANDLE handle = ::CreateFileW(__awh_longpath__(fmk::convert(addr)).c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+			// Если объект открыт
+			if(handle != INVALID_HANDLE_VALUE){
+				// Сведения о файле
+				BY_HANDLE_FILE_INFORMATION info{};
+				// Если сведения получены
+				if(::GetFileInformationByHandle(handle, &info)){
+					// Устанавливаем серийный номер тома
+					result.dev = static_cast <uint64_t> (info.dwVolumeSerialNumber);
+					// Устанавливаем номер записи
+					result.ino = ((static_cast <uint64_t> (info.nFileIndexHigh) << 32) | static_cast <uint64_t> (info.nFileIndexLow));
+					// Устанавливаем количество имён
+					result.nlink = static_cast <uint64_t> (info.nNumberOfLinks);
+				}
+				// Закрываем объект
+				::CloseHandle(handle);
+			}
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
+			// Создаём объект информационных данных
+			struct stat info{};
+			// Если сведения получены (ссылка не разыменовывается)
+			if(::lstat(string(addr).c_str(), &info) == 0){
+				// Устанавливаем идентификатор устройства
+				result.dev = static_cast <uint64_t> (info.st_dev);
+				// Устанавливаем номер записи
+				result.ino = static_cast <uint64_t> (info.st_ino);
+				// Устанавливаем количество имён
+				result.nlink = static_cast <uint64_t> (info.st_nlink);
+			}
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Метод создания символьной ссылки
  *
  * @param first  адрес на который нужно сделать ссылку
  * @param second адрес где должна быть создана ссылка
+ * @return       результат работы функции
  *
  */
-void awh::Filesystem::symlink(string_view first, string_view second) const noexcept {
+bool awh::Filesystem::symlink(string_view first, string_view second) const noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если адреса переданы
 	if(!first.empty() && !second.empty()){
 		/**
@@ -1955,7 +2061,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем создание символьной ссылки
-				::symlink(this->fullpath(first, true).c_str(), this->fullpath(second, true).c_str());
+				result = (::symlink(this->fullpath(first, true).c_str(), this->fullpath(second, true).c_str()) == 0);
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -2016,6 +2122,10 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 								else symlink = fmk::format("%s.lnk", this->fullpath(second, true).c_str());
 								// Выполняем создание ярлыка в файловой системе
 								hres = ppf->Save(fmk::convert(symlink).c_str(), TRUE);
+								// Если ярлык создан
+								if(SUCCEEDED(hres))
+									// Устанавливаем результат
+									result = true;
 							}
 						}
 					}
@@ -2057,95 +2167,46 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			#endif
 		}
 	}
+	// Возвращаем результат
+	return result;
 }
 /**
- * @brief Метод создания жёстких ссылок
+ * @brief Метод создания жёсткой ссылки с отчётом о результате
  *
- * @param first  адрес на который нужно сделать ссылку
- * @param second адрес где должна быть создана ссылка
+ * @param first  существующий файл
+ * @param second адрес создаваемой ссылки
+ * @return       результат работы функции
  *
  */
-void awh::Filesystem::hardlink(string_view first, string_view second) const noexcept {
+bool awh::Filesystem::hardlink(string_view first, string_view second) const noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если адреса переданы
 	if(!first.empty() && !second.empty()){
 		/**
-		 * Выполняем перехват ошибок
+		 * Для операционной системы MS Windows
 		 */
-		try {
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
-				// Если адрес на который нужно создать ссылку существует
-				if(this->type(first) != type_t::NONE)
-					// Выполняем создание символьной ссылки
-					::link(this->fullpath(first, true).c_str(), this->fullpath(second, true).c_str());
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			/**
-			 * Для операционной системы MS Windows
-			 *
-			 * @details Жёсткая ссылка у MS Windows своя и настоящая: CreateHardLinkW
-			 *          заводит на файловой системе NTFS вторую запись каталога, ведущую
-			 *          к тем же данным, - ровно то же, что делает link у POSIX. Особых
-			 *          полномочий она не требует, в отличие от ссылки символьной.
-			 *
-			 * @note Ярлык оболочки остаётся здесь запасным ходом, и лишь им: жёсткая
-			 *       ссылка невозможна поверх FAT и exFAT, а равно между разными томами -
-			 *       обе записи обязаны лежать на одном. Там, где система отвечает
-			 *       отказом, заводится ярлык - тем сохраняется прежнее поведение вызова
-			 *
-			 */
-			#else
-				// Если адрес на который нужно создать ссылку существует
-				if(this->type(first) != type_t::NONE){
-					// Получаем полный адрес файла, на который ведёт ссылка
-					const wstring & target = fmk::convert(this->fullpath(first, true));
-					// Получаем полный адрес создаваемой ссылки
-					const wstring & filename = fmk::convert(this->fullpath(second, true));
-					// Выполняем создание жёсткой ссылки средствами системы
-					if(!::CreateHardLinkW(__awh_longpath__(filename).c_str(), __awh_longpath__(target).c_str(), nullptr))
-						// Если система жёсткую ссылку завести не смогла - заводим ярлык
-						this->symlink(first, second);
-				}
-			#endif
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем создание жёсткой ссылки
+			result = (::CreateHardLinkW(__awh_longpath__(fmk::convert(second)).c_str(), __awh_longpath__(fmk::convert(first)).c_str(), nullptr) != 0);
 		/**
-		 * Если возникает ошибка
+		 * Для операционной системы не являющейся MS Windows
 		 */
-		} catch(const ios_base::failure & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("%s", log::flag_t::CRITICAL, error.what());
-			#endif
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log::print("%s", log::flag_t::CRITICAL, error.what());
-			#endif
-		}
+		#else
+			// Выполняем создание жёсткой ссылки
+			if(!(result = (::link(string(first).c_str(), string(second).c_str()) == 0)) && (errno != 0)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		#endif
 	}
+	// Возвращаем результат
+	return result;
 }
 /**
  * @brief Метод удаления адреса файловой системы
@@ -3054,7 +3115,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -3107,7 +3168,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -3131,7 +3192,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -3157,7 +3218,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				// Создаём буфер сообщения ошибки
 				wchar_t message[0xFF] = {0};
 				// Выполняем формирование текста ошибки
-				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 				/**
 				 * Если включён режим отладки
 				 */
@@ -3180,6 +3241,459 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			::LocalFree(pNewDACL);
 		#endif
 	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод получения владельца файла, каталога либо самой символьной ссылки
+ *
+ * @param addr путь к файлу, каталогу либо ссылке
+ * @return     владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
+ *
+ */
+awh::Filesystem::owner_t awh::Filesystem::owner([[maybe_unused]] string_view addr) const noexcept {
+	// Результат работы функции
+	owner_t result;
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём объект информационных данных
+		struct stat info{};
+		// Если путь передан и сведения о нём получены (ссылка не разыменовывается)
+		if(!addr.empty() && (::lstat(string(addr).c_str(), &info) == 0)){
+			// Устанавливаем идентификатор пользователя
+			result.uid = static_cast <uint32_t> (info.st_uid);
+			// Устанавливаем идентификатор группы
+			result.gid = static_cast <uint32_t> (info.st_gid);
+			// Устанавливаем имя пользователя
+			result.user = this->_os.user(info.st_uid);
+			// Устанавливаем название группы
+			result.group = this->_os.group(info.st_gid);
+		}
+	#endif
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод установки владельца файла, каталога либо самой символьной ссылки
+ *
+ * @param addr  путь к файлу, каталогу либо ссылке
+ * @param owner владелец для установки
+ * @return      результат работы функции
+ *
+ */
+bool awh::Filesystem::owner([[maybe_unused]] string_view addr, [[maybe_unused]] const owner_t & owner) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если путь передан
+		if(!addr.empty()){
+			// Идентификатор пользователя: по имени, а при отсутствии имени на машине - номер
+			uid_t uid = (!owner.user.empty() ? this->_os.uid(owner.user) : static_cast <uid_t> (-1));
+			// Идентификатор группы: по названию, а при отсутствии названия на машине - номер
+			gid_t gid = (!owner.group.empty() ? this->_os.gid(owner.group) : static_cast <gid_t> (-1));
+			// Если пользователь по имени не найден
+			if(uid == static_cast <uid_t> (-1))
+				// Берём номер пользователя
+				uid = static_cast <uid_t> (owner.uid);
+			// Если группа по названию не найдена
+			if(gid == static_cast <gid_t> (-1))
+				// Берём номер группы
+				gid = static_cast <gid_t> (owner.gid);
+			// Если есть что устанавливать (-1 оставляет значение как есть)
+			if((uid != static_cast <uid_t> (-1)) || (gid != static_cast <gid_t> (-1))){
+				// Выполняем установку владельца, не разыменовывая ссылку
+				if(!(result = (::lchown(string(addr).c_str(), uid, gid) == 0)) && (errno != 0)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("%s", __PRETTY_FUNCTION__, {addr, owner.user, owner.group}, log::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			}
+		}
+	#endif
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод получения времени изменения файла, каталога либо самой символьной ссылки
+ *
+ * @param addr путь к файлу, каталогу либо ссылке
+ * @return     время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
+ *
+ */
+uint64_t awh::Filesystem::mtime(string_view addr) const noexcept {
+	// Результат работы функции
+	uint64_t result = 0;
+	// Если путь передан
+	if(!addr.empty()){
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Сведения о файле
+			WIN32_FILE_ATTRIBUTE_DATA info{};
+			// Если сведения о файле получены
+			if(::GetFileAttributesExW(__awh_longpath__(fmk::convert(addr)).c_str(), GetFileExInfoStandard, &info)){
+				// Время в сотнях наносекунд от 1601 года
+				const uint64_t ticks = ((static_cast <uint64_t> (info.ftLastWriteTime.dwHighDateTime) << 32) | static_cast <uint64_t> (info.ftLastWriteTime.dwLowDateTime));
+				// Смещение эпохи Unix от 1601 года в сотнях наносекунд
+				static constexpr const uint64_t EPOCH = 116444736000000000ULL;
+				// Переводим время в миллисекунды от эпохи Unix
+				if(ticks > EPOCH)
+					// Устанавливаем результат
+					result = ((ticks - EPOCH) / 10000ULL);
+			}
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
+			// Создаём объект информационных данных
+			struct stat info{};
+			// Если сведения получены (ссылка не разыменовывается)
+			if(::lstat(string(addr).c_str(), &info) == 0){
+				/**
+				 * У macOS поле времени названо по-своему
+				 */
+				#if defined(__APPLE__) || defined(__MACH__)
+					// Время изменения
+					const struct timespec & ts = info.st_mtimespec;
+				/**
+				 * Для остальных систем
+				 */
+				#else
+					// Время изменения
+					const struct timespec & ts = info.st_mtim;
+				#endif
+				// Если время лежит после начала эпохи
+				if(ts.tv_sec > 0)
+					// Переводим время в миллисекунды
+					result = ((static_cast <uint64_t> (ts.tv_sec) * 1000ULL) + (static_cast <uint64_t> (ts.tv_nsec) / 1000000ULL));
+			}
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод установки времени изменения файла, каталога либо самой символьной ссылки
+ *
+ * @param addr путь к файлу, каталогу либо ссылке
+ * @param date время изменения в миллисекундах от начала эпохи Unix
+ * @return     результат работы функции
+ *
+ */
+bool awh::Filesystem::mtime(string_view addr, const uint64_t date) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если путь и время переданы
+	if(!addr.empty() && (date > 0)){
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Открываем объект только для смены атрибутов (каталогу нужен флаг резервного копирования, ссылке - открытие её самой)
+			HANDLE handle = ::CreateFileW(__awh_longpath__(fmk::convert(addr)).c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+			// Если объект открыт
+			if(handle != INVALID_HANDLE_VALUE){
+				// Переводим миллисекунды от эпохи Unix в сотни наносекунд от 1601 года
+				const uint64_t ticks = ((date * 10000ULL) + 116444736000000000ULL);
+				// Время изменения
+				FILETIME ft{};
+				// Устанавливаем младшую часть
+				ft.dwLowDateTime = static_cast <DWORD> (ticks & 0xFFFFFFFFULL);
+				// Устанавливаем старшую часть
+				ft.dwHighDateTime = static_cast <DWORD> (ticks >> 32);
+				// Выполняем установку времени изменения
+				result = (::SetFileTime(handle, nullptr, nullptr, &ft) != 0);
+				// Закрываем объект
+				::CloseHandle(handle);
+			}
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
+			// Время доступа не трогается, время изменения устанавливается
+			struct timespec ts[2]{};
+			// Время доступа оставляем как есть
+			ts[0].tv_nsec = UTIME_OMIT;
+			// Устанавливаем секунды
+			ts[1].tv_sec = static_cast <time_t> (date / 1000ULL);
+			// Устанавливаем наносекунды
+			ts[1].tv_nsec = static_cast <long> ((date % 1000ULL) * 1000000ULL);
+			// Выполняем установку времени, не разыменовывая ссылку
+			if(!(result = (::utimensat(AT_FDCWD, string(addr).c_str(), ts, AT_SYMLINK_NOFOLLOW) == 0)) && (errno != 0)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, date}, log::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод получения расширенных атрибутов файла, каталога либо самой символьной ссылки
+ *
+ * @param addr путь к файлу, каталогу либо ссылке
+ * @return     список расширенных атрибутов
+ *
+ */
+awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view addr) const noexcept {
+	// Результат работы функции
+	xattrs_t result;
+	/**
+	 * Для macOS и Linux
+	 */
+	#if defined(__APPLE__) || defined(__MACH__) || defined(__linux__)
+		// Если путь передан
+		if(!addr.empty()){
+			// Путь к объекту
+			const string path(addr);
+			/**
+			 * Список имён и значение атрибута читаются в два захода: размер, затем данные.
+			 * Между заходами атрибут может вырасти - тогда чтение повторяется
+			 */
+			/**
+			 * Для macOS
+			 */
+			#if defined(__APPLE__) || defined(__MACH__)
+				// Функция получения списка имён
+				auto list = [&path](char * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат
+					return ::listxattr(path.c_str(), buffer, size, XATTR_NOFOLLOW);
+				};
+				// Функция получения значения
+				auto get = [&path](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат
+					return ::getxattr(path.c_str(), name, buffer, size, 0, XATTR_NOFOLLOW);
+				};
+			/**
+			 * Для Linux
+			 */
+			#else
+				// Функция получения списка имён
+				auto list = [&path](char * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат
+					return ::llistxattr(path.c_str(), buffer, size);
+				};
+				// Функция получения значения
+				auto get = [&path](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат
+					return ::lgetxattr(path.c_str(), name, buffer, size);
+				};
+			#endif
+			// Буфер списка имён
+			vector <char> names;
+			/**
+			 * Выполняем чтение списка имён
+			 */
+			for(uint8_t attempt = 0; attempt < 3; attempt++){
+				// Получаем размер списка имён
+				const ssize_t size = list(nullptr, 0);
+				// Если атрибутов нет либо система их не поддерживает
+				if(size <= 0)
+					// Выводим пустой результат
+					return result;
+				// Выделяем память под список
+				names.resize(static_cast <size_t> (size));
+				// Читаем список имён
+				const ssize_t bytes = list(names.data(), names.size());
+				// Если список прочитан
+				if(bytes >= 0){
+					// Устанавливаем фактический размер списка
+					names.resize(static_cast <size_t> (bytes));
+					// Выходим из цикла
+					break;
+				}
+				// Если ошибка не связана с ростом списка
+				if(errno != ERANGE)
+					// Выводим пустой результат
+					return result;
+				// Очищаем список
+				names.clear();
+			}
+			// Позиция в списке имён
+			size_t offset = 0;
+			/**
+			 * Имена в списке разделены нулевым байтом
+			 */
+			while(offset < names.size()){
+				// Имя атрибута
+				const string name(names.data() + offset);
+				// Переходим к следующему имени
+				offset += (name.size() + 1);
+				// Если имя пустое
+				if(name.empty())
+					// Пропускаем
+					continue;
+				// Значение атрибута
+				string value;
+				/**
+				 * Выполняем чтение значения
+				 */
+				for(uint8_t attempt = 0; attempt < 3; attempt++){
+					// Получаем размер значения
+					const ssize_t size = get(name.c_str(), nullptr, 0);
+					// Если атрибут исчез между заходами
+					if(size < 0)
+						// Выходим из цикла
+						break;
+					// Выделяем память под значение
+					value.resize(static_cast <size_t> (size));
+					// Читаем значение
+					const ssize_t bytes = get(name.c_str(), value.data(), value.size());
+					// Если значение прочитано
+					if(bytes >= 0){
+						// Устанавливаем фактический размер значения
+						value.resize(static_cast <size_t> (bytes));
+						// Добавляем атрибут в список
+						result.emplace_back(name, ::move(value));
+						// Выходим из цикла
+						break;
+					}
+					// Если ошибка не связана с ростом значения
+					if(errno != ERANGE)
+						// Выходим из цикла
+						break;
+				}
+			}
+		}
+	/**
+	 * Для FreeBSD и NetBSD
+	 */
+	#elif defined(__FreeBSD__) || defined(__NetBSD__)
+		// Если путь передан
+		if(!addr.empty()){
+			// Путь к объекту
+			const string path(addr);
+			// Получаем размер списка имён пространства пользователя
+			const ssize_t size = ::extattr_list_link(path.c_str(), EXTATTR_NAMESPACE_USER, nullptr, 0);
+			// Если атрибуты есть
+			if(size > 0){
+				// Буфер списка имён
+				vector <unsigned char> names(static_cast <size_t> (size), 0);
+				// Читаем список имён
+				const ssize_t bytes = ::extattr_list_link(path.c_str(), EXTATTR_NAMESPACE_USER, names.data(), names.size());
+				// Позиция в списке имён
+				size_t offset = 0;
+				/**
+				 * Каждое имя в списке предварено байтом своей длины и нулём не завершается
+				 */
+				while((bytes > 0) && (offset < static_cast <size_t> (bytes))){
+					// Длина имени
+					const size_t length = static_cast <size_t> (names[offset++]);
+					// Если имя выходит за пределы списка
+					if((offset + length) > static_cast <size_t> (bytes))
+						// Выходим из цикла
+						break;
+					// Имя атрибута
+					const string name(reinterpret_cast <const char *> (names.data() + offset), length);
+					// Переходим к следующему имени
+					offset += length;
+					// Получаем размер значения
+					const ssize_t length2 = ::extattr_get_link(path.c_str(), EXTATTR_NAMESPACE_USER, name.c_str(), nullptr, 0);
+					// Если значение доступно
+					if(length2 >= 0){
+						// Значение атрибута
+						string value(static_cast <size_t> (length2), '\0');
+						// Читаем значение
+						const ssize_t read = ::extattr_get_link(path.c_str(), EXTATTR_NAMESPACE_USER, name.c_str(), value.data(), value.size());
+						// Если значение прочитано
+						if(read >= 0){
+							// Устанавливаем фактический размер значения
+							value.resize(static_cast <size_t> (read));
+							// Добавляем атрибут в список под именем вида Linux
+							result.emplace_back("user." + name, ::move(value));
+						}
+					}
+				}
+			}
+		}
+	#endif
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод установки расширенных атрибутов файла, каталога либо самой символьной ссылки
+ *
+ * @param addr  путь к файлу, каталогу либо ссылке
+ * @param attrs список расширенных атрибутов
+ * @return      количество атрибутов, которые установить не удалось
+ *
+ */
+size_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, const xattrs_t & attrs) const noexcept {
+	// Количество атрибутов, которые установить не удалось
+	size_t result = 0;
+	// Если путь не передан
+	if(addr.empty())
+		// Не удалось установить ничего
+		return attrs.size();
+	/**
+	 * Для macOS, Linux, FreeBSD и NetBSD
+	 */
+	#if defined(__APPLE__) || defined(__MACH__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
+		// Путь к объекту
+		const string path(addr);
+		/**
+		 * Выполняем перебор атрибутов
+		 */
+		for(auto & attr : attrs){
+			/**
+			 * Для macOS
+			 */
+			#if defined(__APPLE__) || defined(__MACH__)
+				// Устанавливаем атрибут, не разыменовывая ссылку
+				const bool status = (::setxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0, XATTR_NOFOLLOW) == 0);
+			/**
+			 * Для Linux
+			 */
+			#elif defined(__linux__)
+				// Устанавливаем атрибут, не разыменовывая ссылку
+				const bool status = (::lsetxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0) == 0);
+			/**
+			 * Для FreeBSD и NetBSD
+			 */
+			#else
+				// Приставка пространства пользователя
+				static const string prefix = "user.";
+				// Устанавливается только атрибут пространства пользователя
+				const bool status = (
+					(attr.first.size() > prefix.size()) && (attr.first.compare(0, prefix.size(), prefix) == 0) &&
+					(::extattr_set_link(path.c_str(), EXTATTR_NAMESPACE_USER, attr.first.c_str() + prefix.size(), attr.second.data(), attr.second.size()) >= 0)
+				);
+			#endif
+			// Если атрибут не установлен
+			if(!status){
+				// Увеличиваем количество неустановленных атрибутов
+				result++;
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем ошибку в лог
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, attr.first}, log::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		}
+	/**
+	 * Для остальных систем расширенных атрибутов в этом виде нет
+	 */
+	#else
+		// Не удалось установить ничего
+		result = attrs.size();
+	#endif
 	// Возвращаем результат
 	return result;
 }
@@ -3542,7 +4056,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
-									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 									/**
 									 * Если включён режим отладки
 									 */
@@ -4723,14 +5237,34 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						#endif
 					// Если файл открыт нормально
 					} else {
+						// Количество записанных байт и результат очередной подачи
+						ssize_t written = 0, part = 0;
 						/**
-						 * Если добавление данных в файл отвечено отказом
+						 * Выполняем добавление данных в файл по частям
 						 *
-						 * @note Сличение идёт с полным размером буфера, а не с нулём: запись
-						 *       вправе лечь частью, и частичная запись это тот же отказ - хвост
-						 *       буфера до файла не дошёл
+						 * @note Системный вызов вправе прерваться сигналом до записи чего-либо
+						 *       (EINTR) либо записать лишь часть данных: обе подачи повторяются до
+						 *       полного размещения буфера либо подлинного отказа. Успехом считается
+						 *       запись всего буфера - хвост обязан дойти до файла
 						 */
-						if(!(result = (::write(file, buffer, size) == static_cast <ssize_t> (size)))){
+						while(written < static_cast <ssize_t> (size)){
+							// Выполняем запись остатка буфера
+							part = ::write(file, static_cast <const char *> (buffer) + written, static_cast <size_t> (static_cast <ssize_t> (size) - written));
+							// Если подача прервана сигналом до записи чего-либо, повторяем её
+							if((part < 0) && (errno == EINTR))
+								// Переходим к повторной подаче
+								continue;
+							// Если подача не выполнена либо ничего не записала
+							if(part <= 0)
+								// Выходим из цикла: подлинный отказ
+								break;
+							// Учитываем записанную часть
+							written += part;
+						}
+						// Успехом считается запись всего буфера
+						result = (written == static_cast <ssize_t> (size));
+						// Если добавление данных в файл отвечена отказом
+						if(!result){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -4981,7 +5515,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
-								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -5373,6 +5907,41 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								::madvise(addr, total, MADV_SEQUENTIAL);
 							#endif
 							/**
+							 * Точка восстановления: файл, усечённый за проекцией, либо отказ носителя
+							 * дают сигнал SIGBUS, и чтение обязано отказать честно, не приостанавливая поток.
+							 * Буфер точки живёт в кадре чтения, и прыжок из обработчика возвращается
+							 * в живой кадр; возврат sigsetjmp хранится в volatile: значение обычной
+							 * локальной переменной после прыжка не определено
+							 */
+							sigjmp_buf point;
+							// Переменная, в которую возвращается значение после прыжка из обработчика сигнала SIGBUS
+							volatile const int32_t landed = ::sigsetjmp(point, 1);
+							/**
+							 * Регистрируем точку возврата: после прыжка конструктор выполнится повторно,
+							 * регистрация идемпотентна и безвредна
+							 */
+							signals_t::bus_t bus(point);
+							// Если чтение из проекции прервано сигналом SIGBUS
+							if(landed != 0){
+								// Освобождаем проекцию файла из адресного пространства процесса
+								::munmap(addr, total);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if defined(DEBUG_MODE)
+									// Записываем ошибку в лог
+									log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, "File was truncated or the medium failed behind the mapped area");
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log::print("%s", log::flag_t::CRITICAL, "File was truncated or the medium failed behind the mapped area");
+								#endif
+								// Выходим из метода (дескриптор будет закрыт автоматически)
+								return;
+							}
+							/**
 							 * Перебираем файл блоками, передавая указатели напрямую из проекции
 							 */
 							for(size_t position = offset; position < total; position += size){
@@ -5738,14 +6307,34 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 								::lseek(file, static_cast <off_t> (offset), SEEK_END);
 							break;
 						}
+						// Количество записанных байт и результат очередной подачи
+						ssize_t written = 0, part = 0;
 						/**
-						 * Если запись данных в файл отвечена отказом
+						 * Выполняем запись данных в файл по частям
 						 *
-						 * @note Сличение идёт с полным размером буфера, а не с нулём: запись
-						 *       вправе лечь частью, и частичная запись это тот же отказ - хвост
-						 *       буфера до файла не дошёл
+						 * @note Системный вызов вправе прерваться сигналом до записи чего-либо
+						 *       (EINTR) либо записать лишь часть данных: обе подачи повторяются до
+						 *       полного размещения буфера либо подлинного отказа. Успехом считается
+						 *       запись всего буфера - хвост обязан дойти до файла
 						 */
-						if(!(result = (::write(file, buffer, size) == static_cast <ssize_t> (size)))){
+						while(written < static_cast <ssize_t> (size)){
+							// Выполняем запись остатка буфера
+							part = ::write(file, static_cast <const char *> (buffer) + written, static_cast <size_t> (static_cast <ssize_t> (size) - written));
+							// Если подача прервана сигналом до записи чего-либо, повторяем её
+							if((part < 0) && (errno == EINTR))
+								// Переходим к повторной подаче
+								continue;
+							// Если подача не выполнена либо ничего не записала
+							if(part <= 0)
+								// Выходим из цикла: подлинный отказ
+								break;
+							// Учитываем записанную часть
+							written += part;
+						}
+						// Успехом считается запись всего буфера
+						result = (written == static_cast <ssize_t> (size));
+						// Если запись данных в файл отвечена отказом
+						if(!result){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -5941,7 +6530,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
-								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -5977,7 +6566,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
-									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 									/**
 									 * Если включён режим отладки
 									 */
@@ -6243,7 +6832,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
-								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 								/**
 								 * Если включён режим отладки
 								 */
@@ -6279,7 +6868,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
-									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
+									::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
 									/**
 									 * Если включён режим отладки
 									 */

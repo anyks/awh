@@ -39,13 +39,23 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+
 /**
  * Заголовок POSIX есть у MinGW, но НЕ у нативного MSVC: там его заменяют process.h и io.h
  */
 #if defined(_MSC_VER)
+	/**
+	 * Системные заголовочные файлы
+	 */
 	#include <io.h>
 	#include <process.h>
+/**
+ * Для компилятора не являющегося MSVC
+ */
 #else
+	/**
+	 * Системные заголовочные файлы
+	 */
 	#include <unistd.h>
 #endif
 
@@ -56,58 +66,338 @@
 #include <sys/stat.h>
 
 /**
- * Приметы вида записи для оснастки MSVC
+ * \~russian
+ * @brief Приметы вида записи для оснастки MSVC
  *
  * @details Разбор поля вида у неё есть, а привычных примет POSIX нет: там они зовутся
- *          `_S_IFDIR` и `_S_IFREG`, а самих проверок не заведено вовсе
+ *          `_S_IFDIR` и `_S_IFREG`, а самих проверок не заведено вовсе.
  *
  * @note Ссылку приметой вида под MS Windows не опознать ни одной оснасткой: `stat`
  *       следует по ссылке и отдаёт вид цели, а не самой ссылки. Оттого проверка эта
  *       отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+ *
+ * \~english
+ * @brief Traits of the record kind for the MSVC toolset
+ *
+ * @details It has the parsing of the kind field, but the habitual POSIX traits are absent:
+ *          there they are called `_S_IFDIR` and `_S_IFREG`, and no checks are defined at all.
+ *
+ * @note No toolset under MS Windows can recognize a link by the kind trait: `stat`
+ *       follows the link and returns the kind of the target, not of the link itself.
+ *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+ *
+ * \~
  */
 #if defined(_MSC_VER)
+	/**
+	 * \~russian
+	 * @brief Если макрос S_ISDIR не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись директорией.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISDIR macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a directory.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * \~
+	 */
 	#if !defined(S_ISDIR)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись директорией
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a directory
+		 *
+		 * \~
+		 */
 		#define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
 	#endif
+	/**
+	 * \~russian
+	 * @brief Если макрос S_ISREG не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись обычным файлом.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISREG macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a regular file.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * \~
+	 */
 	#if !defined(S_ISREG)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись обычным файлом
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a regular file
+		 *
+		 * \~
+		 */
 		#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
 	#endif
+	/**
+	 * \~russian
+	 * @brief Если макрос S_ISLNK не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись символической ссылкой.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISLNK macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a symbolic link.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * \~
+	 */
 	#if !defined(S_ISLNK)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись символической ссылкой
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a symbolic link
+		 *
+		 * \~
+		 */
 		#define S_ISLNK(mode) (((void) (mode)), false)
 	#endif
+	/**
+	 * \~russian
+	 * @brief Если макрос S_ISCHR не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись символьным устройством.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISCHR macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a character device.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * \~
+	 */
 	#if !defined(S_ISCHR)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись символьным устройством
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a character device
+		 *
+		 * \~
+		 */
 		#define S_ISCHR(mode) (((mode) & _S_IFMT) == _S_IFCHR)
 	#endif
+	/**
+	 * \~russian
+	 * @brief Если макрос S_ISFIFO не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись именованным каналом FIFO.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISFIFO macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a FIFO named pipe.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * \~
+	 */
 	#if !defined(S_ISFIFO)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись именованным каналом FIFO
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a FIFO named pipe
+		 *
+		 * \~
+		 */
 		#define S_ISFIFO(mode) (((mode) & _S_IFMT) == _S_IFIFO)
 	#endif
 	/**
+	 * \~russian
+	 * @brief Если макрос S_ISBLK не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись устройством поблочного доступа.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
 	 * @note Устройств поблочного доступа и гнёзд домена UNIX поле вида у MS Windows не
 	 *       различает вовсе: примет для них нет ни у одной оснастки, и проверки эти
 	 *       отвечают ложью - ровно так же, как они ведут себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISBLK macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a block device.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * @note The kind field under MS Windows does not distinguish block devices and UNIX
+	 *       domain sockets at all: no toolset has traits for them, and these checks
+	 *       answer with a lie - exactly the way they behave under MinGW too
+	 *
+	 * \~
 	 */
 	#if !defined(S_ISBLK)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись устройством поблочного доступа
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a block device
+		 *
+		 * \~
+		 */
 		#define S_ISBLK(mode) (((void) (mode)), false)
 	#endif
+	/**
+	 * \~russian
+	 * @brief Если макрос S_ISSOCK не определён, определяем его
+	 *
+	 * @details Макрос проверяет, является ли запись гнездом домена UNIX.
+	 *
+	 * @note Макрос проверяет поле вида записи, а не саму запись: ссылку приметой вида
+	 *       под MS Windows не опознать ни одной оснасткой: `stat`
+	 *       следует по ссылке и отдаёт вид цели, а не самой ссылки.
+	 *       Оттого проверка эта отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+	 *
+	 * @note Устройств поблочного доступа и гнёзд домена UNIX поле вида у MS Windows не
+	 *       различает вовсе: примет для них нет ни у одной оснастки, и проверки эти
+	 *       отвечают ложью - ровно так же, как они ведут себя и под MinGW
+	 *
+	 * \~english
+	 * @brief If the S_ISSOCK macro is not defined, we define it
+	 *
+	 * @details The macro checks whether the record is a UNIX domain socket.
+	 *
+	 * @note The macro checks the kind field of the record, not the record itself: no toolset
+	 *       under MS Windows can recognize a link by the kind trait: `stat`
+	 *       follows the link and returns the kind of the target, not of the link itself.
+	 *       That is why this check always answers with a lie - exactly the way it behaves under MinGW too
+	 *
+	 * @note The kind field under MS Windows does not distinguish block devices and UNIX
+	 *       domain sockets at all: no toolset has traits for them, and these checks
+	 *       answer with a lie - exactly the way they behave under MinGW too
+	 *
+	 * \~
+	 */
 	#if !defined(S_ISSOCK)
+		/**
+		 * \~russian
+		 * @brief Макрос проверки, является ли запись гнездом домена UNIX
+		 *
+		 * \~english
+		 * @brief Macro of the check whether the record is a UNIX domain socket
+		 *
+		 * \~
+		 */
 		#define S_ISSOCK(mode) (((void) (mode)), false)
 	#endif
 #endif
 
 /**
- * Активируем поддержку юникода
+ * \~russian
+ * @brief Активируем поддержку юникода
+ *
+ * \~english
+ * @brief Activate the unicode support
+ *
+ * \~
  */
 #if !defined(UNICODE)
+	/**
+	 * \~russian
+	 * @brief Признак поддержки юникода
+	 *
+	 * \~english
+	 * @brief Sign of the unicode support
+	 *
+	 * \~
+	 */
 	#define UNICODE
 #endif
 
 /**
- * Для операционной системы MS Windows
+ * \~russian
+ * @brief Для операционной системы MS Windows
+ *
+ * \~english
+ * @brief For the MS Windows operating system
+ *
+ * \~
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * \~russian
-	 * Заменяем переменную AWH ERROR
+	 * @brief Файловый разделитель Windows
+	 *
+	 * \~english
+	 * @brief Windows file separator
+	 *
+	 * \~
+	 */
+	#define AWH_FS_SEPARATOR "\\"
+
+	/**
+	 * \~russian
+	 * @brief Заменяем переменную AWH ERROR
 	 *
 	 * @note Заголовков MS Windows здесь нет намеренно: телу макроса объявление в точке
 	 *       определения не требуется, оно нужно лишь в точке применения, то есть в файле
@@ -115,7 +405,8 @@
 	 *       в единицу трансляции потребителя библиотеки
 	 *
 	 * \~english
-	 * Replace the AWH ERROR variable
+	 * @brief Replace the AWH ERROR variable
+	 *
 	 * @note The MS Windows headers are absent here deliberately: the body of the macro requires no declaration at the point
 	 *       of definition, it needs it only at the point of use, that is, in the implementation
 	 *       file. Were sys/macro/win32.hpp included here, the removals of the macros would leak
@@ -123,19 +414,14 @@
 	 *
 	 * \~
 	 */
-	#define AWH_ERROR() (::WSAGetLastError())
-
-	/**
-	 * Файловый разделитель Windows
-	 */
-	#define AWH_FS_SEPARATOR "\\"
+	#define AWH_ERROR() (::GetLastError())
 
 	/**
 	 * \~russian
-	 * Устанавливаем типы данных uid_t и gid_t
+	 * @brief Устанавливаем типы данных uid_t и gid_t
 	 *
 	 * @details Типов этих у MS Windows нет вовсе - разделения пользователей и групп по
-	 *          числам там не заведено, - и восполняются они здесь
+	 *          числам там не заведено, - и восполняются они здесь.
 	 *
 	 * @note Заводятся они объявлениями типов, а не макросами. Прежде здесь стояли
 	 *       макросы под проверкой «#ifndef», и проверка та ловушкой была по существу:
@@ -145,9 +431,11 @@
 	 *       не объявляет, но опираться на это незачем: объявление типа ловушки не несёт
 	 *
 	 * \~english
-	 * Set the uid_t and gid_t data types
+	 * @brief Set the uid_t and gid_t data types
+	 *
 	 * @details MS Windows has no such types at all — the separation of users and groups by
-	 *          numbers is not introduced there — and they are made up for here
+	 *          numbers is not introduced there — and they are made up for here.
+	 *
 	 * @note They are introduced by type declarations rather than by macros. Before, macros
 	 *       stood here under an «#ifndef» check, and that check was a trap in essence:
 	 *       the preprocessor does not see type declarations, and a macro introduced over someone else's
@@ -162,12 +450,12 @@
 
 	/**
 	 * \~russian
-	 * Подключаем заголовочный файл типов происхождения BSD
+	 * @brief Подключаем заголовочный файл типов происхождения BSD
 	 *
 	 * @details Заголовок этот объявляет u_char, u_short, u_int и u_long - типы, какими
 	 *          библиотека пользуется повсюду. У MS Windows их тянет за собой winsock2.h,
 	 *          а его здесь нет намеренно (пояснение выше, у AWH_ERROR), оттого он и
-	 *          подключается прямо
+	 *          подключается прямо.
 	 *
 	 * @warning Прежде тип u_char заводился здесь макросом под проверкой «#ifndef
 	 *          u_char», и проверка эта была негодной по существу: система объявляет его
@@ -182,11 +470,13 @@
 	 *       не заводит и защищён от повторного включения
 	 *
 	 * \~english
-	 * Include the header file of the types of BSD origin
+	 * @brief Include the header file of the types of BSD origin
+	 *
 	 * @details That header declares u_char, u_short, u_int and u_long — the types the
 	 *          library uses everywhere. On MS Windows they are dragged in by winsock2.h,
 	 *          and it is absent here deliberately (the explanation is above, at AWH_ERROR), which is why it
-	 *          is included directly
+	 *          is included directly.
+	 *
 	 * @warning Before, the u_char type was introduced here by a macro under an «#ifndef
 	 *          u_char» check, and that check was unfit in essence: the system declares it
 	 *          as a **type**, while the preprocessor does not see types. The check passed, the macro
@@ -195,6 +485,7 @@
 	 *          char unsigned char;». The build answered with the failure «duplicate 'unsigned'», and
 	 *          it fired only at a certain order of includes — that is why the defect lived
 	 *          until a file appeared that included the headers in a different order
+	 *
 	 * @note That include is safe: the header carries type declarations alone, introduces no macros
 	 *       and is guarded against repeated inclusion
 	 *
@@ -203,20 +494,22 @@
 	#if defined(_MSC_VER)
 		/**
 		 * \~russian
-		 * Объявляем типы происхождения BSD своими силами
+		 * @brief Объявляем типы происхождения BSD своими силами
 		 *
 		 * @details Заголовка `_bsd_types.h` у MSVC нет вовсе - он принадлежит MinGW.
 		 *          Сама же система объявляет эти типы лишь в `winsock2.h`, какой здесь
-		 *          не подключается намеренно, оттого объявление и заводится тут
+		 *          не подключается намеренно, оттого объявление и заводится тут.
 		 *
 		 * @note Повтора это не создаёт: одинаковые объявления типа язык допускает, и
 		 *       последующее подключение `winsock2.h` объявит их теми же самыми
 		 *
 		 * \~english
-		 * Declare the types of BSD origin on our own
+		 * @brief Declare the types of BSD origin on our own
+		 *
 		 * @details MSVC has no `_bsd_types.h` header at all - it belongs to MinGW. The system
 		 *          itself declares those types in `winsock2.h` alone, which is deliberately not
-		 *          included here, which is why the declaration is introduced in this place
+		 *          included here, which is why the declaration is introduced in this place.
+		 *
 		 * @note That creates no duplicate: identical type declarations are allowed by the language,
 		 *       and a later include of `winsock2.h` will declare them as the very same ones
 		 *
@@ -226,21 +519,85 @@
 		typedef unsigned short u_short;
 		typedef unsigned int u_int;
 		typedef unsigned long u_long;
+	/**
+	 * \~russian
+	 * @brief Если компилятор не является MSVC
+	 *
+	 * \~english
+	 * @brief If the compiler is not MSVC
+	 *
+	 * \~
+	 */
 	#else
+		/**
+		 * \~russian
+		 * @brief Подключаем заголовочный файл типов происхождения BSD
+		 *
+		 * @details Заголовок этот объявляет u_char, u_short, u_int и u_long - типы, какими
+		 *          библиотека пользуется повсюду. У MS Windows их тянет за собой winsock2.h,
+		 *          а его здесь нет намеренно (пояснение выше, у AWH_ERROR), оттого он и
+		 *          подключается прямо.
+		 *
+		 * @note Подключение это безопасно: заголовок несёт одни объявления типов, макросов
+		 *       не заводит и защищён от повторного включения
+		 *
+		 * \~english
+		 * @brief Include the header file of the types of BSD origin
+		 *
+		 * @details That header declares u_char, u_short, u_int and u_long — the types the
+		 *          library uses everywhere. On MS Windows they are dragged in by winsock2.h,
+		 *          and it is absent here deliberately (the explanation is above, at AWH_ERROR), which is why it
+		 *          is included directly.
+		 *
+		 * @note That include is safe: the header carries type declarations alone, introduces no macros
+		 *       and is guarded against repeated inclusion
+		 *
+		 * \~
+		 */
 		#include <_bsd_types.h>
 	#endif
 
 	/**
-	 * Устанавливаем функцию getpid
+	 * \~russian
+	 * @brief Устанавливаем функцию getpid
+	 *
+	 * \~english
+	 * @brief Set the getpid function
+	 *
+	 * \~
 	 */
 	#if !defined(getpid)
+		/**
+		 * \~russian
+		 * @brief Устанавливаем функцию getpid
+		 *
+		 * \~english
+		 * @brief Set the getpid function
+		 *
+		 * \~
+		 */
 		#define getpid _getpid
 	#endif
 
 	/**
-	 * Устанавливаем функцию getppid
+	 * \~russian
+	 * @brief Устанавливаем функцию getppid
+	 *
+	 * \~english
+	 * @brief Set the getppid function
+	 *
+	 * \~
 	 */
 	#if !defined(getppid)
+		/**
+		 * \~russian
+		 * @brief Устанавливаем функцию getppid
+		 *
+		 * \~english
+		 * @brief Set the getppid function
+		 *
+		 * \~
+		 */
 		#define getppid GetCurrentProcessId
 	#endif
 /**
@@ -253,12 +610,24 @@
 	#include <sys/types.h>
 
 	/**
-	 * Заменяем переменную AWH ERROR
+	 * \~russian
+	 * @brief Заменяем переменную AWH ERROR
+	 *
+	 * \~english
+	 * @brief Replace the AWH ERROR variable
+	 *
+	 * \~
 	 */
 	#define AWH_ERROR() (errno)
 
 	/**
-	 * Файловый разделитель UNIX-подобных систем
+	 * \~russian
+	 * @brief Файловый разделитель UNIX-подобных систем
+	 *
+	 * \~english
+	 * @brief File separator for UNIX-like systems
+	 *
+	 * \~
 	 */
 	#define AWH_FS_SEPARATOR "/"
 #endif
@@ -319,14 +688,14 @@ namespace awh {
 			 */
 			enum class cpu_t : uint8_t {
 				NONE    = 0x00, // Архитектура процессора не установлена
-				X86     = 0x01, // Архитектура процессора принадлежит к i386
-				ARM     = 0x02, // Архитектура процессора принадлежит к ARM32
-				PPC     = 0x03, // Архитектура процессора принадлежит к PowerPC
-				MIPS    = 0x04, // Архитектура процессора принадлежит к MIPS
-				ARM64   = 0x05, // Архитектура процессора принадлежит к ARM64
-				AMD64   = 0x06, // Архитектура процессора принадлежит к AMD64
-				UNKNOWN = 0x07, // Архитектура процессора не определён
-				E2K     = 0x08  // Архитектура процессора принадлежит к Эльбрус (e2k)
+				E2K     = 0x01, // Архитектура процессора принадлежит к Эльбрус (e2k)
+				X86     = 0x02, // Архитектура процессора принадлежит к i386
+				ARM     = 0x03, // Архитектура процессора принадлежит к ARM32
+				PPC     = 0x04, // Архитектура процессора принадлежит к PowerPC
+				MIPS    = 0x05, // Архитектура процессора принадлежит к MIPS
+				ARM64   = 0x06, // Архитектура процессора принадлежит к ARM64
+				AMD64   = 0x07, // Архитектура процессора принадлежит к AMD64
+				UNKNOWN = 0x08  // Архитектура процессора не определена
 			};
 			/**
 			 * \~russian
