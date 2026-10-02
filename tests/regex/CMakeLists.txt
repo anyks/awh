@@ -74,6 +74,7 @@ if (${GTest_FOUND})
             emitter.cpp
             codegen.cpp
             range.cpp
+            window.cpp
             engine.cpp
             reference.cpp
             interface.cpp
