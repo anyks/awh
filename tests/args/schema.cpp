@@ -413,7 +413,7 @@ TEST(ArgsSchema, Usage) {
  *       должна - обе стороны стережёт эта же проверка
  *
  */
-TEST(ArgsSchema, ReplacementKeepsShortNamesConsistent){
+TEST(ArgsSchema, ReplacementKeepsShortNamesConsistent) {
 	// Создаём объект работы с логами
 	// Создаём описание ожидаемых параметров запуска
 	schema_t schema;
@@ -441,7 +441,7 @@ TEST(ArgsSchema, ReplacementKeepsShortNamesConsistent){
  * строки и выводило их справкой, обещая наречие, подать которое нельзя
  *
  */
-TEST(ArgsSchema, AShortNameMustBeTypeable){
+TEST(ArgsSchema, AShortNameMustBeTypeable) {
 	// Создаём описание ожидаемых параметров запуска
 	schema_t schema;
 	// Выполняем проверку отказа на знаки, наречием не подаваемые
@@ -467,7 +467,7 @@ TEST(ArgsSchema, AShortNameMustBeTypeable){
  * разных ответа
  *
  */
-TEST(ArgsSchema, AClusterObeysTheDuplicateRule){
+TEST(ArgsSchema, AClusterObeysTheDuplicateRule) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем заведение описания признака, повтора не дозволяющего
@@ -504,7 +504,7 @@ TEST(ArgsSchema, AClusterObeysTheDuplicateRule){
  * порознь отвечались отказом
  *
  */
-TEST(ArgsSchema, AClusterOfKnownLettersNeverBecomesASetting){
+TEST(ArgsSchema, AClusterOfKnownLettersNeverBecomesASetting) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем заведение признака, значения не принимающего
@@ -555,7 +555,7 @@ TEST(ArgsSchema, AClusterOfKnownLettersNeverBecomesASetting){
  * имени под одним тире
  *
  */
-TEST(ArgsSchema, AStrangerLetterInAClusterIsNamedByItsOwnCause){
+TEST(ArgsSchema, AStrangerLetterInAClusterIsNamedByItsOwnCause) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Извлекаем настройки разбора
@@ -599,7 +599,7 @@ TEST(ArgsSchema, AStrangerLetterInAClusterIsNamedByItsOwnCause){
  * непременно, а `-a -w -h` есть три признака непременно
  *
  */
-TEST(ArgsSchema, ADeclaredLongNameOutranksTheClusterOfItsLetters){
+TEST(ArgsSchema, ADeclaredLongNameOutranksTheClusterOfItsLetters) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем заведение длинного имени, знакам склейки совпадающего
@@ -651,7 +651,7 @@ TEST(ArgsSchema, ADeclaredLongNameOutranksTheClusterOfItsLetters){
  * прочитавший, подавал повтор и терял прежнее значение
  *
  */
-TEST(ArgsSchema, TheHelpPromisesNoRepetitionTheSettingsForbid){
+TEST(ArgsSchema, TheHelpPromisesNoRepetitionTheSettingsForbid) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Собираем описание ожидаемого параметра, повтор дозволяющее

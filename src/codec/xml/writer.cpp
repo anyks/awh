@@ -527,9 +527,19 @@ void awh::codec::xml::Writer::settings(const settings_t & settings) noexcept {
  */
 bool awh::codec::xml::Writer::declaration(const standalone_t standalone) noexcept {
 	/**
-	 * Если запись уже прекращена ошибкой либо текст не пуст
+	 * Если запись уже прекращена ошибкой
 	 */
-	if((this->_error != error_t::NONE) || !this->_text.empty()){
+	if(this->_error != error_t::NONE)
+		// Сохраняем причину первоначального отказа
+		return false;
+	/**
+	 * Если текст уже записывался
+	 *
+	 * @note Изъятие освобождает буфер, но не возвращает начало документа.
+	 *       Иначе объявление можно было записать после примечания или повторить.
+	 *
+	 */
+	if(this->_taken || !this->_text.empty()){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_DECLARATION);
 	}
@@ -1057,6 +1067,64 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	if(prefix.empty() && (uri.compare(XML_NAMESPACE) == 0)){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAMESPACE);
+	}
+	// Действующее пространство имён переопределяемого префикса
+	string_view previous;
+	// Пустой префикс без объявления означает отсутствие пространства имён
+	bool bound = prefix.empty();
+	/**
+	 * Ищем ближайшее действующее связывание
+	 */
+	for(size_t i = this->_bindings; i > 0; i--){
+		// Если найдено связывание заданного префикса
+		if(this->_scopes[i - 1].prefix.compare(prefix) == 0){
+			// Запоминаем действующее пространство имён
+			previous = this->_scopes[i - 1].uri;
+			// Отмечаем наличие связывания
+			bound = true;
+			// Завершаем поиск ближайшего связывания
+			break;
+		}
+	}
+	/**
+	 * Если объявление меняет действующее пространство имён
+	 *
+	 * @note Объявление действует на всю открывающую метку, в том числе на имена,
+	 *       записанные до него. Изменение их пространства имён могло превращать
+	 *       разные атрибуты в дубликаты либо менять смысл имени самого элемента.
+	 *       При открытии узла его имя ещё пусто: переданные вместе с ним объявления
+	 *       применяются до выбора префикса и этой проверкой не ограничиваются.
+	 *
+	 */
+	if(bound && (previous.compare(uri) != 0)){
+		// Получаем запись текущего элемента
+		const opened_t & opened = this->_opened[this->_depth - 1];
+		// Получаем положение разделителя префикса в имени элемента
+		const size_t separator = opened.name.find(':');
+		// Если пространство имён уже используется именем элемента
+		if(!opened.name.empty() && ((separator == string::npos) ? prefix.empty() :
+		   (string_view(opened.name).substr(0, separator).compare(prefix) == 0)))
+			// Отвергаем изменение пространства имён записанного элемента
+			return this->refuse(error_t::INVALID_NAMESPACE);
+		/**
+		 * Проверяем атрибуты только для непустого префикса
+		 *
+		 * @note Пространство имён по умолчанию не распространяется на атрибуты.
+		 *
+		 */
+		if(!prefix.empty()){
+			/**
+			 * Перебираем уже записанные имена атрибутов
+			 */
+			for(const string & item : opened.names){
+				// Получаем положение разделителя префикса в имени атрибута
+				const size_t offset = item.find(':');
+				// Если атрибут уже использует переопределяемое пространство имён
+				if((offset != string::npos) && (string_view(item).substr(0, offset).compare(prefix) == 0))
+					// Отвергаем изменение пространства имён записанного атрибута
+					return this->refuse(error_t::INVALID_NAMESPACE);
+			}
+		}
 	}
 	// Собираемое имя объявления в том виде, в каком оно попадает в текст
 	string name("xmlns");
@@ -1892,6 +1960,8 @@ string awh::codec::xml::Writer::take() noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим пустой текст разметки
 		return string();
+	// Сохраняем признак выданного текста, в том числе при повторном пустом изъятии
+	this->_taken = (this->_taken || !this->_text.empty());
 	// Изымаемый собранный текст разметки
 	string result;
 	// Выполняем изъятие собранного текста разметки
@@ -1908,6 +1978,8 @@ void awh::codec::xml::Writer::clear() noexcept {
 	this->_error = error_t::NONE;
 	// Выполняем сброс признака записанного корневого узла
 	this->_root = false;
+	// Сбрасываем признак изъятого текста для нового документа
+	this->_taken = false;
 	// Выполняем очистку собранного текста разметки
 	this->_text.clear();
 	/**
@@ -1955,7 +2027,7 @@ bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
+awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _taken(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Конструктор
  *
@@ -1963,7 +2035,7 @@ awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false)
  *
  */
 awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
+ _settings(settings), _error(error_t::NONE), _root(false), _taken(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Деструктор
  *

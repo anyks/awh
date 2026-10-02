@@ -172,6 +172,14 @@ namespace awh {
 			 * и цели не касается. Закреплено `CodecCefDocument.FailedSaveKeepsThePreviousRecord`
 			 * и `CodecCefDocument.SaveOverLongerFile`
 			 *
+			 * @li **Временный файл создаётся исключительно для текущего сохранения.**
+			 * Занятое имя пропускается без удаления файла; запись и сброс используют один
+			 * открытый объект. Под POSIX сохраняются биты доступа существующей цели,
+			 * новая цель получает прежние 0644 с учётом umask. Владение и ACL не переносятся.
+			 * Закреплено `CodecCefDocument.SavePreservesAccessBits`,
+			 * `CodecCefDocument.SaveKeepsUnrelatedSibling` и
+			 * `CodecCefDocument.TemporaryCollisionKeepsExistingFile`
+			 *
 			 * @warning ПРАВЛЕНО 16.09.2026, и прежнее решение было ОШИБОЧНЫМ. Гласило
 			 * оно: «сохранение сносит прежний файл ПЕРЕД записью», ибо `fs_t::write` файл
 			 * не усекает, а пишет по смещению, и без сноса хвост прежнего сохранения

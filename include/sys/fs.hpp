@@ -658,6 +658,34 @@ namespace awh {
 			 * \~
 			 */
 			handle_file_t handleFile() const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод исключительного создания временного файла рядом с целью
+			 *
+			 * @details Возвращает открытый объект для записи и сброса без повторного открытия
+			 *          по имени. Существующие файлы не удаляются. Под POSIX сохраняются биты
+			 *          доступа существующего обычного файла; новая цель получает 0644 с учётом umask.
+			 *          Владение и ACL этим методом не переносятся. Под Windows действует ACL
+			 *          каталога. Вызывающий закрывает объект и удаляет временный файл при отказе.
+			 *
+			 * @param filename адрес целевого файла
+			 * @param address  адрес созданного временного файла, при отказе пустой
+			 * @return         открытый объект либо пустой указатель при отказе
+			 *
+			 * \~english
+			 * @brief Method of exclusively creating a temporary file beside its target
+			 * @details Returns an open handle for writing and flushing without reopening by name.
+			 *          Existing files are never removed. POSIX access bits of an existing regular
+			 *          target are retained; a new target receives 0644 subject to umask. Ownership and ACLs
+			 *          are not copied. Windows inherits the directory ACL. The caller closes
+			 *          the handle and removes the temporary file on failure.
+			 * @param filename target file path
+			 * @param address  created temporary file path, empty on failure
+			 * @return         open handle or a null pointer on failure
+			 *
+			 * \~
+			 */
+			handle_file_t temporary(string_view filename, string & address) const noexcept;
 		public:
 			/**
 			 * \~russian

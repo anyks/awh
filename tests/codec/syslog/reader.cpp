@@ -168,16 +168,16 @@ TEST(CodecSysLogReader, DateBoundaries) {
 	 * @brief Случай отделения границ даты
 	 *
 	 */
-	struct Case {
+	typedef struct Case {
 		// Разбираемая запись
 		const char * record;
 		// Ожидаемый отделённый текст даты
 		const char * date;
 		// Ожидаемое имя узла
 		const char * host;
-	};
+	} case_t;
 	// Случаи отделения границ даты, видами её перебранные
-	const Case CASES[] = {
+	const case_t CASES[] = {
 		{"<13>Oct  9 22:14:15 host app: msg", "Oct  9 22:14:15", "host"},
 		{"<13>Oct 09 22:14:15 host app: msg", "Oct 09 22:14:15", "host"},
 		{"<13>Oct 9 22:14:15 host app: msg", "Oct 9 22:14:15", "host"},
@@ -519,14 +519,14 @@ TEST(CodecSysLogReader, Failures) {
 	 * @brief Случай отказа разбора записи
 	 *
 	 */
-	struct Case {
+	typedef struct Case {
 		// Разбираемая запись
 		const char * record;
 		// Ожидаемый код отказа разбора
 		syslog::error_t error;
-	};
+	} case_t;
 	// Случаи отказов разбора записей
-	const Case CASES[] = {
+	const case_t CASES[] = {
 		{"<999>1 2023-04-11T23:29:33Z host app - - - Message", syslog::error_t::INVALID_PRIORITY},
 		{"<13>2 2023-04-11T23:29:33Z host app - - - Message", syslog::error_t::UNSUPPORTED_VERSION},
 		{"<13>1 2023-04-11T23:29:33Z host app - -", syslog::error_t::INCOMPLETE_HEADER},
@@ -1715,7 +1715,7 @@ TEST(CodecSysLogReader, ChunkedUnderStrictMatching) {
  *          принимала по-прежнему. Случай этот в наборе ниже стоит намеренно
  *
  */
-TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet){
+TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet) {
 	// Заголовок записи, единый у всех случаев набора
 	const string head = "<165>1 2026-09-15T00:00:00Z host app 1 - ";
 	/**
@@ -1798,7 +1798,7 @@ TEST(CodecSysLogReader, StructuredNamesFollowTheNameSet){
  *          иного, нам неведомого описания»
  *
  */
-TEST(CodecSysLogReader, VersionFieldIsJudgedAsWritten){
+TEST(CodecSysLogReader, VersionFieldIsJudgedAsWritten) {
 	/**
 	 * @brief Метод разбора записи заданным сличением
 	 *
@@ -1864,7 +1864,7 @@ TEST(CodecSysLogReader, VersionFieldIsJudgedAsWritten){
  *          журналов
  *
  */
-TEST(CodecSysLogReader, MarkedMessageMustBeValidUtf8){
+TEST(CodecSysLogReader, MarkedMessageMustBeValidUtf8) {
 	// Метка порядка байтов, кодировку объявляющая
 	const string mark = "\xEF\xBB\xBF";
 	/**
@@ -1937,7 +1937,7 @@ TEST(CodecSysLogReader, MarkedMessageMustBeValidUtf8){
  *          щупом, а не чтением
  *
  */
-TEST(CodecSysLogReader, GuardsUntouchedByTheSuite){
+TEST(CodecSysLogReader, GuardsUntouchedByTheSuite) {
 	/**
 	 * Выполняем проверку отказа датою, ни одному описанию не отвечающей
 	 *
@@ -2019,7 +2019,7 @@ TEST(CodecSysLogReader, GuardsUntouchedByTheSuite){
  *          отвергать законные записи, где поля намеренно не объявлены
  *
  */
-TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict){
+TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict) {
 	/**
 	 * @brief Метод разбора записи заданным сличением
 	 *
@@ -2096,7 +2096,7 @@ TEST(CodecSysLogReader, EmptyHeaderFieldIsRefusedWhenStrict){
  *          щуп круга и попался, показав нули там, где их не было
  *
  */
-TEST(CodecSysLogReader, ChunkedPositionsHoldTheirPlaces){
+TEST(CodecSysLogReader, ChunkedPositionsHoldTheirPlaces) {
 	// Разбираемый поток записей системного журнала о трёх записях
 	const string text =
 		"<165>1 2023-04-11T23:29:33.003Z machine.example.com evntslog - ID47 "
@@ -2107,14 +2107,14 @@ TEST(CodecSysLogReader, ChunkedPositionsHoldTheirPlaces){
 	 * @brief Событие разбора вместе с местом его записи
 	 *
 	 */
-	struct item_t {
+	typedef struct Item {
 		// Вид события и поле, событием выданное
 		uint8_t event, field;
 		// Имя ключа и значение, событием выданные
 		string key, value;
 		// Место начала записи, событие породившей
 		uint64_t offset, line, column;
-	};
+	} item_t;
 	/**
 	 * Сбор событий разбора подачей кусками заданного размера
 	 *

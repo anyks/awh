@@ -52,6 +52,18 @@ fi
 # Получаем число кругов ворошения
 ROUNDS="${2:-30000}"
 
+# Проверяем аргументы перед включением в удалённую команду
+case "$CODEC" in
+	*[!a-z0-9-]*|'') echo "Недопустимое имя кодека" >&2; exit 1 ;;
+esac
+case "$ROUNDS" in
+	*[!0-9]*|'') echo "Число кругов должно быть положительным целым" >&2; exit 1 ;;
+esac
+if ! [ "$ROUNDS" -gt 0 ] 2>/dev/null; then
+	echo "Число кругов должно быть положительным целым" >&2
+	exit 1
+fi
+
 # Получаем корень дерева исходных текстов
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -89,105 +101,99 @@ echo "Собираем свёрток: $BUNDLE"
 	include src/codec src/num src/sys src/net src/encoding src/alloc \
 	src/compressor src/cryptography submodules/zlib tools/fuzz ) || exit 1
 
-#
-# Сводка раскладки, ведомая ФАЙЛОМ, а не переменными
-#
-# @warning Обход идёт за конвейером `echo | while`, и оболочка исполняет его в своём
-#          ходе: всякая переменная, в нём заведённая, гибнет вместе с ним. Свод на
-#          переменных выходил бы пустым всегда, а раскладка отчитывалась бы молчанием
-#          вместо расхождения
-#
-REPORT="/tmp/awh-fuzz-report-$STAMP.txt"
-
-# Выполняем очистку сводки раскладки
+# Каталог локальных журналов, сохраняемых после завершения раскладки
+WORK=$(mktemp -d "${TMPDIR:-/tmp}/awh-fuzz-report-XXXXXX") || exit 1
+REPORT="$WORK/report.log"
+COUNTERS="$WORK/counters.log"
 : > "$REPORT"
+: > "$COUNTERS"
+
+# Число запрошенных машин, удачных прогонов и отказов
+EXPECTED=0
+CLEAN=0
+FAILED=0
 
 #
-# Выполняем перебор всех машин раскладки
+# Перебираем машины в текущей оболочке, сохраняя итоговые счётчики
 #
-echo "$MACHINES" | while IFS='|' read -r HOST TAG; do
+while IFS='|' read -r HOST TAG; do
 	# Пропускаем пустые строки перечня машин
 	[ -n "${HOST:-}" ] || continue
-	# Выводим сообщение о начале прогона на очередной машине
-	echo "=== $TAG ($HOST)"
-	#
-	# Выполняем передачу свёртка на очередную машину
-	#
-	# @note Сроки живости обязательны: оборванная связь без них держит всю раскладку до
-	#       упора, и машина, работу окончившая, числится неответившей
-	#
+	EXPECTED=$((EXPECTED + 1))
+	LOG="$WORK/machine-$EXPECTED.log"
+	echo "=== $TAG ($HOST)" | tee -a "$REPORT"
+	# Передаём свёрток и учитываем отказ передачи в общем результате
 	if ! scp -q -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=20 \
-		-o ServerAliveInterval=30 -o ServerAliveCountMax=10 "$BUNDLE" "forman@$HOST:/tmp/" 2>/dev/null; then
-		# Выводим сообщение о недоступности машины
-		echo "    !!! передача не удалась, машина пропущена"
-		# Выполняем переход к следующей машине
+		-o ServerAliveInterval=30 -o ServerAliveCountMax=10 "$BUNDLE" "forman@$HOST:/tmp/" 2> "$LOG"; then
+		cat "$LOG" | tee -a "$REPORT"
+		echo "    !!! передача не удалась" | tee -a "$REPORT"
+		FAILED=$((FAILED + 1))
 		continue
 	fi
 	#
-	# Выполняем сборку и прогон ворошителя на очередной машине
-	#
-	# @note Признак `-n` обязателен: без него `ssh` вычитывает поток ввода целиком и
-	#       съедает перечень машин у обхода
+	# Сохраняем код SSH непосредственно, без конвейера с tee или tail.
+	# Удалённая оболочка также сохраняет исход сборки или ворошителя до вывода и уборки.
 	#
 	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=20 \
 		-o ServerAliveInterval=30 -o ServerAliveCountMax=10 "forman@$HOST" \
-		"rm -rf ~/fuzz-$STAMP && mkdir -p ~/fuzz-$STAMP && cd ~/fuzz-$STAMP &&
-		 gzip -dc /tmp/awh-fuzz-$STAMP.tgz | tar -xf - &&
-		 for CLONE in \$HOME/awh \$HOME/awh-v5 \$HOME/awh5; do
-			[ -f \$CLONE/third_party/lib/libdependence.a ] && ln -sfn \$CLONE/third_party ./third_party && break
-		 done
-		 sh tools/fuzz/build.sh $CODEC . /tmp/fz-$STAMP > /tmp/fzb-$STAMP.log 2>&1
-		 if [ \$? -ne 0 ]; then
-			echo '    !!! СБОРКА ОТКАЗАЛА'
-			grep -i error /tmp/fzb-$STAMP.log | head -3
-			tail -3 /tmp/fzb-$STAMP.log
-		 else
-			/tmp/fz-$STAMP/$CODEC-fuzz $ROUNDS 2>&1 | tail -2
-			echo \"    исход: \$?\"
+		"STATUS=0
+		 mkdir -p ~/fuzz-$STAMP && cd ~/fuzz-$STAMP &&
+		 gzip -dc /tmp/awh-fuzz-$STAMP.tgz | tar -xf - || STATUS=\$?
+		 if [ \$STATUS -eq 0 ]; then
+			for CLONE in \$HOME/awh \$HOME/awh-v5 \$HOME/awh5; do
+				[ -f \$CLONE/third_party/lib/libdependence.a ] && ln -sfn \$CLONE/third_party ./third_party && break
+			done
+			sh tools/fuzz/build.sh $CODEC . /tmp/fz-$STAMP > /tmp/fzb-$STAMP.log 2>&1
+			STATUS=\$?
+			if [ \$STATUS -ne 0 ]; then
+				echo '    !!! СБОРКА ОТКАЗАЛА'
+				cat /tmp/fzb-$STAMP.log
+			else
+				/tmp/fz-$STAMP/$CODEC-fuzz $ROUNDS > /tmp/fzr-$STAMP.log 2>&1
+				STATUS=\$?
+				cat /tmp/fzr-$STAMP.log
+			fi
 		 fi
-		 cd ~ && rm -rf ~/fuzz-$STAMP /tmp/fz-$STAMP /tmp/fzb-$STAMP.log /tmp/awh-fuzz-$STAMP.tgz" 2>&1 | tee -a "$REPORT"
-done
+		 echo \"    исход: \$STATUS\"
+		 cd /
+		 rm -rf ~/fuzz-$STAMP /tmp/fz-$STAMP /tmp/fzb-$STAMP.log /tmp/fzr-$STAMP.log /tmp/awh-fuzz-$STAMP.tgz
+		 exit \$STATUS" > "$LOG" 2>&1
+	STATUS=$?
+	cat "$LOG" | tee -a "$REPORT"
+	# Отказываем раскладке при ошибке SSH, сборки или самого ворошителя
+	if [ "$STATUS" -ne 0 ]; then
+		echo "    !!! удалённый прогон завершился с кодом $STATUS" | tee -a "$REPORT"
+		FAILED=$((FAILED + 1))
+		continue
+	fi
+	# Требуем ровно одну строку счётчиков от каждой запрошенной машины
+	COUNT=$(grep -c "^$CODEC fuzz: [0-9]" "$LOG")
+	if [ "$COUNT" -ne 1 ]; then
+		echo "    !!! ожидалась одна строка счётчиков, получено $COUNT" | tee -a "$REPORT"
+		FAILED=$((FAILED + 1))
+		continue
+	fi
+	# Пометка инструментации не входит в счётчики воспроизводимого прогона
+	grep "^$CODEC fuzz: [0-9]" "$LOG" | sed 's/ \[БЕЗ НАДЗИРАТЕЛЕЙ\]$//' >> "$COUNTERS"
+	CLEAN=$((CLEAN + 1))
+done <<EOF
+$MACHINES
+EOF
 
-# Выполняем снос свёртка исходных текстов
+# Удаляем только свёрток текущего запуска; журналы остаются для разбора отказов
 rm -f "$BUNDLE"
 
-#
-# Выполняем сличение счётчиков ворошения по машинам
-#
-# @details Источник случайных величин засевается заданным зерном, и ворошитель идёт
-#          одною и тою же дорогой на всякой системе. Оттого строка счётчиков обязана
-#          сойтись ДОСЛОВНО: расхождение хоть одного числа означает, что кодек повёл
-#          себя на этой системе иначе, - и находка эта дороже самого прогона
-#
-echo "=== СЛИЧЕНИЕ СЧЁТЧИКОВ"
-
-# Число разных строк счётчиков, отданных машинами
-VARIANTS=$(grep "^$CODEC fuzz: [0-9]" "$REPORT" | sort -u | wc -l | tr -d ' ')
-
-# Число машин, отдавших счётчики
-ANSWERED=$(grep -c "^$CODEC fuzz: [0-9]" "$REPORT")
-
-# Число машин, ворошение на каких окончилось без отказа
-CLEAN=$(grep -c "    исход: 0" "$REPORT")
-
-# Если счётчиков не отдала ни одна машина
-if [ "$ANSWERED" -eq 0 ]; then
-	# Выводим сообщение о том, что сличать нечего
-	echo "!!! СЧЁТЧИКОВ НЕ ОТДАЛА НИ ОДНА МАШИНА"
-# Если строка счётчиков у всех машин одна
-elif [ "$VARIANTS" -eq 1 ]; then
-	# Выводим сообщение о схождении счётчиков
-	echo "счётчики сошлись число в число: машин $ANSWERED, без отказа $CLEAN"
-# Если счётчики машин разошлись
-else
-	# Выводим сообщение о расхождении счётчиков
-	echo "!!! СЧЁТЧИКИ РАЗОШЛИСЬ: разных строк $VARIANTS при машинах $ANSWERED"
-	# Выводим сами разошедшиеся строки счётчиков
-	grep "^$CODEC fuzz: [0-9]" "$REPORT" | sort | uniq -c | sed 's/^/    /'
+# Сличаем все полученные строки после удаления служебной пометки инструментации
+VARIANTS=$(sort -u "$COUNTERS" | wc -l | tr -d ' ')
+echo "=== СЛИЧЕНИЕ СЧЁТЧИКОВ" | tee -a "$REPORT"
+if [ "$EXPECTED" -eq 0 ] || [ "$FAILED" -ne 0 ] || [ "$CLEAN" -ne "$EXPECTED" ] || [ "$VARIANTS" -ne 1 ]; then
+	echo "!!! РАСКЛАДКА НЕ ПРОШЛА: запрошено $EXPECTED, успешно $CLEAN, отказов $FAILED, разных строк $VARIANTS" | tee -a "$REPORT"
+	sort "$COUNTERS" | uniq -c | tee -a "$REPORT"
+	echo "Журналы: $WORK"
+	exit 1
 fi
 
-# Выполняем снос сводки раскладки
-rm -f "$REPORT"
-
-# Выводим сообщение об окончании раскладки
-echo "=== РАСКЛАДКА ВОРОШИТЕЛЯ ОКОНЧЕНА"
+echo "счётчики сошлись число в число: машин $EXPECTED, без отказа $CLEAN" | tee -a "$REPORT"
+echo "=== РАСКЛАДКА ВОРОШИТЕЛЯ ОКОНЧЕНА" | tee -a "$REPORT"
+echo "Журналы: $WORK"
+exit 0

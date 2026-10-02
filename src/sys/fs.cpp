@@ -51,6 +51,7 @@
  * Стандартные заголовочные файлы
  */
 #include <vector>
+#include <atomic>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -2783,16 +2784,50 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 					#endif
 					// Возвращаем результат
 					return result;
-				// Если идентификатор обнулился после переполнения счётчика и является ссылкой
-				} else if(this->type(result) == type_t::LINK) {
-					// Получаем длину полученного адреса
-					const ssize_t length = ::readlink(result.c_str(), buffer, sizeof(buffer) - 1);
-					// Если длина адреса получена
-					if(length != -1){
-						// Выполняем установку конца строки
-						buffer[length] = '\0';
-						// Возвращаем результат
-						return buffer;
+				// Если ссылка ведёт к ещё не созданной цели
+				} else if((errno == ENOENT) && (this->type(result) == type_t::LINK)) {
+					/**
+					 * Разрешаем цепочку ссылок с ограничением числа переходов
+					 *
+					 * @note Относительная цель отсчитывается от каталога ссылки, а не от
+					 *       рабочего каталога процесса. Иначе запись подменяет посторонний файл.
+					 */
+					for(uint32_t attempt = 0; attempt < 40; attempt++){
+						// Получаем цель ссылки без молчаливого усечения адреса
+						const ssize_t length = ::readlink(result.c_str(), buffer, sizeof(buffer));
+						// Если адрес не получен целиком
+						if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
+							// Оставляем исходный адрес для обработки ошибки вызывающей стороной
+							break;
+						// Сохраняем цель до повторного использования буфера
+						const string target(buffer, static_cast <size_t> (length));
+						// Если цель задана абсолютным адресом
+						if(target.front() == '/')
+							// Переходим непосредственно к цели
+							result = target;
+						else {
+							// Выделяем каталог ссылки, сохраняя корневой разделитель
+							const size_t offset = result.rfind('/');
+							const string directory = (offset != string::npos ? result.substr(0, offset + 1) : ".");
+							// Разрешаем каталог до присоединения относительной цели
+							if(::realpath(directory.c_str(), buffer) == nullptr)
+								// Не подменяем недоступный каталог рабочим каталогом процесса
+								break;
+							// Сохраняем компоненты цели: ссылки перед '..' должен разрешать системный вызов
+							result.assign(buffer).append("/").append(target);
+						}
+						// Если очередная цель уже существует
+						if(::realpath(result.c_str(), buffer) != nullptr)
+							// Возвращаем её полный адрес
+							return buffer;
+						// Если причина отказа отличается от отсутствия цели
+						if(errno != ENOENT)
+							// Не продолжаем разрешение циклических и недоступных путей
+							break;
+						// Если цепочка завершилась отсутствующим файлом
+						if(this->type(result) != type_t::LINK)
+							// Возвращаем абсолютный адрес для последующего создания цели
+							return result;
 					}
 				}
 			}
@@ -3882,6 +3917,133 @@ awh::handle_dir_t awh::Filesystem::handleDir() const noexcept {
 awh::handle_file_t awh::Filesystem::handleFile() const noexcept {
 	// Выводим созданный объект файла
 	return handle_file_t(new HandleFile());
+}
+/**
+ * @brief Метод исключительного создания временного файла рядом с целью
+ *
+ * @param filename адрес целевого файла
+ * @param address  адрес созданного временного файла, при отказе пустой
+ * @return         открытый объект либо пустой указатель при отказе
+ *
+ */
+awh::handle_file_t awh::Filesystem::temporary(string_view filename, string & address) const noexcept {
+	/**
+	 * Выполняем перехват ошибок формирования имени и создания объекта
+	 */
+	try {
+		// Сохраняем цель до очистки выходного адреса, который может служить входом
+		const string target(filename);
+		// Сбрасываем адрес результата
+		address.clear();
+		// Если адрес цели не передан
+		if(target.empty())
+			// Выводим отсутствие открытого файла
+			return nullptr;
+		// Создаём объект до открытия системного дескриптора
+		handle_file_t result = this->handleFile();
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выделяем каталог, сохраняя также адрес относительно текущего каталога диска
+			const size_t offset = target.find_last_of("/\\");
+			const string directory = target.substr(0, (offset != string::npos ? offset + 1 :
+				((target.size() > 1) && (target[1] == ':') ? 2 : 0)));
+			// Счётчик разводит имена параллельных вызовов внутри процесса
+			static atomic_uint64_t sequence{0};
+			/**
+			 * Повторяем создание при занятом имени, не затрагивая существующий файл
+			 */
+			for(uint32_t attempt = 0; attempt < 128; attempt++){
+				// Формируем имя рядом с целевым файлом
+				string candidate = (directory + ".awh-tmp." + to_string(::GetCurrentProcessId()) + "." + to_string(sequence.fetch_add(1, memory_order_relaxed)));
+				// Открываем только новый файл с возможностью последующего переименования
+				const HANDLE handle = ::CreateFileW(
+					__awh_longpath__(fmk::convert(candidate)).c_str(),
+					(GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+					nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr
+				);
+				// Передаём дескриптор объекту файла
+				result->set(handle);
+				// Если исключительное создание выполнено
+				if(result->valid()){
+					// Передаём имя без выделения памяти после открытия файла
+					address.swap(candidate);
+					// Выводим открытый объект
+					return result;
+				}
+				// Получаем причину отказа создания
+				const DWORD error = ::GetLastError();
+				// Если отказ не связан с занятым именем
+				if((error != ERROR_FILE_EXISTS) && (error != ERROR_ALREADY_EXISTS))
+					// Прекращаем попытки создания
+					break;
+			}
+		/**
+		 * Для операционной системы не являющейся MS Windows
+		 */
+		#else
+			// Выделяем каталог без повторения имени цели, которое может достигать NAME_MAX
+			const size_t offset = target.rfind('/');
+			const string directory = target.substr(0, (offset != string::npos ? offset + 1 : 0));
+			// Получаем права существующей цели до создания временного файла
+			struct stat info{};
+			const int32_t status = ::stat(target.c_str(), &info);
+			// Если цель недоступна по причине, отличной от её отсутствия
+			if((status != 0) && (errno != ENOENT)){
+				// Сообщаем об отказе проверки прав цели
+				log::print("Target file \"%s\" could not be inspected", log::flag_t::CRITICAL, target.c_str());
+				// Выводим отсутствие открытого файла
+				return nullptr;
+			}
+			// Счётчик разводит имена параллельных вызовов внутри процесса
+			static atomic_uint64_t sequence{0};
+			/**
+			 * Повторяем создание при занятом имени, не открывая существующие файлы и ссылки
+			 */
+			for(uint32_t attempt = 0; attempt < 128; attempt++){
+				// Формируем имя рядом с целевым файлом
+				string candidate = (directory + ".awh-tmp." + to_string(::getpid()) + "." + to_string(sequence.fetch_add(1, memory_order_relaxed)));
+				// Существующую цель сначала защищаем правами 0600, новой оставляем прежний режим
+				result->set(::open(candidate.c_str(), (O_RDWR | O_CREAT | O_EXCL), (status == 0 ? 0600 : 0644)));
+				// Если исключительное создание выполнено
+				if(result->valid()){
+					// Если необходимо перенести права существующего обычного файла
+					if((status == 0) && S_ISREG(info.st_mode) &&
+					   (::fchmod(* result, (info.st_mode & 0777)) != 0)){
+						// Закрываем дескриптор перед удалением созданного файла
+						result.reset();
+						// Удаляем только файл, созданный этим вызовом
+						static_cast <void> (::unlink(candidate.c_str()));
+						// Сообщаем об отказе переноса прав
+						log::print("Temporary file for \"%s\" could not retain access bits", log::flag_t::CRITICAL, target.c_str());
+						// Выводим отсутствие открытого файла
+						return nullptr;
+					}
+					// Передаём имя без выделения памяти после открытия файла
+					address.swap(candidate);
+					// Выводим открытый объект
+					return result;
+				}
+				// Если отказ не связан с занятым именем
+				if(errno != EEXIST)
+					// Прекращаем попытки создания
+					break;
+			}
+		#endif
+		// Сообщаем об отказе исключительного создания
+		log::print("Temporary file for \"%s\" could not be created", log::flag_t::CRITICAL, target.c_str());
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Сбрасываем адрес результата
+		address.clear();
+		// Выводим описание ошибки
+		log::print("%s", log::flag_t::CRITICAL, error.what());
+	}
+	// Выводим отсутствие открытого файла
+	return nullptr;
 }
 /**
  * @brief Метод усечения файла до заданной длины

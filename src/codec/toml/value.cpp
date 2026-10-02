@@ -1410,30 +1410,52 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & val
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Получаем тип хранимого значения до изменения текущего дерева
+	const type_t type = value._type;
+	// Получаем запись строкового значения до изменения текущего дерева
+	const string_t quoting = value._quoting;
+	// Получаем систему счисления записи целого числа до изменения текущего дерева
+	const radix_t radix = value._radix;
+	// Получаем логическое значение до изменения текущего дерева
+	const bool boolean = value._boolean;
+	// Получаем признак записи перечня несколькими строками до изменения текущего дерева
+	const bool multiline = value._multiline;
+	// Получаем целое число до изменения текущего дерева
+	const int64_t integer = value._integer;
+	// Получаем число с плавающей точкой до изменения текущего дерева
+	const double real = value._real;
+	// Получаем отметку времени до изменения текущего дерева
+	const stamp_t stamp = value._stamp;
+	// Получаем содержимое строкового значения до изменения текущего дерева
+	string text = value._text;
+	// Получаем имена пар таблицы до изменения текущего дерева
+	vector <string> names = value._names;
+	// Получаем значения вместилища до изменения текущего дерева
+	vector <Value> items = value._items;
 	// Выполняем копирование типа хранимого значения
-	this->_type = value._type;
+	this->_type = type;
 	// Выполняем копирование записи строкового значения
-	this->_quoting = value._quoting;
+	this->_quoting = quoting;
 	// Выполняем копирование системы счисления записи целого числа
-	this->_radix = value._radix;
+	this->_radix = radix;
 	// Выполняем копирование логического значения
-	this->_boolean = value._boolean;
+	this->_boolean = boolean;
 	// Выполняем копирование признака записи перечня несколькими строками
-	this->_multiline = value._multiline;
+	this->_multiline = multiline;
 	// Выполняем копирование целого числа
-	this->_integer = value._integer;
+	this->_integer = integer;
 	// Выполняем копирование числа с плавающей точкой
-	this->_real = value._real;
+	this->_real = real;
 	// Выполняем копирование отметки времени
-	this->_stamp = value._stamp;
+	this->_stamp = stamp;
 	// Выполняем копирование содержимого строкового значения
-	this->_text = value._text;
+	this->_text = ::std::move(text);
 	// Выполняем копирование имён пар таблицы
-	this->_names = value._names;
+	this->_names = ::std::move(names);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем копирование значений вместилища
-	this->_items = value._items;
+	this->_items = ::std::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1451,37 +1473,61 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Выполняем перенос типа хранимого значения
-	this->_type = value._type;
-	// Выполняем перенос записи строкового значения
-	this->_quoting = value._quoting;
-	// Выполняем перенос системы счисления записи целого числа
-	this->_radix = value._radix;
-	// Выполняем перенос логического значения
-	this->_boolean = value._boolean;
-	// Выполняем перенос признака записи перечня несколькими строками
-	this->_multiline = value._multiline;
-	// Выполняем перенос целого числа
-	this->_integer = value._integer;
-	// Выполняем перенос числа с плавающей точкой
-	this->_real = value._real;
-	// Выполняем перенос отметки времени
-	this->_stamp = value._stamp;
-	// Выполняем перенос содержимого строкового значения
-	this->_text = ::std::move(value._text);
-	// Выполняем перенос имён пар таблицы
-	this->_names = ::std::move(value._names);
-	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = ::std::move(value._index);
-	// Выполняем перенос значений вместилища
-	this->_items = ::std::move(value._items);
+	// Получаем тип хранимого значения до изменения текущего дерева
+	const type_t type = value._type;
+	// Получаем запись строкового значения до изменения текущего дерева
+	const string_t quoting = value._quoting;
+	// Получаем систему счисления записи целого числа до изменения текущего дерева
+	const radix_t radix = value._radix;
+	// Получаем логическое значение до изменения текущего дерева
+	const bool boolean = value._boolean;
+	// Получаем признак записи перечня несколькими строками до изменения текущего дерева
+	const bool multiline = value._multiline;
+	// Получаем целое число до изменения текущего дерева
+	const int64_t integer = value._integer;
+	// Получаем число с плавающей точкой до изменения текущего дерева
+	const double real = value._real;
+	// Получаем отметку времени до изменения текущего дерева
+	const stamp_t stamp = value._stamp;
+	// Получаем содержимое строкового значения до изменения текущего дерева
+	string text(::std::move(value._text));
+	// Получаем имена пар таблицы до изменения текущего дерева
+	vector <string> names(::std::move(value._names));
+	// Получаем указатель поиска до изменения текущего дерева
+	unique_ptr <unordered_map <string, size_t>> index(::std::move(value._index));
+	// Получаем значения вместилища до изменения текущего дерева
+	vector <Value> items(::std::move(value._items));
 	/**
 	 * Выполняем сброс перенесённого значения
 	 *
-	 * @note Сброс обязателен: перенесённое значение остаётся годным к употреблению, и
-	 *       тип его, при переносе не тронутый, изображал бы содержимое, уже ушедшее
+	 * @note Сброс выполняется до замены старого вместилища назначения: переносимое
+	 *       значение может быть его потомком, и после замены обращаться к нему нельзя
 	 */
 	value._type = type_t::NONE;
+	// Выполняем перенос типа хранимого значения
+	this->_type = type;
+	// Выполняем перенос записи строкового значения
+	this->_quoting = quoting;
+	// Выполняем перенос системы счисления записи целого числа
+	this->_radix = radix;
+	// Выполняем перенос логического значения
+	this->_boolean = boolean;
+	// Выполняем перенос признака записи перечня несколькими строками
+	this->_multiline = multiline;
+	// Выполняем перенос целого числа
+	this->_integer = integer;
+	// Выполняем перенос числа с плавающей точкой
+	this->_real = real;
+	// Выполняем перенос отметки времени
+	this->_stamp = stamp;
+	// Выполняем перенос содержимого строкового значения
+	this->_text = ::std::move(text);
+	// Выполняем перенос имён пар таблицы
+	this->_names = ::std::move(names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = ::std::move(index);
+	// Выполняем перенос значений вместилища
+	this->_items = ::std::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }

@@ -30,6 +30,11 @@
 #include <args/args.hpp>
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <limits>
+
+/**
  * Подключаем заголовочный файл разбора записи числа
  */
 #include <num/lexical/lexical.hpp>
@@ -392,18 +397,106 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 			return false;
 		}
 	}
+	/**
+	 * Выполняем проверку источников родительских значений до изменения дерева
+	 *
+	 * @note Скаляр родителя и значение потомка занимают пересекающиеся пути.
+	 *       Проверки только точного имени недостаточно: файл с полем `net`
+	 *       не вправе отменять `net.port`, поданный набором запуска, и наоборот
+	 */
+	for(size_t offset = path.find('/'); offset != string::npos; offset = path.find('/', offset + 1)){
+		// Выполняем поиск источника родительского значения
+		auto i = this->_origins.find(path.substr(0, offset));
+		// Если родитель подан старшим источником
+		if((i != this->_origins.end()) && (static_cast <uint8_t> (i->second) > static_cast <uint8_t> (source)))
+			// Выходим из метода, родительское значение сохранено
+			return true;
+	}
+	// Начало путей потомков с границей звена
+	const string branch = (path + '/');
+	/**
+	 * Выполняем проверку источников потомков заменяемого значения
+	 *
+	 * @note Граница звена обязательна: `net/port` лежит под `net`, а `network`
+	 *       является отдельным параметром. Имена здесь уже ограждены по RFC 6901
+	 */
+	for(auto i = this->_origins.lower_bound(branch); (i != this->_origins.end()) && (i->first.compare(0, branch.length(), branch) == 0); ++i){
+		// Если потомок подан старшим источником
+		if(static_cast <uint8_t> (i->second) > static_cast <uint8_t> (source))
+			// Выходим из метода, поддерево со старшим значением сохранено
+			return true;
+	}
 	// Выполняем поиск источника уже уложенного значения
 	auto i = this->_origins.find(path);
+	// Если точное значение подано старшим источником
+	if((i != this->_origins.end()) && (static_cast <uint8_t> (i->second) > static_cast <uint8_t> (source)))
+		// Выходим из метода, прежнее значение сохранено
+		return true;
+	// Родитель проверяемого звена пути
+	const codec::abc::value_t * current = &this->_root;
+	// Предел роста массива при обращении по номеру
+	const size_t limit = codec::abc::value_t::limit();
+	// Смещение разбора пути
+	size_t offset = 0;
+	// Разбираемое звено пути
+	string_view segment;
+	// Вместилище звена со снятыми отменяющими записями
+	string unescaped = "";
+	// Признак невозможности записи по пути
+	bool invalid = false;
+	/**
+	 * Проверяем весь путь до освобождения родителей и изменения источников
+	 *
+	 * @note Скалярный родитель будет освобождён после проверки: nullptr обозначает
+	 *       ещё не созданное поддерево. Числа внутри отображения остаются именами.
+	 *       Предел роста не запрещает менять уже существующий элемент массива
+	 */
+	while(codec::abc::segment(path, offset, segment, unescaped, invalid)){
+		// Если скалярный родитель должен уступить место новому поддереву
+		if((current != nullptr) && !current->is(codec::abc::type_t::CONTAINER))
+			// Продолжаем проверку как для ещё не созданного поддерева
+			current = nullptr;
+		// Разобранный номер элемента массива
+		size_t index = 0;
+		// Если звено задаёт индекс массива либо создаёт новый массив
+		if(((current == nullptr) || !current->is(codec::abc::type_t::MAP)) && codec::abc::indexed(segment, index)){
+			// Если для записи требуется рост массива
+			if((current == nullptr) || (index >= current->size())){
+				// Если длина переполнится либо превысит установленный предел
+				if((index == numeric_limits <size_t>::max()) || ((limit > 0) && (index >= limit))){
+					// Отмечаем невозможность записи без изменения дерева
+					invalid = true;
+					// Завершаем проверку пути
+					break;
+				}
+				// Оставшиеся звенья проверяем как ещё не созданные
+				current = nullptr;
+			// Если элемент массива уже существует
+			} else current = &(* current)[index];
+		// Если звено задаёт имя поля существующего родителя
+		} else if(current != nullptr) {
+			// Если родитель является массивом, именованное поле создать нельзя
+			if(!current->is(codec::abc::type_t::MAP)){
+				// Отмечаем несовместимость пути с видом родителя
+				invalid = true;
+				// Завершаем проверку пути
+				break;
+			}
+			// Переходим к полю отображения без изменения дерева
+			current = &(* current)[string(segment)];
+		}
+	}
+	// Если путь несовместим с деревом или пределом роста массива
+	if(invalid){
+		// Запоминаем причину отказа записи
+		this->_errors.emplace_back(error_t::INVALID_PATH, location_t());
+		// Выводим в лог сообщение о невозможности записи
+		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::INVALID_PATH), path.c_str());
+		// Выходим из метода, сохранив прежнее дерево и его источники
+		return false;
+	}
 	// Если значение по этому пути уже уложено
 	if(i != this->_origins.end()){
-		/**
-		 * Если уложенное значение взято из источника СТАРШЕГО, поверх него значение
-		 * НЕ ЛОЖИТСЯ: иначе разбор файла настроек, поданный после набора запуска,
-		 * молча отменял бы поданное из набора
-		 */
-		if(static_cast <uint8_t> (i->second) > static_cast <uint8_t> (source))
-			// Выходим из метода, укладка старшего источника сохранена
-			return true;
 		/**
 		 * Если значение подано повторно тем же самым источником, а собирать повторы
 		 * массивом настройки не велят
@@ -436,11 +529,55 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 					return false;
 				// Заменяем уложенное значение собранным массивом
 				current = ::move(array);
+				// Источники потомков перемещаемого значения
+				map <string, source_t> origins;
+				/**
+				 * Выполняем перенос путей потомков под первое звено массива
+				 *
+				 * @note Повтор пустого отображения после добавления ему полей
+				 *       переносит эти поля вместе с отображением, а не удаляет их
+				 */
+				for(auto j = this->_origins.lower_bound(branch); (j != this->_origins.end()) && (j->first.compare(0, branch.length(), branch) == 0);){
+					// Запоминаем источник по новому пути потомка
+					origins.emplace(branch + "0/" + j->first.substr(branch.length()), j->second);
+					// Снимаем источник по прежнему пути потомка
+					j = this->_origins.erase(j);
+				}
+				// Укладываем источники по новым путям
+				this->_origins.insert(origins.begin(), origins.end());
 			}
 			// Добавляем в массив вновь поданное значение
 			return current.push(value);
 		}
 	}
+	/**
+	 * Выполняем освобождение скалярных родителей для укладки потомка
+	 *
+	 * @warning ABC не превращает существующий скаляр в отображение при `place()`:
+	 *          запись через такую ссылку уходит в отбросное значение. Приоритеты
+	 *          уже проверены, поэтому скаляр младшего источника можно снять
+	 */
+	for(size_t offset = path.find('/'); offset != string::npos; offset = path.find('/', offset + 1)){
+		// Получаем путь родительского значения
+		const string parent = path.substr(0, offset);
+		// Получаем родительское значение без изменения дерева
+		const codec::abc::value_t & current = this->_root.at(parent);
+		// Если родитель существует и не является вместимым
+		if(current.valid() && !current.is(codec::abc::type_t::CONTAINER)){
+			// Освобождаем место для нового поддерева
+			this->_root.place(parent).clear();
+			// Снимаем источник вытесненного скаляра
+			this->_origins.erase(parent);
+		}
+	}
+	/**
+	 * Выполняем снятие источников потомков заменяемого значения
+	 *
+	 * @note После замены поддерева скаляром эти пути больше не существуют
+	 */
+	for(auto j = this->_origins.lower_bound(branch); (j != this->_origins.end()) && (j->first.compare(0, branch.length(), branch) == 0);)
+		// Снимаем источник вытесненного потомка
+		j = this->_origins.erase(j);
 	// Выполняем укладку значения по пути оси хранения
 	this->_root.place(path) = ::move(value);
 	// Запоминаем источник уложенного значения
@@ -465,6 +602,16 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 		return false;
 	// Если сливаемое значение является отображением
 	if(value.is(codec::abc::type_t::MAP)){
+		/**
+		 * Если вложенное отображение пусто, укладываем его самостоятельным значением
+		 *
+		 * @note Обход полей пустого объекта не вызывает `lay()` ни разу: объект
+		 *       теряется, а его имя обходит строгую схему. Пустой корневой документ
+		 *       остаётся допустимым отсутствием новых настроек
+		 */
+		if(value.empty() && !path.empty())
+			// Выводим результат проверки и укладки пустого отображения
+			return this->lay(path, codec::abc::value_t(value), source);
 		// Признак успешности слияния полей отображения
 		bool result = true;
 		// Выполняем перебор всех полей отображения
@@ -475,6 +622,17 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			if(!value.key(i).value(name))
 				// Продолжаем перебор полей отображения дальше
 				continue;
+			// Если имя поля пусто, оно не должно сливаться с путём родителя
+			if(name.empty()){
+				// Запоминаем отказ до рекурсивного слияния полей объекта
+				this->_errors.emplace_back(error_t::EMPTY_PATH, location_t());
+				// Выводим в лог сообщение о пустом звене пути
+				awh::log::print("Args: %s \"%s/\"", awh::log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+				// Отмечаем отказ слияния этого поля
+				result = false;
+				// Продолжаем слияние соседних полей без потери уровня вложенности
+				continue;
+			}
 			/**
 			 * Выполняем ограждение имени поля отменяющими записями
 			 *
@@ -1591,7 +1749,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 			// Выводим извлечённое число дробное
 			return static_cast <T> (real);
 		// Если извлекается число дробное
-		if constexpr(is_floating_point <T>::value) {
+		if constexpr(is_floating_point <T>::value){
 			// Извлекаемое число целое со знаком
 			int64_t number = 0;
 			// Если значение уложено целым числом

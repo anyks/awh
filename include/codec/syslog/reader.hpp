@@ -660,8 +660,9 @@ namespace awh {
 					 * @return положение начала текущей записи в исходном тексте
 					 *
 					 * \~english
-					 * @brief Method of getting the position of the beginning of the current event
-					 * @return position of the beginning of the current event in the source text
+					 * @brief Method of getting the position of the beginning of the current record
+					 * @details All parsing events of one record report the same record position.
+					 * @return position of the beginning of the current record in the source text
 					 *
 					 * \~
 					 */

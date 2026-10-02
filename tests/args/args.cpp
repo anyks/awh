@@ -51,6 +51,7 @@
  * Стандартные заголовочные файлы записи в файл
  */
 #include <fstream>
+#include <limits>
 #include <sys/fmk.hpp>
 
 /**
@@ -65,6 +66,34 @@ using namespace awh::args;
  *
  */
 namespace {
+	/**
+	 * @brief Временный предел роста массива с восстановлением после проверки
+	 *
+	 */
+	class StorageLimit {
+		private:
+			// Прежний предел роста массива
+			const size_t _previous;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param value временный предел роста массива
+			 *
+			 */
+			explicit StorageLimit(const size_t value) noexcept : _previous(codec::abc::value_t::limit()) {
+				// Устанавливаем временный предел роста массива
+				codec::abc::value_t::limit(value);
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~StorageLimit() noexcept {
+				// Восстанавливаем прежний предел даже при отказе проверки
+				codec::abc::value_t::limit(this->_previous);
+			}
+	};
 	/**
 	 * @brief Метод установки переменной окружения
 	 *
@@ -628,7 +657,7 @@ TEST(ArgsArgs, Filesystem) {
  *          каждый вид сам по себе
  *
  */
-TEST(ArgsArgs, ConfigEveryFormat){
+TEST(ArgsArgs, ConfigEveryFormat) {
 	// Создаём объект работы с логами
 	// Перечень видов записи и записей настроек, им отвечающих
 	const vector <pair <codec::Bridge::format_t, string>> samples = {
@@ -645,19 +674,10 @@ TEST(ArgsArgs, ConfigEveryFormat){
 		// Выполняем разбор записи настроек кодеком
 		ASSERT_TRUE(args.config(sample.second, sample.first)) << "вид записи " << static_cast <uint16_t> (sample.first);
 		/**
-		 * Выполняем выбор пути к значению
+		 * Выполняем выбор пути к значению без обноса корневым узлом XML
 		 *
-		 * @warning У записи XML корень ИМЕНОВАН - стандарт требует ровно один
-		 *          корневой элемент, - и содержимое лежит под ним. Расхождение
-		 *          это законно и вызвано стандартом, а не устройством моста,
-		 *          потому путь здесь и разнится
-		 */
-		/**
-		 * Приставки пути у записи разметки БОЛЬШЕ НЕТ
-		 *
-		 * @note Корневой узел разметки есть обнос записи, а не настройка, и модуль
-		 *       снимает его при чтении: иначе настройка ложилась бы путём
-		 *       `config.port` и доводом запуска не перекрывалась бы вовсе
+		 * @note Корневой узел разметки снимается при чтении настроек, поэтому пути
+		 *       параметров одинаковы для всех проверяемых форматов
 		 */
 		const string prefix = "";
 		// Выполняем проверку укладки последовательности знаков
@@ -676,7 +696,7 @@ TEST(ArgsArgs, ConfigEveryFormat){
  *          выдача модуля - с его именами путей и его разделителем
  *
  */
-TEST(ArgsArgs, DumpEveryFormat){
+TEST(ArgsArgs, DumpEveryFormat) {
 	// Создаём объект работы с логами
 	// Перечень видов записи, круг через которые замкнут
 	const vector <codec::Bridge::format_t> formats = {
@@ -717,7 +737,7 @@ TEST(ArgsArgs, DumpEveryFormat){
  *          настройкам
  *
  */
-TEST(ArgsConfig, FormatComesFromTheFileName){
+TEST(ArgsConfig, FormatComesFromTheFileName) {
 	// Создаём объект работы с логами
 	// Перечень образцов записи настроек, расширением заданных
 	const vector <pair <string, string>> samples = {
@@ -779,7 +799,7 @@ TEST(ArgsConfig, FormatComesFromTheFileName){
  *       одного набора расходиться в толковании одной записи не должны
  *
  */
-TEST(Args, TypeInferenceKeepsMagnitude){
+TEST(Args, TypeInferenceKeepsMagnitude) {
 	// Создаём объект работы с логами
 	// Создаём объект разбора доводов запуска
 	args_t args;
@@ -807,7 +827,7 @@ TEST(Args, TypeInferenceKeepsMagnitude){
  *       негодный путь ловил бы тоже
  *
  */
-TEST(Args, SaveReportsFailureHonestly){
+TEST(Args, SaveReportsFailureHonestly) {
 	// Создаём объект работы с логами
 	// Создаём объект разбора доводов запуска
 	args_t args;
@@ -845,7 +865,7 @@ TEST(Args, SaveReportsFailureHonestly){
  *          выдавался ни разу. Находка аудита 08.09.2026
  *
  */
-TEST(Args, EmptyPathRefusalIsVisible){
+TEST(Args, EmptyPathRefusalIsVisible) {
 	// Создаём объект работы с логами
 	// Создаём объект разбора доводов запуска
 	args_t args;
@@ -868,7 +888,7 @@ TEST(Args, EmptyPathRefusalIsVisible){
  *          от `size()`, одиночное значение пропускал целиком
  *
  */
-TEST(Args, SizeAgreesWithArrayExtraction){
+TEST(Args, SizeAgreesWithArrayExtraction) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем разбор набора запуска с одиночным и вместимым параметрами
@@ -898,7 +918,7 @@ TEST(Args, SizeAgreesWithArrayExtraction){
  *          значения, а у извлечения записью его не было вовсе
  *
  */
-TEST(Args, StringExtractionRendersTypedValues){
+TEST(Args, StringExtractionRendersTypedValues) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем разбор набора запуска со значениями всех видов
@@ -940,7 +960,7 @@ TEST(Args, StringExtractionRendersTypedValues){
  *          записи в журнале у той ветви не было вовсе
  *
  */
-TEST(Args, EmptySettingsFileIsNotAFilesystemRefusal){
+TEST(Args, EmptySettingsFileIsNotAFilesystemRefusal) {
 	// Собираемый путь к пустому файлу настроек
 	const string filename = "./empty-settings.json";
 	// Заводим пустой файл настроек
@@ -972,7 +992,7 @@ TEST(Args, EmptySettingsFileIsNotAFilesystemRefusal){
  *          `errors()` один раз в конце, не узнавал о нём ничем
  *
  */
-TEST(Args, ParsingKeepsEarlierRefusals){
+TEST(Args, ParsingKeepsEarlierRefusals) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем чтение файла настроек, какого нет вовсе
@@ -1017,7 +1037,7 @@ TEST(Args, ParsingKeepsEarlierRefusals){
  *          молчаливой пустышкой, и проверка эта её НЕ поймает
  *
  */
-TEST(Args, EnvPrefixIsCaseFolded){
+TEST(Args, EnvPrefixIsCaseFolded) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем установку переменной окружения приложения
@@ -1043,7 +1063,7 @@ TEST(Args, EnvPrefixIsCaseFolded){
  *          Находка аудита 09.09.2026
  *
  */
-TEST(Args, EnvKeepsPrefixIntact){
+TEST(Args, EnvKeepsPrefixIntact) {
 	// Создаём объект работы с логами
 	// Создаём объект разбора доводов запуска
 	args_t args;
@@ -1077,7 +1097,7 @@ TEST(Args, EnvKeepsPrefixIntact){
  *          трогал. Находка аудита 09.09.2026
  *
  */
-TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness){
+TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness) {
 	// Создаём объект работы с логами
 	// Создаём объект разбора доводов запуска
 	args_t args;
@@ -1135,7 +1155,7 @@ TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness){
  *       сойдись обе ветви на одном поведении, зубы появились бы всюду
  *
  */
-TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers){
+TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers) {
 	// Создаём объект работы с логами
 	// Создаём объект работы с файловой системой
 	fs_t fs;
@@ -1375,7 +1395,7 @@ TEST(Args, TheRepeatWithoutArraysKeepsTheLastValue) {
  * выдавалось записью `<zums cyqdjf="0.25"/>`, а возвращалось полем `cyqdjf`
  *
  */
-TEST(Args, TheMarkupCircleKeepsTheSoleLevel){
+TEST(Args, TheMarkupCircleKeepsTheSoleLevel) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем разбор набора доводов с ОДНИМ полем верхнего уровня
@@ -1432,7 +1452,7 @@ TEST(Args, TheMarkupCircleKeepsTheSoleLevel){
  * `APP_C~D` пропадала из дерева вовсе - при ответе «успех» у самого сбора
  *
  */
-TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis){
+TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis) {
 	// Выполняем заведение переменных окружения со знаками оси хранения
 	ASSERT_EQ(::setenv("AWHTEST_A/B", "1", 1), 0);
 	ASSERT_EQ(::setenv("AWHTEST_C~D", "2", 1), 0);
@@ -1468,7 +1488,7 @@ TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis){
  * получало разное в зависимости от источника
  *
  */
-TEST(Args, TheVocabularyIsTheSameForEverySource){
+TEST(Args, TheVocabularyIsTheSameForEverySource) {
 	// Выполняем перебор образцов, словарю модуля известных
 	for(auto & sample : vector <string> {"yes", "on", "no", "off", "null", "nil", "true", "false", "+42", "42", "0.25"}){
 		// Создаём объект сбора параметров запуска доводом
@@ -1512,7 +1532,7 @@ TEST(Args, TheVocabularyIsTheSameForEverySource){
  * было знать неоткуда
  *
  */
-TEST(Args, TheABCRecordClosesItsCircleByFileNameToo){
+TEST(Args, TheABCRecordClosesItsCircleByFileNameToo) {
 	// Создаём объект сбора параметров запуска
 	args_t args;
 	// Выполняем разбор набора доводов запуска
@@ -1544,7 +1564,7 @@ TEST(Args, TheABCRecordClosesItsCircleByFileNameToo){
  * ложилось настройкой молча
  *
  */
-TEST(Args, TheStrictnessIsAskedByEverySource){
+TEST(Args, TheStrictnessIsAskedByEverySource) {
 	/**
 	 * Выполняем перебор всех четырёх дорог подачи настроек
 	 *
@@ -1603,4 +1623,479 @@ TEST(Args, TheStrictnessIsAskedByEverySource){
 		// Выполняем проверку того, что настройка уложена
 		ASSERT_EQ(args.get <string> ("host"), "localhost") << "дорога " << static_cast <uint32_t> (i) << " имя ведомое не уложила";
 	}
+}
+
+/**
+ * @brief Проверка приоритета источников при пересечении родителя и потомка
+ *
+ * @details Оба порядка загрузки обязаны сохранять значение CLI. Прежде файл
+ * со скалярным родителем стирал потомка CLI либо мешал его созданию, а источник
+ * отсутствующего потомка всё равно записывался как CLI
+ *
+ */
+TEST(Args, IntersectingPathsRespectSourcePriority) {
+	/**
+	 * Выполняем перебор направления конфликта и порядка загрузки
+	 */
+	for(uint8_t shape = 0; shape < 2; shape++){
+		for(uint8_t order = 0; order < 2; order++){
+			// Создаём объект сбора параметров запуска
+			args_t args;
+			// Определяем параметр старшего источника
+			const string cli = ((shape == 0) ? "--net.port=443" : "--net=cli");
+			// Определяем запись младшего источника
+			const string record = ((shape == 0) ? "{\"net\":\"file\",\"neighbor\":7}" : "{\"net\":{\"port\":80},\"neighbor\":7}");
+			// Если первым подаётся старший источник
+			if(order == 0){
+				// Выполняем разбор параметра запуска
+				ASSERT_TRUE(args.parse({cli}));
+				// Выполняем разбор файла настроек
+				ASSERT_TRUE(args.config(record, codec::Bridge::format_t::JSON));
+			// Если первым подаётся младший источник
+			} else {
+				// Выполняем разбор файла настроек
+				ASSERT_TRUE(args.config(record, codec::Bridge::format_t::JSON));
+				// Выполняем разбор параметра запуска
+				ASSERT_TRUE(args.parse({cli}));
+			}
+			// Если старший источник задаёт потомка
+			if(shape == 0){
+				// Проверяем значение и источник потомка
+				ASSERT_EQ(args.get <uint16_t> ("net.port"), 443);
+				ASSERT_EQ(args.source("net.port"), source_t::CLI);
+				// Проверяем снятие источника заменённого скаляра
+				ASSERT_EQ(args.source("net"), source_t::NONE);
+			// Если старший источник задаёт родителя
+			} else {
+				// Проверяем значение и источник родителя
+				ASSERT_EQ(args.get <string> ("net"), "cli");
+				ASSERT_EQ(args.source("net"), source_t::CLI);
+				// Проверяем отсутствие вытесненного потомка и его источника
+				ASSERT_FALSE(args.has("net.port"));
+				ASSERT_EQ(args.source("net.port"), source_t::NONE);
+			}
+			// Проверяем сохранность соседнего параметра
+			ASSERT_EQ(args.get <uint16_t> ("neighbor"), 7);
+			ASSERT_EQ(args.source("neighbor"), source_t::FILE);
+		}
+	}
+}
+
+/**
+ * @brief Проверка снятия источников всего заменяемого поддерева
+ *
+ */
+TEST(Args, ReplacedSubtreesForgetTheirSources) {
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Укладываем поддерево и параметр с похожим началом имени
+	ASSERT_TRUE(args.config("{\"net\":{\"port\":80,\"tls\":{\"on\":true}},\"network\":7}", codec::Bridge::format_t::JSON));
+	// Заменяем поддерево значением старшего источника
+	ASSERT_TRUE(args.parse({"--net=cli"}));
+	// Проверяем снятие источников потомков на разной глубине
+	ASSERT_EQ(args.source("net.port"), source_t::NONE);
+	ASSERT_EQ(args.source("net.tls.on"), source_t::NONE);
+	// Проверяем сохранность параметра за границей звена пути
+	ASSERT_EQ(args.get <uint16_t> ("network"), 7);
+	ASSERT_EQ(args.source("network"), source_t::FILE);
+	// Пробуем вернуть потомка младшим источником
+	ASSERT_TRUE(args.fallback("net.port", "90"));
+	// Проверяем сохранность старшего родителя без ложного источника потомка
+	ASSERT_EQ(args.get <string> ("net"), "cli");
+	ASSERT_FALSE(args.has("net.port"));
+	ASSERT_EQ(args.source("net.port"), source_t::NONE);
+}
+
+/**
+ * @brief Проверка пересечения путей с отменяющими записями имён
+ *
+ */
+TEST(Args, EscapedPathsKeepTheirPriorityBoundaries) {
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Укладываем два разных имени с косой чертой и тильдой
+	ASSERT_TRUE(args.config("{\"a/b\":\"file\",\"a~1b\":7}", codec::Bridge::format_t::JSON));
+	// Заменяем скаляр потомком старшего источника
+	ASSERT_TRUE(args.parse({"--a/b.port=443"}));
+	// Проверяем значение потомка и снятие источника скаляра
+	ASSERT_EQ(args.get <uint16_t> ("a/b.port"), 443);
+	ASSERT_EQ(args.source("a/b"), source_t::NONE);
+	ASSERT_EQ(args.source("a/b.port"), source_t::CLI);
+	// Проверяем сохранность отдельного имени с тильдой
+	ASSERT_EQ(args.get <uint16_t> ("a~1b"), 7);
+	ASSERT_EQ(args.source("a~1b"), source_t::FILE);
+}
+
+/**
+ * @brief Проверка приоритета потомка внутри массива настроек
+ *
+ */
+TEST(Args, ArrayChildrenKeepTheirPriorityAndNeighbors) {
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Укладываем массив младшего источника
+	ASSERT_TRUE(args.config("{\"ports\":[80,81]}", codec::Bridge::format_t::JSON));
+	// Заменяем одно звено массива старшим источником
+	ASSERT_TRUE(args.parse({"--ports.0=443"}));
+	// Проверяем значение звена и сохранность соседа
+	ASSERT_EQ(args.get <uint16_t> ("ports.0"), 443);
+	ASSERT_EQ(args.get <uint16_t> ("ports.1"), 81);
+	// Пробуем заменить массив целиком младшим источником
+	ASSERT_TRUE(args.config("{\"ports\":[90,91]}", codec::Bridge::format_t::JSON));
+	// Проверяем сохранность старшего звена и его источника
+	ASSERT_EQ(args.get <uint16_t> ("ports.0"), 443);
+	ASSERT_EQ(args.source("ports.0"), source_t::CLI);
+}
+
+/**
+ * @brief Проверка сохранения вложенных пустых отображений при загрузке и выдаче
+ *
+ */
+TEST(Args, EmptyObjectsSurviveConfigurationRoundTrips) {
+	// Создаём мост для подготовки записей разных форматов
+	codec::Bridge bridge;
+	// Собираем дерево с пустым объектом и соседним значением
+	codec::abc::value_t tree(codec::abc::kind_t::MAP);
+	tree["present"] = codec::abc::value_t(codec::abc::kind_t::MAP);
+	tree["neighbor"] = codec::abc::value_t(static_cast <uint64_t> (7));
+	/**
+	 * Выполняем перебор форматов, сохраняющих вид пустого отображения
+	 */
+	for(auto format : {codec::Bridge::format_t::ABC, codec::Bridge::format_t::JSON, codec::Bridge::format_t::YAML, codec::Bridge::format_t::TOML}){
+		// Собираем запись настроек
+		string record = "";
+		ASSERT_TRUE(bridge.encode(tree, record, format));
+		// Загружаем запись настроек
+		args_t args;
+		ASSERT_TRUE(args.config(record, format));
+		// Проверяем вид, пустоту и источник объекта
+		ASSERT_TRUE(args.root().at("present").is(codec::abc::type_t::MAP));
+		ASSERT_TRUE(args.root().at("present").empty());
+		ASSERT_EQ(args.source("present"), source_t::FILE);
+		// Проверяем сохранность соседа
+		ASSERT_EQ(args.get <uint16_t> ("neighbor"), 7);
+		// Выполняем выдачу и повторную загрузку настроек
+		ASSERT_TRUE(args.dump(record, format));
+		args_t back;
+		ASSERT_TRUE(back.config(record, format));
+		// Проверяем сохранность пустого объекта после полного круга
+		ASSERT_TRUE(back.root().at("present").is(codec::abc::type_t::MAP));
+		ASSERT_TRUE(back.root().at("present").empty());
+	}
+}
+
+/**
+ * @brief Проверка строгой схемы для пустого объекта и пустого документа
+ *
+ */
+TEST(Args, EmptyObjectsObeyStrictSchema) {
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Включаем строгую проверку имён
+	args_t::settings_t settings = args.settings();
+	settings.strict = true;
+	args.settings(settings);
+	// Объявляем допустимое имя параметра
+	ASSERT_TRUE(args.schema().add("known", 'k', schema_t::value_t::OPTIONAL));
+	// Проверяем отказ на неизвестный пустой объект
+	ASSERT_FALSE(args.config("{\"unknown\":{}}", codec::Bridge::format_t::JSON));
+	ASSERT_FALSE(args.errors().empty());
+	ASSERT_EQ(args.errors().back().first, args::error_t::UNKNOWN);
+	ASSERT_FALSE(args.has("unknown"));
+	// Проверяем приём известного пустого объекта
+	ASSERT_TRUE(args.config("{\"known\":{}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(args.root().at("known").is(codec::abc::type_t::MAP));
+	// Проверяем приём пустого объекта под известным параметром
+	ASSERT_TRUE(args.config("{\"known\":{\"child\":{}}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(args.root().at("known/child").is(codec::abc::type_t::MAP));
+	ASSERT_EQ(args.source("known.child"), source_t::FILE);
+	// Проверяем, что пустой документ не становится параметром с пустым именем
+	const size_t errors = args.errors().size();
+	ASSERT_TRUE(args.config("{}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(args.errors().size(), errors);
+	ASSERT_TRUE(args.has("known.child"));
+}
+
+/**
+ * @brief Проверка переноса источников потомков при сборе повторов массивом
+ *
+ */
+TEST(Args, RepeatedObjectsMoveTheirChildSources) {
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Укладываем объект и затем добавляем ему потомка
+	ASSERT_TRUE(args.config("{\"node\":{}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(args.config("{\"node\":{\"child\":7}}", codec::Bridge::format_t::JSON));
+	// Повторяем объект тем же источником для сборки массива
+	ASSERT_TRUE(args.config("{\"node\":{}}", codec::Bridge::format_t::JSON));
+	// Проверяем сохранность потомка под первым звеном массива
+	ASSERT_EQ(args.get <uint16_t> ("node.0.child"), 7);
+	ASSERT_EQ(args.source("node.0.child"), source_t::FILE);
+	// Проверяем снятие источника по прежнему пути
+	ASSERT_FALSE(args.has("node.child"));
+	ASSERT_EQ(args.source("node.child"), source_t::NONE);
+	// Проверяем сохранность второго пустого объекта
+	ASSERT_TRUE(args.root().at("node/1").is(codec::abc::type_t::MAP));
+	ASSERT_TRUE(args.root().at("node/1").empty());
+}
+
+/**
+ * @brief Проверка отказа записи по несовместимому пути без изменения массива
+ *
+ */
+TEST(Args, InvalidArrayPathsPreserveValuesAndSources) {
+	// Перебираем имена и индексы, по которым массив расти не может
+	for(const string & name : vector <string> {"name", "01", "-1", "3", to_string(numeric_limits <size_t>::max())}){
+		// Загружаем массив до уменьшения предела его роста
+		const StorageLimit limit(0);
+		args_t args;
+		ASSERT_TRUE(args.config("{\"items\":[1,2,3]}", codec::Bridge::format_t::JSON));
+		ASSERT_EQ(args.root().at("items").size(), 3u);
+		codec::abc::value_t::limit(2);
+		ASSERT_TRUE(args.parse(vector <string> {"--items.0=9"}));
+		// Сохраняем всё дерево для проверки отсутствия частичных изменений
+		string before = "";
+		ASSERT_TRUE(args.dump(before, codec::Bridge::format_t::ABC));
+		// Проверяем отказ записи и его причину
+		const string key = ("items." + name);
+		ASSERT_FALSE(args.parse(vector <string> {"--" + key + "=42"})) << key;
+		ASSERT_EQ(args.errors().size(), 1u);
+		ASSERT_EQ(args.errors().front().first, args::error_t::INVALID_PATH);
+		// Проверяем сохранность дерева и источников существующих значений
+		string after = "";
+		ASSERT_TRUE(args.dump(after, codec::Bridge::format_t::ABC));
+		ASSERT_EQ(after, before);
+		ASSERT_EQ(args.source("items"), args::source_t::FILE);
+		ASSERT_EQ(args.source("items.0"), args::source_t::CLI);
+		ASSERT_FALSE(args.has(key));
+		ASSERT_EQ(args.source(key), args::source_t::NONE);
+	}
+}
+
+/**
+ * @brief Проверка сохранности скалярного родителя при отказе создания потомка
+ *
+ */
+TEST(Args, FailedDescendantWritesPreserveScalarParents) {
+	// Ограничиваем рост массива для проверки ближнего и дальнего потомков
+	const StorageLimit limit(2);
+	// Перебираем пути, требующие освобождения скалярного родителя
+	for(const string & key : vector <string> {"node.2", "node.child.2", "node.0.child.2"}){
+		// Создаём скаляр младшего источника и соседний параметр
+		args_t args;
+		ASSERT_TRUE(args.fallback("node", "before"));
+		ASSERT_TRUE(args.fallback("neighbor", "keep"));
+		// Проверяем отказ без удаления родителя или создания промежуточных узлов
+		ASSERT_FALSE(args.parse(vector <string> {"--" + key + "=42"})) << key;
+		ASSERT_EQ(args.errors().size(), 1u);
+		ASSERT_EQ(args.errors().front().first, args::error_t::INVALID_PATH);
+		ASSERT_EQ(args.get <string> ("node"), "before");
+		ASSERT_EQ(args.get <string> ("neighbor"), "keep");
+		ASSERT_EQ(args.source("node"), args::source_t::DEFAULT);
+		ASSERT_EQ(args.source("neighbor"), args::source_t::DEFAULT);
+		ASSERT_FALSE(args.has(key));
+		ASSERT_EQ(args.source(key), args::source_t::NONE);
+	}
+	// Проверяем отсутствие частичного дерева при отказе на пустых настройках
+	args_t empty;
+	ASSERT_FALSE(empty.parse(vector <string> {"--new.child.2=42"}));
+	ASSERT_TRUE(empty.root().empty());
+	ASSERT_EQ(empty.source("new.child.2"), args::source_t::NONE);
+}
+
+/**
+ * @brief Проверка границ роста массива и числовых имён отображения
+ *
+ */
+TEST(Args, PathValidationPreservesMappingAndArrayRules) {
+	// Сохраняем прежний предел и загружаем дерево без ограничения роста
+	const StorageLimit limit(0);
+	// Создаём настройки для загрузки числовых полей нового отображения
+	args_t args;
+	// Загружаем массив и объект с числовыми именами полей
+	ASSERT_TRUE(args.config("{\"items\":[1,2,3],\"map\":{\"0\":10,\"2\":20}}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(args.root().at("items").size(), 3u);
+	// Уменьшаем предел ниже размера уже загруженного массива
+	codec::abc::value_t::limit(2);
+	// Изменение существующего элемента выше предела роста остаётся допустимым
+	ASSERT_TRUE(args.parse(vector <string> {"--items.2=30"}));
+	ASSERT_EQ(args.get <uint32_t> ("items.2"), 30u);
+	// Числовые имена отображения не ограничиваются пределом роста массива
+	ASSERT_TRUE(args.parse(vector <string> {"--map.2=40", "--map.3=50"}));
+	ASSERT_EQ(args.get <uint32_t> ("map.0"), 10u);
+	ASSERT_EQ(args.get <uint32_t> ("map.2"), 40u);
+	ASSERT_EQ(args.get <uint32_t> ("map.3"), 50u);
+	// Создание последнего допустимого элемента поверх скаляра разрешено
+	ASSERT_TRUE(args.fallback("scalar", "before"));
+	ASSERT_TRUE(args.parse(vector <string> {"--scalar.1=7"}));
+	ASSERT_EQ(args.get <uint32_t> ("scalar.1"), 7u);
+	ASSERT_EQ(args.source("scalar.1"), args::source_t::CLI);
+	ASSERT_EQ(args.source("scalar"), args::source_t::NONE);
+	// Снятие предела допускает небольшой рост за прежней границей
+	codec::abc::value_t::limit(0);
+	ASSERT_TRUE(args.parse(vector <string> {"--free.3=8"}));
+	ASSERT_EQ(args.get <uint32_t> ("free.3"), 8u);
+	// Переполнение длины запрещено даже при снятом пределе роста
+	const string key = ("free." + to_string(numeric_limits <size_t>::max()));
+	ASSERT_FALSE(args.parse(vector <string> {"--" + key + "=9"}));
+	ASSERT_EQ(args.errors().front().first, args::error_t::INVALID_PATH);
+	ASSERT_EQ(args.get <uint32_t> ("free.3"), 8u);
+	ASSERT_EQ(args.source(key), args::source_t::NONE);
+}
+
+/**
+ * @brief Проверка пустого имени объекта до рекурсивного слияния его полей
+ *
+ */
+TEST(Args, EmptyFieldNamesAreRejectedAtEveryDepth) {
+	// Перебираем пустые и непустые объекты под пустым именем на разной глубине
+	for(const string & text : vector <string> {"{\"\":{\"port\":7}}", "{\"\":{}}", "{\"outer\":{\"\":{}}}", "{\"outer\":{\"\":{\"port\":7}}}"}){
+		// Проверяем одинаковый отказ с включённой и выключенной строгостью
+		for(const bool strict : {false, true}){
+			// Создаём настройки с сохранённым значением
+			args_t args;
+			ASSERT_TRUE(args.fallback("known", "keep"));
+			ASSERT_TRUE(args.schema().add("known", 'k', args::schema_t::value_t::OPTIONAL));
+			// Устанавливаем режим строгости
+			auto settings = args.settings();
+			settings.strict = strict;
+			args.settings(settings);
+			// Проверяем отказ именно пустого звена пути
+			ASSERT_FALSE(args.config(text, codec::Bridge::format_t::JSON)) << text;
+			ASSERT_EQ(args.errors().size(), 1u);
+			ASSERT_EQ(args.errors().front().first, args::error_t::EMPTY_PATH);
+			// Поля объекта не поднимаются в родителя и не меняют прежнее значение
+			ASSERT_EQ(args.root().size(), 1u);
+			ASSERT_EQ(args.get <string> ("known"), "keep");
+			ASSERT_EQ(args.source("known"), args::source_t::DEFAULT);
+			ASSERT_FALSE(args.has("port"));
+			ASSERT_FALSE(args.has("outer"));
+		}
+	}
+}
+
+/**
+ * @brief Проверка отказа несовместимого пути при слиянии файла настроек
+ *
+ */
+TEST(Args, RejectedFilePathsPreserveExistingValues) {
+	// Создаём массив, внутри которого нельзя завести именованное поле
+	args_t args;
+	ASSERT_TRUE(args.config("{\"items\":[1,2]}", codec::Bridge::format_t::JSON));
+	// Проверяем отказ слияния объекта с прежним массивом
+	ASSERT_FALSE(args.config("{\"items\":{\"name\":7}}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(args.errors().size(), 1u);
+	ASSERT_EQ(args.errors().front().first, args::error_t::INVALID_PATH);
+	// Проверяем сохранность массива и отсутствие источника неуложенного значения
+	ASSERT_EQ(args.get <uint32_t> ("items.0"), 1u);
+	ASSERT_EQ(args.get <uint32_t> ("items.1"), 2u);
+	ASSERT_EQ(args.source("items"), args::source_t::FILE);
+	ASSERT_EQ(args.source("items.name"), args::source_t::NONE);
+}
+
+/**
+ * @brief Проверка сохранения объектов с числовыми именами на разных уровнях
+ *
+ */
+TEST(Args, NumericFieldNamesKeepMappingKinds) {
+	// Ограничиваем индексный рост: числовые имена объектов ему не подчиняются
+	const StorageLimit limit(2);
+	// Создаём дерево с числовыми именами, пустым объектом и ограждаемым именем
+	codec::abc::value_t tree(codec::abc::kind_t::MAP);
+	tree["map"] = codec::abc::value_t(codec::abc::kind_t::MAP);
+	tree["map"]["2"] = codec::abc::value_t(static_cast <uint64_t> (20));
+	tree["map"]["0"] = codec::abc::value_t(static_cast <uint64_t> (10));
+	tree["a/b~c"] = codec::abc::value_t(codec::abc::kind_t::MAP);
+	tree["a/b~c"]["9"] = codec::abc::value_t(codec::abc::kind_t::MAP);
+	tree["a/b~c"]["9"]["8"] = codec::abc::value_t(codec::abc::kind_t::MAP);
+	// Проверяем форматы, которые сохраняют вид отображения
+	codec::Bridge bridge;
+	for(const auto format : {codec::Bridge::format_t::ABC, codec::Bridge::format_t::JSON, codec::Bridge::format_t::YAML, codec::Bridge::format_t::TOML}){
+		// Подготавливаем запись настроек
+		string record = "";
+		ASSERT_TRUE(bridge.encode(tree, record, format));
+		// Загружаем объект поверх скаляра младшего источника
+		args_t args;
+		ASSERT_TRUE(args.fallback("map", "before"));
+		ASSERT_TRUE(args.config(record, format));
+		// Проверяем вид родителя, отсутствие промежуточного индекса и значения
+		ASSERT_TRUE(args.root().at("map").is(codec::abc::type_t::MAP));
+		ASSERT_EQ(args.root().at("map").size(), 2u);
+		ASSERT_EQ(args.get <uint32_t> ("map.2"), 20u);
+		ASSERT_EQ(args.get <uint32_t> ("map.0"), 10u);
+		ASSERT_FALSE(args.has("map.1"));
+		// Источники относятся к значениям, созданному родителю источник не приписывается
+		ASSERT_EQ(args.source("map"), source_t::NONE);
+		ASSERT_EQ(args.source("map.2"), source_t::FILE);
+		ASSERT_EQ(args.source("map.0"), source_t::FILE);
+		// Проверяем несколько уровней числовых имён и ограждение имени родителя
+		ASSERT_TRUE(args.root().at("a~1b~0c/9").is(codec::abc::type_t::MAP));
+		ASSERT_TRUE(args.root().at("a~1b~0c/9/8").is(codec::abc::type_t::MAP));
+		ASSERT_TRUE(args.root().at("a~1b~0c/9/8").empty());
+		ASSERT_EQ(args.source("a/b~c.9.8"), source_t::FILE);
+	}
+}
+
+/**
+ * @brief Проверка схемы, приоритетов и повторов для числовых имён объекта
+ *
+ */
+TEST(Args, NumericMappingsRespectSchemaPriorityAndRepetition) {
+	// Описываем только лист: создание его родителей не требует отдельного описания
+	args_t strict;
+	ASSERT_TRUE(strict.schema().add("map.2", 'm', schema_t::value_t::OPTIONAL));
+	auto settings = strict.settings();
+	settings.strict = true;
+	strict.settings(settings);
+	// Неизвестный лист не должен создавать даже пустого родителя
+	ASSERT_FALSE(strict.config("{\"map\":{\"3\":1}}", codec::Bridge::format_t::JSON));
+	ASSERT_FALSE(strict.has("map"));
+	ASSERT_EQ(strict.errors().back().first, args::error_t::UNKNOWN);
+	// Известный лист создаёт именно отображение
+	ASSERT_TRUE(strict.config("{\"map\":{\"2\":7}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(strict.root().at("map").is(codec::abc::type_t::MAP));
+	ASSERT_EQ(strict.get <uint32_t> ("map.2"), 7u);
+	// Повтор того же листа собирается массивом внутри отображения
+	ASSERT_TRUE(strict.config("{\"map\":{\"2\":8}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(strict.root().at("map").is(codec::abc::type_t::MAP));
+	ASSERT_EQ(strict.get <uint32_t> ("map.2.0"), 7u);
+	ASSERT_EQ(strict.get <uint32_t> ("map.2.1"), 8u);
+	// Старший скалярный родитель не вытесняется объектом младшего источника
+	args_t parent;
+	ASSERT_TRUE(parent.parse(vector <string> {"--map=keep"}));
+	ASSERT_TRUE(parent.config("{\"map\":{\"2\":7}}", codec::Bridge::format_t::JSON));
+	ASSERT_EQ(parent.get <string> ("map"), "keep");
+	ASSERT_EQ(parent.source("map"), source_t::CLI);
+	ASSERT_EQ(parent.source("map.2"), source_t::NONE);
+	// Старший лист защищён, а соседние поля объекта продолжают загружаться
+	args_t child;
+	ASSERT_TRUE(child.config("{\"map\":{\"2\":7}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(child.parse(vector <string> {"--map.2=9"}));
+	ASSERT_TRUE(child.config("{\"map\":{\"2\":8,\"3\":10}}", codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(child.root().at("map").is(codec::abc::type_t::MAP));
+	ASSERT_EQ(child.get <uint32_t> ("map.2"), 9u);
+	ASSERT_EQ(child.get <uint32_t> ("map.3"), 10u);
+	ASSERT_EQ(child.source("map.2"), source_t::CLI);
+	ASSERT_EQ(child.source("map.3"), source_t::FILE);
+}
+
+/**
+ * @brief Проверка полной загрузки JSON-массивов при малом пределе индексного роста
+ *
+ */
+TEST(Args, ConfigurationArraysAreNotTruncatedByTheGrowthLimit) {
+	// Устанавливаем предел ниже длины внешнего и вложенного массивов
+	const StorageLimit limit(2);
+	// Загружаем массив с вложенным массивом и объектом
+	args_t args;
+	ASSERT_TRUE(args.config("{\"items\":[1,2,[3,4,5],{\"value\":6}]}", codec::Bridge::format_t::JSON));
+	// Проверяем сохранность элементов за пределом индексного роста
+	ASSERT_EQ(args.root().at("items").size(), 4u);
+	ASSERT_EQ(args.root().at("items/2").size(), 3u);
+	ASSERT_EQ(args.get <uint32_t> ("items.2.2"), 5u);
+	ASSERT_EQ(args.get <uint32_t> ("items.3.value"), 6u);
+	ASSERT_EQ(args.source("items"), source_t::FILE);
+	// Обновление уже загруженного элемента за пределом роста остаётся допустимым
+	ASSERT_TRUE(args.parse(vector <string> {"--items.2.2=7"}));
+	ASSERT_EQ(args.get <uint32_t> ("items.2.2"), 7u);
 }

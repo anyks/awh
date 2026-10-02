@@ -708,7 +708,7 @@ TEST(CodecCefReader, UnboundedFeedIsRefused) {
  *          приём важности словом, каковую описание дозволяет наравне с числом
  *
  */
-TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField){
+TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField) {
 	/**
 	 * @brief Метод разбора записи заданным сличением
 	 *
@@ -781,7 +781,7 @@ TEST(CodecCefReader, EmptySeverityIsRefusedLikeEveryHeaderField){
  *       местного пояса - величине, какую проверка спрашивает у самой системы
  *
  */
-TEST(CodecCefReader, TimestampWithoutZoneIsAccepted){
+TEST(CodecCefReader, TimestampWithoutZoneIsAccepted) {
 	/**
 	 * @brief Метод разбора записи с заданной меткой времени
 	 *
@@ -844,7 +844,7 @@ TEST(CodecCefReader, TimestampWithoutZoneIsAccepted){
  *          щуп круга и попался, показав нули там, где их не было
  *
  */
-TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces){
+TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces) {
 	// Разбираемый поток записей событий безопасности о трёх записях
 	const string text =
 		"<134>Sep 19 08:26:10 host CEF:0|Security|threat\\|manager|1.0|100|worm stopped|10|"
@@ -855,14 +855,14 @@ TEST(CodecCefReader, ChunkedPositionsHoldTheirPlaces){
 	 * @brief Событие разбора вместе с местом его записи
 	 *
 	 */
-	struct item_t {
+	typedef struct Item {
 		// Вид события и поле, событием выданное
 		uint8_t event, field;
 		// Имя ключа и значение, событием выданные
 		string key, value;
 		// Место начала записи, событие породившей
 		uint64_t offset, line, column;
-	};
+	} item_t;
 	/**
 	 * Сбор событий разбора подачей кусками заданного размера
 	 *

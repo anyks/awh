@@ -200,6 +200,11 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/numeric.cpp" -o "$OUTPUT/codec-numeric.o"
 OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 
+# Собираем числовые преобразования CSV для проверки общего договора с XML
+# Объект получает отдельное имя, чтобы не подменить собственный «codec-common.o»
+$COMPILER $OPTIONS -c "$ROOT/src/codec/csv/common.cpp" -o "$OUTPUT/csv-common.o"
+OBJECTS="$OBJECTS $OUTPUT/csv-common.o"
+
 #
 # Собираем переносимую подмену файла, общую всем кодекам
 #

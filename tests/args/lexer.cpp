@@ -127,7 +127,7 @@ TEST(ArgsLexer, Messages) {
 	 *          отведено. Приём принят от кодека TOML, где он завёлся тем же путём -
 	 *          из находки, что предупреждение словами не блюдётся
 	 */
-	for(uint8_t i = 0; i <= static_cast <uint8_t> (args::error_t::CLUSTER); i++){
+	for(uint8_t i = 0; i <= static_cast <uint8_t> (args::error_t::INVALID_PATH); i++){
 		// Получаем описание очередного кода ошибки разбора
 		const char * text = args::message(static_cast <args::error_t> (i));
 		// Выполняем проверку наличия описания кода ошибки
@@ -146,11 +146,11 @@ TEST(ArgsLexer, Messages) {
 	 * Выполняем проверку того, что перечень кончился ИМЕННО ЗДЕСЬ
 	 *
 	 * @warning Утверждение это и есть застава от гниения предела: заведи кто новый код
-	 *          за `CLUSTER` - и описание ему найдётся, а утверждение упадёт, требуя
+	 *          за `INVALID_PATH` - и описание ему найдётся, а утверждение упадёт, требуя
 	 *          подвинуть предел перебора. Без него новый код молча остался бы
 	 *          непроверенным, как случилось с `REQUIRED` и `CLUSTER`
 	 */
-	ASSERT_STREQ(args::message(static_cast <args::error_t> (static_cast <uint8_t> (args::error_t::CLUSTER) + 1)), "unknown error");
+	ASSERT_STREQ(args::message(static_cast <args::error_t> (static_cast <uint8_t> (args::error_t::INVALID_PATH) + 1)), "unknown error");
 }
 
 /**
@@ -602,7 +602,7 @@ TEST(ArgsLexer, ASingleDashIsAnOperand) {
  * себя пределом от подачи недоброй, ограждён не был вовсе
  *
  */
-TEST(ArgsLexer, TheTokenLimitGuardsTheTextRoadToo){
+TEST(ArgsLexer, TheTokenLimitGuardsTheTextRoadToo) {
 	// Создаём разборщик параметров запуска
 	lexer_t lexer;
 	// Извлекаем настройки разбора
@@ -656,7 +656,7 @@ TEST(ArgsLexer, TheTokenLimitGuardsTheTextRoadToo){
  * регулярного теряла косые МОЛЧА, отказа разрез не выдавал
  *
  */
-TEST(ArgsLexer, TheSingleQuoteKeepsTheBackslash){
+TEST(ArgsLexer, TheSingleQuoteKeepsTheBackslash) {
 	// Создаём разборщик параметров запуска
 	lexer_t lexer;
 	// Контейнер собранных слов разреза

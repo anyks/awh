@@ -2646,40 +2646,72 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Получаем вид хранимого значения до изменения текущего дерева
+	const kind_t kind = value._kind;
+	// Получаем вид хранения значения до изменения текущего дерева
+	const type_t type = value._type;
+	// Получаем схему опознания числа до изменения текущего дерева
+	const schema_t schema = value._schema;
+	// Получаем разобранное число до изменения текущего дерева
+	const numeric_t number = value._number;
+	// Получаем оформление записи значения до изменения текущего дерева
+	const style_t style = value._style;
+	// Получаем правило усечения переводов строк до изменения текущего дерева
+	const chomp_t chomp = value._chomp;
+	// Получаем построение вместилища до изменения текущего дерева
+	const layout_t layout = value._layout;
+	// Получаем содержимое значения до изменения текущего дерева
+	string text = value._text;
+	// Получаем якорь значения до изменения текущего дерева
+	string anchor = value._anchor;
+	// Получаем метку значения до изменения текущего дерева
+	string tag = value._tag;
+	// Получаем признак местного вида метки до изменения текущего дерева
+	const bool local = value._local;
+	// Получаем метку узла, имени пары предпосланную, до изменения текущего дерева
+	string keyAnchor = value._keyAnchor;
+	// Получаем метку типа, имени пары предпосланную, до изменения текущего дерева
+	string keyTag = value._keyTag;
+	// Получаем признак местного вида метки типа имени пары до изменения текущего дерева
+	const bool keyLocal = value._keyLocal;
+	// Получаем имена полей отображения до изменения текущего дерева
+	vector <string> names = value._names;
+	// Получаем значения вместилища до изменения текущего дерева
+	vector <Value> items = value._items;
 	// Выполняем копирование вида хранимого значения
-	this->_kind = value._kind;
+	this->_kind = kind;
 	// Выполняем копирование вида хранения значения
-	this->_type = value._type;
+	this->_type = type;
 	// Выполняем копирование схемы опознания числа
-	this->_schema = value._schema;
+	this->_schema = schema;
 	// Выполняем копирование разобранного числа
-	this->_number = value._number;
+	this->_number = number;
 	// Выполняем копирование оформления записи значения
-	this->_style = value._style;
+	this->_style = style;
 	// Выполняем копирование правила усечения переводов строк
-	this->_chomp = value._chomp;
+	this->_chomp = chomp;
 	// Выполняем копирование построения вместилища
-	this->_layout = value._layout;
+	this->_layout = layout;
 	// Выполняем копирование содержимого значения
-	this->_text = value._text;
+	this->_text = ::std::move(text);
 	// Выполняем копирование якоря значения
-	this->_anchor = value._anchor;
+	this->_anchor = ::std::move(anchor);
 	// Выполняем копирование метки значения
-	this->_tag = value._tag;
+	this->_tag = ::std::move(tag);
 	// Выполняем копирование признака местного вида метки
-	this->_local = value._local;
+	this->_local = local;
 	// Выполняем копирование метки узла, имени пары предпосланной
-	this->_keyAnchor = value._keyAnchor;
+	this->_keyAnchor = ::std::move(keyAnchor);
 	// Выполняем копирование метки типа, имени пары предпосланной
-	this->_keyTag = value._keyTag;
+	this->_keyTag = ::std::move(keyTag);
 	// Выполняем копирование признака местного вида метки типа имени пары
-	this->_keyLocal = value._keyLocal;
+	this->_keyLocal = keyLocal;
 	// Выполняем копирование имён полей отображения
-	this->_names = value._names;
+	this->_names = ::std::move(names);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем копирование значений вместилища
-	this->_items = value._items;
+	this->_items = ::std::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -2697,42 +2729,81 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	// Выполняем перенос вида хранимого значения
-	this->_kind = value._kind;
-	// Выполняем перенос вида хранения значения
-	this->_type = value._type;
-	// Выполняем перенос схемы опознания числа
-	this->_schema = value._schema;
-	// Выполняем перенос разобранного числа
-	this->_number = value._number;
-	// Выполняем перенос оформления записи значения
-	this->_style = value._style;
-	// Выполняем перенос правила усечения переводов строк
-	this->_chomp = value._chomp;
-	// Выполняем перенос построения вместилища
-	this->_layout = value._layout;
-	// Выполняем перенос содержимого значения
-	this->_text = std::move(value._text);
-	// Выполняем перенос якоря значения
-	this->_anchor = std::move(value._anchor);
-	// Выполняем перенос метки значения
-	this->_tag = std::move(value._tag);
-	// Выполняем перенос признака местного вида метки
-	this->_local = value._local;
-	// Выполняем перенос метки узла, имени пары предпосланной
-	this->_keyAnchor = ::std::move(value._keyAnchor);
-	// Выполняем перенос метки типа, имени пары предпосланной
-	this->_keyTag = ::std::move(value._keyTag);
-	// Выполняем перенос признака местного вида метки типа имени пары
-	this->_keyLocal = value._keyLocal;
-	// Выполняем перенос имён полей отображения
-	this->_names = std::move(value._names);
-	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = std::move(value._index);
-	// Выполняем перенос значений вместилища
-	this->_items = std::move(value._items);
-	// Выполняем сброс перенесённого значения
+	// Получаем вид хранимого значения до изменения текущего дерева
+	const kind_t kind = value._kind;
+	// Получаем вид хранения значения до изменения текущего дерева
+	const type_t type = value._type;
+	// Получаем схему опознания числа до изменения текущего дерева
+	const schema_t schema = value._schema;
+	// Получаем разобранное число до изменения текущего дерева
+	const numeric_t number = value._number;
+	// Получаем оформление записи значения до изменения текущего дерева
+	const style_t style = value._style;
+	// Получаем правило усечения переводов строк до изменения текущего дерева
+	const chomp_t chomp = value._chomp;
+	// Получаем построение вместилища до изменения текущего дерева
+	const layout_t layout = value._layout;
+	// Получаем содержимое значения до изменения текущего дерева
+	string text(::std::move(value._text));
+	// Получаем якорь значения до изменения текущего дерева
+	string anchor(::std::move(value._anchor));
+	// Получаем метку значения до изменения текущего дерева
+	string tag(::std::move(value._tag));
+	// Получаем признак местного вида метки до изменения текущего дерева
+	const bool local = value._local;
+	// Получаем метку узла, имени пары предпосланную, до изменения текущего дерева
+	string keyAnchor(::std::move(value._keyAnchor));
+	// Получаем метку типа, имени пары предпосланную, до изменения текущего дерева
+	string keyTag(::std::move(value._keyTag));
+	// Получаем признак местного вида метки типа имени пары до изменения текущего дерева
+	const bool keyLocal = value._keyLocal;
+	// Получаем имена полей отображения до изменения текущего дерева
+	vector <string> names(::std::move(value._names));
+	// Получаем указатель поиска до изменения текущего дерева
+	unique_ptr <unordered_map <string, size_t>> index(::std::move(value._index));
+	// Получаем значения вместилища до изменения текущего дерева
+	vector <Value> items(::std::move(value._items));
+	/**
+	 * Выполняем сброс перенесённого значения
+	 *
+	 * @note Сброс выполняется до замены старого вместилища назначения: переносимое
+	 *       значение может быть его потомком, и после замены обращаться к нему нельзя
+	 */
 	value.clear();
+	// Выполняем перенос вида хранимого значения
+	this->_kind = kind;
+	// Выполняем перенос вида хранения значения
+	this->_type = type;
+	// Выполняем перенос схемы опознания числа
+	this->_schema = schema;
+	// Выполняем перенос разобранного числа
+	this->_number = number;
+	// Выполняем перенос оформления записи значения
+	this->_style = style;
+	// Выполняем перенос правила усечения переводов строк
+	this->_chomp = chomp;
+	// Выполняем перенос построения вместилища
+	this->_layout = layout;
+	// Выполняем перенос содержимого значения
+	this->_text = ::std::move(text);
+	// Выполняем перенос якоря значения
+	this->_anchor = ::std::move(anchor);
+	// Выполняем перенос метки значения
+	this->_tag = ::std::move(tag);
+	// Выполняем перенос признака местного вида метки
+	this->_local = local;
+	// Выполняем перенос метки узла, имени пары предпосланной
+	this->_keyAnchor = ::std::move(keyAnchor);
+	// Выполняем перенос метки типа, имени пары предпосланной
+	this->_keyTag = ::std::move(keyTag);
+	// Выполняем перенос признака местного вида метки типа имени пары
+	this->_keyLocal = keyLocal;
+	// Выполняем перенос имён полей отображения
+	this->_names = ::std::move(names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = ::std::move(index);
+	// Выполняем перенос значений вместилища
+	this->_items = ::std::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }

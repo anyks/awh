@@ -1087,9 +1087,10 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	const string resolved = this->_fs.fullpath(filename, true);
 	// Адрес цели сохранения: разрешённый путь либо поданный, буде разрешить не удалось
 	const string target = (resolved.empty() ? filename : resolved);
-	const string temporary = (target + ".awh-tmp");
-	// Выполняем снос остатка прежней работы под тем же именем
-	static_cast <void> (this->_fs.unlink(temporary));
+	// Адрес временного файла, создаваемого исключительно для этого сохранения
+	string temporary;
+	// Создаём уникальный файл с сохранением битов доступа существующей цели под POSIX
+	handle_file_t file = this->_fs.temporary(target, temporary);
 	/**
 	 * Если запись собранной записи в файл отказом завершилась
 	 *
@@ -1098,14 +1099,19 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *       Прежде признак приходилось добывать поверкою величины записанного - обход
 	 *       этот снят, ибо настоящий ответ теперь есть
 	 */
-	if(!this->_fs.write(temporary, content.data(), content.size())){
+	if((file == nullptr) || !this->_fs.write(temporary, content.data(), content.size(), fs_t::seek_t::BEGIN, 0, file)){
 		/**
 		 * Выполняем снос недописанного временного файла
 		 *
 		 * @note Цель при этом НЕ ТРОНУТА вовсе: прежний журнал остаётся на месте
 		 *       целиком, и отказ сохранения данных больше не стоит
 		 */
-		static_cast <void> (this->_fs.unlink(temporary));
+		// Закрываем объект перед удалением созданного файла
+		file.reset();
+		// Если временный файл был создан
+		if(!temporary.empty())
+			// Удаляем только файл этого сохранения
+			static_cast <void> (this->_fs.unlink(temporary));
 		// Выводим в лог сообщение об ошибке записи файла
 		awh::log::print("CEF file \"%s\" could not be written", awh::log::flag_t::CRITICAL, filename.c_str());
 		// Запоминаем код ошибки невозможности записи файла
@@ -1126,7 +1132,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 * @note Отказ сброса записи не отменяет - записанное на месте и читается, - оттого
 	 *       итог его уходит в журнал, а не в отказ сохранения
 	 */
-	if(!this->_fs.flush(temporary))
+	if(!this->_fs.flush(temporary, true, file))
 		// Выводим в лог сообщение о том, что записанное на носитель не сброшено
 		awh::log::print("CEF file \"%s\" was written but not flushed onto the medium", awh::log::flag_t::WARNING, filename.c_str());
 	/**
@@ -1139,6 +1145,9 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новой записью целиком, а половины её не видно никогда
 	 */
+	// Закрываем объект перед подменой целевого файла
+	file.reset();
+	// Если подмена целевого файла не выполнена
 	if(!this->_fs.replaceAddress(temporary, target)){
 		// Выполняем снос временного файла записи
 		static_cast <void> (this->_fs.unlink(temporary));

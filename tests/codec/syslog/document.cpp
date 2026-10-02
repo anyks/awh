@@ -51,6 +51,64 @@ using namespace std;
 using namespace awh::codec;
 
 /**
+ * Пространство имён вспомогательных типов проверок
+ */
+namespace {
+	/**
+	 * @brief Создание отдельного каталога проверки без принятия существующего каталога
+	 *
+	 * @param address адрес создаваемого каталога
+	 * @return        ноль при создании, отрицательное значение при отказе
+	 *
+	 */
+	static int32_t makeDirectory(const std::string & address) noexcept {
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Создаём каталог средствами Windows CRT
+			return ::_mkdir(address.c_str());
+		/**
+		 * Для операционных систем POSIX
+		 */
+		#else
+			// Создаём каталог с обычными правами проверки
+			return ::mkdir(address.c_str(), 0755);
+		#endif
+	}
+	/**
+	 * @brief Страж каталога проверок сохранения
+	 *
+	 */
+	typedef struct Save_Directory {
+		// Адрес каталога проверки
+		std::string address;
+		// Признак создания каталога именно этой проверкой
+		bool created;
+		// Объект файловой системы
+		awh::fs_t fs;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param address адрес отдельного каталога проверки
+		 *
+		 */
+		explicit Save_Directory(const std::string & address) noexcept :
+		 address(address), created(::makeDirectory(address) == 0) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Save_Directory() noexcept {
+			// Если каталог создан этой проверкой
+			if(this->created)
+				// Удаляем каталог вместе с оставшимися файлами проверки
+				static_cast <void> (this->fs.unlink(this->address));
+		}
+	} save_directory_t;
+}
+
+/**
  * @brief Метод сбора дерева в двоичную запись ради сличения целиком
  *
  * @details Сличаются ДЕРЕВЬЯ, а не тексты: дословного совпадения оборот не обещает,
@@ -606,7 +664,7 @@ TEST(CodecSysLogDocument, FileRoundtrip) {
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
 	// Адрес временного файла оборота
-	const string filename = "/tmp/awh-syslog-roundtrip.log";
+	const string filename = "./awh-syslog-roundtrip.log";
 	// Выполняем проверку успешности записи события в файл
 	ASSERT_TRUE(source.save(filename));
 	// Объект события, из файла читаемого
@@ -816,7 +874,7 @@ TEST(CodecSysLogDocument, DirectoryIsRefused) {
 	// Выполняем снос каталога от прежнего прогона
 	::rmdir(directory.c_str());
 	// Выполняем заведение каталога подачи
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
+	ASSERT_EQ(::makeDirectory(directory), 0);
 	// Объект работы с деревом события
 	syslog::document_t document;
 	// Выполняем проверку отказа чтения каталога, поданного вместо файла
@@ -969,7 +1027,7 @@ TEST(CodecSysLogDocument, DuplicateNames) {
  */
 TEST(CodecSysLogDocument, SaveOverLongerFile) {
 	// Адрес временного файла сохранения
-	const string filename = "/tmp/awh-syslog-overwrite.log";
+	const string filename = "./awh-syslog-overwrite.log";
 	// Объект события, записываемого длинной записью
 	syslog::document_t before;
 	// Выполняем разбор длинной записи системного журнала
@@ -1025,30 +1083,38 @@ TEST(CodecSysLogDocument, SaveOverLongerFile) {
  *
  */
 TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
-	// Если проверка идёт от имени управляющего
-	if(::geteuid() == 0)
-		// Пропускаем проверку: права управляющему не преграда
-		GTEST_SKIP() << "проверка идёт от имени управляющего, права ему не преграда";
-	// Адрес временного файла проверки
-	const string filename = "/tmp/awh-syslog-unreadable.log";
-	// Объект события, записываемого в файл
-	syslog::document_t source;
-	// Выполняем разбор годной записи системного журнала
-	ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
-	// Выполняем проверку успешности записи события в файл
-	ASSERT_TRUE(source.save(filename));
-	// Выполняем отнятие всех прав у файла проверки
-	ASSERT_EQ(::chmod(filename.c_str(), 0), 0);
-	// Объект события, из файла читаемого
-	syslog::document_t target;
-	// Выполняем проверку отказа чтения файла, для чтения недоступного
-	EXPECT_FALSE(target.load(filename));
-	// Выполняем проверку того, что отказ назван кодом чтения файла
-	EXPECT_EQ(target.error(), syslog::error_t::FILE_NOT_READ);
-	// Возвращаем права файлу проверки
-	ASSERT_EQ(::chmod(filename.c_str(), 0600), 0);
-	// Выполняем снос временного файла проверки
-	::remove(filename.c_str());
+	/**
+	 * Проверяем права и ссылки средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если проверка идёт от имени управляющего
+		if(::geteuid() == 0)
+			// Пропускаем проверку: права управляющему не преграда
+			GTEST_SKIP() << "проверка идёт от имени управляющего, права ему не преграда";
+		// Адрес временного файла проверки
+		const string filename = "/tmp/awh-syslog-unreadable.log";
+		// Объект события, записываемого в файл
+		syslog::document_t source;
+		// Выполняем разбор годной записи системного журнала
+		ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
+		// Выполняем проверку успешности записи события в файл
+		ASSERT_TRUE(source.save(filename));
+		// Выполняем отнятие всех прав у файла проверки
+		ASSERT_EQ(::chmod(filename.c_str(), 0), 0);
+		// Объект события, из файла читаемого
+		syslog::document_t target;
+		// Выполняем проверку отказа чтения файла, для чтения недоступного
+		EXPECT_FALSE(target.load(filename));
+		// Выполняем проверку того, что отказ назван кодом чтения файла
+		EXPECT_EQ(target.error(), syslog::error_t::FILE_NOT_READ);
+		// Возвращаем права файлу проверки
+		ASSERT_EQ(::chmod(filename.c_str(), 0600), 0);
+		// Выполняем снос временного файла проверки
+		::remove(filename.c_str());
+	#else
+		// Windows использует иной контракт прав и ссылок
+		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
+	#endif
 }
 
 
@@ -1066,30 +1132,38 @@ TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
  *
  */
 TEST(CodecSysLogDocument, SymlinkIsReadAsFile) {
-	// Адрес файла записи
-	const string filename = "/tmp/awh-syslog-symlink-target.log";
-	// Адрес символьной ссылки на файл записи
-	const string linkname = "/tmp/awh-syslog-symlink.log";
-	// Объект события, записываемого в файл
-	syslog::document_t source;
-	// Выполняем разбор годной записи системного журнала
-	ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
-	// Выполняем проверку успешности записи события в файл
-	ASSERT_TRUE(source.save(filename));
-	// Выполняем снос ссылки, прежним прогоном оставленной
-	::remove(linkname.c_str());
-	// Выполняем заведение символьной ссылки на файл записи
-	ASSERT_EQ(::symlink(filename.c_str(), linkname.c_str()), 0);
-	// Объект события, по ссылке читаемого
-	syslog::document_t target;
-	// Выполняем проверку успешности чтения события по символьной ссылке
-	ASSERT_TRUE(target.load(linkname)) << "код отказа: " << static_cast <uint32_t> (target.error());
-	// Выполняем проверку того, что чтение по ссылке дало то же дерево
-	EXPECT_EQ(source.root(), target.root());
-	// Выполняем снос символьной ссылки
-	::remove(linkname.c_str());
-	// Выполняем снос файла записи
-	::remove(filename.c_str());
+	/**
+	 * Проверяем права и ссылки средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Адрес файла записи
+		const string filename = "/tmp/awh-syslog-symlink-target.log";
+		// Адрес символьной ссылки на файл записи
+		const string linkname = "/tmp/awh-syslog-symlink.log";
+		// Объект события, записываемого в файл
+		syslog::document_t source;
+		// Выполняем разбор годной записи системного журнала
+		ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
+		// Выполняем проверку успешности записи события в файл
+		ASSERT_TRUE(source.save(filename));
+		// Выполняем снос ссылки, прежним прогоном оставленной
+		::remove(linkname.c_str());
+		// Выполняем заведение символьной ссылки на файл записи
+		ASSERT_EQ(::symlink(filename.c_str(), linkname.c_str()), 0);
+		// Объект события, по ссылке читаемого
+		syslog::document_t target;
+		// Выполняем проверку успешности чтения события по символьной ссылке
+		ASSERT_TRUE(target.load(linkname)) << "код отказа: " << static_cast <uint32_t> (target.error());
+		// Выполняем проверку того, что чтение по ссылке дало то же дерево
+		EXPECT_EQ(source.root(), target.root());
+		// Выполняем снос символьной ссылки
+		::remove(linkname.c_str());
+		// Выполняем снос файла записи
+		::remove(filename.c_str());
+	#else
+		// Windows использует иной контракт прав и ссылок
+		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
+	#endif
 }
 
 /**
@@ -1100,20 +1174,28 @@ TEST(CodecSysLogDocument, SymlinkIsReadAsFile) {
  *
  */
 TEST(CodecSysLogDocument, SymlinkToDirectoryIsRefused) {
-	// Адрес символьной ссылки на каталог
-	const string linkname = "/tmp/awh-syslog-dirlink";
-	// Выполняем снос ссылки, прежним прогоном оставленной
-	::remove(linkname.c_str());
-	// Выполняем заведение символьной ссылки на каталог
-	ASSERT_EQ(::symlink("/tmp", linkname.c_str()), 0);
-	// Объект события syslog
-	syslog::document_t document;
-	// Выполняем проверку отказа чтения по ссылке на каталог
-	EXPECT_FALSE(document.load(linkname));
-	// Выполняем проверку того, что отказ назван кодом чтения файла
-	EXPECT_EQ(document.error(), syslog::error_t::FILE_NOT_READ);
-	// Выполняем снос символьной ссылки
-	::remove(linkname.c_str());
+	/**
+	 * Проверяем права и ссылки средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Адрес символьной ссылки на каталог
+		const string linkname = "/tmp/awh-syslog-dirlink";
+		// Выполняем снос ссылки, прежним прогоном оставленной
+		::remove(linkname.c_str());
+		// Выполняем заведение символьной ссылки на каталог
+		ASSERT_EQ(::symlink("/tmp", linkname.c_str()), 0);
+		// Объект события syslog
+		syslog::document_t document;
+		// Выполняем проверку отказа чтения по ссылке на каталог
+		EXPECT_FALSE(document.load(linkname));
+		// Выполняем проверку того, что отказ назван кодом чтения файла
+		EXPECT_EQ(document.error(), syslog::error_t::FILE_NOT_READ);
+		// Выполняем снос символьной ссылки
+		::remove(linkname.c_str());
+	#else
+		// Windows использует иной контракт прав и ссылок
+		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
+	#endif
 }
 
 /**
@@ -1134,9 +1216,9 @@ TEST(CodecSysLogDocument, SaveFailureIsReported) {
 	// Выполняем разбор годной записи системного журнала
 	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
 	// Выполняем проверку отказа сохранения в несуществующий каталог
-	EXPECT_FALSE(document.save("/tmp/awh-syslog-нет-такого-каталога/событие.log"));
+	EXPECT_FALSE(document.save("./awh-syslog-нет-такого-каталога/событие.log"));
 	// Выполняем проверку отказа сохранения по адресу, каталогом являющемуся
-	EXPECT_FALSE(document.save("/tmp"));
+	EXPECT_FALSE(document.save("."));
 	/**
 	 * Объект события, записи не несущего
 	 *
@@ -1145,7 +1227,7 @@ TEST(CodecSysLogDocument, SaveFailureIsReported) {
 	 */
 	syslog::document_t empty;
 	// Выполняем проверку отказа сохранения события, записи не несущего
-	EXPECT_FALSE(empty.save("/tmp/awh-syslog-empty.log"));
+	EXPECT_FALSE(empty.save("./awh-syslog-empty.log"));
 }
 /**
  * @brief Проверка сброса кода ошибки успешной операцией
@@ -1176,7 +1258,7 @@ TEST(CodecSysLogDocument, ErrorCodeFollowsTheLastOperation) {
 	// Объект события, дерева не имеющего
 	syslog::document_t empty;
 	// Выполняем проверку отказа сохранения события с пустым деревом
-	EXPECT_FALSE(empty.save("/tmp/awh-syslog-never-written.log"));
+	EXPECT_FALSE(empty.save("./awh-syslog-never-written.log"));
 	// Выполняем проверку того, что отказ сохранения причину назвал
 	EXPECT_NE(empty.error(), syslog::error_t::NONE);
 }
@@ -1528,7 +1610,7 @@ TEST(CodecSysLogDocument, RoundTripHoldsUnderEverySettingCombination) {
  */
 TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
 	// Адрес временного файла журнала
-	const string filename = "/tmp/awh-syslog-journal.log";
+	const string filename = "./awh-syslog-journal.log";
 	// Количество записей, журналом несомых
 	const size_t count = 10;
 	// Объект записи журнала в файл
@@ -1618,91 +1700,101 @@ TEST(CodecSysLogDocument, MultiRecordFileIsRefusedAndKeptWhole) {
  *          проверок, следом идущих
  *
  */
-TEST(CodecSysLogDocument, FailedSaveKeepsThePreviousRecord){
+TEST(CodecSysLogDocument, FailedSaveKeepsThePreviousRecord) {
 	/**
-	 * Если проверка идёт от имени суперпользователя, права записи её не остановят
-	 *
-	 * @note Пропуск этот об окружении, а не о кодеке: суперпользователь пишет и в каталог, запись
-	 *       запрещающий, и отказа сохранения тут не добиться вовсе
+	 * Проверяем права и ссылки средствами POSIX
 	 */
-	if(::geteuid() == 0)
-		// Пропускаем проверку: отказа записи от имени суперпользователя не добиться
-		GTEST_SKIP() << "проверка идёт от имени root: отказа записи не добиться";
-	// Каталог опыта
-	const string directory = "./syslog-save-guard";
-	// Адрес файла записи
-	const string filename = (directory + "/journal.log");
-	// Прежнее содержимое файла записи
-	const string previous = "<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 - - ЦЕННАЯ ЗАПИСЬ\n";
-	/**
-	 * @brief Страж прав каталога опыта
-	 *
-	 */
-	struct Guard {
-		// Адрес каталога опыта
-		string directory;
+	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
-		 * @brief Деструктор
+		 * Если проверка идёт от имени суперпользователя, права записи её не остановят
+		 *
+		 * @note Пропуск этот об окружении, а не о кодеке: суперпользователь пишет и в каталог, запись
+		 *       запрещающий, и отказа сохранения тут не добиться вовсе
+		 */
+		if(::geteuid() == 0)
+			// Пропускаем проверку: отказа записи от имени суперпользователя не добиться
+			GTEST_SKIP() << "проверка идёт от имени root: отказа записи не добиться";
+		// Каталог опыта
+		const string directory = "./syslog-save-guard";
+		// Адрес файла записи
+		const string filename = (directory + "/journal.log");
+		// Прежнее содержимое файла записи
+		const string previous = "<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 - - ЦЕННАЯ ЗАПИСЬ\n";
+		/**
+		 * @brief Страж прав каталога опыта
 		 *
 		 */
-		~Guard() noexcept {
-			// Возвращаем каталогу права записи
-			::chmod(this->directory.c_str(), 0755);
-			// Сносим файл записи каталога опыта
-			::remove((this->directory + "/journal.log").c_str());
-			// Сносим временный файл, буде он остался
-			::remove((this->directory + "/journal.log.awh-tmp").c_str());
-			// Сносим каталог опыта
-			::rmdir(this->directory.c_str());
+		typedef struct Guard {
+			// Адрес каталога опыта
+			string directory;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Guard() noexcept {
+				// Возвращаем каталогу права записи
+				::chmod(this->directory.c_str(), 0755);
+				// Сносим файл записи каталога опыта
+				::remove((this->directory + "/journal.log").c_str());
+				// Сносим временный файл, буде он остался
+				::remove((this->directory + "/journal.log.awh-tmp").c_str());
+				// Сносим каталог опыта
+				::rmdir(this->directory.c_str());
+			}
+		} guard_t;
+		// Создаём страж каталога проверки
+		guard_t guard{directory};
+		// Заводим каталог опыта
+		ASSERT_EQ(::makeDirectory(directory), 0) << "каталог опыта завести не удалось";
+		/**
+		 * Кладём в файл прежнюю запись
+		 */
+		{
+			// Поток записи файла
+			FILE * file = ::fopen(filename.c_str(), "wb");
+			// Выполняем проверку того, что файл заведён
+			ASSERT_NE(file, nullptr);
+			// Записываем прежнюю запись в файл
+			ASSERT_EQ(::fwrite(previous.data(), 1, previous.size(), file), previous.size());
+			// Закрываем поток записи файла
+			::fclose(file);
 		}
-	} guard{directory};
-	// Заводим каталог опыта
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0) << "каталог опыта завести не удалось";
-	/**
-	 * Кладём в файл прежнюю запись
-	 */
-	{
-		// Поток записи файла
-		FILE * file = ::fopen(filename.c_str(), "wb");
-		// Выполняем проверку того, что файл заведён
-		ASSERT_NE(file, nullptr);
-		// Записываем прежнюю запись в файл
-		ASSERT_EQ(::fwrite(previous.data(), 1, previous.size(), file), previous.size());
-		// Закрываем поток записи файла
-		::fclose(file);
-	}
-	// Закрываем каталог опыта для записи
-	ASSERT_EQ(::chmod(directory.c_str(), 0500), 0);
-	// Объект документа системного журнала
-	syslog::document_t document;
-	// Выполняем проверку успешности разбора новой записи
-	ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - НОВАЯ ЗАПИСЬ"));
-	// Выполняем проверку того, что сохранение отказом отвечено
-	EXPECT_FALSE(document.save(filename));
-	// Выполняем проверку того, что отказ назвал причину
-	EXPECT_NE(static_cast <uint8_t> (document.error()), static_cast <uint8_t> (syslog::error_t::NONE));
-	/**
-	 * Выполняем проверку того, что прежняя запись УЦЕЛЕЛА
-	 *
-	 * @note Половина эта договора и есть главная: отказ, честно оглашённый, ничего не
-	 *       стоит, если данных потребителя уже нет
-	 */
-	{
-		// Поток чтения файла
-		FILE * file = ::fopen(filename.c_str(), "rb");
-		// Выполняем проверку того, что файл на месте
-		ASSERT_NE(file, nullptr) << "прежний файл записи уничтожен отказавшим сохранением";
-		// Содержимое файла после отказа
-		string content(previous.size() + 16, '\0');
-		// Читаем содержимое файла
-		const size_t length = ::fread(&content[0], 1, content.size(), file);
-		// Закрываем поток чтения файла
-		::fclose(file);
-		// Усекаем содержимое по прочитанному
-		content.resize(length);
-		// Выполняем проверку того, что прежняя запись цела дословно
-		EXPECT_EQ(content, previous);
-	}
+		// Закрываем каталог опыта для записи
+		ASSERT_EQ(::chmod(directory.c_str(), 0500), 0);
+		// Объект документа системного журнала
+		syslog::document_t document;
+		// Выполняем проверку успешности разбора новой записи
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - НОВАЯ ЗАПИСЬ"));
+		// Выполняем проверку того, что сохранение отказом отвечено
+		EXPECT_FALSE(document.save(filename));
+		// Выполняем проверку того, что отказ назвал причину
+		EXPECT_NE(static_cast <uint8_t> (document.error()), static_cast <uint8_t> (syslog::error_t::NONE));
+		/**
+		 * Выполняем проверку того, что прежняя запись УЦЕЛЕЛА
+		 *
+		 * @note Половина эта договора и есть главная: отказ, честно оглашённый, ничего не
+		 *       стоит, если данных потребителя уже нет
+		 */
+		{
+			// Поток чтения файла
+			FILE * file = ::fopen(filename.c_str(), "rb");
+			// Выполняем проверку того, что файл на месте
+			ASSERT_NE(file, nullptr) << "прежний файл записи уничтожен отказавшим сохранением";
+			// Содержимое файла после отказа
+			string content(previous.size() + 16, '\0');
+			// Читаем содержимое файла
+			const size_t length = ::fread(&content[0], 1, content.size(), file);
+			// Закрываем поток чтения файла
+			::fclose(file);
+			// Усекаем содержимое по прочитанному
+			content.resize(length);
+			// Выполняем проверку того, что прежняя запись цела дословно
+			EXPECT_EQ(content, previous);
+		}
+	#else
+		// Windows использует иной контракт прав и ссылок
+		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
+	#endif
 }
 
 
@@ -1724,87 +1816,97 @@ TEST(CodecSysLogDocument, FailedSaveKeepsThePreviousRecord){
  *          неизменной цели, означала бы, что сохранение прошло мимо
  *
  */
-TEST(CodecSysLogDocument, SaveThroughSymlinkKeepsTheLink){
-	// Каталог опыта
-	const string directory = "./syslog-symlink-save";
-	// Адрес цели и адрес ссылки на неё
-	const string target = (directory + "/target.log"), link = (directory + "/link.log");
+TEST(CodecSysLogDocument, SaveThroughSymlinkKeepsTheLink) {
 	/**
-	 * @brief Страж каталога опыта
-	 *
+	 * Проверяем права и ссылки средствами POSIX
 	 */
-	struct Guard {
-		// Адрес каталога опыта
-		string directory;
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Каталог опыта
+		const string directory = "./syslog-symlink-save";
+		// Адрес цели и адрес ссылки на неё
+		const string target = (directory + "/target.log"), link = (directory + "/link.log");
 		/**
-		 * @brief Деструктор
+		 * @brief Страж каталога опыта
 		 *
 		 */
-		~Guard() noexcept {
-			// Сносим цель, ссылку и остаток временного файла
-			::remove((this->directory + "/target.log").c_str());
-			::remove((this->directory + "/link.log").c_str());
-			::remove((this->directory + "/target.log.awh-tmp").c_str());
-			// Сносим каталог опыта
-			::rmdir(this->directory.c_str());
+		typedef struct Guard {
+			// Адрес каталога опыта
+			string directory;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Guard() noexcept {
+				// Сносим цель, ссылку и остаток временного файла
+				::remove((this->directory + "/target.log").c_str());
+				::remove((this->directory + "/link.log").c_str());
+				::remove((this->directory + "/target.log.awh-tmp").c_str());
+				// Сносим каталог опыта
+				::rmdir(this->directory.c_str());
+			}
+		} guard_t;
+		// Создаём страж каталога проверки
+		guard_t guard{directory};
+		// Заводим каталог опыта
+		ASSERT_EQ(::makeDirectory(directory), 0);
+		/**
+		 * Кладём прежнюю запись в цель ссылки
+		 */
+		{
+			// Поток записи цели
+			FILE * file = ::fopen(target.c_str(), "wb");
+			// Выполняем проверку того, что цель заведена
+			ASSERT_NE(file, nullptr);
+			// Записываем прежнюю запись в цель
+			ASSERT_GT(::fwrite("<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 - - ПРЕЖНЯЯ\n", 1, ::strlen("<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 - - ПРЕЖНЯЯ\n"), file), 0u);
+			// Закрываем поток записи цели
+			::fclose(file);
 		}
-	} guard{directory};
-	// Заводим каталог опыта
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
-	/**
-	 * Кладём прежнюю запись в цель ссылки
-	 */
-	{
-		// Поток записи цели
-		FILE * file = ::fopen(target.c_str(), "wb");
-		// Выполняем проверку того, что цель заведена
-		ASSERT_NE(file, nullptr);
-		// Записываем прежнюю запись в цель
-		ASSERT_GT(::fwrite("<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 - - ПРЕЖНЯЯ\n", 1, ::strlen("<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 - - ПРЕЖНЯЯ\n"), file), 0u);
-		// Закрываем поток записи цели
-		::fclose(file);
-	}
-	// Заводим символьную ссылку на цель
-	ASSERT_EQ(::symlink("target.log", link.c_str()), 0);
-	// Объект документа
-	syslog::document_t document;
-	// Выполняем проверку успешности разбора новой записи
-	ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - НОВАЯЗАПИСЬ"));
-	// Выполняем проверку успешности сохранения ПО ССЫЛКЕ
-	ASSERT_TRUE(document.save(link));
-	/**
-	 * Выполняем проверку того, что ссылка УЦЕЛЕЛА
-	 */
-	{
-		// Сведения об объекте по адресу ссылки
-		struct stat info;
-		// Выполняем спрос сведений БЕЗ прохождения ссылки
-		ASSERT_EQ(::lstat(link.c_str(), &info), 0) << "ссылка пропала вовсе";
-		// Выполняем проверку того, что по адресу ссылки лежит именно ссылка
-		EXPECT_TRUE(S_ISLNK(info.st_mode)) << "ссылка подменена обычным файлом";
-	}
-	/**
-	 * Выполняем проверку того, что ЦЕЛЬ обновлена
-	 *
-	 * @note Половина эта договора неотделима от первой: ссылка, уцелевшая при
-	 *       неизменной цели, означала бы, что сохранение прошло мимо
-	 */
-	{
-		// Поток чтения цели
-		FILE * file = ::fopen(target.c_str(), "rb");
-		// Выполняем проверку того, что цель на месте
-		ASSERT_NE(file, nullptr);
-		// Содержимое цели после сохранения
-		string content(512, '\0');
-		// Читаем содержимое цели
-		const size_t length = ::fread(&content[0], 1, content.size(), file);
-		// Закрываем поток чтения цели
-		::fclose(file);
-		// Усекаем содержимое по прочитанному
-		content.resize(length);
-		// Выполняем проверку того, что цель несёт НОВУЮ запись
-		EXPECT_NE(content.find("НОВАЯЗАПИСЬ"), string::npos) << "цель ссылки не обновлена: " << content;
-	}
+		// Заводим символьную ссылку на цель
+		ASSERT_EQ(::symlink("target.log", link.c_str()), 0);
+		// Объект документа
+		syslog::document_t document;
+		// Выполняем проверку успешности разбора новой записи
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - НОВАЯЗАПИСЬ"));
+		// Выполняем проверку успешности сохранения ПО ССЫЛКЕ
+		ASSERT_TRUE(document.save(link));
+		/**
+		 * Выполняем проверку того, что ссылка УЦЕЛЕЛА
+		 */
+		{
+			// Сведения об объекте по адресу ссылки
+			struct stat info;
+			// Выполняем спрос сведений БЕЗ прохождения ссылки
+			ASSERT_EQ(::lstat(link.c_str(), &info), 0) << "ссылка пропала вовсе";
+			// Выполняем проверку того, что по адресу ссылки лежит именно ссылка
+			EXPECT_TRUE(S_ISLNK(info.st_mode)) << "ссылка подменена обычным файлом";
+		}
+		/**
+		 * Выполняем проверку того, что ЦЕЛЬ обновлена
+		 *
+		 * @note Половина эта договора неотделима от первой: ссылка, уцелевшая при
+		 *       неизменной цели, означала бы, что сохранение прошло мимо
+		 */
+		{
+			// Поток чтения цели
+			FILE * file = ::fopen(target.c_str(), "rb");
+			// Выполняем проверку того, что цель на месте
+			ASSERT_NE(file, nullptr);
+			// Содержимое цели после сохранения
+			string content(512, '\0');
+			// Читаем содержимое цели
+			const size_t length = ::fread(&content[0], 1, content.size(), file);
+			// Закрываем поток чтения цели
+			::fclose(file);
+			// Усекаем содержимое по прочитанному
+			content.resize(length);
+			// Выполняем проверку того, что цель несёт НОВУЮ запись
+			EXPECT_NE(content.find("НОВАЯЗАПИСЬ"), string::npos) << "цель ссылки не обновлена: " << content;
+		}
+	#else
+		// Windows использует иной контракт прав и ссылок
+		GTEST_SKIP() << "POSIX permissions and symbolic links are unavailable on Windows";
+	#endif
 }
 
 /**
@@ -1824,7 +1926,7 @@ TEST(CodecSysLogDocument, SaveThroughSymlinkKeepsTheLink){
  *          потребителя осевший, переживает всякий отказ
  *
  */
-TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers){
+TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers) {
 	// Каталог опыта и цель сохранения, каталогом являющаяся
 	const string directory = "./syslog-replace-guard";
 	const string target = (directory + "/journal.log");
@@ -1834,7 +1936,7 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers){
 	 * @brief Страж каталога опыта
 	 *
 	 */
-	struct Guard {
+	typedef struct Guard {
 		// Адрес каталога опыта
 		string directory;
 		/**
@@ -1849,11 +1951,13 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers){
 			// Сносим каталог опыта
 			::rmdir(this->directory.c_str());
 		}
-	} guard{directory};
+	} guard_t;
+	// Создаём страж каталога проверки
+	guard_t guard{directory};
 	// Заводим каталог опыта
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0) << "каталог опыта завести не удалось";
+	ASSERT_EQ(::makeDirectory(directory), 0) << "каталог опыта завести не удалось";
 	// Заводим цель сохранения каталогом, подмену собою отвергающим
-	ASSERT_EQ(::mkdir(target.c_str(), 0755), 0) << "цель опыта завести не удалось";
+	ASSERT_EQ(::makeDirectory(target), 0) << "цель опыта завести не удалось";
 	// Объект документа системного журнала
 	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи
@@ -1868,6 +1972,8 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers){
 	EXPECT_TRUE(S_ISDIR(info.st_mode)) << "цель сохранения перестала быть каталогом";
 	// Выполняем проверку того, что временный файл за собою не оставлен
 	EXPECT_NE(::stat(temporary.c_str(), &info), 0) << "временный файл оставлен в каталоге потребителя";
+	// Проверяем отсутствие файлов с любым уникальным суффиксом
+	EXPECT_EQ(awh::fs_t().count(directory), static_cast <uintmax_t> (0));
 }
 
 /**
@@ -1882,7 +1988,7 @@ TEST(CodecSysLogDocument, FailedReplaceLeavesNoLeftovers){
  *       ПОРЯДОК: отказ обязан случиться раньше записи, а не после неё
  *
  */
-TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing){
+TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing) {
 	// Каталог опыта и адрес файла записи
 	const string directory = "./syslog-empty-save";
 	const string filename = (directory + "/journal.log");
@@ -1892,7 +1998,7 @@ TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing){
 	 * @brief Страж каталога опыта
 	 *
 	 */
-	struct Guard {
+	typedef struct Guard {
 		// Адрес каталога опыта
 		string directory;
 		/**
@@ -1906,9 +2012,11 @@ TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing){
 			// Сносим каталог опыта
 			::rmdir(this->directory.c_str());
 		}
-	} guard{directory};
+	} guard_t;
+	// Создаём страж каталога проверки
+	guard_t guard{directory};
 	// Заводим каталог опыта
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0) << "каталог опыта завести не удалось";
+	ASSERT_EQ(::makeDirectory(directory), 0) << "каталог опыта завести не удалось";
 	/**
 	 * Кладём в файл прежнюю запись
 	 */
@@ -1950,4 +2058,204 @@ TEST(CodecSysLogDocument, EmptyDocumentSaveTouchesNothing){
 		// Выполняем проверку того, что прежняя запись цела дословно
 		EXPECT_EQ(content, previous);
 	}
+}
+
+/**
+ * @brief Проверка сохранения битов доступа существующего файла
+ *
+ * @details Замена файла не должна расширять права 0600 до 0644. Проверяются также
+ *          групповой доступ и файл без права записи, заменяемый через каталог.
+ *
+ */
+TEST(CodecSysLogDocument, SavePreservesAccessBits) {
+	/**
+	 * Проверяем биты доступа на системах POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог проверки
+		save_directory_t guard("./syslog-save-access");
+		ASSERT_TRUE(guard.created);
+		// Адрес целевого файла
+		const string filename = (guard.address + "/journal.log");
+		// Создаём исходный файл
+		ASSERT_TRUE(guard.fs.write(filename, string("PREVIOUS RECORD")));
+		// Формируем документ для сохранения
+		syslog::document_t document;
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
+		/**
+		 * Проверяем сохранение каждого набора битов доступа
+		 */
+		for(const uint32_t mode : {0600, 0640, 0440}){
+			// Устанавливаем исходные права
+			ASSERT_EQ(::chmod(filename.c_str(), mode), 0);
+			// Сохраняем новую запись
+			ASSERT_TRUE(document.save(filename));
+			// Получаем права заменённого файла
+			struct stat info{};
+			ASSERT_EQ(::stat(filename.c_str(), &info), 0);
+			// Проверяем точное совпадение битов доступа
+			EXPECT_EQ(static_cast <uint32_t> (info.st_mode & 0777), mode);
+		}
+	#else
+		// POSIX-биты доступа не являются контрактом Windows
+		GTEST_SKIP() << "POSIX access bits are unavailable on Windows";
+	#endif
+}
+
+/**
+ * @brief Проверка сохранности постороннего файла с прежним временным именем
+ *
+ * @details Файл с суффиксом .awh-tmp не принадлежит текущему вызову save().
+ *          Сохранение обязано оставить его содержимое и убрать свой временный файл.
+ *
+ */
+TEST(CodecSysLogDocument, SaveKeepsUnrelatedSibling) {
+	// Создаём отдельный каталог проверки
+	save_directory_t guard("./syslog-save-sibling");
+	ASSERT_TRUE(guard.created);
+	// Адреса цели и постороннего файла
+	const string filename = (guard.address + "/journal.log");
+	const string sibling = (filename + ".awh-tmp");
+	// Содержимое постороннего файла
+	const string previous = "UNRELATED USER DATA";
+	ASSERT_TRUE(guard.fs.write(sibling, previous));
+	// Формируем документ для сохранения
+	syslog::document_t document;
+	ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
+	// Сохраняем новую запись
+	ASSERT_TRUE(document.save(filename));
+	// Проверяем сохранность постороннего файла и содержимое цели
+	EXPECT_EQ(guard.fs.read <string> (sibling), previous);
+	EXPECT_EQ(guard.fs.read <string> (filename), document.dump());
+	// Проверяем отсутствие оставленных временных файлов
+	EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (2));
+}
+
+/**
+ * @brief Проверка независимости одновременно открытых временных файлов
+ *
+ */
+TEST(CodecSysLogDocument, TemporaryFilesKeepIndependentHandles) {
+	// Создаём отдельный каталог проверки
+	save_directory_t guard("./syslog-save-handles");
+	ASSERT_TRUE(guard.created);
+	// Адрес будущей цели и имена временных файлов
+	const string filename = (guard.address + "/journal.log");
+	string first, second;
+	// Создаём два открытых файла для одной цели
+	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	ASSERT_NE(one, nullptr);
+	ASSERT_NE(two, nullptr);
+	ASSERT_NE(first, second);
+	// Записываем разные значения через сохранённые дескрипторы
+	ASSERT_TRUE(guard.fs.write(first, string("FIRST"), awh::fs_t::seek_t::BEGIN, 0, one));
+	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
+	// Закрываем файлы перед проверкой их содержимого
+	one.reset();
+	two.reset();
+	// Проверяем независимость результатов и отсутствие целевого файла
+	EXPECT_EQ(guard.fs.read <string> (first), "FIRST");
+	EXPECT_EQ(guard.fs.read <string> (second), "SECOND");
+	EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (2));
+	EXPECT_EQ(::access(filename.c_str(), F_OK), -1);
+}
+
+/**
+ * @brief Проверка отказа от занятого имени временного файла
+ *
+ * @details Занятое имя подготавливается по следующему номеру после первого вызова.
+ *          Без исключительного создания второй объект откроет посторонний файл.
+ *
+ */
+TEST(CodecSysLogDocument, TemporaryCollisionKeepsExistingFile) {
+	// Создаём отдельный каталог проверки
+	save_directory_t guard("./syslog-save-collision");
+	ASSERT_TRUE(guard.created);
+	// Получаем первое имя и следующий номер последовательности
+	const string filename = (guard.address + "/journal.log");
+	string first, second;
+	awh::handle_file_t one = guard.fs.temporary(filename, first);
+	ASSERT_NE(one, nullptr);
+	const size_t offset = first.rfind('.');
+	ASSERT_NE(offset, string::npos);
+	const string collision = (first.substr(0, offset + 1) + to_string(stoull(first.substr(offset + 1)) + 1));
+	// Занимаем следующее имя посторонним содержимым
+	ASSERT_TRUE(guard.fs.write(collision, string("UNRELATED")));
+	// Создаём второй файл и проверяем, что занятое имя пропущено
+	awh::handle_file_t two = guard.fs.temporary(filename, second);
+	ASSERT_NE(two, nullptr);
+	EXPECT_NE(second, collision);
+	ASSERT_TRUE(guard.fs.write(second, string("SECOND"), awh::fs_t::seek_t::BEGIN, 0, two));
+	// Закрываем открытые объекты до чтения и удаления каталога
+	one.reset();
+	two.reset();
+	// Проверяем, что посторонний файл не открыт для записи и не изменён
+	EXPECT_EQ(guard.fs.read <string> (collision), "UNRELATED");
+}
+
+/**
+ * @brief Проверка прежних прав создания новой цели с учётом umask
+ *
+ */
+TEST(CodecSysLogDocument, NewSaveKeepsCreationPermissions) {
+	/**
+	 * Проверяем биты доступа на системах POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог и обычный файл для сравнения прав
+		save_directory_t guard("./syslog-save-new-mode");
+		ASSERT_TRUE(guard.created);
+		const string reference = (guard.address + "/reference.log");
+		const string filename = (guard.address + "/journal.log");
+		ASSERT_TRUE(guard.fs.write(reference, string("REFERENCE")));
+		// Сохраняем документ по новому адресу
+		syslog::document_t document;
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - Event"));
+		ASSERT_TRUE(document.save(filename));
+		// Сличаем права с обычным созданием файла без изменения umask процесса
+		struct stat expected{}, actual{};
+		ASSERT_EQ(::stat(reference.c_str(), &expected), 0);
+		ASSERT_EQ(::stat(filename.c_str(), &actual), 0);
+		EXPECT_EQ(actual.st_mode & 0777, expected.st_mode & 0777);
+	#else
+		// POSIX-биты доступа не являются контрактом Windows
+		GTEST_SKIP() << "POSIX access bits are unavailable on Windows";
+	#endif
+}
+
+/**
+ * @brief Проверка сохранения имени у предела файловой системы
+ *
+ * @details Временное имя не должно удлинять имя цели и выходить за NAME_MAX.
+ *
+ */
+TEST(CodecSysLogDocument, SaveSupportsMaximumFilename) {
+	/**
+	 * Получаем предел имени средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог проверки
+		save_directory_t guard("./syslog-save-long-name");
+		ASSERT_TRUE(guard.created);
+		// Получаем предел для файловой системы каталога
+		const long length = ::pathconf(guard.address.c_str(), _PC_NAME_MAX);
+		// Если файловая система не сообщает конечного предела
+		if(length <= 0){
+			// Пропускаем только случай неопределённого предела
+			GTEST_SKIP() << "NAME_MAX is not available";
+		}
+		// Формируем имя максимальной длины
+		const string filename = (guard.address + "/" + string(static_cast <size_t> (length), 'a'));
+		// Формируем и сохраняем документ
+		syslog::document_t document;
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - Event"));
+		ASSERT_TRUE(document.save(filename));
+		// Проверяем содержимое и отсутствие оставленного временного файла
+		EXPECT_EQ(guard.fs.read <string> (filename), document.dump());
+		EXPECT_EQ(guard.fs.count(guard.address), static_cast <uintmax_t> (1));
+	#else
+		// Предел POSIX-имени не является контрактом Windows
+		GTEST_SKIP() << "POSIX NAME_MAX is unavailable on Windows";
+	#endif
 }

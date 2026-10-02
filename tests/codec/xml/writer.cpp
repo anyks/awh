@@ -1386,6 +1386,8 @@ TEST(CodecXmlWriter, RefusalAfterError) {
 	ASSERT_FALSE(writer.element("a", "v"));
 	// Выполняем проверку отказа записи объявления разметки
 	ASSERT_FALSE(writer.declaration());
+	// Проверяем сохранение первоначальной причины отказа
+	ASSERT_EQ(writer.error(), xml::error_t::INVALID_NAME);
 	// Выполняем проверку отказа открытия нового узла разметки
 	ASSERT_FALSE(writer.open("b"));
 	// Выполняем проверку незавершённости записи
@@ -1756,7 +1758,7 @@ TEST(CodecXmlWriter, LoggerDoesNotHinderTextAssembly) {
  *       требовала списывания через `text()`
  *
  */
-TEST(CodecXmlWriter, TakeYieldsTextAndKeepsState){
+TEST(CodecXmlWriter, TakeYieldsTextAndKeepsState) {
 	// Объект записи разметки
 	xml::writer_t writer;
 	// Выполняем открытие корневого узла
@@ -1781,6 +1783,144 @@ TEST(CodecXmlWriter, TakeYieldsTextAndKeepsState){
 	const string second = writer.take();
 	// Выполняем проверку того, что куски вместе дают целую разметку
 	ASSERT_EQ(first + second, "<корень><первый>раз</первый><второй>два</второй></корень>");
+}
+/**
+ * @brief Проверка запрета объявления после изъятия уже записанного текста
+ *
+ * @details Изъятие пролога, открытого или законченного корня не начинает новый
+ *          документ. Повторное пустое изъятие также не должно снимать этот запрет.
+ *
+ */
+TEST(CodecXmlWriter, DeclarationAfterTakeIsRefused) {
+	/**
+	 * Перебираем состояния документа перед изъятием
+	 */
+	for(uint8_t mode = 0; mode < 4; mode++){
+		// Создаём объект записи разметки
+		xml::writer_t writer;
+		/**
+		 * Записываем начало документа
+		 */
+		switch(mode){
+			case 0: {
+				// Записываем примечание перед корнем
+				ASSERT_TRUE(writer.comment("before"));
+			} break;
+			case 1: {
+				// Записываем первое объявление разметки
+				ASSERT_TRUE(writer.declaration());
+			} break;
+			case 2: {
+				// Открываем корневой элемент
+				ASSERT_TRUE(writer.open("root"));
+			} break;
+			case 3: {
+				// Записываем корневой элемент целиком
+				ASSERT_TRUE(writer.element("root", ""));
+			} break;
+		}
+		// Извлекаем записанное начало документа
+		ASSERT_FALSE(writer.take().empty());
+		// Проверяем повторное изъятие пустого буфера
+		ASSERT_TRUE(writer.take().empty());
+		// Проверяем отказ объявления посреди документа
+		ASSERT_FALSE(writer.declaration());
+		// Проверяем точную причину отказа
+		ASSERT_EQ(writer.error(), xml::error_t::INVALID_DECLARATION);
+		// Проверяем закрытость выдачи после отказа
+		ASSERT_TRUE(writer.take().empty());
+		// Начинаем новый документ явной очисткой
+		writer.clear();
+		// Пустое изъятие до записи не должно запрещать объявление
+		ASSERT_TRUE(writer.take().empty());
+		ASSERT_TRUE(writer.declaration());
+		// Извлекаем объявление и продолжаем корректную запись
+		const string prefix = writer.take();
+		ASSERT_TRUE(writer.element("next", "ok"));
+		// Проверяем собранный из двух частей документ
+		xml::document_t document;
+		ASSERT_TRUE(document.parse(prefix + writer.take()));
+	}
+}
+/**
+ * @brief Проверка неизменности пространства имён уже записанных атрибутов
+ *
+ * @details Позднее связывание не должно превращать разные расширенные имена
+ *          атрибутов в дубликаты, в том числе после изъятия начала метки.
+ *
+ */
+TEST(CodecXmlWriter, BindingCannotChangeWrittenAttributes) {
+	// Создаём объект записи разметки
+	xml::writer_t writer;
+	// Объявляем пространства имён в родительском элементе
+	ASSERT_TRUE(writer.open("root", "urn:one"));
+	ASSERT_TRUE(writer.binding("b", "urn:two"));
+	// Записываем атрибуты с разными расширенными именами
+	ASSERT_TRUE(writer.open("child"));
+	ASSERT_TRUE(writer.attribute("x", "1", "urn:one"));
+	ASSERT_TRUE(writer.attribute("x", "2", "urn:two"));
+	// Изъятие текста не должно забывать использованные пространства имён
+	ASSERT_FALSE(writer.take().empty());
+	// Проверяем отказ связывания, превращающего атрибуты в дубликаты
+	ASSERT_FALSE(writer.binding("b", "urn:one"));
+	ASSERT_EQ(writer.error(), xml::error_t::INVALID_NAMESPACE);
+	// Проверяем терминальность отказа
+	ASSERT_FALSE(writer.complete());
+	ASSERT_TRUE(writer.text().empty());
+	ASSERT_TRUE(writer.take().empty());
+}
+/**
+ * @brief Проверка неизменности пространства имён записанного элемента
+ *
+ */
+TEST(CodecXmlWriter, BindingCannotChangeWrittenElement) {
+	/**
+	 * Проверяем имя с префиксом, имя с умолчальным пространством и имя без него
+	 */
+	for(uint8_t mode = 0; mode < 3; mode++){
+		// Создаём объект записи разметки
+		xml::writer_t writer;
+		// Задаём объявление родительского пространства имён
+		vector <xml::binding_t> declares(1);
+		declares[0].prefix = ((mode == 0) ? "p" : "");
+		declares[0].uri = ((mode == 2) ? "" : "urn:one");
+		// Открываем родительский и дочерний элементы в заданном пространстве
+		ASSERT_TRUE(writer.open("root", declares[0].uri, declares));
+		ASSERT_TRUE(writer.open("child", declares[0].uri));
+		// Проверяем отказ изменения пространства имени дочернего элемента
+		ASSERT_FALSE(writer.binding(declares[0].prefix, "urn:two"));
+		ASSERT_EQ(writer.error(), xml::error_t::INVALID_NAMESPACE);
+	}
+}
+/**
+ * @brief Проверка допустимого затенения и повторения связываний
+ *
+ */
+TEST(CodecXmlWriter, BindingKeepsLegalNamespaceChanges) {
+	// Создаём объект записи разметки
+	xml::writer_t writer;
+	ASSERT_TRUE(writer.open("root"));
+	ASSERT_TRUE(writer.binding("p", "urn:one"));
+	ASSERT_TRUE(writer.open("child"));
+	// Неиспользованный текущим элементом префикс разрешено затенить
+	ASSERT_TRUE(writer.binding("p", "urn:two"));
+	ASSERT_TRUE(writer.open("leaf", "urn:two"));
+	ASSERT_TRUE(writer.attribute("x", "1", "urn:two"));
+	// Повторение действующего связывания не меняет уже записанные имена
+	ASSERT_TRUE(writer.binding("p", "urn:two"));
+	// Имя без префикса не зависит от пространства имён по умолчанию
+	ASSERT_TRUE(writer.attribute("plain", "2"));
+	ASSERT_TRUE(writer.binding("", "urn:default"));
+	ASSERT_TRUE(writer.close());
+	ASSERT_TRUE(writer.close());
+	ASSERT_TRUE(writer.close());
+	// Проверяем корректность документа и сохранение имён
+	xml::document_t document;
+	ASSERT_TRUE(document.parse(writer.text()));
+	const xml::node_t leaf = document.element().find("leaf", "urn:two");
+	ASSERT_TRUE(leaf.valid());
+	ASSERT_EQ(leaf.attribute("x", "urn:two"), "1");
+	ASSERT_EQ(leaf.attribute("plain"), "2");
 }
 /**
  * @brief Проверка закрытости изъятия текста при отказе записи

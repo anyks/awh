@@ -45,6 +45,44 @@ using namespace awh;
 using namespace awh::codec;
 
 /**
+ * @brief Проверка полной загрузки массивов независимо от предела индексного роста
+ *
+ */
+TEST(CodecBridge, JSONArraysIgnoreTheIndexGrowthLimit) {
+	/**
+	 * @brief Восстановление предела роста после любого выхода из проверки
+	 *
+	 */
+	struct growth_guard_t {
+		// Прежний предел индексного роста массива
+		const size_t previous;
+		// Сохраняем предел перед проверкой
+		growth_guard_t() noexcept : previous(abc::value_t::limit()) {}
+		// Восстанавливаем предел даже при отказе проверки
+		~growth_guard_t() noexcept { abc::value_t::limit(this->previous); }
+	} guard;
+	// Проверяем пустой, плоский и вложенный массивы
+	bridge_t bridge;
+	for(const string & record : vector <string> {"[]", "[1,2,3,4]", "{\"list\":[[1,2,3],{\"nested\":[true,false,null,\"x\"]},[],5]}"}){
+		// Получаем контрольное дерево без ограничения индексного роста
+		abc::value_t::limit(0);
+		abc::value_t expected;
+		ASSERT_TRUE(bridge.decode(record, expected, bridge_t::format_t::JSON));
+		string before = "";
+		ASSERT_TRUE(bridge.encode(expected, before, bridge_t::format_t::ABC));
+		// Загружаем ту же запись с пределом меньше длины её массивов
+		abc::value_t::limit(2);
+		abc::value_t actual;
+		ASSERT_TRUE(bridge.decode(record, actual, bridge_t::format_t::JSON));
+		ASSERT_EQ(bridge.error(), bridge_t::error_t::NONE);
+		// Сравниваем всё дерево, включая виды и элементы вложенных массивов
+		string after = "";
+		ASSERT_TRUE(bridge.encode(actual, after, bridge_t::format_t::ABC));
+		ASSERT_EQ(after, before) << record;
+	}
+}
+
+/**
  * @brief Проверка перевода записи JSON в дерево ABC
  *
  */

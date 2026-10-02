@@ -53,34 +53,39 @@ using namespace std;
 using namespace awh::codec;
 
 /**
- * @brief Страж локали записи чисел
- *
- * @details Локаль есть настройка ПРОЦЕССА, а проверки всех кодеков идут одною
- *          программою: оставленная чужая локаль утекла бы к соседним проверкам и
- *          обратилась бы там «плавающим» отказом вдали от места
- *
- * @warning Возврат ведётся деструктором, а не строкою в конце проверки: всякий
- *          ASSERT_* выходит из проверки немедленно, и возврат, записанный последней
- *          строкою, по дороге отказа НЕ выполняется вовсе. Замечено 08.09.2026
- *
+ * Пространство имён вспомогательных типов проверок
  */
-struct LocaleGuard {
-	// Локаль записи чисел, действовавшая до подмены
-	string previous;
+namespace {
 	/**
-	 * @brief Конструктор
+	 * @brief Страж локали записи чисел
+	 *
+	 * @details Локаль есть настройка ПРОЦЕССА, а проверки всех кодеков идут одною
+	 *          программою: оставленная чужая локаль утекла бы к соседним проверкам и
+	 *          обратилась бы там «плавающим» отказом вдали от места
+	 *
+	 * @warning Возврат ведётся деструктором, а не строкою в конце проверки: всякий
+	 *          ASSERT_* выходит из проверки немедленно, и возврат, записанный последней
+	 *          строкою, по дороге отказа НЕ выполняется вовсе. Замечено 08.09.2026
 	 *
 	 */
-	LocaleGuard() noexcept : previous(::setlocale(LC_NUMERIC, nullptr)) {}
-	/**
-	 * @brief Деструктор
-	 *
-	 */
-	~LocaleGuard() noexcept {
-		// Выполняем возврат действовавшей локали записи чисел
-		::setlocale(LC_NUMERIC, this->previous.c_str());
-	}
-};
+	typedef struct Locale_Guard {
+		// Локаль записи чисел, действовавшая до подмены
+		string previous;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Locale_Guard() noexcept : previous(::setlocale(LC_NUMERIC, nullptr)) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Locale_Guard() noexcept {
+			// Выполняем возврат действовавшей локали записи чисел
+			::setlocale(LC_NUMERIC, this->previous.c_str());
+		}
+	} locale_guard_t;
+}
 
 /**
  * @brief Метод сборки записи из дерева заданными настройками
@@ -588,7 +593,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 	 */
 	awh::fmk::initialize();
 	// Страж возврата локали записи чисел
-	const LocaleGuard guard;
+	const locale_guard_t guard;
 	// Количество проверенных локалей с иным десятичным знаком
 	uint32_t checked = 0;
 	/**
@@ -1589,7 +1594,7 @@ TEST(CodecSysLogWriter, NestedValueBecomesReadableText) {
  *          обратила бы отказ на всякое дерево, имён в приоритете не несущее
  *
  */
-TEST(CodecSysLogWriter, HalfDeclaredPriorityIsRefused){
+TEST(CodecSysLogWriter, HalfDeclaredPriorityIsRefused) {
 	// Настройки записи событий
 	syslog::writer_t::settings_t settings;
 	// Устанавливаем запись приставки приоритета
@@ -1676,7 +1681,7 @@ TEST(CodecSysLogWriter, HalfDeclaredPriorityIsRefused){
  *          косую черту несущим, каковые живые журналы пишут повседневно
  *
  */
-TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet){
+TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet) {
 	/**
 	 * @brief Метод сборки записи с заданным опознавателем блока
 	 *
@@ -1770,7 +1775,7 @@ TEST(CodecSysLogWriter, StructuredNamesFollowTheNameSet){
  *          прежний приём имён словаря - и основных, и принятых наравне с ними
  *
  */
-TEST(CodecSysLogWriter, UnknownFacilityNameIsRefused){
+TEST(CodecSysLogWriter, UnknownFacilityNameIsRefused) {
 	/**
 	 * @brief Метод сборки записи с заданным источником сообщения
 	 *
@@ -1839,7 +1844,7 @@ TEST(CodecSysLogWriter, UnknownFacilityNameIsRefused){
  *          подлежит, и сдвиг сличения на единицу отсекал бы законные записи молча
  *
  */
-TEST(CodecSysLogWriter, HeaderFieldLengthLimitsAreEnforced){
+TEST(CodecSysLogWriter, HeaderFieldLengthLimitsAreEnforced) {
 	// Поля заголовка, пределы им назначенные, и знак наполнения
 	const struct {
 		const char * path;
@@ -1897,7 +1902,7 @@ TEST(CodecSysLogWriter, HeaderFieldLengthLimitsAreEnforced){
  *       в общий ход сборки, и отказ пришёл бы туда, где его быть не должно
  *
  */
-TEST(CodecSysLogWriter, LegacyStandardKnowsNoLengthLimits){
+TEST(CodecSysLogWriter, LegacyStandardKnowsNoLengthLimits) {
 	// Объект документа системного журнала
 	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи прежнего описания

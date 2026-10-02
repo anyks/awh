@@ -56,25 +56,25 @@ namespace {
 	 * @brief Объект окружения проверок записи событий
 	 *
 	 */
-	struct EnvCefWriter {
+	typedef struct Environment {
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		EnvCefWriter() noexcept {
+		explicit Environment() noexcept {
 			// Выполняем отключение вывода логов
 			awh::log::mode({});
 		}
-	};
+	} environment_t;
 	/**
 	 * @brief Функция получения объекта окружения проверок
 	 *
 	 * @return объект окружения проверок
 	 *
 	 */
-	EnvCefWriter & writerEnvironment() noexcept {
+	environment_t & writerEnvironment() noexcept {
 		// Объект окружения проверок
-		static EnvCefWriter env;
+		static environment_t env;
 		// Выводим объект окружения проверок
 		return env;
 	}
@@ -93,7 +93,7 @@ namespace {
 	 *       такой же: наборы кодеков собираются в одну программу, и два одноимённых типа
 	 *       со внешним связыванием дали бы порчу кучи вдали от места
 	 */
-	struct LocaleGuard {
+	typedef struct Locale_Guard {
 		/**
 		 * Локаль записи чисел, действовавшая до подмены
 		 *
@@ -105,16 +105,16 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		LocaleGuard() noexcept : previous(::setlocale(LC_NUMERIC, nullptr)) {}
+		explicit Locale_Guard() noexcept : previous(::setlocale(LC_NUMERIC, nullptr)) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
-		~LocaleGuard() noexcept {
+		~Locale_Guard() noexcept {
 			// Выполняем возврат действовавшей локали записи чисел
 			::setlocale(LC_NUMERIC, this->previous.c_str());
 		}
-	};
+	} locale_guard_t;
 }
 
 /**
@@ -333,7 +333,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 	 */
 	(void) ::writerEnvironment();
 	// Страж возврата локали записи чисел
-	const LocaleGuard guard;
+	const locale_guard_t guard;
 	// Количество проверенных локалей с иным десятичным знаком
 	uint32_t checked = 0;
 	/**
@@ -910,7 +910,7 @@ TEST(CodecCefWriter, WrittenRecordsAreAlwaysReadable) {
 	/**
 	 * Выполняем перебор конечных дробных значений, записи подлежащих
 	 */
-	for(const double value : {1.5, 0.0, -2.25, ::std::numeric_limits <double>::max(), ::std::numeric_limits <double>::denorm_min()}) {
+	for(const double value : {1.5, 0.0, -2.25, ::std::numeric_limits <double>::max(), ::std::numeric_limits <double>::denorm_min()}){
 		// Выполняем проверку успешности сборки записи дробным значением
 		ASSERT_TRUE(writer.write(tree(value), result)) << value;
 		// Объект события повторного разбора
@@ -1076,7 +1076,7 @@ TEST(CodecCefWriter, WrittenIntegersFitTheDictionaryKind) {
  *          дословно
  *
  */
-TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals){
+TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals) {
 	/**
 	 * @brief Метод сборки записи с заданным именем ключа расширения
 	 *
@@ -1168,7 +1168,7 @@ TEST(CodecCefWriter, ExtensionKeyCannotHoldEquals){
  *          несущих прямые черты, каковые в приставке законны
  *
  */
-TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature){
+TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature) {
 	/**
 	 * @brief Метод сборки записи с заданной приставкой журнала
 	 *
@@ -1262,7 +1262,7 @@ TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature){
  *          законные записи молча
  *
  */
-TEST(CodecCefWriter, RecordLimitsCloseTheRoundTrip){
+TEST(CodecCefWriter, RecordLimitsCloseTheRoundTrip) {
 	// Образцовая запись, опытам основою служащая
 	constexpr const char * SAMPLE = "CEF:0|V|P|1.0|100|ИМЯ|5|src=10.0.0.1";
 	/**

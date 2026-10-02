@@ -131,6 +131,10 @@ const char * awh::args::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::CLUSTER):
 			// Выводим описание кода ошибки разбора
 			return "unknown short name in a cluster";
+		// Если путь несовместим с видом родителя либо пределом роста массива
+		case static_cast <uint8_t> (error_t::INVALID_PATH):
+			// Выводим описание кода ошибки разбора
+			return "path cannot be created in the settings tree";
 	}
 	// Выводим общее описание кода ошибки, отведённого не имеющего
 	return "unknown error";
