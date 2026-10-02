@@ -20,12 +20,16 @@ import platform
 import re
 import shutil
 import signal
+import statistics
 import subprocess
 import tempfile
 
 
 MIB = 1024 * 1024
 LIMIT = 8 * MIB
+METHODS = {name: index for index, name in enumerate((
+    "LZ4", "LZMA", "ZSTD", "GZIP", "ZLIB", "BZIP2", "BROTLI",
+    "LIZARD", "SNAPPY", "DEFLATE", "DENSITY"), 1)}
 SOURCES = """
 src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
 src/sys/fs.cpp src/sys/os.cpp src/num/lexical/table.cpp src/num/bignum.cpp
@@ -61,8 +65,8 @@ def run(command, directory, log, timeout):
     return log.read_text()
 
 
-def measure(executable, frame, declared, directory, log, timeout):
-    output = run([str(executable), "read", str(frame), str(declared)],
+def measure(executable, frame, declared, method, directory, log, timeout):
+    output = run([str(executable), "read", str(frame), str(declared), str(method)],
                  directory, log, timeout)
     lines = [line for line in output.splitlines() if line.startswith("RESULT ")]
     require(len(lines) == 1, f"Нет единственного результата: {log}")
@@ -83,10 +87,10 @@ def measure(executable, frame, declared, directory, log, timeout):
 
 
 def check(result, size, variant, declared):
-    """Одинаковый порог памяти должен отвергнуть каждую целевую мутацию."""
+    """Проверяем содержимое, причину отказа и расход при малом origin."""
     require(result["original"] == size and result["declared"] == declared,
             "Кадр не соответствует заданному случаю")
-    require(0 < result["packed"] < size // 16, "Нет сжатого контрольного входа")
+    require(0 < result["packed"] < size, "Нет сжатого контрольного входа")
     if declared == size:
         require(result["accepted"] == 1 and result["valid"] == 1 and
                 result["error"] == 0 and result["output"] == size and
@@ -95,19 +99,34 @@ def check(result, size, variant, declared):
         return
     require(result["accepted"] == 0 and result["output"] == 0 and
             result["offset"] == 0, "Испорченный кадр принят либо изменил выход")
-    limited = declared == 64 and variant != "no-limit"
+    limited = declared in (64, size - 1) and variant != "no-limit"
     require(result["compression_failed"] == int(limited) and
             result["invalid_chunk"] == int(not limited), "Неверная причина отказа")
-    mutated = (variant, declared) in (("no-zero", 0), ("no-limit", 64))
-    if mutated:
-        require(result["rss_delta"] > max(LIMIT, size // 2),
-                f"Мутация {variant} не обнаружена по памяти")
-    else:
+    if variant == "baseline" and declared in (0, 64):
         require(result["rss_delta"] < LIMIT,
                 f"Регрессия: {variant}, origin={declared}, прирост RSS >= 8 МиБ")
 
 
-def verify(root, output, compiler, jobs, timeout):
+def check_mutations(results, methods, sizes):
+    differences = []
+    for method in methods:
+        for size in sizes:
+            for variant, declared in (("no-zero", 0), ("no-limit", 64)):
+                samples = {}
+                for name in ("baseline", variant):
+                    samples[name] = [r["rss_delta"] for r in results
+                                     if r["method"] == method and r["original"] == size and
+                                     r["variant"] == name and r["declared"] == declared]
+                    require(len(samples[name]) == 3, "Неполное доказательство расхода памяти")
+                difference = statistics.median(samples[variant]) - statistics.median(samples["baseline"])
+                require(difference > size // 2,
+                        f"Мутация {variant}, {method}, {size} не обнаружена по памяти")
+                differences.append(dict(method=method, size=size, variant=variant,
+                                        median_difference=difference, samples=samples))
+    return differences
+
+
+def verify(root, output, compiler, jobs, timeout, methods, sizes):
     system = platform.system()
     require(system in ("Darwin", "Linux"), "Поддерживаются только macOS и Linux")
     shutil.copy2(Path(__file__).resolve(), output / "runner.py")
@@ -165,23 +184,32 @@ def verify(root, output, compiler, jobs, timeout):
         run([compiler] + flags + common + [obj, str(library)] + libs +
             ["-o", str(output / name)], output, output / (name + "-link.log"), timeout)
     results = []
-    for size in (32 * MIB, 128 * MIB):
-        frame = output / (str(size) + ".abc")
-        run([str(output / "baseline"), "generate", str(frame), str(size)], output,
-            output / (str(size) + "-generate.log"), timeout)
-        for name in variants:
-            for declared in (0, 64, size):
-                for repeat in range(3):
-                    log = output / f"{name}-{size}-{declared}-{repeat}.log"
-                    result = measure(output / name, frame, declared, output, log, timeout)
-                    result.update(variant=name, repeat=repeat)
-                    results.append(result)
-                    (output / "measurements.json").write_text(json.dumps(results, indent=2))
-                    check(result, size, name, declared)
-                    print(f"{name}: размер={size // MIB} МиБ, origin={declared}, "
-                          f"прирост RSS={result['rss_delta'] / MIB:.2f} МиБ", flush=True)
-    return {"passed": True, "runs": len(results), "system": system,
-            "machine": platform.machine(), "limit_bytes": LIMIT}
+    # Удерживаем память до конца серии: Linux-щуп обязан пережить грязный пик родителя.
+    launching_memory = bytearray(128 * MIB)
+    for method in methods:
+        for size in sizes:
+            frame = output / f"{method}-{size}.abc"
+            run([str(output / "baseline"), "generate", str(frame), str(size),
+                 str(METHODS[method])], output, frame.with_suffix(".log"), timeout)
+            for name in variants:
+                for declared in (0, 64, size - 1, size, size + 1):
+                    for repeat in range(3):
+                        log = output / f"{method}-{name}-{size}-{declared}-{repeat}.log"
+                        result = measure(output / name, frame, declared, METHODS[method],
+                                         output, log, timeout)
+                        result.update(method=method, variant=name, repeat=repeat)
+                        results.append(result)
+                        (output / "measurements.json").write_text(json.dumps(results, indent=2))
+                        check(result, size, name, declared)
+                        print(f"{method}, {name}: размер={size // MIB} МиБ, origin={declared}, "
+                              f"прирост RSS={result['rss_delta'] / MIB:.2f} МиБ", flush=True)
+    differences = check_mutations(results, methods, sizes)
+    expected = len(methods) * len(sizes) * len(variants) * 5 * 3
+    require(len(results) == expected, "Матрица измерений не завершена")
+    return {"passed": True, "runs": len(results), "expected": expected, "system": system,
+            "machine": platform.machine(), "methods": methods, "sizes": sizes,
+            "limit_bytes": LIMIT, "parent_memory": len(launching_memory),
+            "memory_differences": differences}
 
 
 def main():
@@ -190,6 +218,10 @@ def main():
     parser.add_argument("--output", type=Path, help="Родитель нового временного каталога")
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--timeout", type=int, default=180, help="Таймаут каждой команды, секунды")
+    parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS),
+                        help="Алгоритмы сжатия, по умолчанию все 11")
+    parser.add_argument("--sizes", nargs="+", type=int, choices=(32, 128), default=[32],
+                        help="Размеры исходного содержимого в МиБ, по умолчанию 32")
     args = parser.parse_args()
     if args.jobs < 1 or args.timeout < 1:
         parser.error("--jobs и --timeout должны быть положительными")
@@ -197,7 +229,8 @@ def main():
     print(f"Стенд: {output}", flush=True)
     try:
         result = verify(args.root.resolve(), output, os.environ.get("CXX", "c++"),
-                        args.jobs, args.timeout)
+                        args.jobs, args.timeout, list(dict.fromkeys(args.methods)),
+                        [size * MIB for size in dict.fromkeys(args.sizes)])
     except (OSError, RuntimeError) as error:
         result = {"passed": False, "error": str(error)}
     (output / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))

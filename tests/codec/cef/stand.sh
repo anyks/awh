@@ -170,7 +170,8 @@ fi
 #       задаётся по семейству, а не по машине, где отказ виден
 #
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	# Разбор сетевых интерфейсов требует IP Helper, а разрешение ярлыков — COM и его IID
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
 	#
 	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
 	#       связывание отказывает на средствах Objective-C

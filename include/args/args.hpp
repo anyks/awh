@@ -279,10 +279,11 @@ namespace awh {
 				 * Несовместимый вид родителя и превышение предела роста массива дают
 				 * `INVALID_PATH`, сохраняя прежние значения и их источники
 				 *
-				 * @param path   путь звеньями оси хранения
-				 * @param value  значение для укладки
-				 * @param source источник значения
-				 * @return       результат укладки
+				 * @param path    путь звеньями оси хранения
+				 * @param value   значение для укладки
+				 * @param source  источник значения
+				 * @param mapping признак создания новых родителей отображениями при слиянии
+				 * @return        результат укладки
 				 *
 				 * \~english
 				 * @brief Method of the laying of a value into the tree of the settings
@@ -292,11 +293,12 @@ namespace awh {
 				 * @param path path by the links of the axis of the storage
 				 * @param value value for the laying
 				 * @param source source of the value
+				 * @param mapping create new parents as mappings while merging a configuration tree
 				 * @return result of the laying
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool lay(const string & path, codec::abc::value_t && value, const source_t source) noexcept;
+				[[nodiscard]] bool lay(const string & path, codec::abc::value_t && value, const source_t source, const bool mapping = false) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод слияния дерева значений с деревом настроек

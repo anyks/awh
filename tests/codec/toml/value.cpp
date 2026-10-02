@@ -2993,49 +2993,48 @@ TEST(CodecTomlValue, PathSurvivesSiblingGrowth) {
  *          потомка обращается в освобождённую память
  *
  */
-TEST(CodecTomlValue, AssignmentTakesItsOwnSubtree) {
-	/**
-	 * Выполняем проверку копирования из собственного потомка
-	 */
-	{
-		// Корневое владеющее значение
-		toml::value_t root;
-		// Выполняем занесение первого поля вложенного значения
-		root["child"]["leaf"] = toml::value_t("payload");
-		// Выполняем занесение второго поля вложенного значения
-		root["child"]["extra"] = toml::value_t("second");
-		// Ожидаемое значение после присваивания
-		const toml::value_t expected(root["child"]);
-		// Выполняем присваивание корню его собственного потомка
-		root = root["child"];
-		// Выполняем проверку совпадения значения с ожидаемым
-		ASSERT_TRUE(root == expected);
-		// Выполняем проверку наличия первого поля потомка
-		ASSERT_TRUE(root.contains("leaf"));
-		// Выполняем проверку сохранения второго поля потомка
-		ASSERT_EQ(root["extra"].text(), "second");
-	}
-	/**
-	 * Выполняем проверку переноса из собственного потомка
-	 */
-	{
-		// Корневое владеющее значение
-		toml::value_t root;
-		// Выполняем занесение первого поля вложенного значения
-		root["child"]["leaf"] = toml::value_t("payload");
-		// Выполняем занесение второго поля вложенного значения
-		root["child"]["extra"] = toml::value_t("second");
-		// Ожидаемое значение после присваивания
-		const toml::value_t expected(root["child"]);
-		// Выполняем перенос корню его собственного потомка
-		root = ::std::move(root["child"]);
-		// Выполняем проверку совпадения значения с ожидаемым
-		ASSERT_TRUE(root == expected);
-		// Выполняем проверку наличия первого поля потомка
-		ASSERT_TRUE(root.contains("leaf"));
-		// Выполняем проверку сохранения второго поля потомка
-		ASSERT_EQ(root["extra"].text(), "second");
-	}
+TEST(CodecTomlValue, CopyAssignmentTakesItsOwnSubtree) {
+	// Корневое владеющее значение
+	toml::value_t root;
+	// Выполняем занесение первого поля вложенного значения
+	root["child"]["leaf"] = toml::value_t("payload");
+	// Выполняем занесение второго поля вложенного значения
+	root["child"]["extra"] = toml::value_t("second");
+	// Ожидаемое значение после присваивания
+	const toml::value_t expected(root["child"]);
+	// Выполняем присваивание корню его собственного потомка
+	root = root["child"];
+	// Выполняем проверку совпадения значения с ожидаемым
+	ASSERT_TRUE(root == expected);
+	// Выполняем проверку наличия первого поля потомка
+	ASSERT_TRUE(root.contains("leaf"));
+	// Выполняем проверку сохранения второго поля потомка
+	ASSERT_EQ(root["extra"].text(), "second");
+}
+/**
+ * @brief Проверка переноса значения из собственного потомка
+ *
+ * @details Источник переноса лежит внутри прежнего вместилища назначения. Сбросить
+ *          либо снести это вместилище до снятия всех полей источника нельзя
+ *
+ */
+TEST(CodecTomlValue, MoveAssignmentTakesItsOwnSubtree) {
+	// Корневое владеющее значение
+	toml::value_t root;
+	// Выполняем занесение первого поля вложенного значения
+	root["child"]["leaf"] = toml::value_t("payload");
+	// Выполняем занесение второго поля вложенного значения
+	root["child"]["extra"] = toml::value_t("second");
+	// Ожидаемое значение после присваивания
+	const toml::value_t expected(root["child"]);
+	// Выполняем перенос корню его собственного потомка
+	root = ::std::move(root["child"]);
+	// Выполняем проверку совпадения значения с ожидаемым
+	ASSERT_TRUE(root == expected);
+	// Выполняем проверку наличия первого поля потомка
+	ASSERT_TRUE(root.contains("leaf"));
+	// Выполняем проверку сохранения второго поля потомка
+	ASSERT_EQ(root["extra"].text(), "second");
 }
 /**
  * @brief Проверка сличения перечней и таблиц, содержимым расходящихся

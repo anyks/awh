@@ -158,7 +158,8 @@ fi
 # «ws2_32», и без неё связывание стенда отказывает
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	# Разрешение ярлыков файловой системой требует COM и его IID
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -lole32 -luuid" ;;
 	#
 	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
 	#       связывание отказывает на средствах Objective-C

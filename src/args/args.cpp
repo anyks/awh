@@ -331,13 +331,14 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 /**
  * @brief Метод укладки значения в дерево настроек
  *
- * @param path   путь звеньями оси хранения
- * @param value  значение для укладки
- * @param source источник значения
- * @return       результат укладки
+ * @param path    путь звеньями оси хранения
+ * @param value   значение для укладки
+ * @param source  источник значения
+ * @param mapping признак создания новых родителей отображениями при слиянии
+ * @return        результат укладки
  *
  */
-bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, const source_t source) noexcept {
+bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, const source_t source, const bool mapping) noexcept {
 	/**
 	 * Если путь укладки пуст вовсе либо несёт пустое звено
 	 *
@@ -448,8 +449,9 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 * Проверяем весь путь до освобождения родителей и изменения источников
 	 *
 	 * @note Скалярный родитель будет освобождён после проверки: nullptr обозначает
-	 *       ещё не созданное поддерево. Числа внутри отображения остаются именами.
-	 *       Предел роста не запрещает менять уже существующий элемент массива
+	 *       ещё не созданное поддерево. При слиянии его вид известен из исходного
+	 *       дерева: родители являются отображениями. Числа внутри отображения
+	 *       остаются именами. Предел роста не запрещает менять существующий элемент
 	 */
 	while(codec::abc::segment(path, offset, segment, unescaped, invalid)){
 		// Если скалярный родитель должен уступить место новому поддереву
@@ -458,8 +460,10 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 			current = nullptr;
 		// Разобранный номер элемента массива
 		size_t index = 0;
+		// Признак обращения по имени с учётом вида ещё не созданного родителя
+		const bool named = ((current == nullptr) ? mapping : current->is(codec::abc::type_t::MAP));
 		// Если звено задаёт индекс массива либо создаёт новый массив
-		if(((current == nullptr) || !current->is(codec::abc::type_t::MAP)) && codec::abc::indexed(segment, index)){
+		if(!named && codec::abc::indexed(segment, index)){
 			// Если для записи требуется рост массива
 			if((current == nullptr) || (index >= current->size())){
 				// Если длина переполнится либо превысит установленный предел
@@ -551,21 +555,27 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 		}
 	}
 	/**
-	 * Выполняем освобождение скалярных родителей для укладки потомка
+	 * Выполняем подготовку родителей для укладки потомка
 	 *
 	 * @warning ABC не превращает существующий скаляр в отображение при `place()`:
 	 *          запись через такую ссылку уходит в отбросное значение. Приоритеты
-	 *          уже проверены, поэтому скаляр младшего источника можно снять
+	 *          и путь уже проверены, поэтому скаляр младшего источника можно снять.
+	 *          При слиянии создаваемый родитель является отображением даже тогда,
+	 *          когда все имена его полей записаны цифрами
 	 */
 	for(size_t offset = path.find('/'); offset != string::npos; offset = path.find('/', offset + 1)){
 		// Получаем путь родительского значения
 		const string parent = path.substr(0, offset);
 		// Получаем родительское значение без изменения дерева
 		const codec::abc::value_t & current = this->_root.at(parent);
-		// Если родитель существует и не является вместимым
-		if(current.valid() && !current.is(codec::abc::type_t::CONTAINER)){
-			// Освобождаем место для нового поддерева
-			this->_root.place(parent).clear();
+		// Если родителю требуется создать либо изменить вид вместимого
+		if(!current.is(codec::abc::type_t::CONTAINER) && (mapping || current.valid())){
+			// Если вид родителя известен из сливаемого дерева
+			if(mapping)
+				// Создаём отображение до обращения к его числовым именам
+				this->_root.place(parent) = codec::abc::value_t(codec::abc::kind_t::MAP);
+			// Иначе освобождаем место для вида, который задаст путь параметра
+			else this->_root.place(parent).clear();
 			// Снимаем источник вытесненного скаляра
 			this->_origins.erase(parent);
 		}
@@ -611,7 +621,7 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 		 */
 		if(value.empty() && !path.empty())
 			// Выводим результат проверки и укладки пустого отображения
-			return this->lay(path, codec::abc::value_t(value), source);
+			return this->lay(path, codec::abc::value_t(value), source, true);
 		// Признак успешности слияния полей отображения
 		bool result = true;
 		// Выполняем перебор всех полей отображения
@@ -675,9 +685,9 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 	 */
 	if(derive && value.is(codec::abc::type_t::STRING))
 		// Выполняем укладку записи, выведенной словарём модуля
-		return this->lay(path, this->derive(value.text()), source);
+		return this->lay(path, this->derive(value.text()), source, true);
 	// Выполняем укладку сливаемого значения целиком
-	return this->lay(path, codec::abc::value_t(value), source);
+	return this->lay(path, codec::abc::value_t(value), source, true);
 }
 
 /**

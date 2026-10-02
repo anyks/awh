@@ -2786,6 +2786,10 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 					return result;
 				// Если ссылка ведёт к ещё не созданной цели
 				} else if((errno == ENOENT) && (this->type(result) == type_t::LINK)) {
+					// Цель до повторного использования буфера ссылки
+					string target = "";
+					// Длина адреса цели ссылки
+					ssize_t length = -1;
 					/**
 					 * Разрешаем цепочку ссылок с ограничением числа переходов
 					 *
@@ -2794,20 +2798,22 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 					 */
 					for(uint32_t attempt = 0; attempt < 40; attempt++){
 						// Получаем цель ссылки без молчаливого усечения адреса
-						const ssize_t length = ::readlink(result.c_str(), buffer, sizeof(buffer));
+						length = ::readlink(result.c_str(), buffer, sizeof(buffer));
 						// Если адрес не получен целиком
 						if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
 							// Оставляем исходный адрес для обработки ошибки вызывающей стороной
 							break;
 						// Сохраняем цель до повторного использования буфера
-						const string target(buffer, static_cast <size_t> (length));
+						target.assign(buffer, static_cast <size_t> (length));
 						// Если цель задана абсолютным адресом
 						if(target.front() == '/')
 							// Переходим непосредственно к цели
 							result = target;
+						// Если цель задана относительным адресом
 						else {
 							// Выделяем каталог ссылки, сохраняя корневой разделитель
 							const size_t offset = result.rfind('/');
+							// Если каталог ссылки не найден, то используем текущий каталог процесса
 							const string directory = (offset != string::npos ? result.substr(0, offset + 1) : ".");
 							// Разрешаем каталог до присоединения относительной цели
 							if(::realpath(directory.c_str(), buffer) == nullptr)
@@ -2825,9 +2831,20 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 							// Не продолжаем разрешение циклических и недоступных путей
 							break;
 						// Если цепочка завершилась отсутствующим файлом
-						if(this->type(result) != type_t::LINK)
-							// Возвращаем абсолютный адрес для последующего создания цели
+						if(this->type(result) != type_t::LINK){
+							// Получаем смещение позиции последнего разделителя в адресе
+							const size_t offset = result.rfind('/');
+							// Получаем имя цели, которая ещё не создана
+							const string filename = result.substr(offset + 1);
+							// Получаем каталог, в котором должна находиться цель
+							const string directory = result.substr(0, offset + 1);
+							// Разрешаем ссылки и '..' в каталоге до дальнейших операций с адресом
+							if(::realpath(directory.c_str(), buffer) != nullptr)
+								// Возвращаем канонический каталог с именем ещё не созданной цели
+								return string(buffer).append(buffer[1] != '\0' ? "/" : "").append(filename);
+							// Недоступный каталог остаётся в адресе для отказа при создании файла
 							return result;
+						}
 					}
 				}
 			}

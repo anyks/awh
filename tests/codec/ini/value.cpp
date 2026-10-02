@@ -2197,49 +2197,48 @@ TEST(CodecIniValue, StringValueAndSelfAssignment) {
  *          потомка обращается в освобождённую память
  *
  */
-TEST(CodecIniValue, AssignmentTakesItsOwnSubtree) {
-	/**
-	 * Выполняем проверку копирования из собственного потомка
-	 */
-	{
-		// Корневое владеющее значение
-		ini::value_t root;
-		// Выполняем занесение первого поля вложенного значения
-		root["child"]["leaf"] = ini::value_t("payload");
-		// Выполняем занесение второго поля вложенного значения
-		root["child"]["extra"] = ini::value_t("second");
-		// Ожидаемое значение после присваивания
-		const ini::value_t expected(root["child"]);
-		// Выполняем присваивание корню его собственного потомка
-		root = root["child"];
-		// Выполняем проверку совпадения значения с ожидаемым
-		ASSERT_TRUE(root == expected);
-		// Выполняем проверку наличия первого поля потомка
-		ASSERT_TRUE(root.contains("leaf"));
-		// Выполняем проверку сохранения второго поля потомка
-		ASSERT_EQ(root["extra"].text(), "second");
-	}
-	/**
-	 * Выполняем проверку переноса из собственного потомка
-	 */
-	{
-		// Корневое владеющее значение
-		ini::value_t root;
-		// Выполняем занесение первого поля вложенного значения
-		root["child"]["leaf"] = ini::value_t("payload");
-		// Выполняем занесение второго поля вложенного значения
-		root["child"]["extra"] = ini::value_t("second");
-		// Ожидаемое значение после присваивания
-		const ini::value_t expected(root["child"]);
-		// Выполняем перенос корню его собственного потомка
-		root = ::std::move(root["child"]);
-		// Выполняем проверку совпадения значения с ожидаемым
-		ASSERT_TRUE(root == expected);
-		// Выполняем проверку наличия первого поля потомка
-		ASSERT_TRUE(root.contains("leaf"));
-		// Выполняем проверку сохранения второго поля потомка
-		ASSERT_EQ(root["extra"].text(), "second");
-	}
+TEST(CodecIniValue, CopyAssignmentTakesItsOwnSubtree) {
+	// Корневое владеющее значение
+	ini::value_t root;
+	// Выполняем занесение первого поля вложенного значения
+	root["child"]["leaf"] = ini::value_t("payload");
+	// Выполняем занесение второго поля вложенного значения
+	root["child"]["extra"] = ini::value_t("second");
+	// Ожидаемое значение после присваивания
+	const ini::value_t expected(root["child"]);
+	// Выполняем присваивание корню его собственного потомка
+	root = root["child"];
+	// Выполняем проверку совпадения значения с ожидаемым
+	ASSERT_TRUE(root == expected);
+	// Выполняем проверку наличия первого поля потомка
+	ASSERT_TRUE(root.contains("leaf"));
+	// Выполняем проверку сохранения второго поля потомка
+	ASSERT_EQ(root["extra"].text(), "second");
+}
+/**
+ * @brief Проверка переноса значения из собственного потомка
+ *
+ * @details Источник переноса лежит внутри прежнего вместилища назначения. Сбросить
+ *          либо снести это вместилище до снятия всех полей источника нельзя
+ *
+ */
+TEST(CodecIniValue, MoveAssignmentTakesItsOwnSubtree) {
+	// Корневое владеющее значение
+	ini::value_t root;
+	// Выполняем занесение первого поля вложенного значения
+	root["child"]["leaf"] = ini::value_t("payload");
+	// Выполняем занесение второго поля вложенного значения
+	root["child"]["extra"] = ini::value_t("second");
+	// Ожидаемое значение после присваивания
+	const ini::value_t expected(root["child"]);
+	// Выполняем перенос корню его собственного потомка
+	root = ::std::move(root["child"]);
+	// Выполняем проверку совпадения значения с ожидаемым
+	ASSERT_TRUE(root == expected);
+	// Выполняем проверку наличия первого поля потомка
+	ASSERT_TRUE(root.contains("leaf"));
+	// Выполняем проверку сохранения второго поля потомка
+	ASSERT_EQ(root["extra"].text(), "second");
 }
 /**
  * @brief Проверка отказов разбора, чтения из файла и записи в файл у владеющего значения

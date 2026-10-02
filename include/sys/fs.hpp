@@ -350,12 +350,20 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод извлечения реального адреса
 			 *
+			 * @note Под POSIX при resolve=true относительная цель разрешается от каталога ссылки,
+			 *       в том числе при отсутствии конечного файла. Цепочка ограничена 40 переходами.
+			 *       При отказе разрешения сохраняется прежний переход к абсолютному исходному пути.
+			 *
 			 * @param addr    адрес который нужно определить
 			 * @param resolve флаг резолвинга символьных ссылок
 			 * @return        полный путь
 			 *
 			 * \~english
 			 * @brief Method of getting the real address
+			 *
+			 * @note On POSIX with resolve=true, a relative target is resolved from the link directory even
+			 *       if the final file is missing. Resolution is limited to 40 link transitions.
+			 *       On failure, the existing fallback to the absolute input path is retained.
 			 *
 			 * @param addr    address that needs to be determined
 			 * @param resolve flag of resolving the symbolic links

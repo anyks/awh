@@ -1590,3 +1590,60 @@ TEST_F(FSFixture, LongAddressTest){
 		ASSERT_TRUE(this->_fs->unlink(file));
 	}
 #endif
+
+/**
+ * @brief Относительная цель отсутствующего файла разрешается от каталога ссылки
+ *
+ */
+TEST_F(FSFixture, FullpathDanglingSymlinkTest) {
+	/**
+	 * Разрешение символьных ссылок проверяем средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог, не принимая существующий за свой
+		const std::string directory = "./fs-dangling-link-test";
+		ASSERT_EQ(::mkdir(directory.c_str(), 0700), 0);
+		/**
+		 * @brief Страж каталога проверки
+		 *
+		 */
+		typedef struct Guard {
+			// Адрес каталога проверки
+			std::string directory;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Guard() noexcept {
+				// Удаляем только созданный этой проверкой каталог
+				static_cast <void> (awh::fs_t().unlink(this->directory));
+			}
+		} guard_t;
+		// Передаём созданный каталог стражу
+		guard_t guard{directory};
+		// Создаём вложенный каталог и относительную ссылку на отсутствующую цель
+		const std::string nested = (directory + "/nested");
+		const std::string link = (nested + "/link.log");
+		const std::string target = (directory + "/journal.log");
+		ASSERT_TRUE(this->_fs->mkdir(nested));
+		ASSERT_EQ(::symlink("../journal.log", link.c_str()), 0);
+		// Адрес должен обозначать тот же файл, что и целевой путь
+		const std::string resolved = this->_fs->fullpath(link, true);
+		ASSERT_FALSE(resolved.empty());
+		EXPECT_EQ(resolved.front(), '/');
+		EXPECT_EQ(resolved, this->_fs->fullpath(target));
+		// Присоединяем абсолютную ссылку и проверяем всю цепочку
+		const std::string first = (directory + "/first.log");
+		ASSERT_EQ(::symlink(this->_fs->fullpath(link).c_str(), first.c_str()), 0);
+		EXPECT_EQ(this->_fs->fullpath(first, true), this->_fs->fullpath(target));
+		// Проверяем порядок разрешения ссылки каталога и компонента '..'
+		const std::string alias = (directory + "/alias");
+		ASSERT_TRUE(this->_fs->mkdir(nested + "/deeper"));
+		ASSERT_EQ(::symlink("nested/deeper", alias.c_str()), 0);
+		const std::string through = (alias + "/../link.log");
+		EXPECT_EQ(this->_fs->fullpath(through, true), this->_fs->fullpath(target));
+	#else
+		// Windows использует иной контракт ссылок
+		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
+	#endif
+}

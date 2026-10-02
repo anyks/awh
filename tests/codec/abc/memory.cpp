@@ -64,8 +64,8 @@ using namespace awh::codec;
  *
  */
 int32_t main(int32_t argc, char ** argv){
-	// Проверяем наличие режима, имени файла и размера
-	if(argc != 4)
+	// Проверяем наличие режима, имени файла, размера и метода сжатия
+	if(argc != 5)
 		// Сообщаем об ошибке параметров
 		return 2;
 	// Проверяем режим вызова
@@ -120,16 +120,34 @@ int32_t main(int32_t argc, char ** argv){
 	errno = 0;
 	// Получаем запрошенный размер
 	const uint64_t size = ::strtoull(argv[3], &end, 10);
-	// Ограничиваем размер входа щупа 128 МиБ
-	if((errno != 0) || (end == argv[3]) || (* end != '\0') || (size > 134217728))
+	// Допускаем границу на один октет выше максимального входа в 128 МиБ
+	if((errno != 0) || (end == argv[3]) || (* end != '\0') || (size > 134217729))
 		// Сообщаем об ошибке размера
 		return 2;
+	// Снимаем прежний код ошибки преобразования
+	errno = 0;
+	// Получаем номер метода сжатия
+	const uint64_t selected = ::strtoull(argv[4], &end, 10);
+	// Проверяем номер метода сжатия
+	if((errno != 0) || (end == argv[4]) || (* end != '\0') || (selected < 1) || (selected > 11))
+		// Сообщаем об ошибке метода сжатия
+		return 15;
+	// Получаем настройки укладчика
+	auto options = packer.settings();
+	// Устанавливаем выбранный метод сжатия текста
+	options.text = static_cast <compressor::method_t> (selected);
+	// Передаём настройки укладчику
+	packer.settings(options);
 	// Буфер кадра
 	vector <uint8_t> record;
 	/**
 	 * Если нужно подготовить вход отдельным процессом
 	 */
 	if(string(argv[1]) == "generate"){
+		// Ограничиваем размер создаваемого входа 128 МиБ
+		if((size == 0) || (size > 134217728))
+			// Сообщаем об ошибке размера
+			return 2;
 		// Создаём хорошо сжимаемое содержимое
 		const string payload(static_cast <size_t> (size), 'a');
 		// Укладываем содержимое штатным укладчиком
@@ -137,7 +155,7 @@ int32_t main(int32_t argc, char ** argv){
 			// Сообщаем об отказе укладки
 			return 3;
 		// Проверяем выбор ожидаемого метода сжатия
-		if(static_cast <compressor::method_t> (record.at(0)) != compressor::method_t::ZSTD)
+		if(record.at(0) != selected)
 			// Сообщаем об отсутствии ожидаемого сжатия
 			return 4;
 		// Открываем файл кадра
@@ -161,6 +179,10 @@ int32_t main(int32_t argc, char ** argv){
 	if(record.size() < abc::CHUNK_HEADER)
 		// Сообщаем об ошибке кадра
 		return 7;
+	// Проверяем метод в заголовке фактического кадра
+	if(record.at(0) != selected)
+		// Сообщаем о несовпадении метода сжатия
+		return 16;
 	// Запоминаем настоящую длину исходного содержимого
 	const size_t original = static_cast <size_t> (abc::gather(record.data() + 8, 4));
 	// Подменяем объявленную длину без изменения сжатого содержимого

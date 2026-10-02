@@ -2259,3 +2259,104 @@ TEST(CodecSysLogDocument, SaveSupportsMaximumFilename) {
 		GTEST_SKIP() << "POSIX NAME_MAX is unavailable on Windows";
 	#endif
 }
+
+/**
+ * @brief Сохранение через относительную ссылку не затрагивает одноимённый посторонний файл
+ *
+ */
+TEST(CodecSysLogDocument, SaveThroughDanglingRelativeSymlink) {
+	/**
+	 * Символьные ссылки проверяем средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог, очищаемый после проверки
+		save_directory_t guard("./syslog-SaveThroughDanglingRelativeSymlink");
+		ASSERT_TRUE(guard.created);
+		// Разводим настоящий каталог цели и посторонний файл внутри каталога опыта
+		const string nested = (guard.address + "/nested");
+		const string directory = (nested + "/" + guard.address);
+		const string unrelated = (guard.address + "/journal.log");
+		const string target = (directory + "/journal.log");
+		const string link = (nested + "/link.log");
+		ASSERT_TRUE(guard.fs.mkdir(directory));
+		ASSERT_TRUE(guard.fs.write(unrelated, string("UNRELATED")));
+		ASSERT_EQ(::symlink(unrelated.c_str(), link.c_str()), 0);
+		// Сохраняем запись по ссылке на пока отсутствующую цель
+		syslog::document_t document;
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
+		ASSERT_TRUE(document.save(link));
+		// Проверяем содержимое настоящей цели и сохранность постороннего файла
+		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
+		EXPECT_EQ(guard.fs.read <string> (unrelated), "UNRELATED");
+		EXPECT_EQ(guard.fs.type(link), awh::fs_t::type_t::LINK);
+	#else
+		// Windows использует иной контракт ссылок
+		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
+	#endif
+}
+
+/**
+ * @brief Сохранение через цепочку ссылок создаёт конечную цель и сохраняет обе ссылки
+ *
+ */
+TEST(CodecSysLogDocument, SaveThroughDanglingSymlinkChain) {
+	/**
+	 * Символьные ссылки проверяем средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог, очищаемый после проверки
+		save_directory_t guard("./syslog-SaveThroughDanglingSymlinkChain");
+		ASSERT_TRUE(guard.created);
+		// Создаём цепочку с абсолютным первым и относительным вторым переходом
+		const string nested = (guard.address + "/nested");
+		const string target = (nested + "/actual/journal.log");
+		const string first = (guard.address + "/first.log");
+		const string second = (nested + "/second.log");
+		// Ссылка каталога перед '..' должна разрешаться раньше перехода к родителю
+		ASSERT_TRUE(guard.fs.mkdir(nested + "/actual/deeper"));
+		ASSERT_EQ(::symlink("actual/deeper", (nested + "/alias").c_str()), 0);
+		ASSERT_EQ(::symlink("alias/../journal.log", second.c_str()), 0);
+		ASSERT_EQ(::symlink(guard.fs.fullpath(second).c_str(), first.c_str()), 0);
+		// Сохраняем запись по первому звену цепочки
+		syslog::document_t document;
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
+		ASSERT_TRUE(document.save(first));
+		// Проверяем конечную цель и оба промежуточных объекта
+		EXPECT_EQ(guard.fs.read <string> (target), document.dump());
+		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
+		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+	#else
+		// Windows использует иной контракт ссылок
+		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
+	#endif
+}
+
+/**
+ * @brief Циклическая ссылка не заменяется файлом при сохранении
+ *
+ */
+TEST(CodecSysLogDocument, SaveThroughSymlinkCycleIsRefused) {
+	/**
+	 * Символьные ссылки проверяем средствами POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём отдельный каталог, очищаемый после проверки
+		save_directory_t guard("./syslog-SaveThroughSymlinkCycleIsRefused");
+		ASSERT_TRUE(guard.created);
+		// Замыкаем две ссылки друг на друга
+		const string first = (guard.address + "/first.log");
+		const string second = (guard.address + "/second.log");
+		ASSERT_EQ(::symlink("second.log", first.c_str()), 0);
+		ASSERT_EQ(::symlink("first.log", second.c_str()), 0);
+		// Сохранение должно отказать до подмены какого-либо звена
+		syslog::document_t document;
+		ASSERT_TRUE(document.parse("<165>1 2026-09-15T00:00:00Z host app 1 - - NEW RECORD"));
+		EXPECT_FALSE(document.save(first));
+		EXPECT_NE(document.error(), syslog::error_t::NONE);
+		EXPECT_EQ(guard.fs.type(first), awh::fs_t::type_t::LINK);
+		EXPECT_EQ(guard.fs.type(second), awh::fs_t::type_t::LINK);
+	#else
+		// Windows использует иной контракт ссылок
+		GTEST_SKIP() << "POSIX symbolic links are unavailable on Windows";
+	#endif
+}
