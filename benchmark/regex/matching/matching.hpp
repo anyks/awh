@@ -461,7 +461,7 @@ namespace awh {
 						/**
 						 * Выполняем наполнение текста до заданной длины
 						 */
-						while(outcome.size() < MEDIUM_LENGTH) {
+						while(outcome.size() < MEDIUM_LENGTH){
 							// Выполняем добавление строки запроса обмена по протоколу
 							outcome.append("GET /api/v1/items/");
 							// Выполняем добавление номера запрашиваемого ресурса
@@ -507,7 +507,7 @@ namespace awh {
 					/**
 					 * Определяем вид сценария сравнения
 					 */
-					switch(static_cast <uint8_t> (kind)) {
+					switch(static_cast <uint8_t> (kind)){
 						// Выводим длинный текст сопоставления
 						case static_cast <uint8_t> (kind_t::LONG): return longText();
 						// Выводим текст сопоставления исполнения с возвратом
@@ -529,7 +529,7 @@ namespace awh {
 					/**
 					 * Определяем вид сценария сравнения
 					 */
-					switch(static_cast <uint8_t> (kind)) {
+					switch(static_cast <uint8_t> (kind)){
 						// Выводим количество повторений сценария на длинном тексте
 						case static_cast <uint8_t> (kind_t::LONG): return LONG_ROUNDS;
 						// Выводим количество повторений сценария исполнения с возвратом

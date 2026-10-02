@@ -122,7 +122,7 @@ TEST(Grok, PatternsBuild) {
 	/**
 	 * Выполняем перебор встроенного набора шаблонов
 	 */
-	for(size_t i = 0; i < grok::PATTERNS_COUNT; i++) {
+	for(size_t i = 0; i < grok::PATTERNS_COUNT; i++){
 		// Получаем текст ссылки на шаблон набора
 		const string text = string("%{") + grok::PATTERNS[i].name + "}";
 		// Выполняем сборку шаблона Grok
@@ -669,7 +669,7 @@ TEST(Grok, JsonNumberEdges) {
 	/**
 	 * Выполняем обход набора образцов вывода числа
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Выполняем сборку шаблона Grok
 		const auto exp = grok.build(sample.pattern);
 		// Выполняем проверку сборки шаблона Grok
@@ -855,7 +855,7 @@ TEST(Grok, StorageRoundtrip) {
 	/**
 	 * Выполняем перебор набора восстановленных шаблонов
 	 */
-	for(size_t i = 0; i < patterns.size(); i++) {
+	for(size_t i = 0; i < patterns.size(); i++){
 		// Выполняем сборку шаблона начисто
 		const auto fresh = grok.build(patterns.at(i));
 		// Выполняем проверку сборки шаблона начисто
@@ -869,7 +869,7 @@ TEST(Grok, StorageRoundtrip) {
 		/**
 		 * Выполняем перебор набора полей шаблона
 		 */
-		for(size_t j = 0; j < fresh->fields.size(); j++) {
+		for(size_t j = 0; j < fresh->fields.size(); j++){
 			// Выполняем сличение номера группы захвата поля
 			EXPECT_EQ(expressions.at(i)->fields.at(j).number, fresh->fields.at(j).number);
 			// Выполняем сличение вида значения поля
@@ -880,7 +880,7 @@ TEST(Grok, StorageRoundtrip) {
 		/**
 		 * Выполняем перебор набора текстов сличения
 		 */
-		for(const auto & text : texts) {
+		for(const auto & text : texts){
 			// Выполняем сличение соответствия текста шаблону
 			EXPECT_EQ(grok.test(text, fresh), restored.test(text, expressions.at(i)))
 			 << "шаблон \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
@@ -954,7 +954,7 @@ TEST(Grok, StorageErrors) {
 	 *          а падения быть не обязано ни при каком.
 	 *
 	 */
-	for(size_t i = 0; i < record.size(); i++) {
+	for(size_t i = 0; i < record.size(); i++){
 		// Получаем оборванную запись собранных шаблонов
 		const string cut = record.substr(0, i);
 		// Выполняем проверку отказа восстановления записи
@@ -997,11 +997,11 @@ TEST(Grok, StorageErrors) {
 		 *          довольно начала записи: порча далее отвергается хранилищем.
 		 *
 		 */
-		for(size_t i = 0; (i < record.size()) && (i < 512); i++) {
+		for(size_t i = 0; (i < record.size()) && (i < 512); i++){
 			/**
 			 * Выполняем перебор подмен значения очередного байта
 			 */
-			for(uint32_t value = 0; value < 256; value += 37) {
+			for(uint32_t value = 0; value < 256; value += 37){
 				/**
 				 * Если подмена значения байта его не меняет
 				 */
@@ -1159,7 +1159,7 @@ TEST(Grok, StorageBuiltin) {
 	/**
 	 * Выполняем перебор набора восстановленных шаблонов
 	 */
-	for(size_t i = 0; i < patterns.size(); i++) {
+	for(size_t i = 0; i < patterns.size(); i++){
 		// Выполняем сборку шаблона начисто
 		const auto fresh = grok.build(patterns.at(i));
 		/**
@@ -1283,7 +1283,7 @@ TEST(Grok, StorageTruncatedForged) {
 		/**
 		 * Выполняем перебор содержимого восьмибайтовыми долями
 		 */
-		for(; (offset + 8) <= data.size(); offset += 8) {
+		for(; (offset + 8) <= data.size(); offset += 8){
 			// Собираемая доля содержимого
 			uint64_t block = 0;
 			/**
@@ -1302,7 +1302,7 @@ TEST(Grok, StorageTruncatedForged) {
 		/**
 		 * Выполняем перебор остатка содержимого побайтно
 		 */
-		for(; offset < data.size(); offset++) {
+		for(; offset < data.size(); offset++){
 			// Выполняем смешивание очередного байта содержимого
 			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
 			// Выполняем умножение накопленной суммы
@@ -1322,7 +1322,7 @@ TEST(Grok, StorageTruncatedForged) {
 		/**
 		 * Выполняем запись числа долями по семь разрядов
 		 */
-		while(value >= 0x80) {
+		while(value >= 0x80){
 			// Выполняем запись очередной доли числа с признаком продолжения
 			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
 			// Переходим к следующей доле числа
@@ -1345,7 +1345,7 @@ TEST(Grok, StorageTruncatedForged) {
 		/**
 		 * Выполняем чтение числа долями по семь разрядов
 		 */
-		for(uint8_t shift = 0; shift < 64; shift += 7) {
+		for(uint8_t shift = 0; shift < 64; shift += 7){
 			// Получаем очередной байт числа
 			const uint8_t letter = static_cast <uint8_t> (data[offset++]);
 			// Выполняем добавление доли числа
@@ -1403,7 +1403,7 @@ TEST(Grok, StorageTruncatedForged) {
 	/**
 	 * Выполняем обход длин обрыва содержимого части записи
 	 */
-	for(size_t length = 0; length < content.size(); length++) {
+	for(size_t length = 0; length < content.size(); length++){
 		// Собираемая подделанная запись собранных шаблонов
 		string forged = record.substr(0, 8);
 		// Выполняем запись версии устройства записи и метода сжатия
@@ -1655,7 +1655,7 @@ TEST(Grok, BuiltinBehaviour) {
 	/**
 	 * Выполняем перебор набора названий встроенных шаблонов
 	 */
-	for(const auto & name : names) {
+	for(const auto & name : names){
 		// Получаем текст шаблона надстройки
 		const string pattern = ("%{" + name + "}");
 		// Выполняем сборку шаблона надстройки
@@ -1720,7 +1720,7 @@ TEST(Grok, BuiltinBehaviour) {
 	/**
 	 * Выполняем перебор набора образцов сличения поведения
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Получаем текст шаблона надстройки под привязкой к границам текста
 		const string pattern = (string("^%{") + sample.name + "}$");
 		// Выполняем сборку шаблона надстройки
@@ -1765,7 +1765,7 @@ TEST(Grok, RefusalCodes) {
 		/**
 		 * Выполняем построение цепочки удвоений текста шаблона
 		 */
-		for(uint32_t i = 1; i < 24; i++) {
+		for(uint32_t i = 1; i < 24; i++){
 			// Получаем название очередной ступени цепочки
 			const string name = ("DOUBLE" + std::to_string(i));
 			// Получаем тело очередной ступени цепочки
@@ -1809,7 +1809,7 @@ TEST(Grok, RefusalCodes) {
 		/**
 		 * Выполняем чтение двух размеров содержимого части записи
 		 */
-		for(uint8_t number = 0; number < 2; number++) {
+		for(uint8_t number = 0; number < 2; number++){
 			/**
 			 * Выполняем чтение очередного числа переменной длины
 			 */

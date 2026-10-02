@@ -67,7 +67,7 @@ static double fastest(const size_t rounds, const size_t repeats, Body && body) n
 	// Лучшее время круга
 	double result = 0.0;
 	// Выполняем круги замера
-	for(size_t round = 0; round < rounds; round++) {
+	for(size_t round = 0; round < rounds; round++){
 		// Получаем время начала круга
 		const auto begin = chrono::steady_clock::now();
 		// Выполняем повторения замеряемого действия
@@ -133,7 +133,7 @@ static const string & mediumText() noexcept {
 		// Номер порождаемого обмена по протоколу
 		size_t number = 0;
 		// Выполняем наполнение текста до заданной длины
-		while(outcome.size() < 2048) {
+		while(outcome.size() < 2048){
 			// Выполняем добавление строки запроса обмена по протоколу
 			outcome.append("GET /api/v1/items/");
 			// Выполняем добавление номера запрашиваемого ресурса
@@ -250,9 +250,9 @@ int main(int argc, char ** argv) {
 	/**
 	 * Если щупу задано имя сценария, выполняем долгий прогон под снятие образцов стека
 	 */
-	if(argc > 1) {
+	if(argc > 1){
 		// Выполняем перебор разбираемых выражений
-		for(const auto & scenario : SCENARIOS) {
+		for(const auto & scenario : SCENARIOS){
 			// Если имя сценария не совпадает с заданным
 			if(::strcmp(scenario.name, argv[1]) != 0)
 				// Выполняем переход к выражению следующему
@@ -272,7 +272,7 @@ int main(int argc, char ** argv) {
 			// Выводим сообщение о начале прогона
 			::printf("прогон сценария «%s» десять секунд\n", scenario.name);
 			// Выполняем прогон до истечения срока
-			while(chrono::duration_cast <chrono::seconds> (chrono::steady_clock::now() - begin).count() < 10) {
+			while(chrono::duration_cast <chrono::seconds> (chrono::steady_clock::now() - begin).count() < 10){
 				// Выполняем очередную пачку сопоставлений
 				for(size_t i = 0; i < scenario.repeats; i++)
 					engine.exec(expression, scenario.text, 0, captures);
@@ -289,7 +289,7 @@ int main(int argc, char ** argv) {
 	/**
 	 * Выполняем перебор разбираемых выражений
 	 */
-	for(const auto & scenario : SCENARIOS) {
+	for(const auto & scenario : SCENARIOS){
 		// Создаём движок сопоставления
 		awh::regex::engine_t engine;
 		// Создаём собранное выражение
@@ -297,7 +297,7 @@ int main(int argc, char ** argv) {
 		/**
 		 * Если выражение не собрано
 		 */
-		if(!engine.build(scenario.pattern, 0, expression)) {
+		if(!engine.build(scenario.pattern, 0, expression)){
 			// Выводим сообщение об ошибке
 			::printf("%-22s ОТКАЗ СБОРКИ\n", scenario.name);
 			// Выполняем переход к выражению следующему
@@ -324,13 +324,13 @@ int main(int argc, char ** argv) {
 		/**
 		 * Выполняем обход всех учитываемых путей исполнения
 		 */
-		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::path_t::COUNT); i++) {
+		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::path_t::COUNT); i++){
 			// Получаем количество проходов пути исполнения
 			const uint64_t value = awh::regex::probe_t::count(static_cast <awh::regex::path_t> (i));
 			/**
 			 * Если путь исполнения задействован
 			 */
-			if(value > 0) {
+			if(value > 0){
 				// Выполняем добавление разделителя перечня
 				if(!paths.empty())
 					paths.append(" ");

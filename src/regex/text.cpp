@@ -134,7 +134,7 @@ uint32_t awh::regex::decode(string_view text, const size_t pos, const uint32_t f
 	/**
 	 * Если последовательность состоит из двух байтов
 	 */
-	if((first & 0xE0) == 0xC0) {
+	if((first & 0xE0) == 0xC0){
 		// Выполняем установку количества продолжающих байтов
 		extra = 1;
 		// Выполняем установку старших битов кодового значения
@@ -168,7 +168,7 @@ uint32_t awh::regex::decode(string_view text, const size_t pos, const uint32_t f
 	/**
 	 * Выполняем разбор продолжающих байтов последовательности
 	 */
-	for(size_t i = 1; i <= extra; i++) {
+	for(size_t i = 1; i <= extra; i++){
 		// Получаем очередной продолжающий байт последовательности
 		const uint8_t next = static_cast <uint8_t> (text.at(pos + i));
 		/**
@@ -217,7 +217,7 @@ size_t awh::regex::behind(string_view text, const size_t pos, const uint32_t fla
 	 *          разбирается как одиночный байт.
 	 *
 	 */
-	while((width < 4) && (width < pos)) {
+	while((width < 4) && (width < pos)){
 		/**
 		 * Если байт не является продолжающим
 		 */
@@ -232,7 +232,7 @@ size_t awh::regex::behind(string_view text, const size_t pos, const uint32_t fla
 	/**
 	 * Если пройденная последовательность является корректной
 	 */
-	if(decode(text, (pos - width), flags, length) != 0) {
+	if(decode(text, (pos - width), flags, length) != 0){
 		/**
 		 * Если длина последовательности соответствует пройденному отступу
 		 */
@@ -313,7 +313,7 @@ namespace {
 		/**
 		 * Определяем соглашение о переводе строки выражения
 		 */
-		switch(static_cast <uint8_t> (convention)) {
+		switch(static_cast <uint8_t> (convention)){
 			// Выводим длину завершения строки соглашения перевода строки
 			case static_cast <uint8_t> (awh::regex::newline_t::LF): return ((letter == 0x0A) ? 1 : 0);
 			// Выводим длину завершения строки соглашения возврата каретки
@@ -390,7 +390,7 @@ namespace {
 		 *          а он при паре завершением не является.
 		 *
 		 */
-		for(size_t length = 1; (length <= 3) && (length <= pos); length++) {
+		for(size_t length = 1; (length <= 3) && (length <= pos); length++){
 			/**
 			 * Если завершение строки оканчивается в проверяемой позиции
 			 */
@@ -435,7 +435,7 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
 	/**
 	 * Определяем тип проверяемой привязки к позиции в тексте
 	 */
-	switch(static_cast <uint8_t> (type)) {
+	switch(static_cast <uint8_t> (type)){
 		// Выполняем проверку привязки к началу текста
 		case static_cast <uint8_t> (anchor_t::TEXT_BEGIN): return (pos == 0);
 		// Выполняем проверку привязки к концу текста
@@ -591,7 +591,7 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 		/**
 		 * Выполняем поиск кодового значения в наборе диапазонов класса
 		 */
-		for(auto & range : value.ranges) {
+		for(auto & range : value.ranges){
 			/**
 			 * Если кодовое значение принадлежит очередному диапазону класса
 			 */
@@ -602,7 +602,7 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 		/**
 		 * Выполняем проверку обладания кодовым значением свойствами Юникода
 		 */
-		for(auto & property : value.properties) {
+		for(auto & property : value.properties){
 			// Получаем обозначение проверяемого свойства Юникода
 			uint16_t id = property.id;
 			/**
@@ -636,13 +636,13 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 	/**
 	 * Если символ классу не принадлежит и установлен режим без учёта регистра
 	 */
-	if(!result && hasFlag(flags, flag_t::CASELESS)) {
+	if(!result && hasFlag(flags, flag_t::CASELESS)){
 		// Создаём набор символов, приводимых к одному значению
 		vector <uint32_t> members;
 		/**
 		 * Если приведение регистра выполняется по таблицам Юникода
 		 */
-		if(hasFlag(flags, flag_t::UTF) || hasFlag(flags, flag_t::UCP)) {
+		if(hasFlag(flags, flag_t::UTF) || hasFlag(flags, flag_t::UCP)){
 			/**
 			 * Если символ образует набор приведения регистра
 			 */
@@ -661,7 +661,7 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 		/**
 		 * Выполняем поиск символов иного регистра в классе символов
 		 */
-		for(auto & member : members) {
+		for(auto & member : members){
 			/**
 			 * Если символ иного регистра совпадает с проверяемым
 			 */
@@ -671,7 +671,7 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 			/**
 			 * Если символ иного регистра классу принадлежит
 			 */
-			if(holding(member)) {
+			if(holding(member)){
 				// Выполняем установку флага принадлежности символа
 				result = true;
 				// Выходим из цикла обхода символов набора
@@ -727,7 +727,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 	/**
 	 * Выполняем присоединение символов к графемному кластеру
 	 */
-	while(current < size) {
+	while(current < size){
 		// Получаем кодовое значение очередного символа текста
 		const uint32_t code = decode(text, current, flags, width);
 		// Получаем класс разбиения очередного символа
@@ -816,7 +816,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ является изобразительным
 		 */
-		if(after == unicode::cluster_t::PICTORIAL) {
+		if(after == unicode::cluster_t::PICTORIAL){
 			// Выполняем установку флага обнаружения изобразительного символа
 			pictorial = true;
 			// Выполняем сброс флага обнаружения соединителя
@@ -863,7 +863,7 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		/**
 		 * Если очередной символ является согласным сочетания индийских письменностей
 		 */
-		if(following == unicode::indic_t::CONSONANT) {
+		if(following == unicode::indic_t::CONSONANT){
 			// Выполняем установку флага обнаружения согласного символа
 			consonant = true;
 			// Выполняем сброс флага обнаружения соединяющего символа

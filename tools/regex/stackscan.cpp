@@ -167,7 +167,7 @@ static int measure(const awh::benchmark::matching::scenario_t & scenario, const 
 	/**
 	 * Выполняем прогрев и подбор количества повторений под время прохода
 	 */
-	while((::pass(0, rounds, engine, expression, body, captures, position) * static_cast <double> (rounds)) < (BUDGET / 4.)) {
+	while((::pass(0, rounds, engine, expression, body, captures, position) * static_cast <double> (rounds)) < (BUDGET / 4.)){
 		/**
 		 * Если количество повторений достигло предела
 		 */
@@ -188,11 +188,11 @@ static int measure(const awh::benchmark::matching::scenario_t & scenario, const 
 	/**
 	 * Выполняем проходы обхода страницы
 	 */
-	for(size_t k = 0; k < PASSES; k++) {
+	for(size_t k = 0; k < PASSES; k++){
 		/**
 		 * Выполняем обход положений стека на странице
 		 */
-		for(size_t i = 0; i < times.size(); i++) {
+		for(size_t i = 0; i < times.size(); i++){
 			// Выполняем проход при сдвинутом стеке
 			const double spent = ::pass(i * STEP, rounds, engine, expression, body, captures, position);
 			// Выполняем установку положения прокладки по модулю страницы
@@ -218,15 +218,15 @@ static int measure(const awh::benchmark::matching::scenario_t & scenario, const 
 	/**
 	 * Выполняем обход положений стека
 	 */
-	for(size_t i = 0; i < times.size(); i++) {
+	for(size_t i = 0; i < times.size(); i++){
 		/**
 		 * Если положение медленнее середины заметно
 		 */
-		if(times[i] > (middle * SLOW)) {
+		if(times[i] > (middle * SLOW)){
 			/**
 			 * Если перечень медленных положений не переполнен
 			 */
-			if(++count <= 12) {
+			if(++count <= 12){
 				// Буфер записи положения
 				char buffer[48];
 				// Выполняем запись положения и прибавки к середине
@@ -263,7 +263,7 @@ int main(int count, char ** values) noexcept {
 	/**
 	 * Выполняем перебор доводов щупа
 	 */
-	for(int i = 1; i < count; i++) {
+	for(int i = 1; i < count; i++){
 		/**
 		 * Если довод требует порождения машинного кода
 		 */
@@ -280,7 +280,7 @@ int main(int count, char ** values) noexcept {
 	/**
 	 * Выполняем перебор сценариев набора
 	 */
-	for(const auto & scenario : awh::benchmark::matching::SCENARIOS) {
+	for(const auto & scenario : awh::benchmark::matching::SCENARIOS){
 		// Признак выбора сценария доводами щупа
 		bool chosen = (names == 0);
 		/**
@@ -300,7 +300,7 @@ int main(int count, char ** values) noexcept {
 		/**
 		 * Если обход строки не выполнен
 		 */
-		if(result != 0) {
+		if(result != 0){
 			// Выводим сообщение об отказе обхода
 			::printf("regex %-22s ОТКАЗ %s\n", scenario.name, ((result == 1) ? "сборки" : "вердикта"));
 			// Увеличиваем количество отказов

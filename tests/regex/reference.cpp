@@ -187,7 +187,7 @@ namespace {
 		/**
 		 * Выполняем наполнение порождаемого выражения
 		 */
-		for(size_t i = 0; i < parts; i++) {
+		for(size_t i = 0; i < parts; i++){
 			// Выполняем добавление очередной части выражения
 			result.append(ATOMS[gen() % 14]);
 			// Выполняем добавление квантора повторения части
@@ -212,7 +212,7 @@ namespace {
 		 *          выражения обязан требовать её от всех ветвей сразу
 		 *
 		 */
-		if((gen() % 5) == 0) {
+		if((gen() % 5) == 0){
 			/**
 			 * Получаем части выражения ветвей по отдельности
 			 *
@@ -353,7 +353,7 @@ namespace {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем проверку начальной границы совпадения
 				ASSERT_EQ(captures.front().first, begin) << "«" << pattern << "» на тексте в " << text.size() << " байтов";
 				// Выполняем проверку конечной границы совпадения
@@ -406,7 +406,7 @@ namespace {
 			/**
 			 * Выполняем обход порождаемых образцов сличения
 			 */
-			for(size_t sample = 0; sample < samples; sample++) {
+			for(size_t sample = 0; sample < samples; sample++){
 				// Получаем порождённое регулярное выражение
 				const string expression = pattern(gen);
 				// Получаем порождённый текст сопоставления
@@ -454,7 +454,7 @@ namespace {
 				 *          негоден к сличению: эталон ответа не дал.
 				 *
 				 */
-				if((count < 0) && (count != PCRE2_ERROR_NOMATCH)) {
+				if((count < 0) && (count != PCRE2_ERROR_NOMATCH)){
 					// Выполняем освобождение набора границ эталонного совпадения
 					::pcre2_match_data_free(data);
 					// Выполняем освобождение эталонного регулярного выражения
@@ -516,7 +516,7 @@ namespace {
 				 *          могут и не задеть.
 				 *
 				 */
-				if(kept) {
+				if(kept){
 					// Создаём запись хранилища собранных выражений
 					string record;
 					// Создаём набор восстановленных выражений
@@ -547,7 +547,7 @@ namespace {
 				 *          «(?:(?m)\w|\K\w)*\b[0-9]b» на тексте в два десятка байтов.
 				 *
 				 */
-				if(!obtained && (engine.error() == regex::error_t::BUDGET_EXCEEDED)) {
+				if(!obtained && (engine.error() == regex::error_t::BUDGET_EXCEEDED)){
 					// Увеличиваем количество образцов, нами не решённых
 					exhausted++;
 					// Переходим к следующему образцу сличения
@@ -560,7 +560,7 @@ namespace {
 				/**
 				 * Если совпадение в тексте обнаружено
 				 */
-				if(expected) {
+				if(expected){
 					// Выполняем проверку начальной границы совпадения
 					ASSERT_EQ(captures.front().first, begin) << "«" << expression << "» на тексте «" << text << "» с позиции " << start;
 					// Выполняем проверку конечной границы совпадения
@@ -577,7 +577,7 @@ namespace {
 					/**
 					 * Выполняем обход границ захваченных групп эталона
 					 */
-					for(size_t index = 1; index < expects.size(); index++) {
+					for(size_t index = 1; index < expects.size(); index++){
 						// Выполняем проверку начальной границы захваченной группы
 						ASSERT_EQ(captures.at(index).first, expects.at(index).first)
 							<< "группа " << index << ": «" << expression << "» на тексте «" << text << "»";
@@ -595,7 +595,7 @@ namespace {
 					 *          её не захватил вовсе.
 					 *
 					 */
-					for(size_t index = expects.size(); index < captures.size(); index++) {
+					for(size_t index = expects.size(); index < captures.size(); index++){
 						// Выполняем проверку отсутствия захвата группы
 						ASSERT_EQ(captures.at(index).first, string::npos)
 							<< "группа " << index << " захвачена лишней: «" << expression << "» на тексте «" << text << "»";
@@ -741,7 +741,7 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -755,7 +755,7 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			/**
 			 * Выполняем наложение обёрток порождаемого выражения
 			 */
-			for(size_t depth = 0; depth < 2; depth++) {
+			for(size_t depth = 0; depth < 2; depth++){
 				/**
 				 * Если обёртка на этом уровне не налагается
 				 */
@@ -769,11 +769,11 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 				/**
 				 * Выполняем подстановку выражения в обёртку
 				 */
-				for(size_t i = 0; i < wrap.size(); i++) {
+				for(size_t i = 0; i < wrap.size(); i++){
 					/**
 					 * Если обёртка содержит место подстановки выражения
 					 */
-					if((wrap.at(i) == '%') && ((i + 1) < wrap.size()) && (wrap.at(i + 1) == 's')) {
+					if((wrap.at(i) == '%') && ((i + 1) < wrap.size()) && (wrap.at(i + 1) == 's')){
 						// Выполняем подстановку выражения в обёртку
 						wrapped.append(pattern);
 						// Пропускаем обозначение места подстановки
@@ -849,7 +849,7 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			 *          требует иного способа сопоставления и решается отдельно.
 			 *
 			 */
-			if(obtained != expected) {
+			if(obtained != expected){
 				// Текст ошибки сборки эталонного регулярного выражения
 				PCRE2_UCHAR buffer[256];
 				// Выполняем извлечение текста ошибки сборки эталона
@@ -984,7 +984,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -1002,7 +1002,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 			/**
 			 * Выполняем отбор признаков сборки образца
 			 */
-			for(size_t option = 0; option < options; option++) {
+			for(size_t option = 0; option < options; option++){
 				/**
 				 * Если признак сборки образцу не отводится
 				 */
@@ -1024,7 +1024,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 			 *          его непроверенным.
 			 *
 			 */
-			if((gen() % 2) == 0) {
+			if((gen() % 2) == 0){
 				// Выполняем установку признака порождения машинного кода
 				mine |= static_cast <uint32_t> (regex::flag_t::JIT);
 				// Выполняем добавление названия признака сборки
@@ -1044,7 +1044,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 			/**
 			 * Если выражение собрано не обеими сторонами
 			 */
-			if((reference == nullptr) || !built) {
+			if((reference == nullptr) || !built){
 				/**
 				 * Если эталонное регулярное выражение собрано
 				 */
@@ -1083,7 +1083,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(captures.front().first, begin) << "«" << pattern << "» на «" << text
 				 << "», режимы " << (names.empty() ? "нет" : names);
@@ -1163,7 +1163,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -1184,7 +1184,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если сопоставление ведётся без учёта регистра символов
 			 */
-			if(caseless) {
+			if(caseless){
 				// Выполняем установку признака сборки модуля
 				mine |= static_cast <uint32_t> (regex::flag_t::CASELESS);
 				// Выполняем установку признака сборки эталона
@@ -1210,7 +1210,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если выражение собрано не обеими сторонами
 			 */
-			if((reference == nullptr) || !built) {
+			if((reference == nullptr) || !built){
 				/**
 				 * Если эталонное регулярное выражение собрано
 				 */
@@ -1249,7 +1249,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(captures.front().first, begin) << "«" << pattern << "» на «" << text << "»"
 				 << (caseless ? ", без учёта регистра" : "") << (jit ? ", машинный код" : "");
@@ -1343,7 +1343,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern(BODIES[gen() % bodies]);
 			// Выполняем добавление продолжения выражения
@@ -1357,7 +1357,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			/**
 			 * Если выражению отводится обёртка
 			 */
-			if((gen() % 3) == 0) {
+			if((gen() % 3) == 0){
 				// Получаем очередную обёртку порождаемого выражения
 				const string wrap = WRAPS[gen() % wraps];
 				// Собираемое выражение с наложенной обёрткой
@@ -1365,11 +1365,11 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 				/**
 				 * Выполняем подстановку выражения в обёртку
 				 */
-				for(size_t i = 0; i < wrap.size(); i++) {
+				for(size_t i = 0; i < wrap.size(); i++){
 					/**
 					 * Если обёртка содержит место подстановки выражения
 					 */
-					if((wrap.at(i) == '%') && ((i + 1) < wrap.size()) && (wrap.at(i + 1) == 's')) {
+					if((wrap.at(i) == '%') && ((i + 1) < wrap.size()) && (wrap.at(i + 1) == 's')){
 						// Выполняем подстановку выражения в обёртку
 						wrapped.append(pattern);
 						// Пропускаем обозначение места подстановки
@@ -1397,7 +1397,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			/**
 			 * Если выражение собрано не обеими сторонами
 			 */
-			if((reference == nullptr) || !built) {
+			if((reference == nullptr) || !built){
 				/**
 				 * Если эталонное регулярное выражение собрано
 				 */
@@ -1422,11 +1422,11 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			/**
 			 * Если совпадение эталоном найдено
 			 */
-			if(expected) {
+			if(expected){
 				/**
 				 * Выполняем обход набора границ эталонных захватов
 				 */
-				for(int index = 0; index < result; index++) {
+				for(int index = 0; index < result; index++){
 					/**
 					 * Если захват эталоном не установлен
 					 */
@@ -1454,14 +1454,14 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем проверку количества захватов
 				ASSERT_GE(captures.size(), expects.size()) << "«" << pattern << "» на «" << text << "»"
 				 << (jit ? ", машинный код" : "");
 				/**
 				 * Выполняем обход набора границ эталонных захватов
 				 */
-				for(size_t index = 0; index < expects.size(); index++) {
+				for(size_t index = 0; index < expects.size(); index++){
 					// Выполняем сличение начальной границы захвата
 					ASSERT_EQ(captures.at(index).first, expects.at(index).first)
 					 << "«" << pattern << "» на «" << text << "», захват " << index
@@ -1535,7 +1535,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -1556,7 +1556,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если разбор ведётся как последовательность UTF-8
 			 */
-			if(utf) {
+			if(utf){
 				// Выполняем установку признаков сборки модуля
 				mine |= (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP));
 				// Выполняем установку признаков сборки эталона
@@ -1565,7 +1565,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если точка отвечает и переводу строки
 			 */
-			if(dotall) {
+			if(dotall){
 				// Выполняем установку признака сборки модуля
 				mine |= static_cast <uint32_t> (regex::flag_t::DOTALL);
 				// Выполняем установку признака сборки эталона
@@ -1574,7 +1574,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если привязки отвечают границам строк
 			 */
-			if(multi) {
+			if(multi){
 				// Выполняем установку признака сборки модуля
 				mine |= static_cast <uint32_t> (regex::flag_t::MULTILINE);
 				// Выполняем установку признака сборки эталона
@@ -1600,7 +1600,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если выражение собрано не обеими сторонами
 			 */
-			if((reference == nullptr) || !built) {
+			if((reference == nullptr) || !built){
 				/**
 				 * Если эталонное регулярное выражение собрано
 				 */
@@ -1639,7 +1639,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(captures.front().first, begin) << "«" << pattern << "» на тексте длиной " << text.size()
 				 << (utf ? ", UTF-8" : "") << (jit ? ", машинный код" : "");
@@ -1736,7 +1736,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -1744,11 +1744,11 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t part = 0; part < count; part++) {
+			for(size_t part = 0; part < count; part++){
 				/**
 				 * Если очередной частью выражения выступает именованная группа
 				 */
-				if((gen() % 3) > 0) {
+				if((gen() % 3) > 0){
 					// Получаем способ объявления имени группы
 					const uint32_t kind = (gen() % 3);
 					// Выполняем добавление открывающей части именованной группы
@@ -1790,7 +1790,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если имена групп допускается объявлять повторно
 			 */
-			if(duplicates) {
+			if(duplicates){
 				// Выполняем установку признака сборки модуля
 				mine |= static_cast <uint32_t> (regex::flag_t::DUPNAMES);
 				// Выполняем установку признака сборки эталона
@@ -1835,7 +1835,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Выполняем обход таблицы имён эталонного регулярного выражения
 			 */
-			for(uint32_t entry = 0; entry < entries; entry++) {
+			for(uint32_t entry = 0; entry < entries; entry++){
 				// Получаем адрес очередной записи таблицы имён
 				const PCRE2_SPTR record = (table + (static_cast <size_t> (entry) * size));
 				// Получаем номер именованной группы записи
@@ -1846,11 +1846,11 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Выполняем обход соответствия имён групп эталона
 			 */
-			for(auto & item : expected) {
+			for(auto & item : expected){
 				/**
 				 * Если одно имя объявлено несколькими группами
 				 */
-				if(item.second.size() > 1) {
+				if(item.second.size() > 1){
 					// Увеличиваем количество образцов с одноимёнными группами
 					duplicated++;
 					// Выходим из обхода соответствия имён групп
@@ -1870,7 +1870,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Выполняем обход соответствия имён групп эталона
 			 */
-			for(auto & item : expected) {
+			for(auto & item : expected){
 				// Выполняем поиск имени группы в соответствии движка
 				auto i = obtained.find(item.first);
 				// Выполняем проверку обнаружения имени группы движком
@@ -1903,11 +1903,11 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(matched) {
+			if(matched){
 				/**
 				 * Выполняем обход соответствия имён групп эталона
 				 */
-				for(auto & item : expected) {
+				for(auto & item : expected){
 					// Адрес текста, извлечённого эталоном по имени группы
 					PCRE2_UCHAR * buffer = nullptr;
 					// Длина текста, извлечённого эталоном по имени группы
@@ -1920,7 +1920,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 					/**
 					 * Если захват именованной группой эталоном выполнен
 					 */
-					if(status == 0) {
+					if(status == 0){
 						// Выполняем сличение текста, захваченного именованной группой
 						ASSERT_EQ(captured, string_view(reinterpret_cast <const char *> (buffer), length))
 						 << "«" << pattern << "» на тексте «" << text << "», имя «" << item.first << "»"
@@ -2038,7 +2038,7 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -2046,13 +2046,13 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t item = 0; item < items; item++) {
+			for(size_t item = 0; item < items; item++){
 				// Выполняем добавление очередной части выражения
 				pattern.append(PARTS[gen() % parts]);
 				/**
 				 * Если последовательность экранированная размещается в классе символов
 				 */
-				if((gen() % 3) == 0) {
+				if((gen() % 3) == 0){
 					// Выполняем добавление открывающей части класса символов
 					pattern.append(1, '[');
 					/**
@@ -2076,7 +2076,7 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если разбор ведётся как последовательность UTF-8
 			 */
-			if(utf) {
+			if(utf){
 				// Выполняем установку признаков сборки модуля
 				mine |= (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP));
 				// Выполняем установку признаков сборки эталона
@@ -2136,7 +2136,7 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте длиной " << text.size()
 				 << (utf ? ", UTF-8" : "") << (jit ? ", машинный код" : "");
@@ -2224,7 +2224,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -2232,7 +2232,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t part = 0; part < parts; part++) {
+			for(size_t part = 0; part < parts; part++){
 				// Получаем обрамление проверкою окружения
 				const string look(LOOKS[gen() % looks]);
 				// Получаем позицию подстановки тела проверки
@@ -2282,7 +2282,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			/**
 			 * Если вердикты сопоставления расходятся
 			 */
-			if(matched != expected) {
+			if(matched != expected){
 				// Выполняем освобождение набора границ эталонного совпадения
 				::pcre2_match_data_free(data);
 				// Выполняем освобождение эталонного регулярного выражения
@@ -2293,7 +2293,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Получаем количество границ эталонного совпадения
 				const size_t count = static_cast <size_t> (result);
 				// Получаем границы эталонного совпадения
@@ -2304,7 +2304,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 				/**
 				 * Выполняем сбор границ захваченных групп эталонного совпадения
 				 */
-				for(size_t group = 1; (group < count) && (group < obtained.size()); group++) {
+				for(size_t group = 1; (group < count) && (group < obtained.size()); group++){
 					// Выполняем добавление границ очередной захваченной группы
 					captures.emplace_back(
 					 ((bounds[group * 2] == PCRE2_UNSET) ? string::npos : static_cast <size_t> (bounds[group * 2])),
@@ -2322,7 +2322,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 				/**
 				 * Выполняем сличение границ захваченных групп
 				 */
-				for(size_t group = 0; group < captures.size(); group++) {
+				for(size_t group = 0; group < captures.size(); group++){
 					// Выполняем сличение начальной границы захваченной группы
 					ASSERT_EQ(obtained.at(group + 1).first, captures.at(group).first)
 					 << "«" << pattern << "» на тексте «" << text << "», группа " << (group + 1);
@@ -2424,7 +2424,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern("(*UTF)");
 			// Получаем количество составных частей выражения
@@ -2432,7 +2432,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t part = 0; part < parts; part++) {
+			for(size_t part = 0; part < parts; part++){
 				// Получаем обрамление проверкою окружения
 				const string look(LOOKS[gen() % looks]);
 				// Получаем позицию подстановки тела проверки
@@ -2482,7 +2482,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 			/**
 			 * Если вердикты сопоставления расходятся
 			 */
-			if(matched != expected) {
+			if(matched != expected){
 				// Выполняем освобождение набора границ эталонного совпадения
 				::pcre2_match_data_free(data);
 				// Выполняем освобождение эталонного регулярного выражения
@@ -2493,7 +2493,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Получаем количество границ эталонного совпадения
 				const size_t count = static_cast <size_t> (result);
 				// Получаем границы эталонного совпадения
@@ -2504,7 +2504,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 				/**
 				 * Выполняем сбор границ захваченных групп эталонного совпадения
 				 */
-				for(size_t group = 1; (group < count) && (group < obtained.size()); group++) {
+				for(size_t group = 1; (group < count) && (group < obtained.size()); group++){
 					// Выполняем добавление границ очередной захваченной группы
 					captures.emplace_back(
 					 ((bounds[group * 2] == PCRE2_UNSET) ? string::npos : static_cast <size_t> (bounds[group * 2])),
@@ -2522,7 +2522,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 				/**
 				 * Выполняем сличение границ захваченных групп
 				 */
-				for(size_t group = 0; group < captures.size(); group++) {
+				for(size_t group = 0; group < captures.size(); group++){
 					// Выполняем сличение начальной границы захваченной группы
 					ASSERT_EQ(obtained.at(group + 1).first, captures.at(group).first)
 					 << "«" << pattern << "» на тексте «" << text << "», группа " << (group + 1);
@@ -2652,7 +2652,7 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -2660,13 +2660,13 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t part = 0; part < parts; part++) {
+			for(size_t part = 0; part < parts; part++){
 				// Составная часть порождаемого выражения
 				string piece;
 				/**
 				 * Определяем вид составной части выражения
 				 */
-				switch(gen() % 4) {
+				switch(gen() % 4){
 					// Выполняем установку тела, подпрограммно вызываемого
 					case 0: piece.assign(BODIES[gen() % bodies]); break;
 					// Выполняем установку вызова подпрограммы
@@ -2699,7 +2699,7 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			/**
 			 * Если выражение несёт условие внутри ретроспективной проверки
 			 */
-			if(conditioned(pattern)) {
+			if(conditioned(pattern)){
 				/**
 				 * Если эталонное выражение собрано
 				 */
@@ -2745,7 +2745,7 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»";
 				// Выполняем сличение конечной границы совпадения
@@ -2819,7 +2819,7 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -2827,7 +2827,7 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t part = 0; part < count; part++) {
+			for(size_t part = 0; part < count; part++){
 				// Выполняем добавление очередной части выражения
 				pattern.append(ATOMS[gen() % atoms]);
 				// Выполняем добавление квантора повторения части выражения
@@ -2859,7 +2859,7 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			 *          возможностей, а не дефект, и образец пропускается.
 			 *
 			 */
-			if((reference == nullptr) && built) {
+			if((reference == nullptr) && built){
 				// Буфер сообщения об ошибке сборки эталонного выражения
 				PCRE2_UCHAR buffer[256];
 				// Выполняем извлечение сообщения об ошибке сборки эталона
@@ -2908,7 +2908,7 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»"
 				 << (jit ? ", машинный код" : "");
@@ -2971,7 +2971,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern(1, '[');
 			/**
@@ -2999,7 +2999,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если разбор ведётся как последовательность UTF-8
 			 */
-			if(utf) {
+			if(utf){
 				// Выполняем установку признаков сборки модуля
 				mine |= (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP));
 				// Выполняем установку признаков сборки эталона
@@ -3008,7 +3008,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если сопоставление ведётся без учёта регистра символов
 			 */
-			if(caseless) {
+			if(caseless){
 				// Выполняем установку признака сборки модуля
 				mine |= static_cast <uint32_t> (regex::flag_t::CASELESS);
 				// Выполняем установку признака сборки эталона
@@ -3069,7 +3069,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»"
 				 << (utf ? ", UTF-8" : "") << (jit ? ", машинный код" : "");
@@ -3160,7 +3160,7 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		/**
 		 * Выполняем обход набора образцов сличения
 		 */
-		for(size_t sample = 0; sample < samples; sample++) {
+		for(size_t sample = 0; sample < samples; sample++){
 			// Порождаемое регулярное выражение
 			string pattern;
 			// Получаем количество составных частей выражения
@@ -3168,7 +3168,7 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Выполняем сборку выражения из составных частей
 			 */
-			for(size_t part = 0; part < count; part++) {
+			for(size_t part = 0; part < count; part++){
 				// Получаем вид очередной составной части выражения
 				const uint32_t kind = (gen() % 4);
 				/**
@@ -3188,7 +3188,7 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 					/**
 					 * Если область действия несёт подставляемое тело
 					 */
-					if(spot != string_view::npos) {
+					if(spot != string_view::npos){
 						// Собираем тело области действия из установки и части выражения
 						string body;
 						/**
@@ -3262,7 +3262,7 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			/**
 			 * Если совпадение обеими сторонами найдено
 			 */
-			if(expected) {
+			if(expected){
 				// Выполняем сличение начальной границы совпадения
 				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»"
 				 << (jit ? ", машинный код" : "");
@@ -3557,7 +3557,7 @@ TEST(Regex, ReferenceReverse) {
 	/**
 	 * Выполняем сличение обоими способами сопоставления
 	 */
-	for(const bool jit : {false, true}) {
+	for(const bool jit : {false, true}){
 		// Выполняем сличение ряда, литералом завершаемого
 		verify("[a-z]+0", tail, jit);
 		// Выполняем сличение ряда, совпадения не дающего

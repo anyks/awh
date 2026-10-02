@@ -209,7 +209,7 @@ awh::regex::node_id_t awh::regex::Parser::fail(const error_t error, const size_t
 	/**
 	 * Если ошибка разбора ещё не установлена
 	 */
-	if(this->_error == error_t::NONE) {
+	if(this->_error == error_t::NONE){
 		// Выполняем установку кода ошибки разбора
 		this->_error = error;
 		// Выполняем установку смещения ошибки разбора
@@ -259,7 +259,7 @@ string awh::regex::Parser::message(const error_t error) noexcept {
 	/**
 	 * Определяем код ошибки последней операции разбора
 	 */
-	switch(static_cast <uint8_t> (error)) {
+	switch(static_cast <uint8_t> (error)){
 		// Ошибок не обнаружено
 		case static_cast <uint8_t> (error_t::NONE): return "no error";
 		// Внутренняя ошибка разбора
@@ -559,7 +559,7 @@ void awh::regex::Parser::appendChild(const node_id_t parent, const node_id_t chi
 	/**
 	 * Если родительский узел не содержит дочерних узлов
 	 */
-	if(this->_nodes.at(parent).child == INVALID_NODE) {
+	if(this->_nodes.at(parent).child == INVALID_NODE){
 		// Выполняем установку первого дочернего узла
 		this->_nodes.at(parent).child = child;
 		// Выходим из функции
@@ -629,7 +629,7 @@ awh::regex::node_id_t awh::regex::Parser::makeString(const vector <uint32_t> & c
 	/**
 	 * Если набор состоит из единственного кодового значения
 	 */
-	if(codes.size() == 1) {
+	if(codes.size() == 1){
 		// Выполняем создание узла одиночного символа
 		const node_id_t result = this->createNode(node_t::LITERAL);
 		// Выполняем установку кодового значения символа
@@ -669,7 +669,7 @@ awh::regex::node_id_t awh::regex::Parser::makeRecurse(const uint32_t number, con
 	/**
 	 * Если рекурсивный вызов задан именем группы
 	 */
-	if(index != NO_NAME) {
+	if(index != NO_NAME){
 		// Создаём отложенную ссылку на именованную группу
 		deferred_t deferred;
 		// Выполняем установку индекса узла вызова
@@ -737,11 +737,11 @@ void awh::regex::Parser::normalize(class_t & value) const noexcept {
 	/**
 	 * Выполняем объединение пересекающихся и смежных диапазонов
 	 */
-	for(size_t i = 1; i < value.ranges.size(); i++) {
+	for(size_t i = 1; i < value.ranges.size(); i++){
 		/**
 		 * Если очередной диапазон пересекается с объединяемым либо смежен ему
 		 */
-		if(value.ranges.at(i).begin <= (value.ranges.at(index).end + 1)) {
+		if(value.ranges.at(i).begin <= (value.ranges.at(index).end + 1)){
 			/**
 			 * Если очередной диапазон расширяет верхнюю границу
 			 */
@@ -775,7 +775,7 @@ awh::regex::node_id_t awh::regex::Parser::makeAny() noexcept {
 	 *          не знает вовсе - точка при них сопоставляет всякий символ.
 	 *
 	 */
-	if(hasFlag(this->_flags, flag_t::DOTALL) || (this->_convention == newline_t::CRLF)) {
+	if(hasFlag(this->_flags, flag_t::DOTALL) || (this->_convention == newline_t::CRLF)){
 		// Сохраняем набор режимов компиляции
 		const uint32_t saved = this->_flags;
 		// Выполняем установку режима соответствия точки переводу строки
@@ -806,7 +806,7 @@ awh::regex::node_id_t awh::regex::Parser::makeAny() noexcept {
 	/**
 	 * Определяем соглашение о переводе строки выражения
 	 */
-	switch(static_cast <uint8_t> (this->_convention)) {
+	switch(static_cast <uint8_t> (this->_convention)){
 		// Выполняем добавление возврата каретки в класс символов
 		case static_cast <uint8_t> (newline_t::CR):
 			value.ranges.emplace_back(0x0D, 0x0D);
@@ -939,13 +939,13 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 	 *          соответствуют символам за пределами набора ASCII.
 	 *
 	 */
-	if(hasFlag(this->_flags, flag_t::UCP)) {
+	if(hasFlag(this->_flags, flag_t::UCP)){
 		// Идентификатор свойства Юникода сокращённого класса символов
 		uint16_t id = static_cast <uint16_t> (property_id_t::UNKNOWN);
 		/**
 		 * Определяем букву сокращённого класса символов
 		 */
-		switch(ascii::toLower(letter)) {
+		switch(ascii::toLower(letter)){
 			// Выполняем установку свойства десятичных цифр
 			case 'd': id = static_cast <uint16_t> (property_id_t::Nd); break;
 			// Выполняем установку свойства символов слова
@@ -956,7 +956,7 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 		/**
 		 * Если свойство Юникода сокращённого класса определено
 		 */
-		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)) {
+		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)){
 			// Выполняем добавление свойства Юникода в класс символов
 			result.properties.emplace_back(id, ascii::isUpper(letter));
 			// Выводим результат формирования сокращённого класса символов
@@ -966,7 +966,7 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 	/**
 	 * Определяем букву сокращённого класса символов
 	 */
-	switch(ascii::toLower(letter)) {
+	switch(ascii::toLower(letter)){
 		// Выполняем формирование класса десятичных цифр
 		case 'd': ranges[count++] = range_t(0x30, 0x39); break;
 		// Выполняем формирование класса символов слова
@@ -1023,7 +1023,7 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 	/**
 	 * Если сокращённый класс символов задан прописной буквой
 	 */
-	if(ascii::isUpper(letter)) {
+	if(ascii::isUpper(letter)){
 		// Получаем наибольшее кодовое значение символа для текущего режима
 		const uint32_t maximum = (hasFlag(this->_flags, flag_t::UTF) ? MAX_CODEPOINT : 0xFF);
 		// Получаем нижнюю границу дополняемого диапазона
@@ -1031,7 +1031,7 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 		/**
 		 * Выполняем формирование дополнения набора диапазонов
 		 */
-		for(size_t i = 0; i < count; i++) {
+		for(size_t i = 0; i < count; i++){
 			// Получаем очередной диапазон сокращённого класса символов
 			const range_t & range = ranges[i];
 			/**
@@ -1089,7 +1089,7 @@ bool awh::regex::Parser::readCode(uint32_t & code) noexcept {
 	/**
 	 * Если режим разбора UTF-8 не установлен либо байт является символом ASCII
 	 */
-	if(!hasFlag(this->_flags, flag_t::UTF) || (first < 0x80)) {
+	if(!hasFlag(this->_flags, flag_t::UTF) || (first < 0x80)){
 		// Выполняем установку кодового значения символа
 		code = static_cast <uint32_t> (first);
 		// Переходим к следующему символу регулярного выражения
@@ -1104,7 +1104,7 @@ bool awh::regex::Parser::readCode(uint32_t & code) noexcept {
 	/**
 	 * Если последовательность состоит из двух байтов
 	 */
-	if((first & 0xE0) == 0xC0) {
+	if((first & 0xE0) == 0xC0){
 		// Выполняем установку количества продолжающих байтов
 		extra = 1;
 		// Выполняем установку старших битов кодового значения
@@ -1138,7 +1138,7 @@ bool awh::regex::Parser::readCode(uint32_t & code) noexcept {
 	/**
 	 * Выполняем разбор продолжающих байтов последовательности
 	 */
-	for(size_t i = 1; i <= extra; i++) {
+	for(size_t i = 1; i <= extra; i++){
 		// Получаем очередной продолжающий байт последовательности
 		const uint8_t next = static_cast <uint8_t> (this->_pattern.at(this->_pos + i));
 		/**
@@ -1188,7 +1188,7 @@ bool awh::regex::Parser::readNumber(uint32_t & result) noexcept {
 	/**
 	 * Выполняем разбор последовательности десятичных цифр
 	 */
-	while((this->_pos < size) && ascii::isDigit(this->_pattern.at(this->_pos))) {
+	while((this->_pos < size) && ascii::isDigit(this->_pattern.at(this->_pos))){
 		/**
 		 * Если разобранное значение не превышает допустимого предела
 		 *
@@ -1253,7 +1253,7 @@ bool awh::regex::Parser::isQuantifier(const size_t pos) const noexcept {
 	/**
 	 * Выполняем разбор наименьшего числа повторений
 	 */
-	while((index < size) && ascii::isDigit(this->_pattern.at(index))) {
+	while((index < size) && ascii::isDigit(this->_pattern.at(index))){
 		// Переходим к следующему символу регулярного выражения
 		index++;
 		// Увеличиваем количество разобранных десятичных цифр
@@ -1297,7 +1297,7 @@ bool awh::regex::Parser::isQuantifier(const size_t pos) const noexcept {
 	/**
 	 * Выполняем разбор наибольшего числа повторений
 	 */
-	while((index < size) && ascii::isDigit(this->_pattern.at(index))) {
+	while((index < size) && ascii::isDigit(this->_pattern.at(index))){
 		// Переходим к следующему символу регулярного выражения
 		index++;
 		// Увеличиваем количество разобранных десятичных цифр
@@ -1338,13 +1338,13 @@ void awh::regex::Parser::skipExtended() noexcept {
 	/**
 	 * Выполняем пропуск пробельных символов и комментариев
 	 */
-	while(this->_pos < size) {
+	while(this->_pos < size){
 		// Получаем очередной символ регулярного выражения
 		const char letter = this->_pattern.at(this->_pos);
 		/**
 		 * Если символ является пробельным
 		 */
-		if(ascii::isSpace(letter)) {
+		if(ascii::isSpace(letter)){
 			// Переходим к следующему символу регулярного выражения
 			this->_pos++;
 			// Переходим к следующей итерации пропуска
@@ -1353,7 +1353,7 @@ void awh::regex::Parser::skipExtended() noexcept {
 		/**
 		 * Если символ начинает комментарий
 		 */
-		if(letter == '#') {
+		if(letter == '#'){
 			/**
 			 * Выполняем пропуск комментария до конца строки
 			 *
@@ -1365,7 +1365,7 @@ void awh::regex::Parser::skipExtended() noexcept {
 			 *          снято с эталонной реализации опытом.
 			 *
 			 */
-			while(this->_pos < size) {
+			while(this->_pos < size){
 				// Получаем очередной символ комментария
 				const char symbol = this->_pattern.at(this->_pos);
 				// Флаг завершения комментария переводом строки
@@ -1373,7 +1373,7 @@ void awh::regex::Parser::skipExtended() noexcept {
 				/**
 				 * Определяем соглашение о переводе строки выражения
 				 */
-				switch(static_cast <uint8_t> (this->_convention)) {
+				switch(static_cast <uint8_t> (this->_convention)){
 					// Если соглашением задан перевод строки
 					case static_cast <uint8_t> (newline_t::LF):
 						// Выполняем установку флага завершения комментария
@@ -1460,7 +1460,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 	/**
 	 * Определяем букву экранированной последовательности
 	 */
-	switch(letter) {
+	switch(letter){
 		// Выполняем разбор символа звонка
 		case 'a': {
 			// Переходим к следующему символу регулярного выражения
@@ -1561,7 +1561,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если разбор последовательностей UTF-8 не ведётся
 			 */
-			if(!hasFlag(this->_flags, flag_t::UTF)) {
+			if(!hasFlag(this->_flags, flag_t::UTF)){
 				// Выполняем установку ошибки неподдерживаемой последовательности
 				this->fail(error_t::UNSUPPORTED, offset);
 				// Выводим отсутствие кодового значения символа
@@ -1570,7 +1570,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если за буквой значения кодового не следует знак сложения
 			 */
-			if(((this->_pos + 3) >= size) || (this->_pattern.at(this->_pos + 3) != '+')) {
+			if(((this->_pos + 3) >= size) || (this->_pattern.at(this->_pos + 3) != '+')){
 				// Выполняем установку ошибки неподдерживаемой последовательности
 				this->fail(error_t::UNSUPPORTED, offset);
 				// Выводим отсутствие кодового значения символа
@@ -1585,13 +1585,13 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Выполняем разбор последовательности шестнадцатеричных цифр
 			 */
-			while((this->_pos < size) && ascii::isHex(this->_pattern.at(this->_pos))) {
+			while((this->_pos < size) && ascii::isHex(this->_pattern.at(this->_pos))){
 				// Выполняем добавление очередной шестнадцатеричной цифры
 				code = ((code << 4) | hexValue(this->_pattern.at(this->_pos)));
 				/**
 				 * Если разобранное значение превышает допустимый предел
 				 */
-				if(code > MAX_CODEPOINT) {
+				if(code > MAX_CODEPOINT){
 					// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
 					this->fail(error_t::BAD_ESCAPE_HEX, offset);
 					// Выводим отсутствие кодового значения символа
@@ -1605,7 +1605,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если последовательность не завершена закрывающей фигурной скобкой
 			 */
-			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')) {
+			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')){
 				// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
 				this->fail(error_t::BAD_ESCAPE_HEX, offset);
 				// Выводим отсутствие кодового значения символа
@@ -1614,7 +1614,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если кодовое значение символа отведено суррогатной паре
 			 */
-			if((code >= 0xD800) && (code <= 0xDFFF)) {
+			if((code >= 0xD800) && (code <= 0xDFFF)){
 				// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
 				this->fail(error_t::BAD_ESCAPE_HEX, offset);
 				// Выводим отсутствие кодового значения символа
@@ -1634,7 +1634,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если шестнадцатеричная последовательность заключена в фигурные скобки
 			 */
-			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{')) {
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{')){
 				// Переходим к следующему символу регулярного выражения
 				this->_pos++;
 				// Количество разобранных шестнадцатеричных цифр
@@ -1653,13 +1653,13 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 				/**
 				 * Выполняем разбор последовательности шестнадцатеричных цифр
 				 */
-				while((this->_pos < size) && ascii::isHex(this->_pattern.at(this->_pos))) {
+				while((this->_pos < size) && ascii::isHex(this->_pattern.at(this->_pos))){
 					// Выполняем добавление очередной шестнадцатеричной цифры
 					code = ((code << 4) | hexValue(this->_pattern.at(this->_pos)));
 					/**
 					 * Если разобранное значение превышает допустимый предел
 					 */
-					if(code > maximum) {
+					if(code > maximum){
 						// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
 						this->fail(error_t::BAD_ESCAPE_HEX, offset);
 						// Выводим отсутствие кодового значения символа
@@ -1673,7 +1673,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 				/**
 				 * Если последовательность пуста либо не завершена фигурной скобкой
 				 */
-				if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')) {
+				if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')){
 					// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
 					this->fail(error_t::BAD_ESCAPE_HEX, offset);
 					// Выводим отсутствие кодового значения символа
@@ -1689,7 +1689,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Выполняем разбор не более двух шестнадцатеричных цифр
 			 */
-			for(size_t i = 0; i < 2; i++) {
+			for(size_t i = 0; i < 2; i++){
 				/**
 				 * Если очередной символ не является шестнадцатеричной цифрой
 				 */
@@ -1713,7 +1713,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если последовательность не начинается фигурной скобкой
 			 */
-			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '{')) {
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '{')){
 				// Выполняем установку ошибки некорректной восьмеричной последовательности
 				this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
 				// Выводим отсутствие кодового значения символа
@@ -1730,13 +1730,13 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Выполняем разбор последовательности восьмеричных цифр
 			 */
-			while((this->_pos < size) && ascii::isOctal(this->_pattern.at(this->_pos))) {
+			while((this->_pos < size) && ascii::isOctal(this->_pattern.at(this->_pos))){
 				// Выполняем добавление очередной восьмеричной цифры
 				code = ((code << 3) | static_cast <uint32_t> (this->_pattern.at(this->_pos) - '0'));
 				/**
 				 * Если разобранное значение превышает допустимый предел
 				 */
-				if(code > maximum) {
+				if(code > maximum){
 					// Выполняем установку ошибки некорректной восьмеричной последовательности
 					this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
 					// Выводим отсутствие кодового значения символа
@@ -1750,7 +1750,7 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если последовательность пуста либо не завершена фигурной скобкой
 			 */
-			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')) {
+			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')){
 				// Выполняем установку ошибки некорректной восьмеричной последовательности
 				this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
 				// Выводим отсутствие кодового значения символа
@@ -1765,13 +1765,13 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 	/**
 	 * Если последовательность является восьмеричной
 	 */
-	if(ascii::isOctal(letter)) {
+	if(ascii::isOctal(letter)){
 		// Выполняем сброс кодового значения символа
 		code = 0;
 		/**
 		 * Выполняем разбор не более трёх восьмеричных цифр
 		 */
-		for(size_t i = 0; i < 3; i++) {
+		for(size_t i = 0; i < 3; i++){
 			/**
 			 * Если очередной символ не является восьмеричной цифрой
 			 */
@@ -1805,11 +1805,11 @@ bool awh::regex::Parser::parseName(const char terminator, uint32_t & index) noex
 	/**
 	 * Выполняем поиск завершающего символа имени группы
 	 */
-	while((this->_pos < size) && (this->_pattern.at(this->_pos) != terminator)) {
+	while((this->_pos < size) && (this->_pattern.at(this->_pos) != terminator)){
 		/**
 		 * Если очередной символ недопустим в имени группы
 		 */
-		if(!isNameChar(this->_pattern.at(this->_pos), (this->_pos == offset))) {
+		if(!isNameChar(this->_pattern.at(this->_pos), (this->_pos == offset))){
 			// Выполняем установку ошибки некорректного имени группы
 			this->fail(error_t::BAD_GROUP_NAME, this->_pos);
 			// Выводим результат выполнения разбора
@@ -1821,7 +1821,7 @@ bool awh::regex::Parser::parseName(const char terminator, uint32_t & index) noex
 	/**
 	 * Если имя группы пусто либо не завершено ожидаемым символом
 	 */
-	if((this->_pos == offset) || (this->_pos >= size)) {
+	if((this->_pos == offset) || (this->_pos >= size)){
 		// Выполняем установку ошибки некорректного имени группы
 		this->fail(error_t::BAD_GROUP_NAME, offset);
 		// Выводим результат выполнения разбора
@@ -1834,11 +1834,11 @@ bool awh::regex::Parser::parseName(const char terminator, uint32_t & index) noex
 	/**
 	 * Выполняем поиск имени группы в хранилище имён
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++) {
+	for(size_t i = 0; i < this->_names.size(); i++){
 		/**
 		 * Если имя группы уже размещено в хранилище имён
 		 */
-		if(this->_names.at(i).compare(name) == 0) {
+		if(this->_names.at(i).compare(name) == 0){
 			// Выполняем установку индекса имени в хранилище имён
 			index = static_cast <uint32_t> (i);
 			// Выводим результат выполнения разбора
@@ -1870,7 +1870,7 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 	/**
 	 * Если имя свойства заключено в фигурные скобки
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '{')){
 		// Переходим к следующему символу регулярного выражения
 		this->_pos++;
 		// Получаем смещение начала имени свойства
@@ -1884,7 +1884,7 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 		/**
 		 * Если имя свойства не завершено фигурной скобкой
 		 */
-		if(this->_pos >= size) {
+		if(this->_pos >= size){
 			// Выполняем установку ошибки неизвестного свойства Юникода
 			this->fail(error_t::BAD_PROPERTY, offset);
 			// Выводим результат выполнения разбора
@@ -1914,7 +1914,7 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 	/**
 	 * Если имя свойства начинается со знака отрицания
 	 */
-	if(!name.empty() && (name.front() == '^')) {
+	if(!name.empty() && (name.front() == '^')){
 		// Выполняем инвертирование флага отрицания свойства
 		inverse = !inverse;
 		// Выполняем удаление знака отрицания из имени свойства
@@ -1925,7 +1925,7 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 	/**
 	 * Если имя свойства Юникода не распознано
 	 */
-	if(id == static_cast <uint16_t> (property_id_t::UNKNOWN)) {
+	if(id == static_cast <uint16_t> (property_id_t::UNKNOWN)){
 		// Выполняем установку ошибки неизвестного свойства Юникода
 		this->fail(error_t::BAD_PROPERTY, offset);
 		// Выводим результат выполнения разбора
@@ -1954,7 +1954,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 	/**
 	 * Если класс символов POSIX начинается со знака отрицания
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '^')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '^')){
 		// Выполняем установку флага отрицания класса символов
 		negative = true;
 		// Переходим к следующему символу регулярного выражения
@@ -1971,7 +1971,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 	/**
 	 * Если класс символов POSIX не завершён ожидаемой последовательностью
 	 */
-	if(((this->_pos + 1) >= size) || (this->_pattern.at(this->_pos) != ':') || (this->_pattern.at(this->_pos + 1) != ']')) {
+	if(((this->_pos + 1) >= size) || (this->_pattern.at(this->_pos) != ':') || (this->_pattern.at(this->_pos + 1) != ']')){
 		// Выполняем установку ошибки неизвестного класса символов POSIX
 		this->fail(error_t::BAD_POSIX_CLASS, offset);
 		// Выводим результат выполнения разбора
@@ -1998,7 +1998,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 	 *          зависит, - а отрицание набора диапазонов выполняется дополнением,
 	 *          отрицание же свойства ведётся признаком самого свойства.
 	 */
-	if(hasFlag(this->_flags, flag_t::UCP)) {
+	if(hasFlag(this->_flags, flag_t::UCP)){
 		// Идентификатор свойства Юникода класса символов POSIX
 		uint16_t id = static_cast <uint16_t> (property_id_t::UNKNOWN);
 		/**
@@ -2076,7 +2076,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 		/**
 		 * Если свойство Юникода класса символов POSIX определено
 		 */
-		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)) {
+		if(id != static_cast <uint16_t> (property_id_t::UNKNOWN)){
 			// Выполняем добавление свойства Юникода в класс символов
 			result.properties.emplace_back(id, negative);
 			// Выводим результат выполнения разбора
@@ -2085,7 +2085,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 		/**
 		 * Если класс символов содержит горизонтальные пробельные символы
 		 */
-		if(name.compare("blank") == 0) {
+		if(name.compare("blank") == 0){
 			// Добавляем символ горизонтальной табуляции
 			ranges.emplace_back(0x09, 0x09);
 			// Добавляем символ пробела
@@ -2237,7 +2237,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 	/**
 	 * Если класс символов POSIX задан со знаком отрицания
 	 */
-	if(negative) {
+	if(negative){
 		// Получаем наибольшее кодовое значение символа для текущего режима
 		const uint32_t maximum = (hasFlag(this->_flags, flag_t::UTF) ? MAX_CODEPOINT : 0xFF);
 		// Получаем нижнюю границу дополняемого диапазона
@@ -2245,7 +2245,7 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
 		/**
 		 * Выполняем формирование дополнения набора диапазонов
 		 */
-		for(auto & range : ranges) {
+		for(auto & range : ranges){
 			/**
 			 * Если дополняемый диапазон не пуст
 			 */
@@ -2288,7 +2288,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 	/**
 	 * Если экранированная последовательность не содержит символа
 	 */
-	if(this->_pos >= size) {
+	if(this->_pos >= size){
 		// Выполняем установку ошибки обратной косой черты в конце выражения
 		this->fail(error_t::TRAILING_BACKSLASH, offset);
 		// Выводим результат выполнения разбора
@@ -2301,7 +2301,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 	/**
 	 * Определяем букву экранированной последовательности
 	 */
-	switch(letter) {
+	switch(letter){
 		// Выполняем разбор сокращённых классов символов
 		case 'd': case 'D': case 'w': case 'W':
 		case 's': case 'S': case 'h': case 'H':
@@ -2334,11 +2334,11 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 			/**
 			 * Выполняем разбор экранируемой последовательности символов
 			 */
-			while(this->_pos < size) {
+			while(this->_pos < size){
 				/**
 				 * Если экранирование последовательности завершено
 				 */
-				if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')) {
+				if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')){
 					// Переходим к символу за завершающей последовательностью
 					this->_pos += 2;
 					// Выходим из разбора экранируемой последовательности
@@ -2349,7 +2349,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 				/**
 				 * Если извлечение кодового значения символа не выполнено
 				 */
-				if(!this->readCode(value)) {
+				if(!this->readCode(value)){
 					// Выполняем установку ошибки некорректной последовательности UTF-8
 					this->fail(error_t::BAD_UTF8, this->_pos);
 					// Выводим результат выполнения разбора
@@ -2369,7 +2369,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 			 *          отчего знак диапазона за нею оборачивался отказом.
 			 *
 			 */
-			if(count > 0) {
+			if(count > 0){
 				// Получаем положение символа последовательности, краем диапазона выступающего
 				const size_t spot = (ending ? (result.ranges.size() - count) : (result.ranges.size() - 1));
 				// Получаем кодовое значение символа, краем диапазона выступающего
@@ -2419,7 +2419,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 	/**
 	 * Если экранированная последовательность обозначает одиночный символ
 	 */
-	if(this->readEscapeCode(code)) {
+	if(this->readEscapeCode(code)){
 		// Выполняем установку флага разбора одиночного символа
 		single = true;
 		// Выводим результат выполнения разбора
@@ -2434,7 +2434,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 	/**
 	 * Если экранированная последовательность содержит букву либо цифру
 	 */
-	if(ascii::isAlnum(letter)) {
+	if(ascii::isAlnum(letter)){
 		// Выполняем установку ошибки неизвестной экранированной последовательности
 		this->fail(error_t::UNKNOWN_ESCAPE, offset);
 		// Выводим результат выполнения разбора
@@ -2445,7 +2445,7 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 	/**
 	 * Если извлечение кодового значения экранированного символа не выполнено
 	 */
-	if(!this->readCode(code)) {
+	if(!this->readCode(code)){
 		// Выполняем установку ошибки некорректной последовательности UTF-8
 		this->fail(error_t::BAD_UTF8, offset);
 		// Выводим результат выполнения разбора
@@ -2501,7 +2501,7 @@ namespace {
 		/**
 		 * Выполняем обход записи извлекаемого числа
 		 */
-		for(auto & letter : text) {
+		for(auto & letter : text){
 			/**
 			 * Если очередной знак записи десятичной цифрой не является
 			 */
@@ -2558,7 +2558,7 @@ namespace {
 		 *          а «[.a]b.]» - класс из двух знаков.
 		 *
 		 */
-		for(size_t i = (pos + 1); i < size; i++) {
+		for(size_t i = (pos + 1); i < size; i++){
 			/**
 			 * Если завершение элемента сортировки обнаружено
 			 */
@@ -2595,11 +2595,11 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 	 *          отрицания. Пропуск ведётся до опознания отрицания намеренно.
 	 *
 	 */
-	while((this->_pos + 1) < size) {
+	while((this->_pos + 1) < size){
 		/**
 		 * Если последовательность завершает экранирование
 		 */
-		if((this->_pattern.at(this->_pos) == '\\') && (this->_pattern.at(this->_pos + 1) == 'E')) {
+		if((this->_pattern.at(this->_pos) == '\\') && (this->_pattern.at(this->_pos + 1) == 'E')){
 			// Переходим к символу за завершением экранирования
 			this->_pos += 2;
 			// Переходим к следующей последовательности прозрачной
@@ -2636,7 +2636,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 	/**
 	 * Если класс символов начинается со знака отрицания
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '^')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '^')){
 		// Выполняем установку флага отрицания класса символов
 		result.negative = true;
 		// Переходим к следующему символу регулярного выражения
@@ -2650,7 +2650,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 	 *          символов целиком, считается ошибкой размещения.
 	 *
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
 		// Получаем позицию поиска завершения класса символов POSIX
 		size_t position = (this->_pos + 1);
 		/**
@@ -2680,11 +2680,11 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 	/**
 	 * Выполняем разбор элементов класса символов
 	 */
-	while(this->_pos < size) {
+	while(this->_pos < size){
 		/**
 		 * Если класс символов завершён закрывающей квадратной скобкой
 		 */
-		if((this->_pattern.at(this->_pos) == ']') && !first) {
+		if((this->_pattern.at(this->_pos) == ']') && !first){
 			// Переходим к символу за закрывающей квадратной скобкой
 			this->_pos++;
 			// Выводим индекс сформированного узла класса символов
@@ -2698,7 +2698,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		 *          скобка, следующая за ней в начале класса, остаётся литералом.
 		 *
 		 */
-		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')) {
+		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')){
 			// Переходим к символу за завершением экранирования
 			this->_pos += 2;
 			// Переходим к следующему элементу класса символов
@@ -2732,7 +2732,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		/**
 		 * Если элемент класса символов является классом символов POSIX
 		 */
-		if((this->_pattern.at(this->_pos) == '[') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == ':')) {
+		if((this->_pattern.at(this->_pos) == '[') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == ':')){
 			/**
 			 * Если разбор класса символов POSIX не выполнен
 			 */
@@ -2762,7 +2762,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		/**
 		 * Если элемент класса символов является экранированной последовательностью
 		 */
-		if(this->_pattern.at(this->_pos) == '\\') {
+		if(this->_pattern.at(this->_pos) == '\\'){
 			/**
 			 * Если разбор экранированной последовательности не выполнен
 			 */
@@ -2778,7 +2778,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		/**
 		 * Если элемент класса символов не является одиночным символом
 		 */
-		if(!single) {
+		if(!single){
 			/**
 			 * Если за элементом класса символов следует знак диапазона
 			 *
@@ -2796,7 +2796,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		/**
 		 * Если за элементом класса символов следует знак диапазона
 		 */
-		if(((this->_pos + 1) < size) && (this->_pattern.at(this->_pos) == '-') && (this->_pattern.at(this->_pos + 1) != ']')) {
+		if(((this->_pos + 1) < size) && (this->_pattern.at(this->_pos) == '-') && (this->_pattern.at(this->_pos + 1) != ']')){
 			// Получаем смещение знака диапазона
 			const size_t position = this->_pos;
 			// Переходим к символу за знаком диапазона
@@ -2817,7 +2817,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 			/**
 			 * Если за знаком диапазона следует завершение класса символов
 			 */
-			if((this->_pos >= size) || (this->_pattern.at(this->_pos) == ']')) {
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) == ']')){
 				// Выполняем добавление нижней границы диапазона в класс символов
 				result.ranges.emplace_back(begin, begin);
 				// Выполняем добавление знака диапазона в класс символов
@@ -2847,7 +2847,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 			/**
 			 * Если верхняя граница диапазона является экранированной последовательностью
 			 */
-			if(this->_pattern.at(this->_pos) == '\\') {
+			if(this->_pattern.at(this->_pos) == '\\'){
 				/**
 				 * Если разбор экранированной последовательности не выполнен
 				 */
@@ -2907,7 +2907,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 	/**
 	 * Определяем букву экранированной последовательности
 	 */
-	switch(letter) {
+	switch(letter){
 		// Выполняем разбор привязок к позиции в тексте
 		case 'A': case 'z': case 'Z': case 'b': case 'B': case 'G': case 'K': {
 			// Переходим к следующему символу регулярного выражения
@@ -2923,7 +2923,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			/**
 			 * Определяем букву привязки к позиции в тексте
 			 */
-			switch(letter) {
+			switch(letter){
 				// Выполняем установку привязки к началу текста
 				case 'A': this->_nodes.at(result).anchor.type = anchor_t::TEXT_BEGIN; break;
 				// Выполняем установку привязки к концу текста
@@ -2981,7 +2981,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			/**
 			 * Если последовательность задаёт символ кодовым значением Юникода
 			 */
-			if(this->readEscapeCode(value)) {
+			if(this->readEscapeCode(value)){
 				// Выполняем создание узла одиночного символа
 				const node_id_t result = this->createNode(node_t::LITERAL);
 				// Выполняем установку кодового значения символа
@@ -3047,7 +3047,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			 *          о переводе строки указания эти не касаются вовсе.
 			 *
 			 */
-			if(this->_restricted) {
+			if(this->_restricted){
 				// Выполняем добавление возврата каретки в класс символов
 				vertical.ranges.emplace_back(0x0D, 0x0D);
 				// Выполняем добавление перевода строки в класс символов
@@ -3098,11 +3098,11 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			/**
 			 * Выполняем разбор экранируемой последовательности символов
 			 */
-			while(this->_pos < size) {
+			while(this->_pos < size){
 				/**
 				 * Если экранирование последовательности завершено
 				 */
-				if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')) {
+				if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 1) < size) && (this->_pattern.at(this->_pos + 1) == 'E')){
 					// Переходим к символу за завершающей последовательностью
 					this->_pos += 2;
 					// Выходим из цикла разбора экранируемой последовательности
@@ -3144,7 +3144,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			/**
 			 * Определяем символ начала имени именованной группы
 			 */
-			switch(this->_pattern.at(this->_pos)) {
+			switch(this->_pattern.at(this->_pos)){
 				// Выполняем установку завершения имени угловой скобкой
 				case '<': terminator = '>'; break;
 				// Выполняем установку завершения имени фигурной скобкой
@@ -3184,7 +3184,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			/**
 			 * Если ссылка на группу заключена в ограничители
 			 */
-			if(recursion || (next == '{')) {
+			if(recursion || (next == '{')){
 				// Получаем символ завершения ссылки на группу
 				const char terminator = ((next == '<') ? '>' : ((next == '{') ? '}' : '\''));
 				// Переходим к первому символу ссылки на группу
@@ -3246,11 +3246,11 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 				/**
 				 * Если номер группы задан относительно текущей позиции
 				 */
-				if(relative) {
+				if(relative){
 					/**
 					 * Если номер группы отсчитывается в обратном направлении
 					 */
-					if(backward) {
+					if(backward){
 						/**
 						 * Если номер группы выходит за пределы объявленных групп
 						 */
@@ -3296,7 +3296,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 			/**
 			 * Если номер группы отсчитывается в обратном направлении
 			 */
-			if(backward) {
+			if(backward){
 				/**
 				 * Если номер группы выходит за пределы объявленных групп
 				 */
@@ -3319,7 +3319,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 	/**
 	 * Если экранированная последовательность является ссылкой на захваченную группу
 	 */
-	if((letter >= '1') && (letter <= '9')) {
+	if((letter >= '1') && (letter <= '9')){
 		// Сохраняем позицию разбора экранированной последовательности
 		const size_t saved = this->_pos;
 		// Номер группы, на которую выполняется ссылка
@@ -3327,7 +3327,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 		/**
 		 * Если извлечение номера группы выполнено и группа существует
 		 */
-		if(this->readNumber(number) && ((number < 10) || (number <= this->total()))) {
+		if(this->readNumber(number) && ((number < 10) || (number <= this->total()))){
 			// Выполняем создание узла ссылки на захваченную группу
 			const node_id_t result = this->createNode(node_t::BACKREF);
 			// Выполняем установку номера группы
@@ -3345,7 +3345,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 	/**
 	 * Если экранированная последовательность обозначает одиночный символ
 	 */
-	if(this->readEscapeCode(code)) {
+	if(this->readEscapeCode(code)){
 		// Выполняем создание узла одиночного символа
 		const node_id_t result = this->createNode(node_t::LITERAL);
 		// Выполняем установку кодового значения символа
@@ -3392,7 +3392,7 @@ bool awh::regex::Parser::parseOptions(uint32_t & enable, uint32_t & disable) noe
 	/**
 	 * Выполняем разбор последовательности букв опций
 	 */
-	while(this->_pos < size) {
+	while(this->_pos < size){
 		// Получаем очередную букву опции
 		const char letter = this->_pattern.at(this->_pos);
 		// Числовое значение режима компиляции
@@ -3400,7 +3400,7 @@ bool awh::regex::Parser::parseOptions(uint32_t & enable, uint32_t & disable) noe
 		/**
 		 * Определяем очередную букву опции
 		 */
-		switch(letter) {
+		switch(letter){
 			// Выполняем установку режима сопоставления без учёта регистра
 			case 'i': value = flagOf(flag_t::CASELESS); break;
 			// Выполняем установку режима соответствия привязок границам строк
@@ -3430,7 +3430,7 @@ bool awh::regex::Parser::parseOptions(uint32_t & enable, uint32_t & disable) noe
 				 *          набором символов ASCII отдельный сокращённый класс символов.
 				 *
 				 */
-				if(this->_pos < size) {
+				if(this->_pos < size){
 					// Получаем уточняющую букву режима ограничения
 					const char next = this->_pattern.at(this->_pos);
 					/**
@@ -3456,7 +3456,7 @@ bool awh::regex::Parser::parseOptions(uint32_t & enable, uint32_t & disable) noe
 				/**
 				 * Если знак снятия режимов компиляции уже разобран
 				 */
-				if(negative) {
+				if(negative){
 					// Выполняем установку ошибки некорректных встроенных опций
 					this->fail(error_t::BAD_OPTIONS, this->_pos);
 					// Выводим результат выполнения разбора
@@ -3516,7 +3516,7 @@ awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
 	/**
 	 * Если условие задано проверкой окружения
 	 */
-	if(letter == '?') {
+	if(letter == '?'){
 		// Выполняем установку вида условия, заданного проверкой окружения
 		type = condition_t::ASSERTION;
 		// Выполняем разбор проверки окружения, задающей условие
@@ -3540,7 +3540,7 @@ awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
 		/**
 		 * Если условие является блоком определения групп
 		 */
-		if(((size - this->_pos) >= 6) && (this->_pattern.compare(this->_pos, 6, "DEFINE") == 0)) {
+		if(((size - this->_pos) >= 6) && (this->_pattern.compare(this->_pos, 6, "DEFINE") == 0)){
 			// Переходим к символу за именем блока определения групп
 			this->_pos += 6;
 			// Выполняем установку вида условия блока определения групп
@@ -3556,7 +3556,7 @@ awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
 			/**
 			 * Если проверяется рекурсивный вызов именованной группы
 			 */
-			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '&')) {
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == '&')){
 				// Переходим к символу за признаком имени группы
 				this->_pos++;
 				/**
@@ -3617,11 +3617,11 @@ awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
 			/**
 			 * Если номер группы задан относительно текущей позиции
 			 */
-			if(relative) {
+			if(relative){
 				/**
 				 * Если номер группы отсчитывается в обратном направлении
 				 */
-				if(backward) {
+				if(backward){
 					/**
 					 * Если номер группы выходит за пределы объявленных групп
 					 */
@@ -3668,7 +3668,7 @@ awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
 	/**
 	 * Если условное выражение содержит ветвь невыполненного условия
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '|')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '|')){
 		// Переходим к символу за разделителем ветвей
 		this->_pos++;
 		// Выполняем разбор ветви невыполненного условия
@@ -3719,7 +3719,7 @@ awh::regex::node_id_t awh::regex::Parser::parseCondition() noexcept {
 	/**
 	 * Если условие задано именем группы
 	 */
-	if(index != NO_NAME) {
+	if(index != NO_NAME){
 		// Создаём отложенную ссылку на именованную группу
 		deferred_t deferred;
 		// Выполняем установку индекса узла условного выражения
@@ -3769,7 +3769,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 	 *          отвергаются доводом неподдерживаемой конструкции.
 	 *
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '*')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '*')){
 		// Переходим к символу за знаком глагола управления
 		this->_pos++;
 		// Получаем позицию начала имени глагола управления
@@ -3791,7 +3791,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 *          и «(?!)» им же и собирается.
 		 *
 		 */
-		if((name == "MARK") || name.empty()) {
+		if((name == "MARK") || name.empty()){
 			/**
 			 * Если глагол отметки имени не несёт
 			 *
@@ -3867,7 +3867,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 *          с иным смыслом.
 		 *
 		 */
-		if((name == "ACCEPT") || (name == "COMMIT") || (name == "PRUNE") || (name == "SKIP") || (name == "THEN")) {
+		if((name == "ACCEPT") || (name == "COMMIT") || (name == "PRUNE") || (name == "SKIP") || (name == "THEN")){
 			// Смещение имени отметки в хранилище имён
 			uint32_t spot = 0;
 			// Длина имени отметки в октетах
@@ -3883,7 +3883,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			 *          опытом снятое на «a(*SKIP:)b» и «a(*COMMIT:)b».
 			 *
 			 */
-			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')) {
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
 				// Переходим к символу за разделителем имени отметки
 				this->_pos++;
 				// Получаем позицию начала имени отметки
@@ -3941,7 +3941,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		/**
 		 * Если глагол управления совпадения не даёт никогда
 		 */
-		if((name == "FAIL") || (name == "F")) {
+		if((name == "FAIL") || (name == "F")){
 			// Смещение имени отметки в хранилище имён
 			uint32_t spot = 0;
 			// Длина имени отметки в октетах
@@ -3954,7 +3954,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			 *          и имя это выводится при отказе сопоставления.
 			 *
 			 */
-			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')) {
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
 				// Переходим к символу за разделителем имени отметки
 				this->_pos++;
 				// Получаем позицию начала имени отметки
@@ -4039,7 +4039,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 *          «(*pla)» эталонная реализация отвергает.
 		 *
 		 */
-		if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')) {
+		if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')){
 			// Флаг опознания буквенного имени группы
 			bool known = true;
 			/**
@@ -4085,7 +4085,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			/**
 			 * Если буквенное имя группы опознано
 			 */
-			if(known) {
+			if(known){
 				// Выполняем установку флага разбора проверки окружения
 				assertion = ((type != group_t::ATOMIC) && (type != group_t::SCRIPT) &&
 				 (type != group_t::SCRIPT_ONCE));
@@ -4099,7 +4099,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 	/**
 	 * Если группа начинается с признака расширенного синтаксиса
 	 */
-	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '?')) {
+	if((this->_pos < size) && (this->_pattern.at(this->_pos) == '?')){
 		// Переходим к символу за признаком расширенного синтаксиса
 		this->_pos++;
 		/**
@@ -4113,7 +4113,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		/**
 		 * Определяем букву расширенного синтаксиса группы
 		 */
-		switch(letter) {
+		switch(letter){
 			// Выполняем разбор комментария
 			case '#': {
 				/**
@@ -4196,7 +4196,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				/**
 				 * Если разбирается положительная ретроспективная проверка
 				 */
-				if(next == '=') {
+				if(next == '='){
 					// Переходим к символу за признаком ретроспективной проверки
 					this->_pos += 2;
 					// Выполняем установку флага разбора проверки окружения
@@ -4313,7 +4313,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				/**
 				 * Если конструкция объявляет именованную группу
 				 */
-				if(next == '<') {
+				if(next == '<'){
 					// Переходим к первому символу имени именованной группы
 					this->_pos++;
 					/**
@@ -4332,7 +4332,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				/**
 				 * Если конструкция является ссылкой на именованную группу
 				 */
-				if(next == '=') {
+				if(next == '='){
 					// Переходим к первому символу имени группы
 					this->_pos++;
 					/**
@@ -4347,7 +4347,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				/**
 				 * Если конструкция является рекурсивным вызовом именованной группы
 				 */
-				if(next == '>') {
+				if(next == '>'){
 					// Переходим к первому символу имени группы
 					this->_pos++;
 					/**
@@ -4379,7 +4379,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				/**
 				 * Если конструкция является рекурсивным вызовом группы по номеру
 				 */
-				if(ascii::isDigit(letter) || signedNumber) {
+				if(ascii::isDigit(letter) || signedNumber){
 					// Флаг задания номера группы относительно текущей позиции
 					const bool relative = ((letter == '+') || (letter == '-'));
 					// Флаг отсчёта номера группы в обратном направлении
@@ -4409,11 +4409,11 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 					/**
 					 * Если номер группы задан относительно текущей позиции
 					 */
-					if(relative) {
+					if(relative){
 						/**
 						 * Если номер группы отсчитывается в обратном направлении
 						 */
-						if(backward) {
+						if(backward){
 							/**
 							 * Если номер группы выходит за пределы объявленных групп
 							 */
@@ -4447,7 +4447,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 					/**
 					 * Если конструкция сбрасывает режимы компиляции к исходным
 					 */
-					if(letter == '^') {
+					if(letter == '^'){
 						// Переходим к следующему символу регулярного выражения
 						this->_pos++;
 						/**
@@ -4488,7 +4488,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 					/**
 					 * Если встроенные опции действуют до конца охватывающей группы
 					 */
-					if(this->_pattern.at(this->_pos) == ')') {
+					if(this->_pattern.at(this->_pos) == ')'){
 						// Переходим к символу за закрывающей круглой скобкой
 						this->_pos++;
 						// Выполняем установку признака разрыва связи квантора
@@ -4499,7 +4499,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 					/**
 					 * Если встроенные опции действуют в пределах группы
 					 */
-					if(this->_pattern.at(this->_pos) == ':') {
+					if(this->_pattern.at(this->_pos) == ':'){
 						// Переходим к символу за разделителем опций и тела группы
 						this->_pos++;
 						// Выполняем установку вида группы без захвата
@@ -4542,7 +4542,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 	/**
 	 * Если разбирается именованная захватывающая группа
 	 */
-	if(type == group_t::NAMED) {
+	if(type == group_t::NAMED){
 		// Выполняем установку номера захватывающей группы
 		number = ++this->_captures;
 		// Получаем набор номеров, имени группы отвечающих
@@ -4552,11 +4552,11 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		/**
 		 * Выполняем перебор номеров, имени группы отвечающих
 		 */
-		for(const uint32_t record : records) {
+		for(const uint32_t record : records){
 			/**
 			 * Если имя группы объявлено под этим же номером
 			 */
-			if(record == number) {
+			if(record == number){
 				// Выполняем установку флага объявления имени
 				declared = true;
 				// Выходим из перебора номеров имени группы
@@ -4595,7 +4595,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 	/**
 	 * Если разбирается проверка окружения
 	 */
-	if(assertion) {
+	if(assertion){
 		// Выполняем создание узла проверки окружения
 		result = this->createNode(node_t::LOOKAROUND);
 		// Выполняем установку направления и знака проверки окружения
@@ -4644,7 +4644,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			 *          выводится тем же смещением.
 			 *
 			 */
-			if(this->referring(body)) {
+			if(this->referring(body)){
 				// Выполняем запоминание проверки, длину коей даёт вызов
 				this->_behinds.emplace_back(result, offset);
 			// Выводим индекс отсутствующего узла синтаксического дерева
@@ -4674,7 +4674,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		/**
 		 * Выполняем разбор ветвей группы со сбросом нумерации
 		 */
-		while(true) {
+		while(true){
 			// Выполняем сброс номера захватывающей группы
 			this->_captures = begin;
 			// Выполняем разбор очередной ветви группы
@@ -4776,7 +4776,7 @@ awh::regex::node_id_t awh::regex::Parser::parseAtom() noexcept {
 	/**
 	 * Определяем символ начала элемента выражения
 	 */
-	switch(this->_pattern.at(this->_pos)) {
+	switch(this->_pattern.at(this->_pos)){
 		// Выполняем разбор группы регулярного выражения
 		case '(': return this->parseGroup();
 		// Выполняем разбор класса символов
@@ -4891,7 +4891,7 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 	/**
 	 * Определяем символ квантора повторения
 	 */
-	switch(this->_pattern.at(this->_pos)) {
+	switch(this->_pattern.at(this->_pos)){
 		// Выполняем проверку допустимости повторения переданного узла
 		case '*': case '+': case '?': case '{': {
 			/**
@@ -4905,7 +4905,7 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 	/**
 	 * Определяем символ квантора повторения
 	 */
-	switch(this->_pattern.at(this->_pos)) {
+	switch(this->_pattern.at(this->_pos)){
 		// Выполняем разбор квантора произвольного числа повторений
 		case '*': {
 			// Переходим к следующему символу регулярного выражения
@@ -4971,13 +4971,13 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 			/**
 			 * Если извлечение наименьшего числа повторений выполнено
 			 */
-			if(least || this->readNumber(min)) {
+			if(least || this->readNumber(min)){
 				// Выполняем пропуск пробельных символов за наименьшим числом повторений
 				skipping();
 				/**
 				 * Если квантор задаёт точное число повторений
 				 */
-				if(!least && (this->_pos < size) && (this->_pattern.at(this->_pos) == '}')) {
+				if(!least && (this->_pos < size) && (this->_pattern.at(this->_pos) == '}')){
 					// Переходим к символу за закрывающей фигурной скобкой
 					this->_pos++;
 					// Выполняем установку наибольшего числа повторений
@@ -5000,7 +5000,7 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 					 *          не является вовсе и остаётся последовательностью литералов.
 					 *
 					 */
-					if(!least && (this->_pos < size) && (this->_pattern.at(this->_pos) == '}')) {
+					if(!least && (this->_pos < size) && (this->_pattern.at(this->_pos) == '}')){
 						// Переходим к символу за закрывающей фигурной скобкой
 						this->_pos++;
 						// Выполняем установку отсутствия ограничения повторений
@@ -5016,7 +5016,7 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 						/**
 						 * Если квантор повторения завершён закрывающей фигурной скобкой
 						 */
-						if((this->_pos < size) && (this->_pattern.at(this->_pos) == '}')) {
+						if((this->_pos < size) && (this->_pattern.at(this->_pos) == '}')){
 							// Переходим к символу за закрывающей фигурной скобкой
 							this->_pos++;
 							// Выполняем установку флага успешного разбора
@@ -5028,7 +5028,7 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 			/**
 			 * Если разбор квантора повторения не выполнен
 			 */
-			if(!success) {
+			if(!success){
 				// Выполняем восстановление позиции разбора
 				this->_pos = saved;
 				// Выводим индекс переданного узла синтаксического дерева
@@ -5061,11 +5061,11 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 	/**
 	 * Если квантор повторения содержит признак режима жадности
 	 */
-	if(this->_pos < size) {
+	if(this->_pos < size){
 		/**
 		 * Если квантор повторения является ленивым
 		 */
-		if(this->_pattern.at(this->_pos) == '?') {
+		if(this->_pattern.at(this->_pos) == '?'){
 			// Переходим к следующему символу регулярного выражения
 			this->_pos++;
 			// Выполняем установку ленивого режима жадности
@@ -5099,7 +5099,7 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 	/**
 	 * Если за квантором повторения следует ещё один квантор
 	 */
-	if(this->_pos < size) {
+	if(this->_pos < size){
 		// Получаем символ, следующий за квантором повторения
 		const char letter = this->_pattern.at(this->_pos);
 		/**
@@ -5138,7 +5138,7 @@ awh::regex::node_id_t awh::regex::Parser::parseRepeat() noexcept {
 	 *          кванторов сам.
 	 *
 	 */
-	if(!hasFlag(this->_flags, flag_t::EXTENDED)) {
+	if(!hasFlag(this->_flags, flag_t::EXTENDED)){
 		/**
 		 * Если позиция разбора достигла конца регулярного выражения
 		 */
@@ -5148,7 +5148,7 @@ awh::regex::node_id_t awh::regex::Parser::parseRepeat() noexcept {
 		/**
 		 * Определяем символ, следующий за элементом выражения
 		 */
-		switch(this->_pattern.at(this->_pos)) {
+		switch(this->_pattern.at(this->_pos)){
 			// Если символ начинает квантор повторения
 			case '*': case '+': case '?': case '{': break;
 			// Выводим индекс разобранного элемента выражения
@@ -5192,7 +5192,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 	/**
 	 * Выполняем разбор элементов последовательности
 	 */
-	while(true) {
+	while(true){
 		// Выполняем пропуск пробельных символов и комментариев
 		this->skipSpaces();
 		/**
@@ -5225,7 +5225,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 			/**
 			 * Если элемент является комментарием
 			 */
-			if(letter == '(') {
+			if(letter == '('){
 				/**
 				 * Выполняем поиск завершения комментария
 				 */
@@ -5285,7 +5285,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 			 *          последовательности объемлющей.
 			 *
 			 */
-			if((items.size() > base) && !barrier) {
+			if((items.size() > base) && !barrier){
 				// Выполняем разбор кванторов повторения предшествующего элемента
 				items.back() = this->parseQuantifier(items.back());
 				/**
@@ -5309,7 +5309,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 		/**
 		 * Если разобранный элемент является пустым выражением
 		 */
-		if(this->_nodes.at(node).type == node_t::EMPTY) {
+		if(this->_nodes.at(node).type == node_t::EMPTY){
 			/**
 			 * Выполняем установку флага размещения барьера
 			 *
@@ -5333,7 +5333,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 			 *          отсутствием элемента повторяемого.
 			 *
 			 */
-			if((items.size() > base) && !barrier) {
+			if((items.size() > base) && !barrier){
 				// Выполняем разбор кванторов повторения предшествующего элемента
 				items.back() = this->parseQuantifier(items.back());
 				/**
@@ -5401,7 +5401,7 @@ awh::regex::node_id_t awh::regex::Parser::parseAlternate() noexcept {
 	/**
 	 * Выполняем разбор прочих ветвей выражения
 	 */
-	while((this->_pos < size) && (this->_pattern.at(this->_pos) == '|')) {
+	while((this->_pos < size) && (this->_pattern.at(this->_pos) == '|')){
 		// Переходим к символу за разделителем ветвей
 		this->_pos++;
 		// Выполняем разбор очередной ветви выражения
@@ -5432,7 +5432,7 @@ void awh::regex::Parser::settings() noexcept {
 	/**
 	 * Выполняем разбор начальных указаний регулярного выражения
 	 */
-	while((this->_pos + 2) < size) {
+	while((this->_pos + 2) < size){
 		/**
 		 * Если очередное указание не начинается знаком глагола управления
 		 */
@@ -5654,13 +5654,13 @@ bool awh::regex::Parser::prescan() noexcept {
 	 *          там, где её корректность проверяется на этапе разрешения ссылок.
 	 *
 	 */
-	for(size_t i = this->_begin; i < size; i++) {
+	for(size_t i = this->_begin; i < size; i++){
 		// Получаем очередной символ регулярного выражения
 		const char letter = this->_pattern.at(i);
 		/**
 		 * Если очередной символ является обратной косой чертой
 		 */
-		if(letter == '\\') {
+		if(letter == '\\'){
 			// Выполняем пропуск экранированного символа
 			i++;
 			// Переходим к следующему символу регулярного выражения
@@ -5669,7 +5669,7 @@ bool awh::regex::Parser::prescan() noexcept {
 		/**
 		 * Если позиция прохода находится внутри класса символов
 		 */
-		if(inClass) {
+		if(inClass){
 			/**
 			 * Если класс символов завершён закрывающей квадратной скобкой
 			 */
@@ -5682,7 +5682,7 @@ bool awh::regex::Parser::prescan() noexcept {
 		/**
 		 * Если очередной символ начинает класс символов
 		 */
-		if(letter == '[') {
+		if(letter == '['){
 			// Выполняем установку флага нахождения внутри класса символов
 			inClass = true;
 			/**
@@ -5713,7 +5713,7 @@ bool awh::regex::Parser::prescan() noexcept {
 		 *          и в счёт их не идёт: «(*FAIL)» есть глагол, а не группа.
 		 *
 		 */
-		if(((i + 1) < size) && (this->_pattern.at(i + 1) == '*')) {
+		if(((i + 1) < size) && (this->_pattern.at(i + 1) == '*')){
 			/**
 			 * Выполняем поиск завершения глагола управления
 			 */
@@ -5726,7 +5726,7 @@ bool awh::regex::Parser::prescan() noexcept {
 		/**
 		 * Если группа не содержит признака расширенного синтаксиса
 		 */
-		if(((i + 1) >= size) || ((this->_pattern.at(i + 1) != '?') && (this->_pattern.at(i + 1) != '*'))) {
+		if(((i + 1) >= size) || ((this->_pattern.at(i + 1) != '?') && (this->_pattern.at(i + 1) != '*'))){
 			// Увеличиваем общее количество захватывающих групп
 			this->_total++;
 			// Переходим к следующему символу регулярного выражения
@@ -5784,7 +5784,7 @@ uint32_t awh::regex::Parser::total() noexcept {
 	/**
 	 * Если предварительный проход ещё не выполнен
 	 */
-	if(!this->_counted) {
+	if(!this->_counted){
 		// Выполняем предварительный проход по регулярному выражению
 		this->prescan();
 		// Выполняем установку флага выполненного предварительного прохода
@@ -5853,7 +5853,7 @@ void awh::regex::Parser::measureNode(const node_id_t id, uint32_t & min, uint32_
 	/**
 	 * Определяем тип узла синтаксического дерева
 	 */
-	switch(static_cast <uint8_t> (node.type)) {
+	switch(static_cast <uint8_t> (node.type)){
 		// Выполняем вычисление длины узла пустого выражения
 		case static_cast <uint8_t> (node_t::EMPTY):
 		// Выполняем вычисление длины узла привязки к позиции в тексте
@@ -5898,7 +5898,7 @@ void awh::regex::Parser::measureNode(const node_id_t id, uint32_t & min, uint32_
 			/**
 			 * Выполняем обход ветвей выражения
 			 */
-			for(node_id_t branch = node.child; branch != INVALID_NODE; branch = this->_nodes.at(branch).next) {
+			for(node_id_t branch = node.child; branch != INVALID_NODE; branch = this->_nodes.at(branch).next){
 				// Наименьшая длина последовательности ветви выражения
 				uint32_t lower = 0;
 				// Наибольшая длина последовательности ветви выражения
@@ -5921,7 +5921,7 @@ void awh::regex::Parser::measureNode(const node_id_t id, uint32_t & min, uint32_
 				/**
 				 * Если вычисляется длина первой ветви выражения
 				 */
-				if(first) {
+				if(first){
 					// Выполняем установку наименьшей длины последовательности
 					min = lower;
 					// Выполняем установку наибольшей длины последовательности
@@ -6003,13 +6003,13 @@ void awh::regex::Parser::measureNode(const node_id_t id, uint32_t & min, uint32_
 	 *          отвергает наравне с нами.
 	 *
 	 */
-	if(this->_resolving && ((node.type == node_t::RECURSE) || (node.type == node_t::BACKREF))) {
+	if(this->_resolving && ((node.type == node_t::RECURSE) || (node.type == node_t::BACKREF))){
 		// Получаем номер группы, вызовом либо ссылкою указанной
 		const uint32_t number = ((node.type == node_t::RECURSE) ? node.recurse.number : node.backref.number);
 		/**
 		 * Если вызывается выражение целиком
 		 */
-		if(number == 0) {
+		if(number == 0){
 			// Выполняем установку отсутствия ограничения длины
 			max = UNBOUNDED;
 			// Выходим из вычисления длины последовательности
@@ -6020,7 +6020,7 @@ void awh::regex::Parser::measureNode(const node_id_t id, uint32_t & min, uint32_
 		/**
 		 * Если вызываемая группа отсутствует либо длина её вычисляется ныне
 		 */
-		if((group == INVALID_NODE) || !this->_calling.emplace(number).second) {
+		if((group == INVALID_NODE) || !this->_calling.emplace(number).second){
 			// Выполняем установку отсутствия ограничения длины
 			max = UNBOUNDED;
 			// Выходим из вычисления длины последовательности
@@ -6058,7 +6058,7 @@ bool awh::regex::Parser::referring(const node_id_t id) const noexcept {
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_nodes.at(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_nodes.at(index).next){
 		/**
 		 * Если узел является вызовом подпрограммы
 		 */
@@ -6093,7 +6093,7 @@ awh::regex::node_id_t awh::regex::Parser::grouping(const uint32_t number) const 
 	/**
 	 * Выполняем обход арены узлов синтаксического дерева
 	 */
-	for(size_t index = 0; index < this->_nodes.size(); index++) {
+	for(size_t index = 0; index < this->_nodes.size(); index++){
 		/**
 		 * Если узел является захватывающей группой искомого номера
 		 */
@@ -6120,7 +6120,7 @@ void awh::regex::Parser::measure(const node_id_t id, uint32_t & min, uint32_t & 
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_nodes.at(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_nodes.at(index).next){
 		// Наименьшая длина последовательности, сопоставляемой узлом
 		uint32_t least = 0;
 		// Наибольшая длина последовательности, сопоставляемой узлом
@@ -6155,13 +6155,13 @@ bool awh::regex::Parser::resolve() noexcept {
 	/**
 	 * Выполняем разрешение отложенных ссылок на именованные группы
 	 */
-	for(auto & deferred : this->_deferred) {
+	for(auto & deferred : this->_deferred){
 		// Выполняем поиск имени группы в соответствии имён группы их номерам
 		auto i = this->_groups.find(this->name(deferred.name));
 		/**
 		 * Если группа с указанным именем не объявлена
 		 */
-		if(i == this->_groups.end()) {
+		if(i == this->_groups.end()){
 			// Выполняем установку ошибки ссылки на несуществующую группу
 			this->fail(error_t::BAD_BACKREFERENCE, deferred.offset);
 			// Выводим результат разрешения отложенных ссылок
@@ -6196,7 +6196,7 @@ bool awh::regex::Parser::resolve() noexcept {
 	 *          рекурсивный либо группа неограниченной длины.
 	 *
 	 */
-	for(auto & behind : this->_behinds) {
+	for(auto & behind : this->_behinds){
 		// Наименьшая длина проверяемой последовательности
 		uint32_t least = 0;
 		// Наибольшая длина проверяемой последовательности
@@ -6210,7 +6210,7 @@ bool awh::regex::Parser::resolve() noexcept {
 		/**
 		 * Если длина проверяемой последовательности не ограничена
 		 */
-		if(most == UNBOUNDED) {
+		if(most == UNBOUNDED){
 			// Выполняем установку ошибки недопустимой ретроспективной проверки
 			this->fail(error_t::LOOKBEHIND_INVALID, behind.second);
 			// Выводим результат разрешения отложенных ссылок
@@ -6229,7 +6229,7 @@ bool awh::regex::Parser::resolve() noexcept {
 	 *          набор видов, заведением узла копимый, обход отменяет.
 	 *
 	 */
-	if(this->walks(node_t::CONDITION)) {
+	if(this->walks(node_t::CONDITION)){
 		/**
 		 * Выполняем проверку существования групп, условиями указанных
 		 *
@@ -6241,7 +6241,7 @@ bool awh::regex::Parser::resolve() noexcept {
 		 *          относительный, различия не делает.
 		 *
 		 */
-		for(auto & node : this->_nodes) {
+		for(auto & node : this->_nodes){
 			/**
 			 * Если узел не является условным выражением по номеру группы
 			 */
@@ -6263,7 +6263,7 @@ bool awh::regex::Parser::resolve() noexcept {
 			/**
 			 * Если группа, номером указанная, выражением не объявлена
 			 */
-			if((node.condition.number == 0) || (node.condition.number > this->_captures)) {
+			if((node.condition.number == 0) || (node.condition.number > this->_captures)){
 				// Выполняем установку ошибки ссылки на несуществующую группу
 				this->fail(error_t::BAD_BACKREFERENCE, node.offset);
 				// Выводим результат разрешения отложенных ссылок
@@ -6280,11 +6280,11 @@ bool awh::regex::Parser::resolve() noexcept {
 	 *          набор видов, заведением узла копимый, обход отменяет.
 	 *
 	 */
-	if(this->walks(node_t::BACKREF)) {
+	if(this->walks(node_t::BACKREF)){
 		/**
 		 * Выполняем проверку ссылок на захваченные группы по номеру
 		 */
-		for(auto & node : this->_nodes) {
+		for(auto & node : this->_nodes){
 			/**
 			 * Если узел не является ссылкой на захваченную группу
 			 */
@@ -6294,7 +6294,7 @@ bool awh::regex::Parser::resolve() noexcept {
 			/**
 			 * Если ссылка указывает на несуществующую группу
 			 */
-			if((node.backref.number == 0) || (node.backref.number > this->_captures)) {
+			if((node.backref.number == 0) || (node.backref.number > this->_captures)){
 				// Выполняем установку ошибки ссылки на несуществующую группу
 				this->fail(error_t::BAD_BACKREFERENCE, node.offset);
 				// Выводим результат разрешения отложенных ссылок
@@ -6311,11 +6311,11 @@ bool awh::regex::Parser::resolve() noexcept {
 	 *          набор видов, заведением узла копимый, обход отменяет.
 	 *
 	 */
-	if(this->walks(node_t::RECURSE)) {
+	if(this->walks(node_t::RECURSE)){
 		/**
 		 * Выполняем проверку рекурсивных вызовов групп по номеру
 		 */
-		for(auto & node : this->_nodes) {
+		for(auto & node : this->_nodes){
 			/**
 			 * Если узел не является рекурсивным вызовом
 			 */
@@ -6331,7 +6331,7 @@ bool awh::regex::Parser::resolve() noexcept {
 			/**
 			 * Если вызов выполняется для несуществующей группы
 			 */
-			if(node.recurse.number > this->_captures) {
+			if(node.recurse.number > this->_captures){
 				// Выполняем установку ошибки ссылки на несуществующую группу
 				this->fail(error_t::BAD_BACKREFERENCE, node.offset);
 				// Выводим результат разрешения отложенных ссылок
@@ -6363,7 +6363,7 @@ bool awh::regex::Parser::parse(string_view pattern, const uint32_t flags) noexce
 	/**
 	 * Если размер регулярного выражения превышает допустимый
 	 */
-	if(pattern.size() > 0x100000) {
+	if(pattern.size() > 0x100000){
 		// Выполняем установку ошибки превышения размера регулярного выражения
 		this->fail(error_t::PATTERN_TOO_LARGE, 0);
 		// Выводим результат выполнения разбора
@@ -6403,7 +6403,7 @@ bool awh::regex::Parser::parse(string_view pattern, const uint32_t flags) noexce
 	/**
 	 * Если регулярное выражение разобрано не полностью
 	 */
-	if(this->_pos < this->_pattern.size()) {
+	if(this->_pos < this->_pattern.size()){
 		// Выполняем установку ошибки непарной круглой скобки
 		this->fail(error_t::UNMATCHED_PAREN, this->_pos);
 		// Выводим результат выполнения разбора

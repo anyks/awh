@@ -279,7 +279,7 @@ TEST(Regex, EmitterMatcher) {
 	/**
 	 * Выполняем обход набора текстов сопоставления
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём набор границ обнаруженного совпадения
 		size_t bounds[2] = {0, 0};
 		// Выполняем сопоставление порождённым машинным кодом
@@ -289,7 +289,7 @@ TEST(Regex, EmitterMatcher) {
 		/**
 		 * Если совпадение в тексте обнаружено
 		 */
-		if(sample.matches) {
+		if(sample.matches){
 			// Выполняем проверку начальной границы совпадения
 			EXPECT_EQ(bounds[0], sample.begin) << sample.text;
 			// Выполняем проверку конечной границы совпадения
@@ -339,7 +339,7 @@ TEST(Regex, EmitterConstants) {
 	/**
 	 * Выполняем обход набора проверяемых чисел
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект порождения машинного кода
 		regex::emitter_t emitter;
 		/**
@@ -505,13 +505,13 @@ TEST(Regex, EmitterFailure) {
 	 *          он порождению не давался вовсе.
 	 *
 	 */
-	if(regex::assembly_t::available() && regex::emitter_t::available()) {
+	if(regex::assembly_t::available() && regex::emitter_t::available()){
 		// Величины, полю команды не помещающиеся, но парой команд укладываемые
 		const uint32_t values[] = {0x1000u, 0x1E70u, 0x2000u, 0xFFFFFu, 0xFFF000u};
 		/**
 		 * Выполняем обход укладываемых величин
 		 */
-		for(const uint32_t value : values) {
+		for(const uint32_t value : values){
 			// Создаём объект порождения машинного кода
 			regex::emitter_t emitter;
 			// Выполняем размещение входа в порождаемую подпрограмму
@@ -808,11 +808,11 @@ TEST(Regex, EmitterIndexed) {
 	/**
 	 * Выполняем обход набора номеров мест записи
 	 */
-	for(size_t written = 0; written < seats; written++) {
+	for(size_t written = 0; written < seats; written++){
 		/**
 		 * Выполняем обход набора номеров мест чтения
 		 */
-		for(size_t read = 0; read < seats; read++) {
+		for(size_t read = 0; read < seats; read++){
 			// Создаём область мест, порождённым кодом достигаемую
 			size_t region[seats + 1];
 			// Выполняем сброс области мест
@@ -837,11 +837,11 @@ TEST(Regex, EmitterIndexed) {
 			/**
 			 * Выполняем обход набора мест области
 			 */
-			for(size_t i = 0; i < seats; i++) {
+			for(size_t i = 0; i < seats; i++){
 				/**
 				 * Если место записью не занято
 				 */
-				if(i != written) {
+				if(i != written){
 					// Выполняем проверку неприкосновенности места
 					EXPECT_EQ(region[i], static_cast <size_t> (0))
 					 << "запись " << written << " чтение " << read << " место " << i;

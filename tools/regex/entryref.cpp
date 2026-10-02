@@ -80,7 +80,7 @@ static const string & medium() noexcept {
 		/**
 		 * Выполняем наполнение текста до заданной длины
 		 */
-		while(outcome.size() < 2048) {
+		while(outcome.size() < 2048){
 			// Выполняем добавление строки запроса обмена по протоколу
 			outcome.append("GET /api/v1/items/");
 			// Выполняем добавление номера запрашиваемого ресурса
@@ -116,7 +116,7 @@ static double fastest(const pcre2_code * code, pcre2_match_data * data, const st
 	/**
 	 * Выполняем круги замера
 	 */
-	for(uint32_t round = 0; round < 12; round++) {
+	for(uint32_t round = 0; round < 12; round++){
 		// Получаем отметку времени начала круга
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -167,7 +167,7 @@ int main() noexcept {
 	/**
 	 * Если выражение не собрано
 	 */
-	if(code == nullptr) {
+	if(code == nullptr){
 		// Выводим сообщение об отказе сборки
 		::printf("ОТКАЗ СБОРКИ «(a)b»\n");
 		// Выходим с кодом отказа
@@ -209,13 +209,13 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор отстающих строк
 	 */
-	for(const auto & row : ROWS) {
+	for(const auto & row : ROWS){
 		// Выполняем сборку выражения строки
 		pcre2_code * compiled = ::build(row.pattern);
 		/**
 		 * Если выражение не собрано
 		 */
-		if(compiled == nullptr) {
+		if(compiled == nullptr){
 			// Выводим сообщение об отказе сборки
 			::printf("%-44s ОТКАЗ СБОРКИ\n", row.name);
 			// Выполняем переход к строке следующей

@@ -51,7 +51,7 @@ static double fastest(const size_t rounds, const size_t repeats, Body && body) n
 	// Лучшее время круга
 	double result = 0.0;
 	// Выполняем круги замера
-	for(size_t round = 0; round < rounds; round++) {
+	for(size_t round = 0; round < rounds; round++){
 		// Получаем время начала круга
 		const auto begin = chrono::steady_clock::now();
 		// Выполняем повторения замеряемого действия
@@ -100,7 +100,7 @@ int main() noexcept {
 	 *          не давая, и путь исполнения остался бы неустановленным
 	 *
 	 */
-	if(!awh::regex::probe_t::enabled()) {
+	if(!awh::regex::probe_t::enabled()){
 		// Выводим сообщение об отказе
 		::printf("щуп собран без признака «AWH_REGEX_PROBING», путь исполнения неустановим\n");
 		// Выводим результат отказа
@@ -111,7 +111,7 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор разбираемых сценариев
 	 */
-	for(const auto & scenario : SCENARIOS) {
+	for(const auto & scenario : SCENARIOS){
 		// Создаём движок сопоставления
 		awh::regex::engine_t engine;
 		// Создаём собранное выражение
@@ -119,7 +119,7 @@ int main() noexcept {
 		/**
 		 * Если сборка выражения не выполнена
 		 */
-		if(!engine.build(scenario.pattern, static_cast <uint32_t> (awh::regex::flag_t::JIT), expression)) {
+		if(!engine.build(scenario.pattern, static_cast <uint32_t> (awh::regex::flag_t::JIT), expression)){
 			// Выводим сообщение об отказе сборки
 			::printf("%-18s ОТКАЗ СБОРКИ\n", scenario.name);
 			// Выводим результат отказа
@@ -132,7 +132,7 @@ int main() noexcept {
 		 *          мерило бы работу иную, о правке ничего не говорящую
 		 *
 		 */
-		if(!expression.machine) {
+		if(!expression.machine){
 			// Выводим сообщение об отсутствии порождённого кода
 			::printf("%-18s ПОРОЖДЕНИЯ КОДА НЕТ\n", scenario.name);
 			// Выполняем переход к сценарию следующему
@@ -145,7 +145,7 @@ int main() noexcept {
 		/**
 		 * Если вердикт сопоставления ожидаемому не отвечает
 		 */
-		if(engine.exec(expression, text, 0, captures) != scenario.matches) {
+		if(engine.exec(expression, text, 0, captures) != scenario.matches){
 			// Выводим сообщение о расхождении вердикта
 			::printf("%-18s ВЕРДИКТ РАЗОШЁЛСЯ\n", scenario.name);
 			// Выводим результат отказа

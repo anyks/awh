@@ -284,7 +284,7 @@ namespace {
 		/**
 		 * Выполняем измерение прохода набора повторений
 		 */
-		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
+		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++){
 			// Получаем номер положения стека прохода
 			const size_t index = (attempt % SHIFTS);
 			// Время прохода набора повторений
@@ -292,7 +292,7 @@ namespace {
 			/**
 			 * Определяем положение стека прохода
 			 */
-			switch(index) {
+			switch(index){
 				// Выполняем проход без сдвига стека
 				case 0: spent = shifted <0> (rounds, body); break;
 				// Выполняем проход со сдвигом стека на шаг
@@ -314,7 +314,7 @@ namespace {
 		/**
 		 * Выполняем обход положений стека
 		 */
-		for(size_t i = 0; i < SHIFTS; i++) {
+		for(size_t i = 0; i < SHIFTS; i++){
 			/**
 			 * Если положение стека прошло быстрее прежних
 			 */
@@ -370,7 +370,7 @@ namespace {
 		 *          бы смысл вместе с эталоном, по какому пороги калиброваны.
 		 *
 		 */
-		if(!engine.build(scenario.pattern, 0, expression)) {
+		if(!engine.build(scenario.pattern, 0, expression)){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -393,7 +393,7 @@ namespace {
 		 *          измерял бы не тот способ исполнения, ради какого сценарий заведён.
 		 *
 		 */
-		if(engine.exec(expression, body, 0, captures) != scenario.matches) {
+		if(engine.exec(expression, body, 0, captures) != scenario.matches){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -413,7 +413,7 @@ namespace {
 		/**
 		 * Если время прохода измерено неверно
 		 */
-		if(best <= 0.0) {
+		if(best <= 0.0){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -455,7 +455,7 @@ namespace {
 			/**
 			 * Если порождение машинного кода выражения выполнено
 			 */
-			if(!expression.forward.plain && codegen.compile(expression.forward)) {
+			if(!expression.forward.plain && codegen.compile(expression.forward)){
 				// Создаём набор границ совпадения порождённого кода
 				vector <pair <size_t, size_t>> bounds;
 				/**
@@ -467,7 +467,7 @@ namespace {
 				/**
 				 * Если вердикт порождённого кода сценарию отвечает
 				 */
-				if(codegen.exec(body, 0, bounds) == scenario.matches) {
+				if(codegen.exec(body, 0, bounds) == scenario.matches){
 					// Выполняем измерение пропускной способности порождённого кода
 					const timing_t generated = fastest(rounds, [&codegen, &body, &bounds]() noexcept {
 						// Выполняем сопоставление регулярного выражения порождённым кодом
@@ -482,7 +482,7 @@ namespace {
 					 *          быстрее правой: больше единицы - впереди левая.
 					 *
 					 */
-					if(machine > 0.0) {
+					if(machine > 0.0){
 						// Выполняем установку сведений о порождённом машинном коде
 						result.details = ("код " + to_string(static_cast <size_t> ((rounds / machine) * 1e6)) +
 						 " совпадений/с, доля к разбору " + to_string(best / machine) + "; ");
@@ -505,7 +505,7 @@ namespace {
 			/**
 			 * Если сборка эталонного регулярного выражения выполнена
 			 */
-			if(reference != nullptr) {
+			if(reference != nullptr){
 				// Выполняем размещение набора границ эталонного совпадения
 				pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 				/**
@@ -544,7 +544,7 @@ namespace {
 				 * @details Первая пара сличения: наш разбор против разбора эталона.
 				 *
 				 */
-				if(interpreted > 0.0) {
+				if(interpreted > 0.0){
 					// Выполняем установку сведений о сличении разборов
 					result.details += ("pcre2 разбором " + to_string(static_cast <size_t> ((rounds / interpreted) * 1e6)) +
 					 " совпадений/с, доля разборов " + to_string(interpreted / best));
@@ -559,7 +559,7 @@ namespace {
 				 *          имеет, и выводится лишь число эталона.
 				 *
 				 */
-				if(machined) {
+				if(machined){
 					// Выполняем измерение эталона порождённым кодом
 					const timing_t jitted = fastest(rounds, [reference, &body, data]() noexcept {
 						// Выполняем сопоставление эталонного выражения порождённым кодом
@@ -570,7 +570,7 @@ namespace {
 					/**
 					 * Если время прохода эталонным кодом измерено верно
 					 */
-					if(compiled > 0.0) {
+					if(compiled > 0.0){
 						// Выполняем установку сведений о коде эталона
 						result.details += ("; pcre2 кодом " + to_string(static_cast <size_t> ((rounds / compiled) * 1e6)) + " совпадений/с");
 						// Выполняем учёт разброса эталонного кода по положениям стека
@@ -602,7 +602,7 @@ namespace {
 					 *          выводится явно, с кодом и сообщением эталона.
 					 *
 					 */
-					if(available != 0) {
+					if(available != 0){
 						// Буфер сообщения эталона об отказе
 						PCRE2_UCHAR message[128];
 						// Выполняем получение сообщения эталона об отказе
@@ -672,7 +672,7 @@ namespace {
 		/**
 		 * Если время прохода измерено неверно
 		 */
-		if(best <= 0.0) {
+		if(best <= 0.0){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -716,7 +716,7 @@ namespace {
 			/**
 			 * Если время прохода эталонной реализацией измерено верно
 			 */
-			if(rival > 0.0) {
+			if(rival > 0.0){
 				// Выполняем установку сведений о сравнении с эталонной реализацией
 				result.details = ("pcre2 " + to_string(static_cast <size_t> ((BUILD_ROUNDS / rival) * 1e6)) +
 				 " сборок/с, доля " + to_string(rival / best) + "; ");
@@ -754,7 +754,7 @@ namespace {
 		/**
 		 * Если сборка регулярного выражения не выполнена
 		 */
-		if(!expression) {
+		if(!expression){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -767,7 +767,7 @@ namespace {
 		/**
 		 * Если запись собранного выражения не выполнена
 		 */
-		if(!storage.save({expression}, record)) {
+		if(!storage.save({expression}, record)){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -789,7 +789,7 @@ namespace {
 		/**
 		 * Если время прохода измерено неверно
 		 */
-		if(best <= 0.0) {
+		if(best <= 0.0){
 			// Выполняем установку признака невыполненного измерения
 			result.skipped = true;
 			// Выполняем установку причины невыполненного измерения
@@ -817,7 +817,7 @@ namespace {
 		/**
 		 * Выполняем обход набора сценариев сравнения реализаций
 		 */
-		for(auto & scenario : SCENARIOS) {
+		for(auto & scenario : SCENARIOS){
 			// Получаем измеряемый сценарий сравнения реализаций
 			const scenario_t item = scenario;
 			// Выполняем регистрацию сценария сравнения реализаций

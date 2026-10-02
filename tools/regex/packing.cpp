@@ -169,7 +169,7 @@ static vector <regex::storage_t::exp_t> collect(const regexp_t & regexp) noexcep
 	/**
 	 * Выполняем перебор набора шаблонов Grok
 	 */
-	for(size_t i = 0; i < grok::PATTERNS_COUNT; i++) {
+	for(size_t i = 0; i < grok::PATTERNS_COUNT; i++){
 		// Выполняем сборку регулярного выражения шаблона
 		const auto exp = regexp.build(grok::PATTERNS[i].body, {regexp_t::flag_t::DUPNAMES});
 		/**
@@ -184,7 +184,7 @@ static vector <regex::storage_t::exp_t> collect(const regexp_t & regexp) noexcep
 	/**
 	 * Выполняем порождение набора выражений
 	 */
-	for(size_t i = 0; i < SAMPLES; i++) {
+	for(size_t i = 0; i < SAMPLES; i++){
 		// Текст порождаемого выражения
 		string pattern;
 		// Получаем количество составляющих порождаемого выражения
@@ -192,7 +192,7 @@ static vector <regex::storage_t::exp_t> collect(const regexp_t & regexp) noexcep
 		/**
 		 * Выполняем порождение составляющих выражения
 		 */
-		for(size_t j = 0; j < length; j++) {
+		for(size_t j = 0; j < length; j++){
 			// Выполняем добавление составляющей выражения
 			pattern.append(atoms[generator() % 15]);
 			// Выполняем добавление квантора повторения
@@ -239,7 +239,7 @@ int main() {
 	/**
 	 * Если сборка набора выражений не выполнена
 	 */
-	if(fresh.empty()) {
+	if(fresh.empty()){
 		// Выводим сообщение об отказе сборки набора выражений
 		::printf("сборка набора выражений не выполнена\n");
 		// Выводим результат исполнения пробы
@@ -262,13 +262,13 @@ int main() {
 	/**
 	 * Выполняем перебор набора проверяемых методов сжатия
 	 */
-	for(const auto & item : METHODS) {
+	for(const auto & item : METHODS){
 		// Создаём объект хранилища собранных выражений
 		regex::storage_t storage;
 		/**
 		 * Если метод сжатия записи установлен
 		 */
-		if(item.method != compressor::method_t::NONE) {
+		if(item.method != compressor::method_t::NONE){
 			// Получаем метод сжатия записи хранилища
 			const compressor::method_t method = item.method;
 			/**
@@ -316,7 +316,7 @@ int main() {
 		/**
 		 * Выполняем перебор прогонов замера записи выражений
 		 */
-		for(size_t pass = 0; pass < 3; pass++) {
+		for(size_t pass = 0; pass < 3; pass++){
 			// Записываемая запись хранилища очередного прогона
 			string current;
 			// Получаем показание часов на входе в запись
@@ -324,7 +324,7 @@ int main() {
 			/**
 			 * Если запись собранных выражений не выполнена
 			 */
-			if(!storage.save(fresh, current)) {
+			if(!storage.save(fresh, current)){
 				// Выводим сообщение об отказе записи собранных выражений
 				::printf("%-12s ОТКАЗ записи, код %u\n", item.name, static_cast <uint32_t> (storage.error()));
 				// Выполняем очистку записи хранилища
@@ -356,7 +356,7 @@ int main() {
 		/**
 		 * Выполняем перебор прогонов замера восстановления выражений
 		 */
-		for(size_t pass = 0; pass < PASSES; pass++) {
+		for(size_t pass = 0; pass < PASSES; pass++){
 			// Набор восстановленных выражений очередного прогона
 			vector <regex::storage_t::exp_t> records;
 			// Получаем копию записи хранилища, передаваемую во владение
@@ -366,7 +366,7 @@ int main() {
 			/**
 			 * Если восстановление собранных выражений не выполнено
 			 */
-			if(!storage.adopt(::move(current), records)) {
+			if(!storage.adopt(::move(current), records)){
 				// Выводим сообщение об отказе восстановления выражений
 				::printf("%-12s ОТКАЗ восстановления, код %u\n", item.name, static_cast <uint32_t> (storage.error()));
 				// Выполняем очистку набора восстановленных выражений
@@ -388,7 +388,7 @@ int main() {
 		/**
 		 * Если количество восстановленных выражений набору не отвечает
 		 */
-		if(restored.size() != fresh.size()) {
+		if(restored.size() != fresh.size()){
 			// Выводим сообщение о расхождении количества выражений
 			::printf("%-12s восстановлено %zu выражений вместо %zu\n", item.name, restored.size(), fresh.size());
 			// Переходим к следующему методу сжатия записи
@@ -399,11 +399,11 @@ int main() {
 		/**
 		 * Выполняем перебор набора восстановленных выражений
 		 */
-		for(size_t i = 0; i < fresh.size(); i++) {
+		for(size_t i = 0; i < fresh.size(); i++){
 			/**
 			 * Выполняем перебор набора текстов сличения
 			 */
-			for(const auto & subject : subjects) {
+			for(const auto & subject : subjects){
 				/**
 				 * Если границы совпадения выражений расходятся
 				 */

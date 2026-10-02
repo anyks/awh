@@ -272,7 +272,7 @@ TEST(Regex, InterfaceControlBacktracking) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с глаголом управления
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -283,7 +283,7 @@ TEST(Regex, InterfaceControlBacktracking) {
 		/**
 		 * Если совпадение обнаружено
 		 */
-		if(sample.matched) {
+		if(sample.matched){
 			// Выполняем проверку границ обнаруженного совпадения
 			EXPECT_EQ(bounds.front().first, sample.begin) << sample.pattern;
 			EXPECT_EQ(bounds.front().second, sample.finish) << sample.pattern;
@@ -322,7 +322,7 @@ TEST(Regex, InterfaceControlBacktracking) {
 	/**
 	 * Выполняем обход ожиданий глагола перехода к ветви следующей
 	 */
-	for(auto & sample : MOVING) {
+	for(auto & sample : MOVING){
 		// Выполняем сборку выражения с глаголом перехода
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -333,7 +333,7 @@ TEST(Regex, InterfaceControlBacktracking) {
 		/**
 		 * Если совпадение обнаружено
 		 */
-		if(sample.matched) {
+		if(sample.matched){
 			// Выполняем проверку границ обнаруженного совпадения
 			EXPECT_EQ(bounds.front().first, sample.begin) << sample.pattern;
 			EXPECT_EQ(bounds.front().second, sample.finish) << sample.pattern;
@@ -383,7 +383,7 @@ TEST(Regex, InterfaceControlBacktracking) {
 	/**
 	 * Выполняем обход ожиданий глагола отметки ветви именем
 	 */
-	for(auto & sample : MARKERS) {
+	for(auto & sample : MARKERS){
 		// Выполняем сборку выражения с глаголом отметки
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -518,7 +518,7 @@ TEST(Regex, InterfaceNamedControlVerbs) {
 	/**
 	 * Выполняем обход ожиданий сопоставления глаголов с именем
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с глаголом управления
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -529,7 +529,7 @@ TEST(Regex, InterfaceNamedControlVerbs) {
 		/**
 		 * Если совпадение обнаружено
 		 */
-		if(sample.matched) {
+		if(sample.matched){
 			// Выполняем проверку границ обнаруженного совпадения
 			EXPECT_EQ(bounds.front().first, sample.begin) << sample.pattern;
 			EXPECT_EQ(bounds.front().second, sample.finish) << sample.pattern;
@@ -630,7 +630,7 @@ TEST(Regex, InterfaceSubroutineCalls) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с вызовом либо условием
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -641,7 +641,7 @@ TEST(Regex, InterfaceSubroutineCalls) {
 		/**
 		 * Если совпадение обнаружено
 		 */
-		if(sample.matched) {
+		if(sample.matched){
 			// Выполняем проверку границ обнаруженного совпадения
 			EXPECT_EQ(bounds.front().first, sample.begin) << sample.pattern;
 			EXPECT_EQ(bounds.front().second, sample.finish) << sample.pattern;
@@ -752,7 +752,7 @@ TEST(Regex, InterfaceCommentConvention) {
 	/**
 	 * Выполняем обход набора ожиданий завершения комментария
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с комментарием
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -827,7 +827,7 @@ TEST(Regex, InterfaceStartOptions) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		/**
 		 * Выполняем обход путей сопоставления выражения
 		 *
@@ -836,7 +836,7 @@ TEST(Regex, InterfaceStartOptions) {
 		 *          разбор, и путь порождения обязан их соблюдать.
 		 *
 		 */
-		for(size_t index = 0; index < 2; index++) {
+		for(size_t index = 0; index < 2; index++){
 			// Выполняем сборку выражения с указанием начала
 			const auto expression = regexp.build(sample.pattern,
 			 ((index > 0) ? static_cast <uint32_t> (regex::flag_t::JIT) : 0));
@@ -845,7 +845,7 @@ TEST(Regex, InterfaceStartOptions) {
 			/**
 			 * Если совпадение выражения не ожидается
 			 */
-			if(!sample.matched) {
+			if(!sample.matched){
 				// Выполняем проверку отсутствия совпадения
 				EXPECT_FALSE(regexp.match(sample.text, expression, bounds))
 				 << sample.pattern << " на тексте «" << sample.text << "», путь " << index;
@@ -951,7 +951,7 @@ TEST(Regex, InterfaceScriptRuns) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с прогоном письменности
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -959,7 +959,7 @@ TEST(Regex, InterfaceScriptRuns) {
 		/**
 		 * Если совпадение выражения не ожидается
 		 */
-		if(!sample.matched) {
+		if(!sample.matched){
 			// Выполняем проверку отсутствия совпадения
 			EXPECT_FALSE(regexp.match(sample.text, expression, bounds))
 			 << sample.pattern << " на тексте «" << sample.text << "»";
@@ -1068,7 +1068,7 @@ TEST(Regex, InterfaceNonAtomicLookarounds) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с не отсекающей проверкой окружения
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -1076,7 +1076,7 @@ TEST(Regex, InterfaceNonAtomicLookarounds) {
 		/**
 		 * Если совпадение выражения не ожидается
 		 */
-		if(!sample.matched) {
+		if(!sample.matched){
 			// Выполняем проверку отсутствия совпадения
 			EXPECT_FALSE(regexp.match(sample.text, expression, bounds))
 			 << sample.pattern << " на тексте «" << sample.text << "»";
@@ -1189,7 +1189,7 @@ TEST(Regex, InterfaceVariableLookbehind) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с ретроспективной проверкой
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -1286,7 +1286,7 @@ TEST(Regex, InterfaceNewlineConventions) {
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку выражения с указанием соглашения
 		const auto expression = regexp.build(sample.pattern, wide);
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -1830,7 +1830,7 @@ TEST(Regex, InterfaceDuplicateReference) {
 	/**
 	 * Выполняем проверку обоих способов сопоставления
 	 */
-	for(uint8_t index = 0; index < 2; index++) {
+	for(uint8_t index = 0; index < 2; index++){
 		// Получаем признаки сборки регулярного выражения
 		const uint32_t flags = (static_cast <uint32_t> (regex::flag_t::DUPNAMES) |
 		 ((index > 0) ? static_cast <uint32_t> (regex::flag_t::JIT) : 0));
@@ -2133,13 +2133,13 @@ TEST(Regex, InterfaceThreads) {
 	 *          хранится отдельно для каждого потока исполнения.
 	 *
 	 */
-	for(size_t i = 0; i < count; i++) {
+	for(size_t i = 0; i < count; i++){
 		// Выполняем запуск потока исполнения сопоставления
 		threads.emplace_back([&regexp, &expression, &matched, i]() noexcept {
 			/**
 			 * Выполняем сопоставление выражения с текстом
 			 */
-			for(size_t j = 0; j < rounds; j++) {
+			for(size_t j = 0; j < rounds; j++){
 				// Получаем текст совпадения и захваченных групп
 				const auto & result = regexp.exec("параметр width=1024 задан", expression);
 				/**
@@ -2210,13 +2210,13 @@ TEST(Regex, InterfaceThreadsCodegen) {
 	/**
 	 * Выполняем запуск потоков исполнения сопоставления
 	 */
-	for(size_t i = 0; i < count; i++) {
+	for(size_t i = 0; i < count; i++){
 		// Выполняем запуск потока исполнения сопоставления
 		threads.emplace_back([&regexp, &expression, &matched, i]() noexcept {
 			/**
 			 * Выполняем сопоставление выражения с текстом
 			 */
-			for(size_t j = 0; j < rounds; j++) {
+			for(size_t j = 0; j < rounds; j++){
 				// Получаем текст совпадения и захваченных групп
 				const auto & result = regexp.exec("параметр width=1024 задан", expression);
 				/**
@@ -2297,7 +2297,7 @@ TEST(Regex, InterfacePosixUnicode) {
 	/**
 	 * Выполняем перебор набора образцов проверки классов символов POSIX
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Получаем текст выражения класса символов POSIX
 		const string pattern = (string("^[[:") + sample.name + ":]]$");
 		// Выполняем сборку выражения под режимом соответствия Юникоду
@@ -2358,7 +2358,7 @@ TEST(Regex, InterfaceBadUtf8Subject) {
 	/**
 	 * Выполняем перебор набора текстов с неверной записью UTF-8
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем проверку отказа сопоставления по тексту
 		EXPECT_FALSE(regexp.test(sample, unicode));
 		// Выполняем проверку ошибки неверной записи текста сопоставления
@@ -2426,7 +2426,7 @@ TEST(Regex, InterfaceMalformedUTF) {
 	/**
 	 * Выполняем обход образцов записи неправильной
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(sample.pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -2476,7 +2476,7 @@ TEST(Regex, InterfaceMalformedSyntax) {
 	/**
 	 * Выполняем обход образцов записи неверной
 	 */
-	for(const char * pattern : samples) {
+	for(const char * pattern : samples){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -2496,7 +2496,7 @@ TEST(Regex, InterfaceMalformedSyntax) {
 	/**
 	 * Выполняем обход образцов записи верной
 	 */
-	for(const char * pattern : correct) {
+	for(const char * pattern : correct){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку сборки регулярного выражения
@@ -2535,7 +2535,7 @@ TEST(Regex, InterfaceMalformedTokens) {
 	/**
 	 * Выполняем обход выражений, разбором отвергаемых
 	 */
-	for(const auto & sample : refused) {
+	for(const auto & sample : refused){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(sample.pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -2553,7 +2553,7 @@ TEST(Regex, InterfaceMalformedTokens) {
 	/**
 	 * Выполняем обход выражений с повторителем несостоявшимся
 	 */
-	for(const char * pattern : literals) {
+	for(const char * pattern : literals){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку сборки регулярного выражения
@@ -2614,7 +2614,7 @@ TEST(Regex, InterfaceProgramLimit) {
 	/**
 	 * Выполняем обход выражений, размах программы превышающих
 	 */
-	for(const auto & sample : refused) {
+	for(const auto & sample : refused){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -2664,7 +2664,7 @@ TEST(Regex, InterfaceLookbehindBounds) {
 	/**
 	 * Выполняем обход выражений с ретроспективой беспредельной
 	 */
-	for(const char * pattern : refused) {
+	for(const char * pattern : refused){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -2686,7 +2686,7 @@ TEST(Regex, InterfaceLookbehindBounds) {
 	/**
 	 * Выполняем обход выражений с ретроспективой предельной
 	 */
-	for(const auto & sample : accepted) {
+	for(const auto & sample : accepted){
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(sample.pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку сборки регулярного выражения
@@ -2806,7 +2806,7 @@ TEST(Regex, InterfaceMessages) {
 	/**
 	 * Выполняем обход набора кодов ошибок модуля
 	 */
-	for(const regex::error_t error : ERRORS) {
+	for(const regex::error_t error : ERRORS){
 		// Получаем текст ошибки по её коду
 		const string message = regex::parser_t::message(error);
 		// Выполняем проверку выдачи текста ошибки непустого
@@ -2997,7 +2997,7 @@ TEST(Regex, InterfaceMalformedCorpus) {
 	/**
 	 * Выполняем обход набора образцов выражений негодных
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем сборку очередного регулярного выражения
 		const auto expression = regexp.build(sample.pattern);
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -3037,7 +3037,7 @@ TEST(Regex, InterfaceMalformedPattern) {
 	/**
 	 * Выполняем обход набора выражений с ломаной последовательностью
 	 */
-	for(const string & pattern : SAMPLES) {
+	for(const string & pattern : SAMPLES){
 		// Выполняем сборку очередного регулярного выражения
 		const auto expression = regexp.build(pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку отказа сборки регулярного выражения
@@ -3172,7 +3172,7 @@ TEST(Regex, InterfaceQuantifierBinding) {
 	/**
 	 * Выполняем обход набора выражений с квантором в начале ветви
 	 */
-	for(const char * pattern : REFUSED) {
+	for(const char * pattern : REFUSED){
 		// Выполняем проверку отказа сборки регулярного выражения
 		EXPECT_FALSE(regexp.build(pattern)) << pattern;
 		// Выполняем проверку установки кода ошибки кванторов повторения
@@ -3222,7 +3222,7 @@ TEST(Regex, InterfaceClassTransparent) {
 	/**
 	 * Выполняем обход набора классов символов незавершённых
 	 */
-	for(const char * pattern : REFUSED) {
+	for(const char * pattern : REFUSED){
 		// Выполняем проверку отказа сборки регулярного выражения
 		EXPECT_FALSE(regexp.build(pattern)) << pattern;
 		// Выполняем проверку установки кода ошибки незавершённого класса
@@ -3310,11 +3310,11 @@ TEST(Regex, InterfaceDollarEnd) {
 	 *          с эталоном по режимам сборки его и вскрыло.
 	 *
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		/**
 		 * Выполняем обход способов сопоставления образца
 		 */
-		for(const bool jit : {false, true}) {
+		for(const bool jit : {false, true}){
 			// Собираем набор признаков сборки выражения
 			vector <regexp_t::flag_t> flags = {regexp_t::flag_t::DOLLAR_END};
 			/**
@@ -3335,7 +3335,7 @@ TEST(Regex, InterfaceDollarEnd) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(sample.matched) {
+			if(sample.matched){
 				// Выполняем проверку начальной границы совпадения
 				EXPECT_EQ(bounds.front().first, sample.begin)
 				 << sample.pattern << " на «" << sample.text << "»" << (jit ? ", машинный код" : "");
@@ -3423,15 +3423,15 @@ TEST(Regex, InterfaceCaselessProperty) {
 	 *          а разряду прописному без учёта регистра отвечает.
 	 *
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		/**
 		 * Выполняем обход способов сопоставления образца
 		 */
-		for(const bool jit : {false, true}) {
+		for(const bool jit : {false, true}){
 			/**
 			 * Выполняем обход режимов учёта регистра символов
 			 */
-			for(const bool caseless : {false, true}) {
+			for(const bool caseless : {false, true}){
 				// Собираем набор признаков сборки выражения
 				vector <regexp_t::flag_t> flags = {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP};
 				/**
@@ -3504,11 +3504,11 @@ TEST(Regex, InterfaceLineBreakAtomic) {
 	 *          строки, - чему эталон PCRE2 отказывает.
 	 *
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		/**
 		 * Выполняем обход способов сопоставления образца
 		 */
-		for(const bool jit : {false, true}) {
+		for(const bool jit : {false, true}){
 			// Собираем набор признаков сборки выражения
 			vector <regexp_t::flag_t> flags;
 			/**
@@ -3529,7 +3529,7 @@ TEST(Regex, InterfaceLineBreakAtomic) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(sample.matched) {
+			if(sample.matched){
 				// Выполняем проверку конечной границы совпадения
 				EXPECT_EQ(bounds.front().second, sample.finish)
 				 << sample.pattern << (jit ? ", машинный код" : "");
@@ -3605,7 +3605,7 @@ TEST(Regex, InterfaceLiteralAstral) {
 	/**
 	 * Выполняем перебор набора образцов сопоставления литералом
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем сборку выражения под режимом разбора UTF-8
 		const auto expression = regexp.build(sample.pattern, {regexp_t::flag_t::UTF});
 		// Выполняем проверку сборки выражения

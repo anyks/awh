@@ -177,7 +177,7 @@ namespace {
 		/**
 		 * Если установлен режим сопоставления без учёта регистра
 		 */
-		if(caseless) {
+		if(caseless){
 			/**
 			 * Если байт является строчной буквой набора ASCII
 			 */
@@ -196,15 +196,15 @@ namespace {
 		/**
 		 * Выполняем поиск проверяемых значений в диапазонах класса
 		 */
-		for(auto & code : codes) {
+		for(auto & code : codes){
 			/**
 			 * Выполняем поиск значения байта в наборе диапазонов класса
 			 */
-			for(auto & range : value.ranges) {
+			for(auto & range : value.ranges){
 				/**
 				 * Если значение байта принадлежит очередному диапазону класса
 				 */
-				if((code >= range.begin) && (code <= range.end)) {
+				if((code >= range.begin) && (code <= range.end)){
 					// Выполняем установку флага принадлежности байта
 					result = true;
 					// Выходим из цикла поиска значения байта
@@ -272,7 +272,7 @@ void awh::regex::Dfa::refine(const bool * members) noexcept {
 	/**
 	 * Выполняем обход пространства значений байта
 	 */
-	for(uint32_t i = 0; i < 0x100; i++) {
+	for(uint32_t i = 0; i < 0x100; i++){
 		// Формируем ключ соответствия исходного класса байта новому
 		const uint32_t key = ((static_cast <uint32_t> (this->_classes[i]) << 1) | (members[i] ? 1 : 0));
 		/**
@@ -330,7 +330,7 @@ void awh::regex::Dfa::alphabet() noexcept {
 	/**
 	 * Выполняем обход инструкций программы регулярного выражения
 	 */
-	for(auto & instruction : this->_program->instructions) {
+	for(auto & instruction : this->_program->instructions){
 		/**
 		 * Если дробление классов эквивалентности исчерпано
 		 *
@@ -345,7 +345,7 @@ void awh::regex::Dfa::alphabet() noexcept {
 		/**
 		 * Определяем код операции исполняемой инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Выполняем дробление классов сопоставлением одиночного символа
 			 */
@@ -424,7 +424,7 @@ bool awh::regex::Dfa::available(const program_t & program) noexcept {
 	 *          детерминированного автомата для них неприменимо.
 	 *
 	 */
-	for(auto & value : program.classes) {
+	for(auto & value : program.classes){
 		/**
 		 * Если класс символов задан свойствами Юникода
 		 */
@@ -490,7 +490,7 @@ bool awh::regex::Dfa::assertion(const anchor_t type, const uint32_t flags, const
 	/**
 	 * Определяем тип проверяемой привязки к позиции в тексте
 	 */
-	switch(static_cast <uint8_t> (type)) {
+	switch(static_cast <uint8_t> (type)){
 		// Выполняем проверку привязки к началу текста
 		case static_cast <uint8_t> (anchor_t::TEXT_BEGIN): return begin;
 		// Выполняем проверку привязки к концу текста
@@ -578,7 +578,7 @@ uint32_t awh::regex::Dfa::state(const vector <address_t> & list, const uint32_t 
 	/**
 	 * Если состояние обнаружено в кэше состояний автомата
 	 */
-	if(i != this->_cache.end()) {
+	if(i != this->_cache.end()){
 		// Выполняем учёт обращения к кэшу состояний автомата
 		AWH_REGEX_TICK(path_t::CACHING);
 		// Выводим индекс обнаруженного состояния автомата
@@ -642,7 +642,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 	/**
 	 * Выполняем замыкание состояния по инструкциям без сопоставления символов
 	 */
-	while(!stack.empty()) {
+	while(!stack.empty()){
 		// Получаем адрес инструкции из вершины стека замыкания
 		const address_t current = stack.back();
 		// Выполняем удаление адреса инструкции из стека замыкания
@@ -666,7 +666,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 		/**
 		 * Определяем код операции исполняемой инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Выполняем переход по двум ветвям
 			 */
@@ -708,7 +708,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 	/**
 	 * Выполняем сопоставление байта инструкциями состояния
 	 */
-	for(auto & address : matching) {
+	for(auto & address : matching){
 		// Получаем инструкцию, сопоставляющую символы
 		const instruction_t & instruction = this->_program->instructions.at(address);
 		// Флаг сопоставления байта инструкцией
@@ -716,7 +716,7 @@ uint32_t awh::regex::Dfa::transition(const uint32_t index, const uint32_t letter
 		/**
 		 * Определяем код операции сопоставляющей инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Выполняем сопоставление одиночного символа
 			 */
@@ -817,7 +817,7 @@ uint32_t awh::regex::Dfa::initial(string_view text, const size_t from) const noe
 	/**
 	 * Если проход выполняется в обратном направлении
 	 */
-	if(this->_backward) {
+	if(this->_backward){
 		/**
 		 * Если проход начинается с конца текста
 		 */
@@ -998,7 +998,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 	/**
 	 * Выполняем обход байтов текста сопоставления
 	 */
-	while(true) {
+	while(true){
 		/**
 		 * Выполняем проход участка текста, не затрагивающего краёв
 		 *
@@ -1025,11 +1025,11 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 			/**
 			 * Если проход выполняется в обратном направлении
 			 */
-			if(backward) {
+			if(backward){
 				/**
 				 * Выполняем обход байтов текста, не затрагивающих краёв
 				 */
-				while((pos > 0) && (pos < size)) {
+				while((pos > 0) && (pos < size)){
 					// Получаем значение перехода состояния автомата
 					const uint32_t next = table[(static_cast <size_t> (current) * stride) + static_cast <size_t> (alphabet[static_cast <uint8_t> (source[pos - 1])])];
 					/**
@@ -1040,7 +1040,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 					 *          состоит из единиц, поэтому оба разбираются одной проверкой.
 					 *
 					 */
-					if(next >= MATCHED) {
+					if(next >= MATCHED){
 						/**
 						 * Если переход состояния не построен
 						 */
@@ -1071,7 +1071,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 				/**
 				 * Выполняем обход байтов текста, не затрагивающих краёв
 				 */
-				while(pos < limit) {
+				while(pos < limit){
 					/**
 					 * Если из текущего состояния допустим пропуск позиций
 					 *
@@ -1090,7 +1090,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 					/**
 					 * Если значение перехода не является индексом состояния
 					 */
-					if(next >= MATCHED) {
+					if(next >= MATCHED){
 						/**
 						 * Если переход состояния не построен
 						 */
@@ -1119,7 +1119,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 		 *          превосходство более чем в двадцать раз.
 		 *
 		 */
-		if(halting && (pos > from) && ((this->_marks[current] & SCANT) != 0)) {
+		if(halting && (pos > from) && ((this->_marks[current] & SCANT) != 0)){
 			// Выполняем учёт остановки автомата привязкой к позиции начала поиска
 			AWH_REGEX_TICK(path_t::HALTING);
 			// Выводим результат прохода по тексту
@@ -1134,7 +1134,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 		 *          нулевой длины, поэтому пропуск позиций совпадений не теряет.
 		 *
 		 */
-		if(!backward && prefilter.active && ((this->_marks[current] & SCANT) != 0)) {
+		if(!backward && prefilter.active && ((this->_marks[current] & SCANT) != 0)){
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = prefilter.search(text, pos);
 			/**
@@ -1151,7 +1151,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 			/**
 			 * Если пропущена хотя бы одна позиция текста
 			 */
-			if(candidate > pos) {
+			if(candidate > pos){
 				// Переходим к позиции возможного начала совпадения
 				pos = candidate;
 				/**
@@ -1224,11 +1224,11 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 		/**
 		 * Если значение перехода состояния не определено
 		 */
-		if(next == UNKNOWN) {
+		if(next == UNKNOWN){
 			/**
 			 * Если количество состояний автомата превышает допустимое
 			 */
-			if(this->_states.size() >= MAX_STATES) {
+			if(this->_states.size() >= MAX_STATES){
 				// Сохраняем набор адресов инструкций текущего состояния
 				const vector <address_t> saved = this->_states.at(current).list;
 				// Сохраняем набор признаков положения текущего состояния
@@ -1254,7 +1254,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 		/**
 		 * Если при замыкании состояния обнаружено совпадение
 		 */
-		if((next & MATCHED) != 0) {
+		if((next & MATCHED) != 0){
 			// Выполняем установку позиции обнаруженного совпадения
 			result = pos;
 			// Выполняем установку флага обнаружения совпадения
@@ -1321,7 +1321,7 @@ bool awh::regex::Dfa::search(const program_t & program, string_view text, const 
 	 *          поэтому кэш сохраняется между вызовами и сбрасывается лишь при их смене.
 	 *
 	 */
-	if((this->_program != &program) || (this->_identity != program.id) || this->_backward) {
+	if((this->_program != &program) || (this->_identity != program.id) || this->_backward){
 		// Выполняем установку исполняемой программы регулярного выражения
 		this->_program = &program;
 		// Выполняем установку опознания исполняемой программы
@@ -1362,7 +1362,7 @@ bool awh::regex::Dfa::reverse(const program_t & program, string_view text, const
 	/**
 	 * Если исполняется программа либо направление, отличные от исполненных ранее
 	 */
-	if((this->_program != &program) || (this->_identity != program.id) || !this->_backward) {
+	if((this->_program != &program) || (this->_identity != program.id) || !this->_backward){
 		// Выполняем установку исполняемой программы регулярного выражения
 		this->_program = &program;
 		// Выполняем установку опознания исполняемой программы

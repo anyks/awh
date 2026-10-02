@@ -1272,7 +1272,7 @@ namespace awh {
 					/**
 					 * Если размещение записей набора выполнено
 					 */
-					if((this->_capacity > 0) && (count > 0)) {
+					if((this->_capacity > 0) && (count > 0)){
 						// Выполняем перенос обозреваемого содержимого к себе
 						::memcpy(const_cast <T *> (this->_records), records, (count * sizeof(T)));
 						// Выполняем установку количества записей набора
@@ -1383,7 +1383,7 @@ namespace awh {
 					/**
 					 * Если места под запись нет либо набор обозревающий
 					 */
-					if(this->_capacity <= this->_count) {
+					if(this->_capacity <= this->_count){
 						// Выполняем расширение набора медленным путём
 						this->expand();
 						/**
@@ -1458,7 +1458,7 @@ namespace awh {
 					/**
 					 * Если количество записей набора сокращается
 					 */
-					if(count <= static_cast <size_t> (this->_count)) {
+					if(count <= static_cast <size_t> (this->_count)){
 						// Выполняем установку количества записей набора
 						this->_count = static_cast <uint32_t> (count);
 						// Выходим из метода изменения количества записей
@@ -1561,7 +1561,7 @@ namespace awh {
 					 *          и удержать ему нечего: сброс его равен очистке.
 					 *
 					 */
-					if(this->_capacity == 0) {
+					if(this->_capacity == 0){
 						// Выполняем сброс указания на начало записей набора
 						this->_records = nullptr;
 						// Выполняем сброс количества записей набора
@@ -1639,7 +1639,7 @@ namespace awh {
 					 *          под ноль записей.
 					 *
 					 */
-					if(this->_count == 0) {
+					if(this->_count == 0){
 						// Выполняем сброс указания на начало записей набора
 						this->_records = nullptr;
 						// Выходим из конструктора копирования

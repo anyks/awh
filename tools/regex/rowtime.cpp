@@ -100,7 +100,7 @@ static double measure(const awh::benchmark::matching::scenario_t & scenario) noe
 	/**
 	 * Выполняем проходы замера
 	 */
-	for(size_t attempt = 0; attempt < awh::benchmark::matching::ATTEMPTS; attempt++) {
+	for(size_t attempt = 0; attempt < awh::benchmark::matching::ATTEMPTS; attempt++){
 		// Получаем отметку времени начала прохода
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -136,7 +136,7 @@ int main(int count, char ** values) noexcept {
 	/**
 	 * Выполняем перебор сценариев набора
 	 */
-	for(const auto & scenario : awh::benchmark::matching::SCENARIOS) {
+	for(const auto & scenario : awh::benchmark::matching::SCENARIOS){
 		// Признак выбора сценария доводами щупа
 		bool chosen = (count < 2);
 		/**
@@ -156,7 +156,7 @@ int main(int count, char ** values) noexcept {
 		/**
 		 * Если замер сценария не выполнен
 		 */
-		if(value < 0.) {
+		if(value < 0.){
 			// Выводим сообщение об отказе замера
 			::printf("regex %-22s ОТКАЗ %s\n", scenario.name,
 			 ((value > -1.5) ? "сборки" : ((value > -2.5) ? "вердикта" : "замера")));

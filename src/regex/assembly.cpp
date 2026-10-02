@@ -232,7 +232,7 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 	/**
 	 * Если размещение участка памяти не выполнено
 	 */
-	if(this->_address == nullptr) {
+	if(this->_address == nullptr){
 		/**
 		 * Получаем причину отказа размещения участка памяти
 		 *
@@ -279,7 +279,7 @@ void awh::regex::Assembly::release() noexcept {
 	/**
 	 * Если участок исполняемой памяти размещён
 	 */
-	if(this->_address != nullptr) {
+	if(this->_address != nullptr){
 		/**
 		 * Если сборка выполняется для операционной системы Windows
 		 */
@@ -405,7 +405,7 @@ bool awh::regex::Assembly::commit() noexcept {
 		/**
 		 * Если установка прав доступа к участку памяти не выполнена
 		 */
-		if(::mprotect(this->_address, this->_size, PROT_READ | PROT_EXEC) != 0) {
+		if(::mprotect(this->_address, this->_size, PROT_READ | PROT_EXEC) != 0){
 			/**
 			 * Если включён режим отладки
 			 */

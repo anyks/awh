@@ -343,7 +343,7 @@ namespace {
 		/**
 		 * Выполняем обход слогов арифметико-логических каналов
 		 */
-		for(uint8_t i = 0; i < 6; i++) {
+		for(uint8_t i = 0; i < 6; i++){
 			/**
 			 * Если канал занят операцией
 			 */
@@ -392,7 +392,7 @@ namespace {
 		/**
 		 * Выполняем обход слогов арифметико-логических каналов
 		 */
-		for(uint8_t i = 0; i < 6; i++) {
+		for(uint8_t i = 0; i < 6; i++){
 			/**
 			 * Если канал занят операцией
 			 */
@@ -435,7 +435,7 @@ namespace {
 		/**
 		 * Выполняем обход слов широкой команды
 		 */
-		for(size_t i = 0; i < words; i++) {
+		for(size_t i = 0; i < words; i++){
 			/**
 			 * Выполняем обход байтов очередного слова
 			 */
@@ -557,7 +557,7 @@ void awh::regex::Emitter::flush() noexcept {
 	/**
 	 * Выполняем обход каналов широкой команды
 	 */
-	for(uint8_t i = 0; i < 6; i++) {
+	for(uint8_t i = 0; i < 6; i++){
 		// Выполняем перенос слога канала
 		bundle.als[i] = this->_packed.als[i];
 		// Выполняем перенос признака занятости канала
@@ -586,7 +586,7 @@ uint8_t awh::regex::Emitter::reserve(const uint8_t channels, const uint32_t read
 	/**
 	 * Если широкая команда, к выдаче отложенная, уже собрана
 	 */
-	if(this->_packed.opened) {
+	if(this->_packed.opened){
 		/**
 		 * Если доводы операции берутся из того, что команда записывает,
 		 * либо регистр записи ею уже записывается
@@ -607,11 +607,11 @@ uint8_t awh::regex::Emitter::reserve(const uint8_t channels, const uint32_t read
 			/**
 			 * Выполняем обход каналов, операцию принимающих
 			 */
-			for(uint8_t i = 0; i < 6; i++) {
+			for(uint8_t i = 0; i < 6; i++){
 				/**
 				 * Если канал операцию принимает и ничем не занят
 				 */
-				if((((channels >> i) & 0x01) != 0) && !this->_packed.has[i]) {
+				if((((channels >> i) & 0x01) != 0) && !this->_packed.has[i]){
 					// Выполняем занятие канала операцией
 					this->_packed.has[i] = true;
 					// Выполняем учёт записываемых операцией регистров
@@ -627,11 +627,11 @@ uint8_t awh::regex::Emitter::reserve(const uint8_t channels, const uint32_t read
 	/**
 	 * Выполняем обход каналов, операцию принимающих
 	 */
-	for(uint8_t i = 0; i < 6; i++) {
+	for(uint8_t i = 0; i < 6; i++){
 		/**
 		 * Если канал операцию принимает
 		 */
-		if(((channels >> i) & 0x01) != 0) {
+		if(((channels >> i) & 0x01) != 0){
 			// Выполняем занятие канала операцией
 			this->_packed.has[i] = true;
 			// Выполняем учёт записываемых операцией регистров
@@ -687,7 +687,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	/**
 	 * Если кадр вызова сопоставителю требуется
 	 */
-	if(frame > 0) {
+	if(frame > 0){
 		// Создаём широкую команду отведения кадра вызова
 		Bundle allot;
 		// Получаем размер кадра, выровненный по границе шестнадцати байтов
@@ -772,7 +772,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	/**
 	 * Если метка перехода не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выполняем вывод сообщения об изъяне порождения машинного кода
@@ -820,7 +820,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	/**
 	 * Если метка перехода не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выполняем вывод сообщения об изъяне порождения машинного кода
@@ -841,7 +841,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	 *          «больше» - отрицание «не больше».
 	 *
 	 */
-	switch(static_cast <uint8_t> (cond)) {
+	switch(static_cast <uint8_t> (cond)){
 		// Если выполняется переход по равенству значений
 		case static_cast <uint8_t> (cond_t::EQUAL): pred = PRED_EQUAL; break;
 		// Если выполняется переход по неравенству значений
@@ -919,7 +919,7 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 	 *          одной широкой команды взамен трёх команд подряд
 	 *
 	 */
-	for(uint8_t i = 0; i < 3; i++) {
+	for(uint8_t i = 0; i < 3; i++){
 		// Выполняем отведение канала под сравнение значений регистров
 		const uint8_t slot = this->reserve(COMPARISON, (::mask(first) | ::mask(second)), 0);
 		// Выполняем сборку слога сравнения значений регистров
@@ -945,7 +945,7 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 	 *          в отрицательное.
 	 *
 	 */
-	if(value > MAX_LITERAL) {
+	if(value > MAX_LITERAL){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения сравнения
@@ -975,7 +975,7 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 	/**
 	 * Выполняем обход видов сравнения
 	 */
-	for(uint8_t i = 0; i < 3; i++) {
+	for(uint8_t i = 0; i < 3; i++){
 		// Выполняем отведение канала под сравнение значения регистра с числом
 		const uint8_t slot = this->reserve(COMPARISON, ::mask(reg), 0);
 		// Выполняем сборку слога сравнения значения регистра с числом
@@ -984,7 +984,7 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 		/**
 		 * Если число полем довода не размещается
 		 */
-		if(value > MAX_LITTLE) {
+		if(value > MAX_LITTLE){
 			// Выполняем установку числа слогом литерала
 			this->_packed.lts[0] = value;
 			// Выполняем установку количества слогов литералов
@@ -1011,7 +1011,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 *          отводится любой, а слог её во всех каналах одинаков
 	 *
 	 */
-	if(value <= MAX_LITTLE) {
+	if(value <= MAX_LITTLE){
 		// Выполняем отведение канала под операцию с постоянной
 		const uint8_t slot = this->reserve(ARITHMETIC, ::mask(source), ::mask(target));
 		// Выполняем сборку слога операции с постоянной
@@ -1034,7 +1034,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	/**
 	 * Если число слогом литерала размещается
 	 */
-	if(value <= MAX_LITERAL) {
+	if(value <= MAX_LITERAL){
 		// Выполняем сборку слога сложения со слогом литерала
 		add.als[CHANNEL] = ::alop(OP_ADDD, ::reg(source), SINGLE, ::reg(target));
 		// Выполняем установку числа слогом литерала
@@ -1074,7 +1074,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 *          отводится любой, а слог её во всех каналах одинаков
 	 *
 	 */
-	if(value <= MAX_LITTLE) {
+	if(value <= MAX_LITTLE){
 		// Выполняем отведение канала под операцию с постоянной
 		const uint8_t slot = this->reserve(ARITHMETIC, ::mask(source), ::mask(target));
 		// Выполняем сборку слога операции с постоянной
@@ -1097,7 +1097,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	/**
 	 * Если число слогом литерала размещается
 	 */
-	if(value <= MAX_LITERAL) {
+	if(value <= MAX_LITERAL){
 		// Выполняем сборку слога вычитания слога литерала
 		sub.als[CHANNEL] = ::alop(OP_SUBD, ::reg(source), SINGLE, ::reg(target));
 		// Выполняем установку числа слогом литерала
@@ -1250,7 +1250,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	/**
 	 * Если место чтения за пределами кадра вызова
 	 */
-	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)) {
+	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения обращения к памяти
@@ -1263,15 +1263,15 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	 *          и чтение его из памяти обращается в перенос регистра.
 	 *
 	 */
-	if(this->_stamp == this->_code.size()) {
+	if(this->_stamp == this->_code.size()){
 		/**
 		 * Выполняем обход ряда записей в память от последней
 		 */
-		for(auto i = this->_stored.rbegin(); i != this->_stored.rend(); ++i) {
+		for(auto i = this->_stored.rbegin(); i != this->_stored.rend(); ++i){
 			/**
 			 * Если запись выполнена в то же самое место
 			 */
-			if((i->base == base) && (i->index == index)) {
+			if((i->base == base) && (i->index == index)){
 				/**
 				 * Если значение уже лежит в регистре назначения
 				 */
@@ -1290,7 +1290,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	/**
 	 * Если смещение слогом литерала не размещается
 	 */
-	if(offset > MAX_LITERAL) {
+	if(offset > MAX_LITERAL){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения чтения
@@ -1306,7 +1306,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	/**
 	 * Если смещение полем довода не размещается
 	 */
-	if(offset > MAX_LITTLE) {
+	if(offset > MAX_LITTLE){
 		// Выполняем установку смещения слогом литерала
 		fetch.lts[0] = offset;
 		// Выполняем установку количества слогов литералов
@@ -1336,7 +1336,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	/**
 	 * Если место записи за пределами кадра вызова
 	 */
-	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)) {
+	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения обращения к памяти
@@ -1383,7 +1383,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 		/**
 		 * Если смещение слогом литерала не размещается
 		 */
-		if(offset > MAX_LITERAL) {
+		if(offset > MAX_LITERAL){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения записи
@@ -1505,7 +1505,7 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	 *          переносятся в неё перед вызовом.
 	 *
 	 */
-	for(uint8_t i = 0; i < 4; i++) {
+	for(uint8_t i = 0; i < 4; i++){
 		// Создаём широкую команду переноса очередного довода
 		Bundle pass;
 		// Выполняем установку слога канала нулевого
@@ -1565,7 +1565,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	/**
 	 * Если метка не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выполняем вывод сообщения об изъяне порождения машинного кода
@@ -1719,13 +1719,13 @@ bool awh::regex::Emitter::resolve() noexcept {
 	/**
 	 * Выполняем обход набора отложенных переходов
 	 */
-	for(auto & fixup : this->_fixups) {
+	for(auto & fixup : this->_fixups){
 		// Получаем положение метки, к какой выполняется переход
 		const size_t target = this->_labels.at(fixup.label);
 		/**
 		 * Если метка положения не получила
 		 */
-		if(target == INVALID_LABEL) {
+		if(target == INVALID_LABEL){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выводим результат разрешения отложенных переходов
@@ -1742,7 +1742,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 		/**
 		 * Если смещение полем слога управления не размещается
 		 */
-		if((delta > MAX_BRANCH) || (delta < -MAX_BRANCH)) {
+		if((delta > MAX_BRANCH) || (delta < -MAX_BRANCH)){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выводим результат разрешения отложенных переходов

@@ -68,13 +68,13 @@ static double fastest(awh::regex::engine_t & engine, const char * pattern, const
 	 *          внутри прогона смещена целиком, а не отдельными выбросами
 	 *
 	 */
-	for(uint32_t round = 0; round < 12; round++) {
+	for(uint32_t round = 0; round < 12; round++){
 		// Получаем отметку времени начала круга
 		const auto begin = chrono::steady_clock::now();
 		/**
 		 * Выполняем сборки круга
 		 */
-		for(size_t i = 0; i < repeats; i++) {
+		for(size_t i = 0; i < repeats; i++){
 			// Создаём собираемое выражение заново, как и набор замеров
 			awh::regex::expression_t expression;
 			// Выполняем сборку выражения без порождения машинного кода
@@ -128,13 +128,13 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор замеряемых выражений
 	 */
-	for(const auto & row : ROWS) {
+	for(const auto & row : ROWS){
 		// Создаём пробно собираемое выражение
 		awh::regex::expression_t expression;
 		/**
 		 * Если выражение не собирается
 		 */
-		if(!engine.build(row.pattern, 0, expression)) {
+		if(!engine.build(row.pattern, 0, expression)){
 			// Выводим сообщение об отказе сборки
 			::printf("%-40s ОТКАЗ СБОРКИ\n", row.name);
 			// Выходим с кодом отказа

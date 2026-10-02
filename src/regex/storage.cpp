@@ -161,7 +161,7 @@ namespace {
 		/**
 		 * Выполняем запись числа семиразрядными долями
 		 */
-		while(value >= 0x80) {
+		while(value >= 0x80){
 			// Выполняем запись очередной доли числа с отметкой продолжения
 			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
 			// Выполняем сдвиг числа к следующей доле
@@ -185,7 +185,7 @@ namespace {
 		/**
 		 * Выполняем чтение числа семиразрядными долями
 		 */
-		for(uint8_t shift = 0; shift < 35; shift += 7) {
+		for(uint8_t shift = 0; shift < 35; shift += 7){
 			/**
 			 * Если запись оборвана до завершения числа
 			 */
@@ -419,11 +419,11 @@ namespace {
 			/**
 			 * Если примешиваемая последовательность задана
 			 */
-			if(value != nullptr) {
+			if(value != nullptr){
 				/**
 				 * Выполняем перебор примешиваемой последовательности
 				 */
-				for(size_t i = 0; value[i] != '\0'; i++) {
+				for(size_t i = 0; value[i] != '\0'; i++){
 					// Выполняем смешивание очередного байта последовательности
 					result ^= static_cast <uint64_t> (static_cast <uint8_t> (value[i]));
 					// Выполняем умножение накопленного опознания
@@ -458,7 +458,7 @@ namespace {
 			/**
 			 * Если свойства системы машины получены
 			 */
-			if(::uname(&system) == 0) {
+			if(::uname(&system) == 0){
 				// Выполняем примешивание имени узла машины
 				mixing(system.nodename);
 				// Выполняем примешивание имени системы машины
@@ -549,7 +549,7 @@ namespace {
 		/**
 		 * Выполняем пропуск байтов заполнения до границы восьми байтов
 		 */
-		while((offset % 8) != 0) {
+		while((offset % 8) != 0){
 			/**
 			 * Если запись оборвана до границы выравнивания
 			 */
@@ -620,7 +620,7 @@ namespace {
 		 *          переносом памяти, дабы значение суммы не зависело от порядка
 		 *          байтов машины и запись оставалась переносимой.
 		 */
-		for(; (offset + 8) <= data.size(); offset += 8) {
+		for(; (offset + 8) <= data.size(); offset += 8){
 			// Собираемая доля записи
 			uint64_t block = 0;
 			/**
@@ -639,7 +639,7 @@ namespace {
 		/**
 		 * Выполняем перебор остатка записи побайтно
 		 */
-		for(; offset < data.size(); offset++) {
+		for(; offset < data.size(); offset++){
 			// Выполняем смешивание очередного байта записи
 			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
 			// Выполняем умножение накопленной суммы
@@ -697,7 +697,7 @@ void awh::regex::Storage::save(const program_t & program, string & result) const
 	 *          временем чтения - на каждый признак приходилась своя проверка
 	 *          границ записи.
 	 */
-	for(size_t i = 0; i < 256; i += 8) {
+	for(size_t i = 0; i < 256; i += 8){
 		// Собираемая доля битовой карты
 		uint8_t block = 0;
 		/**
@@ -771,7 +771,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если чтение соглашения о переводе строки не выполнено
 	 */
-	if(!read8(data, offset, convention)) {
+	if(!read8(data, offset, convention)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -780,7 +780,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если соглашение о переводе строки набором не заведено
 	 */
-	if(convention > static_cast <uint8_t> (newline_t::NUL)) {
+	if(convention > static_cast <uint8_t> (newline_t::NUL)){
 		// Устанавливаем ошибку неверного устройства записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Выводим результат восстановления программы
@@ -791,7 +791,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если чтение номера ячейки отметки последней не выполнено
 	 */
-	if(!readVar(data, offset, program.marker)) {
+	if(!readVar(data, offset, program.marker)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -800,11 +800,11 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Выполняем чтение признаков программы
 	 */
-	for(uint8_t pass = 0; pass < 4; pass++) {
+	for(uint8_t pass = 0; pass < 4; pass++){
 		/**
 		 * Если чтение очередного признака программы не выполнено
 		 */
-		if(!read8(data, offset, flag)) {
+		if(!read8(data, offset, flag)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления программы
@@ -813,7 +813,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 		/**
 		 * Определяем читаемый признак программы
 		 */
-		switch(pass) {
+		switch(pass){
 			// Выполняем установку признака выражения, сопоставляемого литералом
 			case 0: program.plain = (flag != 0); break;
 			// Выполняем установку признака прохода текста единственной попыткой
@@ -827,7 +827,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если чтение последовательности символов выражения не выполнено
 	 */
-	if(!readText(data, offset, program.text)) {
+	if(!readText(data, offset, program.text)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -836,11 +836,11 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Выполняем чтение признаков предварительного отбора позиций
 	 */
-	for(uint8_t pass = 0; pass < 4; pass++) {
+	for(uint8_t pass = 0; pass < 4; pass++){
 		/**
 		 * Если чтение очередного признака отбора позиций не выполнено
 		 */
-		if(!read8(data, offset, flag)) {
+		if(!read8(data, offset, flag)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления программы
@@ -849,7 +849,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 		/**
 		 * Определяем читаемый признак предварительного отбора позиций
 		 */
-		switch(pass) {
+		switch(pass){
 			// Выполняем установку признака действия отбора позиций
 			case 0: program.prefilter.active = (flag != 0); break;
 			// Выполняем установку признака разбора текста как UTF-8
@@ -863,13 +863,13 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Выполняем чтение битовой карты допустимых начальных байтов
 	 */
-	for(size_t i = 0; i < 256; i += 8) {
+	for(size_t i = 0; i < 256; i += 8){
 		// Читаемая доля битовой карты
 		uint8_t block = 0;
 		/**
 		 * Если чтение доли битовой карты не выполнено
 		 */
-		if(!read8(data, offset, block)) {
+		if(!read8(data, offset, block)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления программы
@@ -897,7 +897,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если чтение удаления обязательного литерала не выполнено
 	 */
-	if(!read64(data, offset, distance)) {
+	if(!read64(data, offset, distance)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -908,7 +908,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если восстановление набора инструкций программы не выполнено
 	 */
-	if(!readRegion(data, offset, MAX_PROGRAM, program.instructions)) {
+	if(!readRegion(data, offset, MAX_PROGRAM, program.instructions)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -917,7 +917,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если восстановление хранилища ссылок на классы символов не выполнено
 	 */
-	if(!readRegion(data, offset, MAX_PROGRAM, program.classes)) {
+	if(!readRegion(data, offset, MAX_PROGRAM, program.classes)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -926,7 +926,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если восстановление сплошного набора диапазонов не выполнено
 	 */
-	if(!readRegion(data, offset, MAX_STORAGE, program.ranges)) {
+	if(!readRegion(data, offset, MAX_STORAGE, program.ranges)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -935,7 +935,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если восстановление сплошного набора свойств Юникода не выполнено
 	 */
-	if(!readRegion(data, offset, MAX_STORAGE, program.properties)) {
+	if(!readRegion(data, offset, MAX_STORAGE, program.properties)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -944,7 +944,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если восстановление хранилища последовательностей символов не выполнено
 	 */
-	if(!readRegion(data, offset, MAX_STORAGE, program.strings)) {
+	if(!readRegion(data, offset, MAX_STORAGE, program.strings)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -953,7 +953,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если восстановление хранилища имён отметок не выполнено
 	 */
-	if(!readRegion(data, offset, MAX_STORAGE, program.markers)) {
+	if(!readRegion(data, offset, MAX_STORAGE, program.markers)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -971,7 +971,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	 *          бы чтение за пределы её самой.
 	 *
 	 */
-	if(!this->verify(program)) {
+	if(!this->verify(program)){
 		// Устанавливаем ошибку несообразного содержимого записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Выводим результат восстановления программы
@@ -1004,7 +1004,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 	/**
 	 * Выполняем перебор набора инструкций программы
 	 */
-	for(size_t index = 0; index < program.instructions.size(); index++) {
+	for(size_t index = 0; index < program.instructions.size(); index++){
 		// Получаем очередное указание проверяемой программы
 		const auto & instruction = program.instructions[index];
 		/**
@@ -1023,7 +1023,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 		 *          по программе взамен прохода по каждому ряду.
 		 *
 		 */
-		if(instruction.repeat != 1) {
+		if(instruction.repeat != 1){
 			/**
 			 * Если ряд пуст либо за пределы программы выходит
 			 */
@@ -1042,7 +1042,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 		/**
 		 * Определяем код операции инструкции программы
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
@@ -1087,7 +1087,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 				 *          вмещает не весь литерал, а начало его.
 				 *
 				 */
-				if(length > 1) {
+				if(length > 1){
 					/**
 					 * Если литерал за пределы программы выходит
 					 */
@@ -1105,7 +1105,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 					/**
 					 * Выполняем сличение байтов литерала с литералом инструкции следующей
 					 */
-					for(size_t i = 1; i < length; i++) {
+					for(size_t i = 1; i < length; i++){
 						/**
 						 * Если байт литерала литералу следующему не отвечает
 						 */
@@ -1192,7 +1192,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 				 *          целиком, обходясь одним проходом по программе.
 				 *
 				 */
-				if(instruction.split.most != 0) {
+				if(instruction.split.most != 0){
 					/**
 					 * Если переход несёт разом пометку ряда безграничного
 					 *
@@ -1226,7 +1226,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 					/**
 					 * Если звено не последнее в цепочке ограниченного повторения
 					 */
-					if(instruction.split.most > 1) {
+					if(instruction.split.most > 1){
 						/**
 						 * Если за телом повторения звено цепочки не следует
 						 */
@@ -1443,7 +1443,7 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 	 *          здесь, до всякого сопоставления.
 	 *
 	 */
-	for(const auto & value : program.classes) {
+	for(const auto & value : program.classes){
 		/**
 		 * Если участок набора диапазонов набору не принадлежит
 		 */
@@ -1476,11 +1476,11 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 	/**
 	 * Выполняем перебор набора допустимых начальных байтов
 	 */
-	for(size_t i = 0; i < 256; i++) {
+	for(size_t i = 0; i < 256; i++){
 		/**
 		 * Если байт в начале совпадения допустим
 		 */
-		if(program.prefilter.bytes[i]) {
+		if(program.prefilter.bytes[i]){
 			/**
 			 * Если допустимый байт обнаружен впервые
 			 */
@@ -1525,7 +1525,7 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	/**
 	 * Если количество записываемых выражений превышает допустимое
 	 */
-	if(expressions.size() > static_cast <size_t> (MAX_EXPRESSIONS)) {
+	if(expressions.size() > static_cast <size_t> (MAX_EXPRESSIONS)){
 		// Устанавливаем ошибку превышения размера записи
 		this->_error = storage_error_t::TOO_LARGE;
 		// Выводим результат записи собранных выражений
@@ -1538,11 +1538,11 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	/**
 	 * Выполняем перебор набора собранных выражений
 	 */
-	for(const auto & expression : expressions) {
+	for(const auto & expression : expressions){
 		/**
 		 * Если собранное выражение не установлено
 		 */
-		if(!expression) {
+		if(!expression){
 			// Устанавливаем ошибку несообразного содержимого записи
 			this->_error = storage_error_t::BAD_CONTENT;
 			// Выводим результат записи собранных выражений
@@ -1561,7 +1561,7 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 		/**
 		 * Выполняем перебор соответствия имён именованных групп
 		 */
-		for(const auto & item : expression->names) {
+		for(const auto & item : expression->names){
 			// Выполняем запись имени именованной группы
 			writeText(item.first, payload);
 			// Выполняем запись количества номеров именованной группы
@@ -1585,13 +1585,13 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 		 *          опознание, а несовпадение оборачивается порождением заново.
 		 *
 		 */
-		if(expression->machine && expression->machine->ready()) {
+		if(expression->machine && expression->machine->ready()){
 			// Запись порождённого сопоставителя выражения
 			string machine;
 			/**
 			 * Если запись порождённого сопоставителя выполнена
 			 */
-			if(expression->machine->save(machine)) {
+			if(expression->machine->save(machine)){
 				// Выполняем запись признака наличия порождённого сопоставителя
 				write8(1, payload);
 				// Выполняем запись размера порождённого сопоставителя
@@ -1606,7 +1606,7 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	/**
 	 * Если размер записи хранилища превышает допустимый
 	 */
-	if(payload.size() > MAX_STORAGE) {
+	if(payload.size() > MAX_STORAGE){
 		// Устанавливаем ошибку превышения размера записи
 		this->_error = storage_error_t::TOO_LARGE;
 		// Выводим результат записи собранных выражений
@@ -1615,11 +1615,11 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	/**
 	 * Если запись хранилища подлежит сжатию
 	 */
-	if(this->_method != compressor::method_t::NONE) {
+	if(this->_method != compressor::method_t::NONE){
 		/**
 		 * Если обработчик сжатия записи не установлен
 		 */
-		if(!this->_pack) {
+		if(!this->_pack){
 			// Устанавливаем ошибку отсутствия обработчика метода сжатия
 			this->_error = storage_error_t::BAD_METHOD;
 			// Выводим результат записи собранных выражений
@@ -1630,7 +1630,7 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 		/**
 		 * Если сжатие содержимого записи не выполнено
 		 */
-		if(!this->_pack(payload, packed) || packed.empty()) {
+		if(!this->_pack(payload, packed) || packed.empty()){
 			// Устанавливаем ошибку невыполненного сжатия записи
 			this->_error = storage_error_t::BAD_PACKING;
 			// Выводим результат записи собранных выражений
@@ -1644,13 +1644,13 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 		 *          в пустую работу.
 		 *
 		 */
-		if(this->_ciphered) {
+		if(this->_ciphered){
 			// Зашифрованное содержимое записи хранилища
 			string sealed;
 			/**
 			 * Если обработчик зашифрования не установлен либо зашифрование не выполнено
 			 */
-			if(!this->_encrypt || !this->_encrypt(packed, sealed) || sealed.empty()) {
+			if(!this->_encrypt || !this->_encrypt(packed, sealed) || sealed.empty()){
 				// Устанавливаем ошибку невыполненного шифрования записи
 				this->_error = storage_error_t::BAD_CIPHER;
 				// Выводим результат записи собранных выражений
@@ -1693,13 +1693,13 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	/**
 	 * Выполняем зашифрование содержимого записи хранилища
 	 */
-	if(this->_ciphered) {
+	if(this->_ciphered){
 		// Зашифрованное содержимое записи хранилища
 		string sealed;
 		/**
 		 * Если обработчик зашифрования не установлен либо зашифрование не выполнено
 		 */
-		if(!this->_encrypt || !this->_encrypt(payload, sealed) || sealed.empty()) {
+		if(!this->_encrypt || !this->_encrypt(payload, sealed) || sealed.empty()){
 			// Устанавливаем ошибку невыполненного шифрования записи
 			this->_error = storage_error_t::BAD_CIPHER;
 			// Выводим результат записи собранных выражений
@@ -1829,7 +1829,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если запись хранилища пуста
 	 */
-	if(data.empty()) {
+	if(data.empty()){
 		// Устанавливаем ошибку пустой записи
 		this->_error = storage_error_t::EMPTY;
 		// Выводим результат восстановления собранных выражений
@@ -1842,7 +1842,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если чтение опознания записи не выполнено
 	 */
-	if(!read64(data, offset, magic)) {
+	if(!read64(data, offset, magic)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1851,7 +1851,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если опознание записи не совпадает
 	 */
-	if(magic != STORAGE_MAGIC) {
+	if(magic != STORAGE_MAGIC){
 		// Устанавливаем ошибку несовпадения опознания записи
 		this->_error = storage_error_t::BAD_MAGIC;
 		// Выводим результат восстановления собранных выражений
@@ -1862,7 +1862,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если чтение версии устройства записи не выполнено
 	 */
-	if(!read16(data, offset, version)) {
+	if(!read16(data, offset, version)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1871,7 +1871,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если версия устройства записи не поддерживается
 	 */
-	if(version != STORAGE_VERSION) {
+	if(version != STORAGE_VERSION){
 		// Устанавливаем ошибку неподдерживаемой версии записи
 		this->_error = storage_error_t::BAD_VERSION;
 		// Выводим результат восстановления собранных выражений
@@ -1896,7 +1896,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если признак шифрования записи вида недопустимого либо выравнивание не пусто
 	 */
-	if((sealed > 1) || (padding != 0)) {
+	if((sealed > 1) || (padding != 0)){
 		// Устанавливаем ошибку несообразного содержимого записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Выводим результат восстановления собранных выражений
@@ -1905,7 +1905,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если запись порождена машиной устройства иного
 	 */
-	if(machine != platform()) {
+	if(machine != platform()){
 		// Устанавливаем ошибку несовпадения устройства машины
 		this->_error = storage_error_t::BAD_PLATFORM;
 		// Выводим результат восстановления собранных выражений
@@ -1916,7 +1916,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если чтение размеров содержимого либо суммы не выполнено
 	 */
-	if(!read64(data, offset, length) || !read64(data, offset, origin) || !read64(data, offset, sum)) {
+	if(!read64(data, offset, length) || !read64(data, offset, origin) || !read64(data, offset, sum)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1927,7 +1927,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если чтение опознания машины, мгновения порождения либо срока не выполнено
 	 */
-	if(!read64(data, offset, owner) || !read64(data, offset, created) || !read64(data, offset, lifetime)) {
+	if(!read64(data, offset, owner) || !read64(data, offset, created) || !read64(data, offset, lifetime)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1941,7 +1941,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	 *          порождения принадлежащий, отчего сличается и сама машина.
 	 *
 	 */
-	if(owner != hardware()) {
+	if(owner != hardware()){
 		// Устанавливаем ошибку несовпадения машины записи
 		this->_error = storage_error_t::BAD_MACHINE;
 		// Выводим результат восстановления собранных выражений
@@ -1955,13 +1955,13 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	 *          переводимы, и отказ по ним обернулся бы отказом работы.
 	 *
 	 */
-	if(lifetime > 0) {
+	if(lifetime > 0){
 		// Получаем нынешнее мгновение по часам системы
 		const uint64_t now = static_cast <uint64_t> (::time(nullptr));
 		/**
 		 * Если срок годности записи истёк
 		 */
-		if((now > created) && ((now - created) > lifetime)) {
+		if((now > created) && ((now - created) > lifetime)){
 			// Устанавливаем ошибку истечения срока годности записи
 			this->_error = storage_error_t::EXPIRED;
 			// Выводим результат восстановления собранных выражений
@@ -1971,7 +1971,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если объявленный размер содержимого записи не отвечает её длине
 	 */
-	if(length != static_cast <uint64_t> (data.size() - offset)) {
+	if(length != static_cast <uint64_t> (data.size() - offset)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -1982,7 +1982,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если контрольная сумма содержимого записи не совпадает
 	 */
-	if(checksum(payload) != sum) {
+	if(checksum(payload) != sum){
 		// Устанавливаем ошибку несовпадения контрольной суммы
 		this->_error = storage_error_t::BAD_CHECKSUM;
 		// Выводим результат восстановления собранных выражений
@@ -1999,11 +1999,11 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	 *          к нему, а не к записи поданной.
 	 *
 	 */
-	if(sealed > 0) {
+	if(sealed > 0){
 		/**
 		 * Если обработчик расшифрования записи не установлен
 		 */
-		if(!this->_decrypt) {
+		if(!this->_decrypt){
 			// Устанавливаем ошибку отсутствия обработчика расшифрования
 			this->_error = storage_error_t::BAD_METHOD;
 			// Выводим результат восстановления собранных выражений
@@ -2014,7 +2014,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если расшифрование содержимого записи не выполнено
 		 */
-		if(!this->_decrypt(payload, * opened) || opened->empty()) {
+		if(!this->_decrypt(payload, * opened) || opened->empty()){
 			// Устанавливаем ошибку невыполненного расшифрования записи
 			this->_error = storage_error_t::BAD_CIPHER;
 			// Выводим результат восстановления собранных выражений
@@ -2028,11 +2028,11 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если запись хранилища сжата
 	 */
-	if(method != static_cast <uint8_t> (compressor::method_t::NONE)) {
+	if(method != static_cast <uint8_t> (compressor::method_t::NONE)){
 		/**
 		 * Если обработчик разжатия записи не установлен
 		 */
-		if(!this->_unpack) {
+		if(!this->_unpack){
 			// Устанавливаем ошибку отсутствия обработчика метода сжатия
 			this->_error = storage_error_t::BAD_METHOD;
 			// Выводим результат восстановления собранных выражений
@@ -2041,7 +2041,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если размер содержимого до сжатия превышает допустимый
 		 */
-		if(origin > static_cast <uint64_t> (MAX_STORAGE)) {
+		if(origin > static_cast <uint64_t> (MAX_STORAGE)){
 			// Устанавливаем ошибку превышения размера записи
 			this->_error = storage_error_t::TOO_LARGE;
 			// Выводим результат восстановления собранных выражений
@@ -2052,7 +2052,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если разжатие содержимого записи не выполнено
 		 */
-		if(!this->_unpack(payload, unpacked)) {
+		if(!this->_unpack(payload, unpacked)){
 			// Устанавливаем ошибку невыполненного разжатия записи
 			this->_error = storage_error_t::BAD_PACKING;
 			// Выводим результат восстановления собранных выражений
@@ -2061,7 +2061,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если размер разжатого содержимого объявленному не отвечает
 		 */
-		if(static_cast <uint64_t> (unpacked.size()) != origin) {
+		if(static_cast <uint64_t> (unpacked.size()) != origin){
 			// Устанавливаем ошибку несообразного содержимого записи
 			this->_error = storage_error_t::BAD_CONTENT;
 			// Выводим результат восстановления собранных выражений
@@ -2093,7 +2093,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если чтение количества выражений не выполнено
 	 */
-	if(!readVar(payload, offset, count)) {
+	if(!readVar(payload, offset, count)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений
@@ -2102,7 +2102,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если количество выражений превышает допустимое
 	 */
-	if(count > MAX_EXPRESSIONS) {
+	if(count > MAX_EXPRESSIONS){
 		// Устанавливаем ошибку несообразного содержимого записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Выводим результат восстановления собранных выражений
@@ -2113,7 +2113,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Выполняем восстановление набора выражений
 	 */
-	for(uint32_t i = 0; i < count; i++) {
+	for(uint32_t i = 0; i < count; i++){
 		// Создаём восстанавливаемое выражение
 		auto expression = make_shared <expression_t> ();
 		// Признак выражения, читаемый записью
@@ -2121,7 +2121,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если чтение признаков выражения не выполнено
 		 */
-		if(!read8(payload, offset, flag)) {
+		if(!read8(payload, offset, flag)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления собранных выражений
@@ -2132,7 +2132,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если чтение признаков выражения не выполнено
 		 */
-		if(!read8(payload, offset, flag)) {
+		if(!read8(payload, offset, flag)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления собранных выражений
@@ -2143,7 +2143,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если чтение признаков выражения не выполнено
 		 */
-		if(!read8(payload, offset, flag)) {
+		if(!read8(payload, offset, flag)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления собранных выражений
@@ -2184,7 +2184,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если чтение количества именованных групп не выполнено
 		 */
-		if(!readVar(payload, offset, names)) {
+		if(!readVar(payload, offset, names)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления собранных выражений
@@ -2193,7 +2193,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если количество именованных групп превышает размер оставшейся записи
 		 */
-		if((static_cast <size_t> (names) * 3) > (payload.size() - offset)) {
+		if((static_cast <size_t> (names) * 3) > (payload.size() - offset)){
 			// Устанавливаем ошибку несообразного содержимого записи
 			this->_error = storage_error_t::BAD_CONTENT;
 			// Выводим результат восстановления собранных выражений
@@ -2202,7 +2202,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Выполняем восстановление соответствия имён именованных групп
 		 */
-		for(uint32_t j = 0; j < names; j++) {
+		for(uint32_t j = 0; j < names; j++){
 			// Имя именованной группы выражения
 			string name;
 			// Количество номеров именованной группы
@@ -2210,7 +2210,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 			/**
 			 * Если чтение имени именованной группы не выполнено
 			 */
-			if(!readText(payload, offset, name) || !readVar(payload, offset, numbers)) {
+			if(!readText(payload, offset, name) || !readVar(payload, offset, numbers)){
 				// Устанавливаем ошибку обрыва записи
 				this->_error = storage_error_t::TRUNCATED;
 				// Выводим результат восстановления собранных выражений
@@ -2219,7 +2219,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 			/**
 			 * Если количество номеров превышает размер оставшейся записи
 			 */
-			if(static_cast <size_t> (numbers) > (payload.size() - offset)) {
+			if(static_cast <size_t> (numbers) > (payload.size() - offset)){
 				// Устанавливаем ошибку несообразного содержимого записи
 				this->_error = storage_error_t::BAD_CONTENT;
 				// Выводим результат восстановления собранных выражений
@@ -2230,11 +2230,11 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 			/**
 			 * Выполняем перебор набора номеров именованной группы
 			 */
-			for(auto & number : records) {
+			for(auto & number : records){
 				/**
 				 * Если чтение номера именованной группы не выполнено
 				 */
-				if(!readVar(payload, offset, number)) {
+				if(!readVar(payload, offset, number)){
 					// Устанавливаем ошибку обрыва записи
 					this->_error = storage_error_t::TRUNCATED;
 					// Выводим результат восстановления собранных выражений
@@ -2243,7 +2243,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 				/**
 				 * Если номер именованной группы выражению не принадлежит
 				 */
-				if(number > expression->forward.captures) {
+				if(number > expression->forward.captures){
 					// Устанавливаем ошибку несообразного содержимого записи
 					this->_error = storage_error_t::BAD_CONTENT;
 					// Выводим результат восстановления собранных выражений
@@ -2258,7 +2258,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если чтение признака наличия порождённого сопоставителя не выполнено
 		 */
-		if(!read8(payload, offset, machined)) {
+		if(!read8(payload, offset, machined)){
 			// Устанавливаем ошибку обрыва записи
 			this->_error = storage_error_t::TRUNCATED;
 			// Выводим результат восстановления собранных выражений
@@ -2269,13 +2269,13 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		/**
 		 * Если запись несёт порождённый сопоставитель выражения
 		 */
-		if(machined != 0) {
+		if(machined != 0){
 			// Размер порождённого сопоставителя выражения
 			uint32_t length = 0;
 			/**
 			 * Если чтение размера порождённого сопоставителя не выполнено
 			 */
-			if(!readVar(payload, offset, length)) {
+			if(!readVar(payload, offset, length)){
 				// Устанавливаем ошибку обрыва записи
 				this->_error = storage_error_t::TRUNCATED;
 				// Выводим результат восстановления собранных выражений
@@ -2284,7 +2284,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 			/**
 			 * Если порождённый сопоставитель за пределы записи выходит
 			 */
-			if(static_cast <size_t> (length) > (payload.size() - offset)) {
+			if(static_cast <size_t> (length) > (payload.size() - offset)){
 				// Устанавливаем ошибку несообразного содержимого записи
 				this->_error = storage_error_t::BAD_CONTENT;
 				// Выводим результат восстановления собранных выражений
@@ -2352,7 +2352,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	/**
 	 * Если запись хранилища прочитана не до конца
 	 */
-	if(offset != payload.size()) {
+	if(offset != payload.size()){
 		// Устанавливаем ошибку несообразного содержимого записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Выполняем очистку набора восстановленных выражений

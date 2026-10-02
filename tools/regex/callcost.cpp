@@ -104,7 +104,7 @@ static double measure(awh::regex::engine_t & engine, const string & pattern,
 	 *          время и расходилось с набором замеров на то же самое.
 	 *
 	 */
-	for(uint32_t attempt = 0; attempt < ATTEMPTS; attempt++) {
+	for(uint32_t attempt = 0; attempt < ATTEMPTS; attempt++){
 		// Получаем отметку времени начала попытки
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -242,7 +242,7 @@ int main() noexcept {
 		/**
 		 * Выполняем перебор путей исполнения сопоставления
 		 */
-		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::path_t::COUNT); i++) {
+		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::path_t::COUNT); i++){
 			// Получаем количество прохождений пути исполнения
 			const uint64_t count = awh::regex::probe_t::count(static_cast <awh::regex::path_t> (i));
 			// Если путь исполнения пройден, выводим его имя со счётом
@@ -291,7 +291,7 @@ int main() noexcept {
 	/**
 	 * Если точек замера довольно для проведения прямой
 	 */
-	if((point > 1) && (works[point - 1] > works[0])) {
+	if((point > 1) && (works[point - 1] > works[0])){
 		// Получаем наклон прямой - цену единицы работы
 		const double slope = ((times[point - 1] - times[0]) / (works[point - 1] - works[0]));
 		// Получаем свободный член прямой - плату за вызов

@@ -80,7 +80,7 @@ static bool attempt(const regexp_t & regexp, const regex::storage_t & storage, c
 	/**
 	 * Если запись подделанного выражения не удалась
 	 */
-	if(!storage.save({twisted}, record)) {
+	if(!storage.save({twisted}, record)){
 		// Выводим сообщение об отказе записи выражения
 		::printf("%-40s запись не удалась\n", name);
 		// Выводим отказ приёма записи
@@ -91,7 +91,7 @@ static bool attempt(const regexp_t & regexp, const regex::storage_t & storage, c
 	/**
 	 * Если восстановление записи подделанной отвергнуто
 	 */
-	if(!storage.load(record, restored)) {
+	if(!storage.load(record, restored)){
 		// Выводим сообщение об отказе восстановления записи
 		::printf("%-40s ОТВЕРГНУТО поверкой, код %u\n", name, static_cast <uint32_t> (storage.error()));
 		// Выводим отказ приёма записи
@@ -125,7 +125,7 @@ int32_t main() noexcept {
 	/**
 	 * Если сборка регулярного выражения не удалась
 	 */
-	if(!exp) {
+	if(!exp){
 		// Выводим сообщение об отказе сборки выражения
 		::printf("сборка выражения не удалась\n");
 		// Выходим из приложения с кодом отказа
@@ -159,7 +159,7 @@ int32_t main() noexcept {
 	/**
 	 * Если подделка несообразная поверкой принята
 	 */
-	if(inconsistent) {
+	if(inconsistent){
 		// Выводим сообщение о снятом заслоне
 		::printf("ЗАСЛОН СНЯТ: признак единственного байта, набору не отвечающий, принят\n");
 		// Выходим из приложения с кодом отказа

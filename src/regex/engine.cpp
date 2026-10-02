@@ -220,7 +220,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	/**
 	 * Если разбор регулярного выражения не выполнен
 	 */
-	if(!this->_parser.parse(pattern, flags)) {
+	if(!this->_parser.parse(pattern, flags)){
 		// Выполняем установку кода ошибки разбора выражения
 		this->_error = this->_parser.error();
 		/**
@@ -244,7 +244,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	/**
 	 * Если компиляция регулярного выражения не выполнена
 	 */
-	if(!this->_compiler.compile(this->_parser, expression.forward)) {
+	if(!this->_compiler.compile(this->_parser, expression.forward)){
 		// Выполняем установку кода ошибки компиляции выражения
 		this->_error = this->_compiler.error();
 		/**
@@ -256,11 +256,11 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		 *          недостижимости исполнения без возврата.
 		 *
 		 */
-		if(this->_error == error_t::UNSUPPORTED) {
+		if(this->_error == error_t::UNSUPPORTED){
 			/**
 			 * Если компиляция регулярного выражения целиком не выполнена
 			 */
-			if(!this->_compiler.compileFull(this->_parser, expression.forward)) {
+			if(!this->_compiler.compileFull(this->_parser, expression.forward)){
 				// Выполняем установку кода ошибки компиляции выражения
 				this->_error = this->_compiler.error();
 				// Выводим результат выполнения сборки
@@ -345,7 +345,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *          для выражений с такой привязкой поиск позиции начала неприменим.
 	 *
 	 */
-	for(auto & instruction : expression.forward.instructions) {
+	for(auto & instruction : expression.forward.instructions){
 		/**
 		 * Если инструкция проверяет привязку к началу попытки сопоставления
 		 */
@@ -478,7 +478,7 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	/**
 	 * Если сопоставление исполнением с возвратом выполнено
 	 */
-	if(this->_backtrack.exec(expression.forward, text, start, captures)) {
+	if(this->_backtrack.exec(expression.forward, text, start, captures)){
 		/**
 		 * Выполняем учёт пробы, проход автомата снявшей
 		 *
@@ -501,7 +501,7 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	 *          и повторного прохода не требует.
 	 *
 	 */
-	if((this->_backtrack.error() != error_t::BUDGET_EXCEEDED) && !this->_backtrack.bounded()) {
+	if((this->_backtrack.error() != error_t::BUDGET_EXCEEDED) && !this->_backtrack.bounded()){
 		// Выполняем установку исхода сопоставления
 		result = false;
 		// Выводим разрешение вопроса пробою
@@ -561,7 +561,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          совпадения: выражение доигрывается исполнением программы.
 	 *
 	 */
-	if(expression.machine) {
+	if(expression.machine){
 		// Выполняем учёт сопоставления порождённым машинным кодом
 		AWH_REGEX_TICK(path_t::JITTED);
 		// Признак отказа порождённого сопоставителя от сопоставления
@@ -578,7 +578,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	/**
 	 * Если выражение исполняется с возвратом
 	 */
-	if(expression.backtracking) {
+	if(expression.backtracking){
 		// Выполняем сопоставление регулярного выражения исполнением с возвратом
 		const bool result = this->_backtrack.exec(expression.forward, text, start, this->_spare);
 		// Выполняем установку кода ошибки исполнения с возвратом
@@ -594,7 +594,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          многократно быстрее любого исполнения программы.
 	 *
 	 */
-	if(expression.forward.plain) {
+	if(expression.forward.plain){
 		// Выполняем учёт поиска последовательности выражения в тексте
 		AWH_REGEX_TICK(path_t::PLAIN);
 		// Выводим результат поиска последовательности выражения в тексте
@@ -699,7 +699,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          не сказался бы вовсе.
 	 *
 	 */
-	if(expression.forward.steps == 0) {
+	if(expression.forward.steps == 0){
 		// Выполняем установку ошибки превышения допустимого объёма работы
 		this->_error = error_t::BUDGET_EXCEEDED;
 		// Выводим результат поиска совпадения
@@ -732,7 +732,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          втрое быстрее собственного машинного кода.
 	 *
 	 */
-	if(expression.forward.anchored) {
+	if(expression.forward.anchored){
 		/**
 		 * Если байт в позиции поиска совпадения начать не может
 		 *
@@ -755,7 +755,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          сам, отчего исполнения программы вслед за собою не требует.
 	 *
 	 */
-	if(expression.machine) {
+	if(expression.machine){
 		// Выполняем учёт сопоставления порождённым машинным кодом
 		AWH_REGEX_TICK(path_t::JITTED);
 		// Признак отказа порождённого сопоставителя от сопоставления
@@ -778,7 +778,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	/**
 	 * Если выражение исполняется с возвратом
 	 */
-	if(expression.backtracking) {
+	if(expression.backtracking){
 		// Выполняем сопоставление регулярного выражения исполнением с возвратом
 		const bool result = this->_backtrack.exec(expression.forward, text, start, captures);
 		// Выполняем установку кода ошибки исполнения с возвратом
@@ -796,7 +796,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 			/**
 			 * Если совпадение глагол отметки прошло
 			 */
-			if((address != string_view::npos) && (address < expression.forward.instructions.size())) {
+			if((address != string_view::npos) && (address < expression.forward.instructions.size())){
 				// Получаем инструкцию глагола отметки совпадения
 				const instruction_t & instruction = expression.forward.instructions[address];
 				// Получаем смещение имени отметки в хранилище имён
@@ -821,7 +821,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          многократно быстрее любого исполнения программы.
 	 *
 	 */
-	if(expression.forward.plain) {
+	if(expression.forward.plain){
 		// Выполняем учёт поиска последовательности выражения в тексте
 		AWH_REGEX_TICK(path_t::PLAIN);
 		// Выполняем поиск последовательности выражения в тексте
@@ -849,7 +849,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          Измерением получено двукратное превосходство на выражении «\bneedle\b».
 	 *
 	 */
-	if(!expression.forward.prefilter.leading.empty()) {
+	if(!expression.forward.prefilter.leading.empty()){
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((text.size() - start + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
 		/**
@@ -894,7 +894,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          до выбора пути исполнения.
 	 *
 	 */
-	if(!expression.forward.anchored && !expression.forward.prefilter.literal.empty()) {
+	if(!expression.forward.anchored && !expression.forward.prefilter.literal.empty()){
 		// Выполняем поиск вхождения обязательного литерала в оставшемся тексте
 		located = expression.forward.prefilter.locate(text, start);
 		/**
@@ -937,7 +937,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          на выражении «.*needle».
 	 *
 	 */
-	if(expression.forward.sweeping) {
+	if(expression.forward.sweeping){
 		// Выполняем учёт прохода текста единственной попыткой
 		AWH_REGEX_TICK(path_t::SWEEPING);
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
@@ -1057,7 +1057,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	/**
 	 * Если поиск позиции начала совпадения применим
 	 */
-	if(expression.reversible && (start == 0)) {
+	if(expression.reversible && (start == 0)){
 		// Получаем длину участка текста, пройденного до завершения совпадения
 		const size_t scanned = (finish - start);
 		// Получаем длину участка текста, подлежащего проходу в обратном направлении
@@ -1076,13 +1076,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *          направлении оправдан длиной пройденного участка текста.
 		 *
 		 */
-		if(expression.forward.prefilter.leading.empty() && (scanned > MIN_REVERSE) && (remains < (REVERSE_RATIO * scanned))) {
+		if(expression.forward.prefilter.leading.empty() && (scanned > MIN_REVERSE) && (remains < (REVERSE_RATIO * scanned))){
 			// Позиция начала обнаруженного совпадения
 			size_t begin = string_view::npos;
 			/**
 			 * Если поиск позиции начала совпадения выполнен
 			 */
-			if(this->_reverse.reverse(expression.backward, text, text.size(), begin)) {
+			if(this->_reverse.reverse(expression.backward, text, text.size(), begin)){
 				/**
 				 * Выполняем установку допустимого объёма работы исполнения с возвратом
 				 *

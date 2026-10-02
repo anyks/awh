@@ -115,7 +115,7 @@ namespace {
 		/**
 		 * Выполняем перебор содержимого восьмибайтовыми долями
 		 */
-		for(; (offset + 8) <= data.size(); offset += 8) {
+		for(; (offset + 8) <= data.size(); offset += 8){
 			// Собираемая доля содержимого
 			uint64_t block = 0;
 			/**
@@ -134,7 +134,7 @@ namespace {
 		/**
 		 * Выполняем перебор остатка содержимого побайтно
 		 */
-		for(; offset < data.size(); offset++) {
+		for(; offset < data.size(); offset++){
 			// Выполняем смешивание очередного байта содержимого
 			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
 			// Выполняем умножение накопленной суммы
@@ -147,7 +147,7 @@ namespace {
 		/**
 		 * Выполняем запись числа долями по семь разрядов
 		 */
-		while(value >= 0x80) {
+		while(value >= 0x80){
 			// Выполняем запись очередной доли числа с признаком продолжения
 			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
 			// Переходим к следующей доле числа
@@ -171,7 +171,7 @@ namespace {
 		/**
 		 * Выполняем чтение числа долями по семь разрядов
 		 */
-		for(uint8_t shift = 0; shift < 64; shift += 7) {
+		for(uint8_t shift = 0; shift < 64; shift += 7){
 			/**
 			 * Если запись оборвана до завершения числа
 			 */
@@ -274,11 +274,11 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 	/**
 	 * Выполняем перебор символов участка текста выражения
 	 */
-	for(size_t i = 0; i < text.size(); i++) {
+	for(size_t i = 0; i < text.size(); i++){
 		/**
 		 * Если очередной символ экранирован
 		 */
-		if(escaped) {
+		if(escaped){
 			// Снимаем признак экранирования
 			escaped = false;
 			// Переходим к следующему символу
@@ -287,7 +287,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		/**
 		 * Если очередной символ является обратной косой чертой
 		 */
-		if(text[i] == '\\') {
+		if(text[i] == '\\'){
 			// Устанавливаем признак экранирования
 			escaped = true;
 			// Переходим к следующему символу
@@ -296,7 +296,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		/**
 		 * Если разбор ведётся внутри класса символов
 		 */
-		if(klass) {
+		if(klass){
 			/**
 			 * Если класс символов закрыт
 			 */
@@ -309,7 +309,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		/**
 		 * Если класс символов открыт
 		 */
-		if(text[i] == '[') {
+		if(text[i] == '['){
 			// Устанавливаем признак нахождения внутри класса символов
 			klass = true;
 			// Переходим к следующему символу
@@ -324,7 +324,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		/**
 		 * Если скобка закрывает выражение
 		 */
-		if((i + 1) >= text.size()) {
+		if((i + 1) >= text.size()){
 			// Выполняем увеличение номера группы захвата
 			number++;
 			// Завершаем разбор участка текста выражения
@@ -333,7 +333,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		/**
 		 * Если скобка группу особую не открывает
 		 */
-		if(text[i + 1] != '?') {
+		if(text[i + 1] != '?'){
 			// Выполняем увеличение номера группы захвата
 			number++;
 			// Переходим к следующему символу
@@ -347,7 +347,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		 *          проверку ретроспективную и захвата не выполняют, поэтому
 		 *          отличаются по символу, за скобкой угловой следующему.
 		 */
-		if(((i + 2) < text.size()) && (text[i + 2] == 'P') && ((i + 3) < text.size()) && (text[i + 3] == '<')) {
+		if(((i + 2) < text.size()) && (text[i + 2] == 'P') && ((i + 3) < text.size()) && (text[i + 3] == '<')){
 			// Выполняем увеличение номера группы захвата
 			number++;
 			// Переходим к следующему символу
@@ -356,7 +356,7 @@ void awh::Grok::account(string_view text, uint32_t & number) const noexcept {
 		/**
 		 * Если группа особая записана в виде «(?'имя'»
 		 */
-		if(((i + 2) < text.size()) && (text[i + 2] == '\'')) {
+		if(((i + 2) < text.size()) && (text[i + 2] == '\'')){
 			// Выполняем увеличение номера группы захвата
 			number++;
 			// Переходим к следующему символу
@@ -386,7 +386,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 	/**
 	 * Если допустимая глубина разворота превышена
 	 */
-	if(depth >= MAX_DEPTH) {
+	if(depth >= MAX_DEPTH){
 		// Устанавливаем код ошибки разбора шаблона
 		this->_error = error_t::NESTING_TOO_DEEP;
 		// Выводим результат разворота ссылок текста шаблона
@@ -397,7 +397,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 	/**
 	 * Выполняем перебор символов текста шаблона
 	 */
-	for(size_t i = 0; i < body.size(); i++) {
+	for(size_t i = 0; i < body.size(); i++){
 		/**
 		 * Если очередной символ начало ссылки не открывает
 		 */
@@ -419,7 +419,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Если закрывающая скобка ссылки не обнаружена
 		 */
-		if(end == string_view::npos) {
+		if(end == string_view::npos){
 			// Устанавливаем код ошибки разбора шаблона
 			this->_error = error_t::REFERENCE_UNCLOSED;
 			// Выводим результат разворота ссылок текста шаблона
@@ -440,7 +440,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Если ссылка несёт название поля
 		 */
-		if(colon != string_view::npos) {
+		if(colon != string_view::npos){
 			// Получаем название поля ссылки
 			field = reference.substr(colon + 1);
 			// Получаем название шаблона ссылки
@@ -450,7 +450,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 			/**
 			 * Если ссылка несёт вид значения поля
 			 */
-			if(second != string_view::npos) {
+			if(second != string_view::npos){
 				// Получаем вид значения поля ссылки
 				const string_view text = field.substr(second + 1);
 				// Получаем название поля ссылки
@@ -480,7 +480,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 			/**
 			 * Если название поля ссылки пусто
 			 */
-			if(field.empty()) {
+			if(field.empty()){
 				// Устанавливаем код ошибки разбора шаблона
 				this->_error = error_t::FIELD_EMPTY;
 				// Выводим результат разворота ссылок текста шаблона
@@ -490,7 +490,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Если название шаблона ссылки пусто
 		 */
-		if(reference.empty()) {
+		if(reference.empty()){
 			// Устанавливаем код ошибки разбора шаблона
 			this->_error = error_t::REFERENCE_EMPTY;
 			// Выводим результат разворота ссылок текста шаблона
@@ -503,7 +503,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Если шаблон ссылки реестру неизвестен
 		 */
-		if(j == this->_patterns.end()) {
+		if(j == this->_patterns.end()){
 			// Устанавливаем код ошибки разбора шаблона
 			this->_error = error_t::REFERENCE_UNKNOWN;
 			// Выводим результат разворота ссылок текста шаблона
@@ -512,11 +512,11 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Выполняем перебор набора шаблонов, разворот каких не завершён
 		 */
-		for(const auto & item : stack) {
+		for(const auto & item : stack){
 			/**
 			 * Если шаблон ссылки развернуть уже пытались
 			 */
-			if(item.compare(name) == 0) {
+			if(item.compare(name) == 0){
 				// Устанавливаем код ошибки разбора шаблона
 				this->_error = error_t::REFERENCE_CIRCULAR;
 				// Выводим результат разворота ссылок текста шаблона
@@ -526,7 +526,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Если ссылка несёт название поля
 		 */
-		if(!field.empty()) {
+		if(!field.empty()){
 			// Создаём описание поля шаблона
 			field_t record;
 			// Устанавливаем вид значения поля
@@ -560,7 +560,7 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
 		/**
 		 * Если допустимый размер развёрнутого текста превышен
 		 */
-		if(result.size() > MAX_LENGTH) {
+		if(result.size() > MAX_LENGTH){
 			// Устанавливаем код ошибки разбора шаблона
 			this->_error = error_t::PATTERN_TOO_LARGE;
 			// Выводим результат разворота ссылок текста шаблона
@@ -632,7 +632,7 @@ bool awh::Grok::erase(string_view name) noexcept {
 	/**
 	 * Если название шаблона пусто
 	 */
-	if(name.empty()) {
+	if(name.empty()){
 		// Устанавливаем код ошибки разбора шаблона
 		this->_error = error_t::NAME_EMPTY;
 		// Выводим результат удаления шаблона из реестра
@@ -689,7 +689,7 @@ bool awh::Grok::pattern(string_view name, string_view body) noexcept {
 	/**
 	 * Если название шаблона пусто
 	 */
-	if(name.empty()) {
+	if(name.empty()){
 		// Устанавливаем код ошибки разбора шаблона
 		this->_error = error_t::NAME_EMPTY;
 		// Выводим результат добавления шаблона в реестр
@@ -698,7 +698,7 @@ bool awh::Grok::pattern(string_view name, string_view body) noexcept {
 	/**
 	 * Если текст шаблона пуст
 	 */
-	if(body.empty()) {
+	if(body.empty()){
 		// Устанавливаем код ошибки разбора шаблона
 		this->_error = error_t::PATTERN_EMPTY;
 		// Выводим результат добавления шаблона в реестр
@@ -754,7 +754,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	/**
 	 * Если текст шаблона пуст
 	 */
-	if(pattern.empty()) {
+	if(pattern.empty()){
 		// Устанавливаем код ошибки разбора шаблона
 		this->_error = error_t::PATTERN_EMPTY;
 		// Выводим собранный шаблон Grok
@@ -775,7 +775,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		/**
 		 * Если ключ в кэше собранных шаблонов найден
 		 */
-		if(i != this->_cache.end()) {
+		if(i != this->_cache.end()){
 			// Получаем собранный ранее шаблон Grok
 			exp_t cached = i->second.lock();
 			/**
@@ -810,7 +810,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	/**
 	 * Если разворот ссылок текста шаблона не выполнен
 	 */
-	if(!unfolded) {
+	if(!unfolded){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -838,7 +838,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	/**
 	 * Если сборка развёрнутого регулярного выражения не выполнена
 	 */
-	if(!expression->exp) {
+	if(!expression->exp){
 		// Устанавливаем код ошибки разбора шаблона
 		this->_error = error_t::EXPRESSION;
 		// Выводим собранный шаблон Grok
@@ -941,7 +941,7 @@ bool awh::Grok::exec(string_view text, const exp_t & exp, unordered_map <string,
 	/**
 	 * Выполняем перебор набора полей собранного шаблона
 	 */
-	for(const auto & field : exp->fields) {
+	for(const auto & field : exp->fields){
 		/**
 		 * Если номер группы захвата поля набору границ не принадлежит
 		 */
@@ -993,7 +993,7 @@ bool awh::Grok::exec(string_view text, const exp_t & exp, vector <value_t> & res
 	/**
 	 * Выполняем перебор набора полей собранного шаблона
 	 */
-	for(const auto & field : exp->fields) {
+	for(const auto & field : exp->fields){
 		/**
 		 * Если номер группы захвата поля набору границ не принадлежит
 		 */
@@ -1066,7 +1066,7 @@ namespace {
 		 *
 		 * @details Знак плюса записью числа JSON не дозволен вовсе.
 		 */
-		if(text.front() == '-') {
+		if(text.front() == '-'){
 			// Запоминаем отрицательность числа
 			negative = true;
 			// Переходим к знаку следующему
@@ -1096,7 +1096,7 @@ namespace {
 		/**
 		 * Если число несёт дробную часть
 		 */
-		if((pos < text.size()) && (text.at(pos) == '.')) {
+		if((pos < text.size()) && (text.at(pos) == '.')){
 			// Запоминаем наличие дробной части
 			fraction = true;
 			// Переходим к знаку следующему
@@ -1120,7 +1120,7 @@ namespace {
 		/**
 		 * Если число несёт порядок
 		 */
-		if((pos < text.size()) && ((text.at(pos) == 'e') || (text.at(pos) == 'E'))) {
+		if((pos < text.size()) && ((text.at(pos) == 'e') || (text.at(pos) == 'E'))){
 			// Запоминаем наличие порядка
 			fraction = true;
 			// Переходим к знаку следующему
@@ -1175,7 +1175,7 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 	 *          и Grok его более не исполняет.
 	 *
 	 */
-	for(const auto & value : values) {
+	for(const auto & value : values){
 		// Выполняем занесение названия поля
 		builder.key(value.name);
 		// Признак наличия дробной части либо порядка числа
@@ -1189,7 +1189,7 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 		 *          вид объявленный лишь дозволяет это, а не предписывает.
 		 *
 		 */
-		if((value.kind == kind_t::TEXT) || !numeric(value.value, fraction, negative)) {
+		if((value.kind == kind_t::TEXT) || !numeric(value.value, fraction, negative)){
 			// Выполняем занесение значения поля текстом
 			builder.value(value.value);
 			// Переходим к значению поля следующему
@@ -1202,7 +1202,7 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 		 *          захват «1e5» при виде целом числом целым не является.
 		 *
 		 */
-		if(fraction || (value.kind == kind_t::FLOATING)) {
+		if(fraction || (value.kind == kind_t::FLOATING)){
 			// Выполняем сброс признака ошибки преобразования
 			errno = 0;
 			// Выполняем преобразование захвата числом дробным
@@ -1350,7 +1350,7 @@ size_t awh::Grok::read(string_view text) noexcept {
 	/**
 	 * Выполняем перебор строк набора шаблонов
 	 */
-	while(begin <= text.size()) {
+	while(begin <= text.size()){
 		// Получаем позицию завершения очередной строки набора
 		size_t end = text.find('\n', begin);
 		/**
@@ -1460,7 +1460,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	/**
 	 * Если набор текстов шаблонов пуст
 	 */
-	if(patterns.empty()) {
+	if(patterns.empty()){
 		// Устанавливаем код ошибки записи собранных шаблонов
 		this->_error = error_t::STORAGE_EMPTY;
 		// Выводим результат записи собранных шаблонов
@@ -1473,7 +1473,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	/**
 	 * Выполняем перебор набора текстов шаблонов
 	 */
-	for(const auto & pattern : patterns) {
+	for(const auto & pattern : patterns){
 		// Выполняем сборку шаблона Grok
 		const exp_t expression = this->build(pattern, flags);
 		/**
@@ -1504,7 +1504,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	/**
 	 * Выполняем перебор набора собранных шаблонов
 	 */
-	for(const auto & expression : expressions) {
+	for(const auto & expression : expressions){
 		// Выполняем запись исходного текста шаблона
 		writeText(expression->pattern, payload);
 		// Выполняем запись развёрнутого текста регулярного выражения
@@ -1514,7 +1514,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		/**
 		 * Выполняем перебор набора полей шаблона
 		 */
-		for(const auto & field : expression->fields) {
+		for(const auto & field : expression->fields){
 			// Выполняем запись номера группы захвата поля
 			writeNumber(static_cast <uint64_t> (field.number), payload);
 			// Выполняем запись вида значения поля
@@ -1528,11 +1528,11 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	/**
 	 * Если часть записи, шаблоны описывающая, подлежит сжатию
 	 */
-	if(this->_method != compressor::method_t::NONE) {
+	if(this->_method != compressor::method_t::NONE){
 		/**
 		 * Если обработчик сжатия части записи не установлен
 		 */
-		if(!this->_pack) {
+		if(!this->_pack){
 			// Устанавливаем код ошибки отсутствия обработчика метода сжатия
 			this->_error = error_t::STORAGE_METHOD;
 			// Выводим результат записи собранных шаблонов
@@ -1541,7 +1541,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 		/**
 		 * Если сжатие содержимого части записи не выполнено
 		 */
-		if(!this->_pack(payload, packed) || packed.empty()) {
+		if(!this->_pack(payload, packed) || packed.empty()){
 			// Устанавливаем код ошибки невыполненного сжатия части записи
 			this->_error = error_t::STORAGE_PACKING;
 			// Выводим результат записи собранных шаблонов
@@ -1597,7 +1597,7 @@ bool awh::Grok::save(const vector <string> & patterns, string & result, const ui
 	/**
 	 * Если запись собранных регулярных выражений не выполнена
 	 */
-	if(!this->_storage.save(records, storage)) {
+	if(!this->_storage.save(records, storage)){
 		// Устанавливаем код ошибки записи собранных шаблонов
 		this->_error = error_t::STORAGE;
 		// Выполняем очистку записи собранных шаблонов
@@ -1647,7 +1647,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если запись собранных шаблонов пуста
 	 */
-	if(record.empty()) {
+	if(record.empty()){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_EMPTY;
 		// Выводим результат восстановления собранных шаблонов
@@ -1660,7 +1660,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	 *          записи и метод сжатия части её, шаблоны описывающей.
 	 *
 	 */
-	if(record.size() < 10) {
+	if(record.size() < 10){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
@@ -1679,7 +1679,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если опознание записи не совпадает
 	 */
-	if(magic != GROK_MAGIC) {
+	if(magic != GROK_MAGIC){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_MAGIC;
 		// Выводим результат восстановления собранных шаблонов
@@ -1688,7 +1688,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если версия устройства записи не поддерживается
 	 */
-	if(static_cast <uint8_t> (record[offset++]) != GROK_VERSION) {
+	if(static_cast <uint8_t> (record[offset++]) != GROK_VERSION){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_VERSION;
 		// Выводим результат восстановления собранных шаблонов
@@ -1701,7 +1701,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если чтение размеров содержимого части записи не выполнено
 	 */
-	if(!readNumber(record, offset, origin) || !readNumber(record, offset, length)) {
+	if(!readNumber(record, offset, origin) || !readNumber(record, offset, length)){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
@@ -1712,7 +1712,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если запись контрольную сумму содержимого не вмещает
 	 */
-	if((record.size() - offset) < 8) {
+	if((record.size() - offset) < 8){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
@@ -1729,7 +1729,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если содержимое части записи за её пределы выходит
 	 */
-	if(placed > static_cast <uint64_t> (record.size() - offset)) {
+	if(placed > static_cast <uint64_t> (record.size() - offset)){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
@@ -1744,7 +1744,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	 *          пока сумма не была заведена.
 	 *
 	 */
-	if(checksum(record.substr(offset, static_cast <size_t> (placed))) != control) {
+	if(checksum(record.substr(offset, static_cast <size_t> (placed))) != control){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_CHECKSUM;
 		// Выводим результат восстановления собранных шаблонов
@@ -1755,11 +1755,11 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если часть записи, шаблоны описывающая, сжата
 	 */
-	if(method != static_cast <uint8_t> (compressor::method_t::NONE)) {
+	if(method != static_cast <uint8_t> (compressor::method_t::NONE)){
 		/**
 		 * Если обработчик разбора сжатой части записи не установлен
 		 */
-		if(!this->_unpack) {
+		if(!this->_unpack){
 			// Устанавливаем код ошибки отсутствия обработчика метода сжатия
 			this->_error = error_t::STORAGE_METHOD;
 			// Выводим результат восстановления собранных шаблонов
@@ -1797,7 +1797,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если чтение режимов сборки либо количества шаблонов не выполнено
 	 */
-	if(!readNumber(record, offset, flags) || !readNumber(record, offset, count)) {
+	if(!readNumber(record, offset, flags) || !readNumber(record, offset, count)){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE_TRUNCATED;
 		// Выводим результат восстановления собранных шаблонов
@@ -1806,7 +1806,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если количество собранных шаблонов превышает размер оставшейся записи
 	 */
-	if(count > static_cast <uint64_t> (record.size() - offset)) {
+	if(count > static_cast <uint64_t> (record.size() - offset)){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE;
 		// Выводим результат восстановления собранных шаблонов
@@ -1819,7 +1819,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Выполняем восстановление набора шаблонов Grok
 	 */
-	for(uint64_t i = 0; i < count; i++) {
+	for(uint64_t i = 0; i < count; i++){
 		// Создаём восстанавливаемый шаблон Grok
 		auto expression = make_shared <awh::grok::expression_t> ();
 		// Количество полей восстанавливаемого шаблона
@@ -1838,7 +1838,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		/**
 		 * Если количество полей превышает размер оставшейся записи
 		 */
-		if(fields > static_cast <uint64_t> (record.size() - offset)) {
+		if(fields > static_cast <uint64_t> (record.size() - offset)){
 			// Устанавливаем код ошибки восстановления собранных шаблонов
 			this->_error = error_t::STORAGE;
 			// Выводим результат восстановления собранных шаблонов
@@ -1849,7 +1849,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		/**
 		 * Выполняем восстановление набора полей шаблона
 		 */
-		for(uint64_t j = 0; j < fields; j++) {
+		for(uint64_t j = 0; j < fields; j++){
 			// Восстанавливаемое поле шаблона
 			awh::grok::field_t field;
 			// Номер группы захвата поля
@@ -1857,7 +1857,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 			/**
 			 * Если чтение номера группы захвата поля не выполнено
 			 */
-			if(!readNumber(record, offset, number) || (offset >= record.size())) {
+			if(!readNumber(record, offset, number) || (offset >= record.size())){
 				// Устанавливаем код ошибки восстановления собранных шаблонов
 				this->_error = error_t::STORAGE_TRUNCATED;
 				// Выводим результат восстановления собранных шаблонов
@@ -1870,7 +1870,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 			/**
 			 * Если вид значения поля модулю неизвестен
 			 */
-			if(kind > static_cast <uint8_t> (kind_t::FLOATING)) {
+			if(kind > static_cast <uint8_t> (kind_t::FLOATING)){
 				// Устанавливаем код ошибки восстановления собранных шаблонов
 				this->_error = error_t::KIND_UNKNOWN;
 				// Выводим результат восстановления собранных шаблонов
@@ -1881,7 +1881,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 			/**
 			 * Если чтение названия поля шаблона не выполнено
 			 */
-			if(!readText(record, offset, field.name)) {
+			if(!readText(record, offset, field.name)){
 				// Устанавливаем код ошибки восстановления собранных шаблонов
 				this->_error = error_t::STORAGE_TRUNCATED;
 				// Выводим результат восстановления собранных шаблонов
@@ -1898,7 +1898,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если восстановление собранных регулярных выражений не выполнено
 	 */
-	if(!this->_storage.load(storage, records)) {
+	if(!this->_storage.load(storage, records)){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE;
 		// Выводим результат восстановления собранных шаблонов
@@ -1907,7 +1907,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Если количество восстановленных выражений набору шаблонов не отвечает
 	 */
-	if(records.size() != expressions.size()) {
+	if(records.size() != expressions.size()){
 		// Устанавливаем код ошибки восстановления собранных шаблонов
 		this->_error = error_t::STORAGE;
 		// Выводим результат восстановления собранных шаблонов
@@ -1918,7 +1918,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	/**
 	 * Выполняем перебор набора восстановленных шаблонов
 	 */
-	for(size_t i = 0; i < expressions.size(); i++) {
+	for(size_t i = 0; i < expressions.size(); i++){
 		// Выполняем установку восстановленного регулярного выражения
 		expressions.at(i)->exp = records.at(i);
 		// Выполняем добавление восстановленного шаблона в набор

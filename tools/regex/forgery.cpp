@@ -64,7 +64,7 @@ int32_t main() noexcept {
 	/**
 	 * Если сборка регулярного выражения не удалась
 	 */
-	if(!exp) {
+	if(!exp){
 		// Выводим сообщение об отказе сборки выражения
 		::printf("сборка выражения не удалась\n");
 		// Выходим из приложения с кодом отказа
@@ -79,13 +79,13 @@ int32_t main() noexcept {
 	/**
 	 * Выполняем обход указаний собранной программы
 	 */
-	for(size_t i = 0; i < twisted->forward.instructions.size(); i++) {
+	for(size_t i = 0; i < twisted->forward.instructions.size(); i++){
 		// Получаем очередное указание собранной программы
 		auto & instruction = twisted->forward.instructions[i];
 		/**
 		 * Если указание сопоставляет одиночный символ
 		 */
-		if(instruction.type == regex::opcode_t::CHAR) {
+		if(instruction.type == regex::opcode_t::CHAR){
 			// Выполняем подделку пометки ряда у символов различных
 			instruction.repeat = 3;
 			// Выходим из обхода указаний собранной программы
@@ -97,7 +97,7 @@ int32_t main() noexcept {
 	/**
 	 * Если запись подделанного выражения не удалась
 	 */
-	if(!storage.save({twisted}, record)) {
+	if(!storage.save({twisted}, record)){
 		// Выводим сообщение об отказе записи выражения
 		::printf("запись подделанного выражения не удалась\n");
 		// Выходим из приложения с кодом отказа
@@ -108,7 +108,7 @@ int32_t main() noexcept {
 	/**
 	 * Если восстановление записи подделанной отвергнуто
 	 */
-	if(!storage.load(record, restored)) {
+	if(!storage.load(record, restored)){
 		// Выводим сообщение об отказе восстановления записи
 		::printf("подделанное: ОТВЕРГНУТО поверкой, код %u — заслон на месте\n",
 		 static_cast <uint32_t> (storage.error()));

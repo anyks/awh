@@ -531,7 +531,7 @@ TEST(Regex, CodegenSubset) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -1185,7 +1185,7 @@ TEST(Regex, CodegenBounds) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -1207,13 +1207,13 @@ TEST(Regex, CodegenBounds) {
 		/**
 		 * Если совпадение в тексте обнаружено
 		 */
-		if(result) {
+		if(result){
 			// Выполняем проверку количества установленных границ
 			ASSERT_EQ(received.size(), expected.size()) << sample.pattern << " на тексте «" << sample.text << "»";
 			/**
 			 * Выполняем обход границ совпадения и захваченных групп
 			 */
-			for(size_t i = 0; i < received.size(); i++) {
+			for(size_t i = 0; i < received.size(); i++){
 				// Выполняем проверку начальной границы
 				EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << " на тексте «" << sample.text << "», граница " << i;
 				// Выполняем проверку конечной границы
@@ -1247,7 +1247,7 @@ TEST(Regex, CodegenMatching) {
 	/**
 	 * Выполняем обход порождаемых образцов сличения
 	 */
-	for(size_t sample = 0; sample < 20000; sample++) {
+	for(size_t sample = 0; sample < 20000; sample++){
 		// Формируем порождаемое регулярное выражение
 		string pattern;
 		/**
@@ -1282,7 +1282,7 @@ TEST(Regex, CodegenMatching) {
 		/**
 		 * Выполняем наполнение порождаемого выражения
 		 */
-		for(size_t i = 0; i < parts; i++) {
+		for(size_t i = 0; i < parts; i++){
 			// Получаем признак заключения очередной части в захватывающую группу
 			const bool captured = ((gen() % 3) == 0);
 			/**
@@ -1317,7 +1317,7 @@ TEST(Regex, CodegenMatching) {
 			/**
 			 * Если очередная часть выражения выбирается из двух
 			 */
-			if((gen() % 4) == 0) {
+			if((gen() % 4) == 0){
 				// Получаем признак заключения ветвей выбора в захватывающие группы
 				const bool grouped = ((gen() % 2) == 0);
 				// Выполняем открытие выбора одной из ветвей
@@ -1397,7 +1397,7 @@ TEST(Regex, CodegenMatching) {
 			 *          а с ним иная и длина сличаемого.
 			 *
 			 */
-			if(captured && ((gen() % 3) == 0)) {
+			if(captured && ((gen() % 3) == 0)){
 				// Выполняем добавление ссылки на захватывающую группу
 				pattern.append(1, '\\').append(1, static_cast <char> ('0' + static_cast <char> (groups)));
 				/**
@@ -1416,7 +1416,7 @@ TEST(Regex, CodegenMatching) {
 			 *          позиции, и запрет отступления внутрь тела проверки.
 			 *
 			 */
-			if((gen() % 4) == 0) {
+			if((gen() % 4) == 0){
 				/**
 				 * Получаем признак проверки текста, позиции предшествующего
 				 *
@@ -1500,13 +1500,13 @@ TEST(Regex, CodegenMatching) {
 		/**
 		 * Если совпадение в тексте обнаружено
 		 */
-		if(result) {
+		if(result){
 			// Выполняем проверку количества установленных границ
 			ASSERT_EQ(received.size(), expected.size()) << "«" << pattern << "» на тексте «" << text << "»";
 			/**
 			 * Выполняем обход границ совпадения и захваченных групп
 			 */
-			for(size_t i = 0; i < received.size(); i++) {
+			for(size_t i = 0; i < received.size(); i++){
 				// Выполняем проверку начальной границы
 				ASSERT_EQ(received.at(i).first, expected.at(i).first) << "«" << pattern << "» на тексте «" << text << "», граница " << i;
 				// Выполняем проверку конечной границы
@@ -1552,7 +1552,7 @@ TEST(Regex, CodegenUTF) {
 	/**
 	 * Выполняем обход порождаемых образцов сличения
 	 */
-	for(size_t sample = 0; sample < 20000; sample++) {
+	for(size_t sample = 0; sample < 20000; sample++){
 		// Формируем порождаемое регулярное выражение
 		string pattern;
 		// Получаем номер привязки, приписываемой началу выражения
@@ -1568,7 +1568,7 @@ TEST(Regex, CodegenUTF) {
 		/**
 		 * Выполняем наполнение порождаемого выражения
 		 */
-		for(size_t i = 0; i < parts; i++) {
+		for(size_t i = 0; i < parts; i++){
 			// Получаем признак заключения очередной части в захватывающую группу
 			const bool captured = ((gen() % 3) == 0);
 			/**
@@ -1661,13 +1661,13 @@ TEST(Regex, CodegenUTF) {
 		/**
 		 * Если совпадение в тексте обнаружено
 		 */
-		if(result) {
+		if(result){
 			// Выполняем проверку количества установленных границ
 			ASSERT_EQ(received.size(), expected.size()) << "«" << pattern << "» на тексте «" << text << "»";
 			/**
 			 * Выполняем обход границ совпадения и захваченных групп
 			 */
-			for(size_t i = 0; i < received.size(); i++) {
+			for(size_t i = 0; i < received.size(); i++){
 				// Выполняем проверку начальной границы
 				ASSERT_EQ(received.at(i).first, expected.at(i).first) << "«" << pattern << "» на тексте «" << text << "», граница " << i;
 				// Выполняем проверку конечной границы
@@ -1779,7 +1779,7 @@ TEST(Regex, CodegenArena) {
 	/**
 	 * Выполняем обход набора построений, вне тела повторения приписываемых
 	 */
-	for(const auto * trailing : TRAILING) {
+	for(const auto * trailing : TRAILING){
 		// Создаём собираемое выражение с построениями вне тела повторения
 		regex::expression_t appended;
 		// Выполняем сборку выражения с построениями вне тела повторения
@@ -1826,7 +1826,7 @@ TEST(Regex, CodegenArena) {
 	/**
 	 * Выполняем обход выражений, обе стороны порога области записей проходящих
 	 */
-	for(const auto * pattern : CROSSING) {
+	for(const auto * pattern : CROSSING){
 		// Создаём собираемое выражение стороны порога области записей
 		regex::expression_t crossed;
 		// Выполняем сборку выражения стороны порога области записей
@@ -1875,7 +1875,7 @@ TEST(Regex, CodegenArena) {
 		/**
 		 * Выполняем построение выражения с числом групп свыше кадра вызова
 		 */
-		for(size_t i = 0; i < 24; i++) {
+		for(size_t i = 0; i < 24; i++){
 			// Выполняем добавление очередной захватывающей группы выражения
 			pattern.append("([a-m])");
 			// Выполняем добавление очередного символа текста сопоставления
@@ -1890,7 +1890,7 @@ TEST(Regex, CodegenArena) {
 		/**
 		 * Если порождение сопоставителя выражения выполнено
 		 */
-		if(generated.compile(widened.forward)) {
+		if(generated.compile(widened.forward)){
 			// Создаём набор границ совпадения порождённого сопоставителя
 			vector <pair <size_t, size_t>> received;
 			// Создаём набор границ совпадения исполнения программы
@@ -1902,7 +1902,7 @@ TEST(Regex, CodegenArena) {
 			/**
 			 * Если порождённый сопоставитель от сопоставления не отказался
 			 */
-			if(!refusing) {
+			if(!refusing){
 				// Выполняем проверку совпадения итога с исполнением программы
 				ASSERT_EQ(obtained, engine.exec(widened, sample, 0, expected)) << pattern;
 				// Выполняем проверку совпадения границ с исполнением программы
@@ -1982,7 +1982,7 @@ TEST(Regex, CodegenProgress) {
 	/**
 	 * Выполняем обход набора разбираемых выражений
 	 */
-	for(const auto * pattern : PATTERNS) {
+	for(const auto * pattern : PATTERNS){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения из текста
@@ -2000,7 +2000,7 @@ TEST(Regex, CodegenProgress) {
 		/**
 		 * Выполняем обход набора текстов сопоставления
 		 */
-		for(const auto * text : TEXTS) {
+		for(const auto * text : TEXTS){
 			// Создаём набор границ совпадения разбора программы
 			vector <pair <size_t, size_t>> expected;
 			// Создаём набор границ совпадения порождённого сопоставителя
@@ -2014,7 +2014,7 @@ TEST(Regex, CodegenProgress) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(walking) {
+			if(walking){
 				// Выполняем проверку схождения числа границ обоих путей
 				ASSERT_EQ(expected.size(), actual.size()) << pattern << " на тексте «" << text << "»";
 				// Выполняем проверку схождения самих границ обоих путей
@@ -2081,7 +2081,7 @@ TEST(Regex, CodegenLazyFrameless) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(const auto * pattern : PATTERNS) {
+	for(const auto * pattern : PATTERNS){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения из текста
@@ -2102,7 +2102,7 @@ TEST(Regex, CodegenLazyFrameless) {
 		/**
 		 * Выполняем обход набора текстов сопоставления
 		 */
-		for(const auto * text : TEXTS) {
+		for(const auto * text : TEXTS){
 			// Создаём набор границ совпадения разбора программы
 			vector <pair <size_t, size_t>> expected;
 			// Создаём набор границ совпадения порождённого сопоставителя
@@ -2116,7 +2116,7 @@ TEST(Regex, CodegenLazyFrameless) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(walking) {
+			if(walking){
 				// Выполняем проверку схождения числа границ обоих путей
 				ASSERT_EQ(expected.size(), actual.size()) << pattern << " на тексте «" << text << "»";
 				// Выполняем проверку схождения самих границ обоих путей
@@ -2167,7 +2167,7 @@ TEST(Regex, CodegenSealed) {
 	/**
 	 * Выполняем проверку каждого выражения набора
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -2269,7 +2269,7 @@ TEST(Regex, CodegenLeadingRun) {
 	/**
 	 * Выполняем проверку каждого выражения набора
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём собираемое выражение с порождением машинного кода
 		regex::expression_t machine;
 		// Создаём собираемое выражение исполнения программы
@@ -2281,13 +2281,13 @@ TEST(Regex, CodegenLeadingRun) {
 		/**
 		 * Выполняем перебор текстов сопоставления по длинам до четырёх
 		 */
-		for(size_t length = 0; length <= 4; length++) {
+		for(size_t length = 0; length <= 4; length++){
 			// Создаём набор положений букв азбуки в тексте
 			vector <size_t> index(length, 0);
 			/**
 			 * Выполняем обход текстов сопоставления очередной длины
 			 */
-			for(;;) {
+			for(;;){
 				// Создаём текст сопоставления очередной
 				string text;
 				/**
@@ -2312,7 +2312,7 @@ TEST(Regex, CodegenLeadingRun) {
 				/**
 				 * Выполняем переход к тексту следующему
 				 */
-				while(position > 0) {
+				while(position > 0){
 					/**
 					 * Если буква азбуки не последняя
 					 */
@@ -2362,7 +2362,7 @@ TEST(Regex, CodegenEngine) {
 	/**
 	 * Выполняем наполнение набора текстов сопоставления
 	 */
-	for(size_t i = 0; i < 200; i++) {
+	for(size_t i = 0; i < 200; i++){
 		// Формируем очередной текст сопоставления
 		string text;
 		// Получаем длину порождаемого текста в символах
@@ -2388,7 +2388,7 @@ TEST(Regex, CodegenEngine) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & pattern : patterns) {
+	for(auto & pattern : patterns){
 		// Создаём движок сопоставления исполнением программы
 		regex::engine_t plain;
 		// Создаём движок сопоставления порождённым машинным кодом
@@ -2410,7 +2410,7 @@ TEST(Regex, CodegenEngine) {
 		/**
 		 * Выполняем обход набора текстов сопоставления
 		 */
-		for(auto & text : texts) {
+		for(auto & text : texts){
 			// Создаём набор границ, исполнением программы установленных
 			vector <pair <size_t, size_t>> expected;
 			// Создаём набор границ, порождённым кодом установленных
@@ -2422,7 +2422,7 @@ TEST(Regex, CodegenEngine) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(result) {
+			if(result){
 				// Выполняем проверку количества установленных границ
 				ASSERT_EQ(received.size(), expected.size()) << pattern << " на тексте «" << text << "»";
 				/**
@@ -2515,7 +2515,7 @@ TEST(Regex, CodegenStorage) {
 	/**
 	 * Выполняем перебор набора выражений проверки
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -2551,7 +2551,7 @@ TEST(Regex, CodegenStorage) {
 		/**
 		 * Выполняем перебор набора текстов сличения
 		 */
-		for(const char * subject : subjects) {
+		for(const char * subject : subjects){
 			// Границы захвата, выданные сопоставителями
 			vector <pair <size_t, size_t>> first, second;
 			// Выполняем сопоставление порождённым начисто сопоставителем
@@ -2623,7 +2623,7 @@ TEST(Regex, CodegenStorageForeign) {
 	 *          а падения быть не обязано ни при каком.
 	 *
 	 */
-	for(size_t i = 0; i < record.size(); i++) {
+	for(size_t i = 0; i < record.size(); i++){
 		// Получаем оборванную запись порождённого сопоставителя
 		const string cut = record.substr(0, i);
 		// Создаём восстанавливаемый сопоставитель выражения
@@ -2685,7 +2685,7 @@ TEST(Regex, CodegenRefusal) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(const auto & sample : SAMPLES) {
+	for(const auto & sample : SAMPLES){
 		// Получаем текст очередного регулярного выражения
 		const char * pattern = sample.pattern;
 		// Создаём объект движка регулярных выражений
@@ -2765,7 +2765,7 @@ TEST(Regex, CodegenFilter) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -2777,7 +2777,7 @@ TEST(Regex, CodegenFilter) {
 		/**
 		 * Если порождение сопоставителя выражения не выполнено
 		 */
-		if(!codegen.compile(expression.forward)) {
+		if(!codegen.compile(expression.forward)){
 			// Выполняем проверку неприменимости порождения к программе
 			ASSERT_FALSE(regex::codegen_t::applicable(expression.forward)) << sample.pattern;
 			// Переходим к следующему выражению набора
@@ -2816,7 +2816,7 @@ TEST(Regex, CodegenFilter) {
 		 *          обязан отвечать о своём отборе тем же способом.
 		 *
 		 */
-		if(restored.restore(record, offset, expression.forward)) {
+		if(restored.restore(record, offset, expression.forward)){
 			// Выполняем учёт сопоставителя, восстановление прошедшего
 			restoring++;
 			// Выполняем проверку способа отбора у сопоставителя восстановленного
@@ -2882,7 +2882,7 @@ TEST(Regex, CodegenNarrowing) {
 	/**
 	 * Выполняем обход выражений набора
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -2920,7 +2920,7 @@ TEST(Regex, CodegenNarrowing) {
 		 *          наружу вовсе - пропускать там нечего.
 		 *
 		 */
-		for(const size_t length : {64ul, 512ul, 4096ul, 40960ul}) {
+		for(const size_t length : {64ul, 512ul, 4096ul, 40960ul}){
 			// Собираемый текст сличения
 			string text;
 			/**
@@ -2936,7 +2936,7 @@ TEST(Regex, CodegenNarrowing) {
 			/**
 			 * Выполняем обход позиций начала поиска совпадения
 			 */
-			for(const size_t start : {static_cast <size_t> (0), (length / 2), (length - 1), length}) {
+			for(const size_t start : {static_cast <size_t> (0), (length / 2), (length - 1), length}){
 				// Набор границ захвата исполнения программы
 				vector <pair <size_t, size_t>> plain;
 				// Набор границ захвата порождённого машинного кода
@@ -2950,7 +2950,7 @@ TEST(Regex, CodegenNarrowing) {
 				/**
 				 * Если совпадение обеими дорогами обнаружено
 				 */
-				if(one && !plain.empty() && !machine.empty()) {
+				if(one && !plain.empty() && !machine.empty()){
 					// Увеличиваем количество сличений, совпадение обнаруживших
 					matched++;
 					// Выполняем проверку совпадения начальной границы
@@ -3026,7 +3026,7 @@ TEST(Regex, CompilerSubsetRefusal) {
 	/**
 	 * Выполняем обход выражений, подмножеству не принадлежащих
 	 */
-	for(const char * pattern : foreign) {
+	for(const char * pattern : foreign){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -3043,7 +3043,7 @@ TEST(Regex, CompilerSubsetRefusal) {
 	/**
 	 * Выполняем обход выражений, подмножеству принадлежащих
 	 */
-	for(const char * pattern : native) {
+	for(const char * pattern : native){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -3134,11 +3134,11 @@ TEST(Regex, CodegenSkipping) {
 		/**
 		 * Выполняем обход текстов сличения
 		 */
-		for(const string & text : texts) {
+		for(const string & text : texts){
 			/**
 			 * Выполняем обход позиций начала поиска совпадения
 			 */
-			for(const size_t start : {static_cast <size_t> (0), (text.size() / 3), text.size()}) {
+			for(const size_t start : {static_cast <size_t> (0), (text.size() / 3), text.size()}){
 				// Набор границ захвата исполнения программы
 				vector <pair <size_t, size_t>> plainly;
 				// Набор границ захвата порождённого машинного кода
@@ -3152,7 +3152,7 @@ TEST(Regex, CodegenSkipping) {
 				/**
 				 * Если совпадение обеими дорогами обнаружено
 				 */
-				if(one && !plainly.empty() && !machine.empty()) {
+				if(one && !plainly.empty() && !machine.empty()){
 					// Увеличиваем количество сличений, совпадение обнаруживших
 					matched++;
 					// Выполняем проверку совпадения начальной границы
@@ -3204,7 +3204,7 @@ TEST(Regex, CodegenMutated) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(const char * pattern : SAMPLES) {
+	for(const char * pattern : SAMPLES){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -3218,7 +3218,7 @@ TEST(Regex, CodegenMutated) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < count; i++) {
+		for(size_t i = 0; i < count; i++){
 			/**
 			 * @brief Набор подменяемых значений адреса указания
 			 *
@@ -3244,7 +3244,7 @@ TEST(Regex, CodegenMutated) {
 			/**
 			 * Выполняем перебор подмен значения поля указания
 			 */
-			for(const uint32_t value : values) {
+			for(const uint32_t value : values){
 				// Создаём подделываемую программу выражения
 				regex::program_t program = expression.forward;
 				// Получаем адрес подделываемого указания программы
@@ -3305,7 +3305,7 @@ TEST(Regex, EmitterFrameGuard) {
 	/**
 	 * Выполняем перебор мест кадра вызова, входом отведённых
 	 */
-	for(uint32_t index = 0; index < SEATS; index++) {
+	for(uint32_t index = 0; index < SEATS; index++){
 		// Выполняем запись в очередное место кадра вызова
 		emitter.store(regex::emitter_t::reg_t::SCRATCH, regex::emitter_t::reg_t::STACK, index);
 		// Выполняем проверку отсутствия отказа порождения по месту кадра
@@ -3407,7 +3407,7 @@ TEST(Regex, CodegenRefusalAgreement) {
 	/**
 	 * Выполняем перебор набора выражений вне подмножества
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения с порождением машинного кода
@@ -3511,7 +3511,7 @@ TEST(Regex, CodegenBoundedChain) {
 	/**
 	 * Выполняем обход выражений
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём выражение эталонное, порождения машинного кода лишённое
@@ -3535,11 +3535,11 @@ TEST(Regex, CodegenBoundedChain) {
 		/**
 		 * Выполняем обход текстов сличения
 		 */
-		for(const string & text : texts) {
+		for(const string & text : texts){
 			/**
 			 * Выполняем обход позиций начала поиска совпадения
 			 */
-			for(const size_t start : {static_cast <size_t> (0), static_cast <size_t> (1), (text.size() / 2), text.size()}) {
+			for(const size_t start : {static_cast <size_t> (0), static_cast <size_t> (1), (text.size() / 2), text.size()}){
 				/**
 				 * Если позиция начала поиска за пределами текста
 				 */
@@ -3569,7 +3569,7 @@ TEST(Regex, CodegenBoundedChain) {
 				/**
 				 * Выполняем сличение всех границ захвата
 				 */
-				for(size_t i = 0; i < plainly.size(); i++) {
+				for(size_t i = 0; i < plainly.size(); i++){
 					// Выполняем проверку совпадения начальной границы
 					EXPECT_EQ(plainly.at(i).first, machine.at(i).first)
 					 << pattern << " на «" << text << "» с позиции " << start << ", группа " << i;
@@ -3731,7 +3731,7 @@ TEST(Regex, CodegenSeriesRow) {
 	/**
 	 * Выполняем обход выражений
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём выражение эталонное, порождения машинного кода лишённое
@@ -3755,11 +3755,11 @@ TEST(Regex, CodegenSeriesRow) {
 		/**
 		 * Выполняем обход текстов сличения
 		 */
-		for(const string & text : texts) {
+		for(const string & text : texts){
 			/**
 			 * Выполняем обход позиций начала поиска совпадения
 			 */
-			for(const size_t start : {static_cast <size_t> (0), static_cast <size_t> (1), (text.size() / 2), text.size()}) {
+			for(const size_t start : {static_cast <size_t> (0), static_cast <size_t> (1), (text.size() / 2), text.size()}){
 				/**
 				 * Если позиция начала поиска за пределами текста
 				 */
@@ -3789,7 +3789,7 @@ TEST(Regex, CodegenSeriesRow) {
 				/**
 				 * Выполняем сличение всех границ захвата
 				 */
-				for(size_t i = 0; i < plainly.size(); i++) {
+				for(size_t i = 0; i < plainly.size(); i++){
 					// Выполняем проверку совпадения начальной границы
 					EXPECT_EQ(plainly.at(i).first, machine.at(i).first)
 					 << pattern << " на «" << text << "» с позиции " << start << ", группа " << i;
@@ -3899,7 +3899,7 @@ TEST(Regex, CodegenWideSifting) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём выражение эталонное, порождения машинного кода лишённое
@@ -3931,7 +3931,7 @@ TEST(Regex, CodegenWideSifting) {
 		/**
 		 * Выполняем обход удалений кандидата от начала текста
 		 */
-		for(size_t distance = 0; distance <= 40; distance++) {
+		for(size_t distance = 0; distance <= 40; distance++){
 			/**
 			 * Выполняем обход промежутков между приманкой и кандидатом
 			 */
@@ -3940,7 +3940,7 @@ TEST(Regex, CodegenWideSifting) {
 				/**
 				 * Выполняем обход текстов с приманкой и без неё
 				 */
-				for(const bool baited : {false, true}) {
+				for(const bool baited : {false, true}){
 					// Создаём текст сличения
 					string text(distance, sample.filler);
 					/**
@@ -3954,7 +3954,7 @@ TEST(Regex, CodegenWideSifting) {
 					/**
 					 * Выполняем обход позиций начала поиска совпадения
 					 */
-					for(size_t start = 0; start <= text.size(); start++) {
+					for(size_t start = 0; start <= text.size(); start++){
 						// Набор границ захвата исполнения программы
 						vector <pair <size_t, size_t>> plainly;
 						// Набор границ захвата порождённого машинного кода
@@ -3976,7 +3976,7 @@ TEST(Regex, CodegenWideSifting) {
 						/**
 						 * Выполняем обход набора установленных границ
 						 */
-						for(size_t i = 0; i < plainly.size(); i++) {
+						for(size_t i = 0; i < plainly.size(); i++){
 							// Выполняем проверку начальной границы захвата
 							ASSERT_EQ(plainly.at(i).first, machine.at(i).first)
 							 << sample.pattern << " на «" << text << "» с позиции " << start << ", группа " << i;

@@ -78,7 +78,7 @@ static double fastest(const size_t rounds, Body && body) noexcept {
 	/**
 	 * Выполняем проходы замера
 	 */
-	for(size_t attempt = 0; attempt < awh::benchmark::matching::ATTEMPTS; attempt++) {
+	for(size_t attempt = 0; attempt < awh::benchmark::matching::ATTEMPTS; attempt++){
 		const auto begin = chrono::steady_clock::now();
 		/**
 		 * Выполняем повторения сопоставления прохода
@@ -175,7 +175,7 @@ static double direct(const awh::benchmark::matching::scenario_t & scenario, cons
 	/**
 	 * Определяем способ отбора позиций, порождением избранный
 	 */
-	switch(static_cast <uint8_t> (codegen.filter())) {
+	switch(static_cast <uint8_t> (codegen.filter())){
 		case static_cast <uint8_t> (awh::regex::filter_t::SEEK): filter = "SEEK"; break;
 		case static_cast <uint8_t> (awh::regex::filter_t::LINING): filter = "LINING"; break;
 		case static_cast <uint8_t> (awh::regex::filter_t::SIFTING): filter = "SIFTING"; break;
@@ -212,7 +212,7 @@ int main(int count, char ** values) noexcept {
 	/**
 	 * Выполняем перебор сценариев набора
 	 */
-	for(const auto & scenario : awh::benchmark::matching::SCENARIOS) {
+	for(const auto & scenario : awh::benchmark::matching::SCENARIOS){
 		bool chosen = (count < 2);
 		/**
 		 * Выполняем перебор доводов щупа
@@ -235,7 +235,7 @@ int main(int count, char ** values) noexcept {
 		 *          кода не получает, и столбец остаётся пустым
 		 *
 		 */
-		if((interpreted <= 0.) || (consumer < 0.) || (machine < 0.)) {
+		if((interpreted <= 0.) || (consumer < 0.) || (machine < 0.)){
 			::printf("regex %-18s ОТКАЗ: разбор %.0f, потребитель %.0f, напрямую %.0f\n",
 			 scenario.name, interpreted, consumer, machine);
 			failed++;

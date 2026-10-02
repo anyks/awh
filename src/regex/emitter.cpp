@@ -208,7 +208,7 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 	/**
 	 * Если метка перехода не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		/**
@@ -635,7 +635,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	/**
 	 * Если метка перехода не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		/**
@@ -674,7 +674,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	/**
 	 * Если метка перехода не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		/**
@@ -724,7 +724,7 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
 	/**
 	 * Если сравниваемое число в поле команды не помещается
 	 */
-	if(value > MAX_IMMEDIATE) {
+	if(value > MAX_IMMEDIATE){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения сравнения
@@ -745,7 +745,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	/**
 	 * Если прибавляемое число в поле команды не помещается
 	 */
-	if(value > MAX_IMMEDIATE) {
+	if(value > MAX_IMMEDIATE){
 		/**
 		 * Если число и разрядом сдвига не покрывается
 		 *
@@ -756,7 +756,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 		 *          не получает вовсе.
 		 *
 		 */
-		if(value > MAX_SHIFTED) {
+		if(value > MAX_SHIFTED){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения сложения
@@ -790,11 +790,11 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	/**
 	 * Если вычитаемое число в поле команды не помещается
 	 */
-	if(value > MAX_IMMEDIATE) {
+	if(value > MAX_IMMEDIATE){
 		/**
 		 * Если число и разрядом сдвига не покрывается - см. метод сложения
 		 */
-		if(value > MAX_SHIFTED) {
+		if(value > MAX_SHIFTED){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения вычитания
@@ -846,7 +846,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 	/**
 	 * Выполняем обход шестнадцатиразрядных частей записываемого числа
 	 */
-	for(uint32_t shift = 0; shift < 4; shift++) {
+	for(uint32_t shift = 0; shift < 4; shift++){
 		// Получаем очередную часть записываемого числа
 		const uint32_t part = static_cast <uint32_t> ((value >> (shift * 16)) & 0xFFFFull);
 		/**
@@ -862,7 +862,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 		/**
 		 * Если очередная часть числа равна нулю до размещения первой части
 		 */
-		if((part == 0) && (shift < 3)) {
+		if((part == 0) && (shift < 3)){
 			// Получаем остаток записываемого числа
 			const uint64_t remains = (value >> ((shift + 1) * 16));
 			/**
@@ -901,7 +901,7 @@ void awh::regex::Emitter::context(const reg_t target, const uint32_t index) noex
 	/**
 	 * Если номер значения в поле команды не помещается
 	 */
-	if(index > MAX_INDEX) {
+	if(index > MAX_INDEX){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения чтения
@@ -922,7 +922,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	/**
 	 * Если номер значения в поле команды не помещается
 	 */
-	if(index > MAX_INDEX) {
+	if(index > MAX_INDEX){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения чтения
@@ -935,7 +935,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	 *          прочие основания адресуют область записей, кадром не мерянную.
 	 *
 	 */
-	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)) {
+	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения обращения к памяти
@@ -952,15 +952,15 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	 *          в ячейку кадра, а цепочка тут же читает его оттуда обратно.
 	 *
 	 */
-	if(this->_stamp == this->_code.size()) {
+	if(this->_stamp == this->_code.size()){
 		/**
 		 * Выполняем обход ряда записей в память с конца
 		 */
-		for(auto i = this->_stored.rbegin(); i != this->_stored.rend(); ++i) {
+		for(auto i = this->_stored.rbegin(); i != this->_stored.rend(); ++i){
 			/**
 			 * Если запись выполнена в то же самое место памяти
 			 */
-			if((i->base == base) && (i->index == index)) {
+			if((i->base == base) && (i->index == index)){
 				/**
 				 * Если значение уже лежит в требуемом регистре
 				 */
@@ -989,7 +989,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	/**
 	 * Если номер значения в поле команды не помещается
 	 */
-	if(index > MAX_INDEX) {
+	if(index > MAX_INDEX){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения записи
@@ -1002,7 +1002,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 *          прочие основания адресуют область записей, кадром не мерянную.
 	 *
 	 */
-	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)) {
+	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения обращения к памяти
@@ -1072,7 +1072,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	/**
 	 * Если метка перехода не заведена
 	 */
-	if(label >= this->_labels.size()) {
+	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		/**
@@ -1155,13 +1155,13 @@ bool awh::regex::Emitter::resolve() noexcept {
 	/**
 	 * Выполняем обход набора отложенных переходов
 	 */
-	for(auto & fixup : this->_fixups) {
+	for(auto & fixup : this->_fixups){
 		// Получаем положение метки, к какой выполняется переход
 		const size_t target = this->_labels.at(fixup.label);
 		/**
 		 * Если метка перехода положения не получила
 		 */
-		if(target == INVALID_LABEL) {
+		if(target == INVALID_LABEL){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выводим результат разрешения отложенных переходов
@@ -1184,7 +1184,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 		/**
 		 * Если смещение перехода за пределы поля команды выходит
 		 */
-		if((delta > limit) || (delta < -limit)) {
+		if((delta > limit) || (delta < -limit)){
 			// Выполняем установку флага отказа порождения машинного кода
 			this->_failed = true;
 			// Выводим результат разрешения отложенных переходов
@@ -1193,7 +1193,7 @@ bool awh::regex::Emitter::resolve() noexcept {
 		/**
 		 * Определяем вид команды, смещение к метке несущей
 		 */
-		switch(static_cast <uint8_t> (fixup.kind)) {
+		switch(static_cast <uint8_t> (fixup.kind)){
 			/**
 			 * Если команда выполняет переход по условию
 			 */

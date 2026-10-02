@@ -229,7 +229,7 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 		/**
 		 * Если ключ в кэше собранных выражений найден
 		 */
-		if(i != this->_cache.end()) {
+		if(i != this->_cache.end()){
 			// Получаем собранное ранее регулярное выражение
 			exp_t result = i->second.lock();
 			/**
@@ -247,7 +247,7 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	/**
 	 * Если сборка регулярного выражения не выполнена
 	 */
-	if(!engine().build(pattern, flags, * result)) {
+	if(!engine().build(pattern, flags, * result)){
 		// Выполняем установку кода ошибки последней операции сборки
 		report().error = engine().error();
 		// Выполняем установку смещения ошибки в тексте выражения
@@ -388,7 +388,7 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	/**
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
 	 */
-	if(!verified(text, exp)) {
+	if(!verified(text, exp)){
 		// Устанавливаем ошибку неверной записи текста сопоставления
 		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Выводим результат проверки наличия совпадения
@@ -448,7 +448,7 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	/**
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
 	 */
-	if(!verified(text, exp)) {
+	if(!verified(text, exp)){
 		// Устанавливаем ошибку неверной записи текста сопоставления
 		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Выводим результат поиска совпадения
@@ -461,7 +461,7 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	/**
 	 * Если совпадение в тексте не обнаружено
 	 */
-	if(!engine().exec(* exp, text, 0, result)) {
+	if(!engine().exec(* exp, text, 0, result)){
 		// Выполняем очистку набора границ совпадения
 		result.clear();
 		// Выполняем снятие кода ошибки сопоставления с движка
@@ -492,11 +492,11 @@ vector <string> awh::RegularExpression::exec(string_view text, const exp_t & exp
 	/**
 	 * Выполняем перебор набора границ совпадения и захваченных групп
 	 */
-	for(const auto & bound : bounds) {
+	for(const auto & bound : bounds){
 		/**
 		 * Если захват группой не выполнен
 		 */
-		if((bound.first == string_view::npos) || (bound.second == string_view::npos) || (bound.second < bound.first)) {
+		if((bound.first == string_view::npos) || (bound.second == string_view::npos) || (bound.second < bound.first)){
 			// Выполняем добавление пустого текста захвата
 			result.emplace_back();
 			// Переходим к следующим границам захвата
@@ -586,7 +586,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 	 *          перебор прекращается на первой выполнившей захват.
 	 *
 	 */
-	for(const uint32_t number : i->second) {
+	for(const uint32_t number : i->second){
 		/**
 		 * Если номер группы находится за пределами набора границ
 		 */
@@ -636,7 +636,7 @@ bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered
 	/**
 	 * Выполняем перебор имён именованных групп выражения
 	 */
-	for(const auto & item : exp->names) {
+	for(const auto & item : exp->names){
 		// Получаем текст, захваченный очередной именованной группой
 		const string_view value = this->capture(text, bounds, exp, item.first);
 		/**

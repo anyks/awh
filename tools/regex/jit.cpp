@@ -144,7 +144,7 @@ static double sweep(const regexp_t & regexp, const regexp_t::exp_t & exp, const 
 	/**
 	 * Выполняем перебор прогонов замера прохода текста
 	 */
-	for(size_t pass = 0; pass < PASSES; pass++) {
+	for(size_t pass = 0; pass < PASSES; pass++){
 		// Количество обнаруженных совпадений очередного прогона
 		size_t count = 0;
 		// Позиция очередного сопоставления в тексте
@@ -154,7 +154,7 @@ static double sweep(const regexp_t & regexp, const regexp_t::exp_t & exp, const 
 		/**
 		 * Выполняем проход текста повторными сопоставлениями
 		 */
-		while(pos < text.size()) {
+		while(pos < text.size()){
 			// Выполняем сопоставление остатка текста
 			const auto bounds = regexp.match(string_view(text).substr(pos), exp);
 			/**
@@ -207,7 +207,7 @@ int main() {
 	/**
 	 * Если порождение машинного кода сборкой не поддерживается
 	 */
-	if(!regex::Emitter::available()) {
+	if(!regex::Emitter::available()){
 		// Выводим сообщение об отсутствии поддержки порождения кода
 		::printf("порождение машинного кода набором команд не поддерживается\n");
 		// Выводим результат исполнения пробы
@@ -220,7 +220,7 @@ int main() {
 	/**
 	 * Выполняем перебор набора сценариев замера
 	 */
-	for(const auto & sample : SAMPLES) {
+	for(const auto & sample : SAMPLES){
 		// Текст сопоставления сценария
 		string text;
 		/**
@@ -236,7 +236,7 @@ int main() {
 		/**
 		 * Если сборка выражений не выполнена
 		 */
-		if(!plain || !coded) {
+		if(!plain || !coded){
 			// Выводим сообщение об отказе сборки выражения сценария
 			::printf("%-16s ОТКАЗ сборки выражения\n", sample.name);
 			// Переходим к следующему сценарию замера
@@ -251,7 +251,7 @@ int main() {
 		/**
 		 * Если количества обнаруженных совпадений расходятся
 		 */
-		if(first != second) {
+		if(first != second){
 			// Выполняем увеличение количества обнаруженных расхождений
 			divergences++;
 			// Выводим сообщение об обнаруженном расхождении

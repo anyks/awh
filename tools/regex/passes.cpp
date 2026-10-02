@@ -61,7 +61,7 @@ static double fastest(const size_t rounds, const size_t repeats, Body && body) n
 	// Лучшее время круга
 	double result = 0.0;
 	// Выполняем круги замера
-	for(size_t round = 0; round < rounds; round++) {
+	for(size_t round = 0; round < rounds; round++){
 		// Получаем время начала круга
 		const auto begin = chrono::steady_clock::now();
 		// Выполняем повторения замеряемого действия
@@ -106,7 +106,7 @@ int main() {
 	/**
 	 * Выполняем перебор разбираемых выражений
 	 */
-	for(const auto & scenario : SCENARIOS) {
+	for(const auto & scenario : SCENARIOS){
 		// Создаём движок сопоставления
 		awh::regex::engine_t engine;
 		// Создаём собранное выражение
@@ -114,7 +114,7 @@ int main() {
 		/**
 		 * Если выражение не собрано
 		 */
-		if(!engine.build(scenario.pattern, 0, expression)) {
+		if(!engine.build(scenario.pattern, 0, expression)){
 			// Выводим сообщение об ошибке
 			::printf("%-16s ОТКАЗ СБОРКИ\n", scenario.name);
 			// Выполняем переход к выражению следующему

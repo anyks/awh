@@ -83,7 +83,7 @@ static const string & medium() noexcept {
 		/**
 		 * Выполняем наполнение текста до заданной длины
 		 */
-		while(outcome.size() < 2048) {
+		while(outcome.size() < 2048){
 			// Выполняем добавление строки запроса обмена по протоколу
 			outcome.append("GET /api/v1/items/");
 			// Выполняем добавление номера запрашиваемого ресурса
@@ -122,7 +122,7 @@ static double fastest(const size_t repeats, Body && body) noexcept {
 	 *          внутри прогона смещена целиком, а не отдельными выбросами
 	 *
 	 */
-	for(uint32_t round = 0; round < 12; round++) {
+	for(uint32_t round = 0; round < 12; round++){
 		// Получаем отметку времени начала круга
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -163,7 +163,7 @@ int main() noexcept {
 	/**
 	 * Если выражение не собрано
 	 */
-	if(!engine.build("(a)b", 0, expression)) {
+	if(!engine.build("(a)b", 0, expression)){
 		// Выводим сообщение об отказе сборки
 		::printf("ОТКАЗ СБОРКИ «(a)b»\n");
 		// Выходим с кодом отказа
@@ -221,13 +221,13 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор отстающих строк
 	 */
-	for(const auto & row : ROWS) {
+	for(const auto & row : ROWS){
 		// Создаём собранное выражение строки
 		awh::regex::expression_t compiled;
 		/**
 		 * Если выражение не собрано
 		 */
-		if(!engine.build(row.pattern, 0, compiled)) {
+		if(!engine.build(row.pattern, 0, compiled)){
 			// Выводим сообщение об отказе сборки
 			::printf("%-44s ОТКАЗ СБОРКИ\n", row.name);
 			// Выполняем переход к строке следующей

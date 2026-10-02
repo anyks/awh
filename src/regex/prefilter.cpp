@@ -290,11 +290,11 @@ namespace {
 		/**
 		 * Выполняем обход байтов искомой последовательности
 		 */
-		for(size_t i = 0; i < what.size(); i++) {
+		for(size_t i = 0; i < what.size(); i++){
 			/**
 			 * Если байт искомого в пробе текста не встречен
 			 */
-			if(counts[static_cast <uint8_t> (what[i])] == 0) {
+			if(counts[static_cast <uint8_t> (what[i])] == 0){
 				// Выполняем установку смещения выбранного байта
 				anchor = i;
 				// Выводим результат выбора байта
@@ -341,11 +341,11 @@ namespace {
 		/**
 		 * Выполняем перебор пар байтов искомой последовательности
 		 */
-		for(size_t a = 0; a < length; a++) {
+		for(size_t a = 0; a < length; a++){
 			/**
 			 * Выполняем перебор вторых байтов пары
 			 */
-			for(size_t b = (a + 1); (b < length) && (b <= (a + SPACING)); b++) {
+			for(size_t b = (a + 1); (b < length) && (b <= (a + SPACING)); b++){
 				/**
 				 * Если допустимое количество перебираемых пар исчерпано
 				 */
@@ -365,7 +365,7 @@ namespace {
 				/**
 				 * Если пара очередная в пробе текста реже выбранной
 				 */
-				if(count < rarest) {
+				if(count < rarest){
 					// Выполняем установку количества встреч выбранной пары
 					rarest = count;
 					// Выполняем установку первого байта выбранной пары
@@ -432,7 +432,7 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes,
 	 *          проход: собственный на OpenBSD x86-64, библиотечный на остальных.
 	 *
 	 */
-	if(count == 1) {
+	if(count == 1){
 		// Выполняем поиск единственного искомого значения байта
 		const void * found = awh::regex::findByte((text.data() + pos), static_cast <int> (bytes[0]), (size - pos));
 		// Выводим позицию найденного байта либо размер текста
@@ -456,7 +456,7 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes,
 		/**
 		 * Выполняем проход текста сопоставления вектором
 		 */
-		while((at + 16) <= size) {
+		while((at + 16) <= size){
 			// Выполняем чтение участка текста сопоставления
 			const uint8x16_t chunk = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at));
 			// Создаём итог сличения участка с набором значений
@@ -492,7 +492,7 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes,
 		/**
 		 * Выполняем проход текста сопоставления вектором
 		 */
-		while((at + 16) <= size) {
+		while((at + 16) <= size){
 			// Выполняем чтение участка текста сопоставления
 			const __m128i chunk = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
 			// Создаём итог сличения участка с набором значений
@@ -518,13 +518,13 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes,
 	/**
 	 * Выполняем проход остатка текста сопоставления по байту
 	 */
-	for(; at < size; at++) {
+	for(; at < size; at++){
 		// Получаем значение байта текста в позиции поиска
 		const uint8_t letter = static_cast <uint8_t> (base[at]);
 		/**
 		 * Выполняем обход набора искомых значений байта
 		 */
-		for(size_t i = 0; i < count; i++) {
+		for(size_t i = 0; i < count; i++){
 			/**
 			 * Если значение байта текста набору принадлежит
 			 */
@@ -551,7 +551,7 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
 	 *          без построения маски совпадения пары байтов.
 	 *
 	 */
-	if(solitary(text, what, pos, solo)) {
+	if(solitary(text, what, pos, solo)){
 		// Получаем адрес позиции поиска выбранного байта
 		const char * current = (text.data() + pos + solo);
 		// Получаем адрес предела поиска выбранного байта
@@ -559,7 +559,7 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
 		/**
 		 * Выполняем поиск искомой последовательности по выбранному байту
 		 */
-		while(current < bound) {
+		while(current < bound){
 			// Выполняем поиск выбранного байта в тексте сопоставления
 			const void * found = awh::regex::findByte(current, what[solo], static_cast <size_t> (bound - current));
 			/**
@@ -770,7 +770,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 		 *          и самому нынешнему.
 		 *
 		 */
-		while((at + 32 + spacing) <= size) {
+		while((at + 32 + spacing) <= size){
 			// Выполняем чтение первого участка текста под первый байт пары
 			const uint8x16_t heading = vld1q_u8(reinterpret_cast <const uint8_t *> (base + at));
 			// Выполняем чтение первого участка текста под второй байт пары
@@ -791,7 +791,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 			 *          сужение вектора сдвигом пришлось бы вести порознь.
 			 *
 			 */
-			if(vmaxvq_u8(vorrq_u8(equal, equal2)) == 0) {
+			if(vmaxvq_u8(vorrq_u8(equal, equal2)) == 0){
 				// Переходим к следующему участку текста сопоставления
 				at += 32;
 				// Продолжаем проход текста сопоставления
@@ -819,7 +819,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 			 *          по исчерпании первой.
 			 *
 			 */
-			for(size_t half = 0; half < 2; half++) {
+			for(size_t half = 0; half < 2; half++){
 				// Выполняем сведение итога сравнения половины к слову
 				uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8((half == 0) ? equal : equal2), 4)), 0);
 				// Получаем положение начала разбираемой половины участка
@@ -827,7 +827,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 				/**
 				 * Выполняем разбор встреч пары байтов в половине участка
 				 */
-				while(hits != 0) {
+				while(hits != 0){
 					// Получаем номер байта участка, паре отвечающего
 					const size_t lane = (trailing(hits) >> 2);
 					// Получаем положение возможного начала совпадения
@@ -869,7 +869,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 		 *          набором команд NEON.
 		 *
 		 */
-		while((at + 32 + spacing) <= size) {
+		while((at + 32 + spacing) <= size){
 			// Выполняем чтение первого участка текста под первый байт пары
 			const __m128i heading = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
 			// Выполняем чтение первого участка текста под второй байт пары
@@ -905,7 +905,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 			/**
 			 * Выполняем разбор встреч пары байтов в участке текста
 			 */
-			while(hits != 0) {
+			while(hits != 0){
 				// Получаем номер байта участка, паре отвечающего
 				const size_t lane = trailing(static_cast <uint64_t> (hits));
 				// Получаем положение возможного начала совпадения
@@ -939,7 +939,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 		/**
 		 * Выполняем проход текста сопоставления словом
 		 */
-		while((at + 8 + spacing) <= size) {
+		while((at + 8 + spacing) <= size){
 			// Участок текста под первый байт пары
 			uint64_t heading = 0;
 			// Участок текста под второй байт пары
@@ -974,7 +974,7 @@ AWH_REGEX_ALIGNED scanning_t awh::regex::scanning(const std::string_view text, c
 			/**
 			 * Выполняем разбор встреч пары байтов в участке текста
 			 */
-			while(hits != 0) {
+			while(hits != 0){
 				/**
 				 * Получаем номер байта участка, паре отвечающего
 				 *
@@ -1072,7 +1072,7 @@ void awh::regex::Prefilter::finalize() noexcept {
 	 *          и переноса меж полосами нет.
 	 *
 	 */
-	for(size_t i = 0; i < sizeof(this->bytes); i += sizeof(total)) {
+	for(size_t i = 0; i < sizeof(this->bytes); i += sizeof(total)){
 		// Очередное слово набора
 		uint64_t word = 0;
 		// Выполняем чтение очередного слова набора
@@ -1100,7 +1100,7 @@ void awh::regex::Prefilter::finalize() noexcept {
 	 *          собирается, а поиск, её не нашедший, байта не меняет вовсе.
 	 *
 	 */
-	if(count > 0) {
+	if(count > 0){
 		// Выполняем поиск первого допустимого байта набора
 		const void * found = ::memchr(this->bytes, static_cast <int> (true), sizeof(this->bytes));
 		/**
@@ -1210,7 +1210,7 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 		/**
 		 * Выполняем пробу поиском первого байта в ближнем участке
 		 */
-		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
+		for(size_t attempt = 0; attempt < ATTEMPTS; attempt++){
 			// Выполняем поиск первого байта искомого в ближнем участке
 			const size_t candidate = nearby.find(what.front(), current);
 			/**
@@ -1230,11 +1230,11 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 			/**
 			 * Выполняем сличение остатка искомого с текстом
 			 */
-			for(size_t i = 1; i < what.size(); i++) {
+			for(size_t i = 1; i < what.size(); i++){
 				/**
 				 * Если очередной байт искомого тексту не отвечает
 				 */
-				if(text[candidate + i] != what[i]) {
+				if(text[candidate + i] != what[i]){
 					// Выполняем сброс признака совпадения искомого
 					equal = false;
 					// Выходим из сличения остатка искомого

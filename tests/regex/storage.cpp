@@ -128,7 +128,7 @@ static vector <string> samples(const size_t count) noexcept {
 	/**
 	 * Выполняем порождение набора выражений
 	 */
-	for(size_t i = 0; i < count; i++) {
+	for(size_t i = 0; i < count; i++){
 		// Текст порождаемого выражения
 		string pattern;
 		// Получаем количество составляющих порождаемого выражения
@@ -136,7 +136,7 @@ static vector <string> samples(const size_t count) noexcept {
 		/**
 		 * Выполняем порождение составляющих выражения
 		 */
-		for(size_t j = 0; j < length; j++) {
+		for(size_t j = 0; j < length; j++){
 			// Выполняем добавление составляющей выражения
 			pattern.append(atoms[generator() % (sizeof(atoms) / sizeof(atoms[0]))]);
 			// Выполняем добавление квантора повторения
@@ -176,7 +176,7 @@ TEST(Regex, StorageRoundtrip) {
 	/**
 	 * Выполняем сборку набора выражений
 	 */
-	for(const auto & pattern : patterns) {
+	for(const auto & pattern : patterns){
 		// Выполняем сборку регулярного выражения
 		const auto exp = regexp.build(pattern, {regexp_t::flag_t::DUPNAMES});
 		/**
@@ -211,7 +211,7 @@ TEST(Regex, StorageRoundtrip) {
 	/**
 	 * Выполняем перебор набора восстановленных выражений
 	 */
-	for(size_t i = 0; i < fresh.size(); i++) {
+	for(size_t i = 0; i < fresh.size(); i++){
 		/**
 		 * Выполняем перебор набора текстов сличения
 		 */
@@ -309,7 +309,7 @@ TEST(Regex, StorageCorrupted) {
 	/**
 	 * Выполняем проверку отказа восстановления записи оборванной
 	 */
-	for(size_t length = 1; length < record.size(); length += 7) {
+	for(size_t length = 1; length < record.size(); length += 7){
 		// Выполняем проверку отказа восстановления записи
 		EXPECT_FALSE(storage.load(string_view(record).substr(0, length), restored))
 		 << "запись длиной " << length;
@@ -341,7 +341,7 @@ TEST(Regex, StorageCorrupted) {
 	/**
 	 * Выполняем перебор байтов записи хранилища
 	 */
-	for(size_t i = 26; i < record.size(); i++) {
+	for(size_t i = 26; i < record.size(); i++){
 		/**
 		 * Если испорчено мгновение порождения либо срок годности записи
 		 *
@@ -397,7 +397,7 @@ TEST(Regex, StorageMultiple) {
 	/**
 	 * Выполняем сборку набора выражений
 	 */
-	for(const char * pattern : {"^a+$", "[0-9]{3}-[0-9]{2}", "(?i)ПрИвЕт", "\\p{Cyrillic}+"}) {
+	for(const char * pattern : {"^a+$", "[0-9]{3}-[0-9]{2}", "(?i)ПрИвЕт", "\\p{Cyrillic}+"}){
 		// Выполняем сборку регулярного выражения
 		const auto exp = regexp.build(pattern, {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
 		// Выполняем проверку сборки регулярного выражения
@@ -458,7 +458,7 @@ TEST(Regex, StoragePlatform) {
 	/**
 	 * Выполняем перебор байтов опознания устройства машины
 	 */
-	for(size_t i = 10; i < 12; i++) {
+	for(size_t i = 10; i < 12; i++){
 		// Получаем запись с чужим опознанием устройства машины
 		string foreign = record;
 		// Выполняем подмену очередного байта опознания устройства
@@ -484,7 +484,7 @@ TEST(Regex, StoragePlatform) {
 	/**
 	 * Выполняем перебор байтов выравнивания заголовка записи
 	 */
-	for(size_t i = 13; i < 16; i++) {
+	for(size_t i = 13; i < 16; i++){
 		// Получаем запись с непустыми байтами выравнивания
 		string filled = record;
 		// Выполняем заполнение очередного байта выравнивания
@@ -616,7 +616,7 @@ TEST(Regex, StoragePacking) {
 	/**
 	 * Выполняем сборку набора выражений
 	 */
-	for(const auto & pattern : patterns) {
+	for(const auto & pattern : patterns){
 		// Выполняем сборку регулярного выражения
 		const auto exp = regexp.build(pattern, {regexp_t::flag_t::DUPNAMES});
 		/**
@@ -660,7 +660,7 @@ TEST(Regex, StoragePacking) {
 	/**
 	 * Выполняем перебор набора восстановленных выражений
 	 */
-	for(size_t i = 0; i < fresh.size(); i++) {
+	for(size_t i = 0; i < fresh.size(); i++){
 		/**
 		 * Выполняем перебор набора текстов сличения
 		 */
@@ -798,7 +798,7 @@ TEST(Regex, StorageForged) {
 		/**
 		 * Выполняем перебор содержимого восьмибайтовыми долями
 		 */
-		for(; (offset + 8) <= data.size(); offset += 8) {
+		for(; (offset + 8) <= data.size(); offset += 8){
 			// Собираемая доля содержимого
 			uint64_t block = 0;
 			/**
@@ -817,7 +817,7 @@ TEST(Regex, StorageForged) {
 		/**
 		 * Выполняем перебор остатка содержимого побайтно
 		 */
-		for(; offset < data.size(); offset++) {
+		for(; offset < data.size(); offset++){
 			// Выполняем смешивание очередного байта содержимого
 			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
 			// Выполняем умножение накопленной суммы
@@ -872,7 +872,7 @@ TEST(Regex, StorageForged) {
 	 *          в умолчание обращает испытание падением, а не отказом.
 	 *
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Выполняем сборку очередного регулярного выражения
 		const auto expression = regexp.build(pattern, {regexp_t::flag_t::DUPNAMES, regexp_t::flag_t::JIT});
 		// Выполняем проверку сборки регулярного выражения
@@ -891,11 +891,11 @@ TEST(Regex, StorageForged) {
 	/**
 	 * Выполняем обход байтов содержимого записи
 	 */
-	for(size_t i = HEADER; i < record.size(); i += STEP) {
+	for(size_t i = HEADER; i < record.size(); i += STEP){
 		/**
 		 * Выполняем перебор подмен значения очередного байта
 		 */
-		for(const uint32_t value : {0x00u, 0x7Fu, 0xFFu}) {
+		for(const uint32_t value : {0x00u, 0x7Fu, 0xFFu}){
 			/**
 			 * Если подмена значения байта его не меняет
 			 */
@@ -919,7 +919,7 @@ TEST(Regex, StorageForged) {
 			/**
 			 * Если запись подделанная восстановлению не поддалась
 			 */
-			if(!storage.load(forged, restored)) {
+			if(!storage.load(forged, restored)){
 				/**
 				 * Если запись отвергнута несообразным содержимым
 				 */
@@ -939,7 +939,7 @@ TEST(Regex, StorageForged) {
 			 *          выход именно здесь.
 			 *
 			 */
-			for(const auto & expression : restored) {
+			for(const auto & expression : restored){
 				// Выполняем сопоставление текста непустого
 				regexp.match("abc user_name 4711 GET /x a@b", expression);
 				// Выполняем сопоставление текста пустого
@@ -983,7 +983,7 @@ TEST(Regex, StorageTruncatedForged) {
 		/**
 		 * Выполняем перебор содержимого восьмибайтовыми долями
 		 */
-		for(; (offset + 8) <= data.size(); offset += 8) {
+		for(; (offset + 8) <= data.size(); offset += 8){
 			// Собираемая доля содержимого
 			uint64_t block = 0;
 			/**
@@ -1002,7 +1002,7 @@ TEST(Regex, StorageTruncatedForged) {
 		/**
 		 * Выполняем перебор остатка содержимого побайтно
 		 */
-		for(; offset < data.size(); offset++) {
+		for(; offset < data.size(); offset++){
 			// Выполняем смешивание очередного байта содержимого
 			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
 			// Выполняем умножение накопленной суммы
@@ -1061,7 +1061,7 @@ TEST(Regex, StorageTruncatedForged) {
 		/**
 		 * Выполняем сборку набора регулярных выражений
 		 */
-		for(const string & pattern : patterns) {
+		for(const string & pattern : patterns){
 			// Выполняем сборку очередного регулярного выражения
 			const auto expression = (jit ?
 			 regexp.build(pattern, {regexp_t::flag_t::DUPNAMES, regexp_t::flag_t::JIT}) :
@@ -1084,7 +1084,7 @@ TEST(Regex, StorageTruncatedForged) {
 		/**
 		 * Выполняем обход длин обрыва содержимого записи
 		 */
-		for(size_t length = (((tail > 0) && (payload.size() > tail)) ? (payload.size() - tail) : 0); length < payload.size(); length += step) {
+		for(size_t length = (((tail > 0) && (payload.size() > tail)) ? (payload.size() - tail) : 0); length < payload.size(); length += step){
 			// Получаем подделываемую запись хранилища
 			string forged = record.substr(0, HEADER + length);
 			// Получаем контрольную сумму оборванного содержимого
@@ -1092,7 +1092,7 @@ TEST(Regex, StorageTruncatedForged) {
 			/**
 			 * Выполняем подмену объявленной длины и контрольной суммы записи
 			 */
-			for(uint8_t shift = 0; shift < 64; shift += 8) {
+			for(uint8_t shift = 0; shift < 64; shift += 8){
 				// Выполняем запись очередного байта объявленной длины
 				forged[LENGTH + (shift >> 3)] = static_cast <char> ((static_cast <uint64_t> (length) >> shift) & 0xFF);
 				// Выполняем запись очередного байта контрольной суммы
@@ -1177,7 +1177,7 @@ TEST(Regex, StorageForgedFields) {
 		/**
 		 * Выполняем перебор содержимого восьмибайтовыми долями
 		 */
-		for(; (offset + 8) <= data.size(); offset += 8) {
+		for(; (offset + 8) <= data.size(); offset += 8){
 			// Собираемая доля содержимого
 			uint64_t block = 0;
 			/**
@@ -1196,7 +1196,7 @@ TEST(Regex, StorageForgedFields) {
 		/**
 		 * Выполняем перебор остатка содержимого побайтно
 		 */
-		for(; offset < data.size(); offset++) {
+		for(; offset < data.size(); offset++){
 			// Выполняем смешивание очередного байта содержимого
 			result ^= static_cast <uint64_t> (static_cast <uint8_t> (data[offset]));
 			// Выполняем умножение накопленной суммы
@@ -1228,7 +1228,7 @@ TEST(Regex, StorageForgedFields) {
 		/**
 		 * Выполняем подмену объявленной длины и контрольной суммы записи
 		 */
-		for(uint8_t shift = 0; shift < 64; shift += 8) {
+		for(uint8_t shift = 0; shift < 64; shift += 8){
 			// Выполняем запись очередного байта объявленной длины
 			record[LENGTH + (shift >> 3)] = static_cast <char> ((length >> shift) & 0xFF);
 			// Выполняем запись очередного байта контрольной суммы
@@ -1411,13 +1411,13 @@ TEST(Regex, StorageSelfReference) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < twisted->forward.instructions.size(); i++) {
+		for(size_t i = 0; i < twisted->forward.instructions.size(); i++){
 			// Получаем очередное указание собранной программы
 			auto & instruction = twisted->forward.instructions[i];
 			/**
 			 * Если указание выполняет проверку окружения
 			 */
-			if(instruction.type == regex::opcode_t::LOOK) {
+			if(instruction.type == regex::opcode_t::LOOK){
 				// Выполняем заворот тела проверки окружения на неё же
 				instruction.look.body = static_cast <uint32_t> (i);
 				// Увеличиваем количество завёрнутых проверок окружения
@@ -1474,7 +1474,7 @@ TEST(Regex, StorageMachineIdentity) {
 	/**
 	 * Выполняем перебор байтов опознания машины
 	 */
-	for(size_t i = IDENTITY; i < (IDENTITY + 8); i++) {
+	for(size_t i = IDENTITY; i < (IDENTITY + 8); i++){
 		// Получаем запись с испорченным опознанием машины
 		string damaged = record;
 		// Выполняем порчу очередного байта опознания машины
@@ -1856,13 +1856,13 @@ TEST(Regex, StorageForgedSeries) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < result->forward.instructions.size(); i++) {
+		for(size_t i = 0; i < result->forward.instructions.size(); i++){
 			// Получаем очередное указание собранной программы
 			auto & instruction = result->forward.instructions[i];
 			/**
 			 * Если указание кода операции подделываемого
 			 */
-			if(instruction.type == opcode) {
+			if(instruction.type == opcode){
 				// Выполняем подделку пометки ряда одинаковых инструкций
 				instruction.repeat = value;
 				// Выводим подделанное собранное выражение
@@ -2010,13 +2010,13 @@ TEST(Regex, StorageForgedSeries) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < twisted->forward.instructions.size(); i++) {
+		for(size_t i = 0; i < twisted->forward.instructions.size(); i++){
 			// Получаем очередное указание собранной программы
 			auto & instruction = twisted->forward.instructions[i];
 			/**
 			 * Если указание последнее в ряду одинаковых инструкций
 			 */
-			if((instruction.type == regex::opcode_t::CLASS) && (instruction.repeat == 1)) {
+			if((instruction.type == regex::opcode_t::CLASS) && (instruction.repeat == 1)){
 				// Выполняем подделку пометки ряда у копии последней
 				instruction.repeat = 2;
 				// Увеличиваем количество подделанных пометок ряда
@@ -2069,13 +2069,13 @@ TEST(Regex, StorageForgedChain) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < result->forward.instructions.size(); i++) {
+		for(size_t i = 0; i < result->forward.instructions.size(); i++){
 			// Получаем очередное указание собранной программы
 			auto & instruction = result->forward.instructions[i];
 			/**
 			 * Если указание выполняет переход по двум ветвям
 			 */
-			if(instruction.type == regex::opcode_t::SPLIT) {
+			if(instruction.type == regex::opcode_t::SPLIT){
 				// Выполняем подделку пометки цепочки ограниченного повторения
 				instruction.split.most = value;
 				// Выводим подделанное собранное выражение
@@ -2226,7 +2226,7 @@ TEST(Regex, StoragePrefilterUnique) {
 		/**
 		 * Если запись обязана быть принята
 		 */
-		if(accept) {
+		if(accept){
 			// Выполняем проверку восстановления записи
 			EXPECT_TRUE(storage.load(record, restored));
 			// Выполняем проверку количества восстановленных выражений
@@ -2312,7 +2312,7 @@ TEST(Regex, StorageAutomatic) {
 	/**
 	 * Выполняем сборку набора выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём собираемое регулярное выражение
 		auto expression = make_shared <regex::expression_t> ();
 		// Выполняем сборку регулярного выражения
@@ -2389,13 +2389,13 @@ TEST(Regex, StorageForgedLiteral) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < result->forward.instructions.size(); i++) {
+		for(size_t i = 0; i < result->forward.instructions.size(); i++){
 			// Получаем очередное указание собранной программы
 			auto & instruction = result->forward.instructions[i];
 			/**
 			 * Если указание сопоставляет подделываемый символ
 			 */
-			if((instruction.type == regex::opcode_t::CHAR) && (instruction.letter.code == static_cast <uint32_t> (code))) {
+			if((instruction.type == regex::opcode_t::CHAR) && (instruction.letter.code == static_cast <uint32_t> (code))){
 				// Выполняем подделку длины литерала
 				instruction.letter.length = length;
 				// Выполняем подделку байта литерала
@@ -2547,13 +2547,13 @@ TEST(Regex, StorageForgedLiteral) {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < twisted->forward.instructions.size(); i++) {
+		for(size_t i = 0; i < twisted->forward.instructions.size(); i++){
 			// Получаем очередное указание собранной программы
 			auto & instruction = twisted->forward.instructions[i];
 			/**
 			 * Если указание сопоставляет символ из класса символов
 			 */
-			if(instruction.type == regex::opcode_t::CLASS) {
+			if(instruction.type == regex::opcode_t::CLASS){
 				// Выполняем подделку пометки литерала у класса символов
 				instruction.letter.length = 2;
 				// Выполняем установку флага подделки

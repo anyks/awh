@@ -94,13 +94,13 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор замеряемых выражений
 	 */
-	for(const auto & item : PATTERNS) {
+	for(const auto & item : PATTERNS){
 		// Создаём собранное выражение
 		awh::regex::expression_t expression;
 		/**
 		 * Если сборка выражения не выполнена
 		 */
-		if(!engine.build(item.pattern, static_cast <uint32_t> (awh::regex::flag_t::JIT), expression)) {
+		if(!engine.build(item.pattern, static_cast <uint32_t> (awh::regex::flag_t::JIT), expression)){
 			// Выводим сообщение об отказе сборки
 			::printf("%-16s %12s\n", item.name, "ОТКАЗ");
 			// Выводим результат отказа
@@ -109,7 +109,7 @@ int main() noexcept {
 		/**
 		 * Если выражение порождения машинного кода не получило
 		 */
-		if(!expression.machine) {
+		if(!expression.machine){
 			// Выводим сообщение об отсутствии порождённого кода
 			::printf("%-16s %12s\n", item.name, "нет кода");
 			// Выполняем переход к выражению следующему

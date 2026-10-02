@@ -743,7 +743,7 @@ namespace awh {
 			 *          части набором команд процессора выполняются.
 			 *
 			 */
-			if((text.size() - pos) < SHORTCUT) {
+			if((text.size() - pos) < SHORTCUT){
 				// Получаем предел положения начала искомого в тексте
 				const size_t reach = ((text.size() >= what.size()) ? ((text.size() - what.size()) + 1) : 0);
 				// Получаем указание на начало текста поиска
@@ -760,7 +760,7 @@ namespace awh {
 				 *          и на остатке коротком обвязка вызова дороже самой работы.
 				 *
 				 */
-				for(size_t current = pos; current < reach; current++) {
+				for(size_t current = pos; current < reach; current++){
 					/**
 					 * Если первый байт искомого тексту не отвечает
 					 */
@@ -772,11 +772,11 @@ namespace awh {
 					/**
 					 * Выполняем сличение остатка искомого с текстом
 					 */
-					for(size_t i = 1; i < length; i++) {
+					for(size_t i = 1; i < length; i++){
 						/**
 						 * Если очередной байт искомого тексту не отвечает
 						 */
-						if(source[current + i] != needle[i]) {
+						if(source[current + i] != needle[i]){
 							// Выполняем сброс признака совпадения искомого
 							equal = false;
 							// Выходим из сличения остатка искомого

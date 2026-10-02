@@ -54,7 +54,7 @@ uint32_t awh::regex::Pike::acquire() noexcept {
 	/**
 	 * Если освобождённые наборы позиций захвата групп отсутствуют
 	 */
-	if(this->_vacant.empty()) {
+	if(this->_vacant.empty()){
 		// Получаем номер создаваемого набора позиций захвата групп
 		const uint32_t result = static_cast <uint32_t> (this->_refs.size());
 		// Выполняем размещение отрезка создаваемого набора позиций захвата групп
@@ -105,7 +105,7 @@ void awh::regex::Pike::release(const uint32_t index) noexcept {
 	/**
 	 * Если набор позиций захвата групп удерживается состояниями
 	 */
-	if(refs > 0) {
+	if(refs > 0){
 		// Уменьшаем количество состояний, удерживающих набор
 		refs--;
 		/**
@@ -136,7 +136,7 @@ uint32_t awh::regex::Pike::assign(const uint32_t index, const uint32_t slot, con
 	 *          ссылкой, изменяется на месте, что избавляет от копирования.
 	 *
 	 */
-	if(this->_refs[index] > 1) {
+	if(this->_refs[index] > 1){
 		// Выполняем выделение набора позиций захвата групп
 		result = this->acquire();
 		/**
@@ -209,7 +209,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 	/**
 	 * Выполняем замыкание состояния по инструкциям без сопоставления символов
 	 */
-	while(!stack.empty()) {
+	while(!stack.empty()){
 		// Получаем состояние из вершины стека замыкания
 		const thread_t thread = stack.back();
 		// Выполняем удаление состояния из стека замыкания
@@ -217,7 +217,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 		/**
 		 * Если адрес инструкции находится за пределами программы
 		 */
-		if(static_cast <size_t> (thread.pc) >= this->_program->instructions.size()) {
+		if(static_cast <size_t> (thread.pc) >= this->_program->instructions.size()){
 			// Выполняем освобождение набора позиций захвата групп состояния
 			this->release(thread.slots);
 			// Переходим к следующему состоянию стека замыкания
@@ -226,7 +226,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 		/**
 		 * Если инструкция уже была посещена в текущей позиции
 		 */
-		if(marks.at(thread.pc) == generation) {
+		if(marks.at(thread.pc) == generation){
 			// Выполняем освобождение набора позиций захвата групп состояния
 			this->release(thread.slots);
 			// Переходим к следующему состоянию стека замыкания
@@ -239,7 +239,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 		/**
 		 * Определяем код операции исполняемой инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Выполняем переход по двум ветвям в порядке убывания приоритета
 			 */
@@ -297,7 +297,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				/**
 				 * Если привязка к позиции в тексте не выполняется
 				 */
-				if(!assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, pos, this->_program->newline)) {
+				if(!assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, pos, this->_program->newline)){
 					// Выполняем освобождение набора позиций захвата групп состояния
 					this->release(thread.slots);
 					// Переходим к следующему состоянию стека замыкания
@@ -374,7 +374,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          размера набора либо наличие неосвобождённых наборов требуют его сброса.
 	 *
 	 */
-	if((this->_width != count) || (this->_vacant.size() != this->_refs.size())) {
+	if((this->_width != count) || (this->_vacant.size() != this->_refs.size())){
 		// Выполняем установку количества позиций захвата групп в наборе
 		this->_width = count;
 		// Выполняем очистку хранилища наборов позиций захвата групп
@@ -397,7 +397,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          составляло основную долю его стоимости.
 	 *
 	 */
-	if((this->_marks.size() != program.instructions.size()) || (reached > (0xFFFFFFFF - 4))) {
+	if((this->_marks.size() != program.instructions.size()) || (reached > (0xFFFFFFFF - 4))){
 		// Выполняем установку набора отметок посещения текущей позиции
 		this->_marks.assign(program.instructions.size(), 0);
 		// Выполняем установку набора отметок посещения следующей позиции
@@ -456,7 +456,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          текст до конца.
 	 *
 	 */
-	if(!program.anchored && !program.prefilter.possible(text, pos)) {
+	if(!program.anchored && !program.prefilter.possible(text, pos)){
 		// Выполняем учёт отказа по проверке возможности совпадения
 		AWH_REGEX_TICK(path_t::PRESUMING);
 		// Выводим результат поиска совпадения
@@ -472,7 +472,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          совпадения избавляет от повторного прохода по тексту.
 	 *
 	 */
-	if(!bound && this->_dfa.available(program)) {
+	if(!bound && this->_dfa.available(program)){
 		/**
 		 * Если наличие совпадения снято вызывающей стороной
 		 *
@@ -508,7 +508,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	/**
 	 * Выполняем обход позиций текста сопоставления
 	 */
-	while(true) {
+	while(true){
 		/**
 		 * Если совпадение ещё не найдено и выражение не привязано к началу
 		 *
@@ -517,7 +517,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		 *          наибольший приоритет.
 		 *
 		 */
-		if((found == NO_SLOTS) && !bound && this->_current.empty() && program.prefilter.active) {
+		if((found == NO_SLOTS) && !bound && this->_current.empty() && program.prefilter.active){
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = program.prefilter.search(text, pos);
 			/**
@@ -550,7 +550,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 			 *          оборвали бы замыкание состояния начала выражения.
 			 *
 			 */
-			if(candidate > pos) {
+			if(candidate > pos){
 				// Получаем поколение отметок, превышающее использованные
 				const uint32_t fresh = (((this->_generation > this->_upcoming) ? this->_generation : this->_upcoming) + 1);
 				// Выполняем установку поколения отметок текущей позиции
@@ -581,7 +581,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		/**
 		 * Выполняем исполнение состояний текущей позиции
 		 */
-		for(size_t i = 0; i < this->_current.size(); i++) {
+		for(size_t i = 0; i < this->_current.size(); i++){
 			// Получаем исполняемое состояние текущей позиции
 			thread_t & thread = this->_current.at(i);
 			// Получаем исполняемую инструкцию программы
@@ -594,7 +594,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 			 *          совпадает с выбором реализации с возвратом.
 			 *
 			 */
-			if(instruction.type == opcode_t::MATCH) {
+			if(instruction.type == opcode_t::MATCH){
 				/**
 				 * Если пустое совпадение совпадением не считается
 				 *
@@ -629,7 +629,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 			/**
 			 * Определяем код операции исполняемой инструкции
 			 */
-			switch(static_cast <uint8_t> (instruction.type)) {
+			switch(static_cast <uint8_t> (instruction.type)){
 				/**
 				 * Выполняем сопоставление одиночного символа
 				 */
@@ -730,7 +730,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	/**
 	 * Выполняем заполнение границ совпадения и захваченных групп
 	 */
-	for(size_t i = 0; i < captures.size(); i++) {
+	for(size_t i = 0; i < captures.size(); i++){
 		// Выполняем установку начальной границы захвата
 		captures.at(i).first = slots[i * 2];
 		// Выполняем установку конечной границы захвата

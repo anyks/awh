@@ -101,7 +101,7 @@ TEST(Regex, AutomatonCache) {
 	 *          исполнение обязано давать тот же вердикт, что и первое.
 	 *
 	 */
-	for(size_t i = 0; i < 4; i++) {
+	for(size_t i = 0; i < 4; i++){
 		// Выполняем проверку вердикта на соответствующем тексте
 		EXPECT_TRUE(dfa.test(program, "abc123", 0));
 		// Выполняем проверку вердикта на тексте с недостаточным числом цифр
@@ -160,7 +160,7 @@ TEST(Regex, AutomatonArena) {
 	/**
 	 * Выполняем разбор всех выражений набора
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Выполняем добавление объекта разбора в набор
 		parsers.push_back(unique_ptr <regex::parser_t> (new regex::parser_t));
 		// Выполняем разбор регулярного выражения
@@ -169,7 +169,7 @@ TEST(Regex, AutomatonArena) {
 	/**
 	 * Выполняем компиляцию всех выражений набора одним построителем
 	 */
-	for(size_t i = 0; i < parsers.size(); i++) {
+	for(size_t i = 0; i < parsers.size(); i++){
 		// Создаём компилируемую программу регулярного выражения
 		regex::program_t program;
 		// Выполняем компиляцию регулярного выражения
@@ -220,7 +220,7 @@ TEST(Regex, AutomatonScratch) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(size_t i = 0; i < (sizeof(SAMPLES) / sizeof(SAMPLES[0])); i++) {
+	for(size_t i = 0; i < (sizeof(SAMPLES) / sizeof(SAMPLES[0])); i++){
 		// Создаём объект разбора регулярного выражения
 		regex::parser_t parser;
 		// Выполняем разбор регулярного выражения
@@ -237,7 +237,7 @@ TEST(Regex, AutomatonScratch) {
 		 *          сорвало бы вердикт программы, выданной прежде.
 		 *
 		 */
-		for(size_t j = 0; j <= i; j++) {
+		for(size_t j = 0; j <= i; j++){
 			// Выполняем проверку вердикта на соответствующем тексте
 			EXPECT_TRUE(dfa.test(programs.at(j), SAMPLES[j].matched, 0)) << SAMPLES[j].pattern;
 			// Выполняем проверку вердикта на тексте несоответствующем
@@ -288,7 +288,7 @@ TEST(Regex, AutomatonRefusal) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		/**
@@ -375,7 +375,7 @@ TEST(Regex, AutomatonAlphabet) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект разбора регулярного выражения
 		regex::parser_t parser;
 		// Выполняем разбор регулярного выражения
@@ -439,7 +439,7 @@ TEST(Regex, AutomatonLeading) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение

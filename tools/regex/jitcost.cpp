@@ -83,7 +83,7 @@ static double measure(awh::regex::engine_t & engine, const string & pattern, con
 	 *          внутри прогона смещена целиком, а не отдельными выбросами.
 	 *
 	 */
-	for(uint32_t attempt = 0; attempt < ATTEMPTS; attempt++) {
+	for(uint32_t attempt = 0; attempt < ATTEMPTS; attempt++){
 		// Получаем отметку времени начала попытки
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -122,11 +122,11 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор видов повторения: ряда обязательного и цепочки
 	 */
-	for(const bool optional : {false, true}) {
+	for(const bool optional : {false, true}){
 		/**
 		 * Выполняем перебор количеств копий
 		 */
-		for(const size_t count : COUNTS) {
+		for(const size_t count : COUNTS){
 			// Создаём выражение счётного повторения заданного вида
 			const string pattern = (optional ?
 			 ("[0-9]{0," + to_string(count) + "}x") : ("[0-9]{" + to_string(count) + "}x"));

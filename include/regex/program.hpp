@@ -887,7 +887,7 @@ namespace awh {
 			/**
 			 * Определяем код операции сличаемых инструкций
 			 */
-			switch(static_cast <uint8_t> (first.type)) {
+			switch(static_cast <uint8_t> (first.type)){
 				/**
 				 * Сопоставление одиночного символа сличается кодовым значением
 				 */

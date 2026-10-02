@@ -198,7 +198,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 	 *          обязана была его вызвать - в месте прежнем её не помещалось.
 	 *
 	 */
-	while(filled.data() == first) {
+	while(filled.data() == first){
 		// Выполняем проверку предела наполнения набора
 		ASSERT_LT(room, static_cast <size_t> (1024));
 		// Выполняем добавление очередной записи набора
@@ -447,7 +447,7 @@ TEST(Regex, StaticParserOnDemand) {
 	/**
 	 * Выполняем обход ожиданий
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем сброс счётчиков путей исполнения
 		regex::probe_t::reset();
 		// Выполняем проверку исхода разбора регулярного выражения
@@ -455,7 +455,7 @@ TEST(Regex, StaticParserOnDemand) {
 		/**
 		 * Если разбор выражения отвергнут
 		 */
-		if(!sample.parsed) {
+		if(!sample.parsed){
 			// Выполняем проверку кода отказа ссылкой на группу несуществующую
 			EXPECT_EQ(parser.error(), regex::error_t::BAD_BACKREFERENCE) << sample.pattern;
 		}
@@ -471,7 +471,7 @@ TEST(Regex, StaticParserOnDemand) {
 			/**
 			 * Если ожидание требует отметок больше нуля
 			 */
-			if(wanted < 0) {
+			if(wanted < 0){
 				// Выполняем проверку наличия отметок
 				EXPECT_GT(count, static_cast <uint64_t> (0)) << name << ": " << sample.pattern;
 			/**
@@ -787,13 +787,13 @@ TEST(Regex, StaticSeekSolitary) {
 	/**
 	 * Выполняем перебор набора текстов поиска
 	 */
-	for(const auto & text : texts) {
+	for(const auto & text : texts){
 		// Получаем размер текста поиска
 		const size_t size = text.size();
 		/**
 		 * Выполняем перебор набора искомых последовательностей
 		 */
-		for(const char * item : NEEDLES) {
+		for(const char * item : NEEDLES){
 			// Получаем искомую последовательность
 			const string_view what(item);
 			/**

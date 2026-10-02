@@ -153,7 +153,7 @@ TEST(Regex, EngineVerdict) {
 	/**
 	 * Выполняем проверку совпадения вердиктов для каждого выражения
 	 */
-	for(const auto & pattern : patterns) {
+	for(const auto & pattern : patterns){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Выполняем сборку регулярного выражения
@@ -161,7 +161,7 @@ TEST(Regex, EngineVerdict) {
 		/**
 		 * Выполняем проверку совпадения вердиктов для каждого текста
 		 */
-		for(const auto & text : texts) {
+		for(const auto & text : texts){
 			// Набор границ совпадения движка регулярных выражений
 			bounds_t bounds;
 			/**
@@ -228,7 +228,7 @@ TEST(Regex, EngineBacktracking) {
 	/**
 	 * Выполняем проверку сборки и сопоставления каждого выражения
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Выполняем проверку сборки регулярного выражения
@@ -293,7 +293,7 @@ TEST(Regex, EngineGrapheme) {
 	/**
 	 * Выполняем проверку разбиения для каждого текста
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Выполняем проверку сборки регулярного выражения
@@ -403,7 +403,7 @@ TEST(Regex, EngineAnchoredBacktracking) {
 	/**
 	 * Выполняем обход набора проверяемых регулярных выражений
 	 */
-	for(auto & pattern : patterns) {
+	for(auto & pattern : patterns){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -425,7 +425,7 @@ TEST(Regex, EngineAnchoredBacktracking) {
 		/**
 		 * Выполняем обход набора установленных границ
 		 */
-		for(size_t i = 0; i < received.size(); i++) {
+		for(size_t i = 0; i < received.size(); i++){
 			// Выполняем проверку начальной границы захвата
 			EXPECT_EQ(received.at(i).first, expected.at(i).first) << pattern << ", группа " << i;
 			// Выполняем проверку конечной границы захвата
@@ -472,7 +472,7 @@ TEST(Regex, EngineProgress) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -546,7 +546,7 @@ TEST(Regex, EnginePrefilterZeroWidth) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -586,7 +586,7 @@ TEST(Regex, EngineLeading) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & pattern : patterns) {
+	for(auto & pattern : patterns){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -617,7 +617,7 @@ TEST(Regex, EngineLeading) {
 		/**
 		 * Выполняем обход набора установленных границ
 		 */
-		for(size_t i = 0; i < received.size(); i++) {
+		for(size_t i = 0; i < received.size(); i++){
 			// Выполняем проверку начальной границы захвата
 			EXPECT_EQ(received.at(i).first, expected.at(i).first) << pattern << ", группа " << i;
 			// Выполняем проверку конечной границы захвата
@@ -694,7 +694,7 @@ TEST(Regex, EngineAnchored) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -728,7 +728,7 @@ TEST(Regex, EngineAnchored) {
 		/**
 		 * Выполняем обход набора установленных границ
 		 */
-		for(size_t i = 0; i < received.size(); i++) {
+		for(size_t i = 0; i < received.size(); i++){
 			// Выполняем проверку начальной границы захвата
 			EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << ", группа " << i;
 			// Выполняем проверку конечной границы захвата
@@ -786,7 +786,7 @@ TEST(Regex, EngineRepeatRun) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -812,7 +812,7 @@ TEST(Regex, EngineRepeatRun) {
 		/**
 		 * Выполняем обход набора установленных границ
 		 */
-		for(size_t i = 0; i < received.size(); i++) {
+		for(size_t i = 0; i < received.size(); i++){
 			// Выполняем проверку начальной границы захвата
 			EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << ", группа " << i;
 			// Выполняем проверку конечной границы захвата
@@ -868,13 +868,13 @@ TEST(Regex, EngineRepeatSweep) {
 	 *          чем и вынуждает повторное использование таблицы принадлежности.
 	 *
 	 */
-	for(size_t pass = 0; pass < 2; pass++) {
+	for(size_t pass = 0; pass < 2; pass++){
 		// Создаём объект исполнения с возвратом
 		regex::backtrack_t backtrack;
 		/**
 		 * Выполняем обход набора проверяемых выражений
 		 */
-		for(auto & sample : samples) {
+		for(auto & sample : samples){
 			// Создаём объект движка регулярных выражений
 			regex::engine_t engine;
 			// Создаём собираемое регулярное выражение
@@ -898,7 +898,7 @@ TEST(Regex, EngineRepeatSweep) {
 			/**
 			 * Выполняем обход набора установленных границ
 			 */
-			for(size_t i = 0; i < received.size(); i++) {
+			for(size_t i = 0; i < received.size(); i++){
 				// Выполняем проверку начальной границы захвата
 				EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << ", группа " << i;
 				// Выполняем проверку конечной границы захвата
@@ -983,7 +983,7 @@ TEST(Regex, EngineRepeatTables) {
 		/**
 		 * Выполняем повторные сопоставления тем же объектом исполнения
 		 */
-		for(size_t i = 0; i < 3; i++) {
+		for(size_t i = 0; i < 3; i++){
 			// Выполняем сброс счётчиков путей исполнения
 			regex::probe_t::reset();
 			// Выполняем повторное сопоставление
@@ -1031,7 +1031,7 @@ TEST(Regex, EngineRepeatTables) {
 		/**
 		 * Выполняем сборку текста чередования ветвей
 		 */
-		for(size_t i = 0; i < branches; i++) {
+		for(size_t i = 0; i < branches; i++){
 			// Выполняем добавление разделителя ветвей чередования
 			pattern.append(i > 0 ? "|" : "");
 			// Выполняем добавление класса, парою знаков различаемого
@@ -1041,7 +1041,7 @@ TEST(Regex, EngineRepeatTables) {
 			/**
 			 * Если знак второй набор исчерпал
 			 */
-			if(++second >= letters) {
+			if(++second >= letters){
 				// Выполняем переход к знаку первому следующему
 				first++;
 				// Выполняем установку знака второго за первым
@@ -1071,7 +1071,7 @@ TEST(Regex, EngineRepeatTables) {
 		/**
 		 * Выполняем сопоставление дважды тем же объектом исполнения
 		 */
-		for(size_t pass = 0; pass < 2; pass++) {
+		for(size_t pass = 0; pass < 2; pass++){
 			// Создаём набор границ, установленных исполнением с возвратом
 			vector <pair <size_t, size_t>> received;
 			// Создаём набор границ, установленных исполнением без возврата
@@ -1137,7 +1137,7 @@ TEST(Regex, EngineAnchoredAttempt) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -1207,7 +1207,7 @@ TEST(Regex, EnginePlain) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -1285,7 +1285,7 @@ TEST(Regex, EngineAnchoredFlag) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(auto & sample : SAMPLES) {
+	for(auto & sample : SAMPLES){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -1709,7 +1709,7 @@ TEST(Regex, EngineSweeping) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -1743,7 +1743,7 @@ TEST(Regex, EngineSweeping) {
 		/**
 		 * Выполняем обход набора установленных границ
 		 */
-		for(size_t i = 0; i < received.size(); i++) {
+		for(size_t i = 0; i < received.size(); i++){
 			// Выполняем проверку начальной границы захвата
 			EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << ", группа " << i;
 			// Выполняем проверку конечной границы захвата
@@ -1808,7 +1808,7 @@ TEST(Regex, EngineNotEmpty) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -1833,7 +1833,7 @@ TEST(Regex, EngineNotEmpty) {
 		/**
 		 * Если совпадение в тексте обнаружено
 		 */
-		if(result) {
+		if(result){
 			// Выполняем проверку начальной границы совпадения
 			EXPECT_EQ(captures.front().first, sample.begin) << sample.pattern << " на тексте «" << sample.text << "»";
 			// Выполняем проверку конечной границы совпадения
@@ -1881,7 +1881,7 @@ TEST(Regex, EngineNestedRecursion) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -1895,7 +1895,7 @@ TEST(Regex, EngineNestedRecursion) {
 		/**
 		 * Если выражение выродившимся вызовом устроено
 		 */
-		if(sample.nested) {
+		if(sample.nested){
 			// Выполняем проверку отсутствия совпадения выродившегося выражения
 			EXPECT_FALSE(result) << sample.pattern << " на тексте «" << sample.text << "»";
 			// Выполняем проверку распознавания повторного рекурсивного вызова
@@ -2082,7 +2082,7 @@ TEST(Regex, MatchingLimitKeepsResult) {
 	/**
 	 * Выполняем обход набора пределов объёма работы сопоставления
 	 */
-	for(const size_t limit : {static_cast <size_t> (1), static_cast <size_t> (0x40), static_cast <size_t> (0x1000)}) {
+	for(const size_t limit : {static_cast <size_t> (1), static_cast <size_t> (0x40), static_cast <size_t> (0x1000)}){
 		// Выполняем установку предела допустимого объёма работы сопоставления
 		regex.limit(limit);
 		// Выполняем сопоставление регулярного выражения при пределе установленном
@@ -2092,7 +2092,7 @@ TEST(Regex, MatchingLimitKeepsResult) {
 		/**
 		 * Выполняем обход набора установленных границ
 		 */
-		for(size_t i = 0; i < received.size(); i++) {
+		for(size_t i = 0; i < received.size(); i++){
 			// Выполняем проверку начальной границы захвата
 			EXPECT_EQ(received.at(i).first, expected.at(i).first) << "предел " << limit << ", группа " << i;
 			// Выполняем проверку конечной границы захвата
@@ -2134,7 +2134,7 @@ TEST(Regex, EngineReverseLeading) {
 	/**
 	 * Выполняем обход выражений, ведущий литерал несущих
 	 */
-	for(const char * pattern : leading) {
+	for(const char * pattern : leading){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -2159,7 +2159,7 @@ TEST(Regex, EngineReverseLeading) {
 	/**
 	 * Выполняем обход выражений, ведущего литерала лишённых
 	 */
-	for(const char * pattern : plain) {
+	for(const char * pattern : plain){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку выполнения сборки регулярного выражения
@@ -2224,7 +2224,7 @@ TEST(Regex, EngineReversePass) {
 	/**
 	 * Выполняем обход выражений набора
 	 */
-	for(size_t i = 0; i < (sizeof(patterns) / sizeof(patterns[0])); i++) {
+	for(size_t i = 0; i < (sizeof(patterns) / sizeof(patterns[0])); i++){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку сборки регулярного выражения
@@ -2238,7 +2238,7 @@ TEST(Regex, EngineReversePass) {
 		/**
 		 * Выполняем обход хвостов, совпадение несущих
 		 */
-		for(const char * tail : tails) {
+		for(const char * tail : tails){
 			// Собираем текст сличения с длинным началом без совпадения
 			const string text = (string(400, 'z') + tail);
 			// Набор границ захвата обнаруженного совпадения
@@ -2314,7 +2314,7 @@ TEST(Regex, EngineReverseUnmarked) {
 	/**
 	 * Выполняем обход выражений набора
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку сборки регулярного выражения
@@ -2324,13 +2324,13 @@ TEST(Regex, EngineReverseUnmarked) {
 		/**
 		 * Выполняем учёт пометок прямой программы
 		 */
-		for(const auto & instruction : expression.forward.instructions) {
+		for(const auto & instruction : expression.forward.instructions){
 			// Выполняем учёт пометки ряда одинаковых инструкций
 			rows += ((instruction.repeat > 1) ? 1 : 0);
 			/**
 			 * Если инструкция является переходом по двум ветвям
 			 */
-			if(instruction.type == regex::opcode_t::SPLIT) {
+			if(instruction.type == regex::opcode_t::SPLIT){
 				// Выполняем учёт пометки повторения одиночного символа
 				runs += ((instruction.split.run != regex::INVALID_ADDRESS) ? 1 : 0);
 				// Выполняем учёт пометки цепочки ограниченного повторения
@@ -2340,7 +2340,7 @@ TEST(Regex, EngineReverseUnmarked) {
 		/**
 		 * Выполняем обход инструкций развёрнутой программы
 		 */
-		for(size_t i = 0; i < expression.backward.instructions.size(); i++) {
+		for(size_t i = 0; i < expression.backward.instructions.size(); i++){
 			// Получаем инструкцию развёрнутой программы
 			const auto & instruction = expression.backward.instructions[i];
 			// Выполняем проверку отсутствия пометки ряда
@@ -2348,7 +2348,7 @@ TEST(Regex, EngineReverseUnmarked) {
 			/**
 			 * Если инструкция является переходом по двум ветвям
 			 */
-			if(instruction.type == regex::opcode_t::SPLIT) {
+			if(instruction.type == regex::opcode_t::SPLIT){
 				// Выполняем проверку недействительного адреса тела повторения
 				EXPECT_EQ(instruction.split.run, regex::INVALID_ADDRESS) << pattern << ", инструкция " << i;
 				// Выполняем проверку отсутствия признаков ленивости и бесплодности возврата
@@ -2442,7 +2442,7 @@ TEST(Regex, EngineReverseUnreachable) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку сборки регулярного выражения
@@ -2452,7 +2452,7 @@ TEST(Regex, EngineReverseUnreachable) {
 		/**
 		 * Если развёрнутой программы у выражения быть не должно
 		 */
-		if(!sample.reversible) {
+		if(!sample.reversible){
 			// Выполняем проверку того, что программа и не строилась
 			EXPECT_TRUE(expression.backward.instructions.empty()) << sample.pattern << ", режимы " << sample.flags;
 		}
@@ -2523,7 +2523,7 @@ TEST(Regex, EngineAnchoredLong) {
 	/**
 	 * Выполняем обход выражений набора
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем проверку сборки регулярного выражения
@@ -2594,7 +2594,7 @@ TEST(Regex, MatchingRecursionBudget) {
 		/**
 		 * Выполняем двоичный поиск наименьшего предела объёма работы
 		 */
-		while(low < high) {
+		while(low < high){
 			// Получаем середину границ двоичного поиска
 			const size_t middle = ((low + high) / 2);
 			// Выполняем установку предела допустимого объёма работы
@@ -2672,7 +2672,7 @@ TEST(Regex, MatchingBackrefEdges) {
 	/**
 	 * Выполняем обход случаев сопоставления захваченного текста
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем сборку регулярного выражения
 		const auto expression = (sample.caseless ?
 		 regex.build(sample.pattern, {awh::regexp_t::flag_t::CASELESS}) :
@@ -2812,13 +2812,13 @@ TEST(Regex, MatchingNestedGuard) {
 	/**
 	 * Выполняем обход указаний собранной программы
 	 */
-	for(size_t i = 0; i < expression.forward.instructions.size(); i++) {
+	for(size_t i = 0; i < expression.forward.instructions.size(); i++){
 		// Получаем очередное указание собранной программы
 		auto & instruction = expression.forward.instructions[i];
 		/**
 		 * Если указание выполняет проверку окружения
 		 */
-		if(instruction.type == regex::opcode_t::LOOK) {
+		if(instruction.type == regex::opcode_t::LOOK){
 			// Выполняем заворот тела проверки окружения на неё же
 			instruction.look.body = static_cast <uint32_t> (i);
 			// Увеличиваем количество завёрнутых проверок окружения
@@ -2879,7 +2879,7 @@ static void mutating(const bool thorough) noexcept {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(const char * pattern : SAMPLES) {
+	for(const char * pattern : SAMPLES){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -2893,11 +2893,11 @@ static void mutating(const bool thorough) noexcept {
 		/**
 		 * Выполняем обход указаний собранной программы
 		 */
-		for(size_t i = 0; i < count; i++) {
+		for(size_t i = 0; i < count; i++){
 			/**
 			 * Выполняем перебор четырёхбайтовых полей указания
 			 */
-			for(size_t shift = 0; (shift + sizeof(uint32_t)) <= sizeof(regex::instruction_t); shift += sizeof(uint32_t)) {
+			for(size_t shift = 0; (shift + sizeof(uint32_t)) <= sizeof(regex::instruction_t); shift += sizeof(uint32_t)){
 				/**
 				 * @brief Набор подменяемых значений поля указания
 				 *
@@ -2921,7 +2921,7 @@ static void mutating(const bool thorough) noexcept {
 				/**
 				 * Выполняем перебор подмен значения поля указания
 				 */
-				for(size_t index = 0; index < amount; index++) {
+				for(size_t index = 0; index < amount; index++){
 					// Получаем очередное подменяемое значение поля указания
 					const uint32_t value = values[index];
 					// Создаём подделываемое выражение
@@ -2949,7 +2949,7 @@ static void mutating(const bool thorough) noexcept {
 					 *          им непроверенной мерила бы договор, какого нет.
 					 *
 					 */
-					if(!storage.load(record, restored)) {
+					if(!storage.load(record, restored)){
 						// Увеличиваем количество записей отвергнутых
 						rejected++;
 						// Переходим к следующей подмене значения поля
@@ -2960,11 +2960,11 @@ static void mutating(const bool thorough) noexcept {
 					/**
 					 * Выполняем обход восстановленных выражений
 					 */
-					for(const auto & expression : restored) {
+					for(const auto & expression : restored){
 						/**
 						 * Выполняем обход текстов сопоставления
 						 */
-						for(const char * text : TEXTS) {
+						for(const char * text : TEXTS){
 							// Набор установленных границ захвата
 							vector <pair <size_t, size_t>> captures;
 							// Выполняем сопоставление восстановленным выражением
@@ -3023,7 +3023,7 @@ TEST(Regex, MatchingAtomicRecursion) {
 	/**
 	 * Выполняем обход способов сопоставления
 	 */
-	for(const bool jit : {false, true}) {
+	for(const bool jit : {false, true}){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -3032,7 +3032,7 @@ TEST(Regex, MatchingAtomicRecursion) {
 		/**
 		 * Выполняем обход длин текста сопоставления
 		 */
-		for(size_t length = 1; length <= (sizeof(BOUNDS) / sizeof(BOUNDS[0])); length++) {
+		for(size_t length = 1; length <= (sizeof(BOUNDS) / sizeof(BOUNDS[0])); length++){
 			// Создаём текст сопоставления заданной длины
 			const string text(length, 'a');
 			// Набор границ совпадения и захваченных групп
@@ -3046,7 +3046,7 @@ TEST(Regex, MatchingAtomicRecursion) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(expected > 0) {
+			if(expected > 0){
 				/**
 				 * Выполняем проверку конечной границы совпадения
 				 *
@@ -3128,7 +3128,7 @@ TEST(Regex, CodegenImprint) {
 		/**
 		 * Выполняем чтение числа долями по семь разрядов
 		 */
-		while(position < record.size()) {
+		while(position < record.size()){
 			// Получаем очередную долю числа
 			const uint8_t byte = static_cast <uint8_t> (record[position++]);
 			// Выполняем добавление доли числа к результату
@@ -3159,7 +3159,7 @@ TEST(Regex, CodegenImprint) {
 	/**
 	 * Выполняем перебор байтов участка машинного кода
 	 */
-	for(size_t i = begin; i < (begin + length); i++) {
+	for(size_t i = begin; i < (begin + length); i++){
 		// Получаем запись с испорченным машинным кодом
 		string damaged = record;
 		// Выполняем порчу очередного байта машинного кода
@@ -3224,7 +3224,7 @@ TEST(Regex, CodegenRollback) {
 		/**
 		 * Выполняем чтение числа долями по семь разрядов
 		 */
-		while(position < record.size()) {
+		while(position < record.size()){
 			// Получаем очередную долю числа
 			const uint8_t byte = static_cast <uint8_t> (record[position++]);
 			// Выполняем добавление доли числа к результату
@@ -4287,11 +4287,11 @@ TEST(Regex, EngineClassRecall) {
 		 *          обязаны различаться тоже.
 		 *
 		 */
-		for(const auto & instruction : expression.forward.instructions) {
+		for(const auto & instruction : expression.forward.instructions){
 			/**
 			 * Если инструкция сопоставляет класс символов
 			 */
-			if(instruction.type == regex::opcode_t::CLASS) {
+			if(instruction.type == regex::opcode_t::CLASS){
 				/**
 				 * Если класс сопоставляется без учёта регистра
 				 */
@@ -4308,7 +4308,7 @@ TEST(Regex, EngineClassRecall) {
 		/**
 		 * Выполняем проверку номеров записей у копий
 		 */
-		for(size_t i = 0; i < 3; i++) {
+		for(size_t i = 0; i < 3; i++){
 			// Выполняем проверку единства номера у копий одного узла
 			EXPECT_EQ(caseless.at(i), caseless.front());
 			EXPECT_EQ(cased.at(i), cased.front());
@@ -4395,7 +4395,7 @@ TEST(Regex, EngineVerbWaiving) {
 		/**
 		 * Выполняем обход ожиданий набора видов глаголов
 		 */
-		for(const auto & sample : samples) {
+		for(const auto & sample : samples){
 			// Выполняем разбор регулярного выражения
 			ASSERT_TRUE(parser.parse(sample.pattern, 0)) << sample.pattern;
 			// Выполняем проверку набора видов глаголов
@@ -4534,7 +4534,7 @@ TEST(Regex, EngineVerbWaiving) {
 		/**
 		 * Выполняем обход ожиданий исходов
 		 */
-		for(const auto & sample : samples) {
+		for(const auto & sample : samples){
 			// Создаём собираемое регулярное выражение
 			regex::expression_t expression;
 			// Выполняем сборку выражения с глаголом управления
@@ -4545,7 +4545,7 @@ TEST(Regex, EngineVerbWaiving) {
 			/**
 			 * Если совпадение обнаружено
 			 */
-			if(sample.matched) {
+			if(sample.matched){
 				// Выполняем проверку границ совпадения
 				EXPECT_EQ(captures.at(0).first, sample.begin) << sample.pattern;
 				EXPECT_EQ(captures.at(0).second, sample.finish) << sample.pattern;
@@ -4613,7 +4613,7 @@ TEST(Regex, EngineBranchMark) {
 	/**
 	 * Выполняем обход ожиданий
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения с глаголом перехода
@@ -4634,7 +4634,7 @@ TEST(Regex, EngineBranchMark) {
 		/**
 		 * Если совпадение обнаружено
 		 */
-		if(sample.matched) {
+		if(sample.matched){
 			// Выполняем проверку границ совпадения
 			EXPECT_EQ(captures.at(0).first, sample.begin) << sample.pattern;
 			EXPECT_EQ(captures.at(0).second, sample.finish) << sample.pattern;
@@ -4728,7 +4728,7 @@ TEST(Regex, EngineSpanningOnce) {
 	/**
 	 * Выполняем обход ожиданий литерала отбора и удаления его
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем сброс счётчиков путей исполнения
@@ -4740,7 +4740,7 @@ TEST(Regex, EngineSpanningOnce) {
 		 *          и счёт посещений ведётся заново сборки её ради.
 		 *
 		 */
-		if(!compiler.compile(parser, program)) {
+		if(!compiler.compile(parser, program)){
 			// Выполняем сброс счётчиков путей исполнения
 			regex::probe_t::reset();
 			// Выполняем компиляцию выражения целиком
@@ -4859,7 +4859,7 @@ TEST(Regex, EngineLiteralSpelling) {
 	/**
 	 * Выполняем обход ожиданий литерала отбора
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем сброс счётчиков путей исполнения
@@ -4871,7 +4871,7 @@ TEST(Regex, EngineLiteralSpelling) {
 		 *          и счёт узлов ведётся заново сборки её ради.
 		 *
 		 */
-		if(!compiler.compile(parser, program)) {
+		if(!compiler.compile(parser, program)){
 			// Выполняем сброс счётчиков путей исполнения
 			regex::probe_t::reset();
 			// Выполняем компиляцию выражения целиком
@@ -4978,7 +4978,7 @@ TEST(Regex, EnginePrefilterBytes) {
 		/**
 		 * Выполняем обход набора допустимых байтов
 		 */
-		for(size_t i = 0; i < 256; i++) {
+		for(size_t i = 0; i < 256; i++){
 			/**
 			 * Если байт недопустим
 			 */
@@ -5004,7 +5004,7 @@ TEST(Regex, EnginePrefilterBytes) {
 			/**
 			 * Если промежуток длиннее одного байта
 			 */
-			if(j != i) {
+			if(j != i){
 				// Выполняем добавление знака промежутка
 				result.append(1, '-');
 				// Выполняем добавление конца промежутка
@@ -5025,7 +5025,7 @@ TEST(Regex, EnginePrefilterBytes) {
 	/**
 	 * Выполняем обход ожиданий набора допустимых байтов
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем компиляцию регулярного выражения
@@ -5116,7 +5116,7 @@ TEST(Regex, EngineAnchoredLiteral) {
 	/**
 	 * Выполняем обход ожиданий
 	 */
-	for(const auto & sample : samples) {
+	for(const auto & sample : samples){
 		// Выполняем разбор регулярного выражения
 		ASSERT_TRUE(parser.parse(sample.pattern, sample.flags)) << sample.pattern;
 		// Выполняем сброс счётчиков путей исполнения
@@ -5173,7 +5173,7 @@ TEST(Regex, EngineProgramLimit) {
 	 */
 	auto build = [&compiler, &parser, &program](const uint8_t mode) noexcept -> bool {
 		// Определяем сборку программы
-		switch(mode) {
+		switch(mode){
 			// Выполняем сборку программы прямой
 			case 0: return compiler.compile(parser, program);
 			// Выполняем сборку программы целиком
@@ -5185,7 +5185,7 @@ TEST(Regex, EngineProgramLimit) {
 	/**
 	 * Выполняем обход сборок программы
 	 */
-	for(uint8_t mode = 0; mode < 3; mode++) {
+	for(uint8_t mode = 0; mode < 3; mode++){
 		// Выполняем разбор выражения, программа которого занимает предел ровно
 		ASSERT_TRUE(parser.parse(limit, 0));
 		// Выполняем проверку сборки программы, предел занимающей ровно
@@ -5447,7 +5447,7 @@ TEST(Regex, EngineSingleAndSeries) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -5469,7 +5469,7 @@ TEST(Regex, EngineSingleAndSeries) {
 		 *          предшествующей не являющаяся
 		 *
 		 */
-		for(size_t i = 0; i < instructions.size(); i++) {
+		for(size_t i = 0; i < instructions.size(); i++){
 			// Получаем инструкцию программы
 			const auto & instruction = instructions.at(i);
 			/**
@@ -5502,7 +5502,7 @@ TEST(Regex, EngineSingleAndSeries) {
 		/**
 		 * Выполняем обход текстов сопоставления
 		 */
-		for(auto & text : sample.texts) {
+		for(auto & text : sample.texts){
 			// Создаём объект исполнения без возврата
 			regex::pike_t pike;
 			// Создаём набор границ, установленных исполнением с возвратом
@@ -5524,7 +5524,7 @@ TEST(Regex, EngineSingleAndSeries) {
 			/**
 			 * Выполняем обход набора установленных границ
 			 */
-			for(size_t i = 0; i < received.size(); i++) {
+			for(size_t i = 0; i < received.size(); i++){
 				// Выполняем проверку начальной границы захвата
 				EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << " / " << text << ", группа " << i;
 				// Выполняем проверку конечной границы захвата
@@ -5561,11 +5561,11 @@ TEST(Regex, EngineSingleAndSeries) {
 		/**
 		 * Выполняем обход инструкций программы
 		 */
-		for(size_t i = 0; i < instructions.size(); i++) {
+		for(size_t i = 0; i < instructions.size(); i++){
 			/**
 			 * Если инструкция сопоставляет единицу кодирования
 			 */
-			if(instructions.at(i).type == regex::opcode_t::CODEUNIT) {
+			if(instructions.at(i).type == regex::opcode_t::CODEUNIT){
 				// Выполняем учёт ряда единиц кодирования
 				series = (series || (instructions.at(i).repeat > 1));
 				// Выполняем учёт одиночки единицы кодирования
@@ -5618,11 +5618,11 @@ TEST(Regex, EngineSingleAndSeries) {
 		/**
 		 * Выполняем обход инструкций программы
 		 */
-		for(size_t i = 0; i < expression.forward.instructions.size(); i++) {
+		for(size_t i = 0; i < expression.forward.instructions.size(); i++){
 			/**
 			 * Если инструкция сопоставляет графемный кластер
 			 */
-			if(expression.forward.instructions.at(i).type == regex::opcode_t::GRAPHEME) {
+			if(expression.forward.instructions.at(i).type == regex::opcode_t::GRAPHEME){
 				// Выполняем учёт кластера в программе
 				present = true;
 				// Выполняем проверку отсутствия ряда у кластера
@@ -5818,7 +5818,7 @@ TEST(Regex, EngineBoundedChain) {
 		/**
 		 * Выполняем обход инструкций собранной программы
 		 */
-		for(size_t i = 0; i < expression.forward.instructions.size(); i++) {
+		for(size_t i = 0; i < expression.forward.instructions.size(); i++){
 			// Получаем очередную инструкцию собранной программы
 			const auto & instruction = expression.forward.instructions.at(i);
 			/**
@@ -5884,7 +5884,7 @@ TEST(Regex, EngineBoundedChain) {
 		/**
 		 * Выполняем обход инструкций собранной программы
 		 */
-		for(size_t i = 0; i < expression.forward.instructions.size(); i++) {
+		for(size_t i = 0; i < expression.forward.instructions.size(); i++){
 			// Получаем очередную инструкцию собранной программы
 			const auto & instruction = expression.forward.instructions.at(i);
 			/**
@@ -6220,7 +6220,7 @@ TEST(Regex, EngineLocatedHandoff) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений: один на все тексты выражения
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -6236,7 +6236,7 @@ TEST(Regex, EngineLocatedHandoff) {
 		/**
 		 * Выполняем обход текстов сопоставления
 		 */
-		for(auto & text : sample.texts) {
+		for(auto & text : sample.texts){
 			// Создаём объект исполнения без возврата
 			regex::pike_t pike;
 			// Создаём набор границ, установленных движком
@@ -6254,7 +6254,7 @@ TEST(Regex, EngineLocatedHandoff) {
 			/**
 			 * Выполняем обход набора установленных границ
 			 */
-			for(size_t i = 0; i < received.size(); i++) {
+			for(size_t i = 0; i < received.size(); i++){
 				// Выполняем проверку начальной границы захвата
 				EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << " / " << text << ", группа " << i;
 				// Выполняем проверку конечной границы захвата
@@ -6424,7 +6424,7 @@ TEST(Regex, EngineLiteralRun) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -6438,7 +6438,7 @@ TEST(Regex, EngineLiteralRun) {
 		/**
 		 * Выполняем обход инструкций программы
 		 */
-		for(size_t i = 0; i < stripped.forward.instructions.size(); i++) {
+		for(size_t i = 0; i < stripped.forward.instructions.size(); i++){
 			// Получаем инструкцию программы, пометки лишаемой
 			auto & instruction = stripped.forward.instructions[i];
 			/**
@@ -6448,7 +6448,7 @@ TEST(Regex, EngineLiteralRun) {
 			 *          её у всякого из них, не сверяя кода операции.
 			 *
 			 */
-			if(instruction.type != regex::opcode_t::CHAR) {
+			if(instruction.type != regex::opcode_t::CHAR){
 				/**
 				 * Если инструкция сопоставляет символ иного рода
 				 */
@@ -6463,7 +6463,7 @@ TEST(Regex, EngineLiteralRun) {
 			/**
 			 * Если пометка стоит у символа, байтом дословно не сопоставляемого
 			 */
-			if(!regex::verbatim(instruction)) {
+			if(!regex::verbatim(instruction)){
 				// Выполняем проверку отсутствия пометки литерала
 				EXPECT_EQ(instruction.letter.length, 0) << sample.pattern << ", инструкция " << i;
 			}
@@ -6483,7 +6483,7 @@ TEST(Regex, EngineLiteralRun) {
 		/**
 		 * Выполняем обход текстов сопоставления
 		 */
-		for(auto & text : sample.texts) {
+		for(auto & text : sample.texts){
 			// Создаём объект исполнения без возврата
 			regex::pike_t pike;
 			// Создаём набор границ, установленных исполнением с возвратом
@@ -6510,7 +6510,7 @@ TEST(Regex, EngineLiteralRun) {
 			 *          возврата - повтору с литералом его хватает на немногие обходы.
 			 *
 			 */
-			for(const uint32_t heap : {~0u, 1u, 2u}) {
+			for(const uint32_t heap : {~0u, 1u, 2u}){
 				// Выполняем установку предела памяти программе с пометкой
 				expression.forward.heap = heap;
 				// Выполняем установку предела памяти программе без пометки
@@ -6518,7 +6518,7 @@ TEST(Regex, EngineLiteralRun) {
 				/**
 				 * Выполняем обход допустимых объёмов работы сопоставления
 				 */
-				for(size_t budget = 1; budget <= 1200; budget++) {
+				for(size_t budget = 1; budget <= 1200; budget++){
 					// Создаём исполнение программы с пометкой
 					regex::backtrack_t marked;
 					// Создаём исполнение программы без пометки
@@ -6568,7 +6568,7 @@ TEST(Regex, EngineLiteralRun) {
 	 *          сочетание ставит пропуск в иное место.
 	 *
 	 */
-	for(const char * pattern : {"^(?:x|abcdefgh)*$", "^(?:x|abcdefghijklmnopqrstuvwxyz)*$"}) {
+	for(const char * pattern : {"^(?:x|abcdefgh)*$", "^(?:x|abcdefghijklmnopqrstuvwxyz)*$"}){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -6580,7 +6580,7 @@ TEST(Regex, EngineLiteralRun) {
 		/**
 		 * Выполняем снятие пометок литералов
 		 */
-		for(size_t i = 0; i < stripped.forward.instructions.size(); i++) {
+		for(size_t i = 0; i < stripped.forward.instructions.size(); i++){
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
@@ -6597,7 +6597,7 @@ TEST(Regex, EngineLiteralRun) {
 		/**
 		 * Выполняем обход числа обходов повтора
 		 */
-		for(size_t count = 1; count <= 150; count++) {
+		for(size_t count = 1; count <= 150; count++){
 			// Создаём текст сопоставления
 			string text;
 			/**
@@ -6609,7 +6609,7 @@ TEST(Regex, EngineLiteralRun) {
 			/**
 			 * Выполняем обход пределов памяти сопоставления
 			 */
-			for(uint32_t heap = 1; heap <= 8; heap++) {
+			for(uint32_t heap = 1; heap <= 8; heap++){
 				// Выполняем установку предела памяти программе с пометкой
 				expression.forward.heap = heap;
 				// Выполняем установку предела памяти программе без пометки
@@ -6664,11 +6664,11 @@ TEST(Regex, EngineLiteralRun) {
 		/**
 		 * Выполняем поиск инструкции, литерал возглавляющей
 		 */
-		for(size_t i = 0; i < instructions.size(); i++) {
+		for(size_t i = 0; i < instructions.size(); i++){
 			/**
 			 * Если инструкция сопоставляет первый символ литерала
 			 */
-			if((instructions.at(i).type == regex::opcode_t::CHAR) && (instructions.at(i).letter.code == 'a')) {
+			if((instructions.at(i).type == regex::opcode_t::CHAR) && (instructions.at(i).letter.code == 'a')){
 				// Выполняем установку номера головы литерала
 				head = i;
 				// Прекращаем поиск
@@ -6749,7 +6749,7 @@ TEST(Regex, EngineLiteralPlacement) {
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -6763,7 +6763,7 @@ TEST(Regex, EngineLiteralPlacement) {
 		/**
 		 * Выполняем обход инструкций прямой программы
 		 */
-		for(size_t i = 0; i < instructions.size(); i++) {
+		for(size_t i = 0; i < instructions.size(); i++){
 			// Получаем инструкцию программы
 			const auto & instruction = instructions[i];
 			/**
@@ -6796,13 +6796,13 @@ TEST(Regex, EngineLiteralPlacement) {
 		/**
 		 * Если выражение развёрнутую программу получило
 		 */
-		if(expression.reversible) {
+		if(expression.reversible){
 			// Выполняем учёт выражения с развёрнутой программой
 			reversed++;
 			/**
 			 * Выполняем обход инструкций развёрнутой программы
 			 */
-			for(size_t i = 0; i < expression.backward.instructions.size(); i++) {
+			for(size_t i = 0; i < expression.backward.instructions.size(); i++){
 				// Получаем инструкцию развёрнутой программы
 				const auto & instruction = expression.backward.instructions[i];
 				/**
@@ -6860,7 +6860,7 @@ TEST(Regex, EngineMemoryCheckpoint) {
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(auto & sample : samples) {
+	for(auto & sample : samples){
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
@@ -6874,7 +6874,7 @@ TEST(Regex, EngineMemoryCheckpoint) {
 		/**
 		 * Выполняем снятие пометок ряда и литерала
 		 */
-		for(size_t i = 0; i < stripped.forward.instructions.size(); i++) {
+		for(size_t i = 0; i < stripped.forward.instructions.size(); i++){
 			// Получаем инструкцию программы, пометки лишаемой
 			auto & instruction = stripped.forward.instructions[i];
 			// Выполняем учёт инструкции, ряд возглавляющей
@@ -6897,7 +6897,7 @@ TEST(Regex, EngineMemoryCheckpoint) {
 		/**
 		 * Выполняем обход числа обходов повтора
 		 */
-		for(size_t count = 1; count <= 150; count++) {
+		for(size_t count = 1; count <= 150; count++){
 			// Создаём текст сопоставления
 			string text;
 			/**
@@ -6909,7 +6909,7 @@ TEST(Regex, EngineMemoryCheckpoint) {
 			/**
 			 * Выполняем обход пределов памяти сопоставления
 			 */
-			for(uint32_t heap = 1; heap <= 12; heap++) {
+			for(uint32_t heap = 1; heap <= 12; heap++){
 				// Выполняем установку предела памяти программе с пометкой
 				expression.forward.heap = heap;
 				// Выполняем установку предела памяти программе без пометки
@@ -7019,7 +7019,7 @@ TEST(Regex, EngineStackPage) {
 	/**
 	 * Выполняем обход положений стека на странице
 	 */
-	for(size_t shift = 0; shift < page; shift += step) {
+	for(size_t shift = 0; shift < page; shift += step){
 		// Выполняем сброс счётчиков путей исполнения
 		regex::probe_t::reset();
 		/**

@@ -60,7 +60,7 @@ static bool size(const string & data, size_t & offset, uint64_t & value) noexcep
 	/**
 	 * Выполняем чтение долей числа по семь разрядов
 	 */
-	for(uint8_t shift = 0; (shift < 64) && (offset < data.size()); shift += 7) {
+	for(uint8_t shift = 0; (shift < 64) && (offset < data.size()); shift += 7){
 		// Получаем очередную долю числа
 		const uint8_t part = static_cast <uint8_t> (data[offset++]);
 		// Выполняем добавление доли к числу
@@ -94,7 +94,7 @@ int main(int argc, char ** argv) noexcept {
 	/**
 	 * Если сборка выражения с порождением кода не выполнена
 	 */
-	if(!engine.build(pattern, static_cast <uint32_t> (awh::regex::flag_t::JIT), expression) || !expression.machine) {
+	if(!engine.build(pattern, static_cast <uint32_t> (awh::regex::flag_t::JIT), expression) || !expression.machine){
 		// Выводим сообщение об отсутствии кода
 		::fprintf(stderr, "нет кода для «%s»\n", pattern.c_str());
 		// Выходим с кодом отказа
@@ -105,7 +105,7 @@ int main(int argc, char ** argv) noexcept {
 	/**
 	 * Если запись сопоставителя не выполнена
 	 */
-	if(!expression.machine->save(record) || (record.size() < 2)) {
+	if(!expression.machine->save(record) || (record.size() < 2)){
 		// Выводим сообщение об отказе записи
 		::fprintf(stderr, "запись сопоставителя не выполнена\n");
 		// Выходим с кодом отказа

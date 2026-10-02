@@ -93,7 +93,7 @@ TEST(Regex, Unsupported) {
 	/**
 	 * Выполняем проверку отнесения выражений к нерегулярному подмножеству
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём объект разбора регулярного выражения
 		regex::parser_t parser;
 		// Выполняем разбор регулярного выражения
@@ -154,7 +154,7 @@ TEST(Regex, Prefilter) {
 	/**
 	 * Выполняем проверку предварительного отбора для каждого шаблона
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём объект разбора регулярного выражения
 		regex::parser_t parser;
 		// Выполняем разбор регулярного выражения
@@ -212,7 +212,7 @@ TEST(Regex, PrefilterSeekBoundaries) {
 	 *          пустого до трёх оборотов с остатком.
 	 *
 	 */
-	for(size_t length = 0; length <= 100; length++) {
+	for(size_t length = 0; length <= 100; length++){
 		// Формируемый текст сопоставления
 		string text;
 		/**
@@ -229,7 +229,7 @@ TEST(Regex, PrefilterSeekBoundaries) {
 		/**
 		 * Выполняем обход искомых последовательностей
 		 */
-		for(const auto & needle : needles) {
+		for(const auto & needle : needles){
 			/**
 			 * Выполняем обход положений вставки искомой последовательности
 			 *
@@ -237,7 +237,7 @@ TEST(Regex, PrefilterSeekBoundaries) {
 			 *          без вставки вовсе.
 			 *
 			 */
-			for(size_t place = 0; place <= length; place++) {
+			for(size_t place = 0; place <= length; place++){
 				// Формируемый текст сопоставления со вставкой
 				string body = text;
 				/**
@@ -249,7 +249,7 @@ TEST(Regex, PrefilterSeekBoundaries) {
 				/**
 				 * Выполняем обход позиций начала поиска
 				 */
-				for(size_t pos = 0; pos <= (length + 1); pos++) {
+				for(size_t pos = 0; pos <= (length + 1); pos++){
 					// Выполняем поиск последовательности отбором позиций
 					const size_t obtained = regex::seek(body, needle, pos);
 					// Выполняем поиск последовательности средствами обычными
@@ -320,7 +320,7 @@ TEST(Regex, PrefilterDistance) {
 	/**
 	 * Выполняем проверку каждого выражения набора
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -368,7 +368,7 @@ TEST(Regex, PrefilterBounded) {
 	/**
 	 * Выполняем проверку каждого выражения набора
 	 */
-	for(const char * pattern : patterns) {
+	for(const char * pattern : patterns){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -384,7 +384,7 @@ TEST(Regex, PrefilterBounded) {
 		/**
 		 * Выполняем проверку каждого текста сопоставления
 		 */
-		for(const char * value : texts) {
+		for(const char * value : texts){
 			// Получаем текст сопоставления регулярного выражения
 			const string text(value);
 			/**
@@ -396,7 +396,7 @@ TEST(Regex, PrefilterBounded) {
 			 *          предшествующим.
 			 *
 			 */
-			for(size_t start = 0; start <= text.size(); start++) {
+			for(size_t start = 0; start <= text.size(); start++){
 				// Создаём набор границ совпадения порождённого сопоставителя
 				vector <pair <size_t, size_t>> received;
 				// Создаём набор границ совпадения исполнения программы
@@ -459,7 +459,7 @@ TEST(Regex, PrefilterBoundedPositional) {
 		/**
 		 * Выполняем проверку каждого выражения набора
 		 */
-		for(const char * pattern : patterns) {
+		for(const char * pattern : patterns){
 			// Создаём собираемое регулярное выражение
 			regex::expression_t expression;
 			// Выполняем сборку регулярного выражения
@@ -496,13 +496,13 @@ TEST(Regex, PrefilterBoundedPositional) {
 		/**
 		 * Выполняем проверку каждого текста сопоставления
 		 */
-		for(const char * value : texts) {
+		for(const char * value : texts){
 			// Получаем текст сопоставления регулярного выражения
 			const string text(value);
 			/**
 			 * Выполняем обход позиций начала поиска совпадения
 			 */
-			for(size_t start = 0; start <= text.size(); start++) {
+			for(size_t start = 0; start <= text.size(); start++){
 				// Создаём набор границ обнаруженного совпадения
 				vector <pair <size_t, size_t>> bounds;
 				// Выполняем поиск совпадения выражением, отбору поддающимся
@@ -519,7 +519,7 @@ TEST(Regex, PrefilterBoundedPositional) {
 				/**
 				 * Если совпадение в тексте обнаружено
 				 */
-				if(obtained) {
+				if(obtained){
 					// Выполняем проверку положения обнаруженного совпадения
 					ASSERT_EQ(bounds.front().first, nearest)
 						<< "«" << text << "» с позиции " << start;
@@ -574,7 +574,7 @@ TEST(Regex, PrefilterDegenerate) {
 	/**
 	 * Выполняем проверку поиска литерала для каждого случая
 	 */
-	for(const auto & item : items) {
+	for(const auto & item : items){
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -623,11 +623,11 @@ TEST(Regex, PrefilterDegenerate) {
 		/**
 		 * Выполняем обход длин текста сопоставления
 		 */
-		for(const size_t length : {size_t(300), size_t(900), size_t(1100), size_t(2200), size_t(4400)}) {
+		for(const size_t length : {size_t(300), size_t(900), size_t(1100), size_t(2200), size_t(4400)}){
 			/**
 			 * Выполняем обход положений помещаемого совпадения
 			 */
-			for(const size_t offset : {size_t(0), size_t(40), size_t(1000), size_t(1024), size_t(2048), size_t(4000)}) {
+			for(const size_t offset : {size_t(0), size_t(40), size_t(1000), size_t(1024), size_t(2048), size_t(4000)}){
 				/**
 				 * Если положение совпадения тексту не принадлежит
 				 */
@@ -781,7 +781,7 @@ TEST(Regex, RepeatFlattening) {
 	/**
 	 * Выполняем проверку каждой пары выражений
 	 */
-	for(const auto & item : folded) {
+	for(const auto & item : folded){
 		// Создаём собираемое выражение со свёрткой повторения
 		regex::expression_t repeat;
 		// Создаём собираемое выражение ряда равносильного
@@ -812,7 +812,7 @@ TEST(Regex, RepeatFlattening) {
 	/**
 	 * Выполняем проверку каждого выражения набора
 	 */
-	for(const auto & item : kept) {
+	for(const auto & item : kept){
 		// Создаём собираемое выражение повторения
 		regex::expression_t repeat;
 		// Создаём собираемое выражение ряда равносильного
@@ -835,7 +835,7 @@ TEST(Regex, RepeatFlattening) {
 	/**
 	 * Выполняем проверку совпадения итогов свёрнутого повторения и ряда
 	 */
-	for(const auto & item : folded) {
+	for(const auto & item : folded){
 		// Создаём собираемое выражение со свёрткой повторения
 		regex::expression_t repeat;
 		// Создаём собираемое выражение ряда равносильного
@@ -847,7 +847,7 @@ TEST(Regex, RepeatFlattening) {
 		/**
 		 * Выполняем проверку каждого текста сопоставления
 		 */
-		for(const char * text : texts) {
+		for(const char * text : texts){
 			// Создаём набор границ совпадения свёрнутого повторения
 			vector <pair <size_t, size_t>> received;
 			// Создаём набор границ совпадения ряда равносильного
@@ -895,7 +895,7 @@ TEST(Regex, AlternateFolding) {
 	/**
 	 * Выполняем проверку каждой пары выражений
 	 */
-	for(const auto & item : folded) {
+	for(const auto & item : folded){
 		// Создаём собираемое выражение со свёрткой ветвей
 		regex::expression_t choice;
 		// Создаём собираемое выражение класса равносильного
@@ -927,7 +927,7 @@ TEST(Regex, AlternateFolding) {
 	/**
 	 * Выполняем проверку каждого выражения набора
 	 */
-	for(const auto & item : kept) {
+	for(const auto & item : kept){
 		// Создаём собираемое выражение выбора ветвей
 		regex::expression_t choice;
 		// Создаём собираемое выражение класса равносильного
@@ -951,7 +951,7 @@ TEST(Regex, AlternateFolding) {
 	/**
 	 * Выполняем проверку совпадения итогов свёрнутого выбора и класса
 	 */
-	for(const auto & item : folded) {
+	for(const auto & item : folded){
 		// Создаём собираемое выражение со свёрткой ветвей
 		regex::expression_t choice;
 		// Создаём собираемое выражение класса равносильного
@@ -963,7 +963,7 @@ TEST(Regex, AlternateFolding) {
 		/**
 		 * Выполняем проверку каждого текста сопоставления
 		 */
-		for(const char * value : texts) {
+		for(const char * value : texts){
 			// Получаем текст сопоставления регулярного выражения
 			const string text(value);
 			// Создаём набор границ совпадения свёрнутого выбора
@@ -976,7 +976,7 @@ TEST(Regex, AlternateFolding) {
 			/**
 			 * Если совпадение в тексте обнаружено
 			 */
-			if(!received.empty() && !expected.empty()) {
+			if(!received.empty() && !expected.empty()){
 				// Выполняем проверку совпадения границ совпадения
 				ASSERT_EQ(received.front(), expected.front())
 					<< item.first << " по тексту «" << text << "»";

@@ -142,7 +142,7 @@ static vector <string> patterns() noexcept {
 	/**
 	 * Выполняем порождение набора выражений
 	 */
-	for(size_t i = 0; i < SAMPLES; i++) {
+	for(size_t i = 0; i < SAMPLES; i++){
 		// Текст порождаемого выражения
 		string pattern;
 		// Получаем количество составляющих порождаемого выражения
@@ -150,7 +150,7 @@ static vector <string> patterns() noexcept {
 		/**
 		 * Выполняем порождение составляющих выражения
 		 */
-		for(size_t j = 0; j < length; j++) {
+		for(size_t j = 0; j < length; j++){
 			// Выполняем добавление составляющей выражения
 			pattern.append(atoms[generator() % 15]);
 			// Выполняем добавление квантора повторения
@@ -202,7 +202,7 @@ int main() {
 	 *          отчего прогон повторный замерял бы не сборку, а выдачу кэша.
 	 *
 	 */
-	for(size_t pass = 0; pass < 1; pass++) {
+	for(size_t pass = 0; pass < 1; pass++){
 		// Набор собранных выражений очередного прогона
 		vector <regex::storage_t::exp_t> records;
 		// Набор текстов выражений очередного прогона
@@ -214,13 +214,13 @@ int main() {
 		/**
 		 * Выполняем перебор набора текстов выражений
 		 */
-		for(const auto & text : texts) {
+		for(const auto & text : texts){
 			// Выполняем сборку регулярного выражения
 			const auto exp = regexp.build(text, {regexp_t::flag_t::DUPNAMES});
 			/**
 			 * Если сборка регулярного выражения выполнена
 			 */
-			if(exp) {
+			if(exp){
 				// Выполняем добавление собранного выражения в набор
 				records.push_back(exp);
 				// Выполняем добавление текста выражения в набор
@@ -250,7 +250,7 @@ int main() {
 	/**
 	 * Выполняем перебор прогонов замера записи выражений
 	 */
-	for(size_t pass = 0; pass < PASSES; pass++) {
+	for(size_t pass = 0; pass < PASSES; pass++){
 		// Записываемая запись хранилища очередного прогона
 		string current;
 		// Получаем показание часов на входе в запись
@@ -258,7 +258,7 @@ int main() {
 		/**
 		 * Если запись собранных выражений не выполнена
 		 */
-		if(!storage.save(fresh, current)) {
+		if(!storage.save(fresh, current)){
 			// Выводим сообщение об отказе записи собранных выражений
 			::printf("запись собранных выражений отказана, код %u\n", static_cast <uint32_t> (storage.error()));
 			// Выводим результат исполнения пробы
@@ -284,7 +284,7 @@ int main() {
 	/**
 	 * Выполняем перебор прогонов замера восстановления выражений
 	 */
-	for(size_t pass = 0; pass < PASSES; pass++) {
+	for(size_t pass = 0; pass < PASSES; pass++){
 		// Набор восстановленных выражений очередного прогона
 		vector <regex::storage_t::exp_t> records;
 		// Получаем копию записи хранилища, передаваемую во владение
@@ -294,7 +294,7 @@ int main() {
 		/**
 		 * Если восстановление собранных выражений не выполнено
 		 */
-		if(!storage.adopt(::move(current), records)) {
+		if(!storage.adopt(::move(current), records)){
 			// Выводим сообщение об отказе восстановления собранных выражений
 			::printf("восстановление собранных выражений отказано, код %u\n", static_cast <uint32_t> (storage.error()));
 			// Выводим результат исполнения пробы
@@ -316,7 +316,7 @@ int main() {
 	/**
 	 * Если количество восстановленных выражений набору не отвечает
 	 */
-	if(restored.size() != fresh.size()) {
+	if(restored.size() != fresh.size()){
 		// Выводим сообщение о расхождении количества выражений
 		::printf("восстановлено %zu выражений вместо %zu\n", restored.size(), fresh.size());
 		// Выводим результат исполнения пробы
@@ -337,17 +337,17 @@ int main() {
 	/**
 	 * Выполняем перебор набора восстановленных выражений
 	 */
-	for(size_t i = 0; i < fresh.size(); i++) {
+	for(size_t i = 0; i < fresh.size(); i++){
 		/**
 		 * Выполняем перебор набора текстов сличения
 		 */
-		for(const auto & subject : subjects) {
+		for(const auto & subject : subjects){
 			// Выполняем увеличение количества выполненных сличений
 			comparisons++;
 			/**
 			 * Если границы совпадения выражений расходятся
 			 */
-			if(regexp.match(subject, fresh.at(i)) != regexp.match(subject, restored.at(i))) {
+			if(regexp.match(subject, fresh.at(i)) != regexp.match(subject, restored.at(i))){
 				// Выполняем увеличение количества обнаруженных расхождений
 				divergences++;
 				/**

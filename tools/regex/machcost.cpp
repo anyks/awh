@@ -91,7 +91,7 @@ static double measure(const string & pattern, const string & text, size_t & byte
 	/**
 	 * Выполняем попытки замера сопоставления
 	 */
-	for(uint32_t attempt = 0; attempt < ATTEMPTS; attempt++) {
+	for(uint32_t attempt = 0; attempt < ATTEMPTS; attempt++){
 		// Получаем отметку времени начала попытки
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -142,7 +142,7 @@ int main() noexcept {
 	/**
 	 * Выполняем перебор замеряемых выражений
 	 */
-	for(const auto & probe : PROBES) {
+	for(const auto & probe : PROBES){
 		// Размер порождённого машинного кода
 		size_t bytes = 0;
 		// Выполняем замер сопоставления выражения

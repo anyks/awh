@@ -448,7 +448,7 @@ namespace {
 		/**
 		 * Выполняем наполнение порождаемого выражения
 		 */
-		for(size_t i = 0; i < parts; i++) {
+		for(size_t i = 0; i < parts; i++){
 			// Выполняем добавление очередной части выражения
 			result.append(ATOMS[gen() % 14]);
 			// Выполняем добавление квантора повторения части
@@ -469,7 +469,7 @@ namespace {
 		/**
 		 * Если выражение предваряется выбором одной из ветвей
 		 */
-		if((gen() % 5) == 0) {
+		if((gen() % 5) == 0){
 			/**
 			 * Получаем части выражения ветвей по отдельности
 			 *
@@ -585,7 +585,7 @@ namespace {
 		/**
 		 * Выполняем обход образцов блока сличения
 		 */
-		for(size_t sample = 0; sample < block.samples; sample++) {
+		for(size_t sample = 0; sample < block.samples; sample++){
 			// Получаем порождённое регулярное выражение
 			const string expression = pattern(gen);
 			// Получаем порождённый текст сопоставления
@@ -632,7 +632,7 @@ namespace {
 				/**
 				 * Если сборка регулярного выражения выполнена
 				 */
-				if(built) {
+				if(built){
 					// Код ошибки сборки эталонного регулярного выражения
 					int code = 0;
 					// Положение ошибки сборки эталонного регулярного выражения
@@ -644,7 +644,7 @@ namespace {
 					/**
 					 * Если сборка эталонного регулярного выражения выполнена
 					 */
-					if(reference != nullptr) {
+					if(reference != nullptr){
 						// Выполняем размещение набора границ эталонного совпадения
 						pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 						// Выполняем сопоставление эталонного регулярного выражения
@@ -656,7 +656,7 @@ namespace {
 						/**
 						 * Если вердикт либо границы совпадения эталону не отвечают
 						 */
-						if((matched != expected) || (expected && ((begin != static_cast <size_t> (ovector[0])) || (finish != static_cast <size_t> (ovector[1]))))) {
+						if((matched != expected) || (expected && ((begin != static_cast <size_t> (ovector[0])) || (finish != static_cast <size_t> (ovector[1]))))){
 							// Увеличиваем количество расхождений с эталонной реализацией
 							divergences++;
 							/**
@@ -696,7 +696,7 @@ namespace {
 		/**
 		 * Если накопленная сумма записанному образцу отвечает
 		 */
-		if(sum == block.checksum) {
+		if(sum == block.checksum){
 			// Выполняем вывод итога сличения блока образцов
 			::printf("  %-22s образцов %-7zu сумма совпала\n", block.name, checked);
 			// Выводим результат сличения блока образцов
@@ -768,7 +768,7 @@ namespace {
 			/**
 			 * Если размещение исполняемой памяти сборкой не поддерживается
 			 */
-			if(!regex::assembly_t::available()) {
+			if(!regex::assembly_t::available()){
 				// Выполняем вывод отсутствия поддержки исполняемой памяти
 				::printf("  исполняемая память     сборкой не поддерживается, проверка пропущена\n");
 				// Выводим результат проверки средств размещения
@@ -779,7 +779,7 @@ namespace {
 			/**
 			 * Если размещение участка исполняемой памяти не выполнено
 			 */
-			if(!assembly.allocate(sizeof(code))) {
+			if(!assembly.allocate(sizeof(code))){
 				// Выполняем вывод отказа размещения участка памяти
 				::printf("  исполняемая память     ОТКАЗ размещения участка\n");
 				// Выводим результат проверки средств размещения
@@ -788,7 +788,7 @@ namespace {
 			/**
 			 * Если наполнение участка машинным кодом не выполнено
 			 */
-			if(!assembly.fill(code, sizeof(code))) {
+			if(!assembly.fill(code, sizeof(code))){
 				// Выполняем вывод отказа наполнения участка памяти
 				::printf("  исполняемая память     ОТКАЗ наполнения участка\n");
 				// Выводим результат проверки средств размещения
@@ -797,7 +797,7 @@ namespace {
 			/**
 			 * Если разрешение исполнения участка не выполнено
 			 */
-			if(!assembly.commit()) {
+			if(!assembly.commit()){
 				// Выполняем вывод отказа разрешения исполнения
 				::printf("  исполняемая память     ОТКАЗ разрешения исполнения\n");
 				// Выводим результат проверки средств размещения
@@ -810,7 +810,7 @@ namespace {
 			/**
 			 * Если итог исполнения ожидаемому не отвечает
 			 */
-			if(result != 42) {
+			if(result != 42){
 				// Выполняем вывод расхождения итога исполнения
 				::printf("  исполняемая память     РАСХОЖДЕНИЕ итога: получено %llu, ожидалось 42\n", static_cast <unsigned long long> (result));
 				// Выводим результат проверки средств размещения
@@ -832,7 +832,7 @@ namespace {
 		/**
 		 * Если порождение машинного кода сборкой не поддерживается
 		 */
-		if(!regex::emitter_t::available() || !regex::assembly_t::available()) {
+		if(!regex::emitter_t::available() || !regex::assembly_t::available()){
 			// Выполняем вывод отсутствия поддержки порождения машинного кода
 			::printf("  порождение кода        набором команд не поддерживается, проверка пропущена\n");
 			// Выводим результат проверки порождения машинного кода
@@ -861,7 +861,7 @@ namespace {
 		/**
 		 * Если разрешение отложенных переходов не выполнено
 		 */
-		if(!emitter.resolve()) {
+		if(!emitter.resolve()){
 			// Выполняем вывод отказа разрешения отложенных переходов
 			::printf("  порождение кода        ОТКАЗ разрешения переходов\n");
 			// Выводим результат проверки порождения машинного кода
@@ -872,7 +872,7 @@ namespace {
 		/**
 		 * Если размещение порождённого кода не выполнено
 		 */
-		if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()) {
+		if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()){
 			// Выполняем вывод отказа размещения порождённого кода
 			::printf("  порождение кода        ОТКАЗ размещения порождённого кода\n");
 			// Выводим результат проверки порождения машинного кода
@@ -885,7 +885,7 @@ namespace {
 		/**
 		 * Если итог исполнения ожидаемому не отвечает
 		 */
-		if(result != 0x0123456789ABCDEFull) {
+		if(result != 0x0123456789ABCDEFull){
 			// Выполняем вывод расхождения итога исполнения
 			::printf("  порождение кода        РАСХОЖДЕНИЕ итога: получено %016llx\n", static_cast <unsigned long long> (result));
 			// Выводим результат проверки порождения машинного кода
@@ -934,7 +934,7 @@ namespace {
 			/**
 			 * Если порождение машинного кода набором команд не поддерживается
 			 */
-			if(!regex::emitter_t::available() || !regex::assembly_t::available()) {
+			if(!regex::emitter_t::available() || !regex::assembly_t::available()){
 				// Выполняем вывод пропуска проверки сохранности регистров
 				::printf("  сохранность регистров  набором команд не поддерживается, проверка пропущена\n");
 				// Выводим результат проверки сохранности регистров
@@ -991,7 +991,7 @@ namespace {
 			/**
 			 * Если порождение машинного кода не выполнено
 			 */
-			if(!emitter.resolve() || emitter.failed()) {
+			if(!emitter.resolve() || emitter.failed()){
 				// Выполняем вывод отказа порождения машинного кода
 				::printf("  сохранность регистров  ОТКАЗ порождения машинного кода\n");
 				// Выводим результат проверки сохранности регистров
@@ -1002,7 +1002,7 @@ namespace {
 			/**
 			 * Если размещение порождённого кода не выполнено
 			 */
-			if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()) {
+			if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()){
 				// Выполняем вывод отказа размещения порождённого кода
 				::printf("  сохранность регистров  ОТКАЗ размещения порождённого кода\n");
 				// Выводим результат проверки сохранности регистров
@@ -1041,7 +1041,7 @@ namespace {
 			/**
 			 * Если сумма примет оберегаемых регистров не совпала
 			 */
-			if(received != expected) {
+			if(received != expected){
 				// Выполняем вывод затирания оберегаемых регистров
 				::printf("  сохранность регистров  ЗАТЁРТЫ: ожидалось %016llx, получено %016llx\n",
 				 static_cast <unsigned long long> (expected), static_cast <unsigned long long> (received));
@@ -1082,7 +1082,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 	/**
 	 * Если порождение машинного кода набором команд не поддерживается
 	 */
-	if(!regex::emitter_t::available() || !regex::assembly_t::available()) {
+	if(!regex::emitter_t::available() || !regex::assembly_t::available()){
 		// Выполняем вывод пропуска сличения порождённого кода
 		::printf("  сличение сопоставителя набором команд не поддерживается, проверка пропущена\n");
 		// Выводим результат сличения порождённого машинного кода
@@ -1124,7 +1124,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 	 *          порождённые случайным образом
 	 *
 	 */
-	for(size_t sample = 0; sample < (4000 + RECURSIVES); sample++) {
+	for(size_t sample = 0; sample < (4000 + RECURSIVES); sample++){
 		// Получаем очередное регулярное выражение сличения
 		const string expression = ((sample < RECURSIVES) ?
 		 string(RECURSIVE[sample]) : pattern(gen));
@@ -1173,7 +1173,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 		/**
 		 * Выполняем обход текстов сопоставления образца
 		 */
-		for(size_t attempt = 0; attempt < 8; attempt++) {
+		for(size_t attempt = 0; attempt < 8; attempt++){
 			// Получаем текст сопоставления образца
 			const string text = ((sample < RECURSIVES) ?
 			 string(NESTED[attempt]) : subject(gen, 64, utf));
@@ -1190,7 +1190,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 			/**
 			 * Если вердикты сопоставления расходятся
 			 */
-			if(one != two) {
+			if(one != two){
 				// Увеличиваем количество обнаруженных расхождений
 				divergences++;
 				// Переходим к тексту следующему
@@ -1207,7 +1207,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 	/**
 	 * Если расхождения порождённого кода с исполнением программы обнаружены
 	 */
-	if(divergences > 0) {
+	if(divergences > 0){
 		// Выполняем вывод количества обнаруженных расхождений
 		::printf("  сличение сопоставителя%s РАСХОЖДЕНИЙ %zu из %zu сличений\n", (utf ? " UTF-8" : ""), divergences, compared);
 		// Выводим результат сличения порождённого машинного кода
@@ -1255,7 +1255,7 @@ static void collect(const awh::regexp_t & regexp, std::vector <awh::regex::stora
 	/**
 	 * Выполняем перебор набора выражений проверки хранилища
 	 */
-	for(const char * pattern : STORED) {
+	for(const char * pattern : STORED){
 		// Выполняем сборку регулярного выражения
 		/**
 		 * Выполняем сборку регулярного выражения
@@ -1289,7 +1289,7 @@ static size_t machined(const std::vector <awh::regex::storage_t::exp_t> & expres
 	/**
 	 * Выполняем перебор набора собранных выражений
 	 */
-	for(const auto & expression : expressions) {
+	for(const auto & expression : expressions){
 		/**
 		 * Если порождённый сопоставитель выражения готов
 		 */
@@ -1316,15 +1316,15 @@ static size_t compare(const awh::regexp_t & regexp, const std::vector <awh::rege
 	/**
 	 * Выполняем перебор набора восстановленных выражений
 	 */
-	for(size_t i = 0; i < fresh.size(); i++) {
+	for(size_t i = 0; i < fresh.size(); i++){
 		/**
 		 * Выполняем перебор набора текстов сличения
 		 */
-		for(const char * subject : SUBJECTS) {
+		for(const char * subject : SUBJECTS){
 			/**
 			 * Если границы совпадения выражений расходятся
 			 */
-			if(regexp.match(subject, fresh.at(i)) != regexp.match(subject, restored.at(i))) {
+			if(regexp.match(subject, fresh.at(i)) != regexp.match(subject, restored.at(i))){
 				// Выполняем увеличение количества обнаруженных расхождений
 				result++;
 				// Выполняем вывод сообщения об обнаруженном расхождении
@@ -1351,7 +1351,7 @@ static bool indexing() noexcept {
 	/**
 	 * Если порождение машинного кода не поддерживается
 	 */
-	if(!awh::regex::emitter_t::available() || !awh::regex::assembly_t::available()) {
+	if(!awh::regex::emitter_t::available() || !awh::regex::assembly_t::available()){
 		// Выполняем вывод пропуска проверки обращения к памяти
 		::printf("  обращение по регистру  порождение не поддерживается\n");
 		// Выводим результат проверки обращения к памяти
@@ -1385,7 +1385,7 @@ static bool indexing() noexcept {
 	/**
 	 * Если порождение образца не выполнено
 	 */
-	if(!emitter.resolve() || emitter.failed()) {
+	if(!emitter.resolve() || emitter.failed()){
 		// Выполняем вывод отказа порождения образца
 		::printf("  обращение по регистру  ОБРАЗЕЦ НЕ ПОРОЖДЁН\n");
 		// Выводим результат проверки обращения к памяти
@@ -1396,7 +1396,7 @@ static bool indexing() noexcept {
 	/**
 	 * Если размещение порождённого образца не выполнено
 	 */
-	if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()) {
+	if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()){
 		// Выполняем вывод отказа размещения образца
 		::printf("  обращение по регистру  ОБРАЗЕЦ НЕ РАЗМЕЩЁН\n");
 		// Выводим результат проверки обращения к памяти
@@ -1411,11 +1411,11 @@ static bool indexing() noexcept {
 	/**
 	 * Выполняем перебор смещений записи значения
 	 */
-	for(size_t at = 0; at < 12; at++) {
+	for(size_t at = 0; at < 12; at++){
 		/**
 		 * Выполняем перебор смещений чтения значения
 		 */
-		for(size_t back = 0; back < 12; back++) {
+		for(size_t back = 0; back < 12; back++){
 			// Создаём набор мест обращения к памяти
 			std::vector <size_t> cells(16, 0);
 			// Выполняем заполнение места чтения опознаваемым значением
@@ -1429,7 +1429,7 @@ static bool indexing() noexcept {
 			/**
 			 * Если записанное значение ожидаемому не отвечает
 			 */
-			if((at != 15) && (cells.at(at) != back)) {
+			if((at != 15) && (cells.at(at) != back)){
 				// Увеличиваем количество обнаруженных расхождений
 				divergences++;
 				/**
@@ -1443,7 +1443,7 @@ static bool indexing() noexcept {
 			/**
 			 * Если прочитанное значение ожидаемому не отвечает
 			 */
-			if(cells.at(15) != expect) {
+			if(cells.at(15) != expect){
 				// Увеличиваем количество обнаруженных расхождений
 				divergences++;
 				/**
@@ -1506,7 +1506,7 @@ static bool nesting() noexcept {
 	/**
 	 * Если порождение машинного кода не поддерживается
 	 */
-	if(!awh::regex::emitter_t::available() || !awh::regex::assembly_t::available()) {
+	if(!awh::regex::emitter_t::available() || !awh::regex::assembly_t::available()){
 		// Выполняем вывод пропуска проверки записей вложенных уровней
 		::printf("  записи вложенных уровней порождение не поддерживается\n");
 		// Выводим результат сличения записей вложенных уровней
@@ -1595,7 +1595,7 @@ static bool nesting() noexcept {
 	/**
 	 * Если порождение образца не выполнено
 	 */
-	if(!emitter.resolve() || emitter.failed()) {
+	if(!emitter.resolve() || emitter.failed()){
 		// Выполняем вывод отказа порождения образца
 		::printf("  записи вложенных уровней ОБРАЗЕЦ НЕ ПОРОЖДЁН\n");
 		// Выводим результат сличения записей вложенных уровней
@@ -1606,7 +1606,7 @@ static bool nesting() noexcept {
 	/**
 	 * Если размещение порождённого образца не выполнено
 	 */
-	if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()) {
+	if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()){
 		// Выполняем вывод отказа размещения образца
 		::printf("  записи вложенных уровней ОБРАЗЕЦ НЕ РАЗМЕЩЁН\n");
 		// Выводим результат сличения записей вложенных уровней
@@ -1621,11 +1621,11 @@ static bool nesting() noexcept {
 	/**
 	 * Выполняем перебор значений уровня внешнего
 	 */
-	for(size_t outer = 1; outer <= 16; outer++) {
+	for(size_t outer = 1; outer <= 16; outer++){
 		/**
 		 * Выполняем перебор значений уровня первого
 		 */
-		for(size_t inner = 1; inner <= 16; inner++) {
+		for(size_t inner = 1; inner <= 16; inner++){
 			// Значение, подпрограмме обстановки передаваемое
 			const size_t deep = ((outer * 1000) + inner);
 			// Создаём таблицу обстановки исполнения образца
@@ -1643,7 +1643,7 @@ static bool nesting() noexcept {
 			/**
 			 * Если значения уровней ожидаемым не отвечают
 			 */
-			if((cells.at(0) != outer) || (cells.at(1) != inner) || (cells.at(2) != deep)) {
+			if((cells.at(0) != outer) || (cells.at(1) != inner) || (cells.at(2) != deep)){
 				// Увеличиваем количество обнаруженных расхождений записей
 				divergences++;
 				/**
@@ -1771,13 +1771,13 @@ static bool seeking() noexcept {
 	/**
 	 * Выполняем обход набора текстов сличения
 	 */
-	for(auto & text : texts) {
+	for(auto & text : texts){
 		// Получаем размер текста сличения
 		const size_t size = text.size();
 		/**
 		 * Выполняем обход набора искомых последовательностей
 		 */
-		for(auto & item : NEEDLES) {
+		for(auto & item : NEEDLES){
 			// Получаем искомую последовательность
 			const std::string_view what(item);
 			// Создаём набор позиций начала поиска
@@ -1793,7 +1793,7 @@ static bool seeking() noexcept {
 			/**
 			 * Выполняем обход набора позиций начала поиска
 			 */
-			for(auto & pos : positions) {
+			for(auto & pos : positions){
 				// Выполняем поиск последовательности по паре байтов
 				const size_t ours = awh::regex::seek(text, what, pos);
 				// Выполняем поиск последовательности средствами обычными
@@ -1803,7 +1803,7 @@ static bool seeking() noexcept {
 				/**
 				 * Если итоги поиска разошлись
 				 */
-				if(ours != plain) {
+				if(ours != plain){
 					// Увеличиваем количество обнаруженных расхождений
 					divergences++;
 					/**
@@ -1893,7 +1893,7 @@ static bool scattering() noexcept {
 	/**
 	 * Выполняем обход набора текстов сличения
 	 */
-	for(auto & text : texts) {
+	for(auto & text : texts){
 		// Получаем размер текста сличения
 		const size_t size = text.size();
 		/**
@@ -1903,11 +1903,11 @@ static bool scattering() noexcept {
 		 * с одним значением уходит к поиску средствами библиотеки, а прочие -
 		 * к набору команд над вектором
 		 */
-		for(size_t count = 1; count <= awh::regex::SPARSE; count++) {
+		for(size_t count = 1; count <= awh::regex::SPARSE; count++){
 			/**
 			 * Выполняем обход наборов байтов очередной ширины
 			 */
-			for(size_t attempt = 0; attempt < 6; attempt++) {
+			for(size_t attempt = 0; attempt < 6; attempt++){
 				// Создаём набор искомых байтов
 				std::vector <uint8_t> bytes;
 				/**
@@ -1936,7 +1936,7 @@ static bool scattering() noexcept {
 				/**
 				 * Выполняем обход набора позиций начала поиска
 				 */
-				for(auto & pos : positions) {
+				for(auto & pos : positions){
 					// Выполняем поиск первого байта из набора
 					const size_t ours = awh::regex::scattered(text, bytes.data(), bytes.size(), pos);
 					// Устанавливаем итог перебора побайтного
@@ -1967,7 +1967,7 @@ static bool scattering() noexcept {
 					/**
 					 * Если итоги поиска разошлись
 					 */
-					if(ours != plain) {
+					if(ours != plain){
 						// Увеличиваем количество обнаруженных расхождений
 						divergences++;
 						/**
@@ -2027,7 +2027,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если сборка набора выражений не выполнена
 	 */
-	if(fresh.empty()) {
+	if(fresh.empty()){
 		// Выполняем вывод сообщения об отказе сборки набора выражений
 		::printf("  хранилище выражений    ОТКАЗ сборки набора выражений\n");
 		// Выводим результат проверки хранилища
@@ -2038,7 +2038,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если запись собранных выражений не выполнена
 	 */
-	if(!storage.save(fresh, record)) {
+	if(!storage.save(fresh, record)){
 		// Выполняем вывод сообщения об отказе записи собранных выражений
 		::printf("  хранилище выражений    ОТКАЗ записи, код %u\n", static_cast <uint32_t> (storage.error()));
 		// Выводим результат проверки хранилища
@@ -2047,13 +2047,13 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если запись подлежит сохранению в файл
 	 */
-	if(write != nullptr) {
+	if(write != nullptr){
 		// Выполняем открытие файла записи хранилища
 		FILE * file = ::fopen(write, "wb");
 		/**
 		 * Если открытие файла записи хранилища не выполнено
 		 */
-		if(file == nullptr) {
+		if(file == nullptr){
 			// Выполняем вывод сообщения об отказе открытия файла записи
 			::printf("  хранилище выражений    ОТКАЗ открытия файла \"%s\"\n", write);
 			// Выводим результат проверки хранилища
@@ -2073,7 +2073,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если восстановление собранных выражений не выполнено
 	 */
-	if(!storage.load(record, restored)) {
+	if(!storage.load(record, restored)){
 		// Выполняем вывод сообщения об отказе восстановления выражений
 		::printf("  хранилище выражений    ОТКАЗ восстановления, код %u\n", static_cast <uint32_t> (storage.error()));
 		// Выводим результат проверки хранилища
@@ -2082,7 +2082,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если количество восстановленных выражений набору не отвечает
 	 */
-	if(restored.size() != fresh.size()) {
+	if(restored.size() != fresh.size()){
 		// Выполняем вывод сообщения о расхождении количества выражений
 		::printf("  хранилище выражений    восстановлено %zu выражений вместо %zu\n", restored.size(), fresh.size());
 		// Выводим результат проверки хранилища
@@ -2093,7 +2093,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если сличение поведения расхождения обнаружило
 	 */
-	if(divergences > 0) {
+	if(divergences > 0){
 		// Выполняем вывод итога сличения восстановленных выражений
 		::printf("  хранилище выражений    РАСХОЖДЕНИЙ %zu\n", divergences);
 		// Выводим результат проверки хранилища
@@ -2124,7 +2124,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если открытие файла записи иной машины не выполнено
 	 */
-	if(file == nullptr) {
+	if(file == nullptr){
 		// Выполняем вывод сообщения об отсутствии записи иной машины
 		::printf("  запись иной машины     файл \"%s\" не открыт, проверка пропущена\n", read);
 		// Выводим результат проверки хранилища
@@ -2149,11 +2149,11 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если восстановление записи иной машины не выполнено
 	 */
-	if(!storage.load(foreign, imported)) {
+	if(!storage.load(foreign, imported)){
 		/**
 		 * Если запись отвергнута опознанием устройства машины
 		 */
-		if(storage.error() == awh::regex::storage_error_t::BAD_PLATFORM) {
+		if(storage.error() == awh::regex::storage_error_t::BAD_PLATFORM){
 			// Выполняем вывод итога проверки записи иной машины
 			::printf("  запись иной машины     отвергнута опознанием устройства, как и положено\n");
 			// Выводим результат проверки хранилища
@@ -2167,7 +2167,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если количество восстановленных выражений набору не отвечает
 	 */
-	if(imported.size() != fresh.size()) {
+	if(imported.size() != fresh.size()){
 		// Выполняем вывод сообщения о расхождении количества выражений
 		::printf("  запись иной машины     восстановлено %zu выражений вместо %zu\n", imported.size(), fresh.size());
 		// Выводим результат проверки хранилища
@@ -2176,7 +2176,7 @@ static bool storing(const char * write, const char * read) noexcept {
 	/**
 	 * Если сличение поведения расхождения обнаружило
 	 */
-	if(compare(regexp, fresh, imported) > 0) {
+	if(compare(regexp, fresh, imported) > 0){
 		// Выполняем вывод итога сличения выражений записи иной машины
 		::printf("  запись иной машины     РАСХОЖДЕНИЯ поведения\n");
 		// Выводим результат проверки хранилища
@@ -2222,7 +2222,7 @@ int main(int argc, char ** argv) {
 	/**
 	 * Выполняем разбор параметров запуска стенда проверки
 	 */
-	for(int i = 1; i < argc; i++) {
+	for(int i = 1; i < argc; i++){
 		/**
 		 * Если параметр задаёт путь записи, порождаемой стендом
 		 */
@@ -2257,7 +2257,7 @@ int main(int argc, char ** argv) {
 	/**
 	 * Выполняем обход блоков образцов сличения
 	 */
-	for(auto & block : BLOCKS) {
+	for(auto & block : BLOCKS){
 		/**
 		 * Если блок образцов подлежит подробному выводу
 		 */
