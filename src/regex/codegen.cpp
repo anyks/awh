@@ -3465,6 +3465,17 @@ void awh::regex::Codegen::binding() noexcept {
 	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
 	// Выполняем установку адреса подпрограммы отбора позиций
 	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
+	/**
+	 * Если короткий ведущий литерал поддерживает отдельный проход
+	 */
+	#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__) && !defined(AWH_REGEX_SCALAR)
+		// Выбираем подпрограмму один раз при создании обстановки исполнения
+		const prefilter_t::seeker_t selected = this->_prefilter.select();
+		// Если для ведущего литерала доступен специальный отбор
+		if(selected != nullptr)
+			// Закрепляем выбранный вход для всех вызовов порождённого кода
+			this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (selected);
+	#endif
 	// Выполняем установку адреса подпрограммы проверки возможности совпадения
 	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
 	// Выполняем установку адреса подпрограммы отбора позиции по литералу

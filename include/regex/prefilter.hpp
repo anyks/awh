@@ -86,6 +86,20 @@
  *          разборкой. Числа и условия замеров - в «benchmark/regex/COMPARISON.md».
  *          Закреплено проверкой «Regex.PrefilterAligned».
  *
+ *          <b>Короткий ведущий литерал выбирает собственный вход JIT при
+ *          связывании обстановки исполнения.</b> На x86-64 длины 4–8
+ *          получают проход с постоянной длиной, а общий «windowed» не
+ *          проверяет применимость специализации при каждом вызове.
+ *          Выбор повторяется при восстановлении записи JIT: в запись
+ *          адрес функции не входит. Общий путь и скалярная сборка
+ *          сохраняют прежние тела. На остальных наборах команд ответ
+ *          об отсутствии специализации подставляется из заголовка,
+ *          не добавляя нового вызова на общем пути.
+ *          Закреплено проверками «Regex.PrefilterSelection»,
+ *          «Regex.PrefilterSelectionGuardPages» и
+ *          «Regex.CodegenSelectionRestore». Пять пар и остаточные
+ *          потери отдельных сценариев описаны в «COMPARISON.md».
+ *
  * \~english
  * @brief Header file of the preliminary selection of matching positions — the set of bytes
  *        admissible at the beginning of a match and the mandatory literal of a match, which allow
@@ -154,6 +168,19 @@
  *          the function itself moves the loop within it, and its head must then be checked by
  *          disassembly. The numbers and conditions of the measurements are in
  *          «benchmark/regex/COMPARISON.md». Pinned by the «Regex.PrefilterAligned» test.
+ *
+ *          <b>A short leading literal selects its JIT entry while the
+ *          execution context is bound.</b> On x86-64, lengths 4–8 use
+ *          a constant-length pass; the general windowed entry performs
+ *          no per-call specialization dispatch. Restoring a JIT record
+ *          repeats the selection because function addresses are not
+ *          serialized. The general and scalar paths retain their bodies.
+ *          On other instruction sets the unavailable specialization is
+ *          reported inline, without adding a call to the general path.
+ *          Covered by Regex.PrefilterSelection,
+ *          Regex.PrefilterSelectionGuardPages and
+ *          Regex.CodegenSelectionRestore. Five paired runs and remaining
+ *          losses in individual scenarios are documented in COMPARISON.md.
  *
  * \~
  *
@@ -852,6 +879,16 @@ namespace awh {
 		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Prefilter {
+			/**
+			 * \~russian
+			 * @brief Тип подпрограммы отбора позиции для порождённого кода
+			 *
+			 * \~english
+			 * @brief Type of the position selection routine for generated code
+			 *
+			 * \~
+			 */
+			typedef size_t (* seeker_t) (const char *, size_t, size_t, const void *) noexcept;
 			// Флаг применимости набора допустимых начальных байтов
 			bool active;
 			// Флаг разбора текста как последовательности UTF-8
@@ -1021,6 +1058,38 @@ namespace awh {
 					// Выполняем сброс допустимости очередного байта
 					this->bytes[i] = false;
 			}
+			/**
+			 * \~russian
+			 * @brief Метод выбора подпрограммы отбора позиции для порождённого кода
+			 *
+			 * @details Выбор выполняется после формирования ведущего литерала.
+			 *          До следующего выбора литерал и признак применимости
+			 *          отбора должны оставаться неизменными. Подпрограмма
+			 *          получает адрес текста, размер, начало поиска и адрес
+			 *          этого объекта. Отсутствие совпадения обозначается
+			 *          размером текста, как и в методе «search».
+			 *
+			 * @return адрес специального отбора либо нулевой адрес для общего пути
+			 *
+			 * \~english
+			 * @brief Method of selecting a position search routine for generated code
+			 * @details Select after the leading literal is finalized. The literal
+			 *          and the active flag must remain unchanged until reselection.
+			 *          The routine receives the text address, size, search start
+			 *          and this object's address. A missing match yields the text
+			 *          size, following the contract of the search method.
+			 * @return specialized routine or a null pointer for the general path
+			 *
+			 * \~
+			 */
+			#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__) && !defined(AWH_REGEX_SCALAR)
+				seeker_t select() const noexcept;
+			#else
+				seeker_t select() const noexcept {
+					// Сохраняем общий вход без отдельной подпрограммы
+					return nullptr;
+				}
+			#endif
 			/**
 			 * \~russian
 			 * @brief Метод проверки возможности совпадения в оставшемся тексте

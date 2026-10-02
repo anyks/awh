@@ -24,6 +24,11 @@
 #include <regex/prefilter.hpp>
 
 /**
+ * Подключаем средства управления развёртыванием функций
+ */
+#include <regex/common.hpp>
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -1313,5 +1318,242 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 		}
 		// Выводим признак отсутствия искомого байта
 		return nullptr;
+	}
+#endif
+
+/**
+ * Если доступен отдельный проход короткого литерала на x86-64
+ */
+#if defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+	namespace {
+		/**
+		 * @brief Шаблон функции поиска короткого литерала
+		 *
+		 * @tparam LENGTH длина искомой последовательности от четырёх до восьми байтов
+		 *
+		 */
+		template <size_t LENGTH>
+		/**
+		 * @brief Функция поиска литерала от четырёх до восьми байтов
+		 *
+		 * @details Начальное и конечное слова по четыре байта покрывают весь
+		 *          литерал. При длине меньше восьми слова перекрываются, но
+		 *          за границу искомого и проверяемого кандидата не выходят.
+		 *          Постоянная длина исключает вызов сравнения произвольного
+		 *          числа байтов и сокращает число сохраняемых регистров.
+		 *
+		 * @param text     текст сопоставления
+		 * @param needle   адрес искомой последовательности
+		 * @param pos      позиция начала поиска
+		 * @param rejected число участков с кандидатами, включая найденный
+		 * @return         позиция найденной последовательности либо признак отсутствия
+		 *
+		 */
+		AWH_REGEX_ALIGNED AWH_REGEX_NOINLINE size_t compact(const string_view text, const char * needle, const size_t pos, size_t & rejected) noexcept {
+			// Получаем размеры текста и искомого
+			const size_t size = text.size(), length = LENGTH;
+			// Счёт участков с кандидатами
+			size_t rejects = 0;
+			/**
+			 * @brief Функция завершения прохода с передачей счёта наружу
+			 *
+			 * @details Запись по ссылке выполняется после чтения текста,
+			 *          чтобы не вынуждать компилятор перечитывать данные
+			 *          в каждом обороте из-за возможного пересечения адресов.
+			 *
+			 * @param position позиция найденной последовательности либо признак отсутствия
+			 * @return         результат поиска
+			 *
+			 */
+			const auto finish = [&rejected, &rejects](const size_t position) noexcept -> size_t {
+				// Передаём число участков с кандидатами
+				rejected = rejects;
+				// Выводим результат поиска
+				return position;
+			};
+			// Если искомое в остаток текста не помещается
+			if((size < length) || (pos > (size - length)))
+				// Выводим отсутствие совпадения
+				return finish(string_view::npos);
+			// Получаем предел начала совпадения
+			const size_t limit = ((size - length) + 1);
+			// Получаем расстояние между байтами пары
+			const size_t spacing = (((length - 1) < SPACING) ? (length - 1) : SPACING);
+			// Получаем начало текста
+			const char * base = text.data();
+			// Получаем положение завершающего слова
+			const size_t offset = (length - sizeof(uint32_t));
+			// Слова начала и конца искомого
+			uint32_t head = 0, tail = 0;
+			// Читаем начало искомого
+			::memcpy(&head, needle, sizeof(head));
+			// Читаем конец искомого
+			::memcpy(&tail, (needle + offset), sizeof(tail));
+			// Размножаем первый байт пары
+			const __m128i leading = _mm_set1_epi8(needle[0]);
+			// Размножаем второй байт пары
+			const __m128i trailer = _mm_set1_epi8(needle[spacing]);
+			// Текущая позиция поиска
+			size_t at = pos;
+			/**
+			 * Выполняем поиск пары байтов двумя векторами
+			 */
+			while((size - at) >= (32 + spacing)){
+				// Читаем первый участок под первый байт пары
+				const __m128i first = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at));
+				// Читаем второй участок под первый байт пары
+				const __m128i second = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + 16));
+				// Читаем первый участок под второй байт пары
+				const __m128i next = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + spacing));
+				// Читаем второй участок под второй байт пары
+				const __m128i last = _mm_loadu_si128(reinterpret_cast <const __m128i *> (base + at + spacing + 16));
+				// Сличаем пару байтов в первом участке
+				const __m128i equal = _mm_and_si128(_mm_cmpeq_epi8(first, leading), _mm_cmpeq_epi8(next, trailer));
+				// Сличаем пару байтов во втором участке
+				const __m128i following = _mm_and_si128(_mm_cmpeq_epi8(second, leading), _mm_cmpeq_epi8(last, trailer));
+				// Объединяем признаки совпадения пары
+				uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(equal)) |
+				 (static_cast <uint32_t> (_mm_movemask_epi8(following)) << 16));
+				// Если участок содержит кандидатов
+				if(hits != 0)
+					// Увеличиваем счёт участков
+					rejects++;
+				/**
+				 * Проверяем кандидатов в порядке текста
+				 */
+				while(hits != 0){
+					// Получаем позицию кандидата
+					const size_t start = (at + trailing(static_cast <uint64_t> (hits)));
+					// Если кандидат выходит за предел начала совпадения
+					if(start >= limit)
+						// Выводим отсутствие совпадения
+						return finish(string_view::npos);
+					// Слова начала и конца кандидата
+					uint32_t first = 0, second = 0;
+					// Читаем начало кандидата
+					::memcpy(&first, (base + start), sizeof(first));
+					// Читаем конец кандидата
+					::memcpy(&second, (base + start + offset), sizeof(second));
+					// Если оба слова совпали
+					if((first == head) && (second == tail))
+						// Выводим найденную позицию
+						return finish(start);
+					// Снимаем рассмотренного кандидата
+					hits &= (hits - 1);
+				}
+				// Переходим к следующей паре участков
+				at += 32;
+			}
+			/**
+			 * Проверяем остаток текста словами без выхода за его границу
+			 */
+			for(; at < limit; at++){
+				// Слова начала и конца кандидата
+				uint32_t first = 0, second = 0;
+				// Читаем начало кандидата
+				::memcpy(&first, (base + at), sizeof(first));
+				// Читаем конец кандидата
+				::memcpy(&second, (base + at + offset), sizeof(second));
+				// Если оба слова совпали
+				if((first == head) && (second == tail))
+					// Выводим найденную позицию
+					return finish(at);
+			}
+			// Выводим отсутствие совпадения
+			return finish(string_view::npos);
+		}
+
+		/**
+		 * @brief Шаблон отбора позиции по ведущему литералу постоянной длины
+		 *
+		 * @tparam LENGTH длина ведущего литерала от четырёх до восьми байтов
+		 *
+		 */
+		template <size_t LENGTH>
+		/**
+		 * @brief Функция отбора позиции для порождённого сопоставителя
+		 *
+		 * @details Длина выбирается при связывании обстановки исполнения.
+		 *          Вызов получает тот же набор аргументов, что и общий отбор,
+		 *          поэтому порождённый код и формат его записи не меняются.
+		 *          Счёт кандидатов сохраняет выбор редкой пары за первым окном.
+		 *
+		 * @param text      адрес текста сопоставления
+		 * @param size      размер текста сопоставления
+		 * @param pos       позиция начала поиска
+		 * @param prefilter адрес предварительного отбора позиций
+		 * @return          позиция первого вхождения либо размер текста
+		 *
+		 */
+		size_t selecting(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+			// Если литерал в остаток текста не помещается
+			if((size < LENGTH) || (pos > (size - LENGTH)))
+				// Выводим конец текста признаком отсутствия совпадения
+				return size;
+			// Получаем адрес ведущего литерала
+			const char * needle = reinterpret_cast <const awh::regex::prefilter_t *> (prefilter)->leading.data();
+			// Получаем представление текста
+			const string_view source(text, size);
+			// Получаем предел начала полного совпадения
+			const size_t reach = ((size - LENGTH) + 1);
+			// Ограничиваем первое окно без сложения за пределами текста
+			const size_t bound = (pos + (((reach - pos) < awh::regex::WINDOW) ? (reach - pos) : awh::regex::WINDOW));
+			// Счёт участков с кандидатами
+			size_t rejected = 0;
+			// Выполняем поиск в первом окне с постоянной длиной литерала
+			const size_t found = compact <LENGTH> (source.substr(0, ((bound + LENGTH) - 1)), needle, pos, rejected);
+			// Если литерал обнаружен в первом окне
+			if(found != string_view::npos)
+				// Выводим положение первого вхождения
+				return found;
+			// Если все допустимые начала совпадения уже просмотрены
+			if(bound == reach)
+				// Выводим конец текста признаком отсутствия совпадения
+				return size;
+			// Получаем представление литерала с постоянной длиной
+			const string_view what(needle, LENGTH);
+			// Получаем размер остатка текста за окном
+			const size_t remainder = (size - bound);
+			// Выполняем поиск за окном по редкой паре либо паре умолчания
+			const size_t result = (((rejected * remainder) > (awh::regex::PAYOFF * awh::regex::WINDOW)) ?
+			 awh::regex::anchored(source, what, bound) : awh::regex::windowed(source, what, bound));
+			// Выводим найденную позицию либо конец текста
+			return ((result == string_view::npos) ? size : result);
+		}
+	};
+#endif
+
+/**
+ * Если доступен отдельный проход короткого литерала на x86-64
+ */
+#if defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+	/**
+	 * @brief Метод выбора подпрограммы отбора позиции для порождённого кода
+	 *
+	 * @return адрес специального отбора либо нулевой адрес для общего пути
+	 *
+	 */
+	awh::regex::Prefilter::seeker_t awh::regex::Prefilter::select() const noexcept {
+		// Если предварительный отбор неприменим
+		if(!this->active)
+			// Сохраняем общий вход отбора
+			return nullptr;
+		/**
+		 * Выбираем подпрограмму по длине ведущего литерала
+		 */
+		switch(this->leading.size()){
+			// Если ведущий литерал содержит четыре байта
+			case 4: return &selecting <4>;
+			// Если ведущий литерал содержит пять байтов
+			case 5: return &selecting <5>;
+			// Если ведущий литерал содержит шесть байтов
+			case 6: return &selecting <6>;
+			// Если ведущий литерал содержит семь байтов
+			case 7: return &selecting <7>;
+			// Если ведущий литерал содержит восемь байтов
+			case 8: return &selecting <8>;
+			// Для остальных длин сохраняем общий вход
+			default: return nullptr;
+		}
 	}
 #endif
