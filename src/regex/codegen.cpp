@@ -511,7 +511,7 @@ namespace {
 		 *          от соглашения зависеть не должна.
 		 *
 		 */
-		for(size_t i = 0; i < (sizeof(SPILLED) / sizeof(SPILLED[0])); i++) {
+		for(size_t i = 0; i < (sizeof(SPILLED) / sizeof(SPILLED[0])); i++){
 			/**
 			 * Если регистр вызовом затирается
 			 */
@@ -532,7 +532,7 @@ namespace {
 		/**
 		 * Выполняем восстановление затёртых вызовом регистров из кадра вызова
 		 */
-		for(size_t i = 0; i < (sizeof(SPILLED) / sizeof(SPILLED[0])); i++) {
+		for(size_t i = 0; i < (sizeof(SPILLED) / sizeof(SPILLED[0])); i++){
 			/**
 			 * Если регистр вызовом затирался
 			 */
@@ -579,7 +579,7 @@ namespace {
 		/**
 		 * Выполняем разбор цепочки переходов по двум ветвям
 		 */
-		while(static_cast <size_t> (current) < program.instructions.size()) {
+		while(static_cast <size_t> (current) < program.instructions.size()){
 			// Получаем очередной разбираемый переход по двум ветвям
 			const awh::regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (current));
 			/**
@@ -634,7 +634,7 @@ namespace {
 			/**
 			 * Если область ветви завершается переходом к общему продолжению
 			 */
-			if(joined) {
+			if(joined){
 				// Выполняем установку конца области очередной ветви выбора
 				finish = (rest - 1);
 				/**
@@ -757,7 +757,7 @@ namespace {
 		/**
 		 * Выполняем обход ветвей перехода в поисках тела повторения
 		 */
-		for(size_t i = 0; i < 2; i++) {
+		for(size_t i = 0; i < 2; i++){
 			// Получаем адрес начала опробуемого тела повторения
 			const awh::regex::address_t head = ((i == 0) ? instruction.split.first : instruction.split.second);
 			// Получаем адрес продолжения сопоставления за повторением
@@ -850,13 +850,13 @@ namespace {
 		/**
 		 * Выполняем обход инструкций проверяемой области
 		 */
-		for(awh::regex::address_t pc = from; (pc < to) && (static_cast <size_t> (pc) < program.instructions.size()); pc++) {
+		for(awh::regex::address_t pc = from; (pc < to) && (static_cast <size_t> (pc) < program.instructions.size()); pc++){
 			// Получаем очередную инструкцию проверяемой области
 			const awh::regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
 			/**
 			 * Определяем код операции инструкции проверяемой области
 			 */
-			switch(static_cast <uint8_t> (instruction.type)) {
+			switch(static_cast <uint8_t> (instruction.type)){
 				// Сопоставление одиночного символа точки возврата не заводит
 				case static_cast <uint8_t> (awh::regex::opcode_t::CHAR):
 				// Сопоставление символа из класса точки возврата не заводит
@@ -894,7 +894,7 @@ namespace {
 		/**
 		 * Выполняем обход областей ветвей выбора одной из них
 		 */
-		for(auto & branch : chain.branches) {
+		for(auto & branch : chain.branches){
 			/**
 			 * Если ветвь выбора прямою не является
 			 */
@@ -917,13 +917,13 @@ namespace {
 		/**
 		 * Выполняем обход областей ветвей выбора одной из них
 		 */
-		for(auto & branch : chain.branches) {
+		for(auto & branch : chain.branches){
 			// Признак обнаружения первого байта очередной ветви выбора
 			bool found = false;
 			/**
 			 * Выполняем обход инструкций области очередной ветви выбора
 			 */
-			for(awh::regex::address_t pc = branch.first; pc < branch.second; pc++) {
+			for(awh::regex::address_t pc = branch.first; pc < branch.second; pc++){
 				// Получаем очередную инструкцию области ветви выбора
 				const awh::regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
 				/**
@@ -955,11 +955,11 @@ namespace {
 		/**
 		 * Выполняем обход набора первых байтов ветвей выбора
 		 */
-		for(size_t i = 0; i < result.size(); i++) {
+		for(size_t i = 0; i < result.size(); i++){
 			/**
 			 * Выполняем обход байтов ветвей, очередной предшествующих
 			 */
-			for(size_t k = 0; k < i; k++) {
+			for(size_t k = 0; k < i; k++){
 				/**
 				 * Если первый байт ветви повторяется
 				 *
@@ -1000,7 +1000,7 @@ namespace {
 		/**
 		 * Выполняем обход области цепочки ветвей выбора
 		 */
-		for(awh::regex::address_t pc = from; (pc < to) && (static_cast <size_t> (pc) < program.instructions.size()); pc++) {
+		for(awh::regex::address_t pc = from; (pc < to) && (static_cast <size_t> (pc) < program.instructions.size()); pc++){
 			// Получаем очередную инструкцию области цепочки ветвей
 			const awh::regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
 			/**
@@ -1088,7 +1088,7 @@ namespace {
 		/**
 		 * Определяем код операции разбираемой инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Если инструкция текст поглощает
 			 */
@@ -1169,7 +1169,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций тела повторения
 		 */
-		while(pc != to) {
+		while(pc != to){
 			/**
 			 * Если инструкция за пределы тела повторения выходит
 			 */
@@ -1186,7 +1186,7 @@ namespace {
 			 *          сопоставляющих инструкций её.
 			 *
 			 */
-			if(singular(instruction.type)) {
+			if(singular(instruction.type)){
 				// Увеличиваем длину тела повторения в байтах
 				length++;
 				// Переходим к инструкции следующей
@@ -1197,7 +1197,7 @@ namespace {
 			/**
 			 * Если инструкция выполняет переход к инструкции иной
 			 */
-			if(instruction.type == awh::regex::opcode_t::JUMP) {
+			if(instruction.type == awh::regex::opcode_t::JUMP){
 				/**
 				 * Если переход ведёт назад
 				 *
@@ -1216,7 +1216,7 @@ namespace {
 			/**
 			 * Если инструкция выполняет переход по двум ветвям
 			 */
-			if(instruction.type == awh::regex::opcode_t::SPLIT) {
+			if(instruction.type == awh::regex::opcode_t::SPLIT){
 				// Создаём длину первой ветви выполняемого перехода
 				size_t first = 0;
 				// Создаём длину второй ветви выполняемого перехода
@@ -1283,7 +1283,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций, телу начало дающих
 		 */
-		while(!pending.empty()) {
+		while(!pending.empty()){
 			// Получаем адрес разбираемой инструкции программы
 			const awh::regex::address_t pc = pending.back();
 			// Выполняем снятие адреса разбираемой инструкции с набора
@@ -1307,7 +1307,7 @@ namespace {
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(singular(instruction.type)) {
+			if(singular(instruction.type)){
 				// Выполняем сбор инструкции, тело повторения возглавляющей
 				result.push_back(pc);
 				// Переходим к инструкции следующей
@@ -1316,7 +1316,7 @@ namespace {
 			/**
 			 * Определяем код операции разбираемой инструкции
 			 */
-			switch(static_cast <uint8_t> (instruction.type)) {
+			switch(static_cast <uint8_t> (instruction.type)){
 				/**
 				 * Если инструкция выполняет запись границы группы захвата
 				 */
@@ -1383,7 +1383,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций, области начало дающих
 		 */
-		while(!pending.empty()) {
+		while(!pending.empty()){
 			// Получаем адрес разбираемой инструкции программы
 			const awh::regex::address_t pc = pending.back();
 			// Выполняем снятие адреса разбираемой инструкции с набора
@@ -1407,7 +1407,7 @@ namespace {
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(singular(instruction.type)) {
+			if(singular(instruction.type)){
 				// Выполняем сбор инструкции, области начало дающей
 				result.push_back(pc);
 				// Переходим к инструкции следующей
@@ -1416,7 +1416,7 @@ namespace {
 			/**
 			 * Определяем код операции разбираемой инструкции
 			 */
-			switch(static_cast <uint8_t> (instruction.type)) {
+			switch(static_cast <uint8_t> (instruction.type)){
 				/**
 				 * Если инструкция выполняет запись границы группы захвата
 				 */
@@ -1499,7 +1499,7 @@ namespace {
 		/**
 		 * Определяем код операции сопоставляющей инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
@@ -1580,7 +1580,7 @@ namespace {
 		/**
 		 * Выполняем обход ветвей выбора, ведущей не являющихся
 		 */
-		for(size_t i = 1; i < chain.branches.size(); i++) {
+		for(size_t i = 1; i < chain.branches.size(); i++){
 			/**
 			 * Если инструкции, ветви начало дающие, не собраны
 			 *
@@ -1595,7 +1595,7 @@ namespace {
 		/**
 		 * Выполняем обход пространства значений байта
 		 */
-		for(uint32_t letter = 0; letter < TABLE; letter++) {
+		for(uint32_t letter = 0; letter < TABLE; letter++){
 			/**
 			 * Если значение байта ветви ведущей не принадлежит
 			 */
@@ -1605,7 +1605,7 @@ namespace {
 			/**
 			 * Выполняем обход инструкций, ветвям прочим начало дающих
 			 */
-			for(const auto address : leaders) {
+			for(const auto address : leaders){
 				/**
 				 * Если значение байта принадлежит и ветви иной
 				 */
@@ -1763,7 +1763,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций, текста не поглощающих
 		 */
-		for(size_t hop = 0; hop < HOPS; hop++) {
+		for(size_t hop = 0; hop < HOPS; hop++){
 			/**
 			 * Если адрес продолжения программе не принадлежит
 			 */
@@ -1775,7 +1775,7 @@ namespace {
 			/**
 			 * Определяем код операции инструкции продолжения сопоставления
 			 */
-			switch(static_cast <uint8_t> (following.type)) {
+			switch(static_cast <uint8_t> (following.type)){
 				// Запись границы захвата текста не поглощает вовсе
 				case static_cast <uint8_t> (awh::regex::opcode_t::SAVE):
 					// Переходим к инструкции, за нею следующей
@@ -1796,7 +1796,7 @@ namespace {
 					/**
 					 * Выполняем обход пространства значений байта
 					 */
-					for(uint32_t letter = 0; letter < 0x100; letter++) {
+					for(uint32_t letter = 0; letter < 0x100; letter++){
 						/**
 						 * Если значение байта принадлежит обеим инструкциям
 						 */
@@ -1894,13 +1894,13 @@ namespace {
 		/**
 		 * Выполняем обход инструкций обязательной части тела повторения
 		 */
-		for(awh::regex::address_t address = opening; address < pc; address++) {
+		for(awh::regex::address_t address = opening; address < pc; address++){
 			// Получаем инструкцию обязательной части тела повторения
 			const awh::regex::instruction_t & mandatory = program.instructions.at(static_cast <size_t> (address));
 			/**
 			 * Выполняем обход пространства значений байта
 			 */
-			for(uint32_t letter = 0; letter < TABLE; letter++) {
+			for(uint32_t letter = 0; letter < TABLE; letter++){
 				/**
 				 * Если байт обязательной части набору ряда не принадлежит
 				 *
@@ -1927,7 +1927,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций хвоста тела повторения
 		 */
-		for(awh::regex::address_t address = following; address < closing; address++) {
+		for(awh::regex::address_t address = following; address < closing; address++){
 			/**
 			 * Если инструкция хвоста одиночного символа не сопоставляет
 			 */
@@ -1952,7 +1952,7 @@ namespace {
 		/**
 		 * Выполняем обход пространства значений байта
 		 */
-		for(uint32_t letter = 0; letter < TABLE; letter++) {
+		for(uint32_t letter = 0; letter < TABLE; letter++){
 			/**
 			 * Если байт завершения прохода набору ряда принадлежит
 			 *
@@ -2017,7 +2017,7 @@ namespace {
 			/**
 			 * Выполняем обход набора символов приведения регистра
 			 */
-			for(auto & member : members) {
+			for(auto & member : members){
 				/**
 				 * Если символ набора пределы ASCII превышает
 				 */
@@ -2031,7 +2031,7 @@ namespace {
 		/**
 		 * Определяем код операции сопоставляющей инструкции
 		 */
-		switch(static_cast <uint8_t> (instruction.type)) {
+		switch(static_cast <uint8_t> (instruction.type)){
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
@@ -2075,7 +2075,7 @@ namespace {
 				/**
 				 * Выполняем обход набора диапазонов класса символов
 				 */
-				for(auto & range : value.ranges) {
+				for(auto & range : value.ranges){
 					/**
 					 * Если диапазон класса пределы ASCII превышает
 					 */
@@ -2085,11 +2085,11 @@ namespace {
 					/**
 					 * Если сопоставление ведётся без учёта регистра
 					 */
-					if(caseless) {
+					if(caseless){
 						/**
 						 * Выполняем обход символов диапазона класса
 						 */
-						for(uint32_t code = range.begin; code <= range.end; code++) {
+						for(uint32_t code = range.begin; code <= range.end; code++){
 							/**
 							 * Если набор приведения регистра символа содержит символы вне ASCII
 							 */
@@ -2155,7 +2155,7 @@ namespace {
 		/**
 		 * Выполняем обход областей ветвей выбора одной из них
 		 */
-		for(size_t i = 0; i < chain.branches.size(); i++) {
+		for(size_t i = 0; i < chain.branches.size(); i++){
 			// Получаем область очередной ветви выбора
 			const auto & branch = chain.branches.at(i);
 			// Адрес сопоставляющей инструкции, ветвь возглавляющей
@@ -2163,7 +2163,7 @@ namespace {
 			/**
 			 * Выполняем обход инструкций области очередной ветви выбора
 			 */
-			for(awh::regex::address_t pc = branch.first; pc < branch.second; pc++) {
+			for(awh::regex::address_t pc = branch.first; pc < branch.second; pc++){
 				// Получаем очередную инструкцию области ветви выбора
 				const awh::regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
 				/**
@@ -2213,7 +2213,7 @@ namespace {
 			/**
 			 * Выполняем обход пространства значений байта
 			 */
-			for(uint32_t letter = 0; letter < TABLE; letter++) {
+			for(uint32_t letter = 0; letter < TABLE; letter++){
 				/**
 				 * Если значение байта набору ветви не принадлежит
 				 */
@@ -2385,7 +2385,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций области программы
 		 */
-		while(true) {
+		while(true){
 			/**
 			 * Если область инструкций исчерпана
 			 */
@@ -2415,7 +2415,7 @@ namespace {
 			/**
 			 * Если инструкция сопоставляет одиночный символ
 			 */
-			if(singular(instruction.type)) {
+			if(singular(instruction.type)){
 				/**
 				 * Если инструкция в режиме разбора UTF-8 сопоставляет символы вне ASCII
 				 */
@@ -2430,7 +2430,7 @@ namespace {
 			/**
 			 * Определяем код операции исполняемой инструкции
 			 */
-			switch(static_cast <uint8_t> (instruction.type)) {
+			switch(static_cast <uint8_t> (instruction.type)){
 				/**
 				 * Если инструкция сохраняет позицию в ячейке захвата
 				 *
@@ -2452,7 +2452,7 @@ namespace {
 					 *          и сам, отчего сохранение в ячейку пропускается.
 					 *
 					 */
-					if(instruction.save.slot >= ((program.captures + 1) * 2)) {
+					if(instruction.save.slot >= ((program.captures + 1) * 2)){
 						/**
 						 * Если ячейка состояния за пределы размещённых выходит
 						 */
@@ -2698,7 +2698,7 @@ namespace {
 					/**
 					 * Если переход возглавляет цепочку ветвей выбора одной из них
 					 */
-					if(body == awh::regex::INVALID_ADDRESS) {
+					if(body == awh::regex::INVALID_ADDRESS){
 						// Адрес начала тела повторения над областью
 						awh::regex::address_t opening = awh::regex::INVALID_ADDRESS;
 						// Адрес перехода назад, тело повторения завершающего
@@ -2715,7 +2715,7 @@ namespace {
 						 *          его, а число проходов при порождении не известно.
 						 *
 						 */
-						if(looping(program, pc, opening, closing, leaving, eager)) {
+						if(looping(program, pc, opening, closing, leaving, eager)){
 							/**
 							 * Если повторение за пределы обходимой области выходит
 							 */
@@ -2793,7 +2793,7 @@ namespace {
 							 *          по одной лишь записи границ - этим и покрыт.
 							 *
 							 */
-							if((nesting > 0) && framing) {
+							if((nesting > 0) && framing){
 								/**
 								 * Если атомарная группа сама лежит внутри повторения
 								 *
@@ -2809,7 +2809,7 @@ namespace {
 							/**
 							 * Если повторение записи кадра на проход требует
 							 */
-							if(framing) {
+							if(framing){
 								// Увеличиваем количество повторений, записи кадра требующих
 								framed++;
 								// Выполняем обнуление количества цепочек ветвей уровня
@@ -2877,7 +2877,7 @@ namespace {
 							/**
 							 * Если повторение записи кадра на проход требовало
 							 */
-							if(framing) {
+							if(framing){
 								// Выполняем свод наибольшего количества цепочек ветвей
 								if(chains > deeper[0])
 									// Выполняем запоминание наибольшего количества цепочек
@@ -2999,7 +2999,7 @@ namespace {
 						/**
 						 * Выполняем обход областей ветвей выбора одной из них
 						 */
-						for(auto & item : branching.branches) {
+						for(auto & item : branching.branches){
 							/**
 							 * Если обход области очередной ветви выбора не выполнен
 							 */
@@ -3129,7 +3129,7 @@ namespace {
 					/**
 					 * Если тело вызываемое обходом уже пройдено
 					 */
-					if(std::find(bodies.begin(), bodies.end(), body) != bodies.end()) {
+					if(std::find(bodies.begin(), bodies.end(), body) != bodies.end()){
 						// Переходим к следующей инструкции программы
 						pc++;
 						// Прекращаем разбор инструкции программы
@@ -3262,13 +3262,13 @@ size_t awh::regex::Codegen::masking(const vector <address_t> & leaders, const pr
 	/**
 	 * Выполняем обход сопоставляющих инструкций, тело возглавляющих
 	 */
-	for(auto & leader : leaders) {
+	for(auto & leader : leaders){
 		// Получаем сопоставляющую инструкцию, тело возглавляющую
 		const instruction_t & instruction = program.instructions.at(static_cast <size_t> (leader));
 		/**
 		 * Выполняем обход пространства значений байта
 		 */
-		for(uint32_t letter = 0; letter < TABLE; letter++) {
+		for(uint32_t letter = 0; letter < TABLE; letter++){
 			/**
 			 * Если значение байта инструкции сопоставления принадлежит
 			 */
@@ -3347,11 +3347,11 @@ size_t awh::regex::Codegen::spreader() noexcept {
 	/**
 	 * Выполняем обход пространства значений байта
 	 */
-	for(size_t letter = 0; letter < TABLE; letter++) {
+	for(size_t letter = 0; letter < TABLE; letter++){
 		/**
 		 * Если значение байта началу совпадения допустимо
 		 */
-		if(this->_prefilter.bytes[letter] && (count < SPARSE)) {
+		if(this->_prefilter.bytes[letter] && (count < SPARSE)){
 			// Увеличиваем количество допустимых начальных байтов
 			count++;
 			// Выполняем запись значения байта в хранилище значений
@@ -3704,13 +3704,13 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если отбор позиций начала попытки по началам строк возможен
 	 */
-	if(lining) {
+	if(lining){
 		// Выполняем сброс признака отбора позиций по началам строк
 		lining = false;
 		/**
 		 * Выполняем обход инструкций начальных программы выражения
 		 */
-		for(size_t pc = 0; pc < program.instructions.size(); pc++) {
+		for(size_t pc = 0; pc < program.instructions.size(); pc++){
 			// Получаем очередную инструкцию программы выражения
 			const instruction_t & instruction = program.instructions.at(pc);
 			/**
@@ -4263,11 +4263,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если отодвигание начала поиска выводится
 	 */
-	if(this->_skipping) {
+	if(this->_skipping){
 		/**
 		 * Выполняем обход инструкций программы сопоставления
 		 */
-		for(auto & instruction : program.instructions) {
+		for(auto & instruction : program.instructions){
 			/**
 			 * Если инструкция проверяет привязку к началу попытки поиска
 			 */
@@ -4289,7 +4289,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          литерала отбор различает тем же поиском.
 	 *
 	 */
-	if(narrowing) {
+	if(narrowing){
 		// Выполняем расстановку метки отбора позиции начала попытки по литералу
 		emitter.place(narrower);
 		// Выполняем вызов подпрограммы отбора позиции по обязательному литералу
@@ -4311,7 +4311,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если отбор позиции начала попытки сопоставления порождается
 	 */
-	if(seek) {
+	if(seek){
 		// Выполняем расстановку метки отбора позиции начала попытки
 		emitter.place(seeker);
 		/**
@@ -4326,7 +4326,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          подпрограммы против 2.99 нс у поиска байта.
 		 *
 		 */
-		if(this->_prefilter.unique && (this->_prefilter.leading.size() <= 1)) {
+		if(this->_prefilter.unique && (this->_prefilter.leading.size() <= 1)){
 			// Выполняем заведение значения единственного допустимого байта
 			const size_t marker = this->limiter(static_cast <uint8_t> (this->_prefilter.letter));
 			// Выполняем вызов подпрограммы поиска единственного допустимого байта
@@ -4358,7 +4358,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          начал строк в тексте более не осталось.
 	 *
 	 */
-	if(lining) {
+	if(lining){
 		// Выполняем заведение значения байта перевода строки
 		const size_t newline = this->limiter(static_cast <uint8_t> ('\n'));
 		// Выполняем расстановку метки отбора позиции начала попытки по строкам
@@ -4421,7 +4421,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          стоимости сопоставления.
 	 *
 	 */
-	if(sifting && ((allowed <= SPARSE) || wide)) {
+	if(sifting && ((allowed <= SPARSE) || wide)){
 		// Выполняем заведение таблицы допустимых начальных байтов совпадения
 		const size_t table = this->sieve();
 		// Выполняем заведение набора допустимых начальных байтов совпадения: широкому набору он не нужен
@@ -4451,7 +4451,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          цену просеивания, ради какой окно и заведено.
 		 *
 		 */
-		for(size_t i = 0; i < (wide ? WIDE_SIFTING : SIFTING); i++) {
+		for(size_t i = 0; i < (wide ? WIDE_SIFTING : SIFTING); i++){
 			// Выполняем сравнение позиции начала попытки с размером текста
 			emitter.compare(reg_t::KEEPER, reg_t::SIZE);
 			// Выполняем переход к отсутствию совпадения при исчерпании текста
@@ -4564,7 +4564,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          переполняется вниз и сравнение это не проходит.
 	 *
 	 */
-	if(utf) {
+	if(utf){
 		// Выполняем расстановку метки выхода позиции на границу символа
 		emitter.place(border);
 		// Выполняем сравнение позиции начала попытки с размером текста
@@ -4635,7 +4635,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          к следующей позиции её начала.
 	 *
 	 */
-	if(cellular) {
+	if(cellular){
 		// Выполняем получение адреса перехода к следующей позиции начала попытки
 		emitter.address(reg_t::SCRATCH, following);
 		// Выполняем сохранение действующего отказа сопоставления в кадре вызова
@@ -4787,7 +4787,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если рекурсивные вызовы не порождаются
 		 */
-		if(calls == 0) {
+		if(calls == 0){
 			// Выполняем отведение записи сдвигом регистра записи
 			emitter.enter(record);
 			// Выходим из отведения записи уровня
@@ -4816,7 +4816,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если рекурсивные вызовы не порождаются
 		 */
-		if(calls == 0) {
+		if(calls == 0){
 			// Выполняем снятие записи сдвигом регистра записи
 			emitter.leave(record);
 			// Выходим из снятия записи уровня
@@ -4890,7 +4890,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Выполняем обход инструкций области программы
 	 */
-	while(true) {
+	while(true){
 		/**
 		 * Если область инструкций исчерпана
 		 */
@@ -4939,11 +4939,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          достижимы - в том и состоит атомарность.
 		 *
 		 */
-		if(instruction.type == opcode_t::MARK) {
+		if(instruction.type == opcode_t::MARK){
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 */
-			if(cellular) {
+			if(cellular){
 				// Выполняем чтение действующего отказа сопоставления из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем откладывание действующего отказа в месте атомарной группы
@@ -4977,7 +4977,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция отказывается от точек возврата
 		 */
-		if(instruction.type == opcode_t::CUT) {
+		if(instruction.type == opcode_t::CUT){
 			/**
 			 * Если группа стоит уровнем нулевым, а записи проходов отводятся
 			 *
@@ -5008,11 +5008,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если отказ атомарной группы отложен
 			 */
-			if(!guarding.empty()) {
+			if(!guarding.empty()){
 				/**
 				 * Если действующий отказ ведётся ячейкой кадра
 				 */
-				if(cellular) {
+				if(cellular){
 					// Выполняем чтение отложенного отказа из места атомарной группы
 					emitter.fetch(reg_t::SCRATCH, seated(), static_cast <uint32_t> (guarding.back()));
 					// Выполняем восстановление действующего отказа сопоставления
@@ -5029,7 +5029,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Продолжаем порождение области инструкций
 			continue;
 		}
-		if(instruction.type == opcode_t::SAVE) {
+		if(instruction.type == opcode_t::SAVE){
 			/**
 			 * Если сохранение выполняется в ячейку состояния исполнения
 			 *
@@ -5040,7 +5040,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          границ вывела бы за пределы его.
 			 *
 			 */
-			if(instruction.save.slot >= ((static_cast <uint32_t> (program.captures) + 1) * 2)) {
+			if(instruction.save.slot >= ((static_cast <uint32_t> (program.captures) + 1) * 2)){
 				// Переходим к следующей инструкции программы
 				pc++;
 				// Продолжаем обход инструкций программы
@@ -5049,7 +5049,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если сохранение выполняется в ячейку границ захватывающей группы
 			 */
-			if(instruction.save.slot > 1) {
+			if(instruction.save.slot > 1){
 				/**
 				 * Если сопоставление символов заменено продвижением позиции
 				 *
@@ -5057,7 +5057,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          запись её в набор границ требует продвижения прежде.
 				 *
 				 */
-				if(elided > 0) {
+				if(elided > 0){
 					// Выполняем продвижение позиции сопоставления на заменённые символы
 					emitter.add(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (elided));
 					// Выполняем сброс количества заменённых символов
@@ -5082,7 +5082,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          сопоставления, а замена его отстаёт.
 		 *
 		 */
-		if(instruction.type == opcode_t::PROGRESS) {
+		if(instruction.type == opcode_t::PROGRESS){
 			/**
 			 * Если проверка вне повторения, запись прохода ведущего, стоит
 			 */
@@ -5092,7 +5092,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если сопоставление символов заменено продвижением позиции
 			 */
-			if(elided > 0) {
+			if(elided > 0){
 				// Выполняем продвижение позиции сопоставления на заменённые символы
 				emitter.add(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (elided));
 				// Выполняем сброс количества заменённых символов
@@ -5118,11 +5118,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          по положению сопоставления, а замена его отстаёт.
 		 *
 		 */
-		if(instruction.type == opcode_t::ANCHOR) {
+		if(instruction.type == opcode_t::ANCHOR){
 			/**
 			 * Если сопоставление символов заменено продвижением позиции
 			 */
-			if(elided > 0) {
+			if(elided > 0){
 				// Выполняем продвижение позиции сопоставления на заменённые символы
 				emitter.add(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (elided));
 				// Выполняем сброс количества заменённых символов
@@ -5133,7 +5133,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Определяем тип проверяемой привязки к позиции в тексте
 			 */
-			switch(static_cast <uint8_t> (instruction.assertion.type)) {
+			switch(static_cast <uint8_t> (instruction.assertion.type)){
 				/**
 				 * Если проверяется привязка к началу текста
 				 */
@@ -5170,7 +5170,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если режим соответствия привязок границам строк не установлен
 					 */
-					if(!lines) {
+					if(!lines){
 						// Выполняем сравнение позиции сопоставления с началом текста
 						emitter.compare(reg_t::CURSOR, static_cast <uint32_t> (0));
 						// Выполняем переход к отказу вне начала текста
@@ -5249,7 +5249,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          отвечает лишь перевод строки, текст завершающий.
 					 *
 					 */
-					if(!ending) {
+					if(!ending){
 						// Выполняем получение положения последнего байта текста
 						emitter.sub(reg_t::SCRATCH, reg_t::SIZE, 1);
 						// Выполняем сравнение позиции сопоставления с последним байтом
@@ -5306,7 +5306,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если сопоставление символов заменено продвижением позиции
 		 */
-		if(elided > 0) {
+		if(elided > 0){
 			// Выполняем продвижение позиции сопоставления на заменённые символы
 			emitter.add(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (elided));
 			// Выполняем сброс количества заменённых символов
@@ -5333,7 +5333,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          принявший.
 		 *
 		 */
-		if(instruction.type == opcode_t::RESUME) {
+		if(instruction.type == opcode_t::RESUME){
 			// Выполняем чтение действующего отказа тела вызванного
 			emitter.fetch(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (cell));
 			// Выполняем чтение кадра вызова, записи возвращающей принадлежащего
@@ -5369,7 +5369,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция выполняет рекурсивный вызов подвыражения
 		 */
-		if(instruction.type == opcode_t::CALL) {
+		if(instruction.type == opcode_t::CALL){
 			// Получаем номера мест записи вызывающего, месту вызова отведённых
 			const size_t keeping = (calling + (call * 3));
 			// Получаем номер места записи, отказ до вызова несущего
@@ -5403,11 +5403,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем поиск метки тела вызываемого подвыражения
 				 */
-				for(auto & body : bodies) {
+				for(auto & body : bodies){
 					/**
 					 * Если тело вызываемое метку уже получило
 					 */
-					if(body.first == instruction.call.body) {
+					if(body.first == instruction.call.body){
 						// Получаем метку тела вызываемого подвыражения
 						entry = body.second;
 						// Выполняем установку признака обнаружения метки
@@ -5419,7 +5419,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Если тело вызываемое метки ещё не получило
 				 */
-				if(!located) {
+				if(!located){
 					// Заводим метку тела вызываемого подвыражения
 					entry = emitter.label();
 					// Выполняем запоминание тела вызываемого и метки его
@@ -5518,7 +5518,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция сопоставляет одиночный символ
 		 */
-		if(singular(instruction.type)) {
+		if(singular(instruction.type)){
 			/**
 			 * Получаем признак сопоставления литералом ASCII напрямую
 			 *
@@ -5580,7 +5580,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если инструкция возглавляет ряд одинаковых копий
 			 */
-			if(copies > 1) {
+			if(copies > 1){
 				/**
 				 * Выполняем проверку конца текста на всю длину ряда разом
 				 *
@@ -5605,7 +5605,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем порождение копий ряда
 				 */
-				for(size_t copy = 0; copy < copies; copy++) {
+				for(size_t copy = 0; copy < copies; copy++){
 					/**
 					 * Если байт копии к сопоставлению не готов
 					 *
@@ -5619,7 +5619,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если сопоставление ведётся литералом ASCII напрямую
 					 */
-					if(literal) {
+					if(literal){
 						// Выполняем сравнение байта текста со значением литерала
 						emitter.compare(reg_t::LETTER, static_cast <uint32_t> (instruction.letter.code));
 						// Выполняем переход к отказу при несовпадении байта с литералом
@@ -5655,7 +5655,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          действует ровно на неё одну.
 			 *
 			 */
-			if(!prefetch) {
+			if(!prefetch){
 				// Выполняем сравнение позиции сопоставления с размером текста
 				emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 				// Выполняем переход к отказу при достижении конца текста
@@ -5666,7 +5666,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если сопоставление ведётся литералом ASCII напрямую
 			 */
-			if(literal) {
+			if(literal){
 				// Выполняем сравнение байта текста со значением литерала
 				emitter.compare(reg_t::LETTER, static_cast <uint32_t> (instruction.letter.code));
 				// Выполняем переход к отказу при несовпадении байта с литералом
@@ -5696,7 +5696,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция завершает сопоставление с успехом
 		 */
-		if(instruction.type == opcode_t::MATCH) {
+		if(instruction.type == opcode_t::MATCH){
 			/**
 			 * Если инструкция успеха встречена внутри ветви выбора
 			 *
@@ -5728,7 +5728,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          и он повторяет сличение заново с концом захвата иным.
 		 *
 		 */
-		if(instruction.type == opcode_t::BACKREF) {
+		if(instruction.type == opcode_t::BACKREF){
 			// Получаем номер ячейки начала захвата группы
 			const uint32_t slot = (instruction.backref.number * 2);
 			// Заводим метку хода сличения с захваченным текстом
@@ -5813,7 +5813,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          порождению не поддаётся вовсе и отвергается ниже.
 		 *
 		 */
-		if(instruction.type == opcode_t::LOOK) {
+		if(instruction.type == opcode_t::LOOK){
 			/**
 			 * Если допустимое количество проверок окружения исчерпано
 			 */
@@ -5865,7 +5865,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 */
-			if(cellular) {
+			if(cellular){
 				// Выполняем чтение действующего отказа сопоставления из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем откладывание действующего отказа в месте проверки
@@ -5890,11 +5890,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          отступов, ещё не испробованных.
 			 *
 			 */
-			if(backward) {
+			if(backward){
 				/**
 				 * Если наименьшая длина проверяемой последовательности не нулевая
 				 */
-				if(least > 0) {
+				if(least > 0){
 					// Выполняем сравнение позиции сопоставления с наименьшей длиной
 					emitter.compare(reg_t::CURSOR, least);
 					/**
@@ -5914,7 +5914,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Если длина проверяемой последовательности не постоянна
 				 */
-				if(most > least) {
+				if(most > least){
 					// Выполняем получение количества отступов, ещё не испробованных
 					emitter.move(reg_t::SCRATCH, static_cast <uint64_t> (most - least));
 					// Выполняем сохранение количества отступов в кадре вызова
@@ -5940,7 +5940,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          и лишь исчерпав отступление, передать отказ проверке.
 			 *
 			 */
-			if(backward) {
+			if(backward){
 				// Выполняем чтение позиции сопоставления из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (slot));
 				// Выполняем сравнение положения завершения тела с позицией сопоставления
@@ -5953,7 +5953,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 */
-			if(cellular) {
+			if(cellular){
 				// Выполняем чтение отложенного отказа из места проверки окружения
 				emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (slot + 1));
 				// Выполняем восстановление действующего отказа сопоставления
@@ -5966,7 +5966,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          сопоставления: искомое окружение обязано отсутствовать.
 			 *
 			 */
-			if(negative) {
+			if(negative){
 				/**
 				 * Если действующий отказ ведётся ячейкой кадра
 				 */
@@ -5990,7 +5990,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          и начало текста, отступать за какое некуда.
 			 *
 			 */
-			if(backward && (most > least)) {
+			if(backward && (most > least)){
 				// Выполняем чтение количества оставшихся отступов из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (slot + 3));
 				// Выполняем сравнение количества оставшихся отступов с нулём
@@ -6019,7 +6019,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          в тело заново обязан застать отказ проверки.
 				 *
 				 */
-				if(cellular) {
+				if(cellular){
 					// Выполняем получение адреса отказа сопоставления тела проверки
 					emitter.address(reg_t::SCRATCH, missed);
 					// Выполняем восстановление отказа, телу проверки отведённого
@@ -6035,7 +6035,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 */
-			if(cellular) {
+			if(cellular){
 				// Выполняем чтение отложенного отказа из места проверки окружения
 				emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (slot + 1));
 				// Выполняем восстановление действующего отказа сопоставления
@@ -6048,7 +6048,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          сопоставления: искомое окружение обязано присутствовать.
 			 *
 			 */
-			if(!negative) {
+			if(!negative){
 				/**
 				 * Если действующий отказ ведётся ячейкой кадра
 				 */
@@ -6072,7 +6072,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция выбирает одну из ветвей выражения
 		 */
-		if((instruction.type == opcode_t::SPLIT) && (repetend(program, pc, instruction) == INVALID_ADDRESS)) {
+		if((instruction.type == opcode_t::SPLIT) && (repetend(program, pc, instruction) == INVALID_ADDRESS)){
 			// Адрес начала тела повторения над областью
 			address_t opening = INVALID_ADDRESS;
 			// Адрес перехода назад, тело повторения завершающего
@@ -6092,7 +6092,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          сопоставление продолжению.
 			 *
 			 */
-			if(looping(program, pc, opening, closing, leaving, eager)) {
+			if(looping(program, pc, opening, closing, leaving, eager)){
 				// Создаём набор ячеек захвата, повторением записываемых
 				vector <uint32_t> keepers;
 				// Выполняем сбор ячеек захвата, повторением записываемых
@@ -6112,7 +6112,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          и отказ ячейкой кадра не ведётся.
 				 *
 				 */
-				if(!eager && keepers.empty()) {
+				if(!eager && keepers.empty()){
 					// Заводим метку выполнения прохода по отказу продолжения
 					const size_t iterating = emitter.label();
 					// Заводим метку продолжения сопоставления за повторением
@@ -6138,7 +6138,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем чтение действующего отказа сопоставления
 						emitter.fetch(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (cell));
 						// Выполняем запоминание отказа, повторению предшествовавшего
@@ -6164,7 +6164,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем получение адреса отказа повторения целиком
 						emitter.address(reg_t::SCRATCH, abandoning);
 						// Выполняем установку действующего отказа сопоставления
@@ -6196,7 +6196,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем чтение отказа, повторению предшествовавшего
 						emitter.fetch(reg_t::SPARE, housing, static_cast <uint32_t> (holding + 1));
 						// Выполняем восстановление действующего отказа сопоставления
@@ -6211,7 +6211,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем получение адреса выполнения прохода очередного
 						emitter.address(reg_t::SCRATCH, iterating);
 						// Выполняем установку действующего отказа сопоставления
@@ -6281,7 +6281,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          в проходы бесконечные.
 					 *
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем чтение действующего отказа сопоставления
 						emitter.fetch(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (cell));
 						// Выполняем запоминание отказа, повторению предшествовавшего
@@ -6302,7 +6302,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          не передаётся вовсе.
 					 *
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем получение адреса исчерпания проходов повторения
 						emitter.address(reg_t::SCRATCH, drained);
 						// Выполняем установку действующего отказа сопоставления
@@ -6346,7 +6346,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем чтение отказа, повторению предшествовавшего
 						emitter.fetch(reg_t::SPARE, housing, static_cast <uint32_t> (holding + 2));
 						// Выполняем восстановление действующего отказа сопоставления
@@ -6396,7 +6396,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          повторения проход ограничен: за него отдавать нечего.
 					 *
 					 */
-					if(retraced) {
+					if(retraced){
 						// Заводим метку прохода вспять по набору ряда
 						const size_t tracking = emitter.label();
 						// Заводим метку завершения прохода вспять
@@ -6438,7 +6438,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
-					if(cellular) {
+					if(cellular){
 						// Выполняем получение адреса отдачи прохода повторения
 						emitter.address(reg_t::SCRATCH, giving);
 						// Выполняем установку действующего отказа сопоставления
@@ -6567,7 +6567,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          ровно теми, какие оставил проход предыдущий.
 				 *
 				 */
-				if(sorting) {
+				if(sorting){
 					// Выполняем заведение таблицы объединения байтов сопоставления
 					const size_t number = this->masking(leaders, program);
 					// Выполняем сравнение позиции сопоставления с размером текста
@@ -6607,7 +6607,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          кладётся местом уровня и служит началом отдачи.
 				 *
 				 */
-				if(hastened) {
+				if(hastened){
 					// Выполняем заведение таблицы принадлежности байтов ветви ведущей
 					const size_t number = this->table(program.instructions.at(static_cast <size_t> (header)), program);
 					// Выполняем чтение адреса таблицы принадлежности байтов
@@ -6638,7 +6638,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем запоминание границ групп, проходом записываемых
 				 */
-				for(size_t i = 0; i < written.size(); i++) {
+				for(size_t i = 0; i < written.size(); i++){
 					// Выполняем чтение границы группы из набора границ
 					emitter.fetch(reg_t::SCRATCH, reg_t::BOUNDS, written.at(i));
 					// Выполняем запоминание границы группы в записи прохода
@@ -6653,7 +6653,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          на выполнение прохода, и лишь по отказу тела - на отдачу.
 				 *
 				 */
-				if(!eager) {
+				if(!eager){
 					// Выполняем получение адреса выполнения прохода повторения
 					emitter.address(reg_t::SCRATCH, iterate);
 					// Выполняем установку действующего отказа сопоставления
@@ -6669,7 +6669,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Выполняем восстановление границ групп, продолжением записанных
 					 */
-					for(size_t i = 0; i < written.size(); i++) {
+					for(size_t i = 0; i < written.size(); i++){
 						// Выполняем чтение запомненной границы группы из записи прохода
 						emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (keeping + i));
 						// Выполняем восстановление границы группы в наборе границ
@@ -6742,7 +6742,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          и ветвь иная там не сошлась бы ни в одной позиции.
 				 *
 				 */
-				if(hastened) {
+				if(hastened){
 					// Выполняем восстановление положения, продолжению отданного
 					emitter.fetch(reg_t::CURSOR, housing, static_cast <uint32_t> (handed));
 					// Выполняем получение адреса отдачи ряда ведущей ветви
@@ -6779,7 +6779,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем восстановление границ групп, проходом записанных
 				 */
-				for(size_t i = 0; i < written.size(); i++) {
+				for(size_t i = 0; i < written.size(); i++){
 					// Выполняем чтение запомненной границы группы из записи прохода
 					emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (keeping + i));
 					// Выполняем восстановление границы группы в наборе границ
@@ -6894,7 +6894,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          перебора на четверть же, тогда как прежде они шли вровень.
 			 *
 			 */
-			if(labelled) {
+			if(labelled){
 				// Получаем метку отказа, цепочке ветвей предшествующего
 				const size_t outer = failure;
 				// Заводим метку общего продолжения цепочки ветвей выбора
@@ -6916,11 +6916,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Если цепочка разбирается по одному байту на ветвь
 				 */
-				if(sorted) {
+				if(sorted){
 					/**
 					 * Выполняем порождение разбора ветвей выбора по первому байту
 					 */
-					for(size_t i = 0; i < letters.size(); i++) {
+					for(size_t i = 0; i < letters.size(); i++){
 						// Выполняем сравнение байта текста с первым байтом ветви
 						emitter.compare(reg_t::LETTER, static_cast <uint32_t> (letters.at(i)));
 						// Выполняем переход к входу в ветвь при совпадении байта
@@ -6948,7 +6948,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Выполняем порождение перехода в ветвь по номеру её
 					 */
-					for(size_t i = 0; i < branching.branches.size(); i++) {
+					for(size_t i = 0; i < branching.branches.size(); i++){
 						// Выполняем сравнение номера ветви с номером очередной
 						emitter.compare(reg_t::SPARE, static_cast <uint32_t> (i + 1));
 						// Выполняем переход к входу в ветвь при совпадении номера
@@ -6960,7 +6960,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем порождение ветвей выбора одной из них
 				 */
-				for(size_t i = 0; i < branching.branches.size(); i++) {
+				for(size_t i = 0; i < branching.branches.size(); i++){
 					// Выполняем расстановку метки входа в очередную ветвь выбора
 					emitter.place(entries.at(i));
 					// Выполняем установку отказа, ветвью выбора действующего
@@ -7080,7 +7080,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          какой прервано, установленных ею границ по себе не оставляет.
 			 *
 			 */
-			for(size_t i = 0; i < written.size(); i++) {
+			for(size_t i = 0; i < written.size(); i++){
 				// Выполняем чтение границы группы из набора границ
 				emitter.fetch(reg_t::SCRATCH, reg_t::BOUNDS, written.at(i));
 				// Выполняем запоминание границы группы в кадре вызова
@@ -7089,13 +7089,13 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Выполняем порождение ветвей выбора одной из них
 			 */
-			for(size_t i = 0; i < branching.branches.size(); i++) {
+			for(size_t i = 0; i < branching.branches.size(); i++){
 				// Получаем признак порождения последней ветви выбора
 				const bool last = ((i + 1) >= branching.branches.size());
 				/**
 				 * Если порождается ветвь, первой не являющаяся
 				 */
-				if(i > 0) {
+				if(i > 0){
 					// Выполняем расстановку метки входа в очередную ветвь выбора
 					emitter.place(entries.at(i));
 					// Выполняем размещение метки цели перехода по адресу в регистре
@@ -7105,7 +7105,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					/**
 					 * Выполняем восстановление границ групп, ветвью прежней записанных
 					 */
-					for(size_t k = 0; k < written.size(); k++) {
+					for(size_t k = 0; k < written.size(); k++){
 						// Выполняем чтение запомненной границы группы из кадра вызова
 						emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (keeping + k));
 						// Выполняем восстановление границы группы в наборе границ
@@ -7160,7 +7160,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Выполняем восстановление границ групп, последней ветвью записанных
 			 */
-			for(size_t i = 0; i < written.size(); i++) {
+			for(size_t i = 0; i < written.size(); i++){
 				// Выполняем чтение запомненной границы группы из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, housing, static_cast <uint32_t> (keeping + i));
 				// Выполняем восстановление границы группы в наборе границ
@@ -7191,7 +7191,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          кадра, что и отступление жадного.
 		 *
 		 */
-		if(instruction.split.lazily != 0) {
+		if(instruction.split.lazily != 0){
 			// Получаем инструкцию тела ленивого повторения одиночного символа
 			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
 			// Выполняем заведение таблицы принадлежности байтов тела повторения
@@ -7236,7 +7236,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем обход пространства значений байта
 				 */
-				for(size_t letter = 0; letter < TABLE; letter++) {
+				for(size_t letter = 0; letter < TABLE; letter++){
 					/**
 					 * Если значение байта ряду не принадлежит
 					 */
@@ -7260,7 +7260,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          куда оно вернулось бы и без него.
 			 *
 			 */
-			if(cellular) {
+			if(cellular){
 				// Выполняем чтение прежнего отказа из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем сохранение прежнего отказа в месте ряда повторения
@@ -7309,7 +7309,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          команд процессора над несколькими байтами сразу.
 			 *
 			 */
-			if((following >= 0) && (limits == 0)) {
+			if((following >= 0) && (limits == 0)){
 				// Выполняем сравнение позиции сопоставления с размером текста
 				emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 				// Выполняем переход к исчерпанию при достижении конца текста
@@ -7407,7 +7407,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          самого.
 			 *
 			 */
-			if(marking) {
+			if(marking){
 				// Выполняем переход к продолжению сопоставления вслед за рядом
 				emitter.jump(resume);
 				// Выполняем расстановку метки записи пропуска пройденного участка
@@ -7426,7 +7426,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          отказу, действовавшему до него.
 			 *
 			 */
-			if(cellular) {
+			if(cellular){
 				/**
 				 * Если переход к продолжению сопоставления не размещён прежде
 				 */
@@ -7515,7 +7515,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          куда оно вернулось бы и без него.
 			 *
 			 */
-			if(cellular && !sealed) {
+			if(cellular && !sealed){
 				// Выполняем чтение прежнего отказа из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем сохранение прежнего отказа в месте ряда повторения
@@ -7539,11 +7539,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем обход пространства значений байта
 				 */
-				for(size_t letter = 0; letter < TABLE; letter++) {
+				for(size_t letter = 0; letter < TABLE; letter++){
 					/**
 					 * Если значение байта ряду не принадлежит
 					 */
-					if(members[letter] == 0) {
+					if(members[letter] == 0){
 						// Запоминаем значение байта, ряд ограничивающее
 						limit = static_cast <uint8_t> (letter);
 						// Увеличиваем количество значений байта, ряду не принадлежащих
@@ -7554,7 +7554,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если ряд есть цепочка ограниченного повторения
 			 */
-			if(most > 0) {
+			if(most > 0){
 				/**
 				 * Порождаем проход цепочки ограниченного повторения развёрнутым
 				 *
@@ -7572,7 +7572,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				/**
 				 * Выполняем порождение копий прохода цепочки
 				 */
-				for(uint16_t copy = 0; copy < most; copy++) {
+				for(uint16_t copy = 0; copy < most; copy++){
 					// Выполняем сравнение позиции сопоставления с размером текста
 					emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 					// Выполняем переход к завершению прохода при достижении конца текста
@@ -7670,7 +7670,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          ряда первого изменяемого.
 			 *
 			 */
-			if(skipping && (index == 0)) {
+			if(skipping && (index == 0)){
 				/**
 				 * Выполняем получение положения пропуска пройденного участка
 				 *
@@ -7687,7 +7687,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 */
-			if(cellular && !sealed) {
+			if(cellular && !sealed){
 				// Выполняем получение адреса отступления ряда повторения
 				emitter.address(reg_t::SCRATCH, retries.at(index));
 				// Выполняем установку действующего отказа сопоставления
@@ -7702,7 +7702,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          до ряда.
 			 *
 			 */
-			if(sealed) {
+			if(sealed){
 				// Выполняем расстановку метки продолжения сопоставления вслед за рядом
 				emitter.place(resume);
 				// Переходим к следующему ряду повторения одиночного символа
@@ -7749,7 +7749,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          отказу, действовавшему до него.
 			 *
 			 */
-			if(cellular) {
+			if(cellular){
 				// Выполняем переход к продолжению сопоставления вслед за рядом
 				emitter.jump(resume);
 				// Выполняем расстановку метки исчерпания отступления ряда
@@ -7779,7 +7779,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если порождение программы целиком не выполнено
 	 */
-	if(!region(0, INVALID_ADDRESS)) {
+	if(!region(0, INVALID_ADDRESS)){
 		// Выполняем очистку порождённого сопоставителя
 		this->clear();
 		// Выводим результат порождения сопоставителя
@@ -7795,7 +7795,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          на нём и завершается.
 	 *
 	 */
-	for(size_t body = 0; body < bodies.size(); body++) {
+	for(size_t body = 0; body < bodies.size(); body++){
 		// Выполняем расстановку метки тела вызываемого подвыражения
 		emitter.place(bodies.at(body).second);
 		// Выполняем установку отказа, телом вызываемым действующего
@@ -7803,7 +7803,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если порождение области тела вызываемого не выполнено
 		 */
-		if(!region(bodies.at(body).first, INVALID_ADDRESS)) {
+		if(!region(bodies.at(body).first, INVALID_ADDRESS)){
 			// Выполняем очистку порождённого сопоставителя
 			this->clear();
 			// Выводим результат порождения сопоставителя
@@ -7813,7 +7813,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если цепочки ветвей выбора порождены
 	 */
-	if(cellular) {
+	if(cellular){
 		// Выполняем расстановку метки отказа, выбором ветви отложенного
 		emitter.place(miss);
 		// Выполняем чтение действующего отказа сопоставления из кадра вызова
@@ -7852,7 +7852,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          рядом пройденный, отвергнут целиком.
 		 *
 		 */
-		if(skipping) {
+		if(skipping){
 			// Выполняем чтение положения конца первого ряда из кадра вызова
 			emitter.fetch(reg_t::SCRATCH, reg_t::STACK, static_cast <uint32_t> (span));
 			// Переходим к позиции, за концом первого ряда стоящей
@@ -7904,7 +7904,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          кадра вызова, а указатель стека возвращает выход.
 	 *
 	 */
-	if((framed > 0) || (calls > 0)) {
+	if((framed > 0) || (calls > 0)){
 		/**
 		 * Заводим метку выхода без пометки отказа порождённого сопоставителя
 		 *
@@ -7939,7 +7939,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если разрешение отложенных переходов не выполнено
 	 */
-	if(!emitter.resolve()) {
+	if(!emitter.resolve()){
 		// Выполняем очистку порождённого сопоставителя
 		this->clear();
 		// Выводим результат порождения сопоставителя
@@ -7956,7 +7956,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если размещение порождённого машинного кода не выполнено
 	 */
-	if(!this->_assembly.allocate(emitter.length()) || !this->_assembly.fill(emitter.code().data(), emitter.length()) || !this->_assembly.commit()) {
+	if(!this->_assembly.allocate(emitter.length()) || !this->_assembly.fill(emitter.code().data(), emitter.length()) || !this->_assembly.commit()){
 		// Выполняем очистку порождённого сопоставителя
 		this->clear();
 		// Выводим результат порождения сопоставителя
@@ -8031,7 +8031,7 @@ namespace {
 		/**
 		 * Выполняем перебор порождённого машинного кода побайтно
 		 */
-		for(size_t i = 0; i < length; i++) {
+		for(size_t i = 0; i < length; i++){
 			// Выполняем смешивание очередного байта кода
 			result ^= static_cast <uint64_t> (bytes[i]);
 			// Выполняем умножение накопленной приметы
@@ -8053,7 +8053,7 @@ namespace {
 		/**
 		 * Выполняем запись числа долями по семь разрядов
 		 */
-		while(value >= 0x80) {
+		while(value >= 0x80){
 			// Выполняем запись очередной доли числа с признаком продолжения
 			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
 			// Переходим к следующей доле числа
@@ -8079,7 +8079,7 @@ namespace {
 		/**
 		 * Выполняем чтение числа долями по семь разрядов
 		 */
-		for(uint8_t shift = 0; shift < 64; shift += 7) {
+		for(uint8_t shift = 0; shift < 64; shift += 7){
 			/**
 			 * Если запись оборвана до завершения числа
 			 */
@@ -8306,7 +8306,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Выполняем чтение набора смещений значений хранилища
 	 */
-	for(uint64_t i = 0; i < count; i++) {
+	for(uint64_t i = 0; i < count; i++){
 		// Очередное смещение значения хранилища
 		uint64_t value = 0;
 		/**
@@ -8379,7 +8379,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	 *          проверкой и переносом в память не остаётся вовсе.
 	 *
 	 */
-	if(imprint(this->_assembly.image(), static_cast <size_t> (length)) != mark) {
+	if(imprint(this->_assembly.image(), static_cast <size_t> (length)) != mark){
 		// Выполняем очистку порождённого сопоставителя
 		this->clear();
 		// Выводим результат восстановления сопоставителя
@@ -8388,7 +8388,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	/**
 	 * Если разрешение исполнения участка памяти не выполнено
 	 */
-	if(!this->_assembly.commit()) {
+	if(!this->_assembly.commit()){
 		// Выполняем очистку порождённого сопоставителя
 		this->clear();
 		// Выводим результат восстановления сопоставителя
@@ -8492,7 +8492,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	/**
 	 * Если проверка возможности совпадения выполняется
 	 */
-	if(this->_feasible) {
+	if(this->_feasible){
 		/**
 		 * Если начало поиска обязательным литералом отодвигается
 		 *
@@ -8503,7 +8503,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 		 *          отдельной проверки оно не требует.
 		 *
 		 */
-		if(this->_skipping) {
+		if(this->_skipping){
 			// Получаем позицию, раньше какой совпадение начаться не может
 			const size_t bound = this->_prefilter.bounded(text, start);
 			/**
@@ -8560,7 +8560,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	/**
 	 * Если кадра вызова области записей не достаёт
 	 */
-	if(needed > CELLS) {
+	if(needed > CELLS){
 		// Область записей кадра, живущая между вызовами сопоставителя
 		static thread_local unique_ptr <uint8_t []> arena;
 		// Размер отведённой области записей кадра в байтах
@@ -8568,7 +8568,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 		/**
 		 * Если отведённой области записей не достаёт
 		 */
-		if(reserved < needed) {
+		if(reserved < needed){
 			// Выполняем отведение области записей кадра
 			arena.reset(new (nothrow) uint8_t [needed]);
 			// Выполняем установку размера отведённой области записей
@@ -8622,7 +8622,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	 *          теряется в самом сопоставлении.
 	 *
 	 */
-	if((count + 3) > BOUNDS) {
+	if((count + 3) > BOUNDS){
 		/**
 		 * Набор границ, живущий между вызовами сопоставителя
 		 *
@@ -8709,7 +8709,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	 *          совпадения: выражение надлежит доиграть исполнением программы.
 	 *
 	 */
-	if(bounds[count + 2] != 0) {
+	if(bounds[count + 2] != 0){
 		// Выполняем установку признака отказа сопоставителя
 		refused = true;
 		// Выводим результат поиска совпадения

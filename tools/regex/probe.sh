@@ -50,9 +50,12 @@ mkdir -p "$OUT"
 # Щуп собирает выражения открытым договором модуля, а тот тянет за собою запись
 # хранилища: она выдаётся кодеком JSON, извлечение чисел которого живёт в
 # «codec/numeric.cpp», а чтение с записью документа - в модуле файловой системы.
-# Переносимой проверке они не нужны, оттого в «sources.sh» их и нет
+# Переносимой проверке они не нужны, оттого в «sources.sh» их и нет.
+# За модулем файловой системы записана цепочка: чтение файлов ограждено
+# обработчиком «Signals::Bus», тот опирается на разрешение процессов,
+# а тот - на адреса сетевых объектов; без цепочки связывание отказывает
 ##
-EXTRA="$ROOT/src/codec/numeric.cpp $ROOT/src/sys/os.cpp $ROOT/src/sys/fs.cpp"
+EXTRA="$ROOT/src/codec/numeric.cpp $ROOT/src/sys/os.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/signals.cpp $ROOT/src/sys/procre.cpp $ROOT/src/net/net.cpp"
 
 ##
 # У macOS исходники собираются как Objective-C++

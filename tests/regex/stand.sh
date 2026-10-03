@@ -141,10 +141,12 @@ esac
 # Модуль файловой системы нужен дважды: кодек JSON читает и пишет документы
 # через «awh::fs_t», а проверки «StorageFilesystem» кладут запись хранилища
 # на диск тем же объектом. Без него связывание отказывало символом
-# «Filesystem::read» на всех системах разом
+# «Filesystem::read» на всех системах разом. За ним записана цепочка:
+# чтение файлов ограждено обработчиком «Signals::Bus», тот опирается на
+# разрешение процессов, а тот - на адреса сетевых объектов
 ##
 SUPPORT="$ROOT/src/sys/log.cpp $ROOT/src/sys/fmk.cpp $ROOT/src/sys/chrono.cpp \
- $ROOT/src/sys/os.cpp $ROOT/src/sys/fs.cpp $ROOT/src/net/nwt.cpp $ROOT/src/num/lexical/table.cpp \
+ $ROOT/src/sys/os.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/signals.cpp $ROOT/src/sys/procre.cpp $ROOT/src/net/net.cpp $ROOT/src/net/nwt.cpp $ROOT/src/num/lexical/table.cpp \
  $ROOT/src/encoding/charset/*.cpp $ROOT/src/alloc/*.cpp $CAPTURE"
 SOURCES="$ROOT/tests/main.cpp $ROOT/tests/regex/*.cpp \
  $ROOT/src/regex/*.cpp $ROOT/src/regex/grok/*.cpp \
