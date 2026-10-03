@@ -267,33 +267,38 @@ if [ -n "$1" ]; then
 				exit 1
 			fi
 
-			# Извлекаем все модули из библиотеки
-			ar -xv libbrotlienc.a || exit 1
-			ar -xv libbrotlidec.a || exit 1
-			ar -xv libbrotlicommon.a || exit 1
+			# Извлекаем модули каждой библиотеки в свой каталог: имена объектов у кодировщика,
+			# декодера и общего кода повторяются, и распаковка в общий каталог затирала бы
+			# одноимённые модули - библиотека выходила неполной, и недостающий символ
+			# обнаруживался лишь на прикладной линковке
+			mkdir -p brotlienc brotlidec brotlicommon || exit 1
+			(cd brotlienc && ar -xv ../libbrotlienc.a) || exit 1
+			(cd brotlidec && ar -xv ../libbrotlidec.a) || exit 1
+			(cd brotlicommon && ar -xv ../libbrotlicommon.a) || exit 1
 
 			# Удаляем все старые библиотеки
 			rm libbrotlienc.a || exit 1
 			rm libbrotlidec.a || exit 1
 			rm libbrotlicommon.a || exit 1
 
+			# Расширение объектов извлечённых библиотек
+			suffix="o"
+			# Если операционной системой является Windows
+			if [ $OS = "Windows" ]; then
+				# Устанавливаем расширение объектов Windows
+				suffix="obj"
+			fi
+
 			# Выполняем сборку новой статической библиотеки
-			ar -crv libbrotli.a $MODULES
+			ar -crv libbrotli.a brotlienc/*.$suffix brotlidec/*.$suffix brotlicommon/*.$suffix
 
 			# Выполняем запуск библиотеки
 			ranlib libbrotli.a
 
-			# Если операционной системой является Windows
-			if [ $OS = "Windows" ]; then
-				# Выполняем удаление всех извлечённых модулей
-				rm -rf *.obj
-			# Если операционной системой является Unix-подобная ОС
-			else
-				# Выполняем удаление всех извлечённых модулей
-				rm -rf *.o
-				# Удаляем файл разметки
-				rm -f "__.SYMDEF SORTED"
-			fi
+			# Выполняем удаление всех извлечённых модулей
+			rm -rf brotlienc brotlidec brotlicommon
+			# Удаляем файл разметки
+			rm -f "__.SYMDEF SORTED"
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX
