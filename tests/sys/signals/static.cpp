@@ -879,3 +879,54 @@ TEST_F(SignalsFixture, InterruptedWriteTest){
 	// Удаляем рабочий файл
 	fs.unlink(file);
 }
+
+/**
+ * @brief Тест чтения во время доставки сигналов без SA_RESTART
+ *
+ * @details Прерывание системного вызова чтения (EINTR) не должно отказывать
+ *          операцию либо обрывать обход: данные обязаны дойти до колбэка целиком
+ *
+ */
+TEST_F(SignalsFixture, InterruptedReadTest){
+	// Объект работы с файловой системой
+	awh::fs_t fs;
+	// Рабочий файл
+	const std::string file = "test_signals_eintr_read.bin";
+	// Данные записи
+	const std::string data(64 * 1024 * 1024, 'y');
+	// Записываем данные прежде запуска таймера
+	ASSERT_TRUE(fs.write(file, data.c_str(), data.size()));
+	// Обработчик сигнала таймера: без SA_RESTART, чтобы прерывать системные вызовы
+	struct sigaction alarm;
+	// Заполняем структуру обработчика нулями
+	::memset(&alarm, 0, sizeof(alarm));
+	// Устанавливаем пустой обработчик
+	alarm.sa_handler = [](const int32_t){};
+	// Ставим обработчик сигнала таймера
+	::sigaction(SIGALRM, &alarm, nullptr);
+	// Повторяющийся таймер на одну миллисекунду
+	struct itimerval timer = {{0, 1000}, {0, 1000}};
+	// Запускаем таймер
+	::setitimer(ITIMER_REAL, &timer, nullptr);
+	// Читаем данные целиком во время доставки сигналов
+	const std::string whole = fs.read <std::string> (file);
+	// Объём данных, дошедший до колбэка поблочного чтения
+	size_t total = 0;
+	// Читаем данные по частям во время доставки сигналов
+	fs.readfile(file, 1024 * 1024, [&total]([[maybe_unused]] const void * buffer, const size_t size) noexcept -> void {
+		// Увеличиваем объём прочитанного
+		total += size;
+	});
+	// Останавливаем таймер
+	struct itimerval off = {{0, 0}, {0, 0}};
+	// Останавливаем таймер
+	::setitimer(ITIMER_REAL, &off, nullptr);
+	// Восстанавливаем обработчик сигнала таймера по умолчанию
+	::signal(SIGALRM, SIG_DFL);
+	// Проверяем чтение целиком
+	ASSERT_EQ(data, whole);
+	// Проверяем объём, дошедший до колбэка поблочного чтения
+	ASSERT_EQ(data.size(), total);
+	// Удаляем рабочий файл
+	fs.unlink(file);
+}

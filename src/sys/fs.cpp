@@ -5607,8 +5607,20 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							result.resize(size);
 						// Если объект результата уже задан — читаем min(размер буфера, size)
 						else size = ::min(size, result.size());
-						// Читаем данные из файла в буфер
-						if(::pread(file, &result[0], size, position) != static_cast <ssize_t> (size)){
+						// Результат чтения
+						ssize_t bytes = 0;
+						/**
+						 * Повторяем чтение при прерывании сигналом: прерывание до чтения чего-либо не отказывает операцию
+						 */
+						do {
+							// Читаем данные из файла в буфер
+							bytes = ::pread(file, &result[0], size, position);
+						/**
+						 * Если чтение прервано сигналом, повторяем попытку
+						 */
+						} while((bytes < 0) && (errno == EINTR));
+						// Если данные прочитаны не целиком (короткое чтение означает усечение файла)
+						if(bytes != static_cast <ssize_t> (size)){
 							/**
 							 * Выполняем очистку буфера результата
 							 *
@@ -6671,8 +6683,16 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 * Читаем файл по частям до тех пор, пока не достигнем конца файла
 						 */
 						while(position < static_cast <off_t> (info.st_size)){
-							// Читаем часть файла в буфер (позиция абсолютная, остаток считается от конца файла)
-							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), static_cast <off_t> (info.st_size) - position)), position);
+							/**
+							 * Повторяем чтение при прерывании сигналом: прерывание до чтения чего-либо не обрывает обход
+							 */
+							do {
+								// Читаем часть файла в буфер (позиция абсолютная, остаток считается от конца файла)
+								bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), static_cast <off_t> (info.st_size) - position)), position);
+							/**
+							 * Если чтение прервано сигналом, повторяем попытку
+							 */
+							} while((bytes < 0) && (errno == EINTR));
 							// Если прочитать часть файла не удалось
 							if(bytes <= 0)
 								// Выходим из цикла чтения файла
@@ -6973,8 +6993,16 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 * Читаем файл по частям до тех пор, пока не достигнем конца файла
 						 */
 						while(position < static_cast <off_t> (info.st_size)){
-							// Читаем часть файла в буфер (позиция абсолютная, остаток считается от конца файла)
-							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), static_cast <off_t> (info.st_size) - position)), position);
+							/**
+							 * Повторяем чтение при прерывании сигналом: прерывание до чтения чего-либо не обрывает обход
+							 */
+							do {
+								// Читаем часть файла в буфер (позиция абсолютная, остаток считается от конца файла)
+								bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), static_cast <off_t> (info.st_size) - position)), position);
+							/**
+							 * Если чтение прервано сигналом, повторяем попытку
+							 */
+							} while((bytes < 0) && (errno == EINTR));
 							// Если прочитать часть файла не удалось
 							if(bytes <= 0)
 								// Выходим из цикла чтения файла
