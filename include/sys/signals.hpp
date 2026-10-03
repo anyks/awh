@@ -42,16 +42,6 @@
 #include <functional>
 
 /**
- * Для операционной системы не являющейся MS Windows
- */
-#if !defined(_WIN32) && !defined(_WIN64)
-	/**
-	 * Системные заголовочные файлы
-	 */
-	#include <setjmp.h>
-#endif
-
-/**
  * Подключаем заголовочные файлы проекта
  */
 #include "locker.hpp"
@@ -69,6 +59,11 @@
  * Для операционной системы не являющейся MS Windows
  */
 #else
+	/**
+	 * Системный заголовочный файл для работы с точками восстановления на сигнал SIGBUS
+	 */
+	#include <setjmp.h>
+
 	/**
 	 * Системный заголовочный файл для типов pid_t/uid_t
 	 */
@@ -103,84 +98,89 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Signals {
 		public:
 			/**
-			 * \~russian
-			 * @brief Класс точки восстановления потока на сигнал SIGBUS
-			 *
-			 * @details Проекция файла в память отвечает сигналом SIGBUS, если файл усечён
-			 *          за её пределами либо носитель отказал в чтении: прежде сбойный поток
-			 *          приостанавливался до конца процесса. Класс ставит потоку точку
-			 *          возврата — обработчик сигнала возвращает управление в неё, и чтение
-			 *          из проекции завершается честным отказом, не трогая остальной процесс.
-			 *          Точка ставится на время одного чтения из проекции; вложенные точки
-			 *          одним потоком не поддерживаются. Под MS Windows проекция за концом
-			 *          файла заполняется нулями и сигнала нет — класс там пуст
-			 *
-			 * \~english
-			 * @brief Class of the thread recovery point for the SIGBUS signal
-			 *
-			 * @details A file mapped into memory answers with SIGBUS if the file is truncated
-			 *          behind the mapping or the medium refuses to read: the faulting thread
-			 *          used to be suspended until the end of the process. The class sets a
-			 *          return point in the frame of the calling function — the signal handler returns control to it,
-			 *          and the read from the mapping ends with an honest refusal without
-			 *          touching the rest of the process. The point is set for the duration of
-			 *          a single read from a mapping; nested points are not supported by one
-			 *          thread. Under MS Windows the mapping beyond the end of the file is
-			 *          zero-filled and there is no signal — the class is empty there
-			 *
-			 * \~
+			 * Для операционной системы не являющейся MS Windows
 			 */
-			typedef class __AWH_SHARED_EXPORT__ Bus {
-				private:
-					// Флаг регистрации точки восстановления этим объектом
-					bool _armed;
-				public:
-					/**
-					 * \~russian
-					 * @brief Конструктор: регистрирует буфер точки возврата кадра вызывающей функции
-					 *
-					 * @details Обработчик SIGBUS ставится и без запущенного наблюдателя
-					 *          сигналов: чтение из проекции обязано отказывать честно и в
-					 *          приложении, которое сигнальный модуль не завело. Ставится тот
-					 *          же обработчик, что и наблюдателю, поэтому точка восстановления
-					 *          работает и поверх него. Сам вызов sigsetjmp выполняет
-					 *          вызывающий, буфер sigjmp_buf объявляется рядом и передаётся
-					 *          сюда: прыжок из обработчика возвращается в живой кадр, а не в
-					 *          мёртвый кадр конструктора-помощника. Повторное конструирование
-					 *          после прыжка безвредно: регистрация идемпотентна
-					 *
-					 * @param point буфер точки возврата, объявленный в кадре вызывающей функции
-					 *
-					 * \~english
-					 * @brief Constructor: registers the return point buffer of the calling function frame
-					 *
-					 * @details The SIGBUS handler is installed even without the started
-					 *          signal watcher: a read from a mapping must refuse honestly in
-					 *          an application that never started the signals module. The same
-					 *          handler as the watcher's is installed, so the recovery point
-					 *          works on top of it too. The sigsetjmp call itself is performed
-					 *          by the caller, the sigjmp_buf is declared next to it and passed
-					 *          here: the jump from the handler returns into a live frame, not
-					 *          into the dead frame of a helper constructor. A repeated
-					 *          construction after the jump is harmless: the registration is
-					 *          idempotent
-					 *
-					 * @param point return point buffer declared in the frame of the calling function
-					 *
-					 * \~
-					 */
-					explicit Bus(sigjmp_buf & point) noexcept;
-					/**
-					 * \~russian
-					 * @brief Деструктор: снимает регистрацию точки восстановления
-					 *
-					 * \~english
-					 * @brief Destructor: removes the recovery point registration
-					 *
-					 * \~
-					 */
-					~Bus() noexcept;
-			} bus_t;
+			#if !defined(_WIN32) && !defined(_WIN64)
+				/**
+				 * \~russian
+				 * @brief Класс точки восстановления потока на сигнал SIGBUS
+				 *
+				 * @details Проекция файла в память отвечает сигналом SIGBUS, если файл усечён
+				 *          за её пределами либо носитель отказал в чтении: прежде сбойный поток
+				 *          приостанавливался до конца процесса. Класс ставит потоку точку
+				 *          возврата — обработчик сигнала возвращает управление в неё, и чтение
+				 *          из проекции завершается честным отказом, не трогая остальной процесс.
+				 *          Точка ставится на время одного чтения из проекции; вложенные точки
+				 *          одним потоком не поддерживаются. Под MS Windows проекция за концом
+				 *          файла заполняется нулями и сигнала нет — класс там пуст
+				 *
+				 * \~english
+				 * @brief Class of the thread recovery point for the SIGBUS signal
+				 *
+				 * @details A file mapped into memory answers with SIGBUS if the file is truncated
+				 *          behind the mapping or the medium refuses to read: the faulting thread
+				 *          used to be suspended until the end of the process. The class sets a
+				 *          return point in the frame of the calling function — the signal handler returns control to it,
+				 *          and the read from the mapping ends with an honest refusal without
+				 *          touching the rest of the process. The point is set for the duration of
+				 *          a single read from a mapping; nested points are not supported by one
+				 *          thread. Under MS Windows the mapping beyond the end of the file is
+				 *          zero-filled and there is no signal — the class is empty there
+				 *
+				 * \~
+				 */
+				typedef class __AWH_SHARED_EXPORT__ Bus {
+					private:
+						// Флаг регистрации точки восстановления этим объектом
+						bool _armed;
+					public:
+						/**
+						 * \~russian
+						 * @brief Конструктор: регистрирует буфер точки возврата кадра вызывающей функции
+						 *
+						 * @details Обработчик SIGBUS ставится и без запущенного наблюдателя
+						 *          сигналов: чтение из проекции обязано отказывать честно и в
+						 *          приложении, которое сигнальный модуль не завело. Ставится тот
+						 *          же обработчик, что и наблюдателю, поэтому точка восстановления
+						 *          работает и поверх него. Сам вызов sigsetjmp выполняет
+						 *          вызывающий, буфер sigjmp_buf объявляется рядом и передаётся
+						 *          сюда: прыжок из обработчика возвращается в живой кадр, а не в
+						 *          мёртвый кадр конструктора-помощника. Повторное конструирование
+						 *          после прыжка безвредно: регистрация идемпотентна
+						 *
+						 * @param point буфер точки возврата, объявленный в кадре вызывающей функции
+						 *
+						 * \~english
+						 * @brief Constructor: registers the return point buffer of the calling function frame
+						 *
+						 * @details The SIGBUS handler is installed even without the started
+						 *          signal watcher: a read from a mapping must refuse honestly in
+						 *          an application that never started the signals module. The same
+						 *          handler as the watcher's is installed, so the recovery point
+						 *          works on top of it too. The sigsetjmp call itself is performed
+						 *          by the caller, the sigjmp_buf is declared next to it and passed
+						 *          here: the jump from the handler returns into a live frame, not
+						 *          into the dead frame of a helper constructor. A repeated
+						 *          construction after the jump is harmless: the registration is
+						 *          idempotent
+						 *
+						 * @param point return point buffer declared in the frame of the calling function
+						 *
+						 * \~
+						 */
+						explicit Bus(sigjmp_buf & point) noexcept;
+						/**
+						 * \~russian
+						 * @brief Деструктор: снимает регистрацию точки восстановления
+						 *
+						 * \~english
+						 * @brief Destructor: removes the recovery point registration
+						 *
+						 * \~
+						 */
+						~Bus() noexcept;
+				} bus_t;
+			#endif
 		private:
 			/**
 			 * Для операционной системы не являющейся MS Windows

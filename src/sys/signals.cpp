@@ -586,14 +586,14 @@ namespace signals {
 };
 
 /**
- * @brief Конструктор: взводит точку восстановления потока
- *
+ * Для операционной системы не являющейся MS Windows
  */
-awh::Signals::Bus::Bus(sigjmp_buf & point) noexcept : _armed(false) {
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * @brief Конструктор: взводит точку восстановления потока
+	 *
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	awh::Signals::Bus::Bus(sigjmp_buf & point) noexcept : _armed(false) {
 		// Если обработчик установлен и точка восстановления потока ещё не зарегистрирована
 		if(::signals::installBus() && !::signals::busArmed){
 			/**
@@ -606,17 +606,12 @@ awh::Signals::Bus::Bus(sigjmp_buf & point) noexcept : _armed(false) {
 			// Запоминаем буфер точки возврата кадра вызывающей функции
 			::signals::busPoint = &point;
 		}
-	#endif
-}
-/**
- * @brief Деструктор: снимает регистрацию точки восстановления
- *
- */
-awh::Signals::Bus::~Bus() noexcept {
+	}
 	/**
-	 * Для операционной системы не являющейся MS Windows
+	 * @brief Деструктор: снимает регистрацию точки восстановления
+	 *
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	awh::Signals::Bus::~Bus() noexcept {
 		// Если эта точка регистрировала восстановление потока
 		if(this->_armed){
 			// Снимаем регистрацию точки восстановления потока
@@ -624,8 +619,8 @@ awh::Signals::Bus::~Bus() noexcept {
 			// Сбрасываем указатель буфера точки возврата
 			::signals::busPoint = nullptr;
 		}
-	#endif
-}
+	}
+#endif
 
 /**
  * Для операционной системы MS Windows
