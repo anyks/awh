@@ -2135,6 +2135,151 @@ TEST(CodecJsonReader, ErrorLocationIsIndependentOfChunking) {
 	}
 }
 
+/**
+ * @brief Проверка смещения за закрытыми значениями: оно идёт в ногу с текстом
+ *
+ * @details Закрывающие кавычки строки и скобки вместилищ завершали значение возвратом
+ *          прежде метки общего пропуска знака, и смещение разбора за ними не прибавляло.
+ *          Замерено 04.10.2026: у «["a"]\n\nx» отказ называл смещение 5 при виновном
+ *          знаке на 7, а у «[[],[]]x» события сдвинуты до трёх знаков. Пути числа
+ *          и литерала компенсацию несли, и сличение по ним сходилось, - отчего прежняя
+ *          проверка места отказа эту дыру не видела вовсе
+ *
+ */
+TEST(CodecJsonReader, ClosingSignsKeepOffsetInStep) {
+	/**
+	 * @brief Метод разбора текста с выдачей видов и смещений событий
+	 *
+	 * @param text разбираемый текст документа
+	 * @param step размер куска подачи, ноль - подача целиком
+	 * @return     перечень видов и смещений собранных событий разбора
+	 *
+	 */
+	const auto places = [](const string & text, const size_t step) noexcept -> vector <pair <uint8_t, uint64_t>> {
+		// Собираемые виды и смещения событий разбора
+		vector <pair <uint8_t, uint64_t>> result;
+		// Чтение текста документа
+		json::reader_t reader;
+		/**
+		 * Выполняем подачу текста документа
+		 */
+		if(step == 0)
+			// Выполняем подачу текста документа целиком
+			reader.feed(text.data(), text.size(), true);
+		// Если подача идёт кусками
+		else {
+			// Выполняем перебор всех кусков подаваемого текста
+			for(size_t i = 0; i < text.size(); i += step){
+				// Размер подаваемого куска текста
+				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
+				// Выполняем подачу очередного куска текста
+				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
+				// Выполняем перебор всех событий разбора
+				while(reader.next())
+					// Добавляем вид и смещение события к перечню
+					result.emplace_back(static_cast <uint8_t> (reader.event()), reader.location().offset);
+			}
+		}
+		// Выполняем перебор всех оставшихся событий разбора
+		while(reader.next())
+			// Добавляем вид и смещение события к перечню
+			result.emplace_back(static_cast <uint8_t> (reader.event()), reader.location().offset);
+		// Выводим перечень собранных событий
+		return result;
+	};
+	/**
+	 * Выполняем проверку положений событий за закрытыми значениями
+	 */
+	{
+		// Ожидаемые виды и смещения событий разбора текста «[[],[]]»
+		const vector <pair <uint8_t, uint64_t>> expected = {
+			{static_cast <uint8_t> (json::event_t::ARRAY_BEGIN), 0},
+			{static_cast <uint8_t> (json::event_t::ARRAY_BEGIN), 1},
+			{static_cast <uint8_t> (json::event_t::ARRAY_END), 2},
+			{static_cast <uint8_t> (json::event_t::ARRAY_BEGIN), 4},
+			{static_cast <uint8_t> (json::event_t::ARRAY_END), 5},
+			{static_cast <uint8_t> (json::event_t::ARRAY_END), 6},
+			{static_cast <uint8_t> (json::event_t::DOCUMENT), 7},
+			{static_cast <uint8_t> (json::event_t::FINISH), 7}
+		};
+		// Выполняем перебор подачи текста целиком и по одному байту
+		for(const size_t step : {static_cast <size_t> (0), static_cast <size_t> (1)})
+			// Выполняем проверку видов и смещений событий разбора
+			EXPECT_EQ(places("[[],[]]", step), expected) << step;
+	}
+	/**
+	 * Выполняем проверку стояния окончания документа в конце текста
+	 */
+	{
+		// Проверяемые тексты документов без хвостовых пробельных знаков
+		const char * const texts[] = {"{}", "[]", "[[[]]]", "{\"a\":\"b\"}", "\"abc\"", "true", "123"};
+		// Выполняем перебор проверяемых текстов
+		for(const char * const text : texts){
+			// Выполняем перебор подачи текста целиком и по одному байту
+			for(const size_t step : {static_cast <size_t> (0), static_cast <size_t> (1)}){
+				// Собранные события разбора текста документа
+				const auto events = places(text, step);
+				// Выполняем проверку наличия события исчерпания текста
+				ASSERT_FALSE(events.empty()) << text;
+				// Выполняем проверку стояния события исчерпания текста в конце текста
+				EXPECT_EQ(events.back().second, ::strlen(text)) << text << ' ' << step;
+			}
+		}
+	}
+	/**
+	 * @brief Метод разбора текста с выдачей места отказа
+	 *
+	 * @param text разбираемый текст документа
+	 * @param step размер куска подачи, ноль - подача целиком
+	 * @return     место обнаружения отказа разбора
+	 *
+	 */
+	const auto locate = [](const string & text, const size_t step) noexcept -> json::location_t {
+		// Чтение текста документа
+		json::reader_t reader;
+		// Если подача идёт текстом целиком
+		if(step == 0)
+			// Выполняем подачу текста документа целиком
+			reader.feed(text.data(), text.size(), true);
+		// Если подача идёт кусками
+		else {
+			// Выполняем перебор всех кусков подаваемого текста
+			for(size_t i = 0; i < text.size(); i += step){
+				// Размер подаваемого куска текста
+				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
+				// Выполняем подачу очередного куска текста
+				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
+				// Выполняем перебор всех событий разбора
+				while(reader.next()) ;
+			}
+		}
+		// Выполняем перебор всех оставшихся событий разбора
+		while(reader.next()) ;
+		// Выводим место обнаружения отказа разбора
+		return reader.errorLocation();
+	};
+	/**
+	 * Выполняем проверку места отказа за закрытыми значениями
+	 */
+	{
+		// Проверяемые тексты и ожидаемые смещения отказа в них
+		const struct { const char * text; uint64_t offset; } probes[] = {
+			{"{}\n\nx", 4}, {"[\"a\"]x", 5}, {"[\"a\"]\n\nx", 7}, {"{\"a\":\"b\"}x", 9}, {"[[1]]x", 5}, {"[[],[]]x", 7}
+		};
+		// Выполняем перебор проверяемых текстов
+		for(const auto & probe : probes){
+			// Место отказа при подаче текста целиком
+			const json::location_t whole = locate(probe.text, 0);
+			// Место отказа при подаче текста по одному байту
+			const json::location_t parts = locate(probe.text, 1);
+			// Выполняем проверку указания места на виновный знак
+			EXPECT_EQ(whole.offset, probe.offset) << probe.text;
+			// Выполняем проверку совпадения места при обеих подачах
+			EXPECT_EQ(whole.offset, parts.offset) << probe.text;
+		}
+	}
+}
+
 
 /**
  * @brief Проверка кодов отказа, какими рубильник строгого разбора гасит послабления
