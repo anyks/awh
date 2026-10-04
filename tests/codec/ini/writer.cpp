@@ -24,6 +24,7 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <vector>
 #include <clocale>
 
 /**
@@ -2507,4 +2508,82 @@ TEST(CodecIniWriter, EveryLanguageIntegerRecordIsWritten) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "[s]\na = 9\nb = 5\nc = 3\nd = 7\ne = -128\nf = 255\ng = 4294967295\n"
 		"h = 65535\ni = -9007199254740993\nj = 9007199254740993\n");
+}
+/**
+ * @brief Проверка собственных строк в значениях, примечаниях и дописках INI
+ *
+ * @details Писатель выставляет собранный текст наружу методом text(), и подать его
+ *          обратно значением свойства, примечанием либо допискою - верный путь столкнуть
+ *          чтение входа с дописыванием выхода. Снимок входа обязан сниматься независимою
+ *          копиею до первой правки буфера: перевыделение памяти обращало бы вход висячим
+ *          посреди записи, и записанное читало бы освобождённую память. Сравнение с
+ *          записью независимой копии ловит расхождение, глазом необнаружимое
+ *
+ * @note Снимок входа снимается без завершающего перевода строки: значение свойства и
+ *       дописка перевода строки нести не вправе, и срез, с него снятый, годен для них
+ *       лишь без перевода этого. Примечание же переводы строки несёт свободно
+ *
+ * @note Свойства пишутся без раздела: срез из буфера, несущего заголовок раздела,
+ *       держал бы перевод строки внутренний, и для значения был бы негоден вовсе
+ *
+ */
+TEST(CodecIniWriter, OwnBufferStrings) {
+	// Проверяем короткий буфер и буфер с перевыделением памяти
+	for(const size_t size : vector <size_t> {0, 4096}){
+		// Настройки записи текста
+		ini::writer_t::settings_t settings;
+		// Разрешаем свойства вне раздела
+		settings.global = true;
+		/**
+		 * Выполняем проверку значения свойства из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			ini::writer_t writer(settings), reference(settings);
+			ASSERT_TRUE(writer.property("a", string(size, 'x')));
+			ASSERT_TRUE(reference.property("a", string(size, 'x')));
+			// Снимки входа без завершающего перевода строки
+			string_view own = writer.text();
+			string_view mirror = reference.text();
+			own.remove_suffix(1);
+			mirror.remove_suffix(1);
+			ASSERT_TRUE(writer.property("b", own));
+			ASSERT_TRUE(reference.property("b", mirror));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+		/**
+		 * Выполняем проверку примечания из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			ini::writer_t writer(settings), reference(settings);
+			ASSERT_TRUE(writer.property("a", string(size, 'x')));
+			ASSERT_TRUE(reference.property("a", string(size, 'x')));
+			// Снимки входа
+			const string note = reference.text();
+			ASSERT_TRUE(writer.comment(writer.text()));
+			ASSERT_TRUE(reference.comment(note));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+		/**
+		 * Выполняем проверку дописки из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			ini::writer_t writer(settings), reference(settings);
+			ASSERT_TRUE(writer.property("a", string(size, 'x')));
+			ASSERT_TRUE(reference.property("a", string(size, 'x')));
+			// Снимки входа без завершающего перевода строки
+			string_view own = writer.text();
+			string_view mirror = reference.text();
+			own.remove_suffix(1);
+			mirror.remove_suffix(1);
+			ASSERT_TRUE(writer.trailing(own));
+			ASSERT_TRUE(reference.trailing(mirror));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+	}
 }

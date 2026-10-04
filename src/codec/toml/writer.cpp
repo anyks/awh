@@ -82,6 +82,24 @@ namespace {
 		// Выводим результат проверки знака на принадлежность к управляющим
 		return (((value < 0x20) && (letter != '\t') && (letter != '\n') && (letter != '\r')) || (value == 0x7F));
 	}
+	/**
+	 * @brief Функция проверки пересечения входного среза с выходным буфером
+	 *
+	 * @param buffer выходной буфер
+	 * @param text   входной срез
+	 * @return       признак пересечения
+	 *
+	 */
+	bool overlaps(const string & buffer, const string_view text) noexcept {
+		// Пустой срез не содержит байтов, требующих сохранения
+		if(text.empty())
+			// Выводим отсутствие пересечения
+			return false;
+		// Полный порядок указателей позволяет сравнивать разные области памяти
+		const less <const char *> before;
+		// Учитываем также завершающий нулевой байт строки
+		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
+	}
 };
 
 /**
@@ -1291,6 +1309,30 @@ void awh::codec::toml::Writer::settings(const settings_t & settings) noexcept {
  *
  */
 bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
+	// Проверяем имена частей, могущие ссылаться на собственный выходной буфер
+	bool shared = false;
+	// Перебираем все части составного имени
+	for(const part_t & part : path)
+		// Учитываем срез имени каждой части
+		shared = (shared || ::overlaps(this->_text, part.name));
+	// Если входные срезы пересекаются с выходным буфером
+	if(shared){
+		// Хранилище строк имён составного имени
+		vector <string> stored;
+		// Составное имя с независимыми срезами имён
+		vector <part_t> parts(path);
+		// Отводим место заранее, чтобы перемещение строк не портило срезы
+		stored.reserve(path.size());
+		// Копируем имена частей до изменения выходного буфера
+		for(size_t i = 0; i < path.size(); i++){
+			// Сохраняем строку имени очередной части
+			stored.emplace_back(path[i].name);
+			// Связываем срез имени с независимым хранилищем
+			parts[i].name = stored[i];
+		}
+		// Повторяем запись объявления с сохранёнными доводами
+		return this->table(parts);
+	}
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -1312,6 +1354,10 @@ bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
  *
  */
 bool awh::codec::toml::Writer::table(const string_view name) noexcept {
+	// Сохраняем собственный входной срез до записи имени
+	if(::overlaps(this->_text, name))
+		// Повторяем операцию с независимым содержимым
+		return this->table(string(name));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -1342,6 +1388,30 @@ bool awh::codec::toml::Writer::table(const string_view name) noexcept {
  *
  */
 bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept {
+	// Проверяем имена частей, могущие ссылаться на собственный выходной буфер
+	bool shared = false;
+	// Перебираем все части составного имени
+	for(const part_t & part : path)
+		// Учитываем срез имени каждой части
+		shared = (shared || ::overlaps(this->_text, part.name));
+	// Если входные срезы пересекаются с выходным буфером
+	if(shared){
+		// Хранилище строк имён составного имени
+		vector <string> stored;
+		// Составное имя с независимыми срезами имён
+		vector <part_t> parts(path);
+		// Отводим место заранее, чтобы перемещение строк не портило срезы
+		stored.reserve(path.size());
+		// Копируем имена частей до изменения выходного буфера
+		for(size_t i = 0; i < path.size(); i++){
+			// Сохраняем строку имени очередной части
+			stored.emplace_back(path[i].name);
+			// Связываем срез имени с независимым хранилищем
+			parts[i].name = stored[i];
+		}
+		// Повторяем запись объявления с сохранёнными доводами
+		return this->arrayTable(parts);
+	}
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -1363,6 +1433,10 @@ bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept
  *
  */
 bool awh::codec::toml::Writer::arrayTable(const string_view name) noexcept {
+	// Сохраняем собственный входной срез до записи имени
+	if(::overlaps(this->_text, name))
+		// Повторяем операцию с независимым содержимым
+		return this->arrayTable(string(name));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -1459,6 +1533,30 @@ bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) n
  *
  */
 bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
+	// Проверяем имена частей, могущие ссылаться на собственный выходной буфер
+	bool shared = false;
+	// Перебираем все части составного имени
+	for(const part_t & part : path)
+		// Учитываем срез имени каждой части
+		shared = (shared || ::overlaps(this->_text, part.name));
+	// Если входные срезы пересекаются с выходным буфером
+	if(shared){
+		// Хранилище строк имён составного имени
+		vector <string> stored;
+		// Составное имя с независимыми срезами имён
+		vector <part_t> parts(path);
+		// Отводим место заранее, чтобы перемещение строк не портило срезы
+		stored.reserve(path.size());
+		// Копируем имена частей до изменения выходного буфера
+		for(size_t i = 0; i < path.size(); i++){
+			// Сохраняем строку имени очередной части
+			stored.emplace_back(path[i].name);
+			// Связываем срез имени с независимым хранилищем
+			parts[i].name = stored[i];
+		}
+		// Повторяем запись имени ключа с сохранёнными доводами
+		return this->key(parts);
+	}
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -1480,6 +1578,10 @@ bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
  *
  */
 bool awh::codec::toml::Writer::key(const string_view name) noexcept {
+	// Сохраняем собственный входной срез до записи имени
+	if(::overlaps(this->_text, name))
+		// Повторяем операцию с независимым содержимым
+		return this->key(string(name));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -1742,6 +1844,10 @@ bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
  *
  */
 bool awh::codec::toml::Writer::text(const string_view text, const string_t quoting) noexcept {
+	// Сохраняем собственный входной срез до записи разделителя и ограды значения
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->text(string(text), quoting);
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -2504,6 +2610,10 @@ bool awh::codec::toml::Writer::inlineClose() noexcept {
  *
  */
 bool awh::codec::toml::Writer::comment(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до записи примечания
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->comment(string(text));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -2596,6 +2706,10 @@ bool awh::codec::toml::Writer::comment(const string_view text) noexcept {
  *
  */
 bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до записи примечания
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->trailing(string(text));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -2688,6 +2802,10 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
  *
  */
 bool awh::codec::toml::Writer::remark(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до записи примечания
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->remark(string(text));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -2748,6 +2866,10 @@ bool awh::codec::toml::Writer::remark(const string_view text) noexcept {
  *
  */
 bool awh::codec::toml::Writer::remarked(const string_view text, const bool separator) noexcept {
+	// Сохраняем собственный входной срез до записи примечания
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->remarked(string(text), separator);
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *

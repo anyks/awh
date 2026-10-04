@@ -3154,3 +3154,67 @@ TEST(CodecYamlWriter, TheZeroIndentTurnsIntoTheDefaultOne){
 		ASSERT_NE(document.dump(wide), document.dump(fallback));
 	}
 }
+/**
+ * @brief Проверка собственных строк в значениях, содержимом и переносе YAML
+ *
+ * @details Писатель выставляет собранный текст наружу методом text(), и подать его
+ *          обратно значением, дословным содержимым либо дословным переносом - верный
+ *          путь столкнуть чтение входа с дописыванием выхода. Снимок входа обязан
+ *          сниматься независимою копиею до первой правки буфера: перевыделение памяти
+ *          обращало бы вход висячим посреди записи, и записанное читало бы освобождённую
+ *          память. Сравнение с записью независимой копии ловит расхождение, глазом
+ *          необнаружимое
+ *
+ */
+TEST(CodecYamlWriter, OwnBufferStrings) {
+	// Проверяем короткий буфер и буфер с перевыделением памяти
+	for(const size_t size : vector <size_t> {0, 4096}){
+		// Сравниваем результат с записью независимой копии
+		yaml::writer_t writer, reference;
+		ASSERT_TRUE(writer.mapping());
+		ASSERT_TRUE(reference.mapping());
+		ASSERT_TRUE(writer.key("first"));
+		ASSERT_TRUE(reference.key("first"));
+		ASSERT_TRUE(writer.value(string(size, 'x')));
+		ASSERT_TRUE(reference.value(string(size, 'x')));
+		// Значение берём из самого выходного буфера
+		ASSERT_TRUE(writer.key("second"));
+		ASSERT_TRUE(reference.key("second"));
+		const string value = reference.text();
+		ASSERT_TRUE(writer.value(writer.text()));
+		ASSERT_TRUE(reference.value(value));
+		// Значение оградою также берём из самого выходного буфера
+		ASSERT_TRUE(writer.key("third"));
+		ASSERT_TRUE(reference.key("third"));
+		const string fenced = reference.text();
+		ASSERT_TRUE(writer.value(writer.text(), yaml::style_t::SINGLE));
+		ASSERT_TRUE(reference.value(fenced, yaml::style_t::SINGLE));
+		// Дословное содержимое берём из самого выходного буфера
+		ASSERT_TRUE(writer.key("fourth"));
+		ASSERT_TRUE(reference.key("fourth"));
+		const string verbatim = reference.text();
+		ASSERT_TRUE(writer.raw(writer.text()));
+		ASSERT_TRUE(reference.raw(verbatim));
+		ASSERT_TRUE(writer.close());
+		ASSERT_TRUE(reference.close());
+		ASSERT_TRUE(writer.finish());
+		ASSERT_TRUE(reference.finish());
+		// Выполняем проверку совпадения с записью независимой копии
+		ASSERT_EQ(writer.text(), reference.text());
+	}
+	/**
+	 * Выполняем проверку дословного переноса строк из самого выходного буфера
+	 */
+	{
+		// Сравниваем результат с записью независимой копии
+		yaml::writer_t writer, reference;
+		ASSERT_TRUE(writer.value("строка"));
+		ASSERT_TRUE(reference.value("строка"));
+		// Дословный перенос берём из самого выходного буфера
+		const string lines = reference.text();
+		ASSERT_TRUE(writer.verbatim(writer.text(), 0));
+		ASSERT_TRUE(reference.verbatim(lines, 0));
+		// Выполняем проверку совпадения с записью независимой копии
+		ASSERT_EQ(writer.text(), reference.text());
+	}
+}

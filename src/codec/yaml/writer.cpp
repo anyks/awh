@@ -55,6 +55,24 @@ namespace {
 	 */
 	static constexpr string_view STANDARD_TAG = "tag:yaml.org,2002:";
 	/**
+	 * @brief Функция проверки пересечения входного среза с выходным буфером
+	 *
+	 * @param buffer выходной буфер
+	 * @param text   входной срез
+	 * @return       признак пересечения
+	 *
+	 */
+	bool overlaps(const string & buffer, const string_view text) noexcept {
+		// Пустой срез не содержит байтов, требующих сохранения
+		if(text.empty())
+			// Выводим отсутствие пересечения
+			return false;
+		// Полный порядок указателей позволяет сравнивать разные области памяти
+		const less <const char *> before;
+		// Учитываем также завершающий нулевой байт строки
+		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
+	}
+	/**
 	 * @brief Функция проверки того, что собранный текст чертою конца уже закрыт
 	 *
 	 * @details Черта конца есть принадлежность конца текста, а не хода записи: текст,
@@ -529,6 +547,10 @@ uint32_t awh::codec::yaml::Writer::indent() const noexcept {
  *
  */
 bool awh::codec::yaml::Writer::verbatim(const string_view text, const uint32_t indent) noexcept {
+	// Сохраняем собственный входной срез до записи в собираемый текст
+	if(::overlaps(this->_result, text))
+		// Повторяем операцию с независимым содержимым
+		return this->verbatim(string(text), indent);
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
@@ -2076,6 +2098,15 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
  */
 bool awh::codec::yaml::Writer::raw(const string & value) noexcept {
 	/**
+	 * Если входная строка является собственным выходным буфером
+	 *
+	 * @note Снимок нужен до записи разделителя: иначе вход меняется во время чтения.
+	 *
+	 */
+	if(&value == &this->_result)
+		// Повторяем операцию с независимой копией входной строки
+		return this->raw(string(value));
+	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
@@ -2298,6 +2329,15 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned lo
  */
 bool awh::codec::yaml::Writer::value(const string & value, const style_t style) noexcept {
 	/**
+	 * Если входная строка является собственным выходным буфером
+	 *
+	 * @note Снимок нужен до записи разделителя: иначе вход меняется во время чтения.
+	 *
+	 */
+	if(&value == &this->_result)
+		// Повторяем операцию с независимой копией входной строки
+		return this->value(string(value), style);
+	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *
 	 * @note Отказ записи липкий: писатель, отказом задетый, дальнейших записей не
@@ -2417,6 +2457,15 @@ bool awh::codec::yaml::Writer::written(const string_view record, const style_t s
  *
  */
 bool awh::codec::yaml::Writer::value(const string & value) noexcept {
+	/**
+	 * Если входная строка является собственным выходным буфером
+	 *
+	 * @note Снимок нужен до записи разделителя: иначе вход меняется во время чтения.
+	 *
+	 */
+	if(&value == &this->_result)
+		// Повторяем операцию с независимой копией входной строки
+		return this->value(string(value));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 *

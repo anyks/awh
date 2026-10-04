@@ -66,6 +66,25 @@ namespace {
 	using namespace awh::codec::ini;
 
 	/**
+	 * @brief Функция проверки пересечения входного среза с выходным буфером
+	 *
+	 * @param buffer выходной буфер
+	 * @param text   входной срез
+	 * @return       признак пересечения
+	 *
+	 */
+	bool overlaps(const string & buffer, const string_view text) noexcept {
+		// Пустой срез не содержит байтов, требующих сохранения
+		if(text.empty())
+			// Выводим отсутствие пересечения
+			return false;
+		// Полный порядок указателей позволяет сравнивать разные области памяти
+		const less <const char *> before;
+		// Учитываем также завершающий нулевой байт строки
+		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
+	}
+
+	/**
 	 * @brief Метод проверки значения на нужду в ограждении кавычками
 	 *
 	 * @details Ограждения требует значение, которое разбор без кавычек прочитал бы
@@ -1154,6 +1173,10 @@ void awh::codec::ini::Writer::settings(const settings_t & settings) noexcept {
  *
  */
 bool awh::codec::ini::Writer::section(const string_view section, const string_view subsection) noexcept {
+	// Сохраняем собственные входные срезы до записи объявления
+	if(::overlaps(this->_text, section) || ::overlaps(this->_text, subsection))
+		// Повторяем операцию с независимым содержимым
+		return this->section(string(section), string(subsection));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 */
@@ -1316,6 +1339,10 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
  *
  */
 bool awh::codec::ini::Writer::emit(const string_view key, const string_view value, const bool array) noexcept {
+	// Сохраняем собственные входные срезы до записи имени и значения свойства
+	if(::overlaps(this->_text, key) || ::overlaps(this->_text, value))
+		// Повторяем операцию с независимым содержимым
+		return this->emit(string(key), string(value), array);
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 */
@@ -1500,6 +1527,10 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
  *
  */
 bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до записи примечания
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->comment(string(text));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 */
@@ -1572,6 +1603,10 @@ bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
  *
  */
 bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
+	// Сохраняем собственный входной срез до записи примечания
+	if(::overlaps(this->_text, text))
+		// Повторяем операцию с независимым содержимым
+		return this->trailing(string(text));
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
 	 */

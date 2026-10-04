@@ -2656,3 +2656,160 @@ TEST(CodecTomlWriter, UnclosedContextNamesItsKind) {
 		ASSERT_EQ(writer.error(), toml::error_t::MISSING_VALUE);
 	}
 }
+/**
+ * @brief Проверка собственных строк в именах, объявлениях и примечаниях TOML
+ *
+ * @details Писатель выставляет собранный текст наружу методом text(), и подать его
+ *          обратно именем, объявлением либо примечанием - верный путь столкнуть чтение
+ *          входа с дописыванием выхода. Снимок входа обязан сниматься независимою
+ *          копиею до первой правки буфера: перевыделение памяти обращало бы вход висячим
+ *          посреди записи, и записанное читало бы освобождённую память. Сравнение с
+ *          записью независимой копии ловит расхождение, глазом необнаружимое
+ *
+ * @note Срезы входа снимаются началом записанной строки: имя ключа и объявление обязаны
+ *       уложиться в предел длины имени, и срез целой строки длинного значения предел
+ *       этот превышал бы. Срез короткий всё равно указывает в самый выходной буфер, и
+ *       снимок его беду ловит так же
+ *
+ * @note Снимки снимаются вплотную к вызову: text() выдаёт буфер лишь готовой записи, и
+ *       срез, переживший промежуточную запись, висяч по вине самого зовущего - писатель
+ *          за него не отвечает
+ *
+ */
+TEST(CodecTomlWriter, OwnBufferStrings) {
+	// Проверяем короткий буфер и буфер с перевыделением памяти
+	for(const size_t size : vector <size_t> {0, 4096}){
+		/**
+		 * Выполняем проверку имени ключа из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			toml::writer_t writer, reference;
+			ASSERT_TRUE(writer.key("first"));
+			ASSERT_TRUE(reference.key("first"));
+			ASSERT_TRUE(writer.value(string(size, 'x')));
+			ASSERT_TRUE(reference.value(string(size, 'x')));
+			// Снимки входа началом записанной строки
+			const string_view own = string_view(writer.text()).substr(0, 5);
+			const string_view mirror = string_view(reference.text()).substr(0, 5);
+			// Выполняем запись имени ключа из самого выходного буфера
+			ASSERT_TRUE(writer.key(own));
+			ASSERT_TRUE(reference.key(mirror));
+			// Выполняем запись значения пары
+			ASSERT_TRUE(writer.value(string("b")));
+			ASSERT_TRUE(reference.value(string("b")));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+		/**
+		 * Выполняем проверку объявления таблицы из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			toml::writer_t writer, reference;
+			ASSERT_TRUE(writer.key("first"));
+			ASSERT_TRUE(reference.key("first"));
+			ASSERT_TRUE(writer.value(string(size, 'x')));
+			ASSERT_TRUE(reference.value(string(size, 'x')));
+			// Снимки входа началом записанной строки
+			const string_view own = string_view(writer.text()).substr(0, 4);
+			const string_view mirror = string_view(reference.text()).substr(0, 4);
+			// Выполняем запись объявления таблицы из самого выходного буфера
+			ASSERT_TRUE(writer.table(own));
+			ASSERT_TRUE(reference.table(mirror));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+		/**
+		 * Выполняем проверку объявления набора таблиц из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			toml::writer_t writer, reference;
+			ASSERT_TRUE(writer.key("first"));
+			ASSERT_TRUE(reference.key("first"));
+			ASSERT_TRUE(writer.value(string(size, 'x')));
+			ASSERT_TRUE(reference.value(string(size, 'x')));
+			// Снимки входа началом записанной строки
+			const string_view own = string_view(writer.text()).substr(0, 3);
+			const string_view mirror = string_view(reference.text()).substr(0, 3);
+			// Выполняем запись объявления набора таблиц из самого выходного буфера
+			ASSERT_TRUE(writer.arrayTable(own));
+			ASSERT_TRUE(reference.arrayTable(mirror));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+		/**
+		 * Выполняем проверку примечания из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			toml::writer_t writer, reference;
+			ASSERT_TRUE(writer.key("first"));
+			ASSERT_TRUE(reference.key("first"));
+			ASSERT_TRUE(writer.value(string(size, 'x')));
+			ASSERT_TRUE(reference.value(string(size, 'x')));
+			// Снимки входа
+			const string note = reference.text();
+			ASSERT_TRUE(writer.comment(writer.text()));
+			ASSERT_TRUE(reference.comment(note));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+		/**
+		 * Выполняем проверку дописки из самого выходного буфера
+		 */
+		{
+			// Сравниваем результат с записью независимой копии
+			toml::writer_t writer, reference;
+			ASSERT_TRUE(writer.key("first"));
+			ASSERT_TRUE(reference.key("first"));
+			ASSERT_TRUE(writer.value(string(size, 'x')));
+			ASSERT_TRUE(reference.value(string(size, 'x')));
+			// Снимки входа без завершающего перевода строки
+			string_view own = writer.text();
+			string_view mirror = reference.text();
+			own.remove_suffix(1);
+			mirror.remove_suffix(1);
+			// Выполняем дописку примечания из самого выходного буфера
+			ASSERT_TRUE(writer.trailing(own));
+			ASSERT_TRUE(reference.trailing(mirror));
+			// Выполняем проверку совпадения с записью независимой копии
+			ASSERT_EQ(writer.text(), reference.text());
+		}
+	}
+}
+/**
+ * @brief Проверка составного имени из срезов самого выходного буфера TOML
+ *
+ * @details Составное имя несёт срезы, а не строки, и срезы эти вправе указывать в самый
+ *          выходной буфер записи: правка буфера именем первой же части обращала бы срезы
+ *          прочих частей висячими. Части обязаны сохраниться независимыми копиями до
+ *          первой правки буфера
+ *
+ */
+TEST(CodecTomlWriter, OwnBufferParts) {
+	// Проверяем короткий буфер и буфер с перевыделением памяти
+	for(const size_t size : vector <size_t> {0, 4096}){
+		// Сравниваем результат с записью независимой копии
+		toml::writer_t writer, reference;
+		ASSERT_TRUE(writer.key("first"));
+		ASSERT_TRUE(reference.key("first"));
+		ASSERT_TRUE(writer.value(string(size, 'x')));
+		ASSERT_TRUE(reference.value(string(size, 'x')));
+		// Снимки входа началом записанной строки
+		const string_view own = string_view(writer.text()).substr(0, 3);
+		const string_view mirror = string_view(reference.text()).substr(0, 3);
+		// Составное имя из двух частей, обеими ссылающимися на выходной буфер
+		const vector <toml::part_t> parts = path({own, own});
+		const vector <toml::part_t> copies = path({mirror, mirror});
+		// Выполняем запись имени ключа составного имени
+		ASSERT_TRUE(writer.key(parts));
+		ASSERT_TRUE(reference.key(copies));
+		// Выполняем запись значения составной пары
+		ASSERT_TRUE(writer.value(static_cast <int64_t> (7)));
+		ASSERT_TRUE(reference.value(static_cast <int64_t> (7)));
+		// Выполняем проверку совпадения с записью независимой копии
+		ASSERT_EQ(writer.text(), reference.text());
+	}
+}
