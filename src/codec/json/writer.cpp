@@ -470,6 +470,8 @@ void awh::codec::json::Writer::clear() noexcept {
  *
  */
 bool awh::codec::json::Writer::object() noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если глубина вложенности превышает допустимую
 	 */
@@ -500,6 +502,8 @@ bool awh::codec::json::Writer::object() noexcept {
  *
  */
 bool awh::codec::json::Writer::array() noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если глубина вложенности превышает допустимую
 	 */
@@ -530,6 +534,8 @@ bool awh::codec::json::Writer::array() noexcept {
  *
  */
 bool awh::codec::json::Writer::close() noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если открытых вместилищ нет вовсе
 	 */
@@ -581,6 +587,8 @@ bool awh::codec::json::Writer::close() noexcept {
  *
  */
 bool awh::codec::json::Writer::key(const string & name) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если входная строка является собственным выходным буфером
 	 *
@@ -663,6 +671,8 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
  *
  */
 bool awh::codec::json::Writer::null() noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -686,6 +696,8 @@ bool awh::codec::json::Writer::null() noexcept {
  *
  */
 bool awh::codec::json::Writer::value(const bool value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -709,6 +721,8 @@ bool awh::codec::json::Writer::value(const bool value) noexcept {
  *
  */
 bool awh::codec::json::Writer::value(const char * value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если строковое значение не передано
 	 *
@@ -729,6 +743,8 @@ bool awh::codec::json::Writer::value(const char * value) noexcept {
  *
  */
 bool awh::codec::json::Writer::value(const string & value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если входная строка является собственным выходным буфером
 	 *
@@ -772,6 +788,8 @@ bool awh::codec::json::Writer::value(const string & value) noexcept {
  */
 template <typename T, typename>
 bool awh::codec::json::Writer::value(const T number) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Выполняем запись числа видом, знаковости его отвечающим
 	 *
@@ -830,6 +848,8 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned lo
  *
  */
 bool awh::codec::json::Writer::value(const int64_t value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	// Хранилище записи целого числа
 	char buffer[32];
 	// Выполняем запись целого числа
@@ -859,6 +879,8 @@ bool awh::codec::json::Writer::value(const int64_t value) noexcept {
  *
  */
 bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	// Хранилище записи беззнакового целого числа
 	char buffer[32];
 	// Выполняем запись беззнакового целого числа
@@ -897,6 +919,8 @@ bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
  *
  */
 bool awh::codec::json::Writer::value(const double value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если число обычным числом не является
 	 *
@@ -1176,6 +1200,8 @@ bool awh::codec::json::Writer::produced(const char * value, const size_t size) n
  * @brief Метод записи числа его готовой записью
  */
 bool awh::codec::json::Writer::raw(const string & value) noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если входная строка является собственным выходным буфером
 	 *
@@ -1237,6 +1263,8 @@ bool awh::codec::json::Writer::raw(const string & value) noexcept {
  *
  */
 bool awh::codec::json::Writer::finish() noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	/**
 	 * Если открытые вместилища ещё не закрыты либо документ пуст
 	 */

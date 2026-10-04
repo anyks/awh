@@ -1412,6 +1412,56 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 	}
 }
 /**
+ * @brief Проверка сброса кода отказа после успешной операции
+ *
+ * @details Отказ записи JSON местный: после успешной операции, идущей за отказом,
+ * код отказа должен возвращаться к `NONE`. Иначе `error()` называет причиной
+ * давнишний отказ, а не состояние последней операции, и зовущий, проверивший код
+ * лишь после окончания записи, увидит ложную неисправность
+ */
+TEST(CodecJsonWriter, LocalRefusalDoesNotPersist){
+	{
+		// Объект записи текста документа
+		json::writer_t writer;
+		// Выполняем проверку отказа записи нечисла при отключённом послаблении
+		ASSERT_FALSE(writer.value(::std::numeric_limits <double>::infinity()));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::UNWRITABLE_VALUE);
+		// Выполняем проверку записи годного значения вслед за отказом
+		ASSERT_TRUE(writer.value(static_cast <int64_t> (1)));
+		// Выполняем проверку снятия кода отказа успешной операцией
+		ASSERT_EQ(writer.error(), json::error_t::NONE);
+	}
+	{
+		// Объект записи текста документа
+		json::writer_t writer;
+		// Выполняем проверку открытия массива
+		ASSERT_TRUE(writer.array());
+		// Выполняем проверку отказа записи имени поля внутри массива
+		ASSERT_FALSE(writer.key("имя"));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::KEY_OUTSIDE_OBJECT);
+		// Выполняем проверку записи годного значения вслед за отказом
+		ASSERT_TRUE(writer.value(static_cast <int64_t> (2)));
+		// Выполняем проверку снятия кода отказа успешной операцией
+		ASSERT_EQ(writer.error(), json::error_t::NONE);
+	}
+	{
+		// Объект записи текста документа
+		json::writer_t writer;
+		// Выполняем проверку открытия объекта
+		ASSERT_TRUE(writer.object());
+		// Выполняем проверку отказа записи значения без имени поля
+		ASSERT_FALSE(writer.value(static_cast <int64_t> (3)));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::EXPECTED_KEY);
+		// Выполняем проверку записи имени поля вслед за отказом
+		ASSERT_TRUE(writer.key("имя"));
+		// Выполняем проверку снятия кода отказа успешной операцией
+		ASSERT_EQ(writer.error(), json::error_t::NONE);
+	}
+}
+/**
  * @brief Проверка смысла кода отказа при недостающем значении
  *
  * @details Имя поля, записанное дважды подряд, и объект, закрытый с именем без значения, -
