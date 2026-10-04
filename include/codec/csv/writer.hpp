@@ -94,6 +94,11 @@ namespace awh {
 			 *       сохраняется до изменения буфера. Срезы входных данных должны быть действительны
 			 *       в момент вызова; хранить их после изменения выходного буфера нельзя.
 			 *
+			 * @note Отказ записи таблицы МЕСТЕН: отвергнутая операция откатывается,
+			 *       объект остаётся годным, и следующее поле или запись принимаются
+			 *       как ни в чём не бывшие. Это отличает таблицу от XML, где отказ
+			 *       терминален и требует очистки
+			 *
 			 * @par Порядок работы
 			 *
 			 * @par Потоковая запись
@@ -130,6 +135,12 @@ namespace awh {
 			 * @details The text is assembled field by field, and it is given away either in full upon
 			 * the ending or by chunks as it accumulates — depending on whether the consumer holds
 			 * what has been assembled in the memory or sends it further on
+			 *
+			 * @note The refusal of the writing of a CSV text is LOCAL: a rejected operation is
+			 *       rolled back, the object remains usable, and the next field or record is accepted
+			 *       as if nothing had happened. This differs from XML, where the refusal is terminal
+			 *       and requires a clearing
+			 *
 			 * @par Order of the work
 			 * @par Streaming writing
 			 * @note A field that cannot be represented with the selected settings is rejected with

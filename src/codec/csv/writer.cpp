@@ -731,6 +731,24 @@ void awh::codec::csv::Writer::record() noexcept {
  */
 bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
 	/**
+	 * Проверяем все поля до записи первого: оно может освободить память остальных
+	 */
+	for(const string_view value : fields){
+		// Если хотя бы одно поле ссылается на выходной буфер
+		if(::overlaps(this->_text, value)){
+			// Независимые копии полей всей записи
+			vector <string> stored;
+			// Отводим место под все поля
+			stored.reserve(fields.size());
+			// Сохраняем поля до изменения буфера
+			for(const string_view item : fields)
+				// Копируем содержимое очередного поля
+				stored.emplace_back(item);
+			// Записываем сохранённые поля с обычными правилами отката
+			return this->record(stored);
+		}
+	}
+	/**
 	 * Снимок состояния сборщика, снимаемый до всякой его правки
 	 *
 	 * @note Нужен для отката: отказ на любом из полей снимает и все записанные прежде

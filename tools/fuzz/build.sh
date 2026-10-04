@@ -353,7 +353,7 @@ rm -f "$OUTPUT/$CODEC-fuzz" "$OUTPUT/$CODEC-fuzz.exe"
 #       связывание отвечало восемью нераскрытыми именами «awh::Filesystem»
 ##
 FRAMEWORK="src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
-	src/sys/fs.cpp src/sys/os.cpp
+	src/sys/fs.cpp src/sys/os.cpp src/sys/signals.cpp src/sys/procre.cpp
 	src/encoding/unicode/normalize.cpp src/encoding/unicode/table.cpp
 	src/encoding/unicode/unicode.cpp src/encoding/unicode/utf8.cpp
 	src/encoding/charset/charset.cpp src/encoding/charset/table.cpp
@@ -363,6 +363,23 @@ FRAMEWORK="src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
 	src/alloc/source.cpp src/alloc/spin.cpp src/alloc/trace.cpp src/alloc/vessel.cpp
 	src/alloc/capture/elf.cpp src/alloc/capture/mach.cpp src/alloc/capture/pe.cpp
 	src/num/lexical/table.cpp"
+
+##
+# Части сети, каких требует резолвер процессов, кладутся в перечень ЛИШЬ ЦЕЛЯМ,
+# их сами не собирающим
+#
+# @warning «src/sys/procre.cpp» зовёт разбор адресов сети, а цели сетевой зоны -
+#          «addr», «uri», «cef», «io», «iodata», «eth», «blockprobe» и
+#          «deadlockprobe» - части эти собирают сами: «addr» с «uri» своим
+#          перечнем, «cef» замыканием зависимости, прочие перечнем движка.
+#          Добавленные к общему перечню ОНИ ЖЕ, части задваивались, и связывание
+#          восьми целей разом отвечало сотне двойных знаков - оттого отбор здесь
+#          по имени цели, а не доводом всем подряд
+##
+case "$CODEC" in
+	addr|uri|cef|io|iodata|eth|blockprobe|deadlockprobe) ;;
+	*) FRAMEWORK="$FRAMEWORK src/net/addr.cpp src/net/net.cpp" ;;
+esac
 
 ##
 # Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
@@ -592,11 +609,11 @@ case "$CODEC" in
 	##
 	# Ворошитель разбора параметров запуска
 	#
-	# @note Берётся ОДИН разборщик, а не весь модуль: фасад «src/args/args.cpp» ходит
-	#       в перекладку между кодеками и тянет за собою контейнер ABC со всеми семью
-	#       кодеками разом, а ворошитель трогает лишь договор «awh::args::Lexer»
-	##
-	args) TARGET="src/args/lexer.cpp src/args/schema.cpp src/args/common.cpp" ;;
+	# @note Разборщик зовётся вместе с фасадом «src/args/args.cpp»: ворошитель
+	#       поверяет круг целиком — подачу, выдачу записью кодека и чтение обратно,
+	#       - и фасад этот ходит в перекладку между кодеками, коя тянется за ним
+	#       со всеми семью кодеками разом
+	args) TARGET="src/args/lexer.cpp src/args/schema.cpp src/args/common.cpp src/args/args.cpp" ;;
 	##
 	# Ворошитель сетевого движка и ворошитель модуля сетевых устройств
 	#
@@ -876,6 +893,22 @@ case "$CODEC_DIR" in
 			DEPENDS="$DEPENDS $(echo "$ROOT/src/codec/$BRIDGED/"*.cpp)"
 		done
 	;;
+	##
+	# Фасад параметров запуска стоит на мосту со всеми кодеками разом
+	#
+	# @details Замыкание то же, что у цели «bridge»: фасад «src/args/args.cpp» держит
+	#          мост и читает настройки всеми шестью видами записи, а осью ему служит
+	#          дерево ABC. Ворошитель без этого замыкания не связывался вовсе -
+	#          ответами были нераскрытые «Args::parse», «Args::text» и «Args::dump»
+	##
+	args)
+		DEPENDS="$ROOT/src/codec/bridge.cpp"
+		# Выполняем перебор всех кодеков, мостом переводимых
+		for BRIDGED in abc json yaml xml toml ini; do
+			# Добавляем к перечню части очередного кодека
+			DEPENDS="$DEPENDS $(echo "$ROOT/src/codec/$BRIDGED/"*.cpp)"
+		done
+	;;
 esac
 
 for PART in $SHARED $([ -d "$ROOT/src/codec/$CODEC_DIR" ] && echo "$ROOT/src/codec/$CODEC_DIR/"*.cpp) $DEPENDS; do
@@ -943,9 +976,9 @@ ZLIB="${ZLIB:--lz}"
 
 # Надбавка эта берётся и кодеком, НА ABC стоящим: слой хранилища ABC зовёт сжатие с
 # шифрованием независимо от того, чьим ворошителем он собран, - а мост стоит на ABC
-# осью своей и тянет его целиком
+# осью своей и тянет его целиком; фасад же параметров запуска стоит на мосту
 DEPEND=""
-if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bridge" ]; then
+if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bridge" ] || [ "$CODEC_DIR" = "args" ]; then
 	##
 	# Собираем каталоги сторонних заголовков ПОИМЁННО
 	#

@@ -102,6 +102,11 @@ namespace awh {
 			 *       сохраняется до изменения буфера. Срезы входных данных должны быть действительны
 			 *       в момент вызова; хранить их после изменения выходного буфера нельзя.
 			 *
+			 * @note Отказ записи разметки ТЕРМИНАЛЕН: после отказа `text()` и `take()`
+			 *       возвращают пустоту, а последующие указания отвергаются до очистки
+			 *       через `clear()`. Это отличает разметку от JSON и CSV, где отказ местен
+			 *       и объект остаётся годным продолжать
+			 *
 			 * @par Порядок работы
 			 *
 			 * @note Записывается текст в кодировке UTF-8. Прочие кодировки при записи не
@@ -126,6 +131,12 @@ namespace awh {
 			 * the closing of the nodes. The writing itself watches over the pairing of the tags, escapes the content
 			 * and does not allow assembling a text that is not well-formed: a directive violating
 			 * the construction is rejected rather than written
+			 *
+			 * @note The refusal of the writing of a markup is TERMINAL: once a refusal occurs,
+			 *       `text()` and `take()` return emptiness, and subsequent directives are rejected
+			 *       until `clear()` is called. This differs from JSON and CSV, where the refusal is local
+			 *       and the object remains usable
+			 *
 			 * @par Order of the work
 			 * @note The text is written in the UTF-8 encoding. The other encodings are not applied at the writing
 			 * deliberately: they only narrow the circle of those who will be able to read the text
