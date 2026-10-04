@@ -859,6 +859,52 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод расстановки метки перехода с выравниванием входа
+				 *
+				 * @param label номер расставляемой метки перехода
+				 *
+				 * @details Метка, обратным переходом в порождённом коде достигаемая,
+				 *          есть голова витка, и выбирается строкою выборки команд
+				 *          процессора на всяком её витке. Виток, вход головы своей
+				 *          строку эту пересекающий, выбирает строк лишних, и расплата
+				 *          та не свойством выражения является, а положением кода:
+				 *          команды, вписанные прежде головы, смещают её как угодно.
+				 *          Выравнивание головы по строке выборки делает вход витка
+				 *          от вставок не зависящим - мера эта общая для машины,
+				 *          а не подгонка под адреса одного стенда. Заполнение
+				 *          до границы строки холостыми командами порождается лишь
+				 *          наборами команд, выборку строкою ведущими: у ARM64
+				 *          команды одной ширины и заполнения не требуется, а широкой
+				 *          команде Эльбруса вход головы обязан лежать на границе
+				 *          команды, и расстановка метки границу эту и так хранит.
+				 *
+				 * \~english
+				 * @brief Method of laying out a jump label with entry alignment
+				 *
+				 * @param label number of the jump label being laid out
+				 *
+				 * @details A label reached by a backward jump in the generated code
+				 *          is a loop head, and the instruction fetch line of the processor
+				 *          is fetched on every iteration of it. A loop whose head entry
+				 *          crosses that line fetches extra lines, and that penalty is
+				 *          a property of the code layout rather than of the expression:
+				 *          instructions written before the head shift it arbitrarily.
+				 *          Aligning the head to the fetch line makes the loop entry
+				 *          independent of insertions - the measure is common to the machine
+				 *          rather than a tuning for the addresses of one stand. Padding
+				 *          up to the line boundary with idle instructions is generated
+				 *          only by the instruction sets that fetch by the line: ARM64 has
+				 *          fixed-width instructions and needs no padding, whereas for
+				 *          the wide instruction of Elbrus the head entry must lie
+				 *          on an instruction boundary anyway, which laying out
+				 *          the label already keeps.
+				 *
+				 * \~
+				 */
+				void aligned(const size_t label) noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод размещения входа в порождаемый сопоставитель
 				 *
 				 * @param frame размер отводимого кадра вызова в байтах

@@ -4291,7 +4291,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	if(narrowing){
 		// Выполняем расстановку метки отбора позиции начала попытки по литералу
-		emitter.place(narrower);
+		emitter.aligned(narrower);
 		// Выполняем вызов подпрограммы отбора позиции по обязательному литералу
 		invoke(emitter, SLOT_BOUNDING, spill, reg_t::KEEPER, SLOT_PREFILTER);
 		// Выполняем установку отобранной позиции начала попытки
@@ -4313,7 +4313,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	if(seek){
 		// Выполняем расстановку метки отбора позиции начала попытки
-		emitter.place(seeker);
+		emitter.aligned(seeker);
 		/**
 		 * Если допустимый начальный байт совпадения единственный
 		 *
@@ -4362,7 +4362,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Выполняем заведение значения байта перевода строки
 		const size_t newline = this->limiter(static_cast <uint8_t> ('\n'));
 		// Выполняем расстановку метки отбора позиции начала попытки по строкам
-		emitter.place(liner);
+		emitter.aligned(liner);
 		// Выполняем сравнение позиции начала попытки с началом текста
 		emitter.compare(reg_t::KEEPER, static_cast <uint32_t> (0));
 		// Выполняем переход к попытке сопоставления в начале текста
@@ -4526,7 +4526,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем заведение таблицы допустимых начальных байтов совпадения
 			const size_t number = this->sieve();
 			// Выполняем расстановку метки просеивания позиций начала попытки
-			emitter.place(sifter);
+			emitter.aligned(sifter);
 			// Выполняем сравнение позиции начала попытки с размером текста
 			emitter.compare(reg_t::KEEPER, reg_t::SIZE);
 			/**
@@ -4566,7 +4566,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	if(utf){
 		// Выполняем расстановку метки выхода позиции на границу символа
-		emitter.place(border);
+		emitter.aligned(border);
 		// Выполняем сравнение позиции начала попытки с размером текста
 		emitter.compare(reg_t::KEEPER, reg_t::SIZE);
 		/**
@@ -4591,7 +4591,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		emitter.jump(border);
 	}
 	// Выполняем расстановку метки начала очередной попытки сопоставления
-	emitter.place(attempt);
+	emitter.aligned(attempt);
 	/**
 	 * Выполняем возвращение регистра записи к основанию области
 	 *
@@ -5204,7 +5204,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем переход к отказу вне начала строки
 					emitter.branch(cond_t::NOTEQUAL, failure);
 					// Выполняем расстановку метки выполненной проверки привязки
-					emitter.place(passed);
+					emitter.aligned(passed);
 				} break;
 				/**
 				 * Если проверяется привязка к концу текста с переводом строки
@@ -5453,7 +5453,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем переход к телу вызываемого подвыражения
 			emitter.jump(entry);
 			// Выполняем расстановку метки возврата из рекурсивного вызова
-			emitter.place(returning);
+			emitter.aligned(returning);
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем сохранение отказа тела, возвратом принесённого, в записи
@@ -5479,7 +5479,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          при этом не требует: запись эта уже отводилась.
 			 *
 			 */
-			emitter.place(retaking);
+			emitter.aligned(retaking);
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем чтение отказа тела из записи вызывающего
@@ -5497,7 +5497,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          действующий отказ к тому, какой действовал до него.
 			 *
 			 */
-			emitter.place(quitting);
+			emitter.aligned(quitting);
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем снятие записи уровня вызова
@@ -5762,7 +5762,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем сохранение конца захваченного отрезка в кадре вызова
 			emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (mirror));
 			// Выполняем расстановку метки хода сличения с захваченным текстом
-			emitter.place(stepping);
+			emitter.aligned(stepping);
 			// Выполняем чтение конца захваченного отрезка из кадра вызова
 			emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (mirror));
 			// Выполняем сравнение положения сличения с концом отрезка
@@ -5921,7 +5921,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					emitter.store(reg_t::SCRATCH, housing, static_cast <uint32_t> (slot + 3));
 				}
 				// Выполняем расстановку метки очередного отступа назад
-				emitter.place(attempt);
+				emitter.aligned(attempt);
 			}
 			/**
 			 * Если порождение области тела проверки окружения не выполнено
@@ -5978,7 +5978,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем переход к продолжению сопоставления вслед за проверкой
 			} else emitter.jump(behind);
 			// Выполняем расстановку метки отказа сопоставления тела проверки
-			emitter.place(missed);
+			emitter.aligned(missed);
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			/**
@@ -6156,7 +6156,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          прежде прохода нового.
 					 *
 					 */
-					emitter.place(iterating);
+					emitter.aligned(iterating);
 					// Выполняем размещение метки цели перехода по адресу в регистре
 					emitter.landing();
 					// Выполняем восстановление конца повторения, продолжению переданного
@@ -6190,7 +6190,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          вместе с ячейкой, при входе в повторение запомненной.
 					 *
 					 */
-					emitter.place(abandoning);
+					emitter.aligned(abandoning);
 					// Выполняем размещение метки цели перехода по адресу в регистре
 					emitter.landing();
 					/**
@@ -6205,7 +6205,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем переход по отказу, повторению предшествовавшему
 					emitter.jump(escaping);
 					// Выполняем расстановку метки продолжения сопоставления
-					emitter.place(resuming);
+					emitter.aligned(resuming);
 					// Выполняем запоминание конца повторения, продолжению передаваемого
 					emitter.store(reg_t::CURSOR, housing, static_cast <uint32_t> (holding));
 					/**
@@ -6290,7 +6290,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем сохранение положения начала повторения в кадре
 					emitter.store(reg_t::CURSOR, housing, static_cast <uint32_t> (holding));
 					// Выполняем расстановку метки входа в очередной проход повторения
-					emitter.place(entering);
+					emitter.aligned(entering);
 					// Выполняем сохранение положения начала прохода в кадре
 					emitter.store(reg_t::CURSOR, housing, static_cast <uint32_t> (holding + 1));
 					/**
@@ -6326,7 +6326,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          к началу его прежде передачи продолжению.
 					 *
 					 */
-					emitter.place(drained);
+					emitter.aligned(drained);
 					// Выполняем размещение метки цели перехода по адресу в регистре
 					emitter.landing();
 					// Выполняем восстановление положения начала прохода
@@ -6342,7 +6342,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          с ячейкой, при входе в повторение запомненной.
 					 *
 					 */
-					emitter.place(exhausting);
+					emitter.aligned(exhausting);
 					/**
 					 * Если действующий отказ ведётся ячейкой кадра
 					 */
@@ -6363,7 +6363,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          уходит тому, кто повторению предшествовал.
 					 *
 					 */
-					emitter.place(giving);
+					emitter.aligned(giving);
 					// Выполняем размещение метки цели перехода по адресу в регистре
 					emitter.landing();
 					/**
@@ -6410,7 +6410,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 						// Выполняем чтение адреса таблицы принадлежности байтов ряда
 						emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 						// Выполняем расстановку метки прохода вспять по набору ряда
-						emitter.place(tracking);
+						emitter.aligned(tracking);
 						// Выполняем сравнение позиции сопоставления с началом повторения
 						emitter.compare(reg_t::CURSOR, reg_t::SPARE);
 						// Выполняем переход к завершению прохода при достижении начала
@@ -6432,7 +6432,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем возврат позиции сопоставления на длину тела назад
 					} else emitter.sub(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (length));
 					// Выполняем расстановку метки продолжения сопоставления
-					emitter.place(resuming);
+					emitter.aligned(resuming);
 					// Выполняем запоминание конца повторения, продолжению передаваемого
 					emitter.store(reg_t::CURSOR, housing, static_cast <uint32_t> (holding + 1));
 					/**
@@ -6554,7 +6554,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          и вложенность складывается сама собою.
 				 *
 				 */
-				emitter.place(entering);
+				emitter.aligned(entering);
 				// Выполняем размещение метки цели перехода по адресу в регистре
 				emitter.landing();
 				/**
@@ -6613,7 +6613,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем чтение адреса таблицы принадлежности байтов
 					emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 					// Выполняем расстановку метки прохода ряда ведущей ветви
-					emitter.place(hurrying);
+					emitter.aligned(hurrying);
 					// Выполняем сравнение позиции сопоставления с размером текста
 					emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 					// Выполняем переход к завершению ряда при достижении конца текста
@@ -6661,7 +6661,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем переход к продолжению сопоставления за повторением
 					emitter.jump(resuming);
 					// Выполняем расстановку метки выполнения прохода повторения
-					emitter.place(iterate);
+					emitter.aligned(iterate);
 					// Выполняем размещение метки цели перехода по адресу в регистре
 					emitter.landing();
 					// Выполняем восстановление положения начала прохода
@@ -6727,7 +6727,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          ни границ групп, ни положения не оставляет.
 				 *
 				 */
-				emitter.place(giving);
+				emitter.aligned(giving);
 				// Выполняем размещение метки цели перехода по адресу в регистре
 				emitter.landing();
 				/**
@@ -6752,7 +6752,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем переход к продолжению сопоставления за повторением
 					emitter.jump(resuming);
 					// Выполняем расстановку метки отдачи ряда ведущей ветви
-					emitter.place(stepping);
+					emitter.aligned(stepping);
 					// Выполняем размещение метки цели перехода по адресу в регистре
 					emitter.landing();
 					// Выполняем восстановление положения, продолжению отданного
@@ -6998,7 +6998,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 						emitter.jump(join);
 				}
 				// Выполняем расстановку метки общего продолжения цепочки ветвей
-				emitter.place(join);
+				emitter.aligned(join);
 				/**
 				 * Выполняем установку метки отказа сопоставления вслед за выбором
 				 *
@@ -7154,7 +7154,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          сопоставление отказу, действовавшему до неё.
 			 *
 			 */
-			emitter.place(drained);
+			emitter.aligned(drained);
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			/**
@@ -7280,7 +7280,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          и конец текста продвижение исчерпывают.
 			 *
 			 */
-			emitter.place(advance);
+			emitter.aligned(advance);
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем чтение положения ленивого ряда из кадра вызова
@@ -7348,7 +7348,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 */
 				emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 				// Выполняем расстановку метки продвижения ряда до байта продолжения
-				emitter.place(stepping);
+				emitter.aligned(stepping);
 				// Выполняем сравнение позиции сопоставления с размером текста
 				emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 				// Выполняем переход к исчерпанию при достижении конца текста
@@ -7434,7 +7434,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Выполняем переход к продолжению сопоставления вслед за рядом
 					emitter.jump(resume);
 				// Выполняем расстановку метки исчерпания продвижения ряда
-				emitter.place(drained);
+				emitter.aligned(drained);
 				// Выполняем размещение метки цели перехода по адресу в регистре
 				emitter.landing();
 				// Выполняем чтение прежнего отказа из места ряда повторения
@@ -7641,7 +7641,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем переход к завершению прохода при достижении конца текста
 			emitter.branch(cond_t::ABOVE, complete);
 			// Выполняем расстановку метки прохода ряда подходящих символов
-			emitter.place(scan);
+			emitter.aligned(scan);
 			// Выполняем чтение байта текста в позиции сопоставления
 			emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
 			// Выполняем чтение принадлежности байта таблице сопоставления
@@ -7704,7 +7704,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 */
 			if(sealed){
 				// Выполняем расстановку метки продолжения сопоставления вслед за рядом
-				emitter.place(resume);
+				emitter.aligned(resume);
 				// Переходим к следующему ряду повторения одиночного символа
 				index++;
 				// Переходим к следующему месту ряда в разметке уровня
@@ -7725,7 +7725,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          позиции начала попытки.
 			 *
 			 */
-			emitter.place(retries.at(index));
+			emitter.aligned(retries.at(index));
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем чтение положения отступления ряда из кадра вызова
@@ -7753,7 +7753,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем переход к продолжению сопоставления вслед за рядом
 				emitter.jump(resume);
 				// Выполняем расстановку метки исчерпания отступления ряда
-				emitter.place(drained);
+				emitter.aligned(drained);
 				// Выполняем размещение метки цели перехода по адресу в регистре
 				emitter.landing();
 				// Выполняем чтение прежнего отказа из места ряда повторения
@@ -7797,7 +7797,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	for(size_t body = 0; body < bodies.size(); body++){
 		// Выполняем расстановку метки тела вызываемого подвыражения
-		emitter.place(bodies.at(body).second);
+		emitter.aligned(bodies.at(body).second);
 		// Выполняем установку отказа, телом вызываемым действующего
 		failure = miss;
 		/**
