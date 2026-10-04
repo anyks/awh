@@ -1108,8 +1108,6 @@ void awh::codec::json::Reader::reset() noexcept {
 	this->_origin = 0;
 	// Очищаем хранилище знаков собираемого значения
 	this->_storage.clear();
-	// Очищаем остаток куска, не составивший целого знака
-	this->_pending.clear();
 	// Очищаем хранилище перекодированного текста
 	this->_decoded.clear();
 	// Очищаем стек видов вместилищ

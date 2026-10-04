@@ -1131,12 +1131,26 @@ namespace awh {
 					 * @param settings настройки разбора записи
 					 * @return         признак успешности разбора
 					 *
+					 * @note Настройка `stream` записью из НЕСКОЛЬКИХ документов складывает их
+					 *       в ОДНО дерево: корень отдаёт первый документ, прочие стоят за ним
+					 *       значениями верхнего уровня, достижимыми обходом `next()`, но не
+					 *       спросом `size()`/`at()`/`get()`. Порчи при том нет - сборка
+					 *       воспроизводит запись октет в октет (замер 05.10.2026). Разбор
+					 *       ПОТОКА документов есть дело `Loader`, дереву поток не обещан
+					 *
 					 * \~english
 					 * @brief Method of the parsing of a record into a tree of a document
 					 * @param buffer buffer of the record being parsed
 					 * @param size size of the record being parsed in octets
 					 * @param settings settings of the parsing of the record
 					 * @return sign of the success of the parsing
+					 * @note The `stream` setting folds a record of SEVERAL documents into a SINGLE
+					 * tree: the root gives the first document, the others stand after it as
+					 * top-level values, reachable by the `next()` walk but not by
+					 * `size()`/`at()`/`get()`. No corruption happens - the building reproduces
+					 * the record octet for octet (a measurement of 05.10.2026). The parsing
+					 * of a STREAM of documents is the business of the `Loader`, a stream is
+					 * not promised to the tree
 					 *
 					 * \~
 					 */

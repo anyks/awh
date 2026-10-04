@@ -916,17 +916,27 @@ namespace awh {
 					vector <uint8_t> _pool;
 					/**
 					 * \~russian
-					 * Хранилище строки, исправленной правилом `malformed_t::REPLACE`
+					 * Хранилище строк, исправленных правилом `malformed_t::REPLACE`
 					 *
 					 * @details Хранилище это заведено отдельным от буфера разбора НАМЕРЕННО:
 					 * знак замены занимает три октета, а подменяемая последовательность - от
 					 * одного до четырёх, и вписать исправленную строку на место негодной значило
-					 * бы двигать всё, что за нею стоит, вместе со смещениями разбора. Хранилище
-					 * живёт одним событием и переписывается на всякой исправленной строке
+					 * бы двигать всё, что за нею стоит, вместе со смещениями разбора
+					 *
+					 * @note Отрезки событий ссылаются в хранилище смещением, оттого растёт оно,
+					 *       а не переписывается: вторая исправленная строка затёрла бы первую,
+					 *       ещё не выданную. Очистка идёт усечением разобранной части при пустой
+					 *       очереди событий - тем же порядком и в тот же миг, что и усечение
+					 *       буфера разбора
 					 *
 					 * \~english
-					 * Storage of a string repaired by the rule `malformed_t::REPLACE`
+					 * Storage of the strings repaired by the rule `malformed_t::REPLACE`
 					 * @details This storage is made separate from the buffer of the parsing DELIBERATELY
+					 * @note The spans of the events refer into the storage by an offset, therefore it grows
+					 * rather than being rewritten: a second repaired string would erase the first one not
+					 * yet issued. The clearing goes by the truncation of the parsed part at an empty queue
+					 * of the events - in the same order and at the same moment as the truncation of the
+					 * buffer of the parsing
 					 *
 					 * \~
 					 */

@@ -534,8 +534,6 @@ namespace awh {
 					 * \~
 					 */
 					uint64_t _origin;
-					// Остаток куска, не составивший целого знака кодировки
-					string _pending;
 					// Текст куска, приведённый к UTF-8
 					string _decoded;
 				private:
