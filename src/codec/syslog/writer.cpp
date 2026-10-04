@@ -598,9 +598,9 @@ bool awh::codec::syslog::Writer::structured(const abc::value_t & value, string &
 				/**
 				 * Выполняем перебор всех значений, именем поля объявленных
 				 */
-				for(size_t j = 0; j < count; j++){
+				for(size_t k = 0; k < count; k++){
 					// Получаем очередное значение, именем поля объявленное
-					const abc::value_t & item = ((param.type() == abc::type_t::ARRAY) ? param[j] : param);
+					const abc::value_t & item = ((param.type() == abc::type_t::ARRAY) ? param[k] : param);
 					// Если обращение значения поля блока в знаки отказом завершилось
 					if(!this->stringify(item, text)){
 						// Признак того, что значение поля вложенным является
