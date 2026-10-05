@@ -34,7 +34,7 @@
 #   benchmark/codec/stands.sh [перечень стендов]
 #
 # Перечень стендов задаётся путями от корня дерева и по умолчанию таков:
-#   benchmark/codec/xml/stand.sh benchmark/codec/json/stand.sh
+#   abc cef csv ini json syslog toml xml yaml - все девять наборов кодеков
 #
 # Переменные окружения:
 #   AWH_STANDS  — перечень машин видом «доступ|краткое имя»
@@ -51,12 +51,13 @@ ROOT="${AWH_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
 # Получаем перечень прогоняемых стендов замеров
 #
-# @warning Перечень внесён не целиком: стенды syslog и CEF взяты сюда 09.09.2026, а
-#          стенды YAML, INI, TOML, CSV и ABC ждут внесения. Поверка
-#          ниже называет всякий стенд, в перечень не попавший: стенд, замеры какого не
-#          гоняются, от стенда, замеры выдержавшего, ничем не отличается
+# @note Перечень внесён ЦЕЛИКОМ девятью стендами 05.10.2026. До того в нём жили лишь
+#       xml, json, syslog и CEF, а YAML, INI, TOML, CSV и ABC ждали внесения - и поверка
+#       ниже их называла, но чтения с них не снималось ни на одной машине. Ровно так
+#       и прошла просадка YAML: разбор вчетверо большего текста учли в 14.4 раза
+#       дороже вместо четырёх, а стенд, где это видно, в раскладке не стояло
 #
-STANDS="${*:-benchmark/codec/xml/stand.sh benchmark/codec/json/stand.sh benchmark/codec/syslog/stand.sh benchmark/codec/cef/stand.sh}"
+STANDS="${*:-benchmark/codec/abc/stand.sh benchmark/codec/cef/stand.sh benchmark/codec/csv/stand.sh benchmark/codec/ini/stand.sh benchmark/codec/json/stand.sh benchmark/codec/syslog/stand.sh benchmark/codec/toml/stand.sh benchmark/codec/xml/stand.sh benchmark/codec/yaml/stand.sh}"
 
 #
 # Выполняем поверку перечня стендов на полноту

@@ -178,6 +178,16 @@ else
 fi
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+#
+# @note Опоры, какие «sys/fs.cpp» зовёт с 13.09.2026: разбор накопителя по частям держит
+#       подписку на прерывание (`awh::Signals::Bus`), подписка зовёт разбор имени процесса,
+#       а тому нужны сетевые адреса. Без этих частей связывание стенда валится отказом,
+#       по одному виду неотличимым от просадки самого кодека. Адреса здесь уже несёт
+#       собственный перебор ниже, оттого сюда взяты лишь две части
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/signals.cpp" -o "$OUTPUT/sys-signals.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/procre.cpp" -o "$OUTPUT/sys-procre.o"
+OBJECTS="$OBJECTS $OUTPUT/sys-signals.o $OUTPUT/sys-procre.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"

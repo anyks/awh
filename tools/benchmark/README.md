@@ -10,7 +10,11 @@
 [xml/](xml/README.md) — контейнер XML, [ini/](ini/README.md) — контейнер INI,
 [toml/](toml/README.md) — контейнер TOML против toml++, toml11, cpptoml и tomlc99,
 [yaml/](yaml/README.md) — контейнер YAML против libyaml, libfyaml, rapidyaml,
-yaml-cpp и fkYAML.
+yaml-cpp и fkYAML, [json/](json/README.md) — контейнер JSON против yyjson, simdjson,
+RapidJSON, nlohmann и Boost.JSON, [abc/](abc/README.md) — бинарный контейнер против
+msgpack-c и libcbor, [cef/](cef/README.md) и [syslog/](syslog/README.md) — разборы
+событийных форматов против прежнего модуля ANYKS: сторонних разборщиков этих форматов,
+годных к рядом поставка, нет.
 Отчёты по прогонам лежат рядом с наборами замеров: `benchmark/codec/*/COMPARISON.md`.
 
 Три программы, повторяющие сценарии бенчмарков `benchmark/net/io` средствами

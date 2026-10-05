@@ -45,7 +45,12 @@ OUTPUT="${2:-/tmp/awh-toml-bench}"
 COMPILER="${CXX:-c++}"
 
 # Собираем ключи сборки стенда
-OPTIONS="-O2 -std=c++17 -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
+#
+# @warning Оптимизация `-O3` и `NDEBUG` берутся ОБА: пороги набора сняты именно ими, а
+#          `-O2` без `NDEBUG` расходится с ними втрое-впятеро на ТОЙ ЖЕ машине (замер
+#          05.09.2026 на OpenBSD), и ложь эта приходит настоящими числами
+#
+OPTIONS="-O3 -DNDEBUG -std=c++17 -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
 
 #
 # Путь к библиотеке языка C++ того собирателя, каким собран стенд
@@ -143,6 +148,18 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sy
 OBJECTS="$OBJECTS $OUTPUT/sys-fs.o $OUTPUT/sys-os.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+#
+# @note Опоры, какие «sys/fs.cpp» зовёт с 13.09.2026: разбор накопителя по частям держит
+#       подписку на прерывание (`awh::Signals::Bus`), подписка зовёт разбор имени процесса,
+#       а тому нужны сетевые адреса. Без этих четырёх частей связывание стенда валится
+#       отказом, по одному виду неотличимым от просадки самого кодека. Перечень повторяет
+#       замыкание проверочного стенда «tests/codec/.../stand.sh», где части эти стояли всегда
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/signals.cpp" -o "$OUTPUT/sys-signals.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/procre.cpp" -o "$OUTPUT/sys-procre.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/addr.cpp" -o "$OUTPUT/net-addr.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/net.cpp" -o "$OUTPUT/net-net.o"
+OBJECTS="$OBJECTS $OUTPUT/sys-signals.o $OUTPUT/sys-procre.o $OUTPUT/net-addr.o $OUTPUT/net-net.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"

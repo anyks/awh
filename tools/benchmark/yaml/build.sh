@@ -23,6 +23,20 @@ readonly RELEASE="${2:-$ROOT/build-release}"
 # сравнивать реализации, собранные с разной оптимизацией, бессмысленно
 readonly FLAGS="-O3 -DNDEBUG -std=c++17 -Wall -Wextra"
 
+# Системные библиотеки, каких требует ядро библиотеки
+#
+# @details Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation у macOS и `ws2_32`
+#          у MS Windows: без них связывание стенда валится отказом на классах
+#          Objective-C либо на `WSAGetLastError`. Порядок этот перенесён 05.10.2026 из
+#          набора внутренних стендов «benchmark/codec/*/stand.sh», где он стоит
+#
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	*) SYSTEM_LIBS="" ;;
+esac
+
+
 # Флаги сборки сравниваемых реализаций, писанных на языке C
 #
 # Реализация libyaml писана на C и собирается им же: сборка её компилятором C++
@@ -154,13 +168,13 @@ omit(){
 echo "Build \"awh\""
 
 # Выполняем сборку стенда потокового чтения контейнера AWH
-c++ $FLAGS -I"$ROOT/include" -I"$STANDS" "$STANDS/awh.cpp" "$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" -o "$OUTPUT/awh" || exit 1
+c++ $FLAGS -I"$ROOT/include" -I"$STANDS" "$STANDS/awh.cpp" "$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" $SYSTEM_LIBS -o "$OUTPUT/awh" || exit 1
 
 # Выводим сообщение о сборке стенда дерева настроек контейнера AWH
 echo "Build \"awh-tree\""
 
 # Выполняем сборку стенда дерева настроек контейнера AWH
-c++ $FLAGS -I"$ROOT/include" -I"$STANDS" "$STANDS/awh-tree.cpp" "$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" -o "$OUTPUT/awh-tree" || exit 1
+c++ $FLAGS -I"$ROOT/include" -I"$STANDS" "$STANDS/awh-tree.cpp" "$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" $SYSTEM_LIBS -o "$OUTPUT/awh-tree" || exit 1
 
 # Если исходные тексты реализации libyaml выложены
 if [ -f "$VENDOR/libyaml/src/api.c" ]; then

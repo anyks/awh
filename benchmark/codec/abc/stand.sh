@@ -60,7 +60,12 @@ OUTPUT="${2:-/tmp/awh-abc-bench}"
 COMPILER="${CXX:-c++}"
 
 # Собираем ключи сборки стенда
-OPTIONS="-O2 -std=c++17 -I$ROOT/submodules/zlib -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
+#
+# @warning Оптимизация `-O3` и `NDEBUG` берутся ОБА: пороги набора сняты именно ими, а
+#          `-O2` без `NDEBUG` расходится с ними втрое-впятеро на ТОЙ ЖЕ машине (замер
+#          05.09.2026 на OpenBSD), и ложь эта приходит настоящими числами
+#
+OPTIONS="-O3 -DNDEBUG -std=c++17 -I$ROOT/submodules/zlib -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
 
 # Собиратель языка C и ключи его: zlib подмодуля пишется на C
 #
@@ -196,6 +201,18 @@ done
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+#
+# @note Опоры, какие «sys/fs.cpp» зовёт с 13.09.2026: разбор накопителя по частям держит
+#       подписку на прерывание (`awh::Signals::Bus`), подписка зовёт разбор имени процесса,
+#       а тому нужны сетевые адреса. Без этих четырёх частей связывание стенда валится
+#       отказом, по одному виду неотличимым от просадки самого кодека. Перечень повторяет
+#       замыкание проверочного стенда «tests/codec/.../stand.sh», где части эти стояли всегда
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/signals.cpp" -o "$OUTPUT/sys-signals.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/procre.cpp" -o "$OUTPUT/sys-procre.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/addr.cpp" -o "$OUTPUT/net-addr.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/net.cpp" -o "$OUTPUT/net-net.o"
+OBJECTS="$OBJECTS $OUTPUT/sys-signals.o $OUTPUT/sys-procre.o $OUTPUT/net-addr.o $OUTPUT/net-net.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"
@@ -248,8 +265,42 @@ for PART in common encoding reader writer document value; do
 	OBJECTS="$OBJECTS $OUTPUT/codec-$PART.o"
 done
 
+# Перечень частей набора замеров контейнера ABC, какие стенд собирает порознь
+BENCH="abc reader writer document value"
+#
+# @warning Часть «container» в перечне НЕТ намеренно: её среда заводит собственный
+#          аппарат сжатия (`awh::compressor::Block`), а тот тянет lz4, zstd и brotli,
+#           тогда как стенд держится БЕЗ третьей стороны вовсе. Проверено 05.10.2026:
+#           с внесённой частью связывание валится на `compressor::Block::Block`.
+#           Тридцать шесть сценариев набора дают штатной сборкой `awh_BENCHMARK_codec`,
+#           стенд же снимает тридцать - и поверка ниже это называет, а не прячет
+#
+# Перечень частей набора, каких стенд без третьей стороны не соберёт
+SKIP="container"
+#
+# @warning Перечень ведётся ВРУЧНУЮ и обязан нести всякую часть набора, какую стенд
+#          МОЖЕТ собрать: молчание о пропущенной части неотлично от полного прогона
+#
+# Выполняем поверку полноты перечня частей набора замеров
+for FOUND in "$ROOT/benchmark/codec/abc"/*.cpp; do
+	# Пропускаем строку перечня при пустом каталоге
+	[ -f "$FOUND" ] || continue
+	# Получаем краткое имя части набора по файлу её
+	FOUND=$(basename "$FOUND" .cpp)
+	# Выполняем разбор части набора по обоим перечням
+	case " $BENCH " in
+		# Часть набора в перечень сборки внесена - поверка не нужна
+		*" $FOUND "*) continue ;;
+	esac
+	case " $SKIP " in
+		# Часть набора объявлена несобираемой - выводим её с причиной
+		*" $FOUND "*) echo "ЧАСТЬ БЕЗ ЗАМЕРОВ СТЕНДОМ: $FOUND - требует третьей стороны" ;;
+		*) echo "!!! ЧАСТЬ НАБОРА ВНЕ ПЕРЕЧНЯ: $FOUND - её сценарии не замеряются" ;;
+	esac
+done
+
 # Выполняем перебор всех частей набора замеров контейнера ABC
-for PART in abc reader writer document value; do
+for PART in $BENCH; do
 	# Выполняем сборку очередной части набора замеров
 	$COMPILER $OPTIONS -c "$ROOT/benchmark/codec/abc/$PART.cpp" -o "$OUTPUT/bench-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
