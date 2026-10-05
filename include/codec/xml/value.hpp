@@ -617,7 +617,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool absorb(const node_t & node, const uint32_t depth = 0) noexcept;
+					bool absorb(const node_t & node, const uint32_t depth = 0, const bool reset = true) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сбора содержимого вложенных текстовых узлов

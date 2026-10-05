@@ -1853,6 +1853,8 @@ vector <awh::codec::xml::attribute_t> awh::codec::xml::Node::attributes() const 
 		return result;
 	// Получаем запись текущего узла
 	const Document::record_t & record = this->_document->_nodes[this->_id];
+	// Выполняем отвод места под перечень атрибутов узла
+	result.reserve(record.attributes);
 	/**
 	 * Выполняем перебор всех атрибутов узла
 	 */

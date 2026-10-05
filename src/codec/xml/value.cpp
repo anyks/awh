@@ -1686,7 +1686,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	 */
 	while(this->_items.size() <= index)
 		// Добавляем в перечень вложенных узлов узел неопределённый
-		this->_items.push_back(Value());
+		this->_items.emplace_back();
 	/**
 	 * Выполняем сброс отображения имён вложенных узлов
 	 *
@@ -2454,9 +2454,17 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
  * @param node узел дерева разметки
  *
  */
-bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth) noexcept {
-	// Выполняем очистку прежнего содержимого значения
-	this->clear();
+bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, const bool reset) noexcept {
+	/**
+	 * Выполняем очистку прежнего содержимого значения
+	 *
+	 * @note Значение, заведённое под снятие только что (в перечне вложенных узлов или
+	 *       конструктором), чистого вида и без того: очистка такого стоит двенадцать
+	 *       обращений к полям на каждый узел дерева и ничего не меняет
+	 */
+	if(reset)
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
 	/**
 	 * Если узел дерева разметки недействителен
 	 */
@@ -2622,7 +2630,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth) n
 	 */
 	for(node_t item = node.first(); item.valid(); item = item.next()){
 		// Добавляем в перечень вложенных узлов узел неопределённый
-		this->_items.push_back(Value());
+		this->_items.emplace_back();
 		/**
 		 * Если снять очередной вложенный узел не удалось
 		 *
@@ -2630,7 +2638,7 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth) n
 		 *       ЦЕЛИКОМ: оставь мы снятое до отказа, и потребитель получил бы дерево,
 		 *       молча усечённое посередине, - потеря худшая, чем отказ
 		 */
-		if(!this->_items.back().absorb(item, depth + 1)){
+		if(!this->_items.back().absorb(item, depth + 1, false)){
 			/**
 			 * Получаем код отказа снятия у вложенного значения
 			 *
@@ -3365,7 +3373,7 @@ awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept :
  */
 awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {
 	// Выполняем снятие значения с узла дерева разметки
-	this->absorb(node);
+	this->absorb(node, 0, false);
 }
 /**
  * @brief Конструктор копирования
