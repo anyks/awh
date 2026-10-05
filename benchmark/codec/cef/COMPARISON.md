@@ -91,7 +91,7 @@ c++ -std=c++17 -O3 -DNDEBUG \
   -I <прежний модуль>/include -I <pcre2>/include -I <rapidjson>/include \
   -I include -I submodules \
   tools/benchmark/cef/comparison.cpp <прежний модуль>/build/libcef.a libawh.a \
-  -lpcre2-8 -lpcre2-posix -o comparison
+  -lpcre2-8 -lpcre2-posix -o /tmp/rival-cef/comparison
 ```
 
 Число кругов задаётся доводом (по умолчанию 20000). Оснастка сперва печатает

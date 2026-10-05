@@ -30,8 +30,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <encoding/ascii.hpp>
-#include <num/lexical/lexical.hpp>
 #include <codec/toml/reader.hpp>
+#include <num/lexical/lexical.hpp>
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -93,8 +93,10 @@ namespace {
 	 */
 	static bool terminator(const char letter) noexcept {
 		// Выводим результат проверки знака
-		return (::blank(letter) || (letter == '\n') || (letter == '\r') || (letter == ',') ||
-		        (letter == ']') || (letter == '}') || (letter == '#'));
+		return (
+			::blank(letter) || (letter == '\n') || (letter == '\r') ||
+			(letter == ',') || (letter == ']') || (letter == '}') || (letter == '#')
+		);
 	}
 	/**
 	 * @brief Метод разбора целого числа из последовательности цифр заданной системы
@@ -223,7 +225,9 @@ namespace {
 awh::codec::toml::Reader::Settings::Settings() noexcept :
  maxLine(MAX_LINE), maxKey(MAX_KEY), maxDepth(MAX_DEPTH),
  nesting(true), maxParts(MAX_PARTS),
- duplicates(true), unicode(false), emitComments(true), emitBlanks(false), encoding(encoding_t::NONE) {}
+ duplicates(true), unicode(false), emitComments(true),
+ emitBlanks(false), encoding(encoding_t::NONE) {}
+
 /**
  * @brief Метод запоминания ошибки разбора вместе с местом её обнаружения
  *
@@ -251,8 +255,7 @@ bool awh::codec::toml::Reader::failure(const error_t error, const size_t offset)
 		 *       location(): журнал есть оповещение, а не единственный способ узнать
 		 *       о случившемся
 		 */
-		// Выполняем вывод сообщения об отказе разбора текста
-		awh::log::print("TOML parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
+		log::print("TOML parsing failed: %s at line %u column %u", log::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
 	}
 	// Запоминаем состояние прекращения разбора ошибкой
 	this->_state = state_t::FAILED;
@@ -1696,6 +1699,8 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 				 */
 				if((outcome == toml::utf8_t::TRUNCATED) && !end){
 					/**
+					 * Запоминаем нужду в продолжении текста
+					 *
 					 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: разбор записи заводится
 					 *          лишь тогда, когда строка накоплена ЦЕЛИКОМ - поверка completed() ищет знак
 					 *          конца строки прежде всякого разбора, - и накопленный текст посреди записи
@@ -1706,7 +1711,6 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 					 * @note Сносу заход не подлежит: он есть застава последнего рубежа - запись, впредь
 					 *       заведённая и строкою не ограниченная, без него оборвалась бы молча
 					 */
-					// Запоминаем нужду в продолжении текста
 					this->_hungry = true;
 					// Выводим признак неудачного разбора
 					return false;
@@ -3715,16 +3719,13 @@ const awh::codec::toml::Reader::settings_t & awh::codec::toml::Reader::settings(
  */
 bool awh::codec::toml::Reader::settings(const settings_t & settings) noexcept {
 	/**
-	 * Если разбор текста уже начался
-	 *
-	 * @note Подмена настроек посреди разбора дала бы текст, начало которого разобрано
-	 *       одними правилами, а хвост другими
-	 */
-	/**
 	 * Если подача текста уже началась, а настройки сменить затребовано
 	 *
 	 * @details Отказ этот прежде был НЕМ: `settings()` отвечал ложью, а кода не ставил, и
-	 * потребитель, спросивший причину, получал `NONE` - отсутствие отказа при отказе
+	 *          потребитель, спросивший причину, получал `NONE` - отсутствие отказа при отказе.
+	 *
+	 * @note Подмена настроек посреди разбора дала бы текст, начало которого разобрано
+	 *       одними правилами, а хвост другими
 	 *
 	 * @note Причины разведены поимённо: смена КОДИРОВКИ берёт общий код семьи
 	 *       `ENCODING_ALREADY_CHOSEN` - тот же, каким отвечают JSON, XML и CSV, - а смена

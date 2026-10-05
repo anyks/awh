@@ -21,6 +21,8 @@ LEGACY="${LEGACY:-$HOME/Work/GIT/anyks/cef}"
 PCRE="${PCRE:-/opt/homebrew}"
 # Заголовки RapidJSON, прежним модулем требуемые
 RAPIDJSON="${RAPIDJSON:-$HOME/Work/GIT/dev/rapidjson}"
+# Каталог собранных стендов (первый довод либо принятое место по умолчанию)
+OUTPUT="${1:-/tmp/rival-cef}"
 # Собранная библиотека AWH
 AWHLIB="${AWHLIB:-$ROOT/build/libawh.a}"
 # Собиратель
@@ -52,13 +54,16 @@ if [ ! -f "$AWHLIB" ]; then
 	exit 1
 fi
 
+# Выполняем создание каталога собранных стендов
+mkdir -p "$OUTPUT"
+
 # Выполняем сборку стенда сличения
 $COMPILER -std=c++17 -O3 -DNDEBUG \
 	-I "$LEGACY/include" -I "$PCRE/include" -I "$RAPIDJSON/include" \
 	-I "$ROOT/include" -I "$ROOT/submodules" \
 	"$(dirname "$0")/comparison.cpp" "$LEGACY/build/libcef.a" "$AWHLIB" \
 	-L "$PCRE/lib" -lpcre2-8 -lpcre2-posix $SYSTEM_LIBS \
-	-o "$(dirname "$0")/comparison"
+	-o "$OUTPUT/comparison"
 
-echo "Стенд собран: $(dirname "$0")/comparison"
-echo "Запуск: $(dirname "$0")/comparison [число кругов]"
+echo "Стенд собран: $OUTPUT/comparison"
+echo "Запуск: $OUTPUT/comparison [число кругов]"

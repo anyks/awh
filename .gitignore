@@ -42,6 +42,7 @@ __pycache__/
 bin/
 build/
 build-release/
+tools/benchmark/*/comparison
 third_party/
 submodules/libev/
 submodules/libiconv/

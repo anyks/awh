@@ -24,7 +24,7 @@
 
 ```sh
 ./build.sh              # пути задаются LEGACY, PCRE, RAPIDJSON, AWHLIB
-./comparison 20000      # число кругов, по умолчанию 20000
+/tmp/rival-cef/comparison 20000   # число кругов, по умолчанию 20000
 ```
 
 Прежний модуль требует PCRE2 и RapidJSON: их пути задаются отдельно, ибо в его

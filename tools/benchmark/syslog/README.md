@@ -36,7 +36,7 @@ RFC 3164 прежней раскладки служб журнала. Значе
 ```sh
 cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release && cmake --build build-release --target awh
 AWHLIB="$PWD/build-release/libawh.a" tools/benchmark/syslog/build.sh
-tools/benchmark/syslog/comparison 20000
+/tmp/rival-syslog/comparison 20000
 ```
 
 Переменные окружения: `LEGACY` (дерево прежнего модуля с собранной `libsyslog.a`),

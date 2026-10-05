@@ -21,6 +21,14 @@ endif (NOT CMAKE_BUILD_TYPE)
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
 ##
+ # Сборка профилировщика gprof (ключ -pg) в отладочной конфигурации
+ #
+ # По умолчанию выключена: ключ запрашивается явно (-DAWH_PROFILING=YES). Причина -
+ # в подразделе профилирования ниже
+ ##
+option(AWH_PROFILING "Build the debug configuration with gprof profiling (-pg)" OFF)
+
+##
  # Указываем что проверки нужно собрать под санитайзерами
  #
  # @note Ключ объявляется здесь, а не рядом с проверками: от него зависит выбор
@@ -710,8 +718,18 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     SET(CMAKE_C_FLAGS_DISTRIBUTION "-O0")
     SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O0")
 
-    # Если сборка производится не в динамическую библиотеку
-    if(NOT CMAKE_SHARED_BUILD_LIB)
+    # Если сборка производится не в динамическую библиотеку и запрошен профилировщик
+    if(NOT CMAKE_SHARED_BUILD_LIB AND AWH_PROFILING)
+        ##
+         # Профилирование gprof включается явно, а не вместе с отладочной сборкой
+         #
+         # Ключ -pg ломает проверки и там, где он в принципе работает: инструментирование
+         # замедляет исполнение, и проверки потоков перестают укладываться в отведённое
+         # время. Тот же подход принят в библиотеке Danube (ключ DANUBE_PROFILING), где
+         # с ключом отказывали rename и stream на glibc-Linux и FreeBSD 15.1, а отладочные
+         # сборки без ключа проходят весь набор: Solaris 30/30, OpenIndiana 30/30,
+         # OpenBSD 30/30, Alpine 30/30 (05.10.2026)
+         ##
         ##
          # Стандартная библиотека musl исключена третьей причиной
          #
@@ -786,7 +804,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
              # gprof2dot ./profile-data.txt | dot -Tsvg -o output.svg
              ##
         endif()
-    endif(NOT CMAKE_SHARED_BUILD_LIB)
+    endif(NOT CMAKE_SHARED_BUILD_LIB AND AWH_PROFILING)
     # Выводим сообщение отладочной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}\n")
