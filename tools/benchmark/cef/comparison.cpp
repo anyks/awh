@@ -31,7 +31,7 @@ static double measure(const size_t rounds, F run){
 static void proof(){
 	anyks::cef_t old;
 	old.mode(anyks::cef_t::mode_t::STRONG);
-	old.parse(RECORD); awh::log::mode({});
+	old.parse(RECORD);
 	awh::codec::cef::document_t doc;
 	awh::codec::cef::reader_t::settings_t st; st.mode = awh::codec::cef::mode_t::STRONG;
 	doc.settings(st);
@@ -39,8 +39,9 @@ static void proof(){
 	printf("== поверка равенства работы ==\n");
 	printf("разбор AWH: %s, пар расширения: %zu\n", (ok ? "годен" : "ОТКАЗ"), doc.size());
 	if(!ok)
-		printf("отказ: %s в %zu:%zu\n", awh::codec::cef::message(doc.error()),
-			doc.errorPosition().line, doc.errorPosition().column);
+		printf("отказ: %s в %llu:%llu\n", awh::codec::cef::message(doc.error()),
+			static_cast <unsigned long long> (doc.errorPosition().line),
+			static_cast <unsigned long long> (doc.errorPosition().column));
 	printf("старый: dst=%s  AWH: dst=%s\n",
 		old.get <string> ("destinationAddress").c_str(),
 		doc.field("destinationAddress").text().c_str());
@@ -49,9 +50,9 @@ static void proof(){
 		doc.field("deviceMacAddress").text().c_str());
 	printf("старый: cn1=%zu  AWH: cn1=%lld\n",
 		old.get <size_t> ("deviceCustomNumber1", 0),
-		static_cast <long long> ([&]{ int64_t v = 0; doc.field("deviceCustomNumber1").value(v); return v; }()));
+		static_cast <long long> ([&]{ int64_t v = 0; static_cast <void> (doc.field("deviceCustomNumber1").value(v)); return v; }()));
 	int64_t stamp = 0;
-	doc.field("deviceReceiptTime").value(stamp);
+	static_cast <void> (doc.field("deviceReceiptTime").value(stamp));
 	printf("старый: rt=%zu  AWH: rt=%lld  (верно 1676658615734)\n\n",
 		old.get <size_t> ("deviceReceiptTime", 0), static_cast <long long> (stamp));
 }
@@ -64,6 +65,8 @@ int main(int argc, char * argv[]){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	awh::fmk::initialize();
+	// Отключаем выдачу журнала: отказ кодека печатался бы внутрь замерного хода
+	awh::log::mode({});
 	proof();
 	const size_t rounds = ((argc > 1) ? strtoul(argv[1], nullptr, 10) : 20000);
 	const double bytes = static_cast <double> (RECORD.size() * rounds) / 1048576.0;
@@ -79,7 +82,7 @@ int main(int argc, char * argv[]){
 		cef.mode(anyks::cef_t::mode_t::STRONG);
 		const double seconds = measure(rounds, [&]{ cef.clear(); cef.parse(RECORD); });
 		printf("старый ANYKS cef (STRONG): %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / rounds);
-	} awh::log::mode({});
+	}
 	{
 		awh::codec::cef::reader_t reader;
 		const double seconds = measure(rounds, [&]{

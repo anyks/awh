@@ -107,7 +107,7 @@ static void proof(void) noexcept {
 	printf("== поверка равенства работы ==\n");
 	// Выводим число блоков данных, разобранных каждым модулем
 	printf("прежний: блоков %zu  AWH: блоков %zu (годен: %d)\n",
-		before.has("origin@32473") + before.has("example@42"), after.size(), (parsed ? 1 : 0));
+		static_cast <size_t> (before.has("origin@32473") + before.has("example@42")), after.size(), (parsed ? 1 : 0));
 	// Выводим опознаватель, имя службы, процесса и сообщения
 	printf("прежний: host=%s app=%s mid=%s\n", before.host().c_str(), before.application().c_str(), before.mid().c_str());
 	printf("AWH    : host=%s app=%s mid=%s\n",
@@ -141,6 +141,8 @@ int32_t main(const int32_t argc, char ** argv) noexcept {
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	awh::fmk::initialize();
+	// Отключаем выдачу журнала: отказ кодека печатался бы внутрь замерного хода
+	awh::log::mode({});
 	// Выполняем поверку равенства работы прежде показателей
 	proof();
 	// Получаем число кругов замера
@@ -162,7 +164,32 @@ int32_t main(const int32_t argc, char ** argv) noexcept {
 		});
 		// Выводим показатели прежнего модуля
 		printf("прежний ANYKS syslog (AUTO):   %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / (rounds * 2));
-	} awh::log::mode({});
+	}
+	/**
+	 * Выполняем замер прежнего модуля вместе с постройкою дерева
+	 *
+	 * @note Разбор одного лишь значения кодеку `document_t` не пара: тот укладывает разбор
+	 *       в дерево `abc::value_t`, а прежний модуль держит свои поля отдельно и деревом
+	 *       отдаёт их лишь через `dump()`. Строка «дерево к дереву» без этого хода
+	 *       сличала бы разное количество работы
+	 */
+	{
+		// Объект разбора прежнего модуля
+		anyks::syslog_t syslog;
+		// Дерево, куда прежний модуль кладёт разобранное
+		anyks::json tree;
+		// Выполняем замер времени разбора обеих записей с постройкою дерева
+		const double seconds = measure(rounds, [&syslog, &tree]() noexcept {
+			syslog.clear();
+			syslog.parse(MODERN, anyks::syslog_t::std_t::AUTO);
+			tree = syslog.dump();
+			syslog.clear();
+			syslog.parse(LEGACY, anyks::syslog_t::std_t::AUTO);
+			tree = syslog.dump();
+		});
+		// Выводим показатели прежнего модуля с постройкою дерева
+		printf("прежний ANYKS syslog (с деревом):%8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / (rounds * 2));
+	}
 	/**
 	 * Выполняем замер сборки записи прежним модулем
 	 */
@@ -174,7 +201,7 @@ int32_t main(const int32_t argc, char ** argv) noexcept {
 		// Получаем собранную запись прежнего модуля
 		const string rebuilt = syslog.syslog();
 		// Выполняем замер времени сборки записи
-		const double seconds = measure(rounds, [&syslog, &rebuilt]() noexcept { syslog.syslog(); });
+		const double seconds = measure(rounds, [&syslog]() noexcept { syslog.syslog(); });
 		// Выводим показатели сборки прежнего модуля
 		printf("прежний ANYKS syslog (сборка): %8.2f МБ/с  %8.2f мкс/запись  (собрано %zu октетов)\n",
 			static_cast <double> (rebuilt.size() * rounds) / 1048576.0 / seconds, seconds * 1e6 / rounds, rebuilt.size());

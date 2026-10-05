@@ -2060,8 +2060,14 @@ bool awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			 * Для операционной системы не являющейся MS Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
+				/**
+				 * Относительная цель сохраняется дословно: система раскрывает её от каталога, в котором
+				 * лежит ссылка. Полный адрес привязал бы ссылку к месту её создания, и перенос дерева
+				 * вместе со ссылкой оставил бы её указывающей на прежнее место
+				 */
+				const string & target = ((first.front() == AWH_FS_SEPARATOR[0]) ? this->fullpath(first, true) : string(first));
 				// Выполняем создание символьной ссылки
-				result = (::symlink(this->fullpath(first, true).c_str(), this->fullpath(second, true).c_str()) == 0);
+				result = (::symlink(target.c_str(), this->fullpath(second, true).c_str()) == 0);
 			/**
 			 * Для операционной системы MS Windows
 			 */

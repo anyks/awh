@@ -142,8 +142,14 @@ TEST_F(FSFixture, FSTest){
 	std::string symLink = testDir + "/symlink.txt";
 	std::string hardLink = testDir + "/hardlink.txt";
 
-	// Создаем символьную ссылку
-	ASSERT_TRUE(this->_fs->symlink(testFile, symLink));
+	/**
+	 * Создаём символьную ссылку
+	 *
+	 * @note Цель передаётся полным адресом: относительная цель сохраняется дословно и
+	 *       раскрывается системой от каталога, в котором лежит ссылка, а не от текущего
+	 *       каталога процесса
+	 */
+	ASSERT_TRUE(this->_fs->symlink(this->_fs->fullpath(testFile, true), symLink));
 	/**
 	 * Для операционной системы MS Windows
 	 *
@@ -167,6 +173,21 @@ TEST_F(FSFixture, FSTest){
 	// Проверяем чтение через симлинк
 	std::string linkContent = this->_fs->read <std::string> (symLink);
 	ASSERT_EQ(linkContent, content1 + content2);
+
+	/**
+	 * Для операционных систем семейства Unix
+	 *
+	 * @note Относительная цель сохраняется дословно: система раскрывает её от каталога, в котором
+	 *       лежит ссылка, поэтому перенос каталога вместе со ссылкой её не разрывает
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаём ссылку с относительной целью на файл того же каталога
+		ASSERT_TRUE(this->_fs->symlink("test.txt", testDir + "/relative.txt"));
+		// Ссылка определяется как ссылка
+		ASSERT_EQ(this->_fs->type(testDir + "/relative.txt"), awh::fs_t::type_t::LINK);
+		// Данные через ссылку читаются
+		ASSERT_EQ((this->_fs->read <std::string> (testDir + "/relative.txt")), content1 + content2);
+	#endif
 	
 	// -------------------------------------------------------------
 	// Тест readdir (список файлов)
@@ -495,8 +516,8 @@ TEST_F(FSFixture, TypeDetectLinksOverloadTest){
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Путь к символьной ссылке
 		const std::string link = dir + "/link.txt";
-		// Создаём символьную ссылку на файл
-		this->_fs->symlink(file, link);
+		// Создаём символьную ссылку на файл (цель передаётся полным адресом)
+		this->_fs->symlink(this->_fs->fullpath(file, true), link);
 		// При включённом детекте ссылка определяется как ссылка
 		ASSERT_EQ(this->_fs->type(link, true), awh::fs_t::type_t::LINK);
 		// При отключённом детекте тип берётся по цели ссылки (обычный файл)
