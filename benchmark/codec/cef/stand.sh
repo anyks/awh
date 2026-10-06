@@ -133,6 +133,12 @@ case "$(uname -s)" in
 	#          Без них связывание отказывает «symbol referencing errors» на Solaris и
 	#          OpenIndiana - ровно так стенд проверок CEF и не собирался на OpenIndiana
 	#
+	#
+	# @note Основа «-lutil» потребна слою процессов: «src/sys/procre.cpp» зовёт у FreeBSD
+	#       «kinfo_getproc», и без неё связывание стенда отказывает (замер 06.10.2026 на
+	#       стенде FreeBSD 19: «undefined symbol: kinfo_getproc»)
+	#
+	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
 	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac

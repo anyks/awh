@@ -772,7 +772,7 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 					this->_names.push_back(string(name.data(), name.size()));
 				}
 				// Добавляем во вместилище значение неопределённое
-				this->_items.push_back(Value());
+				this->_items.emplace_back();
 				// Выполняем снятие очередного значения вместилища
 				this->_items.back().absorb(item);
 			}
@@ -1072,7 +1072,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & n
 	// Выполняем учёт заведённого поля объекта в отображении имён
 	this->indexed(name);
 	// Добавляем в объект значение неопределённое
-	this->_items.push_back(Value());
+	this->_items.emplace_back();
 	// Выводим ссылку на заведённое значение поля объекта
 	return this->_items.back();
 }
@@ -1141,7 +1141,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t ind
 	 */
 	while(this->_items.size() <= index)
 		// Добавляем в массив значение неопределённое
-		this->_items.push_back(Value());
+		this->_items.emplace_back();
 	// Выводим ссылку на значение массива
 	return this->_items.at(index);
 }
@@ -1304,7 +1304,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 			 */
 			while(result->_items.size() <= index)
 				// Добавляем в массив значение неопределённое
-				result->_items.push_back(Value());
+				result->_items.emplace_back();
 			// Выполняем переход к значению массива
 			result = &result->_items.at(index);
 		/**
@@ -1324,7 +1324,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 				// Выполняем учёт заведённого поля объекта в отображении имён
 				result->indexed(token);
 				// Добавляем в объект значение неопределённое
-				result->_items.push_back(Value());
+				result->_items.emplace_back();
 			}
 			// Выполняем переход к значению поля объекта
 			result = &result->_items.at(offset);

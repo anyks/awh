@@ -154,6 +154,12 @@ fi
 ##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Основа «-lutil» потребна слою процессов: «src/sys/procre.cpp» зовёт у FreeBSD
+	#       «kinfo_getproc», и без неё связывание стенда отказывает (замер 06.10.2026 на
+	#       стенде FreeBSD 19: «undefined symbol: kinfo_getproc»)
+	#
+	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 

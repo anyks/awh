@@ -192,15 +192,22 @@ namespace {
 	 * @return         признак совпадения записи с одним из написаний
 	 *
 	 */
-	static bool matches(const string_view text, const char * const * variants) noexcept {
+	static bool matches(const string_view text, const string_view * variants, const size_t count) noexcept {
 		/**
 		 * Выполняем перебор всех допустимых написаний
+		 *
+		 * @details Написания держатся последовательностями знаков с ведомой длиной:
+		 *          сличение двух последовательностей сперва сравнивает длины, и написания
+		 *          иной длины отбрасываются без просмотра знаков. Прежний перечень
+		 *          указателями на знаки в конец на всякой подаче значения измерял каждую
+		 *          строку заново, и `strlen` вместе с `memcmp` брали шестую часть времени
+		 *          построения дерева (замер 05.10.2026, профиль `service`)
 		 */
-		for(const char * const * variant = variants; * variant != nullptr; variant++){
+		for(size_t index = 0; index < count; index++){
 			/**
 			 * Если запись совпадает с очередным написанием
 			 */
-			if(text.compare(* variant) == 0)
+			if(text == variants[index])
 				// Выводим признак совпадения записи
 				return true;
 		}
@@ -1065,21 +1072,21 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	/**
 	 * Перечень написаний пустого значения ядровой схемы
 	 */
-	static const char * const NULLS[] = {"~", "null", "Null", "NULL", nullptr};
+	static constexpr string_view NULLS[] = {"~", "null", "Null", "NULL"};
 	/**
 	 * Если запись является пустым значением
 	 */
-	if(matches(text, NULLS))
+	if(matches(text, NULLS, (sizeof(NULLS) / sizeof(NULLS[0]))))
 		// Выводим вид пустого значения
 		return type_t::NUL;
 	/**
 	 * Перечень написаний логического значения ядровой схемы
 	 */
-	static const char * const BOOLEANS[] = {"true", "True", "TRUE", "false", "False", "FALSE", nullptr};
+	static constexpr string_view BOOLEANS[] = {"true", "True", "TRUE", "false", "False", "FALSE"};
 	/**
 	 * Если запись является логическим значением
 	 */
-	if(matches(text, BOOLEANS))
+	if(matches(text, BOOLEANS, (sizeof(BOOLEANS) / sizeof(BOOLEANS[0]))))
 		// Выводим вид логического значения
 		return type_t::BOOL;
 	/**
@@ -1092,14 +1099,13 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 		 * @note Написания эти и породили беду, известную под именем норвежской: страна
 		 *       NO, записанная без ограды, обращается в ложь
 		 */
-		static const char * const LEGACY_BOOLEANS[] = {
+		static constexpr string_view LEGACY_BOOLEANS[] = {
 			"y", "Y", "yes", "Yes", "YES", "n", "N", "no", "No", "NO",
-			"on", "On", "ON", "off", "Off", "OFF", nullptr
-		};
+			"on", "On", "ON", "off", "Off", "OFF"};
 		/**
 		 * Если запись является логическим значением наречия 1.1
 		 */
-		if(matches(text, LEGACY_BOOLEANS))
+		if(matches(text, LEGACY_BOOLEANS, (sizeof(LEGACY_BOOLEANS) / sizeof(LEGACY_BOOLEANS[0]))))
 			// Выводим вид логического значения
 			return type_t::BOOL;
 	}
@@ -1133,11 +1139,11 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	/**
 	 * Перечень написаний бесконечности
 	 */
-	static const char * const INFINITIES[] = {".inf", ".Inf", ".INF", nullptr};
+	static constexpr string_view INFINITIES[] = {".inf", ".Inf", ".INF"};
 	/**
 	 * Если запись является бесконечностью
 	 */
-	if(matches(number, INFINITIES))
+	if(matches(number, INFINITIES, (sizeof(INFINITIES) / sizeof(INFINITIES[0]))))
 		// Выводим вид дробного числа двойной точности
 		return type_t::DOUBLE;
 	/**
@@ -1146,11 +1152,11 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	 * @note Величина эта знака не имеет: запись `-.nan` описанием не предусмотрена, и
 	 *       оттого сличается она с записью целиком, а не с записью без знака
 	 */
-	static const char * const NOT_NUMBERS[] = {".nan", ".NaN", ".NAN", nullptr};
+	static constexpr string_view NOT_NUMBERS[] = {".nan", ".NaN", ".NAN"};
 	/**
 	 * Если запись является нечисловой величиной
 	 */
-	if(matches(text, NOT_NUMBERS))
+	if(matches(text, NOT_NUMBERS, (sizeof(NOT_NUMBERS) / sizeof(NOT_NUMBERS[0]))))
 		// Выводим вид дробного числа двойной точности
 		return type_t::DOUBLE;
 	/**
@@ -1491,11 +1497,11 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	/**
 	 * Перечень написаний бесконечности
 	 */
-	static const char * const INFINITIES[] = {".inf", ".Inf", ".INF", nullptr};
+	static constexpr string_view INFINITIES[] = {".inf", ".Inf", ".INF"};
 	/**
 	 * Если запись является бесконечностью
 	 */
-	if(matches(number, INFINITIES)){
+	if(matches(number, INFINITIES, (sizeof(INFINITIES) / sizeof(INFINITIES[0])))){
 		// Запоминаем разобранную бесконечность
 		result.real = (negative ? -numeric_limits <double>::infinity() : numeric_limits <double>::infinity());
 		// Выводим вид дробного числа двойной точности
@@ -1504,11 +1510,11 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	/**
 	 * Перечень написаний нечисловой величины
 	 */
-	static const char * const NOT_NUMBERS[] = {".nan", ".NaN", ".NAN", nullptr};
+	static constexpr string_view NOT_NUMBERS[] = {".nan", ".NaN", ".NAN"};
 	/**
 	 * Если запись является нечисловой величиной
 	 */
-	if(matches(text, NOT_NUMBERS)){
+	if(matches(text, NOT_NUMBERS, (sizeof(NOT_NUMBERS) / sizeof(NOT_NUMBERS[0])))){
 		// Запоминаем разобранную нечисловую величину
 		result.real = numeric_limits <double>::quiet_NaN();
 		// Выводим вид дробного числа двойной точности

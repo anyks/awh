@@ -177,6 +177,12 @@ case "$(uname -s)" in
 	#       связывание отказывает на средствах Objective-C
 	#
 	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	#
+	# @note Основа «-lutil» потребна слою процессов: «src/sys/procre.cpp» зовёт у FreeBSD
+	#       «kinfo_getproc», и без неё связывание стенда отказывает (замер 06.10.2026 на
+	#       стенде FreeBSD 19: «undefined symbol: kinfo_getproc»)
+	#
+	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
 	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
