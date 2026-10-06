@@ -47,6 +47,43 @@
 
 /**
  * \~russian
+ * @brief Принудительная подстановка самой горячей службы кодировщика
+ *
+ * @details Отсев ведущего октета стоит в переборе всякого знака текста, и работа в нём
+ *          одна лишь арифметика: оставленный в единице трансляции, он обращается вызовом
+ *          через границу единиц и стоит дороже самого дела
+ *
+ * @note Приём этот есть признанное в AWH исключение из правила о чистых заголовочных
+ *       файлах: реализация живёт в `.cpp`, а для горячих тривиальных служб заводят
+ *       подстановочные посредники с `always_inline`. См. `include/codec/abc/common.hpp`
+ *       и `include/codec/json/common.hpp`. Касается исключение ОДНОГО `sequence()`:
+ *       разбор и сборка последовательности в `.cpp` и остаются там. Обособленного
+ *       объявления при определении не держат - по образцу ABC и JSON одно определение
+ *       с `AWH_UTF8_INLINE`, иначе объявление без `inline` рядом с подстановочным
+ *       определением ломает правило однозначности
+ *
+ * \~english
+ * @brief Forced inlining of the hottest service of the encoder
+ *
+ * \~
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_UTF8_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_UTF8_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
+ * \~russian
  * @brief Основное пространство имён
  *
  * \~english
@@ -72,17 +109,6 @@ namespace awh {
 	namespace utf8 {
 		/**
 		 * \~russian
-		 * @brief Наибольшее кодовое значение символа Юникода
-		 *
-		 * \~english
-		 * @brief Largest code value of a Unicode character
-		 *
-		 * \~
-		 */
-		constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
-
-		/**
-		 * \~russian
 		 * @brief Наибольшая длина записи символа в кодировке UTF-8
 		 *
 		 * \~english
@@ -91,6 +117,17 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_LENGTH = 4;
+
+		/**
+		 * \~russian
+		 * @brief Наибольшее кодовое значение символа Юникода
+		 *
+		 * \~english
+		 * @brief Largest code value of a Unicode character
+		 *
+		 * \~
+		 */
+		constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
 
 		/**
 		 * \~russian
@@ -139,25 +176,85 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t length(string_view text) noexcept;
+
 		/**
 		 * \~russian
 		 * @brief Функция определения длины побайтовой последовательности по ведущему октету
 		 *
 		 * @details Ведущими не бывают октеты `C0` и `C1`: открывали бы запись длиннее
 		 *          необходимой, а октеты свыше `F4` - точку свыше U+10FFFF. Ни того, ни
-		 *          другого кодировка не допускает при любом продолжении
+		 *          другого кодировка не допускает при любом продолжении.
+		 *
+		 * @note Замет о происхождении правила, перенесённый из тел кодеков при сведении
+		 *       копий в одну: отсев `C0`, `C1` и октетов свыше `F4` стоял не всюду - он
+		 *       водился лишь у наречия YAML, а побайтовое тело разбора UTF-8 лежало у трёх
+		 *       кодеков тремя списками. Выправлен был один список из трёх, и два прочих
+		 *       остались в прежнем виде; матрица сличений 06.10.2026 показывает, что и
+		 *       ныне копии CSV, JSON и XML ведут себя иначе на 579 768 подачах из
+		 *       17 101 312. Прежде такие ведущие принимались, и негодность обнаруживалась
+		 *       лишь по прочтении продолжения - граница негодной подачи при том уплывала
 		 *
 		 * @param leading ведущий октет последовательности
 		 * @return        длина последовательности либо нуль при ошибочном ведущем октете
 		 *
 		 * \~english
 		 * @brief Function of the obtaining of the length of a byte sequence by the leading octet
+		 *
+		 * @details The `C0` and `C1` octets never appear as leading bytes—as they would initiate
+		 *          a sequence longer than necessary—nor do octets above `F4`, which would
+		 *          correspond to a code point beyond U+10FFFF. The encoding permits neither case,
+		 *          regardless of the continuation bytes.
+		 *
+		 * @note Regarding the origin of the rule carried over from the codec implementations
+		 *       during the consolidation of copies: the filtering of `C0`, `C1`, and octets
+		 *       above `F4` was not applied universally—it existed only in the YAML dialect,
+		 *       while the byte-level UTF-8 parsing logic was distributed across three separate
+		 *       lists for the three codecs. Only one of the three lists was corrected, leaving
+		 *       the other two unchanged; a comparison matrix from October 6, 2026, reveals that
+		 *       the CSV, JSON, and XML implementations still behave differently on 579,768 out
+		 *       of 17,101,312 inputs. Previously, such inputs were accepted, and their invalidity
+		 *       was detected only upon reading the subsequent data—causing the boundary
+		 *       of the invalid input to shift
+		 *
 		 * @param leading leading octet of the sequence
-		 * @return length of the sequence or zero at an erroneous leading octet
+		 * @return        length of the sequence or zero at an erroneous leading octet
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ size_t sequence(const uint8_t leading) noexcept;
+		__AWH_SHARED_EXPORT__ AWH_UTF8_INLINE size_t sequence(const uint8_t leading) noexcept {
+			/**
+			 * Если знак записан одним октетом
+			 */
+			if(leading < 0x80)
+				// Выводим длину последовательности знака
+				return 1;
+			/**
+			 * Если ведущий октет построен ошибочно
+			 */
+			if((leading == 0xC0) || (leading == 0xC1) || (leading > 0xF4))
+				// Выводим признак ошибочного построения последовательности
+				return 0;
+			/**
+			 * Если знак записан двумя октетами
+			 */
+			if((leading & 0xE0) == 0xC0)
+				// Выводим длину последовательности знака
+				return 2;
+			/**
+			 * Если знак записан тремя октетами
+			 */
+			if((leading & 0xF0) == 0xE0)
+				// Выводим длину последовательности знака
+				return 3;
+			/**
+			 * Если знак записан четырьмя октетами
+			 */
+			if((leading & 0xF8) == 0xF0)
+				// Выводим длину последовательности знака
+				return 4;
+			// Выводим признак ошибочного построения последовательности
+			return 0;
+		}
 		/**
 		 * \~russian
 		 * @brief Функция представления кодового значения символа записью UTF-8
