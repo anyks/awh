@@ -98,14 +98,47 @@ namespace awh {
 		 *
 		 * @details Его выводит побайтовый разбор и при негодном ведущем октете, и при
 		 *          нарушенном продолжающем, и при оборванной записи: различает эти случаи
-		 *          не значение, а отмеренная длина наибольшей годной части
+		 *          не значение, а отмеренная длина наибольшей годной части.
 		 *
 		 * \~english
 		 * @brief Marker of a code value that is not a character
 		 *
+		 * @details Byte-by-byte parsing identifies this condition whether the leading octet
+		 *          is invalid, a continuation octet is malformed, or the sequence is truncated;
+		 *          the distinction between these cases is based not on the value itself,
+		 *          but on the measured length of the longest valid portion.
+		 *
 		 * \~
 		 */
 		constexpr uint32_t INVALID_CODEPOINT = static_cast <uint32_t> (~0u);
+
+		/**
+		 * \~russian
+		 * @brief Перечень исходов побайтового разбора последовательности знака
+		 *
+		 * @details Исход нужен потоковым потребителям: оборванную на границе куска запись
+		 *          они обязаны дочитать на следующем куске, а не отвергнуть, и различить
+		 *          эти два решения по одному кодовому значению нельзя - оно при обоих
+		 *          одно и то же. Вид этот заведён в общем модуле затем, чтобы девять
+		 *          кодеков разводили исходы одним перечнем, а не каждый своим.
+		 *
+		 * \~english
+		 * @brief Outcome of the byte-level parsing of a character sequence
+		 *
+		 * @details Streaming consumers need this outcome: they must finish reading a record
+		 *          that was cut off at a chunk boundary from the next chunk rather than
+		 *          discarding it, yet these two scenarios cannot be distinguished by a single
+		 *          code value—the value is the same for both. This type was defined in a
+		 *          shared module so that the nine codecs could handle these outcomes using
+		 *          a unified list, rather than each maintaining its own.
+		 *
+		 * \~
+		 */
+		enum class utf8_t : uint8_t {
+			VALID     = 0x01, // Последовательность прочитана целиком и правила соблюдает
+			BROKEN    = 0x02, // Последовательность построена ошибочно
+			TRUNCATED = 0x03  // Последовательности не хватает октетов до конца подачи
+		};
 
 		/**
 		 * \~russian
@@ -139,7 +172,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t length(string_view text) noexcept;
-
 		/**
 		 * \~russian
 		 * @brief Функция определения длины побайтовой последовательности по ведущему октету
@@ -205,6 +237,31 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ size_t sequence(const uint8_t leading) noexcept;
 		/**
 		 * \~russian
+		 * @brief Функция дописывания кодового значения знака к тексту
+		 *
+		 * @details Тело общее, а не местное: побайтовая сборка записи не должна жить в
+		 *          нескольких местах, ибо починка одного места в прочие не приезжает.
+		 *
+		 * @param code   записываемое кодовое значение знака
+		 * @param result текст, к которому дописывается знак
+		 * @return       признак успешной записи: у суррогата и у точки свыше U+10FFFF записи нет
+		 *
+		 * \~english
+		 * @brief Function of appending the code value of a character to a text
+		 *
+		 * @details The logic is global, not local: the byte-by-byte assembly of the record
+		 *          must not exist in multiple places, because a fix applied in one location
+		 *          does not propagate to the others.
+		 *
+		 * @param code   code value of the character being recorded
+		 * @param result text to which the character is appended
+		 * @return       record result: a surrogate and a point above U+10FFFF have no record
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool encode(const uint32_t code, string & result) noexcept;
+		/**
+		 * \~russian
 		 * @brief Функция представления кодового значения символа записью UTF-8
 		 *
 		 * @details Кодовые значения суррогатных пар и значения, превышающие наибольшее
@@ -227,26 +284,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t encode(const uint32_t code, char * buffer) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция дописывания кодового значения знака к тексту
-		 *
-		 * @details Тело общее, а не местное: побайтовая сборка записи не должна жить в
-		 *          нескольких местах, ибо починка одного места в прочие не приезжает
-		 *
-		 * @param code   записываемое кодовое значение знака
-		 * @param result текст, к которому дописывается знак
-		 * @return       признак успешной записи: у суррогата и у точки свыше U+10FFFF записи нет
-		 *
-		 * \~english
-		 * @brief Function of appending the code value of a character to a text
-		 * @param code code value of the character being recorded
-		 * @param result text to which the character is appended
-		 * @return record result: a surrogate and a point above U+10FFFF have no record
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ bool encode(const uint32_t code, string & result) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция разбора записи символа в кодировке UTF-8
@@ -284,7 +321,7 @@ namespace awh {
 		 *          и всякий октет свыше `F4`, равно как нарушенный продолжающий: предел своего
 		 *          первый продолжающий байт берёт у ведущего (`E0` требует `A0..BF`, `ED` - не
 		 *          выше `9F`, `F0` требует `90..BF`, `F4` - не выше `8F`), чем запись длиннее
-		 *          необходимой, суррогат да точка свыше U+10FFFF отвергаются разом
+		 *          необходимой, суррогат да точка свыше U+10FFFF отвергаются разом.
 		 *
 		 * @note Оборванный на конце текста заход различим с негодным по сумме: при нехватке
 		 *       октетов отмеряется их наличное число, и потребителю, подающему текст кусками,
@@ -297,13 +334,74 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of the parsing of the byte sequence of a character
+		 *
+		 * @details Parsing follows the "longest valid prefix" rule (Unicode, Section 3.9),
+		 *          which distinguishes it from `decode(string_view, ...)`: for an invalid
+		 *          sequence, the length of the valid portion is reported rather than zero,
+		 *          ensuring that the iteration process advances instead of stalling indefinitely.
+		 *          Invalid sequences include leading `C0` and `C1` bytes, any octet greater than
+		 *          `F4`, and malformed continuation bytes; the first continuation byte
+		 *          is constrained by the leading byte (e.g., `E0` requires `A0..BF`, `ED`
+		 *          requires no higher than `9F`, `F0` requires `90..BF`, and `F4` requires
+		 *          no higher than `8F`), while overlong encodings, surrogates, and code points
+		 *          exceeding U+10FFFF are all rejected.
+		 *
+		 * @note A transmission cut off at the end of the text is distinguishable from a checksum error:
+		 *       if octets are missing, the available ones are measured, and for a consumer receiving
+		 *       the text in chunks, this suffices to await the remainder rather than rejecting the signal.
+		 *
 		 * @param buffer buffer of the parsed text
-		 * @param size number of the octets of the buffer
+		 * @param size   number of the octets of the buffer
 		 * @param length measured length of the sequence; zero at an empty request
-		 * @return code value of the character or the marker of an unsuitable one
+		 * @return       code value of the character or the marker of an unsuitable one
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint32_t decode(const char * buffer, const size_t size, size_t & length) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция разбора побайтовой последовательности знака с исходом разбора
+		 *
+		 * @details Разбор ведёт правило наибольшей годной части: негодной подаче отмеряется
+		 *          длина её годной начала части, а не ноль, дабы перебор, идущий по
+		 *          отмеренной длине, не встал на месте навек. Исход при том назван отдельно,
+		 *          ибо потоковому потребителю надлежит различать оборванную на границе куска
+		 *          запись, дочитаемую следующим куском, от записи построенной ошибочно,
+		 *          отвергаемой навеки.
+		 *
+		 * @note Пустая подача (буфер не передан либо в нём нет октетов) исхода не имеет:
+		 *       выводятся BROKEN с длиной ноль, и решение о переходе остаётся за зовущим -
+		 *       двигать перебор по нулю нечем
+		 *
+		 * @param buffer буфер разбираемого текста
+		 * @param size   количество октетов в буфере
+		 * @param code   прочитанное кодовое значение либо обозначение негодного
+		 * @param length отмеренная длина последовательности
+		 * @return       исход разбора
+		 *
+		 * \~english
+		 * @brief Function of the parsing of a byte sequence with the outcome of the parsing
+		 *
+		 * @details The parsing process is governed by the "largest valid part" rule:
+		 *          a defective input segment is assigned a length corresponding to its
+		 *          valid initial portion—rather than zero—to ensure that the scan advancing
+		 *          across this measured length does not stall indefinitely. The outcome
+		 *          is classified separately because a stream consumer must distinguish between
+		 *          a record truncated at a chunk boundary (to be completed by the subsequent chunk)
+		 *          and a malformed record that is permanently rejected.
+		 *
+		 * @note An empty submission (where no buffer is passed or the buffer contains no octets)
+		 *       yields no result: a BROKEN status with a length of zero is returned, and the decision
+		 *       on how to proceed rests with the caller—there is nothing to advance the search by
+		 *
+		 * @param buffer buffer of the text being parsed
+		 * @param size   number of octets in the buffer
+		 * @param code   read code value or the marker of an invalid one
+		 * @param length measured length of the sequence
+		 * @return       outcome of the parsing
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ utf8_t inspect(const char * buffer, const size_t size, uint32_t & code, size_t & length) noexcept;
 	};
 };

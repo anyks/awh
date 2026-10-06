@@ -18,8 +18,25 @@ readonly FLAGS="-std=c++2a -O3 -DNDEBUG -Wall -Wextra"
 # Набор стендов сверки
 readonly PLAIN="dump"
 
+# Слой файловой системы нужен codec-ному Document (awh::Filesystem), а на macOS он
+# пишется через NSFileManager обычным C++ и потому собирается отдельным языком
+# с основой Foundation
+if [ "$(uname -s)" = "Darwin" ]; then
+	readonly FS_FLAGS="-x objective-c++ -fobjc-arc"
+	readonly FS_LIBS="-framework Foundation"
+	readonly FS_SOURCE="$ROOT/src/sys/fs.cpp"
+else
+	readonly FS_FLAGS=""
+	readonly FS_LIBS=""
+	readonly FS_SOURCE="$ROOT/src/sys/fs.cpp"
+fi
+
 # Выполняем создание каталога собранных стендов
 mkdir -p "$OUTPUT" || exit 1
+
+# Слой файловой системы собирается отдельно: общий язык для него один, а objective-c++
+# в плоской команде достался бы все перечисленные источники
+g++ $FLAGS $FS_FLAGS -Wno-c++11-narrowing -I"$ROOT/include" -c "$FS_SOURCE" -o "$OUTPUT/sys-fs.o" || exit 1
 
 # Выполняем перебор стендов сверки
 for STAND in $PLAIN; do
@@ -31,8 +48,11 @@ for STAND in $PLAIN; do
 		-I"$ROOT/include" \
 		"$STANDS/$STAND.cpp" "$ROOT"/src/codec/csv/*.cpp "$ROOT"/src/num/lexical/*.cpp \
 		"$ROOT"/src/sys/log.cpp "$ROOT"/src/sys/chrono.cpp "$ROOT"/src/sys/fmk.cpp \
+		"$ROOT"/src/sys/os.cpp "$ROOT"/src/sys/signals.cpp "$ROOT"/src/sys/procre.cpp \
+		"$ROOT"/src/net/addr.cpp "$ROOT"/src/net/net.cpp "$ROOT"/src/codec/numeric.cpp \
+		"$OUTPUT/sys-fs.o" \
 		"$ROOT"/src/net/nwt.cpp "$ROOT"/src/encoding/unicode/*.cpp "$ROOT"/src/encoding/charset/*.cpp \
-		"$ROOT"/src/alloc/*.cpp "$ROOT"/src/alloc/capture/*.cpp -lz \
+		"$ROOT"/src/alloc/*.cpp "$ROOT"/src/alloc/capture/*.cpp -lz $FS_LIBS \
 		-o "$OUTPUT/$STAND" || exit 1
 done
 

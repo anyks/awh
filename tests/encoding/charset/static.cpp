@@ -227,6 +227,55 @@ TEST_F(CharsetFixture, Utf8Decode){
 	ASSERT_EQ(utf8::decode("\xF5\x80\x80\x80", 0, code), 0u);
 }
 /**
+ * @brief Тест разбора записи символов с исходом разбора
+ *
+ * @details Обрыв записи на границе куска надлежит дочитать следующим куском, а запись
+ *          построенную ошибочно - отвергнуть навеки; по одному кодовому значению эти два
+ *          решения неразличимы, и исход для того и назван
+ *
+ */
+TEST_F(CharsetFixture, Utf8Inspect){
+	// Кодовое значение разобранного символа
+	uint32_t code = 0;
+	// Длина разобранной записи
+	size_t length = 0;
+	// Выполняем проверку исхода годной записи
+	ASSERT_EQ(utf8::inspect("€", 3, code, length), utf8::utf8_t::VALID);
+	ASSERT_EQ(code, 0x20ACu);
+	ASSERT_EQ(length, 3u);
+	// Выполняем проверку исхода записи, прочитанной до конца подачи
+	ASSERT_EQ(utf8::inspect("😀", 4, code, length), utf8::utf8_t::VALID);
+	ASSERT_EQ(code, 0x1F600u);
+	ASSERT_EQ(length, 4u);
+	// Выполняем проверку исхода пустой подачи
+	ASSERT_EQ(utf8::inspect("", 0, code, length), utf8::utf8_t::BROKEN);
+	ASSERT_EQ(code, utf8::INVALID_CODEPOINT);
+	ASSERT_EQ(length, 0u);
+	// Выполняем проверку исхода продолжающего байта как ведущего
+	ASSERT_EQ(utf8::inspect("\x80", 1, code, length), utf8::utf8_t::BROKEN);
+	ASSERT_EQ(code, utf8::INVALID_CODEPOINT);
+	ASSERT_EQ(length, 1u);
+	// Выполняем проверку исхода избыточной записи
+	ASSERT_EQ(utf8::inspect("\xC0\xAF", 2, code, length), utf8::utf8_t::BROKEN);
+	ASSERT_EQ(length, 1u);
+	// Выполняем проверку исхода записи суррогатной пары
+	ASSERT_EQ(utf8::inspect("\xED\xA0\x80", 3, code, length), utf8::utf8_t::BROKEN);
+	ASSERT_EQ(length, 1u);
+	// Выполняем проверку исхода записи, прекращённой не продолжающим байтом
+	ASSERT_EQ(utf8::inspect("\xE2\x28\xA1", 3, code, length), utf8::utf8_t::BROKEN);
+	ASSERT_EQ(length, 1u);
+	// Выполняем проверку исхода оборванной записи
+	ASSERT_EQ(utf8::inspect("\xE2\x82", 2, code, length), utf8::utf8_t::TRUNCATED);
+	ASSERT_EQ(code, utf8::INVALID_CODEPOINT);
+	ASSERT_EQ(length, 2u);
+	// Выполняем проверку исхода оборванной записи четырёхбайтового знака
+	ASSERT_EQ(utf8::inspect("\xF0\x9F\x98", 3, code, length), utf8::utf8_t::TRUNCATED);
+	ASSERT_EQ(length, 3u);
+	// Выполняем проверку побайтового хода перебора по отмеренной длине
+	(void) utf8::inspect("\xE2\x28", 2, code, length);
+	ASSERT_NE(length, 0u);
+}
+/**
  * @brief Тест проверки правильности записи текста и подсчёта символов
  *
  */
