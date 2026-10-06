@@ -7347,16 +7347,12 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 * @details Продвижение идёт разбором таблицы принадлежности, но возврата
 			 *          в продолжение на каждом символе не совершает: положение, где
 			 *          текст несёт байт иной, продолжению откажет заведомо, и ряд
-			 *          проходит его сам. Проверка байта продолжения ведётся прежде
-			 *          проверки принадлежности и на том же байте: совпадение с байтом
-			 *          продолжения останавливает виток без лишнего шага и без лишнего
-			 *          чтения памяти.
+			 *          проходит его сам.
 			 *
 			 */
 			} else if(following >= 0) {
-				// Заводим метки продвижения ряда до байта продолжения
+				// Заводим метку продвижения ряда до байта продолжения
 				const size_t stepping = emitter.label();
-				const size_t found = emitter.label();
 				/**
 				 * Выполняем чтение адреса таблицы принадлежности байтов
 				 *
@@ -7374,10 +7370,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				emitter.branch(cond_t::ABOVE, giving);
 				// Выполняем чтение байта текста в позиции сопоставления
 				emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
-				// Выполняем сравнение байта текста с байтом продолжения
-				emitter.compare(reg_t::LETTER, static_cast <uint32_t> (following));
-				// Выполняем переход к сохранению положения при совпадении байта
-				emitter.branch(cond_t::EQUAL, found);
 				// Выполняем чтение принадлежности байта таблице сопоставления
 				emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
 				// Выполняем сравнение принадлежности байта с нулём
@@ -7386,10 +7378,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				emitter.branch(cond_t::EQUAL, giving);
 				// Переходим к следующей позиции текста сопоставления
 				emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
-				// Выполняем переход к продолжению продвижения
-				emitter.jump(stepping);
-				// Выполняем расстановку метки сохранения положения
-				emitter.place(found);
+				// Выполняем сравнение позиции сопоставления с размером текста
+				emitter.compare(reg_t::CURSOR, reg_t::SIZE);
+				// Выполняем переход к исчерпанию при достижении конца текста
+				emitter.branch(cond_t::ABOVE, giving);
+				// Выполняем чтение байта текста в позиции сопоставления
+				emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
+				// Выполняем сравнение байта текста с байтом продолжения
+				emitter.compare(reg_t::LETTER, static_cast <uint32_t> (following));
+				// Выполняем продолжение продвижения при несовпадении байта
+				emitter.branch(cond_t::NOTEQUAL, stepping);
 				// Выполняем сохранение положения ленивого ряда в кадре вызова
 				emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			/**

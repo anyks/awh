@@ -47,43 +47,6 @@
 
 /**
  * \~russian
- * @brief Принудительная подстановка самой горячей службы кодировщика
- *
- * @details Отсев ведущего октета стоит в переборе всякого знака текста, и работа в нём
- *          одна лишь арифметика: оставленный в единице трансляции, он обращается вызовом
- *          через границу единиц и стоит дороже самого дела
- *
- * @note Приём этот есть признанное в AWH исключение из правила о чистых заголовочных
- *       файлах: реализация живёт в `.cpp`, а для горячих тривиальных служб заводят
- *       подстановочные посредники с `always_inline`. См. `include/codec/abc/common.hpp`
- *       и `include/codec/json/common.hpp`. Касается исключение ОДНОГО `sequence()`:
- *       разбор и сборка последовательности в `.cpp` и остаются там. Обособленного
- *       объявления при определении не держат - по образцу ABC и JSON одно определение
- *       с `AWH_UTF8_INLINE`, иначе объявление без `inline` рядом с подстановочным
- *       определением ломает правило однозначности
- *
- * \~english
- * @brief Forced inlining of the hottest service of the encoder
- *
- * \~
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_UTF8_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_UTF8_INLINE inline __attribute__((always_inline))
-#endif
-
-/**
- * \~russian
  * @brief Основное пространство имён
  *
  * \~english
@@ -194,6 +157,15 @@ namespace awh {
 		 *       17 101 312. Прежде такие ведущие принимались, и негодность обнаруживалась
 		 *       лишь по прочтении продолжения - граница негодной подачи при том уплывала
 		 *
+		 * @note О размещении тела: подстановку в заголовке против тела в единице
+		 *       трансляции меряли парой на кластере, пять кругов по двадцати четырём
+		 *       сценариям INI; медиана пропускной способности вышла 1.0093 при контроле
+		 *       1.0061 - то есть при сличении двух сборок одного и того же кода разброс
+		 *       тот же самый, и ни один сценарий за полосу контроля не вышел. Выигрыша
+		 *       нет, и тело держат в единице трансляции по общему правилу. Замет этот
+		 *       заведён затем, чтобы исключение не заводили снова по одному лишь
+		 *       рассуждению о горячем пути: рассуждение было, мера ему противит
+		 *
 		 * @param leading ведущий октет последовательности
 		 * @return        длина последовательности либо нуль при ошибочном ведущем октете
 		 *
@@ -216,45 +188,21 @@ namespace awh {
 		 *       was detected only upon reading the subsequent data—causing the boundary
 		 *       of the invalid input to shift
 		 *
+		 * @note On the placement of the body: header inlining versus a body held in the
+		 *       translation unit was measured as a cluster pair—five rounds over
+		 *       twenty-four INI scenarios. The throughput median came out 1.0093 against a
+		 *       control of 1.0061, that is, the same spread as two builds of identical
+		 *       code, and no scenario left the control band. There is no gain, so the body
+		 *       stays in the translation unit under the general rule. This note exists so
+		 *       that the exception is not reintroduced on the strength of reasoning about a
+		 *       hot path alone: the reasoning was made, and the measurement contradicts it
+		 *
 		 * @param leading leading octet of the sequence
 		 * @return        length of the sequence or zero at an erroneous leading octet
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ AWH_UTF8_INLINE size_t sequence(const uint8_t leading) noexcept {
-			/**
-			 * Если знак записан одним октетом
-			 */
-			if(leading < 0x80)
-				// Выводим длину последовательности знака
-				return 1;
-			/**
-			 * Если ведущий октет построен ошибочно
-			 */
-			if((leading == 0xC0) || (leading == 0xC1) || (leading > 0xF4))
-				// Выводим признак ошибочного построения последовательности
-				return 0;
-			/**
-			 * Если знак записан двумя октетами
-			 */
-			if((leading & 0xE0) == 0xC0)
-				// Выводим длину последовательности знака
-				return 2;
-			/**
-			 * Если знак записан тремя октетами
-			 */
-			if((leading & 0xF0) == 0xE0)
-				// Выводим длину последовательности знака
-				return 3;
-			/**
-			 * Если знак записан четырьмя октетами
-			 */
-			if((leading & 0xF8) == 0xF0)
-				// Выводим длину последовательности знака
-				return 4;
-			// Выводим признак ошибочного построения последовательности
-			return 0;
-		}
+		__AWH_SHARED_EXPORT__ size_t sequence(const uint8_t leading) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция представления кодового значения символа записью UTF-8
