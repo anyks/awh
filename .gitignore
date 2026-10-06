@@ -42,6 +42,8 @@ __pycache__/
 bin/
 build/
 build-release/
+# Каталог второй сборки двойного ряда (CMAKE_BUILD_ALLOCATOR=OFF)
+build-off/
 tools/benchmark/*/comparison
 third_party/
 submodules/libev/

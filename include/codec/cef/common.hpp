@@ -84,155 +84,136 @@ namespace awh {
 		 * @brief Пространство имён контейнера CEF
 		 *
 		 * @details Разбор и запись событий безопасности в записи Common Event Format,
-		 * описанной ArcSight: необязательной приставки syslog, заголовка из семи полей,
-		 * отделённых прямой чертой, и расширения из пар «ключ=значение», отделённых
-		 * пробелом
+		 *          описанной ArcSight: необязательной приставки syslog, заголовка из семи полей,
+		 *          отделённых прямой чертой, и расширения из пар «ключ=значение», отделённых пробелом.
 		 *
 		 * @par Намеренные решения
 		 *
-		 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-		 * задачи, и каждое из решений закреплено проверочным испытанием
+		 *      Перечисленное ниже не является пробелом реализации: это очерченные границы
+		 *      задачи, и каждое из решений закреплено проверочным испытанием
 		 *
 		 * @li **Заголовок и расширение суть РАЗНЫЕ области с разным экранированием.**
-		 * Описание требует отменять в заголовке прямую черту и обратную косую, а в
-		 * расширении - знак равенства, и прямо оговаривает, что черта и косая в
-		 * расширении отмены не требуют, а знак равенства в заголовке не требует её
-		 * тоже. Свести обе области к одному правилу значило бы разбирать неверно обе,
-		 * оттого области разделены и в разборе, и в дереве
+		 *     Описание требует отменять в заголовке прямую черту и обратную косую, а в
+		 *     расширении - знак равенства, и прямо оговаривает, что черта и косая в
+		 *     расширении отмены не требуют, а знак равенства в заголовке не требует её
+		 *     тоже. Свести обе области к одному правилу значило бы разбирать неверно обе,
+		 *     оттого области разделены и в разборе, и в дереве
 		 *
 		 * @li **Обход по пути выдаёт СЫРЫЕ ключи, а сведённые имена берутся вторым
-		 * ходом.** Запись есть источник, и потребитель, идущий по пути, обязан видеть
-		 * то, что в записи стоит: «cs1» и «cs1Label» порознь. Сведение пары
-		 * «cs1Label=IDSClass» с «cs1=not-suspicious» в поле с человеческим именем есть
-		 * ПЕРЕВОД, а не разбор, и совершать его молча значило бы отдавать потребителю
-		 * запись, которой в источнике не было. Невыбранное при этом достижимо: длинные
-		 * имена словаря и сведённые метки выдаются отдельными ходами
+		 *     ходом.** Запись есть источник, и потребитель, идущий по пути, обязан видеть
+		 *     то, что в записи стоит: «cs1» и «cs1Label» порознь. Сведение пары
+		 *     «cs1Label=IDSClass» с «cs1=not-suspicious» в поле с человеческим именем есть
+		 *     ПЕРЕВОД, а не разбор, и совершать его молча значило бы отдавать потребителю
+		 *     запись, которой в источнике не было. Невыбранное при этом достижимо: длинные
+		 *     имена словаря и сведённые метки выдаются отдельными ходами
 		 *
 		 * @li **Пустое значение есть пустая последовательность знаков.** Запись «cs3=»
-		 * описанием не оговорена вовсе - ни разрешена, ни запрещена, - но в живых
-		 * журналах обычна и образует пару с «cs3Label=CVEID». Обратить её в логическую
-		 * истину значило бы отдать потребителю утверждение, какого в записи не было, и
-		 * лишить его различия «поле пусто» и «поле установлено»; оттого умолчание -
-		 * последовательность знаков, а иные толкования берутся настройкой
+		 *     описанием не оговорена вовсе - ни разрешена, ни запрещена, - но в живых
+		 *     журналах обычна и образует пару с «cs3Label=CVEID». Обратить её в логическую
+		 *     истину значило бы отдать потребителю утверждение, какого в записи не было, и
+		 *     лишить его различия «поле пусто» и «поле установлено»; оттого умолчание -
+		 *     последовательность знаков, а иные толкования берутся настройкой
 		 *
 		 * @li **Пустое значение и отсутствие значения запись CEF НЕ различает.** Ключа
-		 * без знака равенства в расширении не бывает, а значения, означающего пустоту,
-		 * наподобие `null` записи JSON, у CEF нет вовсе. Оттого сброс значения выдаёт
-		 * «cs3=» и от поля, пустым записанного в источнике, неотличим; различие «поле
-		 * есть - поля нет» несёт снос пары целиком
+		 *     без знака равенства в расширении не бывает, а значения, означающего пустоту,
+		 *     наподобие `null` записи JSON, у CEF нет вовсе. Оттого сброс значения выдаёт
+		 *     «cs3=» и от поля, пустым записанного в источнике, неотличим; различие «поле
+		 *     есть - поля нет» несёт снос пары целиком
 		 *
 		 * @li **Повтор ключа даёт ОДИН потомок перечнем.** В живых журналах ключ
-		 * повторяется - «ad.prog-id» трижды подряд, «deviceExternalId» дважды, - и
-		 * терять повтор молча нельзя. Устройство взято у кодека INI, где оно уже
-		 * измерено: обход остаётся замкнутым числовыми звеньями пути
+		 *     повторяется - «ad.prog-id» трижды подряд, «deviceExternalId» дважды, - и
+		 *     терять повтор молча нельзя. Устройство взято у кодека INI, где оно уже
+		 *     измерено: обход остаётся замкнутым числовыми звеньями пути
 		 *
 		 * @li **Дерева произвольной глубины у записи CEF нет.** Глубина ограничена
-		 * устройством самой записи: приставка, заголовок, расширение - и всё. Это
-		 * граница формата, а не недоделка кодека; при записи же дерева обратно
-		 * вложенное значение обращается по правилу, настройкой заданному, а не молча
+		 *     устройством самой записи: приставка, заголовок, расширение - и всё. Это
+		 *     граница формата, а не недоделка кодека; при записи же дерева обратно
+		 *     вложенное значение обращается по правилу, настройкой заданному, а не молча
 		 *
-		 * @li **Разбор пар «ключ=значение» ведётся ходом `awh::fmk::kv`.** Устройство его
-		 * рассчитано на записи вида CEF: значение может нести разделитель записей и
-		 * кончается перед разделителем ключа следующей записи, последняя запись
-		 * занимает весь остаток, знак считается отменённым при нечётном числе
-		 * предшествующих косых. Заводить второй разбор того же в кодеке значило бы
-		 * держать один договор в двух местах
+		 * @li **Разбор пар «ключ=значение» ведётся собственным ходом читателя
+		 *     `Reader::extensions`.** Устройство его рассчитано на записи вида CEF: значение
+		 *     может нести разделитель записей и кончается перед разделителем ключа следующей
+		 *     записи, последняя запись занимает весь остаток, знак считается отменённым при
+		 *     нечётном числе предшествующих косых
 		 *
 		 * @li **Опознание вида значения ведётся словарём, а не угадыванием.** Вид поля
-		 * берётся из словаря расширений по ключу; строгость сличения задаётся
-		 * настройкой. Угадывание вида по виду знаков порождает разночтения: «011»
-		 * разбирается то восьмеричным, то десятичным, а «1.10» числом теряет разряд
+		 *     берётся из словаря расширений по ключу; строгость сличения задаётся
+		 *     настройкой. Угадывание вида по виду знаков порождает разночтения: «011»
+		 *     разбирается то восьмеричным, то десятичным, а «1.10» числом теряет разряд
 		 *
 		 * @li **Приведения кодировок кодек не ведёт вовсе.** Описание ArcSight требует
-		 * записи в UTF-8 прямо и иных кодировок не допускает, оттого ни опознания
-		 * кодировки, ни перевода из неё здесь нет - в отличие от кодеков INI, CSV и
-		 * XML, где кодировка исходного текста ничем не задана и потому опознаётся.
-		 * Настройка кодировки была бы обещанием, каким ничто не отвечает: заведённая
-		 * по образцу соседей, она НЕ читалась ни одним местом разбора, и снята она
-		 * именно поэтому
+		 *     записи в UTF-8 прямо и иных кодировок не допускает, оттого ни опознания
+		 *     кодировки, ни перевода из неё здесь нет - в отличие от кодеков INI, CSV и
+		 *     XML, где кодировка исходного текста ничем не задана и потому опознаётся.
+		 *     Настройка кодировки была бы обещанием, каким ничто не отвечает: заведённая
+		 *     по образцу соседей, она НЕ читалась ни одним местом разбора, и снята она
+		 *     именно поэтому
 		 *
 		 * @li **Внешних обращений разбор не совершает.** Ни к файловой системе, ни к
-		 * сети: разрешение имён устройств, поиск словарей и проверка подписей в задачу
-		 * кодека не входят
+		 *     сети: разрешение имён устройств, поиск словарей и проверка подписей в задачу
+		 *     кодека не входят
 		 *
 		 * \~english
 		 * @brief CEF container namespace
+		 *
 		 * @details The parsing and the writing of the events of security in the Common Event Format record
-		 * described by ArcSight: of the optional syslog prefix, of the header of seven fields
-		 * separated by a vertical bar, and of the extension of the pairs «key=value» separated
-		 * by a space
+		 *          described by ArcSight: of the optional syslog prefix, of the header of seven fields
+		 *          separated by a vertical bar, and of the extension of the pairs «key=value» separated by a space.
+		 *
 		 * @par Deliberate decisions
-		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
-		 * task, and each of the decisions is fixed by a verifying test
+		 *
+		 *      What is listed below is not a gap of the implementation: these are the outlined boundaries of the
+		 *      task, and each of the decisions is fixed by a verifying test
+		 *
 		 * @li **The header and the extension are DIFFERENT areas with different escaping.**
-		 * The specification requires escaping the vertical bar and the backslash in the header, and
-		 * the equals sign in the extension, and it states explicitly that the bar and the backslash in the
-		 * extension require no escaping, and that the equals sign in the header requires none either.
-		 * To reduce both areas to one rule would mean to parse both of them wrongly
+		 *     The specification requires escaping the vertical bar and the backslash in the header, and
+		 *     the equals sign in the extension, and it states explicitly that the bar and the backslash in the
+		 *     extension require no escaping, and that the equals sign in the header requires none either.
+		 *     To reduce both areas to one rule would mean to parse both of them wrongly
+		 *
 		 * @li **A traversal by a path issues the RAW keys, while the reduced names are taken by a second
-		 * method.** The record is the source, and a consumer going by a path must see
-		 * what stands in the record: «cs1» and «cs1Label» separately. The reduction of the pair
-		 * «cs1Label=IDSClass» with «cs1=not-suspicious» into a field with a human-readable name is a
-		 * TRANSLATION rather than a parsing, and to perform it silently would mean to give the consumer
-		 * a record that was not in the source. What is not chosen remains reachable: the long
-		 * names of the dictionary and the reduced labels are issued by separate methods
+		 *     method.** The record is the source, and a consumer going by a path must see
+		 *     what stands in the record: «cs1» and «cs1Label» separately. The reduction of the pair
+		 *     «cs1Label=IDSClass» with «cs1=not-suspicious» into a field with a human-readable name is a
+		 *     TRANSLATION rather than a parsing, and to perform it silently would mean to give the consumer
+		 *     a record that was not in the source. What is not chosen remains reachable: the long
+		 *     names of the dictionary and the reduced labels are issued by separate methods
+		 *
 		 * @li **An empty value is an empty sequence of characters.** The record «cs3=»
-		 * is not stipulated by the specification at all — neither allowed nor forbidden — but in the living
-		 * logs it is common and forms a pair with «cs3Label=CVEID». To turn it into a logical
-		 * truth would mean to give the consumer an assertion that was not in the record, and
-		 * to deprive him of the distinction «the field is empty» and «the field is set»; therefore the default is
-		 * a sequence of characters, while other interpretations are taken by a setting
+		 *     is not stipulated by the specification at all — neither allowed nor forbidden — but in the living
+		 *     logs it is common and forms a pair with «cs3Label=CVEID». To turn it into a logical
+		 *     truth would mean to give the consumer an assertion that was not in the record, and
+		 *     to deprive him of the distinction «the field is empty» and «the field is set»; therefore the default is
+		 *     a sequence of characters, while other interpretations are taken by a setting
+		 *
 		 * @li **The CEF record does NOT distinguish an empty value from an absence of a value.** A key
-		 * without an equals sign does not occur in an extension, while a value meaning emptiness,
-		 * like the `null` of the JSON notation, does not exist in CEF at all. Therefore a resetting of a value issues
-		 * «cs3=» and is indistinguishable from a field written empty in the source; the distinction «the field
-		 * exists — the field does not» is carried by the erasing of the pair as a whole
+		 *     without an equals sign does not occur in an extension, while a value meaning emptiness,
+		 *     like the `null` of the JSON notation, does not exist in CEF at all. Therefore a resetting of a value issues
+		 *     «cs3=» and is indistinguishable from a field written empty in the source; the distinction «the field
+		 *     exists — the field does not» is carried by the erasing of the pair as a whole
+		 *
 		 * @li **A repetition of a key gives ONE descendant as a list.** In the living logs a key
-		 * repeats itself — «ad.prog-id» three times in a row, «deviceExternalId» twice — and
-		 * the repetition cannot be lost silently. The construction is taken from the INI codec, where it is
-		 * already measured: the traversal remains closed by the numeric links of a path
+		 *     repeats itself — «ad.prog-id» three times in a row, «deviceExternalId» twice — and
+		 *     the repetition cannot be lost silently. The construction is taken from the INI codec, where it is
+		 *     already measured: the traversal remains closed by the numeric links of a path
+		 *
 		 * @li **A tree of an arbitrary depth does not exist in a CEF record.** The depth is limited by
-		 * the construction of the record itself: the prefix, the header, the extension — and that is all. This is
-		 * a boundary of the format rather than an incompleteness of the codec
-		 * @li **The parsing of the pairs «key=value» is conducted by the method `awh::fmk::kv`.** Its construction
-		 * is designed for the records of the CEF kind, and to create a second parsing of the same thing in the codec
-		 * would mean to hold one contract in two places
+		 *     the construction of the record itself: the prefix, the header, the extension — and that is all. This is
+		 *     a boundary of the format rather than an incompleteness of the codec
+		 *
+		 * @li **The parsing of the pairs «key=value» is conducted by the own method of the reader
+		 *     `Reader::extensions`.** Its construction is designed for the records of the CEF kind: a value may
+		 *     carry the separator of records and ends before the separator of the key of the next pair,
+		 *     the last pair occupies the whole remainder
+		 *
 		 * @li **The recognition of the kind of a value is conducted by a dictionary rather than by a guessing.** The kind of a field
-		 * is taken from the dictionary of the extensions by the key; the strictness of the matching is given by
-		 * a setting
-		 * @li **The parsing performs no external calls.** Neither to the file system nor to the
-		 * network
+		 *     is taken from the dictionary of the extensions by the key; the strictness of the matching is given by a setting
+		 *
+		 * @li **The parsing performs no external calls.** Neither to the file system nor to the network
 		 *
 		 * \~
 		 */
 		namespace cef {
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина одной записи CEF в байтах
-			 *
-			 * @details Предел считается на запись целиком - вместе с приставкой, заголовком
-			 * и расширением, - иначе перенос строки внутри значения давал бы обход предела
-			 *
-			 * \~english
-			 * @brief Largest admissible length of one CEF record in bytes
-			 * @details The limit is counted over the record as a whole — together with the prefix, the header
-			 * and the extension — otherwise a line break inside a value would give a bypass of the limit
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_RECORD = 0x100000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина одного поля заголовка в байтах
-			 *
-			 * \~english
-			 * @brief Largest admissible length of one field of the header in bytes
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_HEADER_FIELD = 0x4000;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшая допустимая длина имени ключа расширения в байтах
@@ -243,6 +224,104 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_NAME = 1024;
+
+			/**
+			 * \~russian
+			 * @brief Наивысшая редакция описания записи, разбору ведомая
+			 *
+			 * @details Описание ArcSight знает редакцию 0, живые устройства пишут и 1.
+			 *          Редакция высшая отвергается, а не разбирается на удачу: устройство
+			 *          заголовка редакцией и задаётся, и неизвестная редакция вправе
+			 *          нести иной набор полей.
+			 *
+			 * \~english
+			 * @brief The highest revision of the record notation known to the parsing
+			 *
+			 * @details ArcSight recognizes revision 0, while live devices write revision 1.
+			 *          A higher revision is rejected rather than optimistically parsed;
+			 *          the header specifies the revision, and an unknown revision may
+			 *          contain a different set of fields.
+			 *
+			 */
+			constexpr uint32_t MAX_VERSION = 1;
+
+			/**
+			 * \~russian
+			 * @brief Наибольшее допустимое значение важности события
+			 *
+			 * @details Описание дозволяет числа от нуля до десяти, где десять означает
+			 *          событие наибольшей важности.
+			 *
+			 * \~english
+			 * @brief Largest admissible value of the severity of an event
+			 *
+			 * @details The specification allows the numbers from zero to ten, where ten means
+			 *          an event of the greatest importance.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_SEVERITY = 10;
+
+			/**
+			 * \~russian
+			 * @brief Количество полей заголовка записи CEF
+			 *
+			 * @details Полей ровно семь: слово «CEF» с номером редакции, поставщик,
+			 *          изделие, его редакция, опознаватель события, имя события и важность.
+			 *          Восьмым полем идёт расширение, к заголовку не относящееся.
+			 *
+			 * \~english
+			 * @brief Number of the fields of the header of a CEF record
+			 *
+			 * @details There are exactly seven fields: the word «CEF» with the number of the version, the vendor,
+			 *          the product, its version, the identifier of the event, the name of the event and the severity.
+			 *          The eighth field is the extension, which does not belong to the header.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t HEADER_FIELDS = 7;
+
+			/**
+			 * \~russian
+			 * @brief Количество пар расширения, начиная с какого заводится указатель имён
+			 *
+			 * @details Ниже порога имя разыскивается перебором, и это дешевле всякого
+			 *          указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
+			 *          выделения памяти и подсчёта отпечатка на всякое имя.
+			 *
+			 * @note Порог держится равным порогу кодека INI намеренно: устройство хранения
+			 *       пар у обоих кодеков одно, и расхождение порогов означало бы расхождение
+			 *       замеров без всякого к тому основания
+			 *
+			 * \~english
+			 * @brief Number of the pairs of an extension starting from which the index of the names is created
+			 *
+			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any index.
+			 *
+			 * @note The threshold is intentionally kept equal to the codec INI threshold: both codecs share the same
+			 *       storage mechanism for these pairs, and a discrepancy between the thresholds would result
+			 *       in inconsistent measurements without any valid reason
+			 *
+			 * \~
+			 */
+			constexpr uint32_t INDEX_THRESHOLD = 16;
+
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина одной записи CEF в байтах
+			 *
+			 * @details Предел считается на запись целиком - вместе с приставкой, заголовком
+			 *          и расширением, - иначе перенос строки внутри значения давал бы обход предела.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of one CEF record in bytes
+			 *
+			 * @details The limit is counted over the record as a whole — together with the prefix, the header
+			 *          and the extension — otherwise a line break inside a value would give a bypass of the limit.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_RECORD = 0x100000;
 
 			/**
 			 * \~russian
@@ -257,73 +336,14 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Количество пар расширения, начиная с какого заводится указатель имён
-			 *
-			 * @details Ниже порога имя разыскивается перебором, и это дешевле всякого
-			 * указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
-			 * выделения памяти и подсчёта отпечатка на всякое имя
-			 *
-			 * @note Порог держится равным порогу кодека INI намеренно: устройство хранения
-			 * пар у обоих кодеков одно, и расхождение порогов означало бы расхождение
-			 * замеров без всякого к тому основания
+			 * @brief Наибольшая допустимая длина одного поля заголовка в байтах
 			 *
 			 * \~english
-			 * @brief Number of the pairs of an extension starting from which the index of the names is created
-			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
-			 * index
+			 * @brief Largest admissible length of one field of the header in bytes
 			 *
 			 * \~
 			 */
-			constexpr uint32_t INDEX_THRESHOLD = 16;
-
-			/**
-			 * \~russian
-			 * @brief Количество полей заголовка записи CEF
-			 *
-			 * @details Полей ровно семь: слово «CEF» с номером редакции, поставщик,
-			 * изделие, его редакция, опознаватель события, имя события и важность.
-			 * Восьмым полем идёт расширение, к заголовку не относящееся
-			 *
-			 * \~english
-			 * @brief Number of the fields of the header of a CEF record
-			 * @details There are exactly seven fields: the word «CEF» with the number of the version, the vendor,
-			 * the product, its version, the identifier of the event, the name of the event and the severity.
-			 * The eighth field is the extension, which does not belong to the header
-			 *
-			 * \~
-			 */
-			constexpr uint32_t HEADER_FIELDS = 7;
-
-			/**
-			 * \~russian
-			 * @brief Наивысшая редакция описания записи, разбору ведомая
-			 *
-			 * @details Описание ArcSight знает редакцию 0, живые устройства пишут и 1.
-			 *          Редакция высшая отвергается, а не разбирается на удачу: устройство
-			 *          заголовка редакцией и задаётся, и неизвестная редакция вправе
-			 *          нести иной набор полей
-			 *
-			 * \~english
-			 * @brief The highest revision of the record notation known to the parsing
-			 *
-			 */
-			constexpr uint32_t MAX_VERSION = 1;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшее допустимое значение важности события
-			 *
-			 * @details Описание дозволяет числа от нуля до десяти, где десять означает
-			 * событие наибольшей важности
-			 *
-			 * \~english
-			 * @brief Largest admissible value of the severity of an event
-			 * @details The specification allows the numbers from zero to ten, where ten means
-			 * an event of the greatest importance
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_SEVERITY = 10;
+			constexpr uint32_t MAX_HEADER_FIELD = 0x4000;
 
 			/**
 			 * \~russian
@@ -363,13 +383,15 @@ namespace awh {
 			 * @brief Окончание имени ключа, несущего имя парного ему поля
 			 *
 			 * @details Пара «cs1Label=IDSClass» и «cs1=not-suspicious» связывается именно
-			 * этим окончанием: ключ, оканчивающийся на него, задаёт человеческое имя
-			 * ключу, тем же началом обозначенному
+			 *          этим окончанием: ключ, оканчивающийся на него, задаёт человеческое имя
+			 *          ключу, тем же началом обозначенному.
 			 *
 			 * \~english
 			 * @brief Ending of the name of a key carrying the name of the field paired with it
-			 * @details The pair «cs1Label=IDSClass» and «cs1=not-suspicious» is linked precisely
-			 * by this ending
+			 *
+			 * @details The pair "cs1Label=IDSClass" and "cs1=not-suspicious" is linked precisely
+			 *          by this suffix: a key ending with it assigns a human-readable name
+			 *          to the key identified by the corresponding prefix.
 			 *
 			 * \~
 			 */
@@ -380,14 +402,17 @@ namespace awh {
 			 * @brief Запись даты, описанием ArcSight назначенная меткам времени
 			 *
 			 * @details Описание назначает меткам времени запись вида
-			 * «MMM dd yyyy HH:mm:ss.SSS zzz», и разбор её ведётся модулем `chrono_t`
-			 * с этой записью по умолчанию. Запись эта настройкой переопределяема:
-			 * живые устройства пишут метку и иначе, а описанию следуют не все
+			 *          «MMM dd yyyy HH:mm:ss.SSS zzz», и разбор её ведётся модулем `chrono_t`
+			 *          с этой записью по умолчанию. Запись эта настройкой переопределяема:
+			 *          живые устройства пишут метку и иначе, а описанию следуют не все.
 			 *
 			 * \~english
 			 * @brief Notation of a date appointed to the timestamps by the ArcSight specification
+			 *
 			 * @details The specification appoints to the timestamps the notation of the form
-			 * «MMM dd yyyy HH:mm:ss.SSS zzz»
+			 *          «MMM dd yyyy HH:mm:ss.SSS zzz», and it is processed by the `chrono_t`
+			 *          module using this default record format. This format can be overridden via configuration:
+			 *          live devices may write the timestamp differently, and not all of them adhere to the specification.
 			 *
 			 * \~
 			 */
@@ -398,8 +423,8 @@ namespace awh {
 			 * @brief Запись даты БЕЗ пояса времени
 			 *
 			 * @details Описание числит среди видов метки и запись без пояса - «MMM dd yyyy
-			 * HH:mm:ss», - и пояс в ней НЕОБЯЗАТЕЛЕН. Запись эта пробуется после видов,
-			 * настройками заданных, и лишь тогда, когда те не взялись
+			 *          HH:mm:ss», - и пояс в ней НЕОБЯЗАТЕЛЕН. Запись эта пробуется после видов,
+			 *          настройками заданных, и лишь тогда, когда те не взялись.
 			 *
 			 * @note Найдено сплошным оборотом по словарю 17.09.2026: метка «Sep 15 2026
 			 *       00:00:00» отвергалась строгим сличением, ибо оба вида настроек
@@ -415,6 +440,20 @@ namespace awh {
 			 * \~english
 			 * @brief Notation of a date WITHOUT a time zone
 			 *
+			 * @details The specification lists the format without a time zone—"MMM dd yyyy
+			 *          HH:mm:ss"—among the recognized timestamp formats, and the time zone component is optional.
+			 *          This format is attempted after the formats specified in the settings, and only if those fail to match.
+			 *
+			 * @note A continuous dictionary scan on September 17, 2026, revealed that the timestamp "Sep 15 2026
+			 *       00:00:00" was rejected during strict validation, as both format variants
+			 *       end with "%Z" and require a time zone specification. Consequently, 33 dictionary
+			 *       fields—all of which utilize that timestamp format—were rejected simultaneously
+			 *
+			 * @warning A timestamp lacking a timezone is parsed as local rather than UTC:
+			 *          the specification interprets the missing offset as the device's own timezone, and
+			 *          the system log code handling RFC 3164 dates follows the same convention.
+			 *          Parsing it as UTC would shift the timestamp by the timezone offset—silently and plausibly
+			 *
 			 * \~
 			 */
 			constexpr string_view TIMESTAMP_ZONELESS_FORMAT = "%b %d %Y %H:%M:%S";
@@ -424,11 +463,15 @@ namespace awh {
 			 * @brief Запись даты с долей секунды и БЕЗ пояса времени
 			 *
 			 * @details Довод тот же, каким заведена запись без пояса выше: доля секунды
-			 * описанием необязательна наравне с поясом, и живые устройства пишут все
-			 * четыре сочетания
+			 *          описанием необязательна наравне с поясом, и живые устройства пишут все
+			 *          четыре сочетания.
 			 *
 			 * \~english
 			 * @brief Notation of a date with a fraction of a second and WITHOUT a time zone
+			 *
+			 * @details The reasoning is the same as that used for the non-zone recording mentioned earlier:
+			 *          a fraction-of-a-second descriptor is just as unnecessary as the zone indicator,
+			 *          and real-world devices record all four combinations.
 			 *
 			 * \~
 			 */
@@ -439,27 +482,49 @@ namespace awh {
 			 * @brief Запись даты, метку времени с долей секунды несущую
 			 *
 			 * @details Живые устройства пишут метку и с долей секунды, и без неё, а
-			 * ОДНА запись обоих видов не покрывает: разбор записи «23:30:15.734 YEKT»
-			 * записью без доли секунды съедает «.734» полем зоны, зона остаётся
-			 * неразобранной, и метка МОЛЧА смещается на величину зоны. Оттого записей
-			 * держится две, а выбор между ними ведётся по самой метке
+			 *          ОДНА запись обоих видов не покрывает: разбор записи «23:30:15.734 YEKT»
+			 *          записью без доли секунды съедает «.734» полем зоны, зона остаётся
+			 *          неразобранной, и метка МОЛЧА смещается на величину зоны. Оттого записей
+			 *          держится две, а выбор между ними ведётся по самой метке.
 			 *
 			 * @warning Смещение это молчаливо: отказа разбор не выдаёт, и метка
-			 * недоверенного журнала обращается в иной момент времени, оставаясь на вид
-			 * правдоподобной. Замерено 04.09.2026: «Feb 17 2023 23:30:15.734 YEKT»
-			 * записью без доли секунды дало 18 февраля 02:30 вместо 17 февраля 21:30
+			 *          недоверенного журнала обращается в иной момент времени, оставаясь на вид
+			 *          правдоподобной. Замерено 04.09.2026: «Feb 17 2023 23:30:15.734 YEKT»
+			 *          записью без доли секунды дало 18 февраля 02:30 вместо 17 февраля 21:30
 			 *
 			 * @note Обратный случай ровно так же молчалив: запись С долей секунды на
-			 * метке БЕЗ доли захватывает цифры смещения зоны полем доли - «23:30:15
-			 * +0500» даёт долю «050», зона теряется, момент смещается. Оттого догадка
-			 * по виду метки ПРОВЕРЯЕТСЯ признаком пригодности, а при опущенном признаке
-			 * ведётся вторая попытка иной записью. По той же причине долю секунды
-			 * ВРОЗЬ от момента читать нельзя: в ней может лежать кусок часового пояса
+			 *       метке БЕЗ доли захватывает цифры смещения зоны полем доли - «23:30:15
+			 *       +0500» даёт долю «050», зона теряется, момент смещается. Оттого догадка
+			 *       по виду метки ПРОВЕРЯЕТСЯ признаком пригодности, а при опущенном признаке
+			 *       ведётся вторая попытка иной записью. По той же причине долю секунды
+			 *       ВРОЗЬ от момента читать нельзя: в ней может лежать кусок часового пояса
 			 *
 			 * \~english
 			 * @brief Notation of a date carrying a timestamp with a fraction of a second
-			 * @details The living devices write a timestamp both with a fraction of a second and without it,
-			 * while ONE notation does not cover both kinds
+			 *
+			 * @details Live devices write timestamps both with and without fractional seconds,
+			 *          yet a *single* record format cannot handle both cases: if a timestamp like "23:30:15.734 YEKT"
+			 *          is parsed using a format that lacks fractional seconds, the timezone field consumes
+			 *          the ".734" portion, leaving the timezone itself unparsed, and the timestamp silently
+			 *          shifts by the timezone offset. Consequently, two record variants are maintained,
+			 *          with the choice between them determined by the timestamp itself.
+			 *
+			 * @warning The shift occurs silently: the parser does not signal a failure,
+			 *          and the untrusted log timestamp is interpreted as belonging
+			 *          to a different point in time while appearing plausible.
+			 *          Measurement taken on September 4, 2026: a timestamp of
+			 *          "Feb 17 2023 23:30:15.734 YEKT"—recorded without the fractional
+			 *          seconds—resulted in February 18 at 02:30 instead of February 17 at 21:30
+			 *
+			 * @note The reverse scenario is equally ambiguous: a timestamp recording that
+			 *       includes the fractional second but omits the fractional component itself
+			 *       captures the zone offset digits within the fraction field—for instance,
+			 *       "23:30:15 +0500" yields a fraction of "050," causing the zone information
+			 *       to be lost and the timestamp to shift. Consequently, a hypothesis based
+			 *       on the timestamp's appearance is verified against a validity flag;
+			 *       if the flag is absent, a second attempt is made using a different recording format.
+			 *       For the same reason, the fractional second cannot be read in isolation
+			 *       from the rest of the timestamp: it may contain part of the time zone data.
 			 *
 			 * \~
 			 */
@@ -471,7 +536,7 @@ namespace awh {
 			 *
 			 * @details Всякий код перечня ВЫСТАВЛЯЕТСЯ на деле: код объявленный и нигде
 			 *          не выставляемый есть мёртвое обещание - потребитель пишет его
-			 *          разбор впустую, и поверить того нечем
+			 *          разбор впустую, и поверить того нечем.
 			 *
 			 * @note Одиннадцать кодов сняты 05.09.2026 при поверке достижимости, и вот
 			 *       по каким доводам: INVALID_ENCODING и UNSUPPORTED_ENCODING остались
@@ -489,6 +554,25 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief The codes of the refusals of the parsing and the writing
+			 *
+			 * @details Any code in a specification must be put into practice:
+			 *          code that is declared but never actually implemented
+			 *          is a dead promise—the consumer wastes effort writing
+			 *          code to handle it, yet has no way to verify it.
+			 *
+			 * @note Eleven codes were removed on September 5, 2026, during a reachability check,
+			 *       for the following reasons: INVALID_ENCODING and UNSUPPORTED_ENCODING were
+			 *       leftovers from a previously removed encoding setting (the standard mandates UTF-8,
+			 *       and no codec conversion is performed); INVALID_CHARACTER and INVALID_ESCAPE conflict
+			 *       with the decision to accept any octet and leave a backslash preceding
+			 *       an unknown character as-is; MISSING_SEPARATOR and INVALID_KEY are unreachable,
+			 *       as a pair lacking an equals sign or a key containing an invalid character
+			 *       is rejected during matching as UNKNOWN_KEY, whereas without matching,
+			 *       they are accepted by convention; TYPE_MISMATCH is covered by the codes INVALID_NUMBER,
+			 *       INVALID_ADDRESS, and INVALID_TIMESTAMP; UNEXPECTED_EOF is covered by INCOMPLETE_HEADER,
+			 *       since an extension cannot be truncated—a pair is either parsed or it is not;
+			 *       STORAGE_EXHAUSTED is unreachable given the size bit-depth; and INTERNAL
+			 *       and CONFLICTING_SETTINGS were never raised on any execution path
 			 *
 			 */
 			enum class error_t : uint8_t {
@@ -512,21 +596,22 @@ namespace awh {
 				UNKNOWN_FIELD         = 0x11, // Поле с таким именем записью не объявлено
 				UNREPRESENTABLE_VALUE = 0x12, // Значение такого вида запись CEF выразить не может
 				NESTED_VALUE          = 0x13, // Вложенное значение записи CEF неведомо
-				FILE_NOT_OPENED       = 0x14,  // Файл записей открыть не удалось
-				FILE_NOT_READ         = 0x15,  // Файл записей прочитать не удалось
-				VALUE_TOO_LONG        = 0x16,  // Длина значения превышает предел, словарём назначенный
-				MULTIPLE_RECORDS      = 0x17   // Файл несёт более одной записи, а документ держит одну
+				FILE_NOT_OPENED       = 0x14, // Файл записей открыть не удалось
+				FILE_NOT_READ         = 0x15, // Файл записей прочитать не удалось
+				VALUE_TOO_LONG        = 0x16, // Длина значения превышает предел, словарём назначенный
+				MULTIPLE_RECORDS      = 0x17  // Файл несёт более одной записи, а документ держит одну
 			};
 
 			/**
 			 * \~russian
 			 * @brief Виды событий чтения записи CEF
 			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a CEF record
-			 * @details The reading issues the events as the text is parsed without holding it in full
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
 			 *
 			 * \~
 			 */
@@ -544,14 +629,19 @@ namespace awh {
 			 * @brief Области записи CEF
 			 *
 			 * @details Области разделены не для удобства обхода, а по существу: правила
-			 * отмены знаков у них РАЗНЫЕ. В заголовке отменяются прямая черта и обратная
-			 * косая, а знак равенства отмены не требует; в расширении же отменяется знак
-			 * равенства, а черта и косая отмены не требуют
+			 *          отмены знаков у них РАЗНЫЕ. В заголовке отменяются прямая черта и обратная
+			 *          косая, а знак равенства отмены не требует; в расширении же отменяется знак
+			 *          равенства, а черта и косая отмены не требуют.
 			 *
 			 * \~english
 			 * @brief Areas of a CEF record
-			 * @details The areas are separated not for the convenience of the traversal but in essence: their rules
-			 * of the escaping of the characters are DIFFERENT
+			 *
+			 * @details The regions are distinguished not merely for the sake of traversal,
+			 *          but fundamentally: the rules for cancelling their signs differ.
+			 *          In the header, the forward slash and backslash are cancelled,
+			 *          whereas the equals sign requires no cancellation; in the extension,
+			 *          however, the equals sign is cancelled, while the forward slash
+			 *          and backslash do not require cancellation.
 			 *
 			 * \~
 			 */
@@ -567,14 +657,15 @@ namespace awh {
 			 * @brief Поля заголовка записи CEF
 			 *
 			 * @details Порядок членов отвечает порядку полей в записи и служит их
-			 * указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
-			 * заголовка запись не несёт вовсе
+			 *          указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
+			 *          заголовка запись не несёт вовсе.
 			 *
 			 * \~english
 			 * @brief Fields of the header of a CEF record
+			 *
 			 * @details The order of the members corresponds to the order of the fields in a record and serves as their
-			 * index: a field is parsed by the count rather than by the name, for the record does not carry
-			 * the names of the fields of the header at all
+			 *          index: a field is parsed by the count rather than by the name, for the record does not carry
+			 *          the names of the fields of the header at all.
 			 *
 			 * \~
 			 */
@@ -593,14 +684,15 @@ namespace awh {
 			 * @brief Строгость сличения ключей расширения со словарём
 			 *
 			 * @details Словарь расширений задаёт и человеческие имена ключам, и виды их
-			 * значений. Строгость сличения выбирается настройкой, а не зашита: журналы
-			 * живых устройств несут ключи, словарю неизвестные, и отказ на них
-			 * потребителю, собирающему записи с чужого оборудования, мешал бы
+			 *          значений. Строгость сличения выбирается настройкой, а не зашита: журналы
+			 *          живых устройств несут ключи, словарю неизвестные, и отказ на них
+			 *          потребителю, собирающему записи с чужого оборудования, мешал бы.
 			 *
 			 * \~english
 			 * @brief Strictness of the matching of the keys of an extension against the dictionary
+			 *
 			 * @details The dictionary of the extensions gives both the human-readable names to the keys and the kinds of their
-			 * values. The strictness of the matching is chosen by a setting rather than being hardwired
+			 *          values. The strictness of the matching is chosen by a setting rather than being hardwired.
 			 *
 			 * \~
 			 */
@@ -616,12 +708,14 @@ namespace awh {
 			 * @brief Виды значений словаря расширений
 			 *
 			 * @details Вид берётся из словаря по ключу, а не угадывается по виду знаков:
-			 * угадывание порождает разночтения - «011» разбирается то восьмеричным, то
-			 * десятичным, а «1.10» числом теряет разряд
+			 *          угадывание порождает разночтения - «011» разбирается то восьмеричным, то
+			 *          десятичным, а «1.10» числом теряет разряд.
 			 *
 			 * \~english
 			 * @brief Kinds of the values of the dictionary of the extensions
-			 * @details The kind is taken from the dictionary by the key rather than guessed by the appearance of the characters
+			 *
+			 * @details The kind is taken from the dictionary by the key rather than
+			 *          guessed by the appearance of the characters.
 			 *
 			 * \~
 			 */
@@ -644,15 +738,19 @@ namespace awh {
 			 * @brief Правила обращения с пустым значением расширения
 			 *
 			 * @details Запись «cs3=» описанием ArcSight не оговорена вовсе - ни разрешена,
-			 * ни запрещена, - но в живых журналах обычна и образует пару с меткой
-			 * «cs3Label=CVEID». Умолчанием берётся пустая последовательность знаков:
-			 * обращение её в логическую истину отдавало бы потребителю утверждение,
-			 * какого в записи не было
+			 *          ни запрещена, - но в живых журналах обычна и образует пару с меткой
+			 *          «cs3Label=CVEID». Умолчанием берётся пустая последовательность знаков:
+			 *          обращение её в логическую истину отдавало бы потребителю утверждение,
+			 *          какого в записи не было.
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of an empty value of an extension
-			 * @details The record «cs3=» is not stipulated by the ArcSight specification at all — neither allowed
-			 * nor forbidden — but in the living logs it is common
+			 *
+			 * @details The "cs3=" entry is not defined at all in the ArcSight specification—neither
+			 *          permitted nor prohibited—yet it is common in actual logs, where it pairs
+			 *          with the "cs3Label=CVEID" tag. It defaults to an empty string; treating
+			 *          this as logically true would convey an assertion to the consumer that
+			 *          was not present in the record.
 			 *
 			 * \~
 			 */
@@ -668,14 +766,18 @@ namespace awh {
 			 * @brief Правила обращения с вложенностью при записи дерева в запись CEF
 			 *
 			 * @details Дерева произвольной глубины запись CEF не несёт, и значение
-			 * вложенное выразить ей нечем. Выбор исхода принадлежит не кодеку, а тому,
-			 * кто пишет: молчаливое обращение в знаки оставляло бы потребителя с
-			 * записью, которая разбирается, но означает иное
+			 *          вложенное выразить ей нечем. Выбор исхода принадлежит не кодеку, а тому,
+			 *          кто пишет: молчаливое обращение в знаки оставляло бы потребителя с
+			 *          записью, которая разбирается, но означает иное.
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of a nesting at the writing of a tree into a CEF record
-			 * @details A CEF record does not carry a tree of an arbitrary depth, and it has nothing to express
-			 * a nested value with
+			 *
+			 * @details The CEF format does not support trees of arbitrary depth, nor does it
+			 *          provide a way to express nested values. The choice of how to handle this
+			 *          falls not on the codec, but on the writer: silently converting the data
+			 *          into tokens would leave the consumer with a record that is parsable but
+			 *          conveys a different meaning.
 			 *
 			 * \~
 			 */
@@ -690,44 +792,26 @@ namespace awh {
 			 * @brief Положение в исходном тексте
 			 *
 			 * @details Положение несёт и смещение в байтах от начала текста, и номер
-			 * строки со столбцом: смещение годится для отсылки к куску текста, а строка
-			 * со столбцом - для сообщения человеку
+			 *          строки со столбцом: смещение годится для отсылки к куску текста, а строка
+			 *          со столбцом - для сообщения человеку.
 			 *
 			 * \~english
 			 * @brief Position in the source text
-			 * @details The position carries both the offset in bytes from the beginning of the text and the number
-			 * of the line with the column
+			 *
+			 * @details The position includes both the byte offset from the beginning of
+			 *          the text and the line and column numbers: the offset is suitable
+			 *          for referencing a segment of text, while the line and column are
+			 *          for communicating with a human.
 			 *
 			 * \~
 			 */
-			/**
-			 * \~russian
-			 * @brief Метод получения текста сообщения об ошибке разбора
-			 *
-			 * @details Текст выдаётся на английском языке и предназначен журналу, а не
-			 * потребителю: разбирать отказы надлежит по коду, а не по тексту
-			 *
-			 * @param error код ошибки разбора
-			 * @return      текст сообщения об ошибке разбора
-			 *
-			 * \~english
-			 * @brief Method of getting the text of the message about an error of the parsing
-			 * @details The text is issued in the English language and is intended for the log rather than for the
-			 * consumer: the refusals ought to be discerned by the code rather than by the text
-			 * @param error error code of the parsing
-			 * @return      text of the message about an error of the parsing
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
-
 			typedef struct __AWH_SHARED_EXPORT__ Position {
-				// Смещение в байтах от начала текста
-				uint64_t offset;
 				// Номер строки, считая от единицы
 				uint64_t line;
 				// Номер столбца в байтах, считая от единицы
 				uint64_t column;
+				// Смещение в байтах от начала текста
+				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -738,8 +822,31 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Position() noexcept : offset(0), line(1), column(1) {}
+				explicit Position() noexcept;
 			} pos_t;
+
+			/**
+			 * \~russian
+			 * @brief Метод получения текста сообщения об ошибке разбора
+			 *
+			 * @details Текст выдаётся на английском языке и предназначен журналу, а не
+			 *          потребителю: разбирать отказы надлежит по коду, а не по тексту.
+			 *
+			 * @param error код ошибки разбора
+			 * @return      текст сообщения об ошибке разбора
+			 *
+			 * \~english
+			 * @brief Method of getting the text of the message about an error of the parsing
+			 *
+			 * @details The text is issued in the English language and is intended for the log rather than for the
+			 *          consumer: the refusals ought to be discerned by the code rather than by the text.
+			 *
+			 * @param error error code of the parsing
+			 * @return      text of the message about an error of the parsing
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
 		}
 	}
 }

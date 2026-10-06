@@ -121,12 +121,20 @@ fi
 # «ws2_32», и без неё связывание стенда отказывает
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
 	#
 	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
 	#       связывание отказывает на средствах Objective-C
 	#
 	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	#
+	# @warning Системам Sun нужны «libsocket» и «libnsl» отдельно: `if_nametoindex` и
+	#          `getsockopt` в варианте xnet, какие зовут «src/net/addr.cpp» и
+	#          «src/sys/procre.cpp», живут там, а не в libc. Без них связывание стенда
+	#          отказывает «symbol referencing errors» на OpenIndiana (замер 06.10.2026:
+	#          на Solaris тот же набор сходился, а на illumos — нет)
+	#
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	#
 	# @note Основа «-lutil» потребна слою процессов: «src/sys/procre.cpp» зовёт у FreeBSD
 	#       «kinfo_getproc», и без неё связывание стенда отказывает (замер 06.10.2026 на
@@ -134,6 +142,23 @@ case "$(uname -s)" in
 	#
 	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
 	*) SYSTEM_LIBS="" ;;
+esac
+
+#
+# Разновидность связывания библиотеки стандартных средств под Windows
+#
+# @details Учёт выделений памяти набора замеров держит перегрузка `operator new` в
+#          самом двоичном файле. Под MinGW библиотека стандартных средств подключается
+#          отдельной библиотекой исполнения, и выдачи, выполненные её нешаблонным кодом,
+#          замене не видны: рост строки `std::string` учётом не считается вовсе. Замер
+#          06.10.2026 на стенде Windows 11 - 0 выдач против 16 при связывании со
+#          статической библиотекой. Оттого здесь связывание статическое
+#
+# @warning Страж `counted` нулевой расход не скрывает - он объявляет измерение
+#          недействительным, - но самой меры без этого ключа не будет вовсе
+#
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) OPTIONS="$OPTIONS -static-libstdc++ -static-libgcc" ;;
 esac
 
 # Выводим сообщение о начале сборки стенда

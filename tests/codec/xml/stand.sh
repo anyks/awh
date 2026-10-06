@@ -126,7 +126,7 @@ fi
 # «ws2_32», и без неё связывание стенда отказывает
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
 	#
 	# @note Основа «Foundation» потребна слою файловой системы: «src/sys/fs.cpp» зовёт у
 	#       macOS «NSFileManager», и без неё связывание отвечает отсутствием знаков

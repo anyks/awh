@@ -738,6 +738,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <ctime>
 #include <string>
 #include <unordered_map>
 

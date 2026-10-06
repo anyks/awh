@@ -241,7 +241,15 @@ fi
 # «ws2_32», и без неё связывание стенда отказывает
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
+	#
+	# @warning Системам Sun нужны «libsocket» и «libnsl» отдельно: `if_nametoindex` и
+	#          `getsockopt` в варианте xnet, какие зовут «src/net/addr.cpp» и
+	#          «src/sys/procre.cpp», живут там, а не в libc. Без них связывание стенда
+	#          отказывает «symbol referencing errors» на OpenIndiana (замер 06.10.2026:
+	#          на Solaris тот же набор сходился, а на illumos — нет)
+	#
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 

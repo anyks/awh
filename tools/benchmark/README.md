@@ -207,5 +207,103 @@ cmake --build build-release --target awh_BENCHMARK_net -j 8
   три-семь процентов, нормированная по `inih` (дрейф 0.99-1.04), встала на уровень августа.
 * **Собранные двоичные файлы в дерево не кладутся** — стенные каталоги `/tmp/rival-*`.
 
+## Выключатель хода для замера доли
+
+Долю чужого хода снимают выключением, а не профилем: профиль ловит лишь вершину стека. Для этого
+заведён `tools/benchmark/ablate.sh` — он копирует файл, вставляет выключатель после строки, названной
+меткой, пересобирает библиотеку, пересвязывает стенд в `OUT/exp`, возвращает файл из копии, пересобирает
+библиотеку принятым кодом и докладывает пути двух бинарников (`OUT/base`, `OUT/exp`), которые гоняют
+вперемешку тремя кругами и сводят медианой отношений.
+
+```sh
+OUT=/tmp/ablate-yaml sh tools/benchmark/ablate.sh yaml src/codec/yaml/common.cpp \
+	"type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) noexcept {" \
+	"return type_t::STRING;" tools/benchmark/yaml/awh-tree.cpp
+```
+
+* Снятие — верхняя граница доли: выключается ход целиком, вместе с работой неотъемлемой, и в отчёте
+  число называют потолком, а не обещанием правки.
+* Базисный бинарник связывается библиотекой, собранной ДО правки; сценарий делает это первым шагом,
+  поэтому запускать его надо на чистом дереве.
+* Мера проверена на живом случае: потолок разрешения вида значения в дереве YAML этим порядком даёт
+  1.113 против 1.112, снятых ручными правками (`2026-10-06/yaml-resolve-ablation.txt`).
+* Наборы проверок и внутренних замеров стендом не считаются: у них своя приёмка, и выключенный ход
+  обязан в ней падать, а не проходить.
+* Выключаемый ход обязан **не менять наблюдаемый результат**: проба снять выдачу событий у ABC
+  (`Reader::emit`, `src/codec/abc/reader.cpp:389`) оставила чтение пустым, стенд ответил
+  «reading failed», и отношение тут мерит не долю, а сломанную работу. Годятся снятые проверка
+  кодировки, разрешение вида, учёт позиции — всё, что остаётся внутри годного разбора.
+
+### Готовые выключатели по кодекам
+
+Команды круга 06.10.2026, которыми сняты названные в отчётах потолки. Базисный бинарник
+сценарий связывает библиотекой ДО правки, дерево возвращает сам, потому запускать их можно
+прямо по месту:
+
+```sh
+# разрешение вида значения в YAML: потолок 1.192 на numbers, 1.161 на large
+OUT=/tmp/ablate-yaml sh tools/benchmark/ablate.sh yaml src/codec/yaml/common.cpp \
+	"type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) noexcept {" \
+	"return type_t::STRING;" tools/benchmark/yaml/awh-tree.cpp
+
+# проверка кодировки UTF-8 в ABC: потолок 1.993 на strings
+OUT=/tmp/ablate-abc-utf8 sh tools/benchmark/ablate.sh abc src/codec/abc/encoding.cpp \
+	"bool awh::codec::abc::utf8(const uint8_t * buffer, const size_t size, size_t & position) noexcept {" \
+	"position = size; return true;" tools/benchmark/abc/awh.cpp
+
+# усечение буфера читателя ABC: потолок 0.984…1.003, то есть доли нет
+OUT=/tmp/ablate-abc-trim sh tools/benchmark/ablate.sh abc src/codec/abc/reader.cpp \
+	"void awh::codec::abc::Reader::trim() noexcept {" "return;" tools/benchmark/abc/awh.cpp
+
+# поверка повторяющихся имён в JSON: потолок 1.117 на objects, 1.059 на small
+OUT=/tmp/ablate-json sh tools/benchmark/ablate.sh json src/codec/json/document.cpp \
+	"bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader_t & reader) noexcept {" \
+	"return true;" tools/benchmark/json/awh.cpp
+```
+
+Места, где выключать нельзя, потому что меняется наблюдаемый результат, — мера там только
+правкой с парным прогоном: выдача событий `abc::Reader::emit` (чтение становится пустым),
+таблица написаний `matches` у YAML (виды значений) и общие помощники в разборе дерева CEF
+(`src/codec/cef/document.cpp:452`, `:534`, `:777`).
+
+## Приёмка на кластере: что требуют платформы
+
+Стенды проверок (`tests/codec/*/stand.sh`) и внутренних замеров
+(`benchmark/codec/*/stand.sh`) раскладываются по машинам 192.168.53.0/24, и каждая
+система берёт своё у бортовой сборки:
+
+* **Корень GoogleTest** задаётся доводом `GTEST_ROOT`; умолчание стенда — `/usr`, а под
+  `pkgsrc` и `ports` набор живёт иначе: NetBSD — `/usr/pkg`, OpenBSD, DragonFly и
+  Solaris — `/usr/local`, OpenIndiana, Debian и Fedora — `/usr`.
+* **DragonFly 6.4** бортовым `g++ 8.3` не собирает ни один набор: кириллические знаки в
+  именовании тот собиратель не принимает («stray '\320' in program»), и лечится это
+  портом — `CXX=g++14 GTEST_ROOT=/usr/local`. Одного `CXX=g++14` мало: `libgtest` там
+  лежит в `/usr/local`, и без корня связывание валится на `-lgtest`. Проверено 06.10.2026
+  на стенде `yaml` — 420 проверок, все зелены.
+* **Снимок дерева** обязан уходить в `ustar` без расширенных знаков
+  (`COPYFILE_DISABLE=1 tar --format ustar --no-xattrs`): штатный `tar` Solaris и
+  OpenIndiana заголовков PAX не понимает и отвечает ненулевым кодом даже тогда, когда
+  всё легло, а по `|| exit 1` при раскрытии прогон гибнет целиком. Внутренним наборам
+  замера, кроме `include`, `src`, `tests` и `benchmark`, нужны ещё `tools/benchmark/syscount`
+  и `submodules/zlib` — без них те не собираются.
+* **На системах Sun** штатный `/usr/bin/grep` не знает ни `-E`, ни перечня `-e` — разбор
+  журнала прогона ведут `egrep` с одним шаблоном, иначе опрос отвечает пустотой, а не
+  отказом.
+* **На стенде MSYS2** (`192.168.53.177`) порядок путей решает всё: в `PATH`, где `/usr/bin` стоит
+  первым, знак `c++` разрешается в собиратель самой MSYS, и связывание с заголовками `/mingw64`
+  разваливается на `_CRTIMP does not name a type` в `stddef.h`. Стенд зовут явно:
+  `CXX=/mingw64/bin/g++ GTEST_ROOT=/mingw64`, а `/usr/bin` в перечне держать лишь ради
+  `tar`/`gzip`. Проверено 06.10.2026: набор проверок CEF собирается и даёт 97 зелёных при
+  одиннадцати отложенных (символьные ссылки и локали — штатное отложение на Windows).
+* **Учёт выдач памяти на Windows держит статическое связывание.** Меру ведёт не `syscount`, а
+  перегрузка `operator new` в `benchmark/main.cpp`: под MinGW библиотека стандартных средств
+  подключается отдельной `libstdc++-6.dll`, и выдачи, выполненные её нешаблонным кодом, замене
+  в приложении не видны. Проба 06.10.2026 на том же стенде: рост `std::string` даёт 0 выдач при
+  связывании динамическом и 16 при `-static-libstdc++`, рост `std::vector` (весь шаблонный)
+  виден обоим. Без ключа всякий сценарий выделений на Windows отвечает «учёт выделений памяти не
+  работает: замена оператора не видна» — страж `counted` меру не скрывает, но и снять её нечем.
+  Ключ `-static-libstdc++ -static-libgcc` внесён в девять скриптов `benchmark/codec/*/stand.sh`
+  отдельной веткой `case` сразу за перечнем системных библиотек.
+
 Полный отчёт со сведёнными результатами: [benchmark/net/io/README.md](../../benchmark/net/io/README.md).
 Отдельный разбор структур дедлайнов: [benchmark/net/io/TIMERS.md](../../benchmark/net/io/TIMERS.md).
