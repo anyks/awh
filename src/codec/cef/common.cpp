@@ -43,7 +43,7 @@ using namespace std;
  *
  * \~
  */
-const char * awh::codec::cef::Positio:: Position() noexcept :
+awh::codec::cef::Position::Position() noexcept :
  line(1), column(1), offset(0) {}
 
 /**
