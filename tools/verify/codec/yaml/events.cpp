@@ -61,6 +61,13 @@ int main(int argc, char ** argv){
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
 	awh::fmk::initialize();
+	/**
+	 * Выполняем отключение выдачи журнала СРАЗУ ПОСЛЕ заведения модуля
+	 *
+	 * @note Порядок этот и есть смысл: `initialize` назначает приёмники сам, и
+	 *       отключение, поставленное до него, оказывается перезаписанным
+	 */
+	Silent silent;
 	std::ifstream file(argv[1], std::ios::binary);
 	std::stringstream stream; stream << file.rdbuf();
 	const std::string text = stream.str();
