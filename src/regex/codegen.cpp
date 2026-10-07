@@ -4484,7 +4484,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Выполняем переход к попытке сопоставления в отобранной позиции
 		emitter.jump(entry);
 	// Если отбор позиций ведётся просеиванием по таблице
-	} else if(sifting){
+	} else if(sifting) {
 		// Признак размещения векторного поиска непрерывного диапазона
 		bool ranged = false;
 		/**
@@ -4527,23 +4527,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			const size_t number = this->sieve();
 			// Выполняем расстановку метки просеивания позиций начала попытки
 			emitter.aligned(sifter);
-			/**
-			 * Выполняем чтение адреса таблицы допустимых начальных байтов
-			 *
-			 * @details Таблица у просеивания одна на все позиции, отчего адрес её
-			 *          читается единожды на входе, а виток ведётся меткою за этим
-			 *          чтением: прежнее чтение на всякой позиции шло обращением
-			 *          к памяти впустую и удлиняло цепочку зависимых чтений звеном.
-			 *          Входом в просеивание остаётся метка просеивания: рестарт
-			 *          после отказа попытки регистр адреса затирает, отчего чтение
-			 *          на входе ему и нужно.
-			 *
-			 */
-			emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
-			// Заводим метку витка просеивания позиций начала попытки
-			const size_t siftloop = emitter.label();
-			// Выполняем расстановку метки витка просеивания
-			emitter.aligned(siftloop);
 			// Выполняем сравнение позиции начала попытки с размером текста
 			emitter.compare(reg_t::KEEPER, reg_t::SIZE);
 			/**
@@ -4557,6 +4540,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			emitter.branch(cond_t::ABOVE, none);
 			// Выполняем чтение байта текста в позиции начала попытки
 			emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::KEEPER);
+			// Выполняем чтение адреса таблицы допустимых начальных байтов
+			emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 			// Выполняем чтение допустимости байта в начале совпадения
 			emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
 			// Выполняем сравнение допустимости байта с нулём
@@ -4566,7 +4551,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Переходим к следующей позиции начала попытки сопоставления
 			emitter.add(reg_t::KEEPER, reg_t::KEEPER, 1);
 			// Выполняем переход к просеиванию позиции следующей
-			emitter.jump(siftloop);
+			emitter.jump(sifter);
 		}
 	}
 	/**

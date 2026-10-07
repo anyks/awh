@@ -91,7 +91,7 @@ namespace {
 	/**
 	 * @brief Функция получения длины последовательности знака по её первому байту
 	 *
-	 * @details Тело общее - `awh::utf8::sequence`, лежащее в единице трансляции
+	 * @details Тело общее - `utf8::sequence`, лежащее в единице трансляции
 	 *          кодировщика. Правило ведущего байта оттого и общее, что местные его
 	 *          списки разъехались: этот принимал `C0`, `C1` и байты свыше `F4`
 	 *          ведущими, а общий модуль их отвергает - запись ими длиннее необходимой
@@ -107,7 +107,7 @@ namespace {
 	 */
 	static size_t length(const uint8_t letter) noexcept {
 		// Выводим длину по общему телу, лежащему в единице трансляции кодировщика
-		return awh::utf8::sequence(letter);
+		return utf8::sequence(letter);
 	}
 };
 
@@ -152,7 +152,7 @@ bool awh::codec::json::isChar(const uint32_t code) noexcept {
 /**
  * @brief Метод чтения кодового значения из текста в кодировке UTF-8
  *
- * @details Тело общее - `awh::utf8::decode`: правило ведущего октета, пределы
+ * @details Тело общее - `utf8::decode`: правило ведущего октета, пределы
  *          первого продолжающего и длина наибольшей годной части держатся в одном
  *          месте для всех кодековю
  *
@@ -171,7 +171,7 @@ bool awh::codec::json::isChar(const uint32_t code) noexcept {
  */
 uint32_t awh::codec::json::decode(const char * buffer, const size_t size, size_t & length) noexcept {
 	// Выводим прочитанное общим телом, лежащим в единице трансляции кодировщика
-	return awh::utf8::decode(buffer, size, length);
+	return utf8::decode(buffer, size, length);
 }
 /**
  * @brief Метод извлечения кодовой точки из последовательности UTF-8
@@ -210,7 +210,7 @@ uint32_t awh::codec::json::decode(const char * buffer, const size_t size, size_t
  */
 bool awh::codec::json::encode(const uint32_t code, string & result) noexcept {
 	// Выводим запись общим телом, лежащим в единице трансляции кодировщика
-	return awh::utf8::encode(code, result);
+	return utf8::encode(code, result);
 }
 /**
  * @brief Метод определения кодировки по метке порядка байтов
@@ -370,7 +370,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				// Длина прочитанной последовательности знака
 				size_t length = 0;
 				// Выполняем чтение кодового значения удержанного знака
-				const uint32_t code = decode(this->_pending, this->_length, length);
+				const uint32_t code = utf8::decode(this->_pending, this->_length, length);
 				/**
 				 * Если удержанная последовательность знака построена ошибочно
 				 */
@@ -490,7 +490,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				// Длина прочитанной последовательности знака
 				size_t length = 0;
 				// Выполняем чтение кодового значения знака
-				const uint32_t code = decode(buffer + offset, size - offset, length);
+				const uint32_t code = utf8::decode(buffer + offset, size - offset, length);
 				/**
 				 * Если последовательность знака построена ошибочно
 				 */
@@ -1048,7 +1048,7 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		// Длина прочитанной последовательности знака
 		size_t length = 0;
 		// Выполняем чтение кодового значения знака
-		const uint32_t code = decode(buffer + offset, size - offset, length);
+		const uint32_t code = utf8::decode(buffer + offset, size - offset, length);
 		/**
 		 * Если последовательность знака построена ошибочно
 		 */
@@ -1158,7 +1158,7 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 		// Длина прочитанной последовательности знака
 		size_t length = 0;
 		// Выполняем чтение кодового значения удержанного знака
-		const uint32_t code = decode(this->_pending, this->_length, length);
+		const uint32_t code = utf8::decode(this->_pending, this->_length, length);
 		/**
 		 * Если удержанная последовательность знака построена ошибочно
 		 */

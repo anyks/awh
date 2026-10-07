@@ -27,8 +27,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/xml/writer.hpp>
 #include <sys/log.hpp>
+#include <codec/xml/writer.hpp>
+#include <encoding/unicode/utf8.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -48,7 +49,7 @@ namespace {
 	 * @return       признак пересечения
 	 *
 	 */
-	bool overlaps(const std::string & buffer, const std::string_view text) noexcept {
+	bool overlaps(const string & buffer, const string_view text) noexcept {
 		// Пустой срез не содержит байтов, требующих сохранения
 		if(text.empty())
 			// Выводим отсутствие пересечения
@@ -58,11 +59,6 @@ namespace {
 		// Учитываем также завершающий нулевой байт строки
 		return (before(text.data(), buffer.data() + buffer.size() + 1) && before(buffer.data(), text.data() + text.size()));
 	}
-	/**
-	 * Пространство имён контейнера XML
-	 */
-	using namespace awh::codec::xml;
-
 };
 
 /**
@@ -70,7 +66,10 @@ namespace {
  *
  */
 awh::codec::xml::Settings::Settings() noexcept :
- format(format_t::COMPACT), collapse(true), escapeNonAscii(false), indent(1), separator(separator_t::TABS), maxDepth(0) {}
+ format(format_t::COMPACT), collapse(true),
+ escapeNonAscii(false), indent(1),
+ separator(separator_t::TABS), maxDepth(0) {}
+
 /**
  * @brief Метод завершения незакрытой метки узла
  *
@@ -124,8 +123,8 @@ void awh::codec::xml::Writer::indent() noexcept {
  * @brief Метод проверки последовательности знаков на пригодность к записи
  *
  * @details Проверяются и построение записи UTF-8, и допустимость самих знаков в
- * разметке: последовательность попадает в текст как есть, экранированию не подлежит,
- * и негодный знак прочёлся бы обратно уже негодной разметкой
+ *          разметке: последовательность попадает в текст как есть, экранированию не подлежит,
+ *          и негодный знак прочёлся бы обратно уже негодной разметкой.
  *
  * @note Применяется там, где экранирование договором запрещено - в примечании, в
  * дословном разделе и в указании обработчику
@@ -142,7 +141,7 @@ bool awh::codec::xml::Writer::verify(const string_view text) noexcept {
 		// Длина прочитанной последовательности знака
 		size_t length = 0;
 		// Выполняем чтение кодового значения очередного знака
-		const uint32_t code = decode(text.data() + i, text.length() - i, length);
+		const uint32_t code = utf8::decode(text.data() + i, text.length() - i, length);
 		/**
 		 * Если знак прочитать не удалось
 		 */
@@ -179,7 +178,7 @@ bool awh::codec::xml::Writer::escape(const string_view text, const bool attribut
 		// Длина прочитанной последовательности знака
 		size_t length = 0;
 		// Выполняем чтение кодового значения очередного знака
-		const uint32_t code = decode(text.data() + i, text.length() - i, length);
+		const uint32_t code = utf8::decode(text.data() + i, text.length() - i, length);
 		/**
 		 * Если знак прочитать не удалось
 		 */
@@ -325,8 +324,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 				if(!this->_scopes[i - 1].uri.empty() && !attribute){
 					/**
 					 * Если имя объявления узлу уже записано
-					 */
-					/**
+					 *
 					 * @note Отказ этот НЕДОСТИЖИМ и оттого не покрыт: отведение имени
 					 *       отвергает лишь ПОВТОР его у одной метки, а имя объявления по
 					 *       умолчанию у метки одно. Узел, объявивший своё умолчание,
@@ -466,8 +464,7 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	}
 	/**
 	 * Если имя объявления узлу уже записано
-	 */
-	/**
+	 *
 	 * @note Отказ этот НЕДОСТИЖИМ и оттого не покрыт: подбор выше перебирает счётчик до
 	 *       имени, ни одному действующему связыванию не принадлежащего, а всякое имя вида
 	 *       `xmlns:X`, отведённое у этой метки, отвечает действующему связыванию `X` -
@@ -669,20 +666,18 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	/**
 	 * Если имя открываемого узла построено ошибочно
 	 */
-	if(!nameable(local, verbatim)){
+	if(!nameable(local, verbatim))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAME);
-	}
 	/**
 	 * Если корневой узел разметки в тексте уже записан
 	 *
 	 * @note Правильно построенный текст разметки вмещает единственный корневой
 	 *       узел, и второй такой узел записи не подлежит
 	 */
-	if((this->_depth == 0) && this->_root){
+	if((this->_depth == 0) && this->_root)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::MULTIPLE_ROOTS);
-	}
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
 	/**
@@ -702,10 +697,9 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *       бы отвергать дерево, разобранное с поднятым пределом глубины, - разобранное
 	 *       обязано записываться обратно
 	 */
-	if((this->_settings.maxDepth > 0) && (this->_depth >= this->_settings.maxDepth)){
+	if((this->_settings.maxDepth > 0) && (this->_depth >= this->_settings.maxDepth))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::DEPTH_EXCEEDED);
-	}
 	/**
 	 * Если объемлющий узел записывается в одну строку
 	 *
@@ -1111,31 +1105,27 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	/**
 	 * Если метка узла уже завершена
 	 */
-	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
+	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_ATTRIBUTE);
-	}
 	/**
 	 * Если префикс объявления построен ошибочно
 	 */
-	if(!prefix.empty() && !nameable(prefix, false)){
+	if(!prefix.empty() && !nameable(prefix, false))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_PREFIX);
-	}
 	/**
 	 * Если выполняется попытка переопределить отведённый договором префикс
 	 */
-	if((prefix.compare("xmlns") == 0) || ((prefix.compare("xml") == 0) && (uri.compare(XML_NAMESPACE) != 0))){
+	if((prefix.compare("xmlns") == 0) || ((prefix.compare("xml") == 0) && (uri.compare(XML_NAMESPACE) != 0)))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::RESERVED_PREFIX);
-	}
 	/**
 	 * Если объявлению для префикса дано пустое обозначение
 	 */
-	if(!prefix.empty() && uri.empty()){
+	if(!prefix.empty() && uri.empty())
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAMESPACE);
-	}
 	/**
 	 * Если обычному префиксу дано отведённое договором пространство имён
 	 *
@@ -1143,20 +1133,18 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	 *          иному: связывание с ним чужого префикса запрещено наравне с
 	 *          переопределением самого префикса
 	 */
-	if(!prefix.empty() && (prefix.compare("xml") != 0) && (uri.compare(XML_NAMESPACE) == 0)){
+	if(!prefix.empty() && (prefix.compare("xml") != 0) && (uri.compare(XML_NAMESPACE) == 0))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::RESERVED_PREFIX);
-	}
 	/**
 	 * Если объявлению дано пространство имён объявлений
 	 *
 	 * @details Пространство имён это отведено самим объявлениям и связыванию не
 	 *          подлежит ни префиксом, ни объявлением по умолчанию
 	 */
-	if(uri.compare(XMLNS_NAMESPACE) == 0){
+	if(uri.compare(XMLNS_NAMESPACE) == 0)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAMESPACE);
-	}
 	/**
 	 * Если объявлению по умолчанию дано отведённое договором пространство имён
 	 *
@@ -1164,10 +1152,9 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	 *       текст, который собственное чтение отвергает, - и обнаружилось бы это
 	 *       уже у принимающей стороны
 	 */
-	if(prefix.empty() && (uri.compare(XML_NAMESPACE) == 0)){
+	if(prefix.empty() && (uri.compare(XML_NAMESPACE) == 0))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAMESPACE);
-	}
 	// Действующее пространство имён переопределяемого префикса
 	string_view previous;
 	// Пустой префикс без объявления означает отсутствие пространства имён
@@ -1294,10 +1281,9 @@ bool awh::codec::xml::Writer::text(const string_view text) noexcept {
 	/**
 	 * Если содержимое записывается вне корневого узла
 	 */
-	if(this->_depth == 0){
+	if(this->_depth == 0)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::CONTENT_OUTSIDE_ROOT);
-	}
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
 	// Запоминаем, что узел содержит вложенное содержимое
@@ -1326,20 +1312,18 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
 	/**
 	 * Если содержимое записывается вне корневого узла
 	 */
-	if(this->_depth == 0){
+	if(this->_depth == 0)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::CONTENT_OUTSIDE_ROOT);
-	}
 	/**
 	 * Если содержимое содержит последовательность конца дословного раздела
 	 *
 	 * @note Разрезать такое содержимое на несколько разделов запись не станет:
 	 *       вызывающий записывает не то, что имел в виду, и знать об этом обязан
 	 */
-	if(text.find("]]>") != string_view::npos){
+	if(text.find("]]>") != string_view::npos)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_CDATA);
-	}
 	/**
 	 * Если содержимое раздела построено ошибочно
 	 */
@@ -1440,24 +1424,21 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
 	 *          разделителем, а разбор с выключенным разрешением префиксов такую цель
 	 *          принимает - разобранное дерево обратно бы не записывалось
 	 */
-	if(!nameable(target, true)){
+	if(!nameable(target, true))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_PROCESSING);
-	}
 	/**
 	 * Если целью указания обработчику является отведённое договором имя
 	 */
-	if((target.length() == 3) && ((target[0] | 0x20) == 'x') && ((target[1] | 0x20) == 'm') && ((target[2] | 0x20) == 'l')){
+	if((target.length() == 3) && ((target[0] | 0x20) == 'x') && ((target[1] | 0x20) == 'm') && ((target[2] | 0x20) == 'l'))
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::RESERVED_PROCESSING);
-	}
 	/**
 	 * Если данные указания обработчику содержат его завершение
 	 */
-	if(text.find("?>") != string_view::npos){
+	if(text.find("?>") != string_view::npos)
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_PROCESSING);
-	}
 	/**
 	 * Если данные указания обработчику построены ошибочно
 	 */
@@ -1587,9 +1568,9 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 	 * Если записываемый узел непригоден
 	 *
 	 * @details Отказ этот внутренним изъяном кодека НЕ является: узел передан извне, и
-	 * непригодным он бывает по причине вполне внешней - потребитель удержал его через
-	 * перестроение дерева, и клеймо поколения обратило его в непригодный. Прежде здесь
-	 * стоял код `INTERNAL`, отправлявший потребителя искать дефект у нас
+	 *          непригодным он бывает по причине вполне внешней - потребитель удержал его через
+	 *          перестроение дерева, и клеймо поколения обратило его в непригодный. Прежде здесь
+	 *          стоял код `INTERNAL`, отправлявший потребителя искать дефект у нас.
 	 *
 	 * @note Сторож этот был верен ДО заведения клейма поколения: тогда узел становился
 	 *       непригодным лишь заведением пустым, и всякий иной путь сюда означал изъян
@@ -1645,15 +1626,15 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 			 * Выполняем пропуск вложенных узлов, записи не подлежащих
 			 *
 			 * @details Нарядная запись расставляет отступы сама, а прошлые её отступы
-			 * дерево принимает пробельным содержимым: переписанные наравне с прочим, они
-			 * складывались бы с новыми, и разметка росла бы пустыми строками с каждым
-			 * переходом текст→дерево→текст. Пробельное содержимое потому пропускается
-			 * там, где отступ его и породил, - между вложенными узлами узла, своего
-			 * текста не несущего
+			 *          дерево принимает пробельным содержимым: переписанные наравне с прочим, они
+			 *          складывались бы с новыми, и разметка росла бы пустыми строками с каждым
+			 *          переходом текст→дерево→текст. Пробельное содержимое потому пропускается
+			 *          там, где отступ его и породил, - между вложенными узлами узла, своего
+			 *          текста не несущего.
 			 *
 			 * @note Узлы, где пробельные знаки значимы, сюда не попадают: смешанное
-			 * содержимое и сохранение пробелов записываются в одну строку, и отступов
-			 * там не появляется вовсе
+			 *       содержимое и сохранение пробелов записываются в одну строку, и отступов
+			 *       там не появляется вовсе
 			 */
 			while(next.valid() && !top.oneline && top.nested && (this->_settings.format == format_t::PRETTY)){
 				// Признак того, что вложенный узел является пробельным содержимым
@@ -1698,8 +1679,9 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				const bool closing = top.closing;
 				// Выполняем снятие исчерпанного кадра со стека обхода
 				stack.pop_back();
-				// Если закрыть узел разметки не удалось
 				/**
+				 * Если закрыть узел разметки не удалось
+				 *
 				 * @note Перенос отказа этот НЕ ПОКРЫТ, и довод при нём переписан 07.09.2026
 				 *       по находке. Прежняя редакция гласила «записываемое дерево получено разбором, а
 				 *       разбор отвергает всё, что отвергла бы запись», и была ЛОЖНА: дерево приходит и
@@ -1775,7 +1757,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				 * @details Разбор без пространств имён кладёт имя в дерево целиком, вместе с
 				 *          разделителем префикса, а обозначения пространства имён не даёт вовсе.
 				 *          Подбирать префикс такому имени не по чему и незачем: пространств имён
-				 *          в таком дереве нет, и запись выводит имя как есть
+				 *          в таком дереве нет, и запись выводит имя как есть.
 				 *
 				 * @note Признаком служит сам разделитель в имени: разбор с пространствами имён
 				 *       имя делит и разделителя в местном имени не оставляет
@@ -1798,10 +1780,10 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 					 * Получаем заданное узлом обращение с пробельным содержимым
 					 *
 					 * @details Атрибут отведён самим договором о разметке, и с выключенным
-					 * разрешением префиксов имя его в дереве не разделено: пространства имён у
-					 * него нет вовсе, а записан он целиком. Искать его следует обоими
-					 * написаниями, иначе запись теряет значимое содержимое там, где разбор вёлся
-					 * без пространств имён
+					 *          разрешением префиксов имя его в дереве не разделено: пространства имён у
+					 *          него нет вовсе, а записан он целиком. Искать его следует обоими
+					 *          написаниями, иначе запись теряет значимое содержимое там, где разбор вёлся
+					 *          без пространств имён.
 					 */
 					const string_view spacing = (!current.attribute("space", XML_NAMESPACE).empty() ?
 						current.attribute("space", XML_NAMESPACE) : current.attribute("xml:space"));
@@ -1880,17 +1862,18 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				 * Определяем, записывается ли содержимое узла в одну строку
 				 *
 				 * @details Отступ ставится ради удобства чтения и содержимого менять не
-				 * вправе, а внутри узла со смешанным содержимым - несущего разом и текст, и
-				 * вложенные узлы - пробельные знаки содержимым и являются: перевод строки
-				 * перед вложенным узлом попадает в текст соседа. Того же требует и узел,
-				 * которому договором предписано сохранять пробельное содержимое
+				 *          вправе, а внутри узла со смешанным содержимым - несущего разом и текст, и
+				 *          вложенные узлы - пробельные знаки содержимым и являются: перевод строки
+				 *          перед вложенным узлом попадает в текст соседа. Того же требует и узел,
+				 *          которому договором предписано сохранять пробельное содержимое.
 				 *
 				 * @note Узел, вложенных узлов не несущий, отступов не получает и так: внутри
 				 * него отступать нечего
 				 */
 				const bool oneline = (keeping || (wordy && nested));
-				// Если открыть записываемый узел с его объявлениями и префиксом не удалось
 				/**
+				 * Если открыть записываемый узел с его объявлениями и префиксом не удалось
+				 *
 				 * @note Перенос отказа этот НЕ ПОКРЫТ, и довод при нём переписан 07.09.2026
 				 *       по находке. Прежняя редакция гласила «записываемое дерево получено разбором, а
 				 *       разбор отвергает всё, что отвергла бы запись», и была ЛОЖНА: дерево приходит и
@@ -1919,8 +1902,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				for(const attribute_t & attribute : current.attributes()){
 					/**
 					 * Если записать очередной атрибут не удалось
-					 */
-					/**
+					 *
 					 * @note Перенос отказа этот НЕ ПОКРЫТ, и довод при нём переписан 07.09.2026
 					 *       по находке. Прежняя редакция гласила «записываемое дерево получено разбором, а
 					 *       разбор отвергает всё, что отвергла бы запись», и была ЛОЖНА: дерево приходит и
@@ -1970,25 +1952,33 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 			 * @note Пробельное содержимое записывается наравне с текстовым: отделено оно
 			 *       лишь для того, кто его различает, а из записи выпадать не вправе
 			 */
-			case kind_t::SPACE: {
+			case kind_t::SPACE:
 				// Если записать содержимое не удалось, выводим отрицательный результат
-				if(!this->text(current.text())) return false;
-			} break;
+				if(!this->text(current.text()))
+					// Выводим отрицательрый результат
+					return false;
+			break;
 			// Если записывается раздел дословного текста
-			case kind_t::CDATA: {
+			case kind_t::CDATA:
 				// Если записать раздел дословного текста не удалось
-				if(!this->cdata(current.text())) return false;
-			} break;
+				if(!this->cdata(current.text()))
+					// Выводим отрицательрый результат
+					return false;
+			break;
 			// Если записывается примечание
-			case kind_t::COMMENT: {
+			case kind_t::COMMENT:
 				// Если записать примечание не удалось, выводим отрицательный результат
-				if(!this->comment(current.text())) return false;
-			} break;
+				if(!this->comment(current.text()))
+					// Выводим отрицательрый результат
+					return false;
+			break;
 			// Если записывается указание обработчику
-			case kind_t::PROCESSING: {
+			case kind_t::PROCESSING:
 				// Если записать указание обработчику не удалось
-				if(!this->processing(current.name().local, current.text())) return false;
-			} break;
+				if(!this->processing(current.name().local, current.text()))
+					// Выводим отрицательрый результат
+					return false;
+			break;
 			/**
 			 * Если разбор дошёл до видов, обработки здесь не требующих
 			 *
@@ -2147,7 +2137,10 @@ bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _taken(false), _depth(0), _bindings(0), _counter(0) {}
+awh::codec::xml::Writer::Writer() noexcept :
+ _error(error_t::NONE), _root(false),
+ _taken(false), _depth(0),
+ _bindings(0), _counter(0) {}
 /**
  * @brief Конструктор
  *
@@ -2155,7 +2148,9 @@ awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false)
  *
  */
 awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _root(false), _taken(false), _depth(0), _bindings(0), _counter(0) {}
+ _settings(settings), _error(error_t::NONE),
+ _root(false), _taken(false), _depth(0),
+ _bindings(0), _counter(0) {}
 /**
  * @brief Деструктор
  *
