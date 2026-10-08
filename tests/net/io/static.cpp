@@ -33731,3 +33731,187 @@ TEST_F(IoFixture, IoDescriptorExhaustionTest){
 	 << "Движок предела описателей не заметил: отказа не последовало";
 }
 #endif
+
+/**
+ * @brief Проверка целостности потокового обмена при смене размера сообщений
+ *
+ * @details Оба направления проходят фазы 64 байта, 64 КиБ и снова 64 байта.
+ *          Границы отправок меняются, а принятый поток сличается побайтно.
+ *          После каждой серии соединение закрывается без новых данных,
+ *          цикл разбирает оставшиеся завершения и заводится новая пара.
+ *
+ * @note Публичный recv принимает только идентификатор события. Эта проверка
+ *       не ограничивает буфер читателя и не доказывает повторную выдачу fd.
+ *       Поданность приёма и размер его буфера проверяются отдельным щупом.
+ *
+ */
+TEST_F(IoFixture, IoAdaptiveMixedStreamIntegrityTest){
+	// Идентификатор принятого подключения
+	awh::event::id_t peer = 0;
+	// Признак успешной настройки принятого подключения
+	bool configured = false;
+	// Признак запрета доставки после уничтожения подключений
+	bool closed = false;
+	// Число доставок после уничтожения подключений
+	size_t late = 0;
+	// Потоки, принятые сервером и клиентом
+	std::string received, answered;
+	/**
+	 * @brief Освобождение событий прежде захваченных обработчиками данных
+	 *
+	 * @note Утверждение может прервать проверку до её обычного завершения.
+	 *
+	 */
+	struct cleanup_t {
+		// Движок, события которого необходимо освободить
+		awh::engine::io_t * io;
+		// Снимаем обработчики до разрушения захваченных локальных переменных
+		~cleanup_t() noexcept { this->io->deinitialize(); }
+	} cleanup{this->_io.get()};
+	// Порт слушающего события
+	const uint16_t number = ::port();
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём слушающее событие TCP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(server, 0u);
+	// Настраиваем неблокирующее слушающее событие
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setSourcePort(server, number));
+	// Устанавливаем обработчик принятого подключения
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&peer, &configured, &closed, &late, &received, this]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		// Запоминаем идентификатор принятого подключения
+		peer = cid;
+		// Принятое подключение получает собственные неблокирующие опции
+		configured = this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY);
+		// Сохраняем принятый сервером поток без предположений о границах чтения
+		this->_io->on(cid, [&closed, &late, &received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// После уничтожения подключения доставка запрещена
+			if(closed){
+				// Учитываем ошибочную доставку
+				late++;
+				// Завершаем обработку
+				return;
+			}
+			// Дописываем принятые байты
+			received.append(reinterpret_cast <const char *> (buffer), size);
+		});
+	}));
+	// Запускаем слушающее событие
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->listen(server, 8));
+	ASSERT_TRUE(this->_io->launch(server));
+	// Размеры сообщения, число сообщений и размеры отдельных отправок
+	const size_t sizes[] = {64, 65536, 64}, rounds[] = {32, 16, 64}, pieces[] = {1, 17, 255, 4093, 65536};
+	/**
+	 * Повторяем обмен на новых подключениях к тому же слушателю
+	 */
+	for(size_t cycle = 0; cycle < 4; cycle++){
+		// Сбрасываем состояние завершённой пары
+		peer = 0;
+		configured = closed = false;
+		received.clear();
+		answered.clear();
+		// Создаём новое клиентское событие
+		const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		ASSERT_GT(client, 0u);
+		// Настраиваем неблокирующее подключение
+		ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTargetPort(client, number));
+		// Сохраняем принятый клиентом поток
+		this->_io->on(client, [&closed, &late, &answered]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// После уничтожения подключения доставка запрещена
+			if(closed){
+				// Учитываем ошибочную доставку
+				late++;
+				// Завершаем обработку
+				return;
+			}
+			// Дописываем принятые байты
+			answered.append(reinterpret_cast <const char *> (buffer), size);
+		});
+		// Запускаем клиентское подключение
+		ASSERT_TRUE(this->_io->commit(client));
+		ASSERT_TRUE(this->_io->connect(client));
+		ASSERT_TRUE(this->_io->launch(client));
+		// Ограничиваем ожидание принятия подключения
+		const auto connected = std::chrono::steady_clock::now();
+		while((peer == 0) && ((std::chrono::steady_clock::now() - connected) < std::chrono::seconds(10)))
+			// Разбираем сетевые события
+			ASSERT_TRUE(this->_io->poll(10));
+		ASSERT_GT(peer, 0u);
+		ASSERT_TRUE(configured);
+		// Ожидаемое содержимое обоих направлений
+		std::string expected, reverse;
+		/**
+		 * Меняем нагрузку с малых сообщений на крупные и обратно
+		 */
+		for(size_t phase = 0; phase < 3; phase++){
+			/**
+			 * Передаём независимые сообщения в обоих направлениях
+			 */
+			for(size_t round = 0; round < rounds[phase]; round++){
+				// Формируем различимое содержимое с нулевыми байтами
+				std::string forward(sizes[phase], '\0'), backward(sizes[phase], '\0');
+				for(size_t index = 0; index < sizes[phase]; index++){
+					// Содержимое зависит от направления, фазы, круга и позиции
+					forward[index] = static_cast <char> ((index * 29 + round * 17 + phase * 11 + cycle) & 0xFF);
+					backward[index] = static_cast <char> ((index * 43 + round * 31 + phase * 7 + cycle + 127) & 0xFF);
+				}
+				// Дополняем ожидаемый поток до выполнения отправок
+				expected.append(forward);
+				reverse.append(backward);
+				// Число байт, принятых отправкой каждого направления
+				size_t sent = 0, returned = 0;
+				// Номер очередного размера отправляемого фрагмента
+				size_t piece = round;
+				// Ограничиваем время обмена одним сообщением
+				const auto started = std::chrono::steady_clock::now();
+				while(((sent < forward.size()) || (returned < backward.size()) || (received.size() < expected.size()) || (answered.size() < reverse.size())) && ((std::chrono::steady_clock::now() - started) < std::chrono::seconds(10))){
+					// Передаём очередной фрагмент к серверу
+					if(sent < forward.size()){
+						// Размер меняется между сообщениями и не совпадает с границами приёма
+						const size_t offered = std::min(pieces[piece % 5], forward.size() - sent);
+						const size_t accepted = this->_io->send(client, forward.data() + sent, offered);
+						ASSERT_LE(accepted, offered);
+						sent += accepted;
+					}
+					// Передаём очередной фрагмент к клиенту
+					if(returned < backward.size()){
+						// Встречное направление использует другой размер фрагмента
+						const size_t offered = std::min(pieces[(piece + 2) % 5], backward.size() - returned);
+						const size_t accepted = this->_io->send(peer, backward.data() + returned, offered);
+						ASSERT_LE(accepted, offered);
+						returned += accepted;
+					}
+					// Разбираем завершения и освобождаем место в очередях
+					ASSERT_TRUE(this->_io->poll(0));
+					// Меняем размер следующего фрагмента
+					piece++;
+				}
+				// Проверяем полное принятие отправок и целостность обоих потоков
+				ASSERT_EQ(sent, forward.size());
+				ASSERT_EQ(returned, backward.size());
+				ASSERT_EQ(received, expected) << "cycle=" << cycle << ", phase=" << phase << ", round=" << round;
+				ASSERT_EQ(answered, reverse) << "cycle=" << cycle << ", phase=" << phase << ", round=" << round;
+			}
+		}
+		// Даём движку перевзвести чтение без новой отправки
+		ASSERT_TRUE(this->_io->poll(0));
+		// Закрываем подключения и запрещаем позднюю доставку
+		closed = true;
+		ASSERT_TRUE(this->_io->destroy(client));
+		ASSERT_TRUE(this->_io->destroy(peer));
+		// Разбираем завершения отменённых операций
+		for(size_t pass = 0; pass < 16; pass++)
+			// Следующее подключение создаётся только после разбора этой пачки
+			ASSERT_TRUE(this->_io->poll(1));
+		ASSERT_EQ(late, 0u);
+	}
+	// Освобождаем слушающее событие и движок до разрушения захваченных данных
+	ASSERT_TRUE(this->_io->destroy(server));
+	ASSERT_TRUE(this->_io->deinitialize());
+}

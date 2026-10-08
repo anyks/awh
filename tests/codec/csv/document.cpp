@@ -3567,18 +3567,30 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	ASSERT_TRUE(document.value <size_t> (sized, 0, 0));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(sized, static_cast <size_t> (4096));
-	// Выполняем приведение содержимого поля приёмником вида `long`
+	/**
+	 * Выполняем приведение содержимого поля приёмником вида `long`
+	 *
+	 * @note Ожидание ведётся приведением языка, а не прямым числом: целое, в затребованный вид
+	 *       не вмещающееся, заворачивается по кругам языка - правило 4 договора извлечения
+	 *       (`include/codec/numeric.hpp:82-104`). Под LP64 `long` шестьдесят четыре бита, и
+	 *       приведение не меняет числа; под LLP64 (Windows) в тридцать два бита остаётся `1` -
+	 *       ровно то, что кладёт в приёмник и кодек
+	 */
 	ASSERT_TRUE(document.value <long> (lesser, 0, 1));
 	// Выполняем проверку приведённого числа
-	ASSERT_EQ(lesser, -9223372036854775807L);
+	ASSERT_EQ(lesser, static_cast <long> (-9223372036854775807LL));
 	// Выполняем приведение содержимого поля приёмником вида `long long`
 	ASSERT_TRUE(document.value <long long> (greater, 0, 1));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(greater, -9223372036854775807LL);
 	// Выполняем приведение содержимого поля приёмником вида `unsigned long`
 	ASSERT_TRUE(document.value <unsigned long> (unsignedLesser, 0, 2));
-	// Выполняем проверку приведённого числа
-	ASSERT_EQ(unsignedLesser, 18446744073709551615UL);
+	/**
+	 * Выполняем проверку приведённого числа
+	 *
+	 * @note Тот же порядок и без знака: под LLP64 из шестидесяти четырёх бит остаётся 4294967295
+	 */
+	ASSERT_EQ(unsignedLesser, static_cast <unsigned long> (18446744073709551615ULL));
 	// Выполняем приведение содержимого поля приёмником вида `signed char`
 	ASSERT_TRUE(document.value <signed char> (narrow, 0, 3));
 	// Выполняем проверку приведённого числа

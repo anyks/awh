@@ -2728,18 +2728,30 @@ TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
 	unsigned long unsignedLesser = 0;
 	unsigned long long unsignedGreater = 0;
 	size_t sized = 0;
-	// Выполняем извлечение числа приёмником вида `long`
+	/**
+	 * Выполняем извлечение числа приёмником вида `long`
+	 *
+	 * @note Ожидание ведётся приведением языка, а не прямым числом: целое, в затребованный вид
+	 *       не вмещающееся, заворачивается по кругам языка - правило 4 договора извлечения
+	 *       (`include/codec/numeric.hpp:82-104`). Под LP64 `long` шестьдесят четыре бита, и
+	 *       приведение не меняет числа; под LLP64 (Windows) в тридцать два бита остаётся `1` -
+	 *       ровно то, что кладёт в приёмник и кодек
+	 */
 	ASSERT_TRUE(xml::numeric <long> ("-9223372036854775807", lesser));
 	// Выполняем проверку извлечённого числа
-	ASSERT_EQ(lesser, -9223372036854775807L);
+	ASSERT_EQ(lesser, static_cast <long> (-9223372036854775807LL));
 	// Выполняем извлечение числа приёмником вида `long long`
 	ASSERT_TRUE(xml::numeric <long long> ("-9223372036854775807", greater));
 	// Выполняем проверку извлечённого числа
 	ASSERT_EQ(greater, -9223372036854775807LL);
 	// Выполняем извлечение числа приёмником вида `unsigned long`
 	ASSERT_TRUE(xml::numeric <unsigned long> ("18446744073709551615", unsignedLesser));
-	// Выполняем проверку извлечённого числа
-	ASSERT_EQ(unsignedLesser, 18446744073709551615UL);
+	/**
+	 * Выполняем проверку извлечённого числа
+	 *
+	 * @note Тот же порядок и без знака: под LLP64 из шестидесяти четырёх бит остаётся 4294967295
+	 */
+	ASSERT_EQ(unsignedLesser, static_cast <unsigned long> (18446744073709551615ULL));
 	// Выполняем извлечение числа приёмником вида `unsigned long long`
 	ASSERT_TRUE(xml::numeric <unsigned long long> ("18446744073709551615", unsignedGreater));
 	// Выполняем проверку извлечённого числа
