@@ -5639,12 +5639,10 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
  *
  */
 bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_map <string, uint32_t> & anchors, const reader_t & reader) noexcept {
-	// Отображение имён пар в номера узлов их
-	unordered_map <string_view, uint32_t> naming;
 	// Перечень номеров узлов сносимых пар отображения
 	vector <uint32_t> removed;
 	/**
-	 * Признак отказа разбора повторяющимся именем пары
+	 * Признак отказа разбора повторяющимся именем пары отображения
 	 *
 	 * @note Отказ не выходит на месте своём немедля: пара, повтором отвергнутая, обязана
 	 *       уйти из дерева прежде выхода - разбор оставляет дерево собранным настолько,
@@ -5653,26 +5651,52 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 	bool refused = false;
 	// Получаем размах поддерева разбираемого отображения
 	const uint32_t extent = this->_nodes.at(parent).extent();
+	// Получаем переиспользуемый перечень номеров узлов пар отображения
+	vector <uint32_t> & order = this->_order;
+	// Выполняем очистку перечня перед сбором очередного отображения
+	order.clear();
 	/**
-	 * Выполняем перебор пар разбираемого отображения
+	 * Выполняем сбор номеров пар разбираемого отображения
 	 *
 	 * @note Дети лежат сплошь за узлом вместилища, а перескок ведётся размахом поддерева:
 	 *       так перебираются одни лишь дети, минуя внуков
 	 */
-	for(uint32_t child = (parent + 1); child < (parent + extent); child += this->_nodes.at(child).extent()){
-		// Получаем имя очередной пары отображения
-		const string_view name(this->_storage.data() + this->_nodes.at(child).offset, this->_nodes.at(child).named);
-		// Выполняем розыск имени пары среди уже встреченных
-		const auto i = naming.find(name);
-		/**
-		 * Если имя пары встречается впервые
-		 */
-		if(i == naming.end()){
-			// Запоминаем номер узла пары отображения
-			naming.emplace(name, child);
+	for(uint32_t child = (parent + 1); child < (parent + extent); child += this->_nodes.at(child).extent())
+		// Выполняем учёт очередной пары отображения
+		order.push_back(child);
+	/**
+	 * Получатель имени пары отображения по номеру её узла
+	 *
+	 * @note Имя держится видом на хранилище, а не своей записью: перенос имён в перечень
+	 *       платил бы выделениями на каждую пару, чего розыск и должен избегать
+	 */
+	const auto key = [this](const uint32_t node) noexcept {
+		return string_view(this->_storage.data() + this->_nodes.at(node).offset, this->_nodes.at(node).named);
+	};
+	/**
+	 * Выполняем упорядочивание собранных пар по имени
+	 *
+	 * @note Сортировка и есть суть розыска: равные имена становятся соседними, и повторы
+	 *       находятся одним проходом. У отображения в тридцать два имени это шестьдесят
+	 *       сличений вместо тысячи, а не выделений на каждое имя, как у указателя
+	 */
+	::std::sort(order.begin(), order.end(), [&key](const uint32_t left, const uint32_t right) noexcept { return key(left) < key(right); });
+	/**
+	 * Выполняем розыск повторов среди соседних по имени пар
+	 *
+	 * @note Порядок встречи пар задаётся номерами их узлов, а не соседством в перечне:
+	 *       сортировка по имени порядок встречи меняет, а правила FIRST и ERROR держатся
+	 *       на том, какая пара встретилась раньше
+	 */
+	for(size_t i = 1; i < order.size(); i++){
+		// Если имя пары не совпадает с именем предыдущей по списку пары
+		if(key(order[i]) != key(order[i - 1]))
 			// Выполняем переход к следующей паре отображения
 			continue;
-		}
+		// Номер узла пары, встретившейся прежде
+		const uint32_t first = (order[i - 1] < order[i]) ? order[i - 1] : order[i];
+		// Номер узла пары, встретившейся позже
+		const uint32_t later = (order[i - 1] < order[i]) ? order[i] : order[i - 1];
 		/**
 		 * Определяем правило обращения с повторяющимся именем пары отображения
 		 */
@@ -5686,22 +5710,20 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Добавляем номер узла отвергнутой пары к сносимым
-				removed.push_back(child);
+				removed.push_back(later);
 				// Запоминаем признак отказа разбора повторяющимся именем
 				refused = true;
 			} break;
 			// Если удерживается первая пара отображения
 			case static_cast <uint8_t> (duplicate_t::FIRST):
 				// Добавляем номер узла повторной пары к сносимым
-				removed.push_back(child);
+				removed.push_back(later);
 			break;
 			// Если удерживается последняя пара отображения
-			case static_cast <uint8_t> (duplicate_t::LAST): {
+			case static_cast <uint8_t> (duplicate_t::LAST):
 				// Добавляем номер узла прежней пары к сносимым
-				removed.push_back(i->second);
-				// Запоминаем номер узла последней пары отображения
-				i->second = child;
-			} break;
+				removed.push_back(first);
+			break;
 		}
 		/**
 		 * Если разбор отвергнут повторяющимся именем пары

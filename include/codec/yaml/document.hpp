@@ -1227,12 +1227,39 @@ namespace awh {
 					string _storage;
 					/**
 					 * \~russian
+					 * Перечень номеров узлов пар разбираемого отображения
+					 *
+					 * @details Нужен розыску повторяющихся имён пар при закрытии отображения:
+					 *          пары собираются сюда, упорядочиваются по имени и сличаются с соседними,
+					 *          отчего розыск стоит столько, сколько стоит сортировка имён, а не квадрат их.
+					 *
+					 * @note Перечень переиспользуется между отображениями одного разбора: вместимость
+					 *       его после первого широкого отображения уже достаточна, и дальнейшие закрытия памяти
+					 *       не берут. Чистится он на входе в розыск, а не на выходе, и вне розыска пуст
+					 *
+					 * \~english
+					 * @brief List of the numbers of the nodes of the pairs of a mapping being parsed
+					 *
+					 * @details Needed by the search of the repeating names of the pairs at the closing of
+					 *          a mapping: the pairs are collected here, ordered by name and compared with the
+					 *          neighbors, so the search costs a sorting of the names rather than their square.
+					 *
+					 * @note The list is reused across the displays of a single parse: its capacity is already
+					 *       sufficient after the first wide display, and subsequent operations do not allocate
+					 *       further memory. It is cleared upon entering the search phase rather than upon exiting,
+					 *       and remains empty outside of the search process.
+					 *
+					 * \~
+					 */
+					vector <uint32_t> _order;
+					/**
+					 * \~russian
 					 * Указатели имён пар отображений, по требованию заведённые
 					 *
 					 * @details Ключом стоит номер узла отображения, значением - имена детей его,
-					 * на номера узлов отображённые. Заводится указатель лишь тем отображениям,
-					 * у каких пар больше `INDEX_THRESHOLD`, и лишь при первом обращении по имени:
-					 * отображение, к какому по имени не обращались, не платит ничего
+					 *          на номера узлов отображённые. Заводится указатель лишь тем отображениям,
+					 *          у каких пар больше `INDEX_THRESHOLD`, и лишь при первом обращении по имени:
+					 *          отображение, к какому по имени не обращались, не платит ничего.
 					 *
 					 * @warning Имена держатся здесь видами на хранилище, а не своими записями, и
 					 *          всякая правка дерева указатели те обращает в прах: перенос записи
@@ -1248,16 +1275,23 @@ namespace awh {
 					 *
 					 * \~english
 					 * Indexes of the names of the mappings, created on demand
+					 *
 					 * @details The key here is the number of the node of a mapping, the value — the names of its children
-					 * mapped onto the numbers of the nodes. An index is created only for those mappings which have
-					 * more pairs than `INDEX_THRESHOLD`, and only at the first access by a name: a mapping
-					 * which has not been accessed by a name pays nothing
+					 *          mapped onto the numbers of the nodes. An index is created only for those mappings which have
+					 *          more pairs than `INDEX_THRESHOLD`, and only at the first access by a name: a mapping
+					 *          which has not been accessed by a name pays nothing.
+					 *
 					 * @warning The names are held here as the views onto the storage rather than as their own records, and
 					 *          any editing of the tree turns those indexes into a dust: a transfer of a record into
 					 *          the storage is entitled to relocate it in full, while an insertion of a node and a removal
 					 *          of it shift the numbers. Hence the editing must reset the indexes, and that reset stands
 					 *          at the actions themselves — at the transfer of a record, at the insertion of a node and at
 					 *          the removal of it — rather than at every outward method
+					 *
+					 * @warning The mechanism operates on demand, stemming from a non-mutating approach—which is why the field
+					 *          is designated as mutable: accessing a specific tree by name from two threads simultaneously
+					 *          requires synchronization on the part of the consumer. A tree accessed solely for reading and
+					 *          from only a single thread requires no such synchronization
 					 *
 					 * \~
 					 */
