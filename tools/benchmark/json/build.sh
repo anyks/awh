@@ -61,6 +61,13 @@ echo "Build \"awh\""
 c++ $FLAGS -Wno-reserved-user-defined-literal -I"$ROOT/include" -I"$STANDS" \
 	"$STANDS/awh.cpp" "$RELEASE/libawh.a" $SYSTEM_LIBS -o "$OUTPUT/awh" || exit 1
 
+# Выводим сообщение о сборке стенда поэлементного снятия возможностей разбора
+echo "Build \"ablation\""
+
+# Выполняем сборку стенда поэлементного снятия возможностей разбора
+c++ $FLAGS -Wno-reserved-user-defined-literal -I"$ROOT/include" -I"$STANDS" \
+	"$STANDS/ablation.cpp" "$RELEASE/libawh.a" $SYSTEM_LIBS -o "$OUTPUT/ablation" || exit 1
+
 # Выводим сообщение о сборке стенда реализации yyjson
 echo "Build \"yyjson\""
 

@@ -19065,6 +19065,9 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			// Определяем тип сокета для текущего канала IPC
+			const uint8_t kind = ((::__awh_channel__(ipc->state.family, ipc->transfer.fd)) ?
+			 static_cast <uint8_t> (event::type_t::NONE) : static_cast <uint8_t> (ipc->state.type));
 			/**
 			 * Разбор ведётся по типу сокета, но у канала решает семейство
 			 *
@@ -19080,8 +19083,6 @@ namespace io {
 			 *       сообщением - границы у `SEQPACKET` держит движок
 			 *
 			 */
-			const uint8_t kind = ((::__awh_channel__(ipc->state.family, ipc->transfer.fd)) ?
-			 static_cast <uint8_t> (event::type_t::NONE) : static_cast <uint8_t> (ipc->state.type));
 			switch(kind){
 				// Если событие принадлежит к типу PIPE
 				case static_cast <uint8_t> (event::type_t::NONE): {
