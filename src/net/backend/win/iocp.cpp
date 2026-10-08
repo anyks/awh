@@ -9167,14 +9167,22 @@ namespace fibers {
 	 * @brief Запись волокна пула
 	 *
 	 */
-	struct worker_t {
+	typedef struct Worker {
 		// Признак занятости волокна работой
 		bool busy;
 		// Само волокно
 		::fiber::ctx_t * fiber;
+		// Копия записи события, сохраняемая до окончания работы
+		::change::record_t record;
 		// Выполняемая волокном работа
-		function <void ()> job;
-	};
+		function <void (::change::record_t &)> job;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Worker() noexcept :
+		 busy(false), fiber(nullptr), job(nullptr) {}
+	} worker_t;
 	// Предельное число волокон в пуле
 	static constexpr size_t LIMIT = 64;
 	/**
@@ -9228,7 +9236,7 @@ namespace fibers {
 			// Если работа волокну задана
 			if(worker->job != nullptr){
 				// Выполняем саму работу
-				worker->job();
+				worker->job(worker->record);
 				// Освобождаем запись работы вместе со всем, что она держит
 				worker->job = nullptr;
 			}
@@ -9241,11 +9249,12 @@ namespace fibers {
 	/**
 	 * @brief Функция исполнения работы волокном из пула
 	 *
-	 * @param job работа, исполняемая волокном
-	 * @return    признак того, что работа отдана волокну
+	 * @param job    работа, исполняемая волокном
+	 * @param record запись события, копируемая в занятое волокно
+	 * @return       признак того, что работа отдана волокну
 	 *
 	 */
-	static bool run(function <void ()> job) noexcept {
+	static bool run(function <void (::change::record_t &)> job, const ::change::record_t & record = {}) noexcept {
 		// Если работы нет
 		if(job == nullptr)
 			// Выводим отрицательный результат
@@ -9273,7 +9282,7 @@ namespace fibers {
 				// Выводим отрицательный результат
 				return false;
 			// Заводим запись нового волокна пула
-			unique_ptr <worker_t> work(new worker_t{false, nullptr, nullptr});
+			unique_ptr <worker_t> work = make_unique <worker_t> ();
 			// Запоминаем адрес заведённой записи
 			worker = work.get();
 			// Заводим само волокно
@@ -9288,6 +9297,8 @@ namespace fibers {
 			// Добавляем заведённое волокно в пул
 			pool.push_back(::move(work));
 		}
+		// Сохраняем запись до пробуждения: работа вправе уступить управление
+		worker->record = record;
 		// Задаём волокну работу
 		worker->job = ::move(job);
 		// Отмечаем волокно занятым
@@ -79724,10 +79735,10 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Получаем копию записи разбираемого события
 						::change::record_t record = ev;
 						// Выполняем обработку события волокном из пула
-						const bool threaded = ::fibers::run([this, record]() mutable noexcept {
+						const bool threaded = ::fibers::run([this](::change::record_t & record) noexcept {
 							// Выполняем обработку события
 							::io::polling(record, this, &this->_eth, &this->_addr);
-						});
+						}, record);
 						// Если волокна пула кончились - разбираем событие прямо
 						if(!threaded)
 							// Выполняем обработку события
@@ -79818,7 +79829,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 *       сроков идёт ОТДЕЛЬНЫМ путём от разбора событий, и обёртка
 							 *       одного лишь `::io::polling` его не покрывала
 							 */
-							if(!::fibers::run([this]() noexcept {
+							if(!::fibers::run([this](::change::record_t &) noexcept {
 								// Выполняем разбор истёкших сроков ожидания
 								::timer::simple::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr);
 							}))
@@ -79841,7 +79852,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 *       сроков идёт ОТДЕЛЬНЫМ путём от разбора событий, и обёртка
 							 *       одного лишь `::io::polling` его не покрывала
 							 */
-							if(!::fibers::run([this]() noexcept {
+							if(!::fibers::run([this](::change::record_t &) noexcept {
 								// Выполняем разбор истёкших сроков ожидания
 								::timer::difficult::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr);
 							}))
