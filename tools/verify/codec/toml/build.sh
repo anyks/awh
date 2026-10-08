@@ -229,7 +229,13 @@ done
 #       на стенде Windows 11 ARM64
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Одного Winsock тут мало: разбор ярлыков в «src/sys/fs.cpp» поднимает COM
+	#       («CoCreateInstance» живёт в «ole32», опознаватели - в «uuid»), а сетевой
+	#       слой зовёт «GetIpForwardTable» из «iphlpapi». На бедном перечне связывание
+	#       отвечает отсутствием «__imp_CoInitialize» (замер 06.10.2026)
+	#
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
 	#
 	# Слой файловой системы у macOS опирается на основу Foundation
 	#
@@ -238,10 +244,25 @@ case "$(uname -s)" in
 	#       поступает и CMakeLists.txt
 	#
 	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	#
+	# Слой процессов у FreeBSD опирается на основу util
+	#
+	# @note «src/sys/procre.cpp» зовёт там «kinfo_getproc», и без основы этой
+	#       связывание отвечает отсутствием знака (замер 06.10.2026 на стенде
+	#       FreeBSD 19)
+	#
+	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
+	#
+	# Сетевые знаки у систем Sun вынесены в отдельные основы
+	#
+	# @note Без «-lsocket» да «-lnsl» связывание отвечает отказом на «getpeername»
+	#       и «if_nametoindex» (замер 06.10.2026 на OpenIndiana)
+	#
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
-$COMPILER $OPTIONS "$ROOT/tools/verify/codec/toml/dump.cpp" $OBJECTS $SYSTEM_LIBS -lz -o "$OUTPUT/dump"
+$COMPILER $OPTIONS "$ROOT/tools/verify/codec/toml/dump.cpp" $OBJECTS -pthread $SYSTEM_LIBS -lz -o "$OUTPUT/dump"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/dump"

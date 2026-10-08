@@ -41,6 +41,31 @@ COMPILER="${CXX:-c++}"
 # Собираем ключи сборки стенда
 OPTIONS="-O2 -std=c++17 -I$ROOT/include $FLAGS"
 
+#
+# Путь к библиотеке языка C++ того собирателя, каким собраны поверки
+#
+# @note Путь этот прописывается в двоичный файл: у DragonFly рядом стоят несколько
+#       собирателей, и файл, собранный `g++14`, при запуске подхватывал `libstdc++`
+#       от gcc11 и отваливался с «version GLIBCXX_3.4.32 not found». Сборка при этом
+#       зелёная, а отказ приходит от прогона, и причину пойдут искать в кодеке
+#
+# @warning Путь берётся лишь тогда, когда собиратель отдаёт его полным: `clang` на
+#          выдачу этого вопроса отвечает одним лишь именем файла, и `dirname` от него
+#          дал бы текущий каталог
+#
+# @note У целей MS Windows выдача эта негодна: библиотека там идёт отдельным файлом
+#       рядом с двоичным, и `rpath` у формата PE не работает вовсе
+#
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) ;;
+	*)
+		STDLIB="$($COMPILER -print-file-name=libstdc++.so 2>/dev/null)"
+		case "$STDLIB" in
+			/*) OPTIONS="$OPTIONS -Wl,-rpath,$(cd "$(dirname "$STDLIB")" && pwd)" ;;
+		esac
+	;;
+esac
+
 # Выполняем заведение каталога собранного стенда
 mkdir -p "$OUTPUT"
 
@@ -108,7 +133,19 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/spin.cpp" -o "$OUTPU
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/trace.cpp" -o "$OUTPUT/alloc-trace.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/elf.cpp" -o "$OUTPUT/alloc-elf.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/mach.cpp" -o "$OUTPUT/alloc-mach.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+##
+# Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
+#
+# Файл «src/alloc/capture/obsd.cpp» собственной охраны по системе не несёт — её несёт
+# сборщик: CMakeLists.txt подключает его лишь при OpenBSD. Собранный безусловно, он под
+# MinGW валит связывание по «posix_memalign» и «aligned_alloc», каких у той библиотеки
+# времени исполнения нет вовсе
+##
+OBSD=""
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+	OBSD="$OUTPUT/alloc-obsd.o"
+fi
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "$OUTPUT/alloc-pe.o"
 
 #
@@ -119,8 +156,29 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "
 #       файловой системы macOS
 #
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Разбор ярлыков в «src/sys/fs.cpp» поднимает COM: «CoCreateInstance» живёт в
+	#       «ole32», опознаватели - в «uuid», а сетевой слой зовёт «GetIpForwardTable»
+	#       из «iphlpapi». На одном «ws2_32» связывание отвечает отсутствием
+	#       «__imp_CoInitialize» (замер 06.10.2026 на стенде Windows 11)
+	#
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
+	#
+	# @note Слой файловой системы macOS зовёт «NSFileManager» да «NSURL», и без основы
+	#       Foundation связывание отвечает отсутствием знака времени исполнения
+	#
 	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	#
+	# @note Слой процессов зовёт у FreeBSD «kinfo_getproc», и без «-lutil» связывание
+	#       стенда отказывает (замер 06.10.2026 на стенде FreeBSD 19)
+	#
+	FreeBSD) SYSTEM_LIBS="-pthread -lutil" ;;
+	#
+	# @note У систем Sun сетевые знаки вынесены в «-lsocket» да «-lnsl»: без них
+	#       связывание отвечает отказом на «getpeername» и «if_nametoindex»
+	#       (замер 06.10.2026 на OpenIndiana)
+	#
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -161,9 +219,8 @@ $COMPILER $OPTIONS "$ROOT/tools/verify/codec/abc/verify.cpp" \
  "$OUTPUT/alloc-trace.o" \
  "$OUTPUT/alloc-elf.o" \
  "$OUTPUT/alloc-mach.o" \
- "$OUTPUT/alloc-obsd.o" \
  "$OUTPUT/alloc-pe.o" \
- "$OUTPUT/sys-fs.o" $SYSTEM_LIBS -pthread -lz -o "$OUTPUT/verify"
+ "$OUTPUT/sys-fs.o" $OBSD $SYSTEM_LIBS -pthread -lz -o "$OUTPUT/verify"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/verify"

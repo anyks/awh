@@ -108,7 +108,13 @@ case "$(uname -s)" in
 	#       живёт в «ole32», а опознаватели «IID_IShellLinkW» и «IID_IPersistFile»
 	#       в «uuid». Без обеих связывание отказывает десятью нераскрытыми именами
 	#
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -lole32 -luuid" ;;
+	#
+	# @note Основа «-liphlpapi» потребна слою процессов: «src/sys/procre.cpp» зовёт там
+	#       «GetExtendedTcpTable» и «GetExtendedUdpTable», каких в «ws2_32» нет вовсе, и без
+	#       неё связывание стенда отвечает «undefined reference to GetExtendedTcpTable»
+	#       (замер 08.10.2026 на стенде Windows 10: набор INI не собирался)
+	#
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -lole32 -luuid" ;;
 	#
 	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
 	#       связывание отказывает на средствах Objective-C

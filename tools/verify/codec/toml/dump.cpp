@@ -280,11 +280,16 @@ namespace {
 			result.append(buffer);
 			/**
 			 * Если время отметки несёт долю секунды
+			 *
+			 * @note Степень десятка задаётся вещественными слагаемыми: сборщик Solaris
+			 *       11.4 на целочисленной паре отвечает «call of overloaded 'pow(int,
+			 *       int)' is ambiguous», и стенд не собирается вовсе (замер 08.10.2026)
 			 */
 			if(stamp.time.digits > 0){
 				// Выполняем запись доли секунды написанием исходным
 				::snprintf(buffer, sizeof(buffer), ".%0*u", static_cast <int32_t> (stamp.time.digits),
-				 static_cast <uint32_t> (stamp.time.nanosecond / static_cast <uint32_t> (::pow(10, (9 - stamp.time.digits)))));
+				 static_cast <uint32_t> (stamp.time.nanosecond / static_cast <uint32_t> (::pow(10.0,
+				 static_cast <double> (9 - stamp.time.digits)))));
 				// Выполняем дозапись доли секунды
 				result.append(buffer);
 			}
