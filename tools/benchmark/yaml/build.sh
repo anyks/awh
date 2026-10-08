@@ -176,6 +176,13 @@ echo "Build \"awh-tree\""
 # Выполняем сборку стенда дерева настроек контейнера AWH
 c++ $FLAGS -I"$ROOT/include" -I"$STANDS" "$STANDS/awh-tree.cpp" "$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" $SYSTEM_LIBS -o "$OUTPUT/awh-tree" || exit 1
 
+# Выводим сообщение о сборке стенда поэлементного снятия возможностей сборки дерева
+echo "Build \"ablation\""
+
+# Выполняем сборку стенда поэлементного снятия возможностей сборки дерева
+c++ $FLAGS -Wno-reserved-user-defined-literal -I"$ROOT/include" -I"$STANDS" \
+	"$STANDS/ablation.cpp" "$RELEASE/libawh.a" $SYSTEM_LIBS -o "$OUTPUT/ablation" || exit 1
+
 # Если исходные тексты реализации libyaml выложены
 if [ -f "$VENDOR/libyaml/src/api.c" ]; then
 	# Выводим сообщение о сборке стенда реализации libyaml

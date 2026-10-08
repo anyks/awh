@@ -19472,5 +19472,1468 @@
       "library_sha256": "5d86bc07ab2bf0ed534bbb78e67a7a10ab3e8e58380b1a1ddaf1a17524ab3d04",
       "object_sha256": "c8000ea1ed5be4445a1c6c682403933b8dfe421c540ae46a7459dae451d15a4a"
     }
+  },
+  "page_alignment_experiment": {
+    "summary": {
+      "baseline": {
+        "throughput": {
+          "baseline_median": 23984.56,
+          "candidate_median": 23818.41,
+          "median_change_pct": -0.6927373276808146,
+          "paired_change_median_pct": -0.6927373276808146,
+          "candidate_wins": 3,
+          "ties": 0,
+          "pairs": 7
+        },
+        "cpu_seconds": {
+          "baseline_median": 4.203125,
+          "candidate_median": 4.234375,
+          "median_change_pct": 0.743494423791824,
+          "paired_change_median_pct": 1.1194029850746245,
+          "candidate_wins": 2,
+          "ties": 0,
+          "pairs": 7
+        }
+      },
+      "stream": {
+        "throughput": {
+          "baseline_median": 1117.5,
+          "candidate_median": 1086.74,
+          "median_change_pct": -2.752572706935119,
+          "paired_change_median_pct": -2.9708630330314234,
+          "candidate_wins": 2,
+          "ties": 0,
+          "pairs": 7
+        },
+        "cpu_seconds": {
+          "baseline_median": 0.484375,
+          "candidate_median": 0.5,
+          "median_change_pct": 3.2258064516129004,
+          "paired_change_median_pct": 0.0,
+          "candidate_wins": 3,
+          "ties": 1,
+          "pairs": 7
+        }
+      }
+    },
+    "records": [
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-00",
+        "pid": 784,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1372761,
+        "cpu_seconds": 4.09375,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24469.0,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-01",
+        "pid": 4712,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1888207,
+        "cpu_seconds": 4.203125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24071.74,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-02",
+        "pid": 3960,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1836396,
+        "cpu_seconds": 4.15625,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24120.21,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-03",
+        "pid": 780,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2125528,
+        "cpu_seconds": 4.203125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23907.35,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-04",
+        "pid": 10496,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2017311,
+        "cpu_seconds": 4.1875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23984.56,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-05",
+        "pid": 9160,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2045025,
+        "cpu_seconds": 4.203125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23975.68,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-06",
+        "pid": 13288,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.210764999999999,
+        "cpu_seconds": 4.203125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23938.29,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-07",
+        "pid": 10728,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1869042,
+        "cpu_seconds": 4.1875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24076.95,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-00",
+        "pid": 11612,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1162483,
+        "cpu_seconds": 4.09375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 24565.36,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-01",
+        "pid": 436,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2894972,
+        "cpu_seconds": 4.28125,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 23485.53,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-02",
+        "pid": 752,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.100302699999999,
+        "cpu_seconds": 4.109375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 24590.13,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-03",
+        "pid": 5664,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1944856,
+        "cpu_seconds": 4.171875,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 24019.72,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-04",
+        "pid": 7380,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.230775599999999,
+        "cpu_seconds": 4.234375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 23818.41,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-05",
+        "pid": 6624,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2039268,
+        "cpu_seconds": 4.234375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 23997.58,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-06",
+        "pid": 12088,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.3288518,
+        "cpu_seconds": 4.328125,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 23294.15,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-07",
+        "pid": 1428,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.29822,
+        "cpu_seconds": 4.3125,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 23441.61,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/datagram/multi",
+        "label": "check-datagram-multi",
+        "pid": 12032,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.5526599,
+        "cpu_seconds": 4.546875,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 23729.52,
+        "allocations": 102111,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/datagram/single",
+        "label": "check-datagram-single",
+        "pid": 5192,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 6.1735207999999995,
+        "cpu_seconds": 5.859375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 17112.36,
+        "allocations": 200000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "adaptive",
+        "scenario": "IoFixture.IoAdaptiveMixedStreamIntegrityTest:IoFixture.IoStreamDestroyWithSendInFlightTest:IoFixture.IoDeliverBeforeHangupTest:IoFixture.IoStreamQueueTailDrainsWithoutSendsTest:IoFixture.IoAcceptSocketReleaseTest:IoFixture.IoSnapshotHandoffTest:IoFixture.IoSnapshotRestoreTest:IoFixture.IoUDPTest:IoFixture.IoIpcLargeTransferTest:IoFixture.IoIpcQueueTailDrainsWithoutSendsTest:IoFixture.IoIpcDestroyWithPendingQueueTest:IoFixture.IoFsDirEntriesBurstWindowsTest:IoFixture.IoFsDirEntriesWindowsTest:IoFixture.IoFileSeekTest",
+        "label": "page-aligned-public-tests",
+        "pid": 8336,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.6096619,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "4611639E2053A2A83B41ADD458162FB8873118BD52D7EF8CC32FC1FF01168892",
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-00",
+        "pid": 5260,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5119537,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1077.27,
+        "allocations": 450,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-01",
+        "pid": 5296,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.49787669999999995,
+        "cpu_seconds": 0.515625,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1096.38,
+        "allocations": 465,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-02",
+        "pid": 848,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4872029,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1119.54,
+        "allocations": 465,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-03",
+        "pid": 13068,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5110522,
+        "cpu_seconds": 0.515625,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1064.19,
+        "allocations": 453,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-04",
+        "pid": 2800,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.48803759999999996,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1117.5,
+        "allocations": 464,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-05",
+        "pid": 10520,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5212283999999999,
+        "cpu_seconds": 0.53125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1043.69,
+        "allocations": 458,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-06",
+        "pid": 680,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4696612,
+        "cpu_seconds": 0.453125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1166.64,
+        "allocations": 428,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-07",
+        "pid": 10420,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4829869,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1130.86,
+        "allocations": 444,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-00",
+        "pid": 11356,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5533726999999999,
+        "cpu_seconds": 0.53125,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1001.43,
+        "allocations": 463,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-01",
+        "pid": 11916,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.49856419999999996,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1095.01,
+        "allocations": 465,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-02",
+        "pid": 12440,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5060152,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1086.28,
+        "allocations": 465,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-03",
+        "pid": 11000,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5013487999999999,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1093.62,
+        "allocations": 444,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-04",
+        "pid": 12124,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5042845,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1081.43,
+        "allocations": 453,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-05",
+        "pid": 3936,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5025525,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1086.74,
+        "allocations": 452,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-06",
+        "pid": 10324,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4887878,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 1123.59,
+        "allocations": 465,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-07",
+        "pid": 10356,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.7201723999999999,
+        "cpu_seconds": 0.71875,
+        "binary_sha256": "F3EF199EFDB0E93307732AABC67DA7F818BA0F1B94FC8E2EE84051DCFB05AD33",
+        "throughput": 741.87,
+        "allocations": 452,
+        "stderr_bytes": 0
+      }
+    ],
+    "source_commit": "8dbeaed53",
+    "later_head_same_backend": "4da45d467",
+    "source_sha256": "98fd62fa48e6ad46a29b5d4fdac760cdcca6eb30aef094800eddf8d983361af3",
+    "candidate_source_sha256": "40c26ee0bec689d43f5bf6001b4c0de0cb73f320042285c703c6cfc84f83e040",
+    "candidate_binary_sha256": "f3ef199efdb0e93307732aabc67da7f818ba0f1b94fc8e2ee84051dcfb05ad33",
+    "decision": "staging_only_no_measured_improvement",
+    "evidence_archive": "C:/tmp/awh-iocp-20261008/page-aligned/evidence.tar.gz",
+    "evidence_archive_sha256": "73e71ca496907b5131710704858fa1820611654ad99b81e90ac608304e62fd2d",
+    "warmup": "round 00 excluded separately for each engine and scenario; all other runs retained",
+    "diagnosis": {
+      "page_size": 4096,
+      "baseline_observed_receives": 16,
+      "baseline_length": 4096,
+      "baseline_offsets": [
+        2128,
+        2736
+      ],
+      "baseline_pages_spanned": 2,
+      "candidate_observed_receives": 16,
+      "candidate_offsets": [
+        0
+      ],
+      "candidate_pages_spanned": 1,
+      "scope": "First 16 WSARecv calls under debugger; diagnostic runs excluded from speed samples; page spans are not measured page-lock counts"
+    },
+    "validation": {
+      "public_tests": 14,
+      "whitebox": "256 buffers; full capacity; reuse; pool limit; adaptive policy; actual TCP completion and next submission; partial read integrity",
+      "negative_control": "Exact baseline compiled into the same probe: exit 1, ADAPTIVE_WHITEBOX_FAIL: aligned payload",
+      "warning": "Existing -Wsubobject-linkage for io::Origin only in direct-include probe",
+      "no_asan": true,
+      "concurrency_snapshot": "During baseline-07, net PID 10728 and diagnostic powershell were the only processes over 0.05 CPU s in one second; not continuous monitoring"
+    }
+  },
+  "allocation_localization": {
+    "source_commit": "8dbeaed53",
+    "record_size_bytes": 32,
+    "lambda_size_bytes": 40,
+    "allocation_instruction": "head-8dbeaed53/poll.asm: 0x1400d0c51 mov $0x28,%ecx; 0x1400d0c94 call _Znwy; 0x1400d0cdd call fibers::run",
+    "dispatch": "IO::poll captures this and record by value; function move into worker.job does not allocate a second copy",
+    "echo_allocations_per_exchange": 4,
+    "basis": "Four receive/send completion dispatches per full echo, disassembly allocation path and benchmark counter 400000 allocations per 100000 logical exchanges agree; not a separate per-call counter",
+    "future_experiment": "Store event record by value in worker and retain a small callback; preserve thread_local pool, busy across yield, current/busy worker guards, timer paths and fallback",
+    "missing_targeted_tests": [
+      "event record survives yield and later poll overwriting event batch",
+      "65th job falls back after 64 suspended workers",
+      "engine deinitialization from active callback safely returns"
+    ],
+    "decision": "analysis only; no worker implementation changes"
+  },
+  "tcp_readiness_experiment": {
+    "summary": {
+      "baseline": {
+        "throughput": {
+          "baseline_median": 23987.35,
+          "candidate_median": 30040.31,
+          "median_change_pct": 25.233967070143226,
+          "paired_change_median_pct": 24.69448356294681,
+          "candidate_wins": 7,
+          "ties": 0,
+          "pairs": 7
+        },
+        "cpu_seconds": {
+          "baseline_median": 4.21875,
+          "candidate_median": 3.359375,
+          "median_change_pct": -20.370370370370374,
+          "paired_change_median_pct": -19.259259259259252,
+          "candidate_wins": 7,
+          "ties": 0,
+          "pairs": 7
+        }
+      },
+      "stream": {
+        "throughput": {
+          "baseline_median": 1114.04,
+          "candidate_median": 1137.91,
+          "median_change_pct": 2.14265196940866,
+          "paired_change_median_pct": 0.613047606130479,
+          "candidate_wins": 4,
+          "ties": 0,
+          "pairs": 7
+        },
+        "cpu_seconds": {
+          "baseline_median": 0.46875,
+          "candidate_median": 0.46875,
+          "median_change_pct": 0.0,
+          "paired_change_median_pct": 0.0,
+          "candidate_wins": 2,
+          "ties": 3,
+          "pairs": 7
+        }
+      }
+    },
+    "records": [
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-00",
+        "pid": 9864,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.106849899999999,
+        "cpu_seconds": 4.125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24638.77,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-01",
+        "pid": 1428,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1692955,
+        "cpu_seconds": 4.171875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24161.51,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-02",
+        "pid": 1396,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.0650764,
+        "cpu_seconds": 4.0625,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24783.37,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-03",
+        "pid": 780,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.1891627,
+        "cpu_seconds": 4.15625,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 24044.08,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-04",
+        "pid": 6844,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2359715,
+        "cpu_seconds": 4.21875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23802.32,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-05",
+        "pid": 1380,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.3034432,
+        "cpu_seconds": 4.28125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23433.92,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-06",
+        "pid": 8080,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2850766,
+        "cpu_seconds": 4.28125,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23550.68,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-baseline-07",
+        "pid": 7952,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.2050868999999995,
+        "cpu_seconds": 4.21875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 23987.35,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-00",
+        "pid": 10684,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.3866274,
+        "cpu_seconds": 3.359375,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 29927.96,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-01",
+        "pid": 4136,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.4126195999999998,
+        "cpu_seconds": 3.390625,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 29573.39,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-02",
+        "pid": 9856,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.347104,
+        "cpu_seconds": 3.328125,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 30146.3,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-03",
+        "pid": 12744,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.3046897,
+        "cpu_seconds": 3.296875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 30563.55,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-04",
+        "pid": 12924,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.4005164,
+        "cpu_seconds": 3.40625,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 29680.18,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-05",
+        "pid": 4040,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.3189618999999997,
+        "cpu_seconds": 3.296875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 30424.45,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-06",
+        "pid": 1584,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.3612829,
+        "cpu_seconds": 3.359375,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 30040.31,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/echo/single",
+        "label": "baseline-candidate-07",
+        "pid": 5732,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.5257498,
+        "cpu_seconds": 3.53125,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 28635.01,
+        "allocations": 400000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/datagram/multi",
+        "label": "check-datagram-multi",
+        "pid": 11912,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 4.450842,
+        "cpu_seconds": 4.453125,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 24256.12,
+        "allocations": 102129,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/datagram/single",
+        "label": "check-datagram-single",
+        "pid": 10332,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 6.1119413,
+        "cpu_seconds": 5.78125,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 17336.42,
+        "allocations": 200000,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-00",
+        "pid": 6448,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5151838,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1073.38,
+        "allocations": 451,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-01",
+        "pid": 11000,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.49419179999999996,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1105.95,
+        "allocations": 464,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-02",
+        "pid": 8684,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4915868,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1114.04,
+        "allocations": 458,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-03",
+        "pid": 12124,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5042295,
+        "cpu_seconds": 0.515625,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1084.15,
+        "allocations": 457,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-04",
+        "pid": 9688,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4790871,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1138.6,
+        "allocations": 465,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-05",
+        "pid": 9480,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4876447,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1119.52,
+        "allocations": 463,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-06",
+        "pid": 8132,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.45051779999999997,
+        "cpu_seconds": 0.4375,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1220.9,
+        "allocations": 464,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "baseline",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-baseline-07",
+        "pid": 1420,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4925652,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+        "throughput": 1105.49,
+        "allocations": 454,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-00",
+        "pid": 5296,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.5543024,
+        "cpu_seconds": 0.546875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1003.32,
+        "allocations": 446,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-01",
+        "pid": 5768,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4946196,
+        "cpu_seconds": 0.5,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1112.73,
+        "allocations": 447,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-02",
+        "pid": 5524,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4990301,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1096.75,
+        "allocations": 447,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-03",
+        "pid": 2432,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.47881599999999996,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1140.48,
+        "allocations": 447,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-04",
+        "pid": 8044,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4806474,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1137.91,
+        "allocations": 446,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-05",
+        "pid": 11704,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4808954,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1138.1,
+        "allocations": 442,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-06",
+        "pid": 12468,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.471502,
+        "cpu_seconds": 0.46875,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1159.79,
+        "allocations": 427,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "candidate",
+        "scenario": "net/io/stream/throughput",
+        "label": "stream-candidate-07",
+        "pid": 10556,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 0.4896837,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+        "throughput": 1114.0,
+        "allocations": 440,
+        "stderr_bytes": 0
+      },
+      {
+        "engine": "adaptive",
+        "scenario": "IoFixture.IoAdaptiveMixedStreamIntegrityTest:IoFixture.IoStreamDestroyWithSendInFlightTest:IoFixture.IoDeliverBeforeHangupTest:IoFixture.IoStreamQueueTailDrainsWithoutSendsTest:IoFixture.IoAcceptSocketReleaseTest:IoFixture.IoSnapshotHandoffTest:IoFixture.IoSnapshotRestoreTest:IoFixture.IoUDPTest:IoFixture.IoIpcLargeTransferTest:IoFixture.IoIpcQueueTailDrainsWithoutSendsTest:IoFixture.IoIpcDestroyWithPendingQueueTest:IoFixture.IoFsDirEntriesBurstWindowsTest:IoFixture.IoFsDirEntriesWindowsTest:IoFixture.IoFileSeekTest",
+        "label": "tcp-readiness-public-tests",
+        "pid": 436,
+        "exit_code": 0,
+        "timed_out": false,
+        "wall_seconds": 3.137548,
+        "cpu_seconds": 0.484375,
+        "binary_sha256": "F66C596781DB57302C3B52E69F6B19329944242DA75327B131CB48C99B1E8F20",
+        "stderr_bytes": 0
+      }
+    ],
+    "source_commit": "8dbeaed53",
+    "later_head_same_backend": "4da45d467",
+    "candidate_source_sha256": "288536e126347a1a820720248e018fc2dbf902d4356ca925ddf6d65f07cd7e87",
+    "candidate_binary_sha256": "47ee51356f1a1e5ff4399488b3f45917290a5205f414a28eeb1fec6e8793163e",
+    "change": "Native receive condition suitable becomes suitable && !adaptive; otherwise existing zero-length readiness receive and ordinary recv; no alignment change",
+    "scope": "TCP STREAM PEER/CLIENT IPv4/IPv6 without channel or metadata; accept/UDP/raw/pipe paths unchanged",
+    "decision": "promising staging candidate; broader validation before production transfer",
+    "warmup": "round 00 excluded separately for each engine and scenario; all other runs retained",
+    "diagnosis": {
+      "actual_WSARecv_length": 0,
+      "observations": 16,
+      "final_log": "tcp-readiness/recv-path-final.log",
+      "note": "Separate debugger runs excluded from speed data; original recv-pages.log pages field formula was inapplicable at zero length, fixed in recv-path-final.log"
+    },
+    "validation": {
+      "public_tests_passed": 14,
+      "udp_scenarios_passed": 2,
+      "all_benchmark_runs": 34,
+      "adaptive_whitebox_run": false,
+      "note": "Public IoAdaptiveMixedStreamIntegrityTest checks byte integrity, not adaptive policy; aggregate engine label adaptive is inherited driver metadata, actual binary hash identifies readiness implementation"
+    },
+    "profiles": {
+      "baseline": {
+        "total_samples": 12798,
+        "kernel_samples": 9555,
+        "user_samples": 3243,
+        "stack_keys": 12776,
+        "invalid": {},
+        "modules": {
+          "ntoskrnl.exe": 5312,
+          "ntdll.dll": 534,
+          "ole32.dll": 1,
+          "NETIO.SYS": 724,
+          "afd.sys": 591,
+          "mswsock.dll": 158,
+          "net.exe": 1429,
+          "msvcrt.dll": 304,
+          "tcpip.sys": 2804,
+          "ws2_32.dll": 472,
+          "kernelbase.dll": 199,
+          "ndis.sys": 76,
+          "libwinpthread-1.dll": 97,
+          "kernel32.dll": 47,
+          "Ndu.sys": 25,
+          "fwpkclnt.sys": 16,
+          "FLTMGR.SYS": 2,
+          "WdFilter.sys": 2,
+          "bcrypt.dll": 1,
+          "dxgmms2.sys": 1,
+          "bindflt.sys": 1,
+          "dhcpcsvc.dll": 1,
+          "Ntfs.sys": 1
+        },
+        "integrity": {
+          "total_samples": 12798,
+          "exclusive_sum": 12798,
+          "nearest_app_samples": 12704,
+          "no_app_frame_samples": 94,
+          "stack_keys": 12776,
+          "multi_fragment_keys": 9527,
+          "stack_order": "CSV order; index 1 starts new fragment; nearest app frame from first app-bearing fragment",
+          "sample_join": "timestamp/TID checked for unique PID/IP; stored as timestamp/PID/TID"
+        },
+        "unresolved_exclusive": {
+          "ole32.dll": 1,
+          "kernelbase.dll": 199,
+          "libwinpthread-1.dll": 97,
+          "fwpkclnt.sys": 16,
+          "WdFilter.sys": 2,
+          "dhcpcsvc.dll": 1
+        },
+        "nearest_branches": {
+          "drain::transmit(unsigned long long, void const*, unsigned long long)": {
+            "samples": 7429,
+            "kernel_samples": 7142
+          },
+          "kernel::reconcile(kernel::Registry&)": {
+            "samples": 1859,
+            "kernel_samples": 1522
+          },
+          "port::submit(unsigned int, long long) [clone .part.0]": {
+            "samples": 1106,
+            "kernel_samples": 813
+          },
+          "awh::engine::IO::poll(int)": {
+            "samples": 484,
+            "kernel_samples": 0
+          },
+          "kernel::listening(unsigned long long)": {
+            "samples": 269,
+            "kernel_samples": 0
+          },
+          "operator new(unsigned long long)": {
+            "samples": 181,
+            "kernel_samples": 0
+          },
+          "std::chrono::_V2::steady_clock::now()": {
+            "samples": 124,
+            "kernel_samples": 0
+          },
+          "std::_Function_handler<void (), awh::engine::IO::poll(int)::{lambda()#1}>::_M_manager(std::_Any_data&, std::_Any_data const&, std::_Manager_operation)": {
+            "samples": 123,
+            "kernel_samples": 0
+          },
+          "io::polling(change::Record&, awh::engine::IO const*, awh::Ethernet const*, awh::Network_Address const*) [clone .isra.0]": {
+            "samples": 113,
+            "kernel_samples": 0
+          },
+          "awh::fiber::resume(awh::fiber::Context*)": {
+            "samples": 90,
+            "kernel_samples": 0
+          }
+        },
+        "selected_system_samples": {
+          "ntoskrnl.exe!MmUnlockPages": {
+            "exclusive": 227,
+            "inclusive": 346
+          },
+          "ntoskrnl.exe!MmProbeAndLockPages": {
+            "exclusive": 4,
+            "inclusive": 435
+          },
+          "ntoskrnl.exe!MiProbeLockFrame": {
+            "exclusive": 75,
+            "inclusive": 108
+          },
+          "ntoskrnl.exe!MiFillSystemPtes": {
+            "exclusive": 71,
+            "inclusive": 83
+          },
+          "afd.sys!AfdAllocateMdlChain": {
+            "exclusive": 42,
+            "inclusive": 506
+          }
+        },
+        "records": [
+          {
+            "engine": "baseline",
+            "scenario": "net/io/echo/single",
+            "label": "profile-baseline-00",
+            "pid": 6704,
+            "exit_code": 0,
+            "timed_out": false,
+            "wall_seconds": 4.3817998,
+            "cpu_seconds": 4.328125,
+            "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+            "stderr_bytes": 0
+          },
+          {
+            "engine": "baseline",
+            "scenario": "net/io/echo/single",
+            "label": "profile-baseline-01",
+            "pid": 8696,
+            "exit_code": 0,
+            "timed_out": false,
+            "wall_seconds": 4.3040709,
+            "cpu_seconds": 4.3125,
+            "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+            "stderr_bytes": 0
+          },
+          {
+            "engine": "baseline",
+            "scenario": "net/io/echo/single",
+            "label": "profile-baseline-02",
+            "pid": 11672,
+            "exit_code": 0,
+            "timed_out": false,
+            "wall_seconds": 4.193984599999999,
+            "cpu_seconds": 4.21875,
+            "binary_sha256": "DD320C916CB482F9FAA0B80BD0CA5A77F9DF2B933943DB897FDCF0A1493608ED",
+            "stderr_bytes": 0
+          }
+        ],
+        "etw_events_lost": 0,
+        "etw_buffers_lost": 0,
+        "unknown_samples": 0
+      },
+      "candidate": {
+        "total_samples": 10376,
+        "kernel_samples": 7583,
+        "user_samples": 2792,
+        "stack_keys": 10342,
+        "invalid": {},
+        "modules": {
+          "ntoskrnl.exe": 4144,
+          "ntdll.dll": 431,
+          "Ntfs.sys": 2,
+          "cng.sys": 1,
+          "bcryptprimitives.dll": 1,
+          "nsiproxy.sys": 1,
+          "WdFilter.sys": 2,
+          "net.exe": 1126,
+          "ndis.sys": 62,
+          "tcpip.sys": 2167,
+          "mswsock.dll": 133,
+          "kernelbase.dll": 186,
+          "afd.sys": 576,
+          "ws2_32.dll": 515,
+          "msvcrt.dll": 266,
+          "NETIO.SYS": 590,
+          "libwinpthread-1.dll": 96,
+          "Ndu.sys": 28,
+          "kernel32.dll": 37,
+          "fwpkclnt.sys": 10,
+          "Unknown": 1,
+          "rpcrt4.dll": 1
+        },
+        "integrity": {
+          "total_samples": 10376,
+          "exclusive_sum": 10376,
+          "nearest_app_samples": 10282,
+          "no_app_frame_samples": 94,
+          "stack_keys": 10342,
+          "multi_fragment_keys": 7569,
+          "stack_order": "CSV order; index 1 starts new fragment; nearest app frame from first app-bearing fragment",
+          "sample_join": "timestamp/TID checked for unique PID/IP; stored as timestamp/PID/TID"
+        },
+        "unresolved_exclusive": {
+          "cng.sys": 1,
+          "bcryptprimitives.dll": 1,
+          "nsiproxy.sys": 1,
+          "WdFilter.sys": 2,
+          "kernelbase.dll": 186,
+          "libwinpthread-1.dll": 96,
+          "fwpkclnt.sys": 10,
+          "Unknown": 1,
+          "rpcrt4.dll": 1
+        },
+        "nearest_branches": {
+          "drain::transmit(unsigned long long, void const*, unsigned long long)": {
+            "samples": 5769,
+            "kernel_samples": 5554
+          },
+          "port::submit(unsigned int, long long) [clone .part.0]": {
+            "samples": 901,
+            "kernel_samples": 603
+          },
+          "kernel::reconcile(kernel::Registry&)": {
+            "samples": 869,
+            "kernel_samples": 685
+          },
+          "(anonymous namespace)::__awh_recv__(unsigned long long, void*, unsigned long long, int) [clone .constprop.0]": {
+            "samples": 746,
+            "kernel_samples": 665
+          },
+          "awh::engine::IO::poll(int)": {
+            "samples": 466,
+            "kernel_samples": 0
+          },
+          "kernel::listening(unsigned long long)": {
+            "samples": 288,
+            "kernel_samples": 0
+          },
+          "std::_Function_handler<void (), awh::engine::IO::poll(int)::{lambda()#1}>::_M_manager(std::_Any_data&, std::_Any_data const&, std::_Manager_operation)": {
+            "samples": 112,
+            "kernel_samples": 0
+          },
+          "std::chrono::_V2::steady_clock::now()": {
+            "samples": 99,
+            "kernel_samples": 0
+          },
+          "operator new(unsigned long long)": {
+            "samples": 96,
+            "kernel_samples": 0
+          },
+          "io::polling(change::Record&, awh::engine::IO const*, awh::Ethernet const*, awh::Network_Address const*) [clone .isra.0]": {
+            "samples": 94,
+            "kernel_samples": 0
+          }
+        },
+        "selected_system_samples": {
+          "ntoskrnl.exe!MmUnlockPages": {
+            "exclusive": 0,
+            "inclusive": 0
+          },
+          "ntoskrnl.exe!MmProbeAndLockPages": {
+            "exclusive": 0,
+            "inclusive": 0
+          },
+          "ntoskrnl.exe!MiProbeLockFrame": {
+            "exclusive": 0,
+            "inclusive": 0
+          },
+          "ntoskrnl.exe!MiFillSystemPtes": {
+            "exclusive": 0,
+            "inclusive": 0
+          },
+          "afd.sys!AfdAllocateMdlChain": {
+            "exclusive": 13,
+            "inclusive": 13
+          }
+        },
+        "records": [
+          {
+            "engine": "candidate",
+            "scenario": "net/io/echo/single",
+            "label": "profile-candidate-00",
+            "pid": 2540,
+            "exit_code": 0,
+            "timed_out": false,
+            "wall_seconds": 3.4145934,
+            "cpu_seconds": 3.40625,
+            "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+            "stderr_bytes": 0
+          },
+          {
+            "engine": "candidate",
+            "scenario": "net/io/echo/single",
+            "label": "profile-candidate-01",
+            "pid": 13112,
+            "exit_code": 0,
+            "timed_out": false,
+            "wall_seconds": 3.5260437,
+            "cpu_seconds": 3.53125,
+            "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+            "stderr_bytes": 0
+          },
+          {
+            "engine": "candidate",
+            "scenario": "net/io/echo/single",
+            "label": "profile-candidate-02",
+            "pid": 8516,
+            "exit_code": 0,
+            "timed_out": false,
+            "wall_seconds": 3.4725232,
+            "cpu_seconds": 3.453125,
+            "binary_sha256": "47EE51356F1A1E5FF4399488B3F45917290A5205F414A28EEB1FEC6E8793163E",
+            "stderr_bytes": 0
+          }
+        ],
+        "etw_events_lost": 0,
+        "etw_buffers_lost": 0,
+        "unknown_samples": 1
+      }
+    },
+    "evidence_archive": "C:/tmp/awh-iocp-20261008/head-8dbeaed53/receive-path-evidence.tar.gz",
+    "evidence_archive_sha256": "8758ab42266f0dfc21cce4ec9eb6314be8e4529b4618bcb120aa5f5b4d8f8ebd",
+    "raw_runs_archive_sha256": "4494a9c35982d9b8d2042aebe2967eef8dcc5f5bbc7152d14c5c663fbd283b72",
+    "profile_inputs_archive_sha256": "0d9dae7702e7432dd12fa694c606888b7b7cbfa5d5db63eca2e231bab9990da5",
+    "derived_analysis_archive_sha256": "94d1d5b68d9099ea98db347ebb523d701314d51534135adb94fe5584ea7d1c90",
+    "staging_restored": {
+      "source_sha256": "98fd62fa48e6ad46a29b5d4fdac760cdcca6eb30aef094800eddf8d983361af3",
+      "object_sha256": "c8000ea1ed5be4445a1c6c682403933b8dfe421c540ae46a7459dae451d15a4a",
+      "library_sha256": "5d86bc07ab2bf0ed534bbb78e67a7a10ab3e8e58380b1a1ddaf1a17524ab3d04",
+      "binary_sha256": "dd320c916cb482f9faa0b80bd0ca5a77f9df2b933943db897fdcf0a1493608ed"
+    }
   }
 }
