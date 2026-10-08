@@ -13213,10 +13213,10 @@ namespace kernel {
 			 *       обязан отдавать адрес отправителя, и разбор его тоже читает
 			 *       `recvfrom`, а не `recv`
 			 */
-			// Признак потокового TCP-приёма с адаптивной длиной
+			// Признак потокового TCP-приёма IPv4/IPv6
 			const bool adaptive = (exchanging && !channel && !metadata && (node->state.type == event::type_t::STREAM) && (node->state.protocol == event::protocol_t::TCP) && ((node->state.family == event::family_t::IPV4) || (node->state.family == event::family_t::IPV6)));
-			// Выполняем подачу приёма с длиной, выбранной для текущей подписки
-			state.token = (suitable ? ::post::fetch(state.sock, &state, (datagram || raw), metadata, node, (adaptive ? state.capacity : 0)) : ::inflight::INVALID);
+			// Выполняем родной приём, оставляя потоковый TCP на ожидании готовности
+			state.token = ((suitable && !adaptive) ? ::post::fetch(state.sock, &state, (datagram || raw), metadata, node, (adaptive ? state.capacity : 0)) : ::inflight::INVALID);
 			// Запоминаем поданность родного приёма
 			fetching = (state.token != ::inflight::INVALID);
 			// Если родной приём не подавался либо подать его не удалось
