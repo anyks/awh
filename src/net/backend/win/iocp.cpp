@@ -882,24 +882,24 @@ namespace {
 		 * @note Коды, доставшиеся MinGW от MS-DOS, обращение знает, и описывать их своими
 		 *       словами значило бы разойтись с системой на ровном месте
 		 */
-	#if defined(_MSC_VER)
-		/**
-		 * Описание у оснастки MSVC берётся приёмом с буфером
-		 *
-		 * @note Приём без буфера объявлен у неё устаревшим, а буфер этот - свой у каждого
-		 *       потока: описание отдаётся указателем, и общий на всех буфер переписывался
-		 *       бы соседним потоком прямо под читающим
-		 */
-		static thread_local char buffer[256];
-		// Если описание получить не удалось
-		if(::strerror_s(buffer, sizeof(buffer), code) != 0)
-			// Выводим описание, какого у системы нет
-			return "Unknown error";
-		// Выводим полученное описание
-		return buffer;
-	#else
-		return ::strerror(code);
-	#endif
+		#if defined(_MSC_VER)
+			/**
+			 * Описание у оснастки MSVC берётся приёмом с буфером
+			 *
+			 * @note Приём без буфера объявлен у неё устаревшим, а буфер этот - свой у каждого
+			 *       потока: описание отдаётся указателем, и общий на всех буфер переписывался
+			 *       бы соседним потоком прямо под читающим
+			 */
+			static thread_local char buffer[256];
+			// Если описание получить не удалось
+			if(::strerror_s(buffer, sizeof(buffer), code) != 0)
+				// Выводим описание, какого у системы нет
+				return "Unknown error";
+			// Выводим полученное описание
+			return buffer;
+		#else
+			return ::strerror(code);
+		#endif
 	}
 	/**
 	 * @brief Функция опознания закрытия встречного конца канала
@@ -992,6 +992,7 @@ namespace {
 		return result;
 	}
 };
+
 /**
  * @brief Предварительное объявление забвения состояния учёта дескриптора
  *
@@ -1955,7 +1956,6 @@ namespace {
 	 */
 	static std::unordered_map <void *, __awh_mapping_t> __awh_mappings__;
 
-
 	/**
 	 * @brief Состояние блокировок, погашенное при заведении
 	 *
@@ -2172,7 +2172,6 @@ namespace {
 		// Выводим результат записи области в файл
 		return ::__awh_flush__(mapping, address);
 	}
-
 
 	/**
 	 * @brief Функция отдачи данных в сокет
@@ -3746,7 +3745,6 @@ namespace io {
 	 */
 	using namespace awh;
 
-
 	/**
 	 * @brief Структура конечного подключения
 	 *
@@ -4387,10 +4385,6 @@ namespace io {
 	} deferred_membership_t;
 
 	/**
-	 * @brief Структура узла события
-	 *
-	 */
-	/**
 	 * @brief Живые узлы событий
 	 *
 	 * @details Держит адреса всех существующих сейчас узлов. Заводится запись
@@ -4415,6 +4409,10 @@ namespace io {
 	 */
 	static unordered_set <const void *> living;
 
+	/**
+	 * @brief Структура узла события
+	 *
+	 */
 	typedef struct Node {
 		// Состояние события
 		state_t state;
@@ -4486,10 +4484,6 @@ namespace io {
 		// Обратные вызовы события
 		callbacks_t callbacks;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -4499,6 +4493,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Timer() noexcept : timeout(USER_TIMEOUT_ID) {}
 		/**
 		 * @brief Деструктор
@@ -4514,21 +4512,19 @@ namespace io {
 	typedef struct User : public node_t {
 		// Идентификатор события принимающей стороны
 		event::id_t dest;
-		// Очередь пользовательских событий
 		/**
+		 * Очередь пользовательских событий
+		 *
 		 * @note Единственная очередь движка, которую наполняет один поток, а
 		 *       разбирает другой: ради этого пользовательское событие и заведено.
 		 *       Соседние поля узла при этом трогает поток опроса, поэтому очередь
 		 *       уводится на отдельную строку кэша - иначе два потока писали бы в
 		 *       одну строку, деля её впустую
+		 *
 		 */
 		__AWH_NETWORK_QUEUE_CACHELINE_ALIGN__ net_queue_t events;
 		// Обратные вызовы события
 		peer_callbacks_t callbacks;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
 		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
@@ -4539,6 +4535,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit User() noexcept :
 		 dest(0), events() {}
 	} user_t;
@@ -4553,10 +4553,6 @@ namespace io {
 		// Путь к файлу, каталогу или сокету
 		unique_ptr <net::addr_t> path;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -4566,6 +4562,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Filesystem() noexcept : path(nullptr) {}
 		/**
 		 * @brief Деструктор
@@ -4645,16 +4645,13 @@ namespace io {
 		 *          тем же самым, каким у семейства UDS спрашивается путь сокета
 		 *
 		 * @note У прочих семейств имя пустое: связанная пара у них безымянна
+		 *
 		 */
 		string name;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Обратные вызовы события
 		peer_callbacks_t callbacks;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
 		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
@@ -4665,6 +4662,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Inter_Process_Communication() noexcept :
 		 partner(0), transfer() {}
 	} ipc_t;
@@ -4710,10 +4711,6 @@ namespace io {
 		// Адрес точки назначения
 		unique_ptr <net::addr_t> target;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -4723,6 +4720,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Tunnel() noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE), pulling(false),
@@ -4742,10 +4743,6 @@ namespace io {
 		// Адрес хоста посредника
 		unique_ptr <net::addr_t> host;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -4755,6 +4752,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Mediator() noexcept : dest(0), host(nullptr) {}
 	} mediator_t;
 
@@ -4770,10 +4771,6 @@ namespace io {
 		// Хост подключения события
 		unique_ptr <net::attr_t> remote;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -4783,6 +4780,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Remote() noexcept : remote(nullptr) {}
 		/**
 		 * @brief Деструктор
@@ -4920,15 +4921,15 @@ namespace io {
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
 		/**
+		 * @details Ключи, по которым маршрутизируется сессия. Протоколы со сменой
+		 *          идентификатора на лету адресуют одну сессию произвольным их числом,
+		 *          поэтому список хранится на самой сессии: её уничтожение снимает
+		 *          с маршрутизации все ключи разом, а не пересчитанный по адресу один.
+		 * 
 		 * @note Счётчик подключений сервера здесь НЕ ХРАНИТСЯ: прежде лежала ссылка на
 		 *       счётчик внутри узла сервера, и она переживала сам сервер. Опознаватель
 		 *       сервера у сессии и так есть - поле `sid` выше, - и счёт ведётся по нему
-		 */
-		/**
-		 * Ключи, по которым маршрутизируется сессия. Протоколы со сменой
-		 * идентификатора на лету адресуют одну сессию произвольным их числом,
-		 * поэтому список хранится на самой сессии: её уничтожение снимает
-		 * с маршрутизации все ключи разом, а не пересчитанный по адресу один
+		 *
 		 */
 		vector <origin_id_t> keys;
 		/**
@@ -5037,10 +5038,6 @@ namespace io {
 		// Целевые параметры подключения
 		unique_ptr <net::attr_t> target;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -5050,6 +5047,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Client() noexcept :
 		 activity(::activity::NONE),
 		 transfer(),
@@ -5086,10 +5087,6 @@ namespace io {
 		// Белый список пиров которым разрешён доступ
 		unordered_map <string, event::address_t> whitelist;
 		/**
-		 * @brief Конструктор
-		 *
-		 */
-		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
 		 * @return функции обратного вызова узла
@@ -5099,6 +5096,10 @@ namespace io {
 			// Выводим функции обратного вызова узла
 			return &this->callbacks;
 		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
 		explicit Server() noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE),
@@ -5260,7 +5261,10 @@ namespace change {
 		 *
 		 */
 		Record() noexcept :
-		 ident(0), filter(filter_t::NONE), flags(0), fflags(0), data(0), udata(nullptr) {}
+		 ident(0),
+		 filter(filter_t::NONE),
+		 flags(0), fflags(0),
+		 data(0), udata(nullptr) {}
 	} record_t;
 
 	/**
@@ -5371,7 +5375,6 @@ namespace {
 	 */
 	static uint8_t __awh_buffer__[AWH_EVENT_MAX_BUFFER_SIZE];
 
-
 	/**
 	 * @brief Количество опросов подряд, не заполнивших и четверти массива событий
 	 *
@@ -5425,7 +5428,6 @@ namespace {
 	 *
 	 */
 	unique_ptr <::change::record_t []> __awh_events__(new ::change::record_t [AWH_MAX_POLL_EVENTS_COUNT * 2]);
-
 
 	/**
 	 * @brief Тип внутреннего таймера для управления таймаутами событий
@@ -6821,7 +6823,6 @@ namespace bandwidth {
 	 */
 	static uint64_t timeRead = 0, timeWrite = 0;
 };
-
 
 /**
  * @brief Инкапсулируем учёт поданных ядру операций
