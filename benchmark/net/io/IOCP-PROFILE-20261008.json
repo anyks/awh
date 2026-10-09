@@ -85608,5 +85608,393 @@
       "rounding-dll-review.json",
       "style-review.json"
     ]
+  },
+  "allocator_off_record_copy_audit_20261009": {
+    "status": "Completed read-only audit; no production candidate promoted",
+    "source_review": {
+      "kind": "read-only source lifetime review",
+      "date": "2026-10-09",
+      "head": "73c18bf17bea7bf28aecf24f1cadda918c579831",
+      "source": "/Users/forman/Work/GIT/anyks/awh/src/net/backend/win/iocp.cpp",
+      "source_sha256": "933b95bfa7952e15fcf723fce94381d3037ea1ccfa4d10eb159cb0cd9cca8396",
+      "source_has_worktree_diff": false,
+      "conclusion": {
+        "safe_usual_path": "Removing only IO::poll local record=ev and passing ev directly to fibers::run preserves lifetime on ordinary code paths; worker still copies before first resume.",
+        "worker_copy_required": true,
+        "production_change_planned": false,
+        "reason_no_change": "No measured evidence of material cost for the intermediate copy."
+      },
+      "evidence": [
+        {
+          "file": "src/net/backend/win/iocp.cpp",
+          "lines": [
+            79736,
+            79741,
+            79745
+          ],
+          "fact": "Local record is used only as run argument; direct fallback already uses ev."
+        },
+        {
+          "file": "src/net/backend/win/iocp.cpp",
+          "lines": [
+            9257,
+            9301,
+            9303,
+            9305,
+            9307
+          ],
+          "fact": "run takes const reference, synchronously copies into worker, moves job, marks busy, then resumes; it retains no reference to caller record."
+        },
+        {
+          "file": "src/net/backend/win/iocp.cpp",
+          "lines": [
+            9176,
+            9211,
+            9239,
+            9244,
+            9246,
+            9280,
+            9284,
+            9298
+          ],
+          "fact": "Worker owns record; pool uses unique_ptr; busy remains true through suspended job; exhausted pool returns false without dispatch."
+        },
+        {
+          "file": "src/sys/fiber.cpp",
+          "lines": [
+            724,
+            746,
+            796,
+            818,
+            820,
+            822
+          ],
+          "fact": "CreateFiber creates suspended context; only resume switches to worker."
+        },
+        {
+          "file": "src/net/backend/win/iocp.cpp",
+          "lines": [
+            7869,
+            78840,
+            8033,
+            79778,
+            79792
+          ],
+          "fact": "Completion backlog is separate; event batch can be overwritten or reallocated in later poll."
+        },
+        {
+          "file": "src/net/backend/win/iocp.cpp",
+          "lines": [
+            9080,
+            9118,
+            9120,
+            9122,
+            78929
+          ],
+          "fact": "Offload yields inside fiber and resumes from completion; outside fiber uses blocking event wait."
+        },
+        {
+          "file": "tests/net/io/probes/iocp_worker.cpp",
+          "lines": [
+            79,
+            93,
+            95,
+            102,
+            135,
+            172,
+            189,
+            199,
+            202,
+            203
+          ],
+          "fact": "Existing probe exercises worker-copy lifetime across yield/overwrite, saturation and deinitialize; not rerun in this review."
+        }
+      ],
+      "boundaries": [
+        "No normal callback or fiber switch precedes worker record assignment in successful spawn path.",
+        "Arbitrary reentry from custom allocation hook or new-handler during make_unique, spawn or pool allocation before worker record assignment is not established safe or tested. Local copy can snapshot earlier than such reentry.",
+        "Existing recursive IO::poll hazards involving shared batch are not repaired by deleting local copy; fallback remains unchanged.",
+        "Worker record is a shallow value copy: udata lifetime is protected separately, not extended by record copy.",
+        "No performance assertion; no compilation, remote run, production edits or style edits performed."
+      ],
+      "counterexample_if_worker_copy_removed": "Worker callback yields, later poll overwrites/reallocates event batch, then callback resumes and reads replaced or dangling event reference. Keeping worker-owned value prevents this."
+    },
+    "cost_review": {
+      "exact_executable_sha256": "c30edbdfbb50e31a44a271ba9e4943988ed857c02bf64927f7c4723d3be68d4f",
+      "profile_samples": 9877,
+      "pe_verified_instructions": 221,
+      "sample_totals": {
+        "caller_record_copy": 0,
+        "nearby_function_address_setup": 1,
+        "worker_owned_record_copy": 4,
+        "worker_record_default_zero_new_worker_only": 0,
+        "caller_function_cleanup_checks": 13,
+        "worker_function_cleanup_checks": 29,
+        "function_manager_operation_check": 2,
+        "callback_indirect_call": 0,
+        "callback_tailjump_to_polling": 0
+      },
+      "record_semantics": [
+        "Caller record=ev uses implicit copy constructor, not default constructor.",
+        "Record has no user destructor; observed cleanup is std::function lifetime, not Record destruction.",
+        "Worker-owned copy before resume remains mandatory for yield/lifetime safety."
+      ],
+      "limits": [
+        "Exact bytes and exclusive sampled IPs are verified; CPU sample skid and lack of DWARF prevent instruction latency attribution.",
+        "Zero samples on eight copy MOV instructions does not prove zero cost.",
+        "41 dispatch samples include setup/liveness/callback cleanup; do not attribute to copy.",
+        "Record worker default initialization occurs on new worker creation, not every dispatch.",
+        "Manager operation register value is not captured, so its two samples do not prove destruction versus cloning.",
+        "No dynamic invocation counts or timing benefit derived."
+      ]
+    },
+    "archive": {
+      "path": "/private/tmp/awh-iocp-record-lifetime-20261009.tar.gz",
+      "sha256": "6a4832ddf74e240647921db60367f68841f782b0b602c8da527f2c05d492fb3f",
+      "bytes": 8413389,
+      "payload_files": 12,
+      "files_including_manifest": 13
+    },
+    "archive_verification": {
+      "status": "PASS",
+      "payload_files": 12,
+      "review_reproduced_exactly": true,
+      "stdout": "{\n  \"verified_instructions\": 221,\n  \"sample_totals\": {\n    \"caller_record_copy\": 0,\n    \"nearby_function_address_setup\": 1,\n    \"worker_owned_record_copy\": 4,\n    \"worker_record_default_zero_new_worker_only\": 0,\n    \"caller_function_cleanup_checks\": 13,\n    \"worker_function_cleanup_checks\": 29,\n    \"function_manager_operation_check\": 2,\n    \"callback_indirect_call\": 0,\n    \"callback_tailjump_to_polling\": 0\n  }\n}\n"
+    },
+    "production_cpp_changed": false,
+    "dynamic_tests_run": false
+  },
+  "nonblocking_send_mechanism_20261009": {
+    "status": "Standalone Winsock mechanism verified; no AWH integration or performance claim",
+    "source_head": "73c18bf17bea7bf28aecf24f1cadda918c579831",
+    "backend_sha256": "933b95bfa7952e15fcf723fce94381d3037ea1ccfa4d10eb159cb0cd9cca8396",
+    "stand": "forman@192.168.53.177",
+    "stand_directory": "C:/tmp/awh-iocp-20261008/send-mechanism-20261009",
+    "runtime_review": {
+      "schema_version": 1,
+      "status": "PASS",
+      "scope": "Standalone Winsock API mechanism on owned nonblocking TCP sockets; no AWH runtime integration",
+      "replay": {
+        "script": "verify-runtime.py",
+        "command": "python3 verify-runtime.py --check runtime-review.json",
+        "path_base": "directory containing verify-runtime.py"
+      },
+      "build": {
+        "exit_code": 0,
+        "diagnostics_empty": true,
+        "compiler": "g++.exe (Rev6, Built by MSYS2 project) 16.1.0",
+        "compiler_path_record": "stand/compiler-path.txt",
+        "command": "g++ -std=c++17 -O2 -Wall -Wextra -Werror -D_WIN32_WINNT=0x0601 -static-libgcc -static-libstdc++ send-mechanism.cpp -o send-mechanism.exe -lws2_32",
+        "pe_machine_hex": "0x8664",
+        "pe_machine": "AMD64",
+        "link_scope": "Standalone translation unit with explicit ws2_32 link; no AWH library in build command. No claim about imported CRT or all runtime DLLs."
+      },
+      "identities": {
+        "send-mechanism.cpp": "130c3f2c1c260aef154f4e01da42886b5ce40e52d6113d92d6a623e84603d16e",
+        "send-mechanism.exe": "7cf61a78905e1c6ca61bcd06d3d91988d2d2c5af75e169dfb8b34bb4a5595c62",
+        "build.sh": "5787cc71c97c784c8b3cbe3ad99250546a5c0d6d6ade43c5fb6ad1da9e1e6495",
+        "run.ps1": "09dd5e3280b64cd9564199d29d7a211ac27b9f184489276233f62e2a50059abc"
+      },
+      "cases": [
+        {
+          "family": 4,
+          "mode": "overlapped",
+          "immediate": true,
+          "send_packets": 1,
+          "read_packets": 1,
+          "payload_bytes": 64,
+          "ack_bytes": 1,
+          "nonblocking": true,
+          "late_window_ms": 100
+        },
+        {
+          "family": 4,
+          "mode": "plain",
+          "immediate": true,
+          "send_packets": 0,
+          "read_packets": 1,
+          "payload_bytes": 64,
+          "ack_bytes": 1,
+          "nonblocking": true,
+          "late_window_ms": 100
+        },
+        {
+          "family": 6,
+          "mode": "overlapped",
+          "immediate": true,
+          "send_packets": 1,
+          "read_packets": 1,
+          "payload_bytes": 64,
+          "ack_bytes": 1,
+          "nonblocking": true,
+          "late_window_ms": 100
+        },
+        {
+          "family": 6,
+          "mode": "plain",
+          "immediate": true,
+          "send_packets": 0,
+          "read_packets": 1,
+          "payload_bytes": 64,
+          "ack_bytes": 1,
+          "nonblocking": true,
+          "late_window_ms": 100
+        }
+      ],
+      "runs": {
+        "positive": {
+          "pid": 4816,
+          "exit_code": 0,
+          "timed_out": false,
+          "watchdog_ms": 45000,
+          "finished_utc": "2026-10-09T02:09:19.9020257Z"
+        },
+        "mutant-no-overlap": {
+          "pid": 5216,
+          "exit_code": 1,
+          "timed_out": false,
+          "watchdog_ms": 10000,
+          "finished_utc": "2026-10-09T02:09:23.0426574Z"
+        }
+      },
+      "mutation": {
+        "reason": "missing-send-completion",
+        "win32": 258,
+        "wsa": 258,
+        "internal_timeout_expected": true,
+        "external_watchdog_expired": false,
+        "tested_case": "IPv4 first overlapped case with OVERLAPPED argument removed"
+      },
+      "limitations": [
+        "No timing or throughput conclusion.",
+        "No AWH WRITE dispatch, buffer lifetime, cancellation or wakeup contract tested.",
+        "Single 64-byte payload per API/family case; forced backpressure, partial send and would-block fallback not covered.",
+        "No late completion observed within the finite 100 ms post-READ window; no unlimited absence claim.",
+        "All four sends returned immediate success in these observations.",
+        "Downloaded runner records establish recorded executable identity before and after each run; independent replay does not rerun Windows."
+      ],
+      "input_sha256": {
+        "build.sh": "5787cc71c97c784c8b3cbe3ad99250546a5c0d6d6ade43c5fb6ad1da9e1e6495",
+        "run.ps1": "09dd5e3280b64cd9564199d29d7a211ac27b9f184489276233f62e2a50059abc",
+        "send-mechanism.cpp": "130c3f2c1c260aef154f4e01da42886b5ce40e52d6113d92d6a623e84603d16e",
+        "stand/build.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "stand/build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stand/build.sh": "5787cc71c97c784c8b3cbe3ad99250546a5c0d6d6ade43c5fb6ad1da9e1e6495",
+        "stand/build.sha256": "a57d1bae0ea49c9f5b3261a03ae05f132c3a11c7e396a74c8eba566050bdcba2",
+        "stand/compiler-path.txt": "c965c9f9ef229b07ac821f65d3d9bf924be7dae60fa20ce229f9cb4d7562a099",
+        "stand/compiler-version.txt": "8269ce252c43cfa998197ebd84ca3b62756c73fc851b647016504a38e401c374",
+        "stand/executable-pe.txt": "89e0ed6236c5c2c9cf79e89a313f87306c5788b8180bfdf0727dceb797df92eb",
+        "stand/results-01/inputs.json": "67667932c81efdd8c9d6b33a3e8b0abb851db2ec3ee7c6f9ba4fdaedf91acfcf",
+        "stand/results-01/mutant-no-overlap.json": "a1b2a87d6ed0f89424345a6526e10d213755db2f64ec52ba615e4e957546d17b",
+        "stand/results-01/mutant-no-overlap.stderr.txt": "d149c484332d8205ef9ad8f74c754b771b29bf487986d79d3eae39bd8d0656e0",
+        "stand/results-01/mutant-no-overlap.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stand/results-01/positive.json": "143789ef0fc64936c4f2b24910e3f48fbc01262498e4d8bd1346aa85b6f2e9d6",
+        "stand/results-01/positive.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stand/results-01/positive.stdout.txt": "87c097c99fb9845f217ce04fa0f7ab5d7e67c0c4e0206a21d4b30a3a1d8f8190",
+        "stand/results-01/run.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "stand/results-01/status.json": "35fde4d40f5e28ac0157f01c38bface368380e986011b40dbf054a30aefdcbe9",
+        "stand/run.ps1": "09dd5e3280b64cd9564199d29d7a211ac27b9f184489276233f62e2a50059abc",
+        "stand/send-mechanism.cpp": "130c3f2c1c260aef154f4e01da42886b5ce40e52d6113d92d6a623e84603d16e",
+        "stand/send-mechanism.exe": "7cf61a78905e1c6ca61bcd06d3d91988d2d2c5af75e169dfb8b34bb4a5595c62"
+      }
+    },
+    "api_contract": {
+      "retrieved_date": "2026-10-09",
+      "primary_sources": [
+        {
+          "url": "https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsasend",
+          "facts": [
+            "Both overlapped parameters NULL select non-overlapped behavior.",
+            "Nonblocking stream send can consume only part of the supplied buffers.",
+            "Overlapped buffers and OVERLAPPED must stay valid until completion.",
+            "For overlapped use the documentation recommends a null immediate-bytes output; non-overlapped use requires a valid output pointer."
+          ]
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/windows/win32/winsock/overlapped-i-o-and-event-objects-2",
+          "facts": [
+            "Overlapped capability does not determine blocking/nonblocking socket mode."
+          ]
+        },
+        {
+          "url": "https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send",
+          "facts": [
+            "Successful send may return fewer bytes than requested; nonblocking would-block is WSAEWOULDBLOCK.",
+            "Send success does not establish delivery to the peer application."
+          ]
+        }
+      ],
+      "interpretation": "Documentation motivates a real Windows mechanism test; neither packet-count outcome nor AWH contract preservation is assumed without measurement."
+    },
+    "future_AWH_integration": {
+      "status": "Not implemented; production not authorized",
+      "decision": "Conditional GO for separately scoped staging mechanism probe; NO-GO for general replacement",
+      "nonblocking_gap": "drain::usable/transmit do not establish nonblocking mode. Public options can disable it; SM_IO_BLOCK temporarily sets blocking. IOCP/overlapped socket capability does not guarantee nonblocking send. Benchmark requests NO_IO_BLOCK but broad applicability is unproven.",
+      "initial_scope": [
+        "Owned plain connected TCP IPv4/IPv6 PEER/CLIENT with checked stable NO_IO_BLOCK",
+        "Only poll owner thread",
+        "Exclude SM_IO_BLOCK, pipes, UDP/raw, TLS, imported/shared sockets and bandwidth limits pending separate review"
+      ],
+      "internal_API_needed": [
+        "Separate local queue of port::completion_t token/res/flags; do not mutate current partially consumed completion batch",
+        "Reserve inflight SEND slot and local queue capacity BEFORE plain send so a successful transfer cannot lose its result",
+        "Retain token generation, ownership and armed until existing completion processing consumes the result",
+        "Merge local completion into a later poll turn through existing release/cancel-check/drain::keep/WRITE(COMPLETED)/worker dispatch",
+        "Prevent infinite GQCS wait with local pending work, while continuing to collect actual READ/completions fairly",
+        "Distinguish synthetic local operation from actual overlapped operation for cancel/reset/deinitialize"
+      ],
+      "result_and_lifetime_rules": [
+        "Consume ready before submitting; armed blocks another submission",
+        "Positive partial n becomes one deferred result n; do not resend full buffer or submit tail before prior result consumption",
+        "WSAEWOULDBLOCK transfers no bytes and may fall back to current overlapped WSASend",
+        "Other errors must not be blindly retried; retain captured Winsock error, not already mapped POSIX errno, if using completion result domain",
+        "Plain send no longer holds user buffer after return, but AWH queue pop remains deferred until WRITE consumes result",
+        "Overlapped fallback retains stable stream bip-buffer requirements",
+        "Reserve failure BEFORE send can use existing path; failure AFTER transferred bytes must never cause duplicate send",
+        "Cancelled synthetic record must still release its slot without accessing dead node; fd reuse must not inherit result"
+      ],
+      "unsafe_shortcuts": [
+        "Immediate drain::keep without deferred WRITE",
+        "kernel::triggered USER queue used as if it emitted WRITE",
+        "PostQueuedCompletionStatus used to claim removal of kernel completion queue work",
+        "Global FILE_SKIP_COMPLETION_PORT_ON_SUCCESS",
+        "Plain send on any drain socket without established nonblocking mode"
+      ],
+      "required_future_checks": [
+        "Forced partial and would-block fallback with exact stream bytes",
+        "Second send before synthetic dispatch",
+        "Cancel/close/reset before dispatch; fd reuse",
+        "Queue and batch capacity boundaries without loss/duplication",
+        "READ/WRITE fairness and no unintended blocking",
+        "Preserved write/status/available/source-pull callback order and accounting",
+        "Deinitialize without slot leaks or dangling owners"
+      ]
+    },
+    "evidence_snapshot_note": "awh-feasibility.json is the pre-run source audit; its pending probe status is superseded by runtime-review.json and status.json.",
+    "archive": {
+      "path": "/private/tmp/awh-iocp-send-mechanism-20261009.tar.gz",
+      "sha256": "6ba195f14ddfa4d074c99da8e2cb901510737b5c54a5db05d08cf8bddcd0bd08",
+      "bytes": 209521,
+      "payload_files": 31,
+      "files_including_manifest": 32
+    },
+    "archive_verification": {
+      "status": "PASS",
+      "payload_files": 31,
+      "hashes_before_and_after": true,
+      "review_reproduced_exactly": true,
+      "native_windows_rerun": false,
+      "stdout": "RUNTIME_REVIEW_OK cases=4 mutant=missing-send-completion watchdog=false machine=AMD64\n"
+    },
+    "launch_note": {
+      "first_launch": "Failed before child creation: PowerShell default parameter Join-Path $PSScriptRoot had empty Path",
+      "workaround": "Invoke runner with explicit -Executable C:/tmp/awh-iocp-20261008/send-mechanism-20261009/send-mechanism.exe",
+      "probe_changed": false,
+      "runner_changed": false,
+      "results_overwritten": false
+    },
+    "production_cpp_changed": false,
+    "AWH_tests_run": false,
+    "performance_measured": false
   }
 }
