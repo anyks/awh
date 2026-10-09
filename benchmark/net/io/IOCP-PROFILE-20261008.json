@@ -85996,5 +85996,676 @@
     "production_cpp_changed": false,
     "AWH_tests_run": false,
     "performance_measured": false
+  },
+  "local_send_completion_prototype_20261009": {
+    "status": "Correctness prototype validated; no production transfer or performance claim",
+    "date": "2026-10-09",
+    "host": "forman@192.168.53.177",
+    "architecture": "Windows AMD64",
+    "source_head_at_start": "81117e4a3340bca2ff2c34c2ca45d4c238622648",
+    "head_after_owner_commit": "e7f407bd89e284fdfb81793cfdfec24dfdf83265",
+    "source_sha256": {
+      "iocp-baseline.cpp": "933b95bfa7952e15fcf723fce94381d3037ea1ccfa4d10eb159cb0cd9cca8396",
+      "iocp-candidate.cpp": "16226aad8f2a9616bccd6231ca8ec9f2fc3a0365a48effcdbfd134288ff830af",
+      "local-send-probe.cpp": "dee74fd7f8ad485ed8227b785b9fc5758e394d0cc21e5039ca0d0146602f8138"
+    },
+    "eligibility": "Explicit diagnostic opt-in; own plain TCP socket with stable FIONBIO=1 established by fixture; helper verifies registry identity, current port and poll thread, not socket type/nonblocking mode",
+    "implementation": [
+      "Reserve inflight slot and fixed 256-entry local ring before plain send",
+      "Defer positive or terminal negative result through existing token/generation/armed completion parser",
+      "Would-block or full local queue fall back to existing overlapped path before accepted bytes",
+      "Preserve unconsumed batch; new batch has nonblocking native collection and local entries",
+      "Synthetic cancel marks slot without CancelIoEx; normal parser or teardown releases it"
+    ],
+    "runs": [
+      {
+        "name": "immediate4",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "immediate6",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "partial-cap",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "repeat-armed",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "cancel",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "destroy",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "generation",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "wouldblock",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "terminal",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "ownership",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "batch",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "teardown",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "teardown-batch",
+        "results_directory": "stand/results-positive-05",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96"
+      },
+      {
+        "name": "mutant-missing-local",
+        "results_directory": "stand/results-01",
+        "exit_code": 1,
+        "watchdog": false,
+        "executable_sha256": "693448ca3f6b0eac4f12ccf780649b98436828e4504105adeee235852c844b3c"
+      },
+      {
+        "name": "mutant-ignore-cancel",
+        "results_directory": "stand/results-01",
+        "exit_code": 1,
+        "watchdog": false,
+        "executable_sha256": "1afd2df3588d2b24706e2cfe39a81eefd439a3999bba272eb83c7be94bb6de84"
+      },
+      {
+        "name": "baseline-public",
+        "results_directory": "stand/results-01",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "609411d89cf3f542e298961024b8e454e68111881fea8276fcb203be4d2e2f0f"
+      },
+      {
+        "name": "candidate-public",
+        "results_directory": "stand/results-01",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "c97c0560deee4443cfb515611d28ee36c293ad4c061c0998f3dfab6eb345790c"
+      },
+      {
+        "name": "baseline-allocator",
+        "results_directory": "stand/results-01",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "f792d54de413476c7909c6eaf01d7a8c926847b60369566a6d56169b6124afa2"
+      },
+      {
+        "name": "candidate-allocator",
+        "results_directory": "stand/results-01",
+        "exit_code": 0,
+        "watchdog": false,
+        "executable_sha256": "59ce4f190047d3f9595e2b1028e14549d22f371f3d8ac2102c7234d51d95a44f"
+      }
+    ],
+    "public_tests": [
+      {
+        "name": "baseline-public",
+        "xml_sha256": "b97c41c0b6c91a7aa9a13cce8430b472d47eaf024e54c8385310d37846170d7a",
+        "tests": [
+          "IoFixture.IoStreamDestroyWithSendInFlightTest",
+          "IoFixture.IoDeliverBeforeHangupTest",
+          "IoFixture.IoClientSemiBlockingSendTest",
+          "IoFixture.IoDatagramClientSemiBlockingSendTest",
+          "IoFixture.IoAcceptedSemiBlockingSendTest",
+          "IoFixture.IoStreamQueueTailDrainsWithoutSendsTest"
+        ],
+        "failures": 0,
+        "errors": 0,
+        "disabled": 0
+      },
+      {
+        "name": "candidate-public",
+        "xml_sha256": "716c4178c9a6e3c8de2810a9dd9c88ea5f36c775d626d5adae31779f7ad62ca5",
+        "tests": [
+          "IoFixture.IoStreamDestroyWithSendInFlightTest",
+          "IoFixture.IoDeliverBeforeHangupTest",
+          "IoFixture.IoClientSemiBlockingSendTest",
+          "IoFixture.IoDatagramClientSemiBlockingSendTest",
+          "IoFixture.IoAcceptedSemiBlockingSendTest",
+          "IoFixture.IoStreamQueueTailDrainsWithoutSendsTest"
+        ],
+        "failures": 0,
+        "errors": 0,
+        "disabled": 0
+      }
+    ],
+    "allocator_runtime": {
+      "baseline": "initialized_captured=false capture_result=false final_captured=false",
+      "candidate": "initialized_captured=false capture_result=false final_captured=false",
+      "compile_definition": "AWH_ALLOC_DISABLED"
+    },
+    "observations": {
+      "immediate_bytes_each": 64,
+      "capped_partial": {
+        "syscall_limit_bytes": 7,
+        "stream_bytes": 64,
+        "positive_callbacks": 10,
+        "natural_OS_partial": false
+      },
+      "repeat_armed_bytes": 128,
+      "wouldblock_stream_bytes": 32768,
+      "batch": {
+        "local_queued": 256,
+        "native_fallback_sends": 16,
+        "observed_local_sends_in_mixed_batch": 239,
+        "observed_native_sends_in_mixed_batch": 16,
+        "read_poll_bound": 100,
+        "general_starvation_guarantee": false
+      },
+      "teardown": [
+        {
+          "name": "teardown",
+          "staged": 0,
+          "released": 1,
+          "discarded": 0
+        },
+        {
+          "name": "teardown-batch",
+          "staged": 1,
+          "released": 1,
+          "discarded": 0
+        }
+      ],
+      "forced_discard_branch_proven": false
+    },
+    "mutations": [
+      {
+        "name": "missing-local",
+        "exit_code": 1,
+        "reason": "LOCAL_SEND_FAIL: missing-local-write",
+        "watchdog": false
+      },
+      {
+        "name": "ignore-cancel",
+        "exit_code": 1,
+        "reason": "LOCAL_SEND_FAIL: cancelled-write-delivered",
+        "watchdog": false
+      }
+    ],
+    "link_audit": {
+      "members": 717,
+      "changed_members": [
+        "iocp.cpp_55.obj"
+      ],
+      "object_sha256": "99d310897d6f2d5637d423d0c4e06763802b4478e75642768366c10b52c7f3e8",
+      "all_other_members_unchanged": true
+    },
+    "positive_executable_sha256": "2da491a30aaba15c6a037fbb1673310bcfbacc78a8081f1d0910e253070ebd96",
+    "history": [
+      "Initial probe helper local collided with backend namespace; exact rename to localToken",
+      "Fixture waited for actual deferred POLL registration after accept",
+      "Existing public WRITE(0) distinguished from positive completion; positive-03 retains 2 PASS and 11 fixture failures",
+      "Teardown accepts exact one release by internal poll or cleanup; positive-04 retains 11 PASS and 2 fixture failures",
+      "Initial empty-output/null-exit/nested-array runner failures and CRLF preflight retained; final runner run-contracts.ps1",
+      "Final positive-05 and mutants-05 use one fixture revision; backend candidate never changed during fixture repairs"
+    ],
+    "limitations": [
+      "Own plain nonblocking TCP and actual poll thread only; explicit fixture opt-in",
+      "Capped send length is not natural OS partial send",
+      "Generation test recycles inflight slot, not native descriptor number",
+      "Batch exercises backend post::send directly; distinct public queue cases cover normal sends",
+      "Shutdown may release through its internal poll; forced discard path not proven",
+      "No status/available/spool/source-pull callback matrix, imported sockets, TLS, datagrams, cross-thread send or performance proof",
+      "Baseline public regressions use frozen allocator-OFF snapshot, no localSend opt-in",
+      "No ASan/TSan run in this Windows experiment"
+    ],
+    "build_diagnostics": [
+      "Existing io::Origin internal-linkage warning in direct-include probe",
+      "Existing dangling-else and uninitialized-tag warnings in frozen common test sources"
+    ],
+    "stdout_diagnostics": "Transport error logs occur in deliberate failure/close scenarios; no unexpected stderr in final positive processes",
+    "archive": {
+      "path": "/private/tmp/awh-iocp-local-send-20261009.tar.gz",
+      "sha256": "09da305812bf1e47b164881e5056aaf390a507b1a03600a8bbd3f6c773d90b60",
+      "bytes": 333657451,
+      "payload_files": 825,
+      "files_including_manifest": 826
+    },
+    "archive_verification": {
+      "status": "PASS",
+      "archive_sha256": "09da305812bf1e47b164881e5056aaf390a507b1a03600a8bbd3f6c773d90b60",
+      "payload_files": 825,
+      "hashes_before_and_after": true,
+      "review_reproduced_exactly": true,
+      "native_windows_rerun": false,
+      "stdout": "LOCAL_SEND_EVIDENCE_OK runs=19\n"
+    },
+    "verifier_selfchecks": {
+      "status": "PASS",
+      "checks": [
+        {
+          "case": "untampered",
+          "exit_code": 0,
+          "expected_reason": null,
+          "stdout": "LOCAL_SEND_EVIDENCE_OK runs=19\n",
+          "stderr_last_line": ""
+        },
+        {
+          "case": "extra_mutant_reason",
+          "exit_code": 1,
+          "expected_reason": "MUTANT_REASON_REJECTED",
+          "stdout": "",
+          "stderr_last_line": "AssertionError: ('mutant-missing-local', 'MUTANT_REASON_REJECTED', ['LOCAL_SEND_FAIL: missing-local-write', 'LOCAL_SEND_FAIL: unrelated-assertion'])"
+        },
+        {
+          "case": "watchdog",
+          "exit_code": 1,
+          "expected_reason": "WATCHDOG_REJECTED",
+          "stdout": "",
+          "stderr_last_line": "AssertionError: ('mutant-missing-local', 'WATCHDOG_REJECTED')"
+        },
+        {
+          "case": "exe_hash",
+          "exit_code": 1,
+          "expected_reason": "EXE_HASH_REJECTED",
+          "stdout": "",
+          "stderr_last_line": "AssertionError: ('mutant-missing-local', 'EXE_HASH_REJECTED')"
+        }
+      ],
+      "original_files_unchanged_during_selfcheck": 819
+    },
+    "production_cpp_changed": false,
+    "performance_measured": false,
+    "allocator_audit_new_performance_data": false,
+    "next_step": "Evaluate separate tightly scoped opt-in benchmark with allocator OFF; production transfer requires closing remaining contracts and approval"
+  },
+  "local_send_echo_applicability_20261009": {
+    "status": "NO_APPLICABILITY",
+    "conclusion": "Current prototype does not participate in measured echo/single; no throughput comparison made",
+    "date": "2026-10-09",
+    "host": "forman@192.168.53.177",
+    "architecture": "Windows AMD64",
+    "compiler": "GCC 16.1.0 MSYS2 Rev6",
+    "build": "Release -O3 -DNDEBUG, allocator OFF, diagnostic counters ON",
+    "head": "e7f407bd89e284fdfb81793cfdfec24dfdf83265",
+    "production_backend_sha256": "933b95bfa7952e15fcf723fce94381d3037ea1ccfa4d10eb159cb0cd9cca8396",
+    "prototype_source_sha256": "16226aad8f2a9616bccd6231ca8ec9f2fc3a0365a48effcdbfd134288ff830af",
+    "generated_source_sha256": {
+      "iocp.cpp": "d9be7836b6c945a63efb1f0c1bd59530821714257479240b389ff11dbc8e63b5",
+      "echo.cpp": "326f349f28731617c3a043b633b4eb857786faf7f6aa3c79383ad4ae5391603a",
+      "local-send-experiment.hpp": "6a6a67db3dce5921176e911dd99447a1614b829007928719808a4a3d1ec50709",
+      "local-send-adapter.inc": "c1a96d288326ae82494fd0000fbea7db8715815d722c0278880ff28de288f0ea"
+    },
+    "scenario": {
+      "filter": "net/io/echo/single",
+      "arguments": "--filter=net/io/echo/single --relaxed",
+      "connections": 1,
+      "bytes_per_exchange": 64,
+      "measured_exchanges": 250000,
+      "warmup_exchanges": 8,
+      "modes": {
+        "A0": "local off",
+        "A1": "local off, A/A label",
+        "B1": "local on for two known endpoints"
+      },
+      "hook": "Known client/accepted IDs enabled after first warmup; owner/port/options and successful FIONBIO checked equally in both modes; identities/flags rechecked at boundaries; actual eligibility unchanged"
+    },
+    "positive_controls": {
+      "immediate4": {
+        "exit_code": 0,
+        "exact_bytes": 64,
+        "queued": 1,
+        "delivered": 1,
+        "released": 1
+      },
+      "cancel": {
+        "exit_code": 0,
+        "cancelled": 1,
+        "positive_write_bytes": 0
+      },
+      "allocator": "initialized_captured=false capture_result=false final_captured=false"
+    },
+    "gate": {
+      "status": "NO_APPLICABILITY",
+      "approved_for_timed": false,
+      "criterion": "B1 measured queued > 0 AND delivered > 0; A0/A1 attempts=queued=0; both direct controls and allocator OFF pass",
+      "classification": "Expected negative applicability gate; build and positive controls succeeded",
+      "measured": {
+        "A0": {
+          "attempts": 0,
+          "full": 0,
+          "partial": 0,
+          "wouldblock": 0,
+          "errors": 0,
+          "fallback": 0,
+          "queued": 0,
+          "delivered": 0,
+          "cancelled": 0,
+          "released": 0,
+          "discarded": 0,
+          "fullQueue": 0,
+          "native": 500000
+        },
+        "A1": {
+          "attempts": 0,
+          "full": 0,
+          "partial": 0,
+          "wouldblock": 0,
+          "errors": 0,
+          "fallback": 0,
+          "queued": 0,
+          "delivered": 0,
+          "cancelled": 0,
+          "released": 0,
+          "discarded": 0,
+          "fullQueue": 0,
+          "native": 500000
+        },
+        "B1": {
+          "attempts": 0,
+          "full": 0,
+          "partial": 0,
+          "wouldblock": 0,
+          "errors": 0,
+          "fallback": 0,
+          "queued": 0,
+          "delivered": 0,
+          "cancelled": 0,
+          "released": 0,
+          "discarded": 0,
+          "fullQueue": 0,
+          "native": 500000
+        }
+      },
+      "warmup": {
+        "A0": {
+          "attempts": 0,
+          "full": 0,
+          "partial": 0,
+          "wouldblock": 0,
+          "errors": 0,
+          "fallback": 0,
+          "queued": 0,
+          "delivered": 0,
+          "cancelled": 0,
+          "released": 0,
+          "discarded": 0,
+          "fullQueue": 0,
+          "native": 16
+        },
+        "A1": {
+          "attempts": 0,
+          "full": 0,
+          "partial": 0,
+          "wouldblock": 0,
+          "errors": 0,
+          "fallback": 0,
+          "queued": 0,
+          "delivered": 0,
+          "cancelled": 0,
+          "released": 0,
+          "discarded": 0,
+          "fullQueue": 0,
+          "native": 16
+        },
+        "B1": {
+          "attempts": 0,
+          "full": 0,
+          "partial": 0,
+          "wouldblock": 0,
+          "errors": 0,
+          "fallback": 0,
+          "queued": 0,
+          "delivered": 0,
+          "cancelled": 0,
+          "released": 0,
+          "discarded": 0,
+          "fullQueue": 0,
+          "native": 16
+        }
+      },
+      "setups": {
+        "A0": [
+          {
+            "index": 0,
+            "registered": 0,
+            "local": 0
+          },
+          {
+            "index": 1,
+            "registered": 1,
+            "local": 0
+          }
+        ],
+        "A1": [
+          {
+            "index": 0,
+            "registered": 0,
+            "local": 0
+          },
+          {
+            "index": 1,
+            "registered": 1,
+            "local": 0
+          }
+        ],
+        "B1": [
+          {
+            "index": 0,
+            "registered": 0,
+            "local": 1
+          },
+          {
+            "index": 1,
+            "registered": 1,
+            "local": 1
+          }
+        ]
+      },
+      "runs": [
+        {
+          "name": "control-immediate4",
+          "exit_code": 0,
+          "sha256": "dd86b9b654399080dacde89f45e6b9ddb2ace506d8d846c041c80c884e855411"
+        },
+        {
+          "name": "control-cancel",
+          "exit_code": 0,
+          "sha256": "dd86b9b654399080dacde89f45e6b9ddb2ace506d8d846c041c80c884e855411"
+        },
+        {
+          "name": "allocator",
+          "exit_code": 0,
+          "sha256": "3a14be92feeecaa3c0ac2595f1220a1695ac0086aff4c54380e2944fa06c9785"
+        },
+        {
+          "name": "echo-A0",
+          "exit_code": 0,
+          "sha256": "d589445948279cc5baf17b8878abc77d12d31959d7751530cc0601aa5648d80d"
+        },
+        {
+          "name": "echo-A1",
+          "exit_code": 0,
+          "sha256": "d589445948279cc5baf17b8878abc77d12d31959d7751530cc0601aa5648d80d"
+        },
+        {
+          "name": "echo-B1",
+          "exit_code": 1,
+          "sha256": "d589445948279cc5baf17b8878abc77d12d31959d7751530cc0601aa5648d80d"
+        }
+      ],
+      "limits": [
+        "Counter delta window follows the explicit begin/finish hooks; completion may straddle either boundary.",
+        "No minimum coverage fraction is introduced after data. Positive applicability does not prove every send uses the local path.",
+        "Diagnostic timings are not performance measurements. NO_APPLICABILITY forbids timed compilation and the 78-process matrix."
+      ]
+    },
+    "B1_expected_exit": {
+      "exit_code": 1,
+      "reason": "LOCAL_SEND_BENCH_FAIL: candidate-unused-in-measured-window",
+      "watchdog": false,
+      "point": "After completed exchange window, before normal benchmark result publication"
+    },
+    "source_finding": {
+      "registered": "State of an armed readiness operation; not IOCP association or socket ownership",
+      "attached": "Separate IOCP port association",
+      "callback_path": "POLL/RECV completion clears registered/token/applied; READ callback sends before next kernel::flush rearms TCP",
+      "prototype_guard": "localSendable requires registered=true and therefore excludes these sends",
+      "existing_path": "post::send still uses WSASend; its native submission does not require registered",
+      "frozen_source_references": [
+        "iocp.cpp:10968",
+        "iocp.cpp:11276",
+        "iocp.cpp:79333",
+        "iocp.cpp:78780",
+        "iocp.cpp:20095",
+        "iocp.cpp:22107",
+        "iocp.cpp:10403"
+      ]
+    },
+    "build_audit": {
+      "status": "PASS",
+      "scope": "Independent ar byte parser and actual map/nm/direct-include identity; no native execution",
+      "archives": {
+        "libawh.a": {
+          "members": 717,
+          "changed_members": [
+            "iocp.cpp_55.obj"
+          ],
+          "object_sha256": "36c4a2916a137b36759106a7b017aeb7fdf2b1b04c862fc7bfcdc520f500606f",
+          "baseline_sha256": "218d88cfa488c7d3226229a523b60600a3419ba6fd8562ea30ddb1dcbfdf89db",
+          "candidate_sha256": "02b6a1627b6a040853ecdb09583aefb50d8e4b213863848cb0eb1c6db24b3611"
+        },
+        "objects.a": {
+          "members": 10,
+          "changed_members": [
+            "echo.cpp.obj"
+          ],
+          "object_sha256": "03f98bf236056afac13995a2e4e54c6841a99f9fe454ff619cf788435e530713",
+          "baseline_sha256": "c621647afb9bb6681b71a555ae3b1234664fa1901583b84cedc93a445fb44fce",
+          "candidate_sha256": "31c4881ea2330a4cf11de83e599c8d181a4e8b153a8e8c451a23a455fb296726"
+        }
+      },
+      "diagnostic_compile_count": 4,
+      "measured_native_each_mode": 500000,
+      "warmup_native_each_mode": 16,
+      "all_local_counts_zero": true,
+      "timed_build_exists": false
+    },
+    "selfchecks": {
+      "status": "PASS",
+      "scope": "Python negative applicability classification on independent byte copies; no native execution",
+      "original_files_unchanged": 117,
+      "checks": [
+        {
+          "case": "untampered",
+          "exit_code": 0,
+          "expected_reason": null,
+          "stdout": "LOCAL_SEND_DIAGNOSTIC_GATE NO_APPLICABILITY\n",
+          "stderr_last_line": ""
+        },
+        {
+          "case": "wrong_negative_reason",
+          "exit_code": 1,
+          "expected_reason": "NEGATIVE_REASON_REJECTED",
+          "stdout": "",
+          "stderr_last_line": "AssertionError: ('echo-B1', 'NEGATIVE_REASON_REJECTED')"
+        },
+        {
+          "case": "watchdog",
+          "exit_code": 1,
+          "expected_reason": "WATCHDOG_REJECTED",
+          "stdout": "",
+          "stderr_last_line": "AssertionError: ('echo-B1', 'WATCHDOG_REJECTED')"
+        },
+        {
+          "case": "fake_positive_gate",
+          "exit_code": 1,
+          "expected_reason": "GATE_REPORT_MISMATCH",
+          "stdout": "",
+          "stderr_last_line": "AssertionError: GATE_REPORT_MISMATCH"
+        }
+      ]
+    },
+    "performance": {
+      "measured": false,
+      "timed_build_created": false,
+      "predeclared_processes": 78,
+      "performance_processes_run": 0,
+      "diagnostic_timings_used_for_speed_claim": false
+    },
+    "next_candidate_proposal": {
+      "implemented": false,
+      "scope": "Separate SEND eligibility from READ readiness while preserving exact live owner, current port, poll thread, explicit stable nonblocking owned TCP opt-in and reset on forget/owner change",
+      "required_validation": [
+        "Actual READ callback -> public send, exact bytes and deferred positive WRITE",
+        "cancel/destroy/reuse while registered=false",
+        "Source mutations and positive controls",
+        "Repeat diagnostic applicability gate before any timed matrix"
+      ],
+      "caution": "registered=false also occurs during removal/close; deleting one condition alone is not a safety proof"
+    },
+    "archive": {
+      "path": "/private/tmp/awh-iocp-local-send-bench-20261009.tar.gz",
+      "sha256": "5d7908f70a2d0b5346339d550a8b9fb0eda038947fbaee1f5f2ba1f5815e9eed",
+      "bytes": 82682512,
+      "payload_files": 121,
+      "files_including_manifest": 122
+    },
+    "archive_verification": {
+      "status": "PASS",
+      "sha256": "5d7908f70a2d0b5346339d550a8b9fb0eda038947fbaee1f5f2ba1f5815e9eed",
+      "payload_files": 121,
+      "hashes_before_and_after": true,
+      "gate_reproduced_exactly": true,
+      "native_windows_rerun": false,
+      "stdout": "LOCAL_SEND_DIAGNOSTIC_GATE NO_APPLICABILITY\n"
+    },
+    "production_cpp_changed": false,
+    "allocator_audit_new_performance_data": false
   }
 }
