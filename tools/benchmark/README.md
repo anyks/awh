@@ -261,6 +261,26 @@ OUT=/tmp/ablate-json sh tools/benchmark/ablate.sh json src/codec/json/document.c
 	"return true;" tools/benchmark/json/awh.cpp
 ```
 
+Команды круга 08.10.2026, добавленные к четырём прежним:
+
+```sh
+# перебор перечня написаний в YAML: потолок 1.0546, снят на ПРИНЯТОМ коде
+# (прежняя оговорка этого раздела про `matches` остаётся в силе: выключатель меняет
+#  виды значений, поэтому число читается как верхняя граница перебора, а не обещание правки)
+OUT=/tmp/ablate-yaml-matches sh tools/benchmark/ablate.sh yaml src/codec/yaml/common.cpp \
+	"static bool matches(const string_view text, const string_view * variants, const size_t count) noexcept {" \
+	"return false;" tools/benchmark/yaml/awh-tree.cpp
+
+# разметка разделителя у CSV: выключатель заведён, но кандидат закрыт чтением -
+# вызов живёт на поверку и сброс настроек, то есть на один документ, а не на запись
+OUT=/tmp/ablate-csv-marking sh tools/benchmark/ablate.sh csv src/codec/csv/reader.cpp \
+	"void awh::codec::csv::Reader::marking() noexcept {" "return;" tools/benchmark/csv/awh.cpp
+```
+
+Правило, вынесенное этим кругом: **потолок снимается на том коде, который уже принят**.
+Выключатель, поставленный поверх непринятой правки, мерит долю той правки дважды - вместе с
+ходом, который она сама успела убрать, - и число такого замера не переносится в отчёт.
+
 Места, где выключать нельзя, потому что меняется наблюдаемый результат, — мера там только
 правкой с парным прогоном: выдача событий `abc::Reader::emit` (чтение становится пустым),
 таблица написаний `matches` у YAML (виды значений) и общие помощники в разборе дерева CEF
