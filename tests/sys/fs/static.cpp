@@ -25,6 +25,17 @@
 #include "fs.hpp"
 
 /**
+ * Системные заголовочные файлы: сведения о самой ссылке читаются напрямую, чтобы проверка флага
+ * разрешения не зависела от того же кода, который проверяется
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <sys/stat.h>
+	#include <unistd.h>
+	#include <pwd.h>
+	#include <grp.h>
+#endif
+
+/**
  * @brief Метод настройки тестовой фикстуры
  *
  */
@@ -130,7 +141,7 @@ TEST_F(FSFixture, FSTest){
 		// Получаем текущие права
 		uint32_t perms = this->_fs->chmod(testFile);
 		// Меняем права (например 0777)
-		ASSERT_TRUE(this->_fs->chmod(testFile, 0777));
+		ASSERT_TRUE(this->_fs->chmod(testFile, static_cast <uint32_t> (0777)));
 		ASSERT_EQ(this->_fs->chmod(testFile) & 0777, 0777);
 		// Возвращаем старые (или стандартные 0644)
 		this->_fs->chmod(testFile, perms);
@@ -1435,7 +1446,7 @@ TEST_F(FSFixture, ChmodAddressViewWithoutTerminatorTest){
 	// Соседнего файла быть не должно
 	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::NONE);
 	// Установка прав существующему файлу обязана пройти
-	ASSERT_TRUE(this->_fs->chmod(view, 0600));
+	ASSERT_TRUE(this->_fs->chmod(view, static_cast <uint32_t> (0600)));
 	// Права обязаны быть установлены
 	ASSERT_EQ(this->_fs->chmod(view), 0600u);
 	// Удаляем проверяемый файл
@@ -1811,4 +1822,160 @@ TEST_F(FSFixture, InodeLinkTest){
 	ASSERT_TRUE(this->_fs->unlink(file));
 	ASSERT_TRUE(this->_fs->unlink(hard));
 	ASSERT_TRUE(this->_fs->unlink(copy));
+}
+
+/**
+ * @brief Проверка флага разрешения у методов атрибутов: без флага объект - сама ссылка, с флагом - её цель
+ *
+ * @details Правка заведена по договору «упаковываем и извлекаем файловую систему как есть»: права,
+ *          время, владелец и расширенные атрибуты символьной ссылки должны читаться и ставиться самой
+ *          ссылке, а не её цели, - иначе висячая ссылка (цели нет ни на дереве, ни на машине) давала бы
+ *          отказ и нулевые метаданные. Направление флага сверяется двумя опытами: на висячей ссылке цель
+ *          не читается и не меняется вовсе, на ссылке с существующей целью видно, что с флагом
+ *          разрешения изменение доходит до цели и не трогает саму ссылку
+ *
+ * @note Расширенные атрибуты у ссылки проверяются лишь там, где их принимает файловая система: в Linux
+ *       пространство пользователя разрешено файлам и каталогам, и отказ означает ограничение системы, а
+ *       не библиотеки
+ *
+ */
+TEST_F(FSFixture, ResolveFlagOnLinkAttributesTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Корневой каталог теста
+		const std::string dir = "test_resolve_flag_unit";
+		// Удаляем остатки предыдущего запуска
+		if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+			// Удаляем каталог рекурсивно
+			ASSERT_TRUE(this->_fs->unlink(dir));
+		// Создаём каталог
+		ASSERT_TRUE(this->_fs->mkdir(dir));
+		// Путь к файлу и путь к ссылке на него
+		const std::string file = dir + "/file.txt", link = dir + "/link.txt";
+		// Создаём файл
+		this->_fs->write(file, "data");
+		// Создаём ссылку на существующий файл (цель передаётся полным адресом)
+		ASSERT_TRUE(this->_fs->symlink(this->_fs->fullpath(file, true), link));
+		// Путь к ссылке, цели которой нет
+		const std::string ghost = dir + "/ghost.txt";
+		// Создаём висячую ссылку: существование цели не входит в договор
+		ASSERT_TRUE(this->_fs->symlink(dir + "/absent.txt", ghost));
+		// Данные сведений о самой ссылке
+		struct stat info{};
+		// Если сведения о ссылке не считаны, опыт ставить не с чем
+		ASSERT_EQ(::lstat(link.c_str(), &info), 0);
+		// Права ссылки без разрешения совпадают с её собственными правами
+		ASSERT_EQ(this->_fs->chmod(link), static_cast <uint32_t> (info.st_mode & 07777));
+		// С флагом разрешения права берутся у цели ссылки
+		ASSERT_EQ(this->_fs->chmod(link, true), this->_fs->chmod(file));
+		// Время висячей ссылки без разрешения читается, с разрешением отсутствующая цель не даёт времени
+		ASSERT_GT(this->_fs->mtime(ghost), 0ULL);
+		// Владелец висячей ссылки без разрешения - её собственный владелец
+		ASSERT_EQ(this->_fs->owner(ghost).uid, static_cast <uint32_t> (::geteuid()));
+		// С разрешением владельца отсутствующей цели получить нельзя: номер остаётся ненайденным
+		ASSERT_EQ(this->_fs->owner(ghost, true).uid, static_cast <uint32_t> (-1));
+		// Владелец для установки: только номер пользователя, номер группы оставляется ненайденным
+		// (-1 сохраняет нынешнюю группу, а её смена без прав суперпользователя запрещена)
+		awh::fs_t::owner_t mine;
+		// Устанавливаем номер текущего пользователя
+		mine.uid = static_cast <uint32_t> (::geteuid());
+		// Установка владельца без разрешения удаётся самой ссылке
+		ASSERT_TRUE(this->_fs->owner(ghost, mine));
+		// С разрешением ставить нечего: цели нет, и вызов отказывает
+		ASSERT_FALSE(this->_fs->owner(ghost, mine, true));
+		/**
+		 * Метод установки владельца по имени выбирает объект тем же флагом: имена берутся текущего
+		 * пользователя, поэтому установка ничего не меняет, но обязана пройти без разрешения и
+		 * отказаться с разрешением
+		 */
+		{
+			// Запись текущего пользователя и его группы
+			const struct passwd * pwd = ::getpwuid(::geteuid());
+			const struct group * grp = ::getgrgid(::getegid());
+			// Если имена получены
+			if((pwd != nullptr) && (grp != nullptr)){
+				// Установка по имени без разрешения удаётся, с разрешением - отказ
+				ASSERT_TRUE(this->_fs->chown(ghost, pwd->pw_name, grp->gr_name));
+				ASSERT_FALSE(this->_fs->chown(ghost, pwd->pw_name, grp->gr_name, true));
+			}
+		}
+		// Время цели до опыта
+		const uint64_t before = this->_fs->mtime(file);
+		// Права цели до опыта
+		const uint32_t mode = this->_fs->chmod(file);
+		// Время изменения для опыта: заведомо отличное от времени создания
+		const uint64_t when = 1422961506345ULL;
+		// Установка времени ссылки без разрешения удаётся и не доходит до цели
+		ASSERT_TRUE(this->_fs->mtime(link, when));
+		// Время цели при этом остаётся прежним
+		ASSERT_EQ(this->_fs->mtime(file), before);
+		// С флагом разрешения время ставится цели
+		ASSERT_TRUE(this->_fs->mtime(link, when + 1000ULL, true));
+		// Цель получила новое время
+		ASSERT_EQ(this->_fs->mtime(file), when + 1000ULL);
+		// Ссылка осталась при своём времени
+		ASSERT_EQ(this->_fs->mtime(link), when);
+		/**
+		 * Права самой ссылки существуют лишь там, где их хранит система: lchmod есть в macOS,
+		 * FreeBSD, NetBSD и DragonFly; в Linux, Solaris и OpenBSD прав у ссылки нет, и установка
+		 * пропускается как выполненная
+		 */
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+			// Установка прав самой ссылки удаётся
+			ASSERT_TRUE(this->_fs->chmod(link, static_cast <uint32_t> (0700)));
+			// Права ссылки равны установленным
+			ASSERT_EQ(this->_fs->chmod(link), static_cast <uint32_t> (0700));
+			// Права цели при этом не изменились
+			ASSERT_EQ(this->_fs->chmod(file), mode);
+			// С флагом разрешения права ставятся цели
+			ASSERT_TRUE(this->_fs->chmod(link, static_cast <uint32_t> (0604), true));
+			// Цель получила новые права
+			ASSERT_EQ(this->_fs->chmod(file), static_cast <uint32_t> (0604));
+			// Ссылка осталась при своих правах
+			ASSERT_EQ(this->_fs->chmod(link), static_cast <uint32_t> (0700));
+			// Возвращаем цели прежние права, а ссылке - её собственные после установки цели
+			ASSERT_TRUE(this->_fs->chmod(file, mode));
+		#else
+			// Установка прав ссылки пропускается как выполненная: менять права негде
+			ASSERT_TRUE(this->_fs->chmod(link, static_cast <uint32_t> (0700)));
+			// Права цели при этом не изменились
+			ASSERT_EQ(this->_fs->chmod(file), mode);
+		#endif
+		/**
+		 * Расширенные атрибуты: опыт удаётся лишь там, где файловая система принимает атрибуты у
+		 * символьных ссылок, поэтому отказ от установки не считается ошибкой библиотеки
+		 */
+		#if defined(__APPLE__) || defined(__MACH__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
+			// Если система приняла атрибут самой висячей ссылке
+			if(this->_fs->xattr(ghost, {{"user.note", "ghost"}}) == 0){
+				// Отметка обнаружения атрибута ссылки
+				bool found = false;
+				// Выполняем поиск установленного значения среди атрибутов ссылки без разрешения
+				for(auto & attr : this->_fs->xattr(ghost)){
+					// Если атрибут найден
+					if((attr.first == "user.note") && (attr.second == "ghost"))
+						// Устанавливаем отметку
+						found = true;
+				}
+				// Атрибут ссылки читается без разрешения
+				ASSERT_TRUE(found);
+				// С разрешением цель ссылки отсутствует, и атрибутов у неё нет
+				ASSERT_TRUE(this->_fs->xattr(ghost, true).empty());
+			/**
+			 * Если файловая система не принимает атрибуты у ссылок
+			 */
+			} else {
+				// Перед пропуском убираем рабочий каталог: пропуск не должен оставлять состояние
+				ASSERT_TRUE(this->_fs->unlink(dir));
+				// Сообщаем, что этим опытом проверка атрибутов ссылки не выполняется
+				GTEST_SKIP() << "расширенные атрибуты символьных ссылок эта файловая система не принимает";
+			}
+		#endif
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(dir));
+	#endif
 }
