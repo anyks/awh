@@ -485,74 +485,98 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод получения прав доступа к файлу или каталогу
 			 *
-			 * @param addr путь к файлу или каталогу
-			 * @return     запрашиваемые метаданные
+			 * @param addr    путь к файлу или каталогу
+			 * @param resolve ложь - права снимаются с самого объекта (у символьной ссылки с неё, а не
+			 *                с её цели), истина - с цели ссылки; цели может и не быть, тогда
+			 *                права снимаются с самой ссылки и отказ не является ошибкой данных
+			 * @return        запрашиваемые метаданные
 			 *
 			 * \~english
 			 * @brief Method of getting the access rights to a file or a directory
 			 *
-			 * @param addr path to the file or to the directory
-			 * @return     the requested metadata
+			 * @param addr    path to the file or to the directory
+			 * @param resolve false - the rights are taken from the object itself (from a symbolic
+			 *                link, not from its target), true - from the target of the link; the
+			 *                target may be absent, then the rights are taken from the link itself
+			 * @return        the requested metadata
 			 *
 			 * \~
 			 */
-			uint32_t chmod(string_view addr) const noexcept;
+			uint32_t chmod(string_view addr, const bool resolve = false) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод изменения прав доступа к файлу или каталогу
 			 *
-			 * @param addr путь к файлу или каталогу
-			 * @param mode метаданные для установки
-			 * @return     результат работы функции
+			 * @param addr    путь к файлу или каталогу
+			 * @param mode    метаданные для установки
+			 * @param resolve ложь - права устанавливаются у самого объекта (у символьной ссылки её
+			 *                собственные, цель не затрагивается), истина - у цели ссылки; там, где
+			 *                система прав у ссылки не хранит (Linux, Solaris, OpenBSD), без флага
+			 *                разрешения операция пропускается как выполненная
+			 * @return        результат работы функции
 			 *
 			 * \~english
 			 * @brief Method of changing the access rights to a file or a directory
 			 *
-			 * @param addr path to the file or to the directory
-			 * @param mode metadata to set
-			 * @return     result of the work of the function
+			 * @param addr    path to the file or to the directory
+			 * @param mode    metadata to set
+			 * @param resolve false - the rights are set on the object itself (on a symbolic link, on
+			 *                the link without touching its target), true - on the target of the link;
+			 *                where the system stores no rights for a link (Linux, Solaris, OpenBSD)
+			 *                the operation is skipped as done without the resolve flag
+			 * @return        result of the work of the function
 			 *
 			 * \~
 			 */
-			bool chmod(string_view addr, const uint32_t mode) const noexcept;
+			bool chmod(string_view addr, const uint32_t mode, const bool resolve = false) const noexcept;
 		public:
 			/**
 			 * \~russian
 			 * @brief Метод установки владельца на файл или каталог
 			 *
-			 * @param addr  путь к файлу или каталогу для установки владельца
-			 * @param user  имя пользователя
-			 * @param group название группы пользователя
-			 * @return      результат работы функции
+			 * @param addr    путь к файлу или каталогу для установки владельца
+			 * @param user    имя пользователя
+			 * @param group   название группы пользователя
+			 * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке,
+			 *                цель не трогается), истина - цели ссылки; на MS Windows с флагом
+			 *                разрешается ярлык `.lnk`
+			 * @return        результат работы функции
 			 *
 			 * \~english
 			 * @brief Method of setting the owner of a file or a directory
 			 *
-			 * @param addr  path to the file or to the directory to set the owner of
-			 * @param user  name of the user
-			 * @param group name of the group of the user
-			 * @return      result of the work of the function
+			 * @param addr    path to the file or to the directory to set the owner of
+			 * @param user    name of the user
+			 * @param group   name of the group of the user
+			 * @param resolve false - the owner is set on the object itself (on a symbolic link, on the
+			 *                link without touching its target), true - on the target of the link; at
+			 *                MS Windows with the flag a shortcut is resolved
+			 * @return        result of the work of the function
 			 *
 			 * \~
 			 */
-			bool chown(string_view addr, string_view user, string_view group = "") const noexcept;
+			bool chown(string_view addr, string_view user, string_view group = "", const bool resolve = false) const noexcept;
 		public:
 			/**
 			 * \~russian
 			 * @brief Метод получения владельца файла, каталога либо самой символьной ссылки
 			 *
-			 * @param addr путь к файлу, каталогу либо ссылке
-			 * @return     владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
+			 * @param addr    путь к файлу, каталогу либо ссылке
+			 * @param resolve ложь - владелец снимается с самого объекта (у символьной ссылки с неё, а
+			 *                не с её цели), истина - с цели ссылки
+			 * @return        владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
 			 *
 			 * \~english
 			 * @brief Method of getting the owner of a file, a directory or of the symbolic link itself
 			 *
-			 * @param addr path to the file, the directory or the link
-			 * @return     the owner (numbers -1 and empty names if it cannot be got or at MS Windows)
+			 * @param addr    path to the file, the directory or the link
+			 * @param resolve false - the owner is got from the object itself (from a symbolic link, from
+			 *                the link and not from its target), true - from the target of the link
+			 * @return        the owner (numbers -1 and empty names if it cannot be got or at MS Windows)
 			 *
 			 * \~
 			 */
-			owner_t owner(string_view addr) const noexcept;
+			owner_t owner(string_view addr, const bool resolve = false) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод установки владельца файла, каталога либо самой символьной ссылки
@@ -560,9 +584,11 @@ namespace awh {
 			 * @note Владелец ищется по имени, а при отсутствии имени на машине - берётся номер.
 			 *       На MS Windows ничего не делает
 			 *
-			 * @param addr  путь к файлу, каталогу либо ссылке
-			 * @param owner владелец для установки
-			 * @return      результат работы функции
+			 * @param addr    путь к файлу, каталогу либо ссылке
+			 * @param owner   владелец для установки
+			 * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке,
+			 *                цель не трогается), истина - цели ссылки
+			 * @return        результат работы функции
 			 *
 			 * \~english
 			 * @brief Method of setting the owner of a file, a directory or of the symbolic link itself
@@ -570,52 +596,64 @@ namespace awh {
 			 * @note The owner is looked up by the name, and when the machine has no such name the number
 			 *       is taken. Does nothing at MS Windows
 			 *
-			 * @param addr  path to the file, the directory or the link
-			 * @param owner the owner to set
-			 * @return      result of the work of the function
+			 * @param addr    path to the file, the directory or the link
+			 * @param owner   the owner to set
+			 * @param resolve false - the owner is set on the object itself (on a symbolic link, on the
+			 *                link without touching its target), true - on the target of the link
+			 * @return        result of the work of the function
 			 *
 			 * \~
 			 */
-			bool owner(string_view addr, const owner_t & owner) const noexcept;
+			bool owner(string_view addr, const owner_t & owner, const bool resolve = false) const noexcept;
 		public:
 			/**
 			 * \~russian
 			 * @brief Метод получения времени изменения файла, каталога либо самой символьной ссылки
 			 *
-			 * @param addr путь к файлу, каталогу либо ссылке
-			 * @return     время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
+			 * @param addr    путь к файлу, каталогу либо ссылке
+			 * @param resolve ложь - время снимается с самого объекта (у символьной ссылки с неё, а не с
+			 *                её цели), истина - с цели ссылки; на MS Windows с флагом разрешается ярлык `.lnk`
+			 * @return        время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
 			 *
 			 * \~english
 			 * @brief Method of getting the modification time of a file, a directory or of the symbolic link itself
 			 *
-			 * @param addr path to the file, the directory or the link
-			 * @return     the modification time in milliseconds since the Unix epoch (0 if it cannot be got)
+			 * @param addr    path to the file, the directory or the link
+			 * @param resolve false - the time is got from the object itself (from a symbolic link, from
+			 *                the link and not from its target), true - from the target of the link; at
+			 *                MS Windows with the flag a shortcut is resolved
+			 * @return        the modification time in milliseconds since the Unix epoch (0 if it cannot be got)
 			 *
 			 * \~
 			 */
-			uint64_t mtime(string_view addr) const noexcept;
+			uint64_t mtime(string_view addr, const bool resolve = false) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод установки времени изменения файла, каталога либо самой символьной ссылки
 			 *
 			 * @note Время доступа не трогается
 			 *
-			 * @param addr путь к файлу, каталогу либо ссылке
-			 * @param date время изменения в миллисекундах от начала эпохи Unix
-			 * @return     результат работы функции
+			 * @param addr    путь к файлу, каталогу либо ссылке
+			 * @param date    время изменения в миллисекундах от начала эпохи Unix
+			 * @param resolve ложь - время ставится самому объекту (у символьной ссылки - ссылке, цель не
+			 *                трогается), истина - цели ссылки; на MS Windows с флагом разрешается ярлык `.lnk`
+			 * @return        результат работы функции
 			 *
 			 * \~english
 			 * @brief Method of setting the modification time of a file, a directory or of the symbolic link itself
 			 *
 			 * @note The access time is not touched
 			 *
-			 * @param addr path to the file, the directory or the link
-			 * @param date the modification time in milliseconds since the Unix epoch
-			 * @return     result of the work of the function
+			 * @param addr    path to the file, the directory or the link
+			 * @param date    the modification time in milliseconds since the Unix epoch
+			 * @param resolve false - the time is set on the object itself (on a symbolic link, on the
+			 *                link without touching its target), true - on the target of the link; at
+			 *                MS Windows with the flag a shortcut is resolved
+			 * @return        result of the work of the function
 			 *
 			 * \~
 			 */
-			bool mtime(string_view addr, const uint64_t date) const noexcept;
+			bool mtime(string_view addr, const uint64_t date, const bool resolve = false) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -625,8 +663,10 @@ namespace awh {
 			 *       приставку «user.», имена macOS остаются как есть. На OpenBSD, DragonFly, Solaris и MS Windows
 			 *       расширенных атрибутов в этом виде нет, и список пуст
 			 *
-			 * @param addr путь к файлу, каталогу либо ссылке
-			 * @return     список расширенных атрибутов
+			 * @param addr    путь к файлу, каталогу либо ссылке
+			 * @param resolve ложь - атрибуты снимаются с самого объекта (у символьной ссылки с неё, а
+			 *                не с её цели), истина - с цели ссылки
+			 * @return        список расширенных атрибутов
 			 *
 			 * \~english
 			 * @brief Method of getting the extended attributes of a file, a directory or of the symbolic link itself
@@ -635,12 +675,14 @@ namespace awh {
 			 *       «user.», the macOS names stay as they are. OpenBSD, DragonFly, Solaris and MS Windows have no extended
 			 *       attributes of this kind, and the list is empty
 			 *
-			 * @param addr path to the file, the directory or the link
-			 * @return     list of the extended attributes
+			 * @param addr    path to the file, the directory or the link
+			 * @param resolve false - the attributes are got from the object itself (from a symbolic link,
+			 *                from the link and not from its target), true - from the target of the link
+			 * @return        list of the extended attributes
 			 *
 			 * \~
 			 */
-			xattrs_t xattr(string_view addr) const noexcept;
+			xattrs_t xattr(string_view addr, const bool resolve = false) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод установки расширенных атрибутов файла, каталога либо самой символьной ссылки
@@ -648,9 +690,11 @@ namespace awh {
 			 * @note На BSD устанавливаются только атрибуты с приставкой «user.» - в пространство
 			 *       пользователя. Атрибут, какого система не принимает, пропускается
 			 *
-			 * @param addr  путь к файлу, каталогу либо ссылке
-			 * @param attrs список расширенных атрибутов
-			 * @return      количество атрибутов, которые установить не удалось
+			 * @param addr    путь к файлу, каталогу либо ссылке
+			 * @param attrs   список расширенных атрибутов
+			 * @param resolve ложь - атрибуты ставятся самому объекту (у символьной ссылки - ссылке,
+			 *                цель не трогается), истина - цели ссылки
+			 * @return        количество атрибутов, которые установить не удалось
 			 *
 			 * \~english
 			 * @brief Method of setting the extended attributes of a file, a directory or of the symbolic link itself
@@ -658,13 +702,15 @@ namespace awh {
 			 * @note At BSD only the attributes with the prefix «user.» are set - into the user namespace.
 			 *       An attribute the system does not accept is skipped
 			 *
-			 * @param addr  path to the file, the directory or the link
-			 * @param attrs list of the extended attributes
-			 * @return      number of the attributes which could not be set
+			 * @param addr    path to the file, the directory or the link
+			 * @param attrs   list of the extended attributes
+			 * @param resolve false - the attributes are set on the object itself (on a symbolic link, on
+			 *                the link without touching its target), true - on the target of the link
+			 * @return        number of the attributes which could not be set
 			 *
 			 * \~
 			 */
-			size_t xattr(string_view addr, const xattrs_t & attrs) const noexcept;
+			size_t xattr(string_view addr, const xattrs_t & attrs, const bool resolve = false) const noexcept;
 		public:
 			/**
 			 * \~russian

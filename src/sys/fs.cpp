@@ -2409,7 +2409,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2426,7 +2426,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2959,11 +2959,13 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 /**
  * @brief Метод получения прав доступа к файлу или каталогу
  *
- * @param addr путь к файлу или каталогу
- * @return     запрашиваемые метаданные
+ * @param addr    путь к файлу или каталогу
+ * @param resolve ложь - права снимаются с самого объекта (у символьной ссылки с неё, а не с
+ *                её цели), истина - с цели ссылки
+ * @return        запрашиваемые метаданные
  *
  */
-uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
+uint32_t awh::Filesystem::chmod(string_view addr, const bool resolve) const noexcept {
 	// Переменная результата
 	uint32_t result = 0;
 	// Если путь к файлу или каталогу передан
@@ -2972,8 +2974,11 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 		 * Для операционной системы MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(addr, true);
+			/**
+			 * Выполняем извлечение актуального значения адреса: с флагом разрешения доходит до
+			 * цели ссылки, без флага остаётся адресом самой ссылки
+			 */
+			const string & address = this->fullpath(addr, resolve);
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Извлекаем все атрибуты файла
@@ -2984,20 +2989,24 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 		#else
 			// Создаём объект информационных данных файла или каталога
 			struct stat info{};
-			// Выполняем чтение информационных данных файла
-			if(!(result = (::stat(string(addr).c_str(), &info) == 0)) && (errno != 0)){
+			/**
+			 * Выполняем чтение информационных данных: без флага разрешения прав смотрим у самой
+			 * ссылки, иначе висячая ссылка (цели нет) давала бы отказ, а права цели легли бы вместо
+			 * прав ссылки; с флагом нужны права того, на что ссылка указывает
+			 */
+			if(!(result = ((resolve ? ::stat(string(addr).c_str(), &info) : ::lstat(string(addr).c_str(), &info)) == 0)) && (errno != 0)){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Записываем в лог сообщение
-					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+					// Записываем в лог сообщение с адресом: голый текст ошибки системы не говорит, на какой ноде она случилась
+					log::print("Failed to get the access rights of \"%s\": %s", log::flag_t::CRITICAL, string(addr).c_str(), ::strerror(errno));
 				#endif
 			// Если информационные данные считаны удачно
 			} else result = static_cast <uint32_t> (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
@@ -3009,12 +3018,14 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 /**
  * @brief Метод изменения прав доступа к файлу или каталогу
  *
- * @param addr путь к файлу или каталогу
- * @param mode метаданные для установки
- * @return     результат работы функции
+ * @param addr    путь к файлу или каталогу
+ * @param mode    метаданные для установки
+ * @param resolve ложь - права ставятся самому объекту (у ссылки - её собственные, цель не
+ *                трогается), истина - цели ссылки
+ * @return        результат работы функции
  *
  */
-bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcept {
+bool awh::Filesystem::chmod(string_view addr, const uint32_t mode, const bool resolve) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если путь к файлу или каталогу передан
@@ -3023,8 +3034,11 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 		 * Для операционной системы MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(addr, true);
+			/**
+			 * Выполняем извлечение актуального значения адреса: с флагом разрешения это адрес
+			 * цели ссылки, без флага - адрес самой ссылки
+			 */
+			const string & address = this->fullpath(addr, resolve);
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Выполняем установку атрибутов файла
@@ -3033,20 +3047,60 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
-			// Выполняем установку метаданных файла
-			if(!(result = (::chmod(string(addr).c_str(), static_cast <mode_t> (mode)) == 0)) && (errno != 0)){
+			/**
+			 * Установка прав без флага разрешения относится к самому объекту: у символьной ссылки - к
+			 * ссылке, а не к её цели. lchmod для этого есть в macOS, FreeBSD, NetBSD и DragonFly; в Linux,
+			 * Solaris и OpenBSD система прав у ссылки не хранит и lchmod отсутствует, поэтому там ссылка
+			 * пропускается как выполненная - обычный chmod пошёл бы по цели и менял бы её права молча
+			 */
+			#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+				// Выполняем установку метаданных файла либо самой ссылки
+				const bool done = (resolve ? (::chmod(string(addr).c_str(), static_cast <mode_t> (mode)) == 0) : ::lchmod(string(addr).c_str(), static_cast <mode_t> (mode)) == 0);
+			#else
+				// Если разрешения цели не просят и объект является ссылкой, менять права негде
+				const bool skip = ((!resolve) && (this->type(addr) == type_t::LINK));
+				// Выполняем установку метаданных файла либо пропускаем ссылку
+				const bool done = (skip ? true : (::chmod(string(addr).c_str(), static_cast <mode_t> (mode)) == 0));
+			#endif
+			/**
+			 * Отказ из-за отсутствия поддержки самой операционной системой (на отдельных файловых
+			 * системах lchmod не реализован) ошибкой не считается
+			 */
+			if(!(result = done) && (errno != 0)
+				/**
+				 * Имена этих ошибок различаются по системам: OpenBSD знает только EOPNOTSUPP, Linux -
+				 * обе, поэтому сравнивается лишь то, что объявлено
+				 */
+				#if defined(ENOTSUP)
+					&& (errno != ENOTSUP)
+				#endif
+				/**
+				 * Если поддерживается код ошибки:
+				 * операция не поддерживается на транспортной конечной точке
+				 */
+				#if defined(EOPNOTSUPP)
+					&& (errno != EOPNOTSUPP)
+				#endif
+				/**
+				 * Если поддерживается код ошибки:
+				 * Функция не реализована
+				 */
+				#if defined(ENOSYS)
+					&& (errno != ENOSYS)
+				#endif
+			){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {addr, mode}, log::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, mode, resolve}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Записываем в лог сообщение
-					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+					// Записываем в лог сообщение с адресом: голый текст ошибки системы не говорит, на какой ноде она случилась
+					log::print("Failed to set the access rights of \"%s\": %s", log::flag_t::CRITICAL, string(addr).c_str(), ::strerror(errno));
 				#endif
 			}
 		#endif
@@ -3057,13 +3111,15 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 /**
  * @brief Метод установки владельца на файл или каталог
  *
- * @param addr  путь к файлу или каталогу для установки владельца
- * @param user  имя пользователя
- * @param group название группы пользователя
- * @return      результат работы функции
+ * @param addr    путь к файлу или каталогу для установки владельца
+ * @param user    имя пользователя
+ * @param group   название группы пользователя
+ * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке, цель не
+ *                трогается), истина - цели ссылки
+ * @return        результат работы функции
  *
  */
-bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]] string_view group) const noexcept {
+bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]] string_view group, const bool resolve) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если путь передан
@@ -3084,20 +3140,20 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 					log::print("Owner \"%s:%s\" of \"%s\" cannot be set: %s is not found", log::flag_t::CRITICAL, string(user).c_str(), string(group).c_str(), string(addr).c_str(), ((uid == static_cast <uid_t> (-1)) ? "user" : "group"));
 				// Устанавливаем владельца
 				else {
-					// Выполняем установку владельца
-					if(!(result = (::chown(string(addr).c_str(), uid, gid) == 0)) && (errno != 0)){
+					// Выполняем установку владельца: без флага разрешения - самой ссылке, иначе её цели
+					if(!(result = ((resolve ? ::chown(string(addr).c_str(), uid, gid) : ::lchown(string(addr).c_str(), uid, gid)) == 0)) && (errno != 0)){
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
-							log::debug("%s", __PRETTY_FUNCTION__, {addr, user, group}, log::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {addr, user, group, resolve}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Записываем в лог сообщение
-							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
+							// Записываем в лог сообщение с адресом: голый текст ошибки системы не говорит, на какой ноде она случилась
+							log::print("Failed to set the owner of \"%s\": %s", log::flag_t::CRITICAL, string(addr).c_str(), ::strerror(errno));
 						#endif
 					}
 				}
@@ -3110,8 +3166,10 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			SID_NAME_USE sidType;
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
+			// Адрес объекта: без флага разрешения это сам переданный адрес, с флагом - цель ярлыка
+			const string address = (resolve ? this->fullpath(addr, true) : string(addr));
 			// Получаем путь к файлу
-			wstring fileName = __awh_longpath__(fmk::convert(addr));
+			wstring fileName = __awh_longpath__(fmk::convert(address));
 			// Получаем имя пользователя
 			wstring userName = fmk::convert(user);
 			// Первый вызов — получаем размеры буферов
@@ -3127,7 +3185,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user, resolve}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3180,7 +3238,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user, resolve}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3204,7 +3262,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user, resolve}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3230,7 +3288,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
+					log::debug(L"%ls", __PRETTY_FUNCTION__, {addr, user, resolve}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3253,11 +3311,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 /**
  * @brief Метод получения владельца файла, каталога либо самой символьной ссылки
  *
- * @param addr путь к файлу, каталогу либо ссылке
- * @return     владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param resolve ложь - владелец снимается с самого объекта (у символьной ссылки с неё, а не с её
+ *                цели), истина - с цели ссылки
+ * @return        владелец (номера -1 и пустые имена, если получить не удалось либо на MS Windows)
  *
  */
-awh::Filesystem::owner_t awh::Filesystem::owner([[maybe_unused]] string_view addr) const noexcept {
+awh::Filesystem::owner_t awh::Filesystem::owner([[maybe_unused]] string_view addr, [[maybe_unused]] const bool resolve) const noexcept {
 	// Результат работы функции
 	owner_t result;
 	/**
@@ -3266,8 +3326,8 @@ awh::Filesystem::owner_t awh::Filesystem::owner([[maybe_unused]] string_view add
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём объект информационных данных
 		struct stat info{};
-		// Если путь передан и сведения о нём получены (ссылка не разыменовывается)
-		if(!addr.empty() && (::lstat(string(addr).c_str(), &info) == 0)){
+		// Если путь передан и сведения о нём получены: без флага разрешения смотрим саму ссылку
+		if(!addr.empty() && ((resolve ? ::stat(string(addr).c_str(), &info) : ::lstat(string(addr).c_str(), &info)) == 0)){
 			// Устанавливаем идентификатор пользователя
 			result.uid = static_cast <uint32_t> (info.st_uid);
 			// Устанавливаем идентификатор группы
@@ -3284,12 +3344,14 @@ awh::Filesystem::owner_t awh::Filesystem::owner([[maybe_unused]] string_view add
 /**
  * @brief Метод установки владельца файла, каталога либо самой символьной ссылки
  *
- * @param addr  путь к файлу, каталогу либо ссылке
- * @param owner владелец для установки
- * @return      результат работы функции
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param owner   владелец для установки
+ * @param resolve ложь - владелец ставится самому объекту (у символьной ссылки - ссылке, цель не
+ *                трогается), истина - цели ссылки
+ * @return        результат работы функции
  *
  */
-bool awh::Filesystem::owner([[maybe_unused]] string_view addr, [[maybe_unused]] const owner_t & owner) const noexcept {
+bool awh::Filesystem::owner([[maybe_unused]] string_view addr, [[maybe_unused]] const owner_t & owner, [[maybe_unused]] const bool resolve) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -3312,14 +3374,14 @@ bool awh::Filesystem::owner([[maybe_unused]] string_view addr, [[maybe_unused]] 
 				gid = static_cast <gid_t> (owner.gid);
 			// Если есть что устанавливать (-1 оставляет значение как есть)
 			if((uid != static_cast <uid_t> (-1)) || (gid != static_cast <gid_t> (-1))){
-				// Выполняем установку владельца, не разыменовывая ссылку
-				if(!(result = (::lchown(string(addr).c_str(), uid, gid) == 0)) && (errno != 0)){
+				// Выполняем установку владельца: без флага разрешения - самой ссылке, иначе её цели
+				if(!(result = ((resolve ? ::chown(string(addr).c_str(), uid, gid) : ::lchown(string(addr).c_str(), uid, gid)) == 0)) && (errno != 0)){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("%s", __PRETTY_FUNCTION__, {addr, owner.user, owner.group}, log::flag_t::WARNING, ::strerror(errno));
+						log::debug("%s", __PRETTY_FUNCTION__, {addr, owner.user, owner.group, resolve}, log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			}
@@ -3331,11 +3393,13 @@ bool awh::Filesystem::owner([[maybe_unused]] string_view addr, [[maybe_unused]] 
 /**
  * @brief Метод получения времени изменения файла, каталога либо самой символьной ссылки
  *
- * @param addr путь к файлу, каталогу либо ссылке
- * @return     время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param resolve ложь - время снимается с самого объекта (у символьной ссылки с неё, а не с её
+ *                цели), истина - с цели ссылки
+ * @return        время изменения в миллисекундах от начала эпохи Unix (0, если получить не удалось)
  *
  */
-uint64_t awh::Filesystem::mtime(string_view addr) const noexcept {
+uint64_t awh::Filesystem::mtime(string_view addr, const bool resolve) const noexcept {
 	// Результат работы функции
 	uint64_t result = 0;
 	// Если путь передан
@@ -3346,8 +3410,10 @@ uint64_t awh::Filesystem::mtime(string_view addr) const noexcept {
 		#if defined(_WIN32) || defined(_WIN64)
 			// Сведения о файле
 			WIN32_FILE_ATTRIBUTE_DATA info{};
+			// Адрес объекта: без флага разрешения это сам переданный адрес, с флагом - цель ярлыка
+			const string address = (resolve ? this->fullpath(addr, true) : string(addr));
 			// Если сведения о файле получены
-			if(::GetFileAttributesExW(__awh_longpath__(fmk::convert(addr)).c_str(), GetFileExInfoStandard, &info)){
+			if(::GetFileAttributesExW(__awh_longpath__(fmk::convert(address)).c_str(), GetFileExInfoStandard, &info)){
 				// Время в сотнях наносекунд от 1601 года
 				const uint64_t ticks = ((static_cast <uint64_t> (info.ftLastWriteTime.dwHighDateTime) << 32) | static_cast <uint64_t> (info.ftLastWriteTime.dwLowDateTime));
 				// Смещение эпохи Unix от 1601 года в сотнях наносекунд
@@ -3363,8 +3429,8 @@ uint64_t awh::Filesystem::mtime(string_view addr) const noexcept {
 		#else
 			// Создаём объект информационных данных
 			struct stat info{};
-			// Если сведения получены (ссылка не разыменовывается)
-			if(::lstat(string(addr).c_str(), &info) == 0){
+			// Если сведения получены: без флага разрешения смотрим саму ссылку, иначе её цель
+			if((resolve ? ::stat(string(addr).c_str(), &info) : ::lstat(string(addr).c_str(), &info)) == 0){
 				/**
 				 * У macOS поле времени названо по-своему
 				 */
@@ -3391,12 +3457,14 @@ uint64_t awh::Filesystem::mtime(string_view addr) const noexcept {
 /**
  * @brief Метод установки времени изменения файла, каталога либо самой символьной ссылки
  *
- * @param addr путь к файлу, каталогу либо ссылке
- * @param date время изменения в миллисекундах от начала эпохи Unix
- * @return     результат работы функции
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param date    время изменения в миллисекундах от начала эпохи Unix
+ * @param resolve ложь - время ставится самому объекту (у символьной ссылки - ссылке, цель не
+ *                трогается), истина - цели ссылки
+ * @return        результат работы функции
  *
  */
-bool awh::Filesystem::mtime(string_view addr, const uint64_t date) const noexcept {
+bool awh::Filesystem::mtime(string_view addr, const uint64_t date, const bool resolve) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если путь и время переданы
@@ -3405,8 +3473,12 @@ bool awh::Filesystem::mtime(string_view addr, const uint64_t date) const noexcep
 		 * Для операционной системы MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Открываем объект только для смены атрибутов (каталогу нужен флаг резервного копирования, ссылке - открытие её самой)
-			HANDLE handle = ::CreateFileW(__awh_longpath__(fmk::convert(addr)).c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+			// Адрес объекта: без флага разрешения это сам переданный адрес, с флагом - цель ярлыка
+			const string address = (resolve ? this->fullpath(addr, true) : string(addr));
+			// Флаг открытия точки переработки оставляет объект самой ссылкой, поэтому он нужен только без разрешения
+			const DWORD flags = (FILE_FLAG_BACKUP_SEMANTICS | (resolve ? 0 : FILE_FLAG_OPEN_REPARSE_POINT));
+			// Открываем объект только для смены атрибутов (каталогу нужен флаг резервного копирования)
+			HANDLE handle = ::CreateFileW(__danube_longpath__(this->_fmk->convert(address)).c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, flags, nullptr);
 			// Если объект открыт
 			if(handle != INVALID_HANDLE_VALUE){
 				// Переводим миллисекунды от эпохи Unix в сотни наносекунд от 1601 года
@@ -3434,29 +3506,31 @@ bool awh::Filesystem::mtime(string_view addr, const uint64_t date) const noexcep
 			ts[1].tv_sec = static_cast <time_t> (date / 1000ULL);
 			// Устанавливаем наносекунды
 			ts[1].tv_nsec = static_cast <long> ((date % 1000ULL) * 1000000ULL);
-			// Выполняем установку времени, не разыменовывая ссылку
-			if(!(result = (::utimensat(AT_FDCWD, string(addr).c_str(), ts, AT_SYMLINK_NOFOLLOW) == 0)) && (errno != 0)){
+			// Выполняем установку времени: без флага разрешения - самой ссылке, иначе её цели
+			if(!(result = (::utimensat(AT_FDCWD, string(addr).c_str(), ts, (resolve ? 0 : AT_SYMLINK_NOFOLLOW)) == 0)) && (errno != 0)){
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {addr, date}, log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, date, resolve}, log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
  * @brief Метод получения расширенных атрибутов файла, каталога либо самой символьной ссылки
  *
- * @param addr путь к файлу, каталогу либо ссылке
- * @return     список расширенных атрибутов
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param resolve ложь - атрибуты снимаются с самого объекта (у символьной ссылки с неё, а не с её
+ *                цели), истина - с цели ссылки
+ * @return        список расширенных атрибутов
  *
  */
-awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view addr) const noexcept {
+awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, [[maybe_unused]] const bool resolve) const noexcept {
 	// Результат работы функции
 	xattrs_t result;
 	/**
@@ -3468,36 +3542,38 @@ awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view ad
 			// Путь к объекту
 			const string path(addr);
 			/**
-			 * Список имён и значение атрибута читаются в два захода: размер, затем данные.
-			 * Между заходами атрибут может вырасти - тогда чтение повторяется
-			 */
-			/**
 			 * Для macOS
 			 */
 			#if defined(__APPLE__) || defined(__MACH__)
-				// Функция получения списка имён
-				auto list = [&path](char * buffer, const size_t size) noexcept -> ssize_t {
-					// Выводим результат
-					return ::listxattr(path.c_str(), buffer, size, XATTR_NOFOLLOW);
+				/**
+				 * Функция получения списка имён и значение атрибута читаются в два захода: размер, затем данные.
+				 * Между заходами атрибут может вырасти - тогда чтение повторяется
+				 */
+				auto list = [&path, resolve](char * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат: без флага разрешения список смотрим у самой ссылки
+					return ::listxattr(path.c_str(), buffer, size, (resolve ? 0 : XATTR_NOFOLLOW));
 				};
 				// Функция получения значения
-				auto get = [&path](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
-					// Выводим результат
-					return ::getxattr(path.c_str(), name, buffer, size, 0, XATTR_NOFOLLOW);
+				auto get = [&path, resolve](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат: без флага разрешения значение смотрим у самой ссылки
+					return ::getxattr(path.c_str(), name, buffer, size, 0, (resolve ? 0 : XATTR_NOFOLLOW));
 				};
 			/**
 			 * Для Linux
 			 */
 			#else
-				// Функция получения списка имён
-				auto list = [&path](char * buffer, const size_t size) noexcept -> ssize_t {
-					// Выводим результат
-					return ::llistxattr(path.c_str(), buffer, size);
+				/**
+				 * Функция получения списка имён и значение атрибута читаются в два захода: размер, затем данные.
+				 * Между заходами атрибут может вырасти - тогда чтение повторяется
+				 */
+				auto list = [&path, resolve](char * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат: без флага разрешения список смотрим у самой ссылки
+					return (resolve ? ::listxattr(path.c_str(), buffer, size) : ::llistxattr(path.c_str(), buffer, size));
 				};
 				// Функция получения значения
-				auto get = [&path](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
-					// Выводим результат
-					return ::lgetxattr(path.c_str(), name, buffer, size);
+				auto get = [&path, resolve](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
+					// Выводим результат: без флага разрешения значение смотрим у самой ссылки
+					return (resolve ? ::getxattr(path.c_str(), name, buffer, size) : ::lgetxattr(path.c_str(), name, buffer, size));
 				};
 			#endif
 			// Буфер списка имён
@@ -3584,14 +3660,27 @@ awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view ad
 		if(!addr.empty()){
 			// Путь к объекту
 			const string path(addr);
+			/**
+			 * Функция получения списка имён и значение атрибута читаются в два захода: размер, затем данные.
+			 * Между заходами атрибут может вырасти - тогда чтение повторяется
+			 */
+			auto list = [&path, resolve](void * buffer, const size_t size) noexcept -> ssize_t {
+				// Выводим результат: без флага разрешения список смотрим у самой ссылки
+				return (resolve ? ::extattr_list_file(path.c_str(), EXTATTR_NAMESPACE_USER, buffer, size) : ::extattr_list_link(path.c_str(), EXTATTR_NAMESPACE_USER, buffer, size));
+			};
+			// Функция получения значения
+			auto get = [&path, resolve](const char * name, void * buffer, const size_t size) noexcept -> ssize_t {
+				// Выводим результат: без флага разрешения значение смотрим у самой ссылки
+				return (resolve ? ::extattr_get_file(path.c_str(), EXTATTR_NAMESPACE_USER, name, buffer, size) : ::extattr_get_link(path.c_str(), EXTATTR_NAMESPACE_USER, name, buffer, size));
+			};
 			// Получаем размер списка имён пространства пользователя
-			const ssize_t size = ::extattr_list_link(path.c_str(), EXTATTR_NAMESPACE_USER, nullptr, 0);
+			const ssize_t size = list(nullptr, 0);
 			// Если атрибуты есть
 			if(size > 0){
 				// Буфер списка имён
 				vector <unsigned char> names(static_cast <size_t> (size), 0);
 				// Читаем список имён
-				const ssize_t bytes = ::extattr_list_link(path.c_str(), EXTATTR_NAMESPACE_USER, names.data(), names.size());
+				const ssize_t bytes = list(names.data(), names.size());
 				// Позиция в списке имён
 				size_t offset = 0;
 				/**
@@ -3609,13 +3698,13 @@ awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view ad
 					// Переходим к следующему имени
 					offset += length;
 					// Получаем размер значения
-					const ssize_t length2 = ::extattr_get_link(path.c_str(), EXTATTR_NAMESPACE_USER, name.c_str(), nullptr, 0);
+					const ssize_t length2 = get(name.c_str(), nullptr, 0);
 					// Если значение доступно
 					if(length2 >= 0){
 						// Значение атрибута
 						string value(static_cast <size_t> (length2), '\0');
 						// Читаем значение
-						const ssize_t read = ::extattr_get_link(path.c_str(), EXTATTR_NAMESPACE_USER, name.c_str(), value.data(), value.size());
+						const ssize_t read = get(name.c_str(), value.data(), value.size());
 						// Если значение прочитано
 						if(read >= 0){
 							// Устанавливаем фактический размер значения
@@ -3628,18 +3717,20 @@ awh::Filesystem::xattrs_t awh::Filesystem::xattr([[maybe_unused]] string_view ad
 			}
 		}
 	#endif
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
  * @brief Метод установки расширенных атрибутов файла, каталога либо самой символьной ссылки
  *
- * @param addr  путь к файлу, каталогу либо ссылке
- * @param attrs список расширенных атрибутов
- * @return      количество атрибутов, которые установить не удалось
+ * @param addr    путь к файлу, каталогу либо ссылке
+ * @param attrs   список расширенных атрибутов
+ * @param resolve ложь - атрибуты ставятся самому объекту (у символьной ссылки - ссылке, цель не
+ *                трогается), истина - цели ссылки
+ * @return        количество атрибутов, которые установить не удалось
  *
  */
-size_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, const xattrs_t & attrs) const noexcept {
+size_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, const xattrs_t & attrs, [[maybe_unused]] const bool resolve) const noexcept {
 	// Количество атрибутов, которые установить не удалось
 	size_t result = 0;
 	// Если путь не передан
@@ -3660,24 +3751,26 @@ size_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, const xattrs_t 
 			 * Для macOS
 			 */
 			#if defined(__APPLE__) || defined(__MACH__)
-				// Устанавливаем атрибут, не разыменовывая ссылку
-				const bool status = (::setxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0, XATTR_NOFOLLOW) == 0);
+				// Устанавливаем атрибут: без флага разрешения - самой ссылке, иначе её цели
+				const bool status = (::setxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0, (resolve ? 0 : XATTR_NOFOLLOW)) == 0);
 			/**
 			 * Для Linux
 			 */
 			#elif defined(__linux__)
-				// Устанавливаем атрибут, не разыменовывая ссылку
-				const bool status = (::lsetxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0) == 0);
+				// Устанавливаем атрибут: без флага разрешения - самой ссылке, иначе её цели
+				const bool status = ((resolve ? ::setxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0)
+					: ::lsetxattr(path.c_str(), attr.first.c_str(), attr.second.data(), attr.second.size(), 0)) == 0);
 			/**
 			 * Для FreeBSD и NetBSD
 			 */
 			#else
 				// Приставка пространства пользователя
 				static const string prefix = "user.";
-				// Устанавливается только атрибут пространства пользователя
+				// Устанавливается только атрибут пространства пользователя: без флага разрешения - самой ссылке, иначе её цели
 				const bool status = (
 					(attr.first.size() > prefix.size()) && (attr.first.compare(0, prefix.size(), prefix) == 0) &&
-					(::extattr_set_link(path.c_str(), EXTATTR_NAMESPACE_USER, attr.first.c_str() + prefix.size(), attr.second.data(), attr.second.size()) >= 0)
+					((resolve ? ::extattr_set_file(path.c_str(), EXTATTR_NAMESPACE_USER, attr.first.c_str() + prefix.size(), attr.second.data(), attr.second.size())
+						: ::extattr_set_link(path.c_str(), EXTATTR_NAMESPACE_USER, attr.first.c_str() + prefix.size(), attr.second.data(), attr.second.size())) >= 0)
 				);
 			#endif
 			// Если атрибут не установлен
@@ -3689,7 +3782,7 @@ size_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, const xattrs_t 
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					log::debug("%s", __PRETTY_FUNCTION__, {addr, attr.first}, log::flag_t::WARNING, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, attr.first, resolve}, log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		}
@@ -3700,7 +3793,7 @@ size_t awh::Filesystem::xattr([[maybe_unused]] string_view addr, const xattrs_t 
 		// Не удалось установить ничего
 		result = attrs.size();
 	#endif
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
