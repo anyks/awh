@@ -229,6 +229,23 @@ namespace {
 	 */
 	static constexpr double READ_SKIPPED_THRESHOLD_OPENBSD = 26.90;
 	/**
+	 * @brief Второй порог выигрыша от пропуска груза для форм NetBSD и SunOS
+	 *
+	 * @details Одиночного замера для второго порога мало: два прогона одного вечера
+	 *          09.10.2026 дали на NetBSD 37.20 и 31.99 раза (на съёмке 08.10.2026 тот же
+	 *          образ дал 36.74), а на SunOS ряд лёг с 43.19 на 08.10 до 35.62 на 09.10.
+	 *          Оба держатся у основного порога 35.00 и краснеют на плохой день без всякой
+	 *          регрессии пропуска. Пороги взяты на двадцать процентов ниже наименьшего из
+	 *          снятого по каждой форме (пакет №86 от 09.10.2026)
+	 *
+	 */
+	static constexpr double READ_SKIPPED_THRESHOLD_NETBSD = 25.50;
+	/**
+	 * @brief Второй порог того же выигрыша для формы SunOS
+	 *
+	 */
+	static constexpr double READ_SKIPPED_THRESHOLD_SUNOS = 28.50;
+	/**
 	 * @brief Порог платы за заведение разбирателя в микросекундах на запись
 	 *
 	 * @details Замер 22.08.2026 по одиннадцати стендам: macOS 0.22, Fedora 0.28,
@@ -905,7 +922,7 @@ namespace {
 	 */
 	static const bool SKIPPED_REGISTERED = awh::benchmark::add(
 		"codec/abc: выигрыш от пропуска груза", "раз",
-		awh::benchmark::limit(READ_SKIPPED_THRESHOLD, 0.0, READ_SKIPPED_THRESHOLD_OPENBSD, 0.0),
+		awh::benchmark::limit(READ_SKIPPED_THRESHOLD, READ_SKIPPED_THRESHOLD_NETBSD, READ_SKIPPED_THRESHOLD_OPENBSD, READ_SKIPPED_THRESHOLD_SUNOS),
 		awh::benchmark::bound_t::MINIMUM, readSkipped
 	);
 };

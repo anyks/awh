@@ -154,6 +154,16 @@ namespace {
 	 */
 	static constexpr double TAKE_LARGE_THRESHOLD = 4.1;
 	/**
+	 * @brief Второй порог снятия значения с дерева для формы NetBSD
+	 *
+	 * @details Августовская карта утверждала дно 8.24 МБ/с за OpenBSD, но в круге
+	 *          09.10.2026 та же форма дала 6.05, а NetBSD - 4.51 при пороге 4.10, то
+	 *          есть запас 1.10 против принятых в пакете 1.15. Порог взят на двадцать
+	 *          процентов ниже наименьшего из снятого по форме (пакет №86 от 09.10.2026)
+	 *
+	 */
+	static constexpr double TAKE_LARGE_THRESHOLD_NETBSD = 3.60;
+	/**
 	 * @brief Порог пропускной способности снятия значения с дерева настроек службы
 	 *
 	 * @details Дно 15.37 МБ/с держит OpenBSD
@@ -587,7 +597,8 @@ namespace {
 	 * Выполняем регистрацию сценария снятия значения с дерева крупного файла настроек
 	 */
 	static const bool TAKE_LARGE_REGISTERED = awh::benchmark::add(
-		"codec/toml: снятие значения с дерева", "МБ/с", TAKE_LARGE_THRESHOLD,
+		"codec/toml: снятие значения с дерева", "МБ/с",
+		awh::benchmark::limit(TAKE_LARGE_THRESHOLD, TAKE_LARGE_THRESHOLD_NETBSD, 0.0, 0.0),
 		awh::benchmark::bound_t::MINIMUM, takeLarge
 	);
 	/**
