@@ -3478,7 +3478,7 @@ bool awh::Filesystem::mtime(string_view addr, const uint64_t date, const bool re
 			// Флаг открытия точки переработки оставляет объект самой ссылкой, поэтому он нужен только без разрешения
 			const DWORD flags = (FILE_FLAG_BACKUP_SEMANTICS | (resolve ? 0 : FILE_FLAG_OPEN_REPARSE_POINT));
 			// Открываем объект только для смены атрибутов (каталогу нужен флаг резервного копирования)
-			HANDLE handle = ::CreateFileW(__danube_longpath__(this->_fmk->convert(address)).c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, flags, nullptr);
+			HANDLE handle = ::CreateFileW(__awh_longpath__(fmk::convert(address)).c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, flags, nullptr);
 			// Если объект открыт
 			if(handle != INVALID_HANDLE_VALUE){
 				// Переводим миллисекунды от эпохи Unix в сотни наносекунд от 1601 года
