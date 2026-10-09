@@ -21,16 +21,16 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <codec/json/encoding.hpp>
-#include <encoding/unicode/utf8.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <sys/log.hpp>
+#include <encoding/unicode/utf8.hpp>
+#include <codec/json/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён

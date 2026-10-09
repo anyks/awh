@@ -99,6 +99,16 @@ namespace {
 	 *
 	 */
 	static constexpr double WRITE_ESCAPED_THRESHOLD = 40.0;
+	/**
+	 * @brief Второй порог записи ограждаемых значений для формы OpenBSD
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь дно 37.52 МБ/с на OpenBSD
+	 *          при пороге 40.00, и краснел он на форме, где память и системный вызов
+	 *          дороже, а не на ограждении. Порог взят по дну формы с запасом в четверть
+	 *          (пакет №86 от 09.10.2026)
+	 *
+	 */
+	static constexpr double WRITE_ESCAPED_THRESHOLD_OPENBSD = 31.89;
 
 	/**
 	 * @brief Функция получения перечня записываемых значений свойств
@@ -239,7 +249,8 @@ namespace {
 	 * Выполняем регистрацию сценария записи значений, требующих ограждения
 	 */
 	static const bool ESCAPED_REGISTERED = awh::benchmark::add(
-		"codec/ini: запись ограждаемых значений", "МБ/с", WRITE_ESCAPED_THRESHOLD,
+		"codec/ini: запись ограждаемых значений", "МБ/с",
+		awh::benchmark::limit(WRITE_ESCAPED_THRESHOLD, 0.0, WRITE_ESCAPED_THRESHOLD_OPENBSD, 0.0),
 		awh::benchmark::bound_t::MINIMUM, writeEscaped
 	);
 };

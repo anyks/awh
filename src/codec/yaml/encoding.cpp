@@ -21,11 +21,11 @@
  */
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
-#include <codec/yaml/encoding.hpp>
 #include <encoding/unicode/utf8.hpp>
+#include <codec/yaml/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён

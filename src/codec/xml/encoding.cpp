@@ -27,10 +27,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
 #include <codec/xml/encoding.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён

@@ -277,6 +277,25 @@ OUT=/tmp/ablate-csv-marking sh tools/benchmark/ablate.sh csv src/codec/csv/reade
 	"void awh::codec::csv::Reader::marking() noexcept {" "return;" tools/benchmark/csv/awh.cpp
 ```
 
+Команды круга 09.10.2026 - два места, где выключатель меняет наблюдаемый результат, поэтому
+число читается верхней границей хода, а не обещанием правки, и `--checksum` опыта с базисом НЕ
+сойдётся по построению:
+
+```sh
+# разбор расширений CEF (`Reader::extensions`): поток x13.370, дерево x6.109,
+# строгий вид x6.351 (три круга, `2026-10-06/cef-extension-ablation.txt`); стенд CEF -
+# `comparison.cpp`, а не `awh.cpp`, и для него путь обязан быть явным
+OUT=/tmp/ablate-cef-ext sh tools/benchmark/ablate.sh cef src/codec/cef/reader.cpp \
+	"void awh::codec::cef::Reader::extensions(const string_view text) noexcept {" \
+	"return;" tools/benchmark/cef/comparison.cpp
+
+# материализация атрибутов и объявлений в XML (`Value::absorb` целиком): на тексте
+# настроек 1097.49 -> 1855.78 МБ/с, то есть x1.69 (`2026-10-06/xml-attribute-ablation.txt`)
+OUT=/tmp/ablate-xml-absorb sh tools/benchmark/ablate.sh xml src/codec/xml/value.cpp \
+	"bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth, const bool reset) noexcept {" \
+	"return true;" tools/benchmark/xml/awh.cpp
+```
+
 Правило, вынесенное этим кругом: **потолок снимается на том коде, который уже принят**.
 Выключатель, поставленный поверх непринятой правки, мерит долю той правки дважды - вместе с
 ходом, который она сама успела убрать, - и число такого замера не переносится в отчёт.
@@ -285,6 +304,15 @@ OUT=/tmp/ablate-csv-marking sh tools/benchmark/ablate.sh csv src/codec/csv/reade
 правкой с парным прогоном: выдача событий `abc::Reader::emit` (чтение становится пустым),
 таблица написаний `matches` у YAML (виды значений) и общие помощники в разборе дерева CEF
 (`src/codec/cef/document.cpp:452`, `:534`, `:777`).
+
+Отдельно - два места, где выключатель нельзя оформить строкой `return` после объявления, потому что
+снятие хода не сводится к раннему выходу, и готовой командой они не покрываются (мера там только
+правкою тела с парным прогоном): перебор строк в `Reader::advance` (`src/codec/xml/reader.cpp:878`),
+где перенос `_offset` обязан остаться, иначе перебор документа зависнет, и перебор знаков в
+приведении YAML (`src/codec/yaml/encoding.cpp`), где снят был только пропуск октетов, а перенос
+проверенной части куска остался. Первое дало потоку XML +8.9…+17.3 % при снятии дерева -0.6…-1.8 %,
+второе - потолок 2.121 на блочных значениях в ряду `ON` (`2026-10-05/xml-advance-ablation.txt`,
+`2026-10-08/yaml-tree-convert-ablation-pairs.txt`).
 
 Туда же относится поверка кодировки у JSON: выключатель на входе `Decoder::verify`
 (`src/codec/json/encoding.cpp:1105`) оставляет за бортом и добор последовательности знака,

@@ -23,9 +23,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <encoding/unicode/utf8.hpp>
-#include <codec/toml/encoding.hpp>
 #include <sys/log.hpp>
+#include <codec/toml/encoding.hpp>
+#include <encoding/unicode/utf8.hpp>
 
 /**
  * Используем стандартное пространство имён

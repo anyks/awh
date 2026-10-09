@@ -151,6 +151,16 @@ namespace {
 	 *
 	 */
 	constexpr double READ_CHUNKED_THRESHOLD = 20.0;
+	/**
+	 * @brief Второй порог просадки от подачи кусками для формы OpenBSD
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь 21.02 раз на OpenBSD при
+	 *          пороге 20.00: граница MAXIMUM краснела на форме, где раздатчик памяти
+	 *          дороже, а не на подаче кусками. Порог взят по снятому дну формы с запасом
+	 *          в четверть (пакет №86 от 09.10.2026)
+	 *
+	 */
+	constexpr double READ_CHUNKED_THRESHOLD_OPENBSD = 24.17;
 
 	/**
 	 * @brief Порог расхода выделений памяти на чтение одной записи
@@ -489,7 +499,8 @@ namespace {
 	 * Выполняем регистрацию сценария просадки чтения от подачи кусками
 	 */
 	static const bool CHUNKED_REGISTERED = awh::benchmark::add(
-		"codec/cef: просадка от подачи кусками", "раз", READ_CHUNKED_THRESHOLD,
+		"codec/cef: просадка от подачи кусками", "раз",
+		awh::benchmark::limit(READ_CHUNKED_THRESHOLD, 0.0, READ_CHUNKED_THRESHOLD_OPENBSD, 0.0),
 		awh::benchmark::bound_t::MAXIMUM, readChunked
 	);
 	/**

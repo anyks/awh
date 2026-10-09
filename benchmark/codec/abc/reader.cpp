@@ -89,6 +89,21 @@ namespace {
 	 */
 	static constexpr double READ_LARGE_THRESHOLD = 10.0;
 	/**
+	 * @brief Второй порог чтения крупной записи для форм NetBSD и SunOS
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь дно 2.22 МБ/с на NetBSD и
+	 *          8.64 МБ/с на SunOS, то есть основной порог в 10.00 МБ/с краснел на обеих
+	 *          формах без всякой регрессии разбора. Пороги взяты по дну формы с запасом
+	 *          в четверть (пакет №86 от 09.10.2026)
+	 *
+	 */
+	static constexpr double READ_LARGE_THRESHOLD_NETBSD = 1.88;
+	/**
+	 * @brief Порог той же пропускной способности для формы SunOS
+	 *
+	 */
+	static constexpr double READ_LARGE_THRESHOLD_SUNOS = 7.34;
+	/**
 	 * @brief Порог пропускной способности чтения записи с преобладанием чисел
 	 *
 	 * @note Порог ослаблен 23.08.2026 по карте двенадцати систем: дно 12.76 у Solaris
@@ -126,6 +141,20 @@ namespace {
 	 *
 	 */
 	static constexpr double READ_NESTED_THRESHOLD = 2.3;
+	/**
+	 * @brief Второй порог чтения вложенности для форм NetBSD и SunOS
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь дно 0.55 МБ/с на NetBSD и
+	 *          1.97 МБ/с на SunOS при пороге 2.30 МБ/с: краснел он, а не разбор. Пороги
+	 *          взяты по дну своей формы с запасом в четверть (пакет №86 от 09.10.2026)
+	 *
+	 */
+	static constexpr double READ_NESTED_THRESHOLD_NETBSD = 0.46;
+	/**
+	 * @brief Порог той же пропускной способности для формы SunOS
+	 *
+	 */
+	static constexpr double READ_NESTED_THRESHOLD_SUNOS = 1.67;
 	/**
 	 * @brief Порог количества выделений памяти на чтение крупной записи
 	 *
@@ -184,6 +213,20 @@ namespace {
 	 *
 	 */
 	static constexpr double READ_SKIPPED_THRESHOLD = 35.0;
+	/**
+	 * @brief Второй порог выигрыша от пропуска груза для формы OpenBSD
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь дно 33.69 раз на OpenBSD
+	 *          при пороге 35.00, и порог этот краснел на форме, где таймер и доступ к
+	 *          памяти дороже, а не на пропуске. Порог взят по дну формы с запасом в
+	 *          четверть (пакет №86 от 09.10.2026)
+	 *
+	 * @note Промаха формы glibc (26.33 раз на образе 174) дном не стал: тот же образ в
+	 *       круге №84 терял показатель от соседства прогона, и замеры на стендах гонять
+	 *       ПО ОДНОМУ
+	 *
+	 */
+	static constexpr double READ_SKIPPED_THRESHOLD_OPENBSD = 28.63;
 	/**
 	 * @brief Порог платы за заведение разбирателя в микросекундах на запись
 	 *
@@ -744,7 +787,8 @@ namespace {
 	 * Выполняем регистрацию сценария чтения крупной записи
 	 */
 	static const bool LARGE_REGISTERED = awh::benchmark::add(
-		"codec/abc: чтение крупной записи", "МБ/с", READ_LARGE_THRESHOLD,
+		"codec/abc: чтение крупной записи", "МБ/с",
+		awh::benchmark::limit(READ_LARGE_THRESHOLD, READ_LARGE_THRESHOLD_NETBSD, 0.0, READ_LARGE_THRESHOLD_SUNOS),
 		awh::benchmark::bound_t::MINIMUM, readLarge
 	);
 	/**
@@ -772,7 +816,8 @@ namespace {
 	 * Выполняем регистрацию сценария чтения записи с глубокой вложенностью
 	 */
 	static const bool NESTED_REGISTERED = awh::benchmark::add(
-		"codec/abc: чтение вложенности", "МБ/с", READ_NESTED_THRESHOLD,
+		"codec/abc: чтение вложенности", "МБ/с",
+		awh::benchmark::limit(READ_NESTED_THRESHOLD, READ_NESTED_THRESHOLD_NETBSD, 0.0, READ_NESTED_THRESHOLD_SUNOS),
 		awh::benchmark::bound_t::MINIMUM, readNested
 	);
 	/**
@@ -858,7 +903,8 @@ namespace {
 	 * Выполняем регистрацию сценария выигрыша от пропуска вложенного груза
 	 */
 	static const bool SKIPPED_REGISTERED = awh::benchmark::add(
-		"codec/abc: выигрыш от пропуска груза", "раз", READ_SKIPPED_THRESHOLD,
+		"codec/abc: выигрыш от пропуска груза", "раз",
+		awh::benchmark::limit(READ_SKIPPED_THRESHOLD, 0.0, READ_SKIPPED_THRESHOLD_OPENBSD, 0.0),
 		awh::benchmark::bound_t::MINIMUM, readSkipped
 	);
 };

@@ -129,6 +129,16 @@ namespace {
 	 */
 	static constexpr double TREE_LARGE_THRESHOLD = 1.3;
 	/**
+	 * @brief Второй порог сборки дерева крупного файла для формы NetBSD
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь дно 1.06 МБ/с на NetBSD
+	 *          при пороге 1.30 МБ/с: краснел он на форме, у которой область под узлы
+	 *          растёт дороже, а не на сборке дерева. Порог взят по дну формы с запасом в
+	 *          четверть (пакет №86 от 09.10.2026)
+	 *
+	 */
+	static constexpr double TREE_LARGE_THRESHOLD_NETBSD = 0.90;
+	/**
 	 * @brief Порог пропускной способности сборки дерева со множеством таблиц
 	 *
 	 * @details Показатель этот стережёт указатели дерева: поиск таблицы попарным
@@ -405,7 +415,8 @@ namespace {
 	 * Выполняем регистрацию сценария сборки дерева крупного файла настроек
 	 */
 	static const bool LARGE_REGISTERED = awh::benchmark::add(
-		"codec/toml: сборка дерева крупного файла", "МБ/с", TREE_LARGE_THRESHOLD,
+		"codec/toml: сборка дерева крупного файла", "МБ/с",
+		awh::benchmark::limit(TREE_LARGE_THRESHOLD, TREE_LARGE_THRESHOLD_NETBSD, 0.0, 0.0),
 		awh::benchmark::bound_t::MINIMUM, treeLarge
 	);
 	/**

@@ -25,17 +25,16 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <codec/abc/reader.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <limits>
-#include <sys/log.hpp>
+#include <cstring>
 
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/log.hpp>
+#include <codec/abc/reader.hpp>
 
 /**
  * Используем стандартное пространство имён

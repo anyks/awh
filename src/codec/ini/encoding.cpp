@@ -23,9 +23,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/ini/encoding.hpp>
-#include <encoding/unicode/utf8.hpp>
 #include <sys/log.hpp>
+#include <encoding/unicode/utf8.hpp>
+#include <codec/ini/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён

@@ -30,10 +30,12 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <num/lexical/lexical.hpp>
 #include <codec/yaml/document.hpp>
+
 /**
  * Подключаем общее приведение и разбор чисел кодеков
  *
@@ -55,7 +57,6 @@
  *          числом, и сборка развалилась бы вдали от места
  */
 #include <codec/yaml/value.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён

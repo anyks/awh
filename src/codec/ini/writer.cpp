@@ -30,21 +30,21 @@
 #include <type_traits>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <encoding/ascii.hpp>
-#include <num/lexical/lexical.hpp>
-#include <encoding/unicode/utf8.hpp>
-#include <codec/ini/encoding.hpp>
-#include <codec/ini/writer.hpp>
-
-/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <sys/log.hpp>
+#include <encoding/ascii.hpp>
+#include <num/lexical/lexical.hpp>
+#include <encoding/unicode/utf8.hpp>
+#include <codec/ini/writer.hpp>
+#include <codec/ini/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён

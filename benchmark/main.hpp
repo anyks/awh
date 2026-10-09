@@ -72,6 +72,79 @@ namespace awh {
 		};
 
 		/**
+		 * @brief Форма машины, по которой сценарий выбирает второй, слабый порог
+		 *
+		 * @details Пороги набора назначаются по самой медленной машине, и на форме,
+		 *          уступающей рабочей на порядок, одиночный порог краснеет без всякой
+		 *          регрессии: съёмка двенадцати образов кластера 08.10.2026 дала
+		 *          одиннадцать промахов дна, и девять из них жили на трёх формах -
+		 *          NetBSD, OpenBSD и SunOS. Второй порог заводится по дну своей формы
+		 *          с запасом в четверть, а прочие формы держат порог основной
+		 *
+		 * @note Выбор делается сборкой, а не прогоном: форма машины известна до
+		 *       компиляции, и набор не получает переключателя, которым можно было бы
+		 *       прикрыть настоящую просадку. Ручной переключатель обесценит и ряд
+		 *       сличения, где машина не названа
+		 *
+		 */
+		enum class family_t : uint8_t {
+			GENERIC = 0x00, // Форма, для которой второго порога не заводилось
+			NETBSD = 0x01,  // NetBSD - дно по съёмке 08.10.2026 самое низкое
+			OPENBSD = 0x02, // OpenBSD - доступ к памяти и таймеры дороже
+			SUNOS = 0x03    // SunOS - перебор на крупных записях медленнее
+		};
+		/**
+		 * Форма машины текущей сборки
+		 */
+		#if defined(__NetBSD__)
+			static constexpr family_t FAMILY = family_t::NETBSD;
+		#elif defined(__OpenBSD__)
+			static constexpr family_t FAMILY = family_t::OPENBSD;
+		#elif defined(__sun)
+			static constexpr family_t FAMILY = family_t::SUNOS;
+		#else
+			static constexpr family_t FAMILY = family_t::GENERIC;
+		#endif
+
+		/**
+		 * @brief Функция выбора порога по форме машины
+		 *
+		 * @param base    порог основной формы
+		 * @param netbsd  порог формы NetBSD; ноль означает, что второго порога нет
+		 * @param openbsd порог формы OpenBSD; ноль означает, что второго порога нет
+		 * @param sunos   порог формы SunOS; ноль означает, что второго порога нет
+		 * @return        порог формы текущей сборки
+		 *
+		 * @note Ноль служит знаком отсутствия второго порога, а не его значением:
+		 *       всякий снятый показатель набора положителен, и нулевой порог сравнивать
+		 *       не с чем
+		 *
+		 */
+		static constexpr double limit(const double base, const double netbsd, const double openbsd, const double sunos) noexcept {
+			/**
+			 * Выполняем выбор порога по форме машины текущей сборки
+			 */
+			switch(static_cast <uint8_t> (FAMILY)) {
+				// Если сборка предназначена для NetBSD
+				case static_cast <uint8_t> (family_t::NETBSD):
+					// Выводим второй порог формы, если он заведён
+					return (netbsd != 0.0) ? netbsd : base;
+				// Если сборка предназначена для OpenBSD
+				case static_cast <uint8_t> (family_t::OPENBSD):
+					// Выводим второй порог формы, если он заведён
+					return (openbsd != 0.0) ? openbsd : base;
+				// Если сборка предназначена для SunOS
+				case static_cast <uint8_t> (family_t::SUNOS):
+					// Выводим второй порог формы, если он заведён
+					return (sunos != 0.0) ? sunos : base;
+				// Если сборка предназначена для формы без второго порога
+				default:
+					// Выводим порог основной формы
+					return base;
+			}
+		}
+
+		/**
 		 * @brief Структура результата измерения
 		 *
 		 */

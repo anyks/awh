@@ -118,6 +118,17 @@ namespace {
 	 */
 	static constexpr double READ_LARGE_THRESHOLD = 4.57;
 	/**
+	 * @brief Второй порог чтения крупного файла для формы NetBSD
+	 *
+	 * @details Съёмка двенадцати образов 08.10.2026 дала здесь дно 2.41 МБ/с на NetBSD
+	 *          при пороге 4.57 МБ/с: форма эта кладёт крупную область дороже прочих
+	 *          (круг гигантской области в досье распределителя), и просадка принадлежит
+	 *          ей, а не разбору. Порог взят по дну формы с запасом в четверть (пакет №86
+	 *          от 09.10.2026)
+	 *
+	 */
+	static constexpr double READ_LARGE_THRESHOLD_NETBSD = 2.04;
+	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием строк
 	 *
 	 */
@@ -480,7 +491,8 @@ namespace {
 	 * Выполняем регистрацию сценария чтения крупного файла настроек
 	 */
 	static const bool LARGE_REGISTERED = awh::benchmark::add(
-		"codec/yaml: чтение крупного файла", "МБ/с", READ_LARGE_THRESHOLD,
+		"codec/yaml: чтение крупного файла", "МБ/с",
+		awh::benchmark::limit(READ_LARGE_THRESHOLD, READ_LARGE_THRESHOLD_NETBSD, 0.0, 0.0),
 		awh::benchmark::bound_t::MINIMUM, readLarge
 	);
 	/**
