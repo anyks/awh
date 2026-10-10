@@ -1706,6 +1706,20 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 *
+			 * \~english
+			 * @brief Method of setting the safety of the work of the threads
+			 * @param mode flag of the thread safety mode
+			 *
+			 * \~
+			 */
+			void threadSafety(const bool mode) noexcept;
+		public:
+			/**
+			 * \~russian
 			 * @brief Метод получения допуска отката года
 			 *
 			 * @details Выводит величину допуска, действующую при разборе записей, года

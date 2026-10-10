@@ -596,7 +596,7 @@ namespace awh {
 				transfer_t _transfer;
 			private:
 				// Блокировка доступа к состоянию передачи DNS-запросов
-				mutable lock_state_t <std::mutex>  _mtx;
+				mutable lock_state_t <std::mutex> _mtx;
 			private:
 				/**
 				 * \~russian

@@ -63,12 +63,12 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/lib.hpp>
-#include <unit/dns.hpp>
-#include <encoding/ascii.hpp>
-#include <encoding/idna/idna.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <unit/dns.hpp>
+#include <sys/macro/lib.hpp>
+#include <encoding/ascii.hpp>
+#include <encoding/idna/idna.hpp>
 
 /**
  * Используем стандартное пространство имён
