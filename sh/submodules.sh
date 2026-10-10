@@ -43,5 +43,9 @@ $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git
 $ROOT/submodule.sh remove boringssl
 $ROOT/submodule.sh add boringssl https://gitflic.ru/project/third_party/boringssl.git
 
+# Выполняем пересборку сабмодуля NSS
+$ROOT/submodule.sh remove nss
+$ROOT/submodule.sh add nss https://github.com/mozilla/nss.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

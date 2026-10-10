@@ -1,33 +1,3 @@
-[submodule "submodules/lz4"]
-	path = submodules/lz4
-	url = https://gitflic.ru/project/third_party/lz4.git
-[submodule "submodules/bz2"]
-	path = submodules/bz2
-	url = https://gitflic.ru/project/third_party/bzip2.git
-[submodule "submodules/lzma"]
-	path = submodules/lzma
-	url = https://gitflic.ru/project/third_party/lzma.git
-[submodule "submodules/zstd"]
-	path = submodules/zstd
-	url = https://gitflic.ru/project/third_party/zstd.git
-[submodule "submodules/zlib"]
-	path = submodules/zlib
-	url = https://gitflic.ru/project/third_party/zlib.git
-[submodule "submodules/lizard"]
-	path = submodules/lizard
-	url = https://gitflic.ru/project/third_party/lizard.git
-[submodule "submodules/density"]
-	path = submodules/density
-	url = https://gitflic.ru/project/third_party/density.git
-[submodule "submodules/snappy"]
-	path = submodules/snappy
-	url = https://gitflic.ru/project/third_party/snappy.git
-[submodule "submodules/brotli"]
-	path = submodules/brotli
-	url = https://gitflic.ru/project/third_party/brotli.git
-[submodule "submodules/boringssl"]
-	path = submodules/boringssl
-	url = https://gitflic.ru/project/third_party/boringssl.git
 [submodule "submodules/libuv"]
 	path = submodules/libuv
 	url = https://github.com/libuv/libuv.git
@@ -157,3 +127,36 @@
 [submodule "submodules/openssl"]
 	path = submodules/openssl
 	url = https://github.com/openssl/openssl.git
+[submodule "submodules/lz4"]
+	path = submodules/lz4
+	url = https://gitflic.ru/project/third_party/lz4.git
+[submodule "submodules/bz2"]
+	path = submodules/bz2
+	url = https://gitflic.ru/project/third_party/bzip2.git
+[submodule "submodules/lzma"]
+	path = submodules/lzma
+	url = https://gitflic.ru/project/third_party/lzma.git
+[submodule "submodules/zstd"]
+	path = submodules/zstd
+	url = https://gitflic.ru/project/third_party/zstd.git
+[submodule "submodules/zlib"]
+	path = submodules/zlib
+	url = https://gitflic.ru/project/third_party/zlib.git
+[submodule "submodules/lizard"]
+	path = submodules/lizard
+	url = https://gitflic.ru/project/third_party/lizard.git
+[submodule "submodules/density"]
+	path = submodules/density
+	url = https://gitflic.ru/project/third_party/density.git
+[submodule "submodules/snappy"]
+	path = submodules/snappy
+	url = https://gitflic.ru/project/third_party/snappy.git
+[submodule "submodules/brotli"]
+	path = submodules/brotli
+	url = https://gitflic.ru/project/third_party/brotli.git
+[submodule "submodules/boringssl"]
+	path = submodules/boringssl
+	url = https://gitflic.ru/project/third_party/boringssl.git
+[submodule "submodules/nss"]
+	path = submodules/nss
+	url = https://github.com/mozilla/nss.git
