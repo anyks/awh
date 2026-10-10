@@ -53,6 +53,8 @@
 #include "reader.hpp"
 #include "writer.hpp"
 
+#include "../value.hpp"
+
 /**
  * \~russian
  * @brief Основное пространство имён
@@ -1778,6 +1780,21 @@ namespace awh {
 					 * \~
 					 */
 					type_t type(const vector <string_view> & path) const noexcept;
+					codec::kind_t kind(const vector <string_view> & path) const noexcept {
+						switch(this->type(path)){
+							case type_t::STRING:	return codec::kind_t::STRING;
+							case type_t::INTEGER:
+							case type_t::FLOAT:	return codec::kind_t::NUMBER;
+							case type_t::BOOLEAN:	return codec::kind_t::BOOL;
+							case type_t::OFFSET_DATETIME:
+							case type_t::LOCAL_DATETIME:
+							case type_t::LOCAL_DATE:
+							case type_t::LOCAL_TIME:	return codec::kind_t::TIME;
+							case type_t::ARRAY:	return codec::kind_t::ARRAY;
+							case type_t::TABLE:	return codec::kind_t::MAP;
+							default:	return codec::kind_t::NONE;
+						}
+					}
 					/**
 					 * \~russian
 					 * @brief Метод получения значения пары
