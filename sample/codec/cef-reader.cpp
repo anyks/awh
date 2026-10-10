@@ -111,7 +111,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		if(!reader.feed(TEXT + offset, size, (offset + size) >= length)){
 			// Выводим сведения об обнаруженной ошибке разбора
 			cout << "ошибка: " << codec::cef::message(reader.error())
-			     << " в " << reader.errorPosition().line << ":" << reader.errorPosition().column << endl;
+			     << " в " << reader.errorLocation().line << ":" << reader.errorLocation().column << endl;
 			// Выводим код выхода из приложения с ошибкой
 			return EXIT_FAILURE;
 		}

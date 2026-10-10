@@ -760,7 +760,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	 !readVar(data, offset, program.flags) ||
 	 !readVar(data, offset, program.steps) ||
 	 !readVar(data, offset, program.depth) ||
-	 !readVar(data, offset, program.heap)) {
+	 !readVar(data, offset, program.heap)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -886,7 +886,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	 * Если чтение последовательностей предварительного отбора не выполнено
 	 */
 	if(!readText(data, offset, program.prefilter.literal) ||
-	 !readText(data, offset, program.prefilter.leading)) {
+	 !readText(data, offset, program.prefilter.leading)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -1887,7 +1887,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	 * Если чтение опознания устройства машины не выполнено
 	 */
 	if(!read16(data, offset, machine) || !read8(data, offset, method) ||
-	 !read8(data, offset, sealed) || !read16(data, offset, padding)) {
+	 !read8(data, offset, sealed) || !read16(data, offset, padding)){
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления собранных выражений

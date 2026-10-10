@@ -238,7 +238,7 @@ namespace awh {
 					error_t _error;
 				private:
 					// Положение обнаруженной ошибки в исходном тексте
-					pos_t _errorPosition;
+					pos_t _errorLocation;
 					// Положение начала текущего события в исходном тексте
 					pos_t _position;
 					// Положение начала хранилища в исходном тексте
@@ -648,7 +648,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const pos_t & errorPosition() const noexcept;
+					const pos_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения места начала текущей ЗАПИСИ

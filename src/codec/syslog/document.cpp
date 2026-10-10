@@ -1368,9 +1368,9 @@ awh::codec::syslog::error_t awh::codec::syslog::Document::error() const noexcept
  *
  * @return положение обнаруженной ошибки в исходном тексте
  */
-const awh::codec::syslog::pos_t & awh::codec::syslog::Document::errorPosition() const noexcept {
+const awh::codec::syslog::pos_t & awh::codec::syslog::Document::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки
-	return this->_reader.errorPosition();
+	return this->_reader.errorLocation();
 }
 
 /**

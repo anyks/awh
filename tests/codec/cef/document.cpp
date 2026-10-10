@@ -978,7 +978,7 @@ TEST(CodecCefDocument, FailurePaths) {
 	// Выполняем проверку того, что отказ назван кодом
 	EXPECT_NE(broken.error(), cef::error_t::NONE);
 	// Выполняем проверку того, что место отказа объявлено
-	EXPECT_EQ(broken.errorPosition().line, static_cast <uint64_t> (1));
+	EXPECT_EQ(broken.errorLocation().line, static_cast <uint64_t> (1));
 }
 
 /**

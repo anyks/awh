@@ -1655,7 +1655,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 			if((this->_points.size() > MAX_POINTS) ||
 			   (this->_frames.size() > MAX_FRAMES) || (this->_journal.size() > MAX_JOURNAL) ||
 			   (((this->_points.size() * sizeof(point_t)) + (this->_frames.size() * sizeof(frame_t)) +
-			     (this->_journal.size() * sizeof(change_t))) > this->_memory)) {
+			     (this->_journal.size() * sizeof(change_t))) > this->_memory)){
 				// Выполняем установку ошибки превышения допустимого объёма работы
 				this->_error = error_t::BUDGET_EXCEEDED;
 				// Выводим результат исполнения программы
@@ -1816,7 +1816,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 */
 					if((instruction.type == opcode_t::MATCH) && (this->_slots.at(0) == current) &&
 					 (hasFlag(this->_program->flags, flag_t::NOTEMPTY) ||
-					  (hasFlag(this->_program->flags, flag_t::ATSTART) && (current == this->_start)))) {
+					  (hasFlag(this->_program->flags, flag_t::ATSTART) && (current == this->_start)))){
 						// Выполняем установку флага отказа сопоставления
 						failed = true;
 						// Прекращаем исполнение инструкции программы
@@ -2563,7 +2563,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 * Если прогон письменности сопоставлен
 					 */
 					if((entry != string_view::npos) && (entry <= current) &&
-					 scripted(this->_text, entry, current, this->_program->flags)) {
+					 scripted(this->_text, entry, current, this->_program->flags)){
 						// Переходим к инструкции следующей
 						pc++;
 						// Продолжаем исполнение программы регулярного выражения
@@ -2640,7 +2640,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 * Если вызов той же группы в той же позиции уже исполняется
 						 */
 						if((this->_frames.at(frame).number == instruction.call.number) &&
-						 (this->_frames.at(frame).pos == current)) {
+						 (this->_frames.at(frame).pos == current)){
 							// Выполняем установку ошибки повторного рекурсивного вызова
 							this->_error = error_t::NESTED_RECURSION;
 							// Выводим результат исполнения программы
@@ -3043,7 +3043,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 *
 						 */
 						if((series > 1) && (instruction.type == opcode_t::CLASS) &&
-						 !hasFlag(this->_program->flags, flag_t::UTF)) {
+						 !hasFlag(this->_program->flags, flag_t::UTF)){
 							// Выполняем проход ряда класса символов по таблице принадлежности
 							const size_t consumed = this->consume(instruction, current, size, series);
 							/**
@@ -4059,7 +4059,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		 */
 		if(!bound && program.prefilter.active && !(screening && (pos < size) &&
 		 program.prefilter.bytes[static_cast <uint8_t> (text[pos])] &&
-		 !(program.prefilter.utf && ((static_cast <uint8_t> (text[pos]) & 0xC0) == 0x80)))) {
+		 !(program.prefilter.utf && ((static_cast <uint8_t> (text[pos]) & 0xC0) == 0x80)))){
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = program.prefilter.search(text, pos);
 			/**

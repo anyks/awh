@@ -493,7 +493,7 @@ TEST(CodecSysLogDocument, Failure) {
 	// Выполняем проверку кода отказа разбора записи
 	EXPECT_EQ(document.error(), syslog::error_t::INVALID_PRIORITY);
 	// Выполняем проверку того, что положение ошибки указано в первой строке
-	EXPECT_EQ(document.errorPosition().line, 1u);
+	EXPECT_EQ(document.errorLocation().line, 1u);
 }
 
 /**

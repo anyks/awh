@@ -1593,7 +1593,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			 *
 			 */
 			if((source < this->_stored.size()) && (this->_stored[source].first != INVALID_CLASS) &&
-			 (this->_stored[source].second == node.flags)) {
+			 (this->_stored[source].second == node.flags)){
 				// Выполняем учёт размещения класса номером запомненным
 				AWH_REGEX_TICK(path_t::RECALLING);
 				// Получаем номер класса символов, размещённого прежде

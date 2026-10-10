@@ -102,14 +102,14 @@ bool awh::codec::cef::Reader::fail(const error_t error, const size_t offset) noe
 	// Сбрасываем вид текущего события разбора
 	this->_event = event_t::NONE;
 	// Выполняем определение положения места ошибки в исходном тексте
-	this->place(offset, this->_errorPosition);
+	this->place(offset, this->_errorLocation);
 	// Выводим в лог сообщение об ошибке разбора
 	awh::log::print(
 		"CEF parsing failed: %s at line %llu column %llu",
 		awh::log::flag_t::CRITICAL,
 		awh::codec::cef::message(error),
-		static_cast <unsigned long long> (this->_errorPosition.line),
-		static_cast <unsigned long long> (this->_errorPosition.column)
+		static_cast <unsigned long long> (this->_errorLocation.line),
+		static_cast <unsigned long long> (this->_errorLocation.column)
 	);
 	// Выводим отсутствие очередного события разбора
 	return false;
@@ -802,7 +802,7 @@ void awh::codec::cef::Reader::reset() noexcept {
 	// Сбрасываем код ошибки последней операции разбора
 	this->_error = error_t::NONE;
 	// Сбрасываем положение обнаруженной ошибки
-	this->_errorPosition = pos_t();
+	this->_errorLocation = pos_t();
 	// Сбрасываем положение начала текущего события
 	this->_position = pos_t();
 	// Сбрасываем положение начала хранилища
@@ -1112,9 +1112,9 @@ awh::codec::cef::error_t awh::codec::cef::Reader::error() const noexcept {
  *
  * @return положение обнаруженной ошибки в исходном тексте
  */
-const awh::codec::cef::pos_t & awh::codec::cef::Reader::errorPosition() const noexcept {
+const awh::codec::cef::pos_t & awh::codec::cef::Reader::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки в исходном тексте
-	return this->_errorPosition;
+	return this->_errorLocation;
 }
 
 /**

@@ -696,13 +696,13 @@ TEST(CodecSysLogReader, LimitFailures) {
 		 *          сдвинутого к началу СЛЕДУЮЩЕЙ записи, и указывали за конец текущей.
 		 *          Прежняя проверка места сличала лишь номер строки и молчала об этом
 		 */
-		EXPECT_LT(document.errorPosition().offset, ::std::get <0> (sample).size()) << ::std::get <0> (sample);
+		EXPECT_LT(document.errorLocation().offset, ::std::get <0> (sample).size()) << ::std::get <0> (sample);
 		// Если место отказа образцом задано, сличаем его число в число
 		if(::std::get <2> (sample) != string::npos)
 			// Выполняем проверку того, что место отказа указано ожидаемым
-			EXPECT_EQ(document.errorPosition().offset, ::std::get <2> (sample)) << ::std::get <0> (sample);
+			EXPECT_EQ(document.errorLocation().offset, ::std::get <2> (sample)) << ::std::get <0> (sample);
 		// Выполняем проверку того, что отказ отнесён к первой строке записи
-		EXPECT_EQ(document.errorPosition().line, 1u) << ::std::get <0> (sample);
+		EXPECT_EQ(document.errorLocation().line, 1u) << ::std::get <0> (sample);
 	}
 
 }
@@ -745,7 +745,7 @@ TEST(CodecSysLogReader, SettingsLimits) {
 		// Выполняем проверку того, что отказ назван кодом превышения предела настроек
 		EXPECT_EQ(document.error(), syslog::error_t::OVERFLOW_LIMIT);
 		// Выполняем проверку того, что место отказа лежит внутри записи
-		EXPECT_LT(document.errorPosition().offset, 74u);
+		EXPECT_LT(document.errorLocation().offset, 74u);
 	}
 	/**
 	 * Предел числа полей внутри блока структурированных данных
@@ -825,7 +825,7 @@ TEST(CodecSysLogReader, ModernFailures) {
 		// Выполняем проверку того, что отказ назван ожидаемым кодом
 		EXPECT_EQ(document.error(), sample.second) << sample.first;
 		// Выполняем проверку того, что место отказа лежит внутри записи
-		EXPECT_LT(document.errorPosition().offset, sample.first.size()) << sample.first;
+		EXPECT_LT(document.errorLocation().offset, sample.first.size()) << sample.first;
 	}
 	/**
 	 * Выполняем проверку того, что при опознании описания те же записи читаются ИНАЧЕ
@@ -1079,7 +1079,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 		// Выполняем проверку кода отказа чтения записи
 		EXPECT_EQ(reader.error(), sample.error) << sample.record;
 		// Выполняем проверку того, что место отказа лежит внутри записи
-		EXPECT_LT(reader.errorPosition().offset, static_cast <uint64_t> (::strlen(sample.record))) << sample.record;
+		EXPECT_LT(reader.errorLocation().offset, static_cast <uint64_t> (::strlen(sample.record))) << sample.record;
 	}
 	// Выполняем создание объекта чтения записей для отказа по длине записи
 	syslog::reader_t oversized;
@@ -2284,9 +2284,9 @@ TEST(CodecSysLogReader, ErrorPositionsSurviveRepeatedCompaction) {
 		EXPECT_EQ(records, count);
 		EXPECT_EQ(reader.state(), syslog::state_t::FAILED);
 		EXPECT_EQ(reader.error(), syslog::error_t::INVALID_PRIORITY);
-		EXPECT_EQ(reader.errorPosition().offset, expected) << "chunk=" << chunk;
-		EXPECT_EQ(reader.errorPosition().line, count * 3 + 1) << "chunk=" << chunk;
-		EXPECT_EQ(reader.errorPosition().column, 2u) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorLocation().offset, expected) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorLocation().line, count * 3 + 1) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorLocation().column, 2u) << "chunk=" << chunk;
 	}
 }
 
@@ -2324,9 +2324,9 @@ TEST(CodecSysLogReader, ResetRestoresPositionsAfterCompaction) {
 	ASSERT_TRUE(reader.feed("<bad>"));
 	EXPECT_FALSE(reader.next());
 	EXPECT_EQ(reader.error(), syslog::error_t::INVALID_PRIORITY);
-	EXPECT_EQ(reader.errorPosition().offset, 1u);
-	EXPECT_EQ(reader.errorPosition().line, 1u);
-	EXPECT_EQ(reader.errorPosition().column, 2u);
+	EXPECT_EQ(reader.errorLocation().offset, 1u);
+	EXPECT_EQ(reader.errorLocation().line, 1u);
+	EXPECT_EQ(reader.errorLocation().column, 2u);
 	// Повторный сброс после ошибки восстанавливает и координаты исправной записи
 	reader.reset();
 	ASSERT_TRUE(reader.feed("<165>1 2026-09-15T00:00:00Z host app 1 - - value\n"));

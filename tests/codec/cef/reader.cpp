@@ -1032,9 +1032,9 @@ TEST(CodecCefReader, ErrorPositionsSurviveRepeatedCompaction) {
 		EXPECT_EQ(records, count);
 		EXPECT_EQ(reader.state(), cef::state_t::FAILED);
 		EXPECT_EQ(reader.error(), cef::error_t::INCOMPLETE_HEADER);
-		EXPECT_EQ(reader.errorPosition().offset, expected) << "chunk=" << chunk;
-		EXPECT_EQ(reader.errorPosition().line, count * 3 + 1) << "chunk=" << chunk;
-		EXPECT_EQ(reader.errorPosition().column, 7u) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorLocation().offset, expected) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorLocation().line, count * 3 + 1) << "chunk=" << chunk;
+		EXPECT_EQ(reader.errorLocation().column, 7u) << "chunk=" << chunk;
 	}
 }
 
@@ -1072,9 +1072,9 @@ TEST(CodecCefReader, ResetRestoresPositionsAfterCompaction) {
 	ASSERT_TRUE(reader.feed("CEF:0|broken"));
 	EXPECT_FALSE(reader.next());
 	EXPECT_EQ(reader.error(), cef::error_t::INCOMPLETE_HEADER);
-	EXPECT_EQ(reader.errorPosition().offset, 6u);
-	EXPECT_EQ(reader.errorPosition().line, 1u);
-	EXPECT_EQ(reader.errorPosition().column, 7u);
+	EXPECT_EQ(reader.errorLocation().offset, 6u);
+	EXPECT_EQ(reader.errorLocation().line, 1u);
+	EXPECT_EQ(reader.errorLocation().column, 7u);
 	// Повторный сброс после ошибки восстанавливает и координаты исправной записи
 	reader.reset();
 	ASSERT_TRUE(reader.feed("CEF:0|V|P|1|100|Event|5|msg=value\n"));

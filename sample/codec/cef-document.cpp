@@ -95,7 +95,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	if(!document.parse(TEXT)){
 		// Выводим сведения об обнаруженной ошибке разбора
 		cout << "ошибка: " << codec::cef::message(document.error())
-		     << " в " << document.errorPosition().line << ":" << document.errorPosition().column << endl;
+		     << " в " << document.errorLocation().line << ":" << document.errorLocation().column << endl;
 		// Выводим код выхода из приложения с ошибкой
 		return EXIT_FAILURE;
 	}

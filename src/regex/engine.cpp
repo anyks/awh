@@ -741,7 +741,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *
 		 */
 		if(expression.forward.prefilter.active && ((start >= text.size()) ||
-		 !expression.forward.prefilter.bytes[static_cast <uint8_t> (text[start])])) {
+		 !expression.forward.prefilter.bytes[static_cast <uint8_t> (text[start])])){
 			// Выполняем учёт отказа по набору допустимых начальных байтов
 			AWH_REGEX_TICK(path_t::BARRING);
 			// Выводим результат поиска совпадения
@@ -1022,7 +1022,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!exhausted && ((span <= MAX_BACKTRACK) || !expression.forward.prefilter.leading.empty() ||
-	 expression.forward.anchored)) {
+	 expression.forward.anchored)){
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((span + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
 		/**

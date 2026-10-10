@@ -651,7 +651,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const pos_t & errorPosition() const noexcept;
+					const pos_t & errorLocation() const noexcept;
 				public:
 					/**
 					 * \~russian

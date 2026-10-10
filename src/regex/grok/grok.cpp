@@ -1769,7 +1769,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		 * Если разбор сжатого содержимого части записи не выполнен
 		 */
 		if(!this->_unpack(record.substr(offset, static_cast <size_t> (placed)), content) ||
-		 (content.size() != static_cast <size_t> (origin))) {
+		 (content.size() != static_cast <size_t> (origin))){
 			// Устанавливаем код ошибки невыполненного разбора сжатой части записи
 			this->_error = error_t::STORAGE_PACKING;
 			// Выводим результат восстановления собранных шаблонов
@@ -1829,7 +1829,7 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 		 */
 		if(!readText(record, offset, expression->pattern) ||
 		 !readText(record, offset, expression->expression) ||
-		 !readNumber(record, offset, fields)) {
+		 !readNumber(record, offset, fields)){
 			// Устанавливаем код ошибки восстановления собранных шаблонов
 			this->_error = error_t::STORAGE_TRUNCATED;
 			// Выводим результат восстановления собранных шаблонов

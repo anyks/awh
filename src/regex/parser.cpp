@@ -2610,7 +2610,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		 */
 		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 3) < size) &&
 		   (this->_pattern.at(this->_pos + 1) == 'Q') && (this->_pattern.at(this->_pos + 2) == '\\') &&
-		   (this->_pattern.at(this->_pos + 3) == 'E')) {
+		   (this->_pattern.at(this->_pos + 3) == 'E')){
 			// Переходим к символу за дословной последовательностью пустой
 			this->_pos += 4;
 			// Переходим к следующей последовательности прозрачной
@@ -2715,7 +2715,7 @@ awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 		 */
 		if((this->_pattern.at(this->_pos) == '\\') && ((this->_pos + 3) < size) &&
 		   (this->_pattern.at(this->_pos + 1) == 'Q') && (this->_pattern.at(this->_pos + 2) == '\\') &&
-		   (this->_pattern.at(this->_pos + 3) == 'E')) {
+		   (this->_pattern.at(this->_pos + 3) == 'E')){
 			// Переходим к символу за дословной последовательностью пустой
 			this->_pos += 4;
 			// Переходим к следующему элементу класса символов
@@ -3199,7 +3199,7 @@ awh::regex::node_id_t awh::regex::Parser::parseEscape() noexcept {
 				 * Если ссылка на группу задана именем группы
 				 */
 				if((this->_pos < size) && !ascii::isDigit(this->_pattern.at(this->_pos)) &&
-				   (this->_pattern.at(this->_pos) != '-') && (this->_pattern.at(this->_pos) != '+')) {
+				   (this->_pattern.at(this->_pos) != '-') && (this->_pattern.at(this->_pos) != '+')){
 					// Индекс имени группы в хранилище имён
 					uint32_t target = NO_NAME;
 					/**
@@ -4443,7 +4443,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				 */
 				if((letter == 'i') || (letter == 'm') || (letter == 's') || (letter == 'x') ||
 				   (letter == 'U') || (letter == 'J') || (letter == '^') || (letter == '-') ||
-				   (letter == 'a') || (letter == 'n') || (letter == 'r')) {
+				   (letter == 'a') || (letter == 'n') || (letter == 'r')){
 					/**
 					 * Если конструкция сбрасывает режимы компиляции к исходным
 					 */
@@ -4632,7 +4632,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 * Если длина последовательности ретроспективной проверки не ограничена
 		 */
 		if(((direction == look_t::BEHIND) || (direction == look_t::BEHIND_NEG) ||
-		 (direction == look_t::BEHIND_FREE)) && (most == UNBOUNDED)) {
+		 (direction == look_t::BEHIND_FREE)) && (most == UNBOUNDED)){
 			/**
 			 * Если тело проверки несёт вызов подпрограммы
 			 *
@@ -5221,7 +5221,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 		   ((letter == '\\') && ((this->_pos + 3) < size) && (this->_pattern.at(this->_pos + 1) == 'Q') &&
 		    (this->_pattern.at(this->_pos + 2) == '\\') && (this->_pattern.at(this->_pos + 3) == 'E')) ||
 		   ((letter == '(') && ((this->_pos + 2) < size) && (this->_pattern.at(this->_pos + 1) == '?') &&
-		    (this->_pattern.at(this->_pos + 2) == '#'))) {
+		    (this->_pattern.at(this->_pos + 2) == '#'))){
 			/**
 			 * Если элемент является комментарием
 			 */
@@ -5266,7 +5266,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 			if((items.size() > base) && !barrier && (this->_pos < size) &&
 			   (this->_nodes.at(items.back()).type == node_t::REPEAT) &&
 			   (this->_nodes.at(items.back()).repeat.greed == greed_t::GREEDY) &&
-			   ((this->_pattern.at(this->_pos) == '?') || (this->_pattern.at(this->_pos) == '+'))) {
+			   ((this->_pattern.at(this->_pos) == '?') || (this->_pattern.at(this->_pos) == '+'))){
 				// Выполняем установку режима жадности квантора повторения
 				this->_nodes.at(items.back()).repeat.greed =
 				 ((this->_pattern.at(this->_pos) == '?') ? greed_t::LAZY : greed_t::POSSESSIVE);

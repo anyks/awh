@@ -1868,9 +1868,9 @@ awh::codec::cef::error_t awh::codec::cef::Document::error() const noexcept {
  *
  * @return положение обнаруженной ошибки в исходном тексте
  */
-const awh::codec::cef::pos_t & awh::codec::cef::Document::errorPosition() const noexcept {
+const awh::codec::cef::pos_t & awh::codec::cef::Document::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки в исходном тексте
-	return this->_reader.errorPosition();
+	return this->_reader.errorLocation();
 }
 
 /**

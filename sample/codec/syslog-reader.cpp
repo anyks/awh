@@ -197,8 +197,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	if(reader.state() == codec::syslog::state_t::FAILED)
 		// Выводим сообщение об ошибке разбора с местом её обнаружения
 		cout << "ОТКАЗ: " << codec::syslog::message(reader.error())
-		     << " в строке " << reader.errorPosition().line
-		     << ", столбце " << reader.errorPosition().column << endl;
+		     << " в строке " << reader.errorLocation().line
+		     << ", столбце " << reader.errorLocation().column << endl;
 	// Выводим результат работы приложения
 	return EXIT_SUCCESS;
 }
