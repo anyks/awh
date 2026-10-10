@@ -21,6 +21,40 @@ readonly ORACLE="${2:-$OUTPUT/vendor}"
 # сравнивать реализации, собранные с разной оптимизацией, бессмысленно
 readonly FLAGS="-std=c++2a -O3 -DNDEBUG -Wall -Wextra"
 
+##
+# Состав исходных текстов ведётся общим для всех стендов файлом
+#
+# Подключается «tools/regex/sources.sh», задающий общий состав набора:
+# разбирать состав поиском в каждом стенде отдельно перечень устаревает молча.
+# «stand_sources» отдаёт плоский список файлов, пригодный для связки
+##
+
+. "$(dirname "$0")/../../regex/sources.sh"
+
+##
+# У macOS модуль файловой системы тянет «Foundation»
+#
+# Без признака «-x objective-c++» собиратель натыкается на синтаксис Objective-C
+# в Foundation и валит сборку разбором NSString/NSObject/... как незнакомых имён.
+# Признак обязателен ПЕРЕД ключами сборки: ключ «-x» правит вид всех доводов
+# последующих, и ссылка на исходник после него собирается по режиму Objective-C++.
+# Связка с Foundation и pthread добавляется единым перечнем под платформу
+##
+
+LANGUAGE=""
+RESTORE=""
+LIBS=""
+case "$(uname -s)" in
+	Darwin)
+		LANGUAGE="-x objective-c++ -fobjc-arc"
+		RESTORE="-x none"
+		LIBS="-framework Foundation -lpthread"
+	;;
+	FreeBSD) LIBS="-lpthread -lutil" ;;
+	MINGW*|MSYS*|CYGWIN*) LIBS="-lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32" ;;
+	*) LIBS="-lpthread" ;;
+esac
+
 # Если исходные тексты эталонной реализации не получены
 if [ ! -f "$VENDOR/CMakeLists.txt" ]; then
 	# Выводим сообщение о необходимости получения исходных текстов
@@ -81,19 +115,54 @@ fi
 # сравнение обязано мерить текущее состояние исходных текстов, а не состояние
 # библиотеки, собранной когда-то ранее
 #
-# Состав перечислен вместе с таблицами Юникода: модуль опирается на них
-# приведением регистра, свойствами и разбором кластеров, и без них стенд
-# не связывается вовсе
+# Состав берётся общим с прочими стендами через «tools/regex/sources.sh»:
+# модуль опирается на таблицы Юникода (приведение регистра, свойства, разбор
+# кластеров), на средства ядра фреймворка (журнал, диспетчер памяти) и на
+# распределитель памяти — без них стенд не связывается вовсе
 ##
 
-# Выводим сообщение о сборке стенда сравнения
-echo "Building stand: awh"
+##
+# Сборка ведётся в двух вариантах: штатном и без встроенного распределителя
+#
+# Штатный вариант «awh» собирается без макроса AWH_ALLOC_DISABLED: имена
+# функций выдачи памяти в двоичном файле совпадают с именами libc, и система
+# на системах семейства ELF подменяет libc-распределитель нашим связыванием.
+# Вариант «awh.noalloc» собирается с признаком AWH_ALLOC_DISABLED: имена
+# функций выдачи переименовываются в частные (__awh_alloc_malloc__ и т.п.),
+# и системный распределитель остаётся штатным. Сравнение двух сборок одного
+# текста даёт долю встроенного распределителя на каждый сценарий; сличение
+# с PCRE2 идёт по варианту «awh.noalloc», равноценному сопернику по
+# распределителю. Подробнее — Work/AI/protocols/awh/regex/ALLOCATOR.md
+##
 
-# Выполняем сборку стенда сравнения
-g++ $FLAGS \
+# Часть захвата имён у OpenBSD собирается только под OpenBSD
+NATIVE=""
+[ "$(uname -s)" = "OpenBSD" ] && NATIVE="$ROOT/src/alloc/capture/obsd.cpp"
+
+# Состав исходных текстов стенда: общий модульный состав + драйвер стенда
+SOURCES=$(stand_sources)
+
+# Выводим сообщение о сборке стенда сравнения
+echo "Building stand: awh (allocator enabled)"
+
+# Выполняем сборку стенда сравнения со встроенным распределителем памяти
+# shellcheck disable=SC2086
+g++ $FLAGS $LANGUAGE \
 	-I"$ROOT/include" \
-	"$STANDS/awh.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
-	-o "$OUTPUT/awh" || exit 1
+	-o "$OUTPUT/awh" \
+	"$STANDS/awh.cpp" $SOURCES $NATIVE $RESTORE $LIBS -lz || exit 1
+
+# Выводим сообщение о сборке стенда сравнения
+echo "Building stand: awh.noalloc (system allocator)"
+
+# Выполняем сборку стенда сравнения без встроенного распределителя памяти:
+# макрос AWH_ALLOC_DISABLED переименовывает имена функций выдачи в частные,
+# и связывание с libc-распределителем не происходит
+# shellcheck disable=SC2086
+g++ $FLAGS -DAWH_ALLOC_DISABLED $LANGUAGE \
+	-I"$ROOT/include" \
+	-o "$OUTPUT/awh.noalloc" \
+	"$STANDS/awh.cpp" $SOURCES $NATIVE $RESTORE $LIBS -lz || exit 1
 
 ##
 # Стенд сравнения эталонной реализации PCRE2
@@ -103,15 +172,17 @@ g++ $FLAGS \
 echo "Building stand: pcre2"
 
 # Выполняем сборку стенда сравнения
+# shellcheck disable=SC2086
 g++ $FLAGS \
 	-I"$ORACLE/include" \
 	"$STANDS/pcre2.cpp" \
 	-o "$OUTPUT/pcre2" \
-	-L"$ORACLE/lib" -lpcre2-8 || exit 1
+	-L"$ORACLE/lib" -lpcre2-8 $LIBS || exit 1
 
 # Выводим сообщение о завершении сборки стендов сравнения
 echo ""
 echo "Stands are built in $OUTPUT"
 echo "Run them:"
-echo "  $OUTPUT/awh"
+echo "  $OUTPUT/awh             (with built-in allocator)"
+echo "  $OUTPUT/awh.noalloc     (with system allocator)"
 echo "  $OUTPUT/pcre2"

@@ -55,7 +55,7 @@ mkdir -p "$OUT"
 # обработчиком «Signals::Bus», тот опирается на разрешение процессов,
 # а тот - на адреса сетевых объектов; без цепочки связывание отказывает
 ##
-EXTRA="$ROOT/src/codec/numeric.cpp $ROOT/src/sys/os.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/signals.cpp $ROOT/src/sys/procre.cpp $ROOT/src/net/net.cpp"
+EXTRA=""
 
 ##
 # У macOS исходники собираются как Objective-C++
@@ -74,6 +74,7 @@ case "$(uname -s)" in
 		LIBS="$LIBS -framework Foundation -lpthread"
 	;;
 	MINGW*|MSYS*|CYGWIN*) LIBS="$LIBS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32" ;;
+	FreeBSD) LIBS="$LIBS -lpthread -lutil" ;;
 	*) LIBS="$LIBS -lpthread" ;;
 esac
 

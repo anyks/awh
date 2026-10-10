@@ -62,7 +62,13 @@ stand_sources() {
 	echo src/sys/log.cpp
 	echo src/sys/chrono.cpp
 	echo src/sys/fmk.cpp
+	echo src/sys/os.cpp
+	echo src/sys/fs.cpp
+	echo src/sys/signals.cpp
+	echo src/sys/procre.cpp
 	echo src/net/nwt.cpp
+	echo src/net/net.cpp
+	echo src/codec/numeric.cpp
 }
 
 # Исходные тексты переносимой проверки

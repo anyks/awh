@@ -1405,8 +1405,18 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 			uint32_t head = 0, tail = 0;
 			// Читаем начало искомого
 			::memcpy(&head, needle, sizeof(head));
-			// Читаем конец искомого
-			::memcpy(&tail, (needle + offset), sizeof(tail));
+			/**
+			 * При длине литерала в четыре байта завершающее слово совпадает с начальным:
+			 * смещение нулевое, и оба чтения вернули бы одни и те же четыре байта.
+			 * Явная проверка длины снимает второе чтение без опоры на свёртку
+			 * компилятора: «if constexpr» при постоянной длине шаблона не оставляет
+			 * следа в коде ни в одной ветви
+			 */
+			if constexpr(LENGTH > sizeof(uint32_t))
+				// Читаем конец искомого
+				::memcpy(&tail, (needle + offset), sizeof(tail));
+			// Иначе завершающее слово совпадает с начальным
+			else tail = head;
 			// Размножаем первый байт пары
 			const __m128i leading = _mm_set1_epi8(needle[0]);
 			// Размножаем второй байт пары
@@ -1446,14 +1456,27 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 					if(start >= limit)
 						// Выводим отсутствие совпадения
 						return finish(string_view::npos);
-					// Слова начала и конца кандидата
-					uint32_t first = 0, second = 0;
+					// Слово начала кандидата
+					uint32_t first = 0;
 					// Читаем начало кандидата
 					::memcpy(&first, (base + start), sizeof(first));
-					// Читаем конец кандидата
-					::memcpy(&second, (base + start + offset), sizeof(second));
-					// Если оба слова совпали
-					if((first == head) && (second == tail))
+					/**
+					 * При длине литерала в четыре байта сверять конец не с чем:
+					 * он совпадает с началом (см. заведение выше). Ветвление
+					 * устраивается «if constexpr», и при LENGTH=4 следа в коде
+					 * не остаётся
+					 */
+					if constexpr(LENGTH > sizeof(uint32_t)){
+						// Слово конца кандидата
+						uint32_t second = 0;
+						// Читаем конец кандидата
+						::memcpy(&second, (base + start + offset), sizeof(second));
+						// Если оба слова совпали
+						if((first == head) && (second == tail))
+							// Выводим найденную позицию
+							return finish(start);
+					// Иначе довольно сравнения по одному слову
+					} else if(first == head)
 						// Выводим найденную позицию
 						return finish(start);
 					// Снимаем рассмотренного кандидата
@@ -1466,14 +1489,25 @@ size_t awh::regex::Prefilter::locate(string_view text, const size_t pos) const n
 			 * Проверяем остаток текста словами без выхода за его границу
 			 */
 			for(; at < limit; at++){
-				// Слова начала и конца кандидата
-				uint32_t first = 0, second = 0;
+				// Слово начала кандидата
+				uint32_t first = 0;
 				// Читаем начало кандидата
 				::memcpy(&first, (base + at), sizeof(first));
-				// Читаем конец кандидата
-				::memcpy(&second, (base + at + offset), sizeof(second));
-				// Если оба слова совпали
-				if((first == head) && (second == tail))
+				/**
+				 * При длине литерала в четыре байта сверять конец не нужно:
+				 * он совпадает с началом (см. заведение выше)
+				 */
+				if constexpr(LENGTH > sizeof(uint32_t)){
+					// Слово конца кандидата
+					uint32_t second = 0;
+					// Читаем конец кандидата
+					::memcpy(&second, (base + at + offset), sizeof(second));
+					// Если оба слова совпали
+					if((first == head) && (second == tail))
+						// Выводим найденную позицию
+						return finish(at);
+				// Иначе довольно сравнения по одному слову
+				} else if(first == head)
 					// Выводим найденную позицию
 					return finish(at);
 			}
