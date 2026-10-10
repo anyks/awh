@@ -23,9 +23,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <regex/probe.hpp>
 #include <regex/engine.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
