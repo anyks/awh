@@ -611,6 +611,21 @@ namespace awh {
 					 * \~
 					 */
 					type_t type(const string & key) const noexcept;
+					abc::kind_t kind(const string & key) const noexcept {
+						switch(this->type(key)){
+							case type_t::STRING:	return abc::kind_t::STRING;
+							case type_t::INTEGER:
+							case type_t::UNSIGNED:
+							case type_t::DOUBLE:	return abc::kind_t::NUMBER;
+							case type_t::BOOLEAN:	return abc::kind_t::BOOL;
+							case type_t::MAC:	return abc::kind_t::BLOB;
+							case type_t::IPV4:
+							case type_t::IPV6:
+							case type_t::ADDRESS:	return abc::kind_t::STRING;
+							case type_t::TIMESTAMP:	return abc::kind_t::TIME;
+							default:	return abc::kind_t::NONE;
+						}
+					}
 				public:
 					/**
 					 * \~russian
