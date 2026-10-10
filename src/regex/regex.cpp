@@ -47,15 +47,16 @@ namespace {
 	/**
 	 * @brief Структура отчёта об ошибке последней операции потока исполнения
 	 *
-	 * @details Отчёт живёт потоком исполнения, а не объектом, и решение это
-	 *          вынужденное: сопоставление ведётся несколькими потоками ОДНИМ
-	 *          объектом - так велит договор модуля и так поступают обе проверки
-	 *          потоков, - а всякое сопоставление отчёт свой записывает. Живи
-	 *          отчёт полем объекта, потоки писали бы в него разом, и это
-	 *          гонка данных: ThreadSanitizer её и нашёл (regex.cpp:310
-	 *          в receive()). Заметить её работой нельзя вовсе - код ошибки
-	 *          есть байт, и запись его выглядит безобидной, - а текст ошибки
-	 *          есть строка, и гонка на ней безобидной не бывает.
+	 * @details Отчёт живёт потоком исполнения, а не объектом, как опорная память
+	 *          для сообщений сопоставителя с записями ошибок на каждом вызове.
+	 *          Сам модуль рабочее состояние сопоставления и отчёт движка хранит
+	 *          полем объекта (см. «RegularExpression::_engine»), и разделяемое
+	 *          сопоставление через одну переменную защищает синхронизацию
+	 *          вызывающей стороны: отчёт движка - её же поле. Отчёт же этот -
+	 *          нить, связующая запись отказа с операцией записи, и ведётся он на
+	 *          стеке потока затем, чтобы журнал сообщений мог собирать отказы
+	 *          от разных объектов в порядке их появления, не разделяя между
+	 *          ними единого объекта отчёта.
 	 *
 	 *          Ценою решения - общий отчёт у нескольких объектов одного потока:
 	 *          отказ сборки объектом одним затирается операцией объекта другого.
@@ -91,30 +92,6 @@ namespace {
 		// Создаём отчёт об ошибке потока исполнения
 		static thread_local report_t result;
 		// Выводим отчёт об ошибке потока исполнения
-		return result;
-	}
-	/**
-	 * @brief Функция извлечения движка сопоставления потока исполнения
-	 *
-	 * @details Движок хранит рабочее состояние сопоставления и потоками исполнения
-	 *          не разделяется, тогда как собранное выражение после сборки не
-	 *          изменяется и разделяется ими свободно, благодаря чему сопоставление
-	 *          согласования доступа не требует.
-	 *
-	 * @return движок сопоставления потока исполнения
-	 *
-	 */
-	regex::engine_t & engine() noexcept {
-		/**
-		 * Создаём движок сопоставления потока исполнения
-		 *
-		 * @note Связка передаётся пустою, и передаётся ЯВНО: движок этот - рабочее
-		 *       состояние потока, у него нет владельца, чей журнал он мог бы взять.
-		 *       Отказы его молчанием не пропадают: их читает выражение вызовами
-		 *       error(), offset() и message() и само пишет их в свой журнал
-		 */
-		static thread_local regex::engine_t result;
-		// Выводим движок сопоставления потока исполнения
 		return result;
 	}
 	/**
@@ -171,12 +148,33 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
 	// Выводим смешанное значение хэша ключа кэша
 	return (first ^ (second + 0x9E3779B9 + (first << 6) + (first >> 2)));
 }
+
 /**
- * @brief Конструктор
+ * @brief Метод очистки кэша собранных регулярных выражений
  *
  */
-awh::RegularExpression::RegularExpression() noexcept :
- _limit(awh::regex::MAX_STEPS), _nesting(awh::regex::MAX_RECURSION) {}
+void awh::RegularExpression::clear() noexcept {
+	// Выполняем очистку кэша собранных выражений
+	this->_cache.clear();
+}
+/**
+ * @brief Метод снятия кода ошибки сопоставления с движка
+ *
+ */
+void awh::RegularExpression::receive() const noexcept {
+	// Выполняем снятие кода ошибки сопоставления с движка
+	report().error = this->_engine.error();
+	/**
+	 * Если ошибки сопоставления не случилось
+	 */
+	if(report().error == error_t::NONE)
+		// Выходим из метода снятия кода ошибки
+		return;
+	// Выполняем снятие текста ошибки сопоставления с движка
+	report().message = this->_engine.message();
+	// Записываем ошибку в лог
+	log::print("Regular expression matching failed: %s", log::flag_t::WARNING, report().message.c_str());
+}
 /**
  * @brief Метод извлечения кода ошибки последней сборки
  *
@@ -186,16 +184,6 @@ awh::RegularExpression::RegularExpression() noexcept :
 awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
 	// Выводим код ошибки последней операции сборки
 	return report().error;
-}
-/**
- * @brief Метод извлечения имени отметки совпадения последнего
- *
- * @return имя отметки совпадения последнего
- *
- */
-const string & awh::RegularExpression::marker() const noexcept {
-	// Выводим имя отметки совпадения последнего
-	return engine().marker();
 }
 /**
  * @brief Метод извлечения смещения ошибки последней сборки
@@ -208,6 +196,16 @@ size_t awh::RegularExpression::offset() const noexcept {
 	return report().offset;
 }
 /**
+ * @brief Метод извлечения имени отметки совпадения последнего
+ *
+ * @return имя отметки совпадения последнего
+ *
+ */
+const string & awh::RegularExpression::marker() const noexcept {
+	// Выводим имя отметки совпадения последнего
+	return this->_engine.marker();
+}
+/**
  * @brief Метод извлечения текста ошибки последней сборки
  *
  * @return текст ошибки последней операции сборки
@@ -216,14 +214,6 @@ size_t awh::RegularExpression::offset() const noexcept {
 const string & awh::RegularExpression::message() const noexcept {
 	// Выводим текст ошибки последней операции сборки
 	return report().message;
-}
-/**
- * @brief Метод очистки кэша собранных регулярных выражений
- *
- */
-void awh::RegularExpression::clear() noexcept {
-	// Выполняем очистку кэша собранных выражений
-	this->_cache.clear();
 }
 /**
  * @brief Метод установки наибольшего допустимого объёма работы сопоставления
@@ -244,6 +234,47 @@ void awh::RegularExpression::limit(const size_t limit) noexcept {
 void awh::RegularExpression::nesting(const size_t nesting) noexcept {
 	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
 	this->_nesting = nesting;
+}
+/**
+ * @brief Метод проверки наличия совпадения в тексте
+ *
+ * @param text текст для сопоставления
+ * @param exp  собранное регулярное выражение
+ * @return     результат проверки наличия совпадения
+ *
+ */
+bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noexcept {
+	/**
+	 * Если собранное регулярное выражение не установлено
+	 */
+	if(!exp)
+		// Выводим результат проверки наличия совпадения
+		return false;
+	/**
+	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
+	 */
+	if(!verified(text, exp)){
+		// Устанавливаем ошибку неверной записи текста сопоставления
+		report().error = error_t::BAD_UTF8_SUBJECT;
+		// Выводим результат проверки наличия совпадения
+		return false;
+	}
+	/**
+	 * Выполняем установку наибольшего допустимого объёма работы сопоставления
+	 *
+	 * @note Потолок ставится движку перед каждым сопоставлением, а не единожды:
+	 *       движок живёт полем объекта, и сопоставление, впервые обратившееся
+	 *       к выражению, взяло бы иначе умолчание вместо настройки объекта
+	 */
+	this->_engine.limit(this->_limit);
+	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	this->_engine.nesting(this->_nesting);
+	// Выполняем проверку наличия совпадения в тексте
+	const bool result = this->_engine.test(* exp, text, 0);
+	// Выполняем снятие кода ошибки сопоставления с движка
+	this->receive();
+	// Выводим результат проверки наличия совпадения в тексте
+	return result;
 }
 /**
  * @brief Метод сборки регулярного выражения
@@ -293,38 +324,33 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	/**
 	 * Если сборка регулярного выражения не выполнена
 	 */
-	if(!engine().build(pattern, flags, * result)){
+	if(!this->_engine.build(pattern, flags, * result)){
 		// Выполняем установку кода ошибки последней операции сборки
-		report().error = engine().error();
+		report().error = this->_engine.error();
 		// Выполняем установку смещения ошибки в тексте выражения
-		report().offset = engine().offset();
+		report().offset = this->_engine.offset();
 		// Выполняем установку текста ошибки последней операции сборки
-		report().message = engine().message();
+		report().message = this->_engine.message();
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, awh::log::flag_t::WARNING, report().offset, report().message.c_str());
+			log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::WARNING, report().offset, report().message.c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Regular expression could not be built at offset %zu: %s", awh::log::flag_t::WARNING, report().offset, report().message.c_str());
+			log::print("Regular expression could not be built at offset %zu: %s", log::flag_t::WARNING, report().offset, report().message.c_str());
 		#endif
 		// Выводим отсутствие собранного регулярного выражения
 		return exp_t();
 	}
 	// Создаём собранное регулярное выражение
 	exp_t expression = result;
-	/**
-	 * Выполняем размещение собранного выражения в кэше собранных выражений
-	 */
-	{
-		// Выполняем размещение собранного выражения в кэше
-		this->_cache[key] = expression;
-	}
+	// Выполняем размещение собранного выражения в кэше
+	this->_cache[key] = expression;
 	// Выводим собранное регулярное выражение
 	return expression;
 }
@@ -347,165 +373,6 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 		options |= static_cast <uint32_t> (flag);
 	// Выводим результат сборки регулярного выражения
 	return this->build(pattern, options);
-}
-/**
- * @brief Метод снятия кода ошибки сопоставления с движка
- *
- */
-void awh::RegularExpression::receive() const noexcept {
-	// Выполняем снятие кода ошибки сопоставления с движка
-	report().error = engine().error();
-	/**
-	 * Если ошибки сопоставления не случилось
-	 */
-	if(report().error == error_t::NONE)
-		// Выходим из метода снятия кода ошибки
-		return;
-	// Выполняем снятие текста ошибки сопоставления с движка
-	report().message = engine().message();
-	/**
-	 * Если объект журнала событий передан
-	 */
-		// Записываем ошибку в лог
-		awh::log::print("Regular expression matching failed: %s", awh::log::flag_t::WARNING, report().message.c_str());
-}
-/**
- * @brief Метод проверки наличия совпадения в тексте
- *
- * @param text текст для сопоставления
- * @param exp  собранное регулярное выражение
- * @return     результат проверки наличия совпадения
- *
- */
-bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noexcept {
-	/**
-	 * Если собранное регулярное выражение не установлено
-	 */
-	if(!exp)
-		// Выводим результат проверки наличия совпадения
-		return false;
-	/**
-	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
-	 */
-	if(!verified(text, exp)){
-		// Устанавливаем ошибку неверной записи текста сопоставления
-		report().error = error_t::BAD_UTF8_SUBJECT;
-		// Выводим результат проверки наличия совпадения
-		return false;
-	}
-	/**
-	 * Выполняем установку наибольшего допустимого объёма работы сопоставления
-	 *
-	 * @note Потолок ставится движку перед каждым сопоставлением, а не единожды:
-	 *       движок принадлежит потоку исполнения, и поток, впервые обратившийся
-	 *       к выражению, взял бы иначе умолчание вместо настройки объекта
-	 */
-	engine().limit(this->_limit);
-	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
-	engine().nesting(this->_nesting);
-	// Выполняем проверку наличия совпадения в тексте
-	const bool result = engine().test(* exp, text, 0);
-	// Выполняем снятие кода ошибки сопоставления с движка
-	this->receive();
-	// Выводим результат проверки наличия совпадения в тексте
-	return result;
-}
-/**
- * @brief Метод извлечения границ совпадения и захваченных групп
- *
- * @param text текст для сопоставления
- * @param exp  собранное регулярное выражение
- * @return     набор границ совпадения и захваченных групп
- *
- */
-vector <pair <size_t, size_t>> awh::RegularExpression::match(string_view text, const exp_t & exp) const noexcept {
-	// Набор границ совпадения и захваченных групп
-	vector <pair <size_t, size_t>> result;
-	// Выполняем извлечение границ совпадения и захваченных групп
-	this->match(text, exp, result);
-	// Выводим набор границ совпадения и захваченных групп
-	return result;
-}
-/**
- * @brief Метод извлечения границ совпадения и захваченных групп
- *
- * @param text   текст для сопоставления
- * @param exp    собранное регулярное выражение
- * @param result набор границ совпадения и захваченных групп
- * @return       результат поиска совпадения
- *
- */
-bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <pair <size_t, size_t>> & result) const noexcept {
-	// Выполняем очистку набора границ совпадения
-	result.clear();
-	/**
-	 * Если собранное регулярное выражение не установлено
-	 */
-	if(!exp)
-		// Выводим результат поиска совпадения
-		return false;
-	/**
-	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
-	 */
-	if(!verified(text, exp)){
-		// Устанавливаем ошибку неверной записи текста сопоставления
-		report().error = error_t::BAD_UTF8_SUBJECT;
-		// Выводим результат поиска совпадения
-		return false;
-	}
-	// Выполняем установку наибольшего допустимого объёма работы сопоставления
-	engine().limit(this->_limit);
-	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
-	engine().nesting(this->_nesting);
-	/**
-	 * Если совпадение в тексте не обнаружено
-	 */
-	if(!engine().exec(* exp, text, 0, result)){
-		// Выполняем очистку набора границ совпадения
-		result.clear();
-		// Выполняем снятие кода ошибки сопоставления с движка
-		this->receive();
-		// Выводим результат поиска совпадения
-		return false;
-	}
-	// Выполняем снятие кода ошибки сопоставления с движка
-	this->receive();
-	// Выводим результат поиска совпадения
-	return true;
-}
-/**
- * @brief Метод извлечения текста совпадения и захваченных групп
- *
- * @param text текст для сопоставления
- * @param exp  собранное регулярное выражение
- * @return     набор текста совпадения и захваченных групп
- *
- */
-vector <string> awh::RegularExpression::exec(string_view text, const exp_t & exp) const noexcept {
-	// Набор текста совпадения и захваченных групп
-	vector <string> result;
-	// Получаем набор границ совпадения и захваченных групп
-	const auto & bounds = this->match(text, exp);
-	// Выполняем размещение набора текста совпадения
-	result.reserve(bounds.size());
-	/**
-	 * Выполняем перебор набора границ совпадения и захваченных групп
-	 */
-	for(const auto & bound : bounds){
-		/**
-		 * Если захват группой не выполнен
-		 */
-		if((bound.first == string_view::npos) || (bound.second == string_view::npos) || (bound.second < bound.first)){
-			// Выполняем добавление пустого текста захвата
-			result.emplace_back();
-			// Переходим к следующим границам захвата
-			continue;
-		}
-		// Выполняем добавление текста захвата группой
-		result.emplace_back(text.substr(bound.first, (bound.second - bound.first)));
-	}
-	// Выводим набор текста совпадения и захваченных групп
-	return result;
 }
 /**
  * @brief Метод извлечения номера именованной группы
@@ -551,6 +418,169 @@ const unordered_map <string, vector <uint32_t>> & awh::RegularExpression::groups
 		return empty;
 	// Выводим соответствие имён именованных групп наборам их номеров
 	return exp->names;
+}
+/**
+ * @brief Метод извлечения текста совпадения и захваченных групп
+ *
+ * @param text текст для сопоставления
+ * @param exp  собранное регулярное выражение
+ * @return     набор текста совпадения и захваченных групп
+ *
+ */
+vector <string> awh::RegularExpression::exec(string_view text, const exp_t & exp) const noexcept {
+	// Набор текста совпадения и захваченных групп
+	vector <string> result;
+	// Получаем набор границ совпадения и захваченных групп
+	const auto & bounds = this->match(text, exp);
+	// Выполняем размещение набора текста совпадения
+	result.reserve(bounds.size());
+	/**
+	 * Выполняем перебор набора границ совпадения и захваченных групп
+	 */
+	for(const auto & bound : bounds){
+		/**
+		 * Если захват группой не выполнен
+		 */
+		if((bound.first == string_view::npos) || (bound.second == string_view::npos) || (bound.second < bound.first)){
+			// Выполняем добавление пустого текста захвата
+			result.emplace_back();
+			// Переходим к следующим границам захвата
+			continue;
+		}
+		// Выполняем добавление текста захвата группой
+		result.emplace_back(text.substr(bound.first, (bound.second - bound.first)));
+	}
+	// Выводим набор текста совпадения и захваченных групп
+	return result;
+}
+/**
+ * @brief Метод сопоставления с извлечением именованных групп
+ *
+ * @param text   текст для сопоставления
+ * @param exp    собранное регулярное выражение
+ * @param result соответствие имён именованных групп захваченному тексту
+ * @return       результат поиска совпадения
+ *
+ */
+bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered_map <string, string> & result) const noexcept {
+	// Выполняем очистку соответствия имён групп захваченному тексту
+	result.clear();
+	/**
+	 * Если собранное регулярное выражение не установлено
+	 */
+	if(!exp)
+		// Выводим результат поиска совпадения
+		return false;
+	// Создаём набор границ совпадения и захваченных групп
+	vector <pair <size_t, size_t>> bounds;
+	/**
+	 * Если совпадение в тексте не обнаружено
+	 */
+	if(!this->match(text, exp, bounds))
+		// Выводим результат поиска совпадения
+		return false;
+	/**
+	 * Выполняем перебор имён именованных групп выражения
+	 */
+	for(const auto & item : exp->names){
+		// Получаем текст, захваченный очередной именованной группой
+		const string_view value = this->capture(text, bounds, exp, item.first);
+		/**
+		 * Если группа захвата не выполнила
+		 *
+		 * @details Группа, захвата не выполнившая, от группы, захватившей текст
+		 *          нулевой длины, отличается лишь отсутствием в выводимом
+		 *          соответствии, поэтому пустой текст в него не помещается.
+		 *
+		 */
+		if(value.data() == nullptr)
+			// Переходим к следующей именованной группе
+			continue;
+		// Выполняем размещение захваченного текста в соответствии имён групп
+		result.emplace(item.first, string(value));
+	}
+	// Выводим результат поиска совпадения
+	return true;
+}
+/**
+ * @brief Метод извлечения границ совпадения и захваченных групп
+ *
+ * @param text текст для сопоставления
+ * @param exp  собранное регулярное выражение
+ * @return     набор границ совпадения и захваченных групп
+ *
+ */
+vector <pair <size_t, size_t>> awh::RegularExpression::match(string_view text, const exp_t & exp) const noexcept {
+	// Набор границ совпадения и захваченных групп
+	vector <pair <size_t, size_t>> result;
+	// Выполняем извлечение границ совпадения и захваченных групп
+	this->match(text, exp, result);
+	// Выводим набор границ совпадения и захваченных групп
+	return result;
+}
+/**
+ * @brief Метод извлечения границ совпадения и захваченных групп
+ *
+ * @param text   текст для сопоставления
+ * @param exp    собранное регулярное выражение
+ * @param result набор границ совпадения и захваченных групп
+ * @return       результат поиска совпадения
+ *
+ */
+bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <pair <size_t, size_t>> & result) const noexcept {
+	// Выполняем очистку набора границ совпадения
+	result.clear();
+	/**
+	 * Если собранное регулярное выражение не установлено
+	 */
+	if(!exp)
+		// Выводим результат поиска совпадения
+		return false;
+	/**
+	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
+	 */
+	if(!verified(text, exp)){
+		// Устанавливаем ошибку неверной записи текста сопоставления
+		report().error = error_t::BAD_UTF8_SUBJECT;
+		// Выводим результат поиска совпадения
+		return false;
+	}
+	// Выполняем установку наибольшего допустимого объёма работы сопоставления
+	this->_engine.limit(this->_limit);
+	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	this->_engine.nesting(this->_nesting);
+	/**
+	 * Если совпадение в тексте не обнаружено
+	 */
+	if(!this->_engine.exec(* exp, text, 0, result)){
+		// Выполняем очистку набора границ совпадения
+		result.clear();
+		// Выполняем снятие кода ошибки сопоставления с движка
+		this->receive();
+		// Выводим результат поиска совпадения
+		return false;
+	}
+	// Выполняем снятие кода ошибки сопоставления с движка
+	this->receive();
+	// Выводим результат поиска совпадения
+	return true;
+}
+/**
+ * @brief Метод извлечения количества захватывающих групп
+ *
+ * @param exp собранное регулярное выражение
+ * @return    количество захватывающих групп выражения
+ *
+ */
+uint32_t awh::RegularExpression::captures(const exp_t & exp) const noexcept {
+	/**
+	 * Если собранное регулярное выражение не установлено
+	 */
+	if(!exp)
+		// Выводим отсутствие захватывающих групп выражения
+		return 0;
+	// Выводим количество захватывающих групп выражения
+	return exp->forward.captures;
 }
 /**
  * @brief Метод извлечения текста, захваченного именованной группой
@@ -607,68 +637,9 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 	return string_view();
 }
 /**
- * @brief Метод сопоставления с извлечением именованных групп
- *
- * @param text   текст для сопоставления
- * @param exp    собранное регулярное выражение
- * @param result соответствие имён именованных групп захваченному тексту
- * @return       результат поиска совпадения
+ * @brief Конструктор
  *
  */
-bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered_map <string, string> & result) const noexcept {
-	// Выполняем очистку соответствия имён групп захваченному тексту
-	result.clear();
-	/**
-	 * Если собранное регулярное выражение не установлено
-	 */
-	if(!exp)
-		// Выводим результат поиска совпадения
-		return false;
-	// Создаём набор границ совпадения и захваченных групп
-	vector <pair <size_t, size_t>> bounds;
-	/**
-	 * Если совпадение в тексте не обнаружено
-	 */
-	if(!this->match(text, exp, bounds))
-		// Выводим результат поиска совпадения
-		return false;
-	/**
-	 * Выполняем перебор имён именованных групп выражения
-	 */
-	for(const auto & item : exp->names){
-		// Получаем текст, захваченный очередной именованной группой
-		const string_view value = this->capture(text, bounds, exp, item.first);
-		/**
-		 * Если группа захвата не выполнила
-		 *
-		 * @details Группа, захвата не выполнившая, от группы, захватившей текст
-		 *          нулевой длины, отличается лишь отсутствием в выводимом
-		 *          соответствии, поэтому пустой текст в него не помещается.
-		 *
-		 */
-		if(value.data() == nullptr)
-			// Переходим к следующей именованной группе
-			continue;
-		// Выполняем размещение захваченного текста в соответствии имён групп
-		result.emplace(item.first, string(value));
-	}
-	// Выводим результат поиска совпадения
-	return true;
-}
-/**
- * @brief Метод извлечения количества захватывающих групп
- *
- * @param exp собранное регулярное выражение
- * @return    количество захватывающих групп выражения
- *
- */
-uint32_t awh::RegularExpression::captures(const exp_t & exp) const noexcept {
-	/**
-	 * Если собранное регулярное выражение не установлено
-	 */
-	if(!exp)
-		// Выводим отсутствие захватывающих групп выражения
-		return 0;
-	// Выводим количество захватывающих групп выражения
-	return exp->forward.captures;
-}
+awh::RegularExpression::RegularExpression() noexcept :
+ _limit(awh::regex::MAX_STEPS),
+ _nesting(awh::regex::MAX_RECURSION) {}

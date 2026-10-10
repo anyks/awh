@@ -24,23 +24,21 @@
  *          каждый раз с одних и тех же выводов.
  *
  *          <b>Согласования доступа модуль не ведёт вовсе.</b> Рабочее состояние
- *          сопоставления хранится отдельно для каждого потока исполнения, а
- *          скомпилированное выражение после сборки не изменяется и разделяется
- *          потоками без согласования. Кэш же собранных выражений и реестр шаблонов
- *          суть поля объекта, а не память, общая на всё приложение: объектом владеет
- *          сторонний разработчик, и защитить его он волен сам, средствами, задаче
- *          отвечающими. Framework работы этой за него не делает: блокировка,
+ *          сопоставления хранится полем объекта, и потому при использовании одного
+ *          объекта несколькими потоками синхронизация остаётся на стороне владеющей
+ *          стороны: объектом владеет сторонний разработчик, и защитить его волен сам,
+ *          средствами, задаче отвечающими. Скомпилированное выражение после сборки
+ *          не изменяется и разделяется потоками без согласования, а кэш собранных
+ *          выражений и реестр шаблонов суть поля объекта, а не память, общая на всё
+ *          приложение. Framework работы этой за него не делает: блокировка,
  *          навязанная всем, оборачивается взаимными захватами и провалом
  *          производительности там, где многопоточность не нужна вовсе.
  *
- *          <b>Отчёт об ошибке живёт потоком исполнения, а не объектом.</b>
- *          Код ошибки, смещение её и текст суть состояние последней операции
- *          потока наравне с рабочим состоянием сопоставления. Живи отчёт полем
- *          объекта, сопоставление несколькими потоками одним объектом - способ
- *          работы, договором обещанный, - писало бы в него разом, и это гонка
- *          данных. Ценою тому общий отчёт у нескольких объектов одного потока:
- *          читается он сразу за отказавшей операцией, и порядок этот договором
- *          и предполагается.
+ *          <b>Отчёт об ошибке живёт полем объекта, а не потоком.</b> Разделяемое
+ *          сопоставление через одну регулярную переменную защищает синхронизацию
+ *          вызывающей стороны, и отчёт об ошибке живёт полем того же объекта:
+ *          сняв его сразу за отказавшей операцией, согласованность отчёта с
+ *          операцией гарантирует сама синхронизация.
  *
  *          <b>Кэш собранных выражений хранит слабые ссылки.</b> Выражение живёт,
  *          пока его удерживает вызывающая сторона; кэш лишь избавляет от повторной
@@ -56,19 +54,31 @@
  * @brief Header file of the public interface of the regular expression module —
  *        building shared regular expressions with a cache of what has been built, matching
  *        an expression against a text and getting the captured groups by number and by name
+ *
  * @section regex_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
  *          <b>The module performs no coordination of the access at all.</b> The working
- *          state of the matching is kept separately for every thread of execution, and
- *          a compiled expression is not changed after building and is shared by the threads
- *          without coordination. The cache of built expressions and the registry of patterns
- *          are fields of an object rather than memory common to the whole application: the object
- *          is owned by an outside developer, and he is free to protect it himself, by the means
- *          that suit the task. The Framework does not do that work for him: a lock imposed
+ *          state of the matching is kept as a field of the object, and therefore the
+ *          synchronization of access from several threads to one object is the task of
+ *          the side that owns it. The owner of the object is an outside developer, and
+ *          he is free to protect the object himself, by the means that suit the task.
+ *          A compiled expression is not changed after building and is shared by the
+ *          threads without coordination, and the cache of built expressions and the
+ *          registry of patterns are fields of the object rather than memory common
+ *          to the whole application. The Framework does not do that work for him: a lock imposed
  *          on everyone turns into deadlocks and a collapse of the performance where
  *          multithreading is not needed at all.
+ *
+ *          <b>The error report lives as a field of the object, not as thread-local state.</b>
+ *          Sharing of matching through one regular variable protects the access
+ *          with synchronization on the calling side, and the error report lives
+ *          as a field of the same object: by taking it right after the operation
+ *          that failed, the calling side's synchronization guarantees the
+ *          consistency of the report with the operation.
+ *
  *          <b>The cache of built expressions keeps weak references.</b> An expression lives
  *          as long as the calling side holds it; the cache only relieves from repeated
  *          building of the same expression with the same set of modes. Releasing
@@ -121,7 +131,6 @@ namespace awh {
 	 */
 	using namespace std;
 
-
 	/**
 	 * \~russian
 	 * @brief Класс работы с регулярными выражениями
@@ -133,6 +142,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Class for working with regular expressions
+	 *
 	 * @details The class builds regular expressions and matches them against a text.
 	 *          A built expression is separated from the building object, is shared
 	 *          by several objects and threads of execution at once
@@ -203,6 +213,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator computing the hash of a cache key
+				 *
 				 * @param key key of the cache of built regular expressions
 				 * @return    computed hash value of the key
 				 *
@@ -213,17 +224,21 @@ namespace awh {
 		private:
 			/**
 			 * \~russian
-			 * Наибольший допустимый объём работы сопоставления
+			 * @brief Наибольший допустимый объём работы сопоставления
 			 *
-			 * @details Потолок хранится полем объекта, а не движка: движок сопоставления
-			 *          принадлежит потоку исполнения, и настройка, на нём поставленная,
-			 *          действовала бы в одном потоке, тогда как принадлежит она объекту.
+			 * @details Потолок хранится полем объекта, а не движка: настройка
+			 *          принадлежит объекту, и применяется она перед каждым
+			 *          сопоставлением, иначе поток, впервые обратившийся к
+			 *          выражению, взял бы умолчание вместо настройки объекта.
 			 *
 			 * \~english
-			 * Largest admissible amount of work of the matching
-			 * @details The ceiling is stored as a field of the object rather than of the engine: the matching
-			 *          engine belongs to the thread of execution, and a setting placed on it
-			 *          would act in one thread, whereas it belongs to the object.
+			 * @brief Largest admissible amount of work of the matching
+			 *
+			 * @details The ceiling is stored as a field of the object rather than of
+			 *          the engine: the setting belongs to the object, and it is
+			 *          applied before every match, otherwise a thread that first
+			 *          addressed the expression would take the default rather than
+			 *          the setting of the object.
 			 *
 			 * \~
 			 */
@@ -231,24 +246,66 @@ namespace awh {
 		private:
 			/**
 			 * \~russian
-			 * Наибольшая допустимая глубина рекурсивных вызовов подвыражений
+			 * @brief Наибольшая допустимая глубина рекурсивных вызовов подвыражений
+			 *
 			 * @details Глубина держится полем объекта, а не движка, по той же причине,
-			 *          что и предел объёма работы: движок принадлежит потоку исполнения,
-			 *          а настройка - объекту.
+			 *          что и предел объёма работы: настройка принадлежит объекту,
+			 *          а применяется она перед каждым сопоставлением.
 			 *
 			 * \~english
-			 * Largest admissible depth of recursive calls of subpatterns
-			 * @details The depth is stored as a field of the object rather than of the engine
-			 *          for the same reason as the limit of the amount of work: the engine
-			 *          belongs to the thread of execution, whereas the setting belongs
-			 *          to the object.
+			 * @brief Largest admissible depth of recursive calls of subpatterns
+			 *
+			 * @details The depth is stored as a field of the object rather than of
+			 *          the engine for the same reason as the limit of the amount of
+			 *          work: the setting belongs to the object, and it is applied
+			 *          before every match.
 			 *
 			 * \~
 			 */
 			size_t _nesting;
 		private:
+			/**
+			 * \~russian
+			 * @brief Движок сопоставления выражения с текстом
+			 *
+			 * @details Движок хранит рабочее состояние сопоставления и живёт
+			 *          полем объекта, а не памятью общего пользования: разделяемое
+			 *          сопоставление через одну переменную защищает синхронизацию
+			 *          вызывающая сторона, и движок тем же полем и изолирован
+			 *          от чужих объектов. Хранится он «mutable», потому что
+			 *          сопоставление идёт у объекта через «const»-методы, рабочее
+			 *          состояние их меняет, и защита синхронизацией вызывающей
+			 *          стороны лежит не на объекте, а снаружи.
+			 *
+			 * \~english
+			 * @brief Engine of the matching of an expression against a text
+			 *
+			 * @details The engine keeps the working state of matching and lives
+			 *          as a field of the object rather than as memory of common use:
+			 *          shared matching through one variable protects the access on
+			 *          the calling side, and the engine is isolated from foreign
+			 *          objects by the same field. It is kept «mutable», because
+			 *          matching goes through «const» methods of the object whose
+			 *          working state it changes, and the protection by synchronization
+			 *          of the calling side lies outside the object rather than on it.
+			 *
+			 * \~
+			 */
+			mutable regex::engine_t _engine;
+		private:
 			// Кэш собранных регулярных выражений
 			mutable unordered_map <key_t, weak_ptr <const awh::regex::expression_t>, Hash> _cache;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод очистки кэша собранных регулярных выражений
+			 *
+			 * \~english
+			 * @brief Method of clearing the cache of built regular expressions
+			 *
+			 * \~
+			 */
+			void clear() noexcept;
 		private:
 			/**
 			 * \~russian
@@ -261,6 +318,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of taking the matching error code from the engine
+			 *
 			 * @details A refusal of the matching is of two kinds: there is no match
 			 *          in the text at all, or the engine has exhausted the admissible
 			 *          amount of work, and the consumer is to tell them apart by
@@ -270,6 +328,162 @@ namespace awh {
 			 * \~
 			 */
 			void receive() const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод извлечения кода ошибки последней операции
+			 *
+			 * @return код ошибки последней операции потока исполнения
+			 *
+			 * \~english
+			 * @brief Method of getting the error code of the last operation
+			 *
+			 * @return error code of the last operation of the thread
+			 *
+			 * \~
+			 */
+			error_t error() const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод извлечения смещения ошибки последней операции
+			 *
+			 * @return смещение ошибки в тексте регулярного выражения
+			 *
+			 * \~english
+			 * @brief Method of getting the error offset of the last operation
+			 *
+			 * @return offset of the error in the text of the regular expression
+			 *
+			 * \~
+			 */
+			size_t offset() const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод извлечения имени отметки совпадения последнего
+			 *
+			 * @details Имя оставляет глагол «(*MARK:имя)», путь отметивший, чем
+			 *          указывает ветвь выражения, совпадение давшую. Выражение,
+			 *          глаголов отметки не несущее, и совпадение, их не прошедшее,
+			 *          выводят имя пустое.
+			 *
+			 * @return имя отметки совпадения последнего
+			 *
+			 * \~english
+			 * @brief Method of getting the name of the mark of the last match
+			 *
+			 * @details The name is left by the «(*MARK:name)» verb that marked the path, thereby
+			 *          telling which branch of the expression produced the match. An expression
+			 *          carrying no mark verbs, and a match that passed none of them,
+			 *          yield an empty name.
+			 *
+			 * @return name of the mark of the last match
+			 *
+			 * \~
+			 */
+			const string & marker() const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод извлечения текста ошибки последней операции
+			 *
+			 * @return текст ошибки последней операции потока исполнения
+			 *
+			 * \~english
+			 * @brief Method of getting the error text of the last build
+			 *
+			 * @return error text of the last build operation
+			 *
+			 * \~
+			 */
+			const string & message() const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+			 *
+			 * @details Сопоставление выражений с вложенными кванторами требует времени,
+			 *          растущего с длиной текста показательно, поэтому объём работы
+			 *          исполнения с возвратом ограничивается. Исчерпание предела
+			 *          совпадения не отменяет: сопоставление доводится способом запасным,
+			 *          время которого от вида выражения не зависит, - оттого понижение
+			 *          предела лишь уводит на способ этот раньше, а повышение позволяет
+			 *          дойти с возвратом выражению более трудному. Нуль предел снимает
+			 *          вовсе, и время сопоставления не ограничивается ничем.
+			 *
+			 * @note Умолчанием служит десять миллионов шагов, чего достаёт выражениям
+			 *       обыкновенным на текстах любой длины
+			 *
+			 * @param limit наибольшее допустимое количество шагов сопоставления
+			 *
+			 * \~english
+			 * @brief Method of setting the largest admissible amount of work of the matching
+			 *
+			 * @details Matching expressions with nested quantifiers requires time
+			 *          growing with the length of the text exponentially, therefore the amount of work
+			 *          of the execution with backtracking is bounded. Exhausting the limit
+			 *          does not cancel the match: the matching is completed by the fallback way,
+			 *          whose time does not depend on the kind of the expression, - therefore lowering
+			 *          the limit merely moves to that way earlier, and raising it allows
+			 *          a more difficult expression to be completed with backtracking. Zero removes the limit
+			 *          entirely, and the time of the matching is bounded by nothing.
+			 *
+			 * @note Ten million steps serves as the default, which suffices for ordinary
+			 *       expressions on texts of any length
+			 *
+			 * @param limit largest admissible number of matching steps
+			 *
+			 * \~
+			 */
+			void limit(const size_t limit) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+			 *
+			 * @details Ссылки подвыражений на себя разворачиваются вглубь, и глубина
+			 *          эта ограничивается: память под кадры вызовов растёт соразмерно
+			 *          ей. Превышение глубины отвечает отказом сопоставления с кодом
+			 *          превышения допустимого объёма работы. Нуль восстанавливает
+			 *          глубину умолчания.
+			 *
+			 * @note Умолчанием служит тысяча вызовов - столько же берёт и эталон
+			 *
+			 * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+			 *
+			 * \~english
+			 * @brief Method of setting the largest admissible depth of recursive calls
+			 *
+			 * @details References of subpatterns to themselves are unfolded in depth,
+			 *          and that depth is bounded: the memory of the call frames grows
+			 *          in proportion to it. Exceeding the depth answers with a refusal
+			 *          of the matching with the code of exceeding the admissible amount
+			 *          of work. Zero restores the depth of the default.
+			 *
+			 * @note One thousand calls serves as the default - the reference takes
+			 *       the same amount
+			 *
+			 * @param nesting largest admissible depth of recursive calls
+			 *
+			 * \~
+			 */
+			void nesting(const size_t nesting) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод проверки наличия совпадения в тексте
+			 *
+			 * @param text текст для сопоставления
+			 * @param exp  собранное регулярное выражение
+			 * @return     результат проверки наличия совпадения
+			 *
+			 * \~english
+			 * @brief Method of checking the presence of a match in the text
+			 *
+			 * @param text text to match
+			 * @param exp  built regular expression
+			 * @return     result of checking the presence of a match
+			 *
+			 * \~
+			 */
+			bool test(string_view text, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -285,9 +499,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a regular expression
+			 *
 			 * @details A repeated build of the same expression with the same set of modes
 			 *          yields the previously built expression, if it is still held
 			 *          by the calling side.
+			 *
 			 * @param pattern text of the regular expression
 			 * @param flags   set of build modes of the regular expression
 			 * @return        built regular expression
@@ -305,6 +521,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a regular expression
+			 *
 			 * @param pattern text of the regular expression
 			 * @param flags   set of build modes of the regular expression
 			 * @return        built regular expression
@@ -315,21 +532,103 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод проверки наличия совпадения в тексте
+			 * @brief Метод извлечения номера именованной группы
 			 *
-			 * @param text текст для сопоставления
+			 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
+			 *          и метод выводит номер объявленной первой. Захваченный такими
+			 *          группами текст извлекается методом capture, выбирающим ту
+			 *          из них, что захват выполнила.
+			 *
 			 * @param exp  собранное регулярное выражение
-			 * @return     результат проверки наличия совпадения
+			 * @param name имя именованной группы выражения
+			 * @return     номер именованной группы либо ноль при её отсутствии
 			 *
 			 * \~english
-			 * @brief Method of checking the presence of a match in the text
-			 * @param text text to match
+			 * @brief Method of getting the number of a named group
+			 *
+			 * @details In the «DUPNAMES» mode one name is declared by several groups,
+			 *          and the method yields the number of the one declared first. The text captured by such
+			 *          groups is obtained by the capture method, which chooses the one
+			 *          of them that performed the capture.
+			 *
 			 * @param exp  built regular expression
-			 * @return     result of checking the presence of a match
+			 * @param name name of the named group of the expression
+			 * @return     number of the named group or zero if it is absent
 			 *
 			 * \~
 			 */
-			bool test(string_view text, const exp_t & exp) const noexcept;
+			uint32_t group(const exp_t & exp, string_view name) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод извлечения соответствия имён групп наборам их номеров
+			 *
+			 * @param exp собранное регулярное выражение
+			 * @return    соответствие имён именованных групп наборам их номеров
+			 *
+			 * \~english
+			 * @brief Method of getting the mapping of the group names to the sets of their numbers
+			 *
+			 * @param exp built regular expression
+			 * @return    mapping of the names of the named groups to the sets of their numbers
+			 *
+			 * \~
+			 */
+			const unordered_map <string, vector <uint32_t>> & groups(const exp_t & exp) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод извлечения текста совпадения и захваченных групп
+			 *
+			 * @details Первым выводится текст совпадения целиком, за ним - текст,
+			 *          захваченный группами в порядке их объявления. Невыполненному
+			 *          захвату соответствует пустой текст.
+			 *
+			 * @param text текст для сопоставления
+			 * @param exp  собранное регулярное выражение
+			 * @return     набор текста совпадения и захваченных групп
+			 *
+			 * \~english
+			 * @brief Method of getting the text of a match and of the captured groups
+			 *
+			 * @details First the text of the whole match is yielded, followed by the text
+			 *          captured by the groups in the order of their declaration. An unperformed
+			 *          capture corresponds to an empty text.
+			 *
+			 * @param text text to match
+			 * @param exp  built regular expression
+			 * @return     set of the text of the match and of the captured groups
+			 *
+			 * \~
+			 */
+			vector <string> exec(string_view text, const exp_t & exp) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод сопоставления с извлечением именованных групп
+			 *
+			 * @details Метод выполняет сопоставление и выводит текст, захваченный
+			 *          каждой именованной группой выражения. Группы, захвата
+			 *          не выполнившие, в выводимое соответствие не попадают.
+			 *
+			 * @param text   текст для сопоставления
+			 * @param exp    собранное регулярное выражение
+			 * @param result соответствие имён именованных групп захваченному тексту
+			 * @return       результат поиска совпадения
+			 *
+			 * \~english
+			 * @brief Method of matching with getting the named groups
+			 *
+			 * @details The method performs the matching and yields the text captured
+			 *          by every named group of the expression. The groups that performed no
+			 *          capture do not fall into the yielded mapping.
+			 *
+			 * @param text   text to match
+			 * @param exp    built regular expression
+			 * @param result mapping of the names of the named groups to the captured text
+			 * @return       result of searching for a match
+			 *
+			 * \~
+			 */
+			bool exec(string_view text, const exp_t & exp, unordered_map <string, string> & result) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -345,9 +644,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the boundaries of a match and of the captured groups
+			 *
 			 * @details The boundaries of an unperformed capture equal the position of a missing
 			 *          character, whereas the boundaries of an empty capture coincide with each
 			 *          other and do not equal the position of a missing character.
+			 *
 			 * @param text text to match
 			 * @param exp  built regular expression
 			 * @return     set of the boundaries of the match and of the captured groups
@@ -370,9 +671,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the boundaries of a match and of the captured groups
+			 *
 			 * @details The set of boundaries is passed by the calling side and is reused
 			 *          by it between matches, relieving every match
 			 *          from allocating memory.
+			 *
 			 * @param text   text to match
 			 * @param exp    built regular expression
 			 * @param result set of the boundaries of the match and of the captured groups
@@ -381,73 +684,23 @@ namespace awh {
 			 * \~
 			 */
 			bool match(string_view text, const exp_t & exp, vector <pair <size_t, size_t>> & result) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод извлечения текста совпадения и захваченных групп
-			 *
-			 * @details Первым выводится текст совпадения целиком, за ним - текст,
-			 *          захваченный группами в порядке их объявления. Невыполненному
-			 *          захвату соответствует пустой текст.
-			 *
-			 * @param text текст для сопоставления
-			 * @param exp  собранное регулярное выражение
-			 * @return     набор текста совпадения и захваченных групп
-			 *
-			 * \~english
-			 * @brief Method of getting the text of a match and of the captured groups
-			 * @details First the text of the whole match is yielded, followed by the text
-			 *          captured by the groups in the order of their declaration. An unperformed
-			 *          capture corresponds to an empty text.
-			 * @param text text to match
-			 * @param exp  built regular expression
-			 * @return     set of the text of the match and of the captured groups
-			 *
-			 * \~
-			 */
-			vector <string> exec(string_view text, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод извлечения номера именованной группы
-			 *
-			 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
-			 *          и метод выводит номер объявленной первой. Захваченный такими
-			 *          группами текст извлекается методом capture, выбирающим ту
-			 *          из них, что захват выполнила.
-			 *
-			 * @param exp  собранное регулярное выражение
-			 * @param name имя именованной группы выражения
-			 * @return     номер именованной группы либо ноль при её отсутствии
-			 *
-			 * \~english
-			 * @brief Method of getting the number of a named group
-			 * @details In the «DUPNAMES» mode one name is declared by several groups,
-			 *          and the method yields the number of the one declared first. The text captured by such
-			 *          groups is obtained by the capture method, which chooses the one
-			 *          of them that performed the capture.
-			 * @param exp  built regular expression
-			 * @param name name of the named group of the expression
-			 * @return     number of the named group or zero if it is absent
-			 *
-			 * \~
-			 */
-			uint32_t group(const exp_t & exp, string_view name) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод извлечения соответствия имён групп наборам их номеров
+			 * @brief Метод извлечения количества захватывающих групп
 			 *
 			 * @param exp собранное регулярное выражение
-			 * @return    соответствие имён именованных групп наборам их номеров
+			 * @return    количество захватывающих групп выражения
 			 *
 			 * \~english
-			 * @brief Method of getting the mapping of the group names to the sets of their numbers
+			 * @brief Method of getting the number of capturing groups
+			 *
 			 * @param exp built regular expression
-			 * @return    mapping of the names of the named groups to the sets of their numbers
+			 * @return    number of capturing groups of the expression
 			 *
 			 * \~
 			 */
-			const unordered_map <string, vector <uint32_t>> & groups(const exp_t & exp) const noexcept;
-		public:
+			uint32_t captures(const exp_t & exp) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод извлечения текста, захваченного именованной группой
@@ -470,14 +723,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the text captured by a named group
+			 *
 			 * @details The set of boundaries is obtained by the match method, thanks to which getting
 			 *          several groups requires no repeated matching. In the
 			 *          «DUPNAMES» mode the text of the one of the same-named groups that performed the
 			 *          capture is yielded, as the reference implementation does.
 			 *          A capture of an empty text differs from an unperformed capture in
 			 *          that the yielded view refers to the matched text,
-			 *          whereas on an unperformed capture the view is empty and refers to
-			 *          nothing.
+			 *          whereas on an unperformed capture the view is empty and refers to nothing.
+			 *
 			 * @param text   text the matching was performed against
 			 * @param bounds set of the boundaries of the match and of the captured groups
 			 * @param exp    built regular expression
@@ -487,184 +741,6 @@ namespace awh {
 			 * \~
 			 */
 			string_view capture(string_view text, const vector <pair <size_t, size_t>> & bounds, const exp_t & exp, string_view name) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод сопоставления с извлечением именованных групп
-			 *
-			 * @details Метод выполняет сопоставление и выводит текст, захваченный
-			 *          каждой именованной группой выражения. Группы, захвата
-			 *          не выполнившие, в выводимое соответствие не попадают.
-			 *
-			 * @param text   текст для сопоставления
-			 * @param exp    собранное регулярное выражение
-			 * @param result соответствие имён именованных групп захваченному тексту
-			 * @return       результат поиска совпадения
-			 *
-			 * \~english
-			 * @brief Method of matching with getting the named groups
-			 * @details The method performs the matching and yields the text captured
-			 *          by every named group of the expression. The groups that performed no
-			 *          capture do not fall into the yielded mapping.
-			 * @param text   text to match
-			 * @param exp    built regular expression
-			 * @param result mapping of the names of the named groups to the captured text
-			 * @return       result of searching for a match
-			 *
-			 * \~
-			 */
-			bool exec(string_view text, const exp_t & exp, unordered_map <string, string> & result) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод извлечения количества захватывающих групп
-			 *
-			 * @param exp собранное регулярное выражение
-			 * @return    количество захватывающих групп выражения
-			 *
-			 * \~english
-			 * @brief Method of getting the number of capturing groups
-			 * @param exp built regular expression
-			 * @return    number of capturing groups of the expression
-			 *
-			 * \~
-			 */
-			uint32_t captures(const exp_t & exp) const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод извлечения кода ошибки последней операции
-			 *
-			 * @return код ошибки последней операции потока исполнения
-			 *
-			 * \~english
-			 * @brief Method of getting the error code of the last operation
-			 * @return error code of the last operation of the thread
-			 *
-			 * \~
-			 */
-			error_t error() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод извлечения имени отметки совпадения последнего
-			 *
-			 * @details Имя оставляет глагол «(*MARK:имя)», путь отметивший, чем
-			 *          указывает ветвь выражения, совпадение давшую. Выражение,
-			 *          глаголов отметки не несущее, и совпадение, их не прошедшее,
-			 *          выводят имя пустое.
-			 *
-			 * @return имя отметки совпадения последнего
-			 *
-			 * \~english
-			 * @brief Method of getting the name of the mark of the last match
-			 * @details The name is left by the «(*MARK:name)» verb that marked the path, thereby
-			 *          telling which branch of the expression produced the match. An expression
-			 *          carrying no mark verbs, and a match that passed none of them,
-			 *          yield an empty name.
-			 * @return name of the mark of the last match
-			 *
-			 * \~
-			 */
-			const string & marker() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод извлечения смещения ошибки последней операции
-			 *
-			 * @return смещение ошибки в тексте регулярного выражения
-			 *
-			 * \~english
-			 * @brief Method of getting the error offset of the last operation
-			 * @return offset of the error in the text of the regular expression
-			 *
-			 * \~
-			 */
-			size_t offset() const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод извлечения текста ошибки последней операции
-			 *
-			 * @return текст ошибки последней операции потока исполнения
-			 *
-			 * \~english
-			 * @brief Method of getting the error text of the last build
-			 * @return error text of the last build operation
-			 *
-			 * \~
-			 */
-			const string & message() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод очистки кэша собранных регулярных выражений
-			 *
-			 * \~english
-			 * @brief Method of clearing the cache of built regular expressions
-			 *
-			 * \~
-			 */
-			void clear() noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод установки наибольшего допустимого объёма работы сопоставления
-			 *
-			 * @details Сопоставление выражений с вложенными кванторами требует времени,
-			 *          растущего с длиной текста показательно, поэтому объём работы
-			 *          исполнения с возвратом ограничивается. Исчерпание предела
-			 *          совпадения не отменяет: сопоставление доводится способом запасным,
-			 *          время которого от вида выражения не зависит, - оттого понижение
-			 *          предела лишь уводит на способ этот раньше, а повышение позволяет
-			 *          дойти с возвратом выражению более трудному. Нуль предел снимает
-			 *          вовсе, и время сопоставления не ограничивается ничем.
-			 *
-			 * @note Умолчанием служит десять миллионов шагов, чего достаёт выражениям
-			 *       обыкновенным на текстах любой длины
-			 *
-			 * @param limit наибольшее допустимое количество шагов сопоставления
-			 *
-			 * \~english
-			 * @brief Method of setting the largest admissible amount of work of the matching
-			 * @details Matching expressions with nested quantifiers requires time
-			 *          growing with the length of the text exponentially, therefore the amount of work
-			 *          of the execution with backtracking is bounded. Exhausting the limit
-			 *          does not cancel the match: the matching is completed by the fallback way,
-			 *          whose time does not depend on the kind of the expression, - therefore lowering
-			 *          the limit merely moves to that way earlier, and raising it allows
-			 *          a more difficult expression to be completed with backtracking. Zero removes the limit
-			 *          entirely, and the time of the matching is bounded by nothing.
-			 * @note Ten million steps serves as the default, which suffices for ordinary
-			 *       expressions on texts of any length
-			 * @param limit largest admissible number of matching steps
-			 *
-			 * \~
-			 */
-			void limit(const size_t limit) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
-			 *
-			 * @details Ссылки подвыражений на себя разворачиваются вглубь, и глубина
-			 *          эта ограничивается: память под кадры вызовов растёт соразмерно
-			 *          ей. Превышение глубины отвечает отказом сопоставления с кодом
-			 *          превышения допустимого объёма работы. Нуль восстанавливает
-			 *          глубину умолчания.
-			 *
-			 * @note Умолчанием служит тысяча вызовов - столько же берёт и эталон
-			 *
-			 * @param nesting наибольшая допустимая глубина рекурсивных вызовов
-			 *
-			 * \~english
-			 * @brief Method of setting the largest admissible depth of recursive calls
-			 * @details References of subpatterns to themselves are unfolded in depth,
-			 *          and that depth is bounded: the memory of the call frames grows
-			 *          in proportion to it. Exceeding the depth answers with a refusal
-			 *          of the matching with the code of exceeding the admissible amount
-			 *          of work. Zero restores the depth of the default.
-			 * @note One thousand calls serves as the default - the reference takes
-			 *       the same amount
-			 * @param nesting largest admissible depth of recursive calls
-			 *
-			 * \~
-			 */
-			void nesting(const size_t nesting) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -687,6 +763,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			~RegularExpression() noexcept {}
+			~RegularExpression() noexcept = default;
 	} regexp_t;
 };

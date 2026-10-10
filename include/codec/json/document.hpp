@@ -1702,6 +1702,16 @@ namespace awh {
 					void clear() noexcept;
 					/**
 					 * \~russian
+					 * @brief Псевдоним сброса состояния документа (см. clear())
+					 *
+					 * \~english
+					 * @brief Alias of the reset of the state of a document (see clear())
+					 *
+					 * \~
+					 */
+					void reset() noexcept { clear(); }
+					/**
+					 * \~russian
 					 * @brief Метод разбора текста документа
 					 *
 					 * @param text разбираемый текст документа
