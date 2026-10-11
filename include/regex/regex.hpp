@@ -266,6 +266,58 @@ namespace awh {
 		private:
 			/**
 			 * \~russian
+			 * @brief Значение потолка, отправленное движку в прошлый раз
+			 *
+			 * @details Сеттер потолка идёт на движок лишь при расхождении
+			 *          текущего значения объекта с этим, и при умолчании
+			 *          движка, фасаду отвечающем, сопоставление обходится без
+			 *          лишней записи. Первое же сопоставление после изменения
+			 *          настройки запишет значение в движок и в кеш, и до
+			 *          следующего изменения сеттер не понадобится.
+			 *
+			 * \~english
+			 * @brief Value of the ceiling sent to the engine last time
+			 *
+			 * @details The ceiling setter goes to the engine only on divergence
+			 *          of the current value of the object from this one, and at
+			 *          the engine default matching the facade one the matching
+			 *          goes without the extra write. The first match after a
+			 *          setting change will write the value to the engine and to
+			 *          the cache, and until the next change the setter will not
+			 *          be needed.
+			 *
+			 * \~
+			 */
+			mutable size_t _limitSent;
+		private:
+			/**
+			 * \~russian
+			 * @brief Значение глубины, отправленное движку в прошлый раз
+			 *
+			 * @details Сеттер глубины идёт на движок лишь при расхождении
+			 *          текущего значения объекта с этим, и при умолчании
+			 *          движка, фасаду отвечающем, сопоставление обходится без
+			 *          лишней записи. Первое же сопоставление после изменения
+			 *          настройки запишет значение в движок и в кеш, и до
+			 *          следующего изменения сеттер не понадобится.
+			 *
+			 * \~english
+			 * @brief Value of the depth sent to the engine last time
+			 *
+			 * @details The depth setter goes to the engine only on divergence
+			 *          of the current value of the object from this one, and at
+			 *          the engine default matching the facade one the matching
+			 *          goes without the extra write. The first match after a
+			 *          setting change will write the value to the engine and to
+			 *          the cache, and until the next change the setter will not
+			 *          be needed.
+			 *
+			 * \~
+			 */
+			mutable size_t _nestingSent;
+		private:
+			/**
+			 * \~russian
 			 * @brief Движок сопоставления выражения с текстом
 			 *
 			 * @details Движок хранит рабочее состояние сопоставления и живёт

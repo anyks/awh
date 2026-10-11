@@ -210,14 +210,6 @@ int main() noexcept {
 		// Выводим результат работы щупа
 		return 1;
 	}
-	// Проверяем, заполнились ли alts
-	::printf("\nalts.size() = %zu, anchor = %d\n",
-	 expression->forward.prefilter.alts.size(),
-	 static_cast <int> (static_cast <unsigned char> (expression->forward.prefilter.anchor)));
-	for(size_t i = 0; i < expression->forward.prefilter.alts.size(); i++)
-		::printf("  alts[%zu] = '%s' (len %zu)\n",
-		 i, expression->forward.prefilter.alts[i].c_str(),
-		 expression->forward.prefilter.alts[i].size());
 	// Набор границ, фасадом переиспользуемый
 	static vector <pair <size_t, size_t>> bounds;
 	/**
