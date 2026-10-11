@@ -278,6 +278,7 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <vector>
 #include <cstring>
 #include <cstdint>
 #include <string_view>
@@ -521,6 +522,30 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ size_t anchored(const string_view text, const string_view what, const size_t pos) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция отбора позиции по альтернативным ведущим литералам
+		 *
+		 * @details Сканирует текст SIMD-инструкциями по объединению первых байтов
+		 *          альтернатив и проверяет ожидаемый хвост на каждом кандидате.
+		 *          Реализованы NEON (arm64) и SSE2 (x86_64) варианты; на остальных
+		 *          архитектурах возвращает размер текста — codegen откатывается
+		 *          на общий путь отбора по набору допустимых байтов.
+		 *
+		 * @param text      адрес текста сопоставления
+		 * @param size      размер текста сопоставления
+		 * @param pos       позиция начала поиска
+		 * @param prefilter адрес объекта префильтра
+		 * @return          позиция совпадения одной из альтернатив либо размер текста
+		 *
+		 * \~english
+		 * @brief Position selection by alternative leading literals
+		 * @details Scans the text with SIMD on the union of first bytes of alternatives
+		 *          and verifies the expected tail at each candidate.
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t alternating(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept;
 
 		/**
 		 * \~russian
@@ -1014,6 +1039,45 @@ namespace awh {
 			string leading;
 			/**
 			 * \~russian
+			 * Альтернативные ведущие литералы выражения, начинающегося с alternation
+			 *
+			 * @details Заполняется, если первый узел выражения — alternation литералов
+			 *          одинаковой длины, и каждый литерал отыскивается SIMD-сканером
+			 *          пары. Содержимое «alts» взаимно исключающее: «alts[0]» и
+			 *          «alts[1]» могут одновременно встретиться в одной позиции текста,
+			 *          но не оба означают совпадение. Длина всех литералов одинакова.
+			 *
+			 *          Поле «anchor» содержит общий первый байт всех литералов,
+			 *          если он един; 0 в противном случае (литералы начинаются
+			 *          с разных байт, и SIMD-скан ведётся по объединению).
+			 *
+			 * \~english
+			 * Alternative leading literals of an expression starting with alternation
+			 * @details Filled when the first node of the expression is an alternation of
+			 *          literals of equal length, each located by a SIMD pair scanner.
+			 *          The contents of «alts» are mutually exclusive: «alts[0]» and
+			 *          «alts[1]» can appear in the same text position simultaneously,
+			 *          but both do not indicate a match. All literals have equal length.
+			 *
+			 *          The «anchor» field carries the common first byte of all literals
+			 *          if unique; 0 otherwise (literals start with different bytes,
+			 *          and SIMD scan runs over the union).
+			 *
+			 * \~
+			 */
+			vector <string> alts;
+			/**
+			 * \~russian
+			 * Общий первый байт альтернативных литералов, если он един
+			 *
+			 * \~english
+			 * The common first byte of the alternative literals, if unique
+			 *
+			 * \~
+			 */
+			char anchor;
+			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 *
@@ -1022,7 +1086,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Prefilter() noexcept : active(false), utf(false), bytes{}, distance(0), unique(false), letter(0) {}
+			Prefilter() noexcept : active(false), utf(false), bytes{}, distance(0), unique(false), letter(0), anchor(0) {}
 			/**
 			 * \~russian
 			 * @brief Метод завершения формирования отбора позиций
@@ -1076,6 +1140,10 @@ namespace awh {
 				this->letter = 0;
 				// Выполняем очистку ведущего литерала совпадения
 				this->leading.clear();
+				// Выполняем сброс общего первого байта альтернатив
+				this->anchor = 0;
+				// Выполняем очистку списка альтернативных ведущих литералов
+				this->alts.clear();
 				// Выполняем сброс флага разбора текста как последовательности UTF-8
 				this->utf = false;
 				// Выполняем очистку обязательного литерала совпадения
@@ -1278,6 +1346,15 @@ namespace awh {
 					return pos;
 				// Получаем размер текста сопоставления
 				const size_t size = text.size();
+				/**
+				 * Если заданы альтернативные ведущие литералы, ищем по объединению
+				 */
+				if(!this->alts.empty()){
+					// Выполняем поиск по альтернативным литералам
+					const size_t result = awh::regex::alternating(text.data(), size, pos, this);
+					// Выводим позицию совпадения либо конец текста
+					return ((result == size) ? size : result);
+				}
 				/**
 				 * \~russian
 				 * Если ведущий литерал совпадения определён

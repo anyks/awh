@@ -536,6 +536,125 @@ size_t awh::regex::scattered(const string_view text, const uint8_t * bytes,
 	// Выводим позицию завершения поиска
 	return size;
 }
+size_t awh::regex::alternating(const char * text, const size_t size, const size_t pos, const void * prefilter_ptr) noexcept {
+	// Получаем параметры префильтра
+	const auto & pf = * reinterpret_cast <const awh::regex::prefilter_t *> (prefilter_ptr);
+	// Получаем набор альтернатив
+	const auto & alts = pf.alts;
+	/**
+	 * Если альтернатив нет или все они короче двух байт
+	 */
+	if(alts.empty() || (alts.front().size() < 2))
+		// Выходим признаком отсутствия совпадения
+		return size;
+	/**
+	 * Сканируем текст по объединению первых байтов альтернатив
+	 */
+	#if defined(AWH_REGEX_NEON)
+		// Собираем вектор сравнений для первых байтов
+		uint8x16_t equal = vdupq_n_u8(static_cast <uint8_t> (alts[0][0]));
+		// Выполняем накопление сравнений по всем первым байтам альтернатив
+		for(size_t i = 1; i < alts.size(); i++)
+			equal = vorrq_u8(equal, vceqq_u8(vdupq_n_u8(static_cast <uint8_t> (alts[i][0])), vld1q_dup_u8(reinterpret_cast <const uint8_t *> (text + pos))));
+		// Сканируем участки по 16 байтов
+		size_t at = pos;
+		while((at + 16) <= size){
+			// Сравниваем участок с объединением первых байтов
+			const uint8x16_t chunk = vld1q_u8(reinterpret_cast <const uint8_t *> (text + at));
+			const uint8x16_t mask = vceqq_u8(chunk, equal);
+			// Сводим итог к 64-битной маске
+			const uint64_t hits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(mask), 4)), 0);
+			/**
+			 * Если на участке есть хотя бы одно совпадение первого байта
+			 */
+			if(hits != 0){
+				// Получаем позицию первого совпадения
+				const size_t hit = (at + (trailing(hits) >> 2));
+				// Находим индекс альтернативы по первому байту
+				const uint8_t byte = static_cast <uint8_t> (text[hit]);
+				// Обходим альтернативы в поисках совпавшей
+				for(size_t i = 0; i < alts.size(); i++){
+					/**
+					 * Если найдена альтернатива, чей первый байт совпал
+					 */
+					if(byte == static_cast <uint8_t> (alts[i][0])){
+						// Проверяем второй байт против ожидаемого хвоста
+						if((hit + 1) < size){
+							const uint8_t tail = static_cast <uint8_t> (text[hit + 1]);
+							// Если хвост совпал, выводим позицию
+							if(tail == static_cast <uint8_t> (alts[i][1]))
+								return hit;
+						}
+						// Совпадение первого байта без подтверждения хвоста не считаем
+						break;
+					}
+				}
+			}
+			// Переходим к следующему участку текста
+			at += 16;
+		}
+	/**
+	 * Если доступен набор команд SSE2
+	 */
+	#elif defined(AWH_REGEX_SSE2) && (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__)
+		// Аналогичная реализация для x86-64 через SSE2
+		__m128i equal = _mm_set1_epi8(static_cast <char> (alts[0][0]));
+		for(size_t i = 1; i < alts.size(); i++)
+			equal = _mm_or_si128(equal, _mm_cmpeq_epi8(_mm_set1_epi8(static_cast <char> (alts[i][0])), _mm_loadu_si128(reinterpret_cast <const __m128i *> (text + pos))));
+		size_t at = pos;
+		while((at + 16) <= size){
+			const __m128i chunk = _mm_loadu_si128(reinterpret_cast <const __m128i *> (text + at));
+			const __m128i mask = _mm_cmpeq_epi8(chunk, equal);
+			const uint32_t hits = static_cast <uint32_t> (_mm_movemask_epi8(mask));
+			if(hits != 0){
+				const size_t hit = (at + trailing(static_cast <uint64_t> (hits)));
+				const uint8_t byte = static_cast <uint8_t> (text[hit]);
+				for(size_t i = 0; i < alts.size(); i++){
+					if(byte == static_cast <uint8_t> (alts[i][0])){
+						if((hit + 1) < size){
+							const uint8_t tail = static_cast <uint8_t> (text[hit + 1]);
+							if(tail == static_cast <uint8_t> (alts[i][1]))
+								return hit;
+						}
+						break;
+					}
+				}
+			}
+			at += 16;
+		}
+	/**
+	 * Для остальных архитектур
+	 */
+	#else
+		// Выводим признак отсутствия совпадения
+		return size;
+	#endif
+	// Выполняем поиск в хвосте текста скалярным проходом
+	const size_t from = (at < size ? at : size);
+	for(size_t i = (from + 1); i < size; i++){
+		// Получаем байт очередной позиции
+		const uint8_t byte = static_cast <uint8_t> (text[i]);
+		// Обходим альтернативы
+		for(size_t k = 0; k < alts.size(); k++){
+			/**
+			 * Если байт позиции равен первому байту альтернативы
+			 */
+			if(byte == static_cast <uint8_t> (alts[k][0])){
+				/**
+				 * Если есть место для второго байта и он совпадает
+				 */
+				if((i + 1) < size){
+					const uint8_t tail = static_cast <uint8_t> (text[i + 1]);
+					if(tail == static_cast <uint8_t> (alts[k][1]))
+						// Выходим позицией совпадения
+						return i;
+				}
+			}
+		}
+	}
+	// Выходим признаком отсутствия совпадения
+	return size;
+}
 
 size_t awh::regex::anchored(const string_view text, const string_view what, const size_t pos) noexcept {
 	// Получаем размер текста сопоставления

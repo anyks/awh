@@ -40,8 +40,8 @@ static void proof(){
 	printf("разбор AWH: %s, пар расширения: %zu\n", (ok ? "годен" : "ОТКАЗ"), doc.size());
 	if(!ok)
 		printf("отказ: %s в %llu:%llu\n", awh::codec::cef::message(doc.error()),
-			static_cast <unsigned long long> (doc.errorPosition().line),
-			static_cast <unsigned long long> (doc.errorPosition().column));
+			static_cast <unsigned long long> (doc.errorLocation().line),
+			static_cast <unsigned long long> (doc.errorLocation().column));
 	printf("старый: dst=%s  AWH: dst=%s\n",
 		old.get <string> ("destinationAddress").c_str(),
 		doc.field("destinationAddress").text().c_str());

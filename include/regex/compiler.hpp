@@ -1963,6 +1963,33 @@ namespace awh {
 				string leading(const node_id_t id) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод распознавания выражения, начинающегося с alternation литералов
+				 *
+				 * @details Заполняет «alts» и «anchor» префильтра, если первый узел
+				 *          выражения — alternation литералов одной длины. В противном
+				 *          случае оставляет оба параметра пустыми, и codegen остаётся
+				 *          на пути одиночного leading.
+				 *
+				 * @param id     индекс узла синтаксического дерева
+				 * @param alts   заполняемый список альтернативных литералов
+				 * @param anchor общий первый байт литералов
+				 *
+				 * \~english
+				 * @brief Method of recognizing an expression that starts with an alternation of literals
+				 * @details Fills «alts» and «anchor» of the prefilter, if the first node
+				 *          of the expression is an alternation of literals of equal length.
+				 *          Otherwise both parameters are left empty, and codegen stays
+				 *          on the single-leading path.
+				 *
+				 * @param id     index of the syntax tree node
+				 * @param alts   vector of alternative literals to fill
+				 * @param anchor common first byte of the literals
+				 *
+				 * \~
+				 */
+				void alternates(const node_id_t id, vector <string> & alts, char & anchor) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод дополнения набора допустимых начальных байтов
 				 *
 				 * @details Метод обходит инструкции программы, достижимые без сопоставления

@@ -714,6 +714,22 @@ void awh::regex::Storage::save(const program_t & program, string & result) const
 	// Выполняем запись последовательности начала любого совпадения
 	writeText(program.prefilter.leading, result);
 	/**
+	 * Выполняем запись альтернативных ведущих литералов
+	 *
+	 * @details Альтернативы пишутся только при непустом «alts»: для одиночного
+	 *          ведущего литерала и пустого «alts» хранилище на диске то же, что
+	 *          прежде. Количество альтернатив ограничено четырьмя, ибо запись
+	 *          SIMD-пары более четырёх байт в первом проходе цикла не закрывает.
+	 *
+	 */
+	writeVar(static_cast <uint32_t> (program.prefilter.alts.size()), result);
+	// Выполняем запись каждой альтернативы
+	for(const auto & alt : program.prefilter.alts)
+		// Выполняем запись литерала альтернативы
+		writeText(alt, result);
+	// Выполняем запись общего первого байта альтернатив
+	write8(static_cast <uint8_t> (program.prefilter.anchor), result);
+	/**
 	 * Выполняем запись удаления обязательного литерала от начала совпадения
 	 *
 	 * @details Удаление вычисляется разбором синтаксического дерева, какого
@@ -892,6 +908,63 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 		// Выводим результат восстановления программы
 		return false;
 	}
+	/**
+	 * Выполняем чтение альтернативных ведущих литералов
+	 *
+	 * @details Пустое количество альтернатив оставляет «alts» пустым —
+	 *          запись прежней версии формата совместима снизу вверх. Содержимое
+	 *          «anchor» при пустых «alts» не имеет значения, читается и
+	 *          игнорируется ради выравнивания формата.
+	 *
+	 */
+	uint32_t altCount = 0;
+	if(!readVar(data, offset, altCount)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	/**
+	 * Если альтернатив больше допустимого
+	 */
+	if(altCount > 4){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	// Выполняем резервирование места под альтернативы
+	program.prefilter.alts.reserve(altCount);
+	/**
+	 * Выполняем чтение альтернатив
+	 */
+	for(uint32_t i = 0; i < altCount; i++){
+		// Создаём запись очередной альтернативы
+		string alt;
+		/**
+		 * Если чтение литерала альтернативы не выполнено
+		 */
+		if(!readText(data, offset, alt)){
+			// Устанавливаем ошибку обрыва записи
+			this->_error = storage_error_t::TRUNCATED;
+			// Выводим результат восстановления программы
+			return false;
+		}
+		// Выполняем добавление альтернативы в набор
+		program.prefilter.alts.push_back(alt);
+	}
+	/**
+	 * Выполняем чтение общего первого байта альтернатив
+	 */
+	uint8_t anchor = 0;
+	if(!read8(data, offset, anchor)){
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	// Устанавливаем общий первый байт альтернатив
+	program.prefilter.anchor = static_cast <char> (anchor);
 	// Удаление обязательного литерала от начала совпадения
 	uint64_t distance = 0;
 	/**
