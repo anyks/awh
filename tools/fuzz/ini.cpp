@@ -1637,13 +1637,13 @@ namespace {
 			 *          расхождением ровно то, чего настройка и требует. Половина же исхода
 			 *          разбора настройке той неподвластна и остаётся строгой
 			 */
-			if(parsed && !blanked && (tailed.text() != document.dump())){
+			if(parsed && !blanked && (tailed.dump() != document.dump())){
 				// Выводим сообщение о расхождении записей написаний
 				::fprintf(stderr, "ini fuzz: trailing newline changes the rewrite\n");
 				// Выводим разбираемый текст настроек
 				dump(text);
 				// Выводим запись написания иного
-				dump(tailed.text());
+				dump(tailed.dump());
 				// Выводим запись исходного написания
 				dump(document.dump());
 				// Выводим результат проверки дерева настроек
@@ -1858,7 +1858,7 @@ namespace {
 			/**
 			 * Если перезаписи деревьев разошлись
 			 */
-			if(recycled.text() != document.dump()){
+			if(recycled.dump() != document.dump()){
 				// Выводим сообщение о расхождении перезаписей
 				::fprintf(stderr, "ini fuzz: reused tree rewrite differs from a fresh one\n");
 				// Выводим настройки разбора исходного текста настроек
@@ -1868,7 +1868,7 @@ namespace {
 				// Выводим перезапись свежего дерева
 				dump(document.dump());
 				// Выводим перезапись дерева, прежним разбором занятого
-				dump(recycled.text());
+				dump(recycled.dump());
 				// Выводим результат проверки дерева настроек
 				return false;
 			}
@@ -1909,7 +1909,7 @@ namespace {
 			return false;
 		}
 		// Выполняем повторную перезапись дерева настроек
-		const string second = repeat.text();
+		const string second = repeat.dump();
 		// Если повторная перезапись разошлась с первой
 		if(second != first){
 			// Выводим сообщение о расхождении повторной перезаписи
@@ -2073,7 +2073,7 @@ namespace {
 			// Устанавливаем вид знака конца строки наудачу
 			writing.newline = (((engine() % 2) == 0) ? ini::newline_t::LF : ini::newline_t::CRLF);
 			// Выполняем перевод дерева настроек в выбранное наречие
-			const string translated = document.text(writing);
+			const string translated = document.dump(writing);
 			/**
 			 * Если перевод дерева настроек удался
 			 *
@@ -2259,7 +2259,7 @@ namespace {
 			 */
 			if(holder.set("ключ", hostage, "раздел")){
 				// Выполняем перезапись дерева настроек
-				const string written = holder.text();
+				const string written = holder.dump();
 				// Выполняем учёт перезаписи дерева настроек
 				totals.rewrites++;
 				/**

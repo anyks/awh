@@ -2751,7 +2751,7 @@ TEST(CodecIniValue, UnnamedPairsSkipped) {
 		// Выполняем перенос владеющего значения в дерево настроек
 		ASSERT_TRUE(root.graft(document));
 		// Выполняем проверку того, что безымянные пары в дерево не попали
-		ASSERT_EQ(document.text(ini::writer_t::settings_t()), "[раздел]\nk = v\n");
+		ASSERT_EQ(document.dump(ini::writer_t::settings_t()), "[раздел]\nk = v\n");
 	}
 }
 /**

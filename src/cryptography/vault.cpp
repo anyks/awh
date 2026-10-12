@@ -90,16 +90,6 @@ namespace {
 };
 
 /**
- * @brief Метод получения содержимого тайны
- *
- * @return содержимое тайны
- *
- */
-const char * awh::Vault::Handle::data() const noexcept {
-	// Выводим содержимое тайны
-	return (this->_plain.empty() ? nullptr : this->_plain.data());
-}
-/**
  * @brief Метод получения размера тайны
  *
  * @return размер тайны в байтах

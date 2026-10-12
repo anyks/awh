@@ -303,24 +303,19 @@ namespace awh {
 						 * \~russian
 						 * Обращение с повторным объявлением свойства в разделе
 						 *
-						 * @note Потокового чтения касается лишь значение @c ERROR: события
-						 *       выдаются по мере разбора, и какое из объявлений считать
-						 *       действующим, решает потребитель - выдать одно, отбросив прочие,
-						 *       чтение не вправе, не удерживая текст целиком. Значения
-						 *
-						 * @c FIRST, @c LAST и @c MERGE потому исполняет дерево настроек,
-						 *                   решая, какое объявление выдаёт @c Document::get()
+						 * @note Потокового чтения касается лишь значение @c ERROR: события выдаются по мере разбора, и какое
+						 *       из объявлений считать действующим, решает потребитель - выдать одно, отбросив прочие, чтение
+						 *       не вправе, не удерживая текст целиком. Значения @c FIRST, @c LAST и @c MERGE потому исполняет
+						 *       дерево настроек, решая, какое объявление выдаёт @c Document::get()
 						 *
 						 * \~english
 						 * Treatment of a repeated declaration of a property in a section
 						 *
-						 * @note Only the @c ERROR value concerns the streaming reading: the events
-						 *       are issued as the parsing goes on, and which of the declarations to consider
-						 *       the effective one is decided by the consumer — the reading has no right to issue one, discarding the rest,
-						 *       without holding the text in full. The @c FIRST, @c LAST and @c MERGE values
-						 *       are therefore executed by the settings tree, which decides which declaration
-						 *
-						 * @c Document::get() issues
+						 * @note Only the @c ERROR value concerns the streaming reading: the events are issued as the parsing
+						 *       goes on, and which of the declarations to consider the effective one is decided by the
+						 *       consumer — the reading has no right to issue one, discarding the rest, without holding the
+						 *       text in full. The @c FIRST, @c LAST and @c MERGE values are therefore executed by the
+						 *       settings tree, which decides which declaration @c Document::get() issues
 						 *
 						 * \~
 						 */

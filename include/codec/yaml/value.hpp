@@ -1337,17 +1337,15 @@ namespace awh {
 					 * @note Правило это у пяти кодеков рамки РАЗНОЕ, и разное намеренно - оно
 					 *       следует из устройства наречия, а не выбрано наудачу:
 					 *
-					 *                @li у XML и INI видов нет вовсе, всякое значение там текст, и
-					 *     отказывать по виду попросту нечему;
+					 * @li у XML и INI видов нет вовсе, всякое значение там текст, и отказывать по виду попросту нечему;
 					 *
-					 *                @li у JSON и TOML виды суть хранение, и извлечение строкою служит
-					 *     им проверкою вида ровно так же, как извлечение числом;
+					 * @li у JSON и TOML виды суть хранение, и извлечение строкою служит им проверкою вида ровно так же,
+					 *     как извлечение числом;
 					 *
-					 *                @li у YAML вид есть РАЗРЕШЕНИЕ над записанным скаляром, а не
-					 *     хранение его. Запись первична - ею держатся ограда, блочное
-					 *     построение и правило усечения переводов строк, - и выдать её
-					 *     обязано всякое скалярное значение. Отказ по разрешённому виду
-					 *     отнял бы у потребителя доступ к тому, что в файле написано
+					 * @li у YAML вид есть РАЗРЕШЕНИЕ над записанным скаляром, а не хранение его. Запись первична - ею
+					 *     держатся ограда, блочное построение и правило усечения переводов строк, - и выдать её обязано
+					 *     всякое скалярное значение. Отказ по разрешённому виду отнял бы у потребителя доступ к тому, что
+					 *     в файле написано
 					 *
 					 * @note Общей проверки на все пять кодеков тут быть не должно: она
 					 *       закрепила бы единообразие там, где его нет по устройству
@@ -1359,17 +1357,19 @@ namespace awh {
 					 * @brief Method of the extraction of a string value
 					 *
 					 * @details The extraction issues the RECORD of any scalar value, whatever its resolved
-					 *          kind: the number `12` is issued by the record `12`, the sign of truth by the record
-					 *          `true`. A container — a mapping and a list — answers with a refusal.
-					 *
-					 * @note This rule differs among the five codecs of the framework deliberately: it follows
-					 *       from the arrangement of the dialect:
+					 *          kind: the number `12` is issued by the record `12`, the sign of truth by the
+					 *          record `true`, an empty value by the record `~` or that very record by which it
+					 *          was written. A container - a mapping and a list - answers with a refusal.
+
+					 * @note This rule is DIFFERENT among the five codecs of the framework, and different
+					 *       deliberately - it follows from the arrangement of the dialect, and was not taken
+					 *       at random:
 					 *
 					 * @li at XML and INI there are no kinds at all, every value there is a text, and there is
-					 *     simply nothing to refuse by a kind
+					 *     simply nothing to refuse by a kind;
 					 *
 					 * @li at JSON and TOML the kinds are the storage, and an extraction by a string serves them as
-					 *     a check of the kind exactly as an extraction by a number does
+					 *     a check of the kind exactly as an extraction by a number does;
 					 *
 					 * @li at YAML a kind is a RESOLUTION over the written scalar, and not its storage. The record
 					 *     is primary — by it are held the quoting, the block construction and the rule of the

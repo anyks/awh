@@ -1923,7 +1923,7 @@ namespace awh {
 					 *          указатель на открытое вместилище стал бы висячим на первой же паре.
 					 *
 					 * \~english
-					 * @brief Path to the container opened by the assembly
+					 * Path to the container opened by the assembly
 					 *
 					 * @details The path is stored by numbers, not by pointers: the values of a container lie in a
 					 *          sequence, and every addition relocates it in memory, so a pointer to an opened container would
@@ -1947,7 +1947,7 @@ namespace awh {
 					 *          опустошает, а опустошённый путь неотличим от несобранного значения.
 					 *
 					 * \~english
-					 * @brief Flag of the completeness of the assembly
+					 * Flag of the completeness of the assembly
 					 *
 					 * @details The flag is needed because the closing of the root container empties the path.
 					 *

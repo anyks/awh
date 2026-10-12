@@ -706,7 +706,7 @@ namespace {
 	 * @return    результат приведения типа
 	 *
 	 */
-	static A & trust_cast(B & obj) noexcept {
+	static A & __awh_trust_cast__(B & obj) noexcept {
 		// Выполняем приведение типа
 		return reinterpret_cast <A &> (obj);
 	}
@@ -3925,8 +3925,8 @@ namespace {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
-									::trust_cast <struct sockaddr_un> (client->endpoint.client),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+									::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client),
+									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -3955,8 +3955,8 @@ namespace {
 					if(server->state.family == event::family_t::UDS){
 						// Извлекаем файл сокета клиента
 						const string & address = ::fs::unixSocketAddress(
-							::trust_cast <struct sockaddr_un> (server->endpoint.server),
-							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+							::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server),
+							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path))
 						);
 						// Если адрес получен
 						if(!address.empty())
@@ -17387,13 +17387,13 @@ namespace io {
 										}
 									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+									if(awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address == ::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Устанавливаем полученный IP-адрес назначения
-										::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+										::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 										// Формируем идентификатор источника
-										sid.from(::trust_cast <struct sockaddr_in> (tunnel->endpoint.client));
+										sid.from(::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client));
 										// Ищем сессию по идентификатору источника
 										auto i = ::__awh_origin_sessions__.find(sid);
 										// Если сессия найдена
@@ -17606,18 +17606,18 @@ namespace io {
 										target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 2));
 									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Устанавливаем полученный IP-адрес назначения
-										::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+										::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 										/**
 										 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 										 * связи неоднозначны - система не знает, которым устройством их достигать
 										 */
-										::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
+										::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 										// Формируем идентификатор источника
-										sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
+										sid.from(::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client));
 										// Ищем сессию по идентификатору источника
 										auto i = ::__awh_origin_sessions__.find(sid);
 										// Если сессия найдена
@@ -17965,13 +17965,13 @@ namespace io {
 									}
 								}
 								// Если адрес сервера совпадает с настройками туннеля
-								if(awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+								if(awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address == ::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Устанавливаем полученный IP-адрес назначения
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 									// Формируем идентификатор источника
-									sid.from(::trust_cast <struct sockaddr_in> (tunnel->endpoint.client));
+									sid.from(::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client));
 									// Ищем сессию по идентификатору источника
 									auto i = ::__awh_origin_sessions__.find(sid);
 									// Если сессия найдена
@@ -18184,18 +18184,18 @@ namespace io {
 									target->port = ntohs(* reinterpret_cast <uint16_t *> (::__awh_buffer__ + offset + 2));
 								}
 								// Если адрес сервера совпадает с настройками туннеля
-								if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+								if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Устанавливаем полученный IP-адрес назначения
-									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+									::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 									/**
 									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 									 * связи неоднозначны - система не знает, которым устройством их достигать
 									 */
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 									// Формируем идентификатор источника
-									sid.from(::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client));
+									sid.from(::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client));
 									// Ищем сессию по идентификатору источника
 									auto i = ::__awh_origin_sessions__.find(sid);
 									// Если сессия найдена
@@ -19353,7 +19353,7 @@ namespace io {
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
 									msg.msg_namelen = client->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
+									msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server);
 									// Устанавливаем буфер для получения служебных метаданных из сокета
 									msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
@@ -19477,7 +19477,7 @@ namespace io {
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
-										&::trust_cast <struct sockaddr> (client->endpoint.server),
+										&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size
 									);
 								}
@@ -19629,7 +19629,7 @@ namespace io {
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
 								msg.msg_namelen = client->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
+								msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server);
 								// Устанавливаем буфер для получения служебных метаданных из сокета
 								msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
@@ -19753,7 +19753,7 @@ namespace io {
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
-									&::trust_cast <struct sockaddr> (client->endpoint.server),
+									&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size
 								);
 							}
@@ -20174,7 +20174,7 @@ namespace io {
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
-										&::trust_cast <struct sockaddr> (client->endpoint.server),
+										&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size,
 										client->transfer.sctp.use().rinfo,
 										client->transfer.sctp.use().info,
@@ -20185,7 +20185,7 @@ namespace io {
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
-									&::trust_cast <struct sockaddr> (client->endpoint.server),
+									&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size
 								);
 								// Учитываем полученное в объявленном ядром объёме
@@ -20356,7 +20356,7 @@ namespace io {
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
-									&::trust_cast <struct sockaddr> (client->endpoint.server),
+									&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size,
 									client->transfer.sctp.use().rinfo,
 									client->transfer.sctp.use().info,
@@ -20367,7 +20367,7 @@ namespace io {
 								client->transfer.fd,
 								::__awh_buffer__,
 								AWH_EVENT_MAX_BUFFER_SIZE,
-								&::trust_cast <struct sockaddr> (client->endpoint.server),
+								&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 								&client->endpoint.size
 							);
 							// Если мы получили ошибку
@@ -20658,7 +20658,7 @@ namespace io {
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
 									msg.msg_namelen = server->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
+									msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 									// Устанавливаем буфер для получения служебных метаданных из сокета
 									msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
@@ -20782,7 +20782,7 @@ namespace io {
 										server->fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
-										&::trust_cast <struct sockaddr> (server->endpoint.client),
+										&::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 										&server->endpoint.size
 									);
 								}
@@ -20964,7 +20964,7 @@ namespace io {
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
 								msg.msg_namelen = server->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
+								msg.msg_name = &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 								// Устанавливаем буфер для получения служебных метаданных из сокета
 								msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
@@ -21088,7 +21088,7 @@ namespace io {
 									server->fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
-									&::trust_cast <struct sockaddr> (server->endpoint.client),
+									&::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 									&server->endpoint.size
 								);
 							}
@@ -22752,7 +22752,7 @@ namespace io {
 										origin->transfer.fd,
 										reinterpret_cast <const uint8_t *> (buffer),
 										size, MSG_NOSIGNAL,
-										&::trust_cast <struct sockaddr> (origin->endpoint.client),
+										&::__awh_trust_cast__ <struct sockaddr> (origin->endpoint.client),
 										origin->endpoint.size,
 										origin->state.family,
 										origin->state.traffic
@@ -23856,7 +23856,7 @@ namespace io {
 											client->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
-											&::trust_cast <struct sockaddr> (client->endpoint.server),
+											&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 											client->endpoint.size,
 											client->state.family,
 											client->state.traffic
@@ -24257,7 +24257,7 @@ namespace io {
 											bytes = eth->sctp.send(
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer), size,
-												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 												client->endpoint.size,
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
@@ -24276,7 +24276,7 @@ namespace io {
 											bytes = eth->sctp.send(
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer), size,
-												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 												client->endpoint.size,
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
@@ -24286,7 +24286,7 @@ namespace io {
 											client->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
-											&::trust_cast <struct sockaddr> (client->endpoint.server),
+											&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 											client->endpoint.size,
 											client->state.family,
 											client->state.traffic
@@ -24736,7 +24736,7 @@ namespace io {
 											origin->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
-											&::trust_cast <struct sockaddr> (origin->endpoint.client),
+											&::__awh_trust_cast__ <struct sockaddr> (origin->endpoint.client),
 											origin->endpoint.size,
 											origin->state.family,
 											origin->state.traffic
@@ -27746,7 +27746,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в UDP-сокет
-									const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
+									const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
 									// Снимаем код ошибки сразу после вызова ядра, пока его никто не перебил
 									code = errno;
 									// Если данные отправлены успешно
@@ -28050,7 +28050,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
+										const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -28336,7 +28336,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
+						const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28713,7 +28713,7 @@ namespace io {
 										}
 									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+									if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
@@ -28837,7 +28837,7 @@ namespace io {
 										target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 2));
 									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
@@ -29068,7 +29068,7 @@ namespace io {
 										}
 									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+									if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
@@ -29192,7 +29192,7 @@ namespace io {
 										target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 2));
 									}
 									// Если адрес сервера совпадает с настройками туннеля
-									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
@@ -29407,7 +29407,7 @@ namespace io {
 									}
 								}
 								// Если адрес сервера совпадает с настройками туннеля
-								if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
+								if(awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address == ::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr){
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Создаём объект для получения идентификатора сессии источника по IP-адресу
@@ -29531,7 +29531,7 @@ namespace io {
 									target->port = ntohs(* reinterpret_cast <const uint16_t *> (reinterpret_cast <const uint8_t *> (buffer) + offset + 2));
 								}
 								// Если адрес сервера совпадает с настройками туннеля
-								if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
+								if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr, 16) == 0){
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Создаём объект для получения идентификатора сессии источника по IP-адресу
@@ -31336,7 +31336,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+										const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -31671,7 +31671,7 @@ namespace io {
 											 */
 											errno = 0;
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+											const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -31989,7 +31989,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+							const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -32137,7 +32137,7 @@ namespace io {
 											bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size,
-												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 												client->endpoint.size,
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
@@ -32485,7 +32485,7 @@ namespace io {
 												bytes = eth->sctp.send(
 													client->transfer.fd,
 													buffer, size,
-													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
 													client->transfer.sctp.use().info,
 													client->transfer.sctp.use().complete
@@ -32816,7 +32816,7 @@ namespace io {
 								bytes = eth->sctp.send(
 									client->transfer.fd,
 									buffer, size,
-									&::trust_cast <struct sockaddr> (client->endpoint.server),
+									&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 									client->endpoint.size,
 									client->transfer.sctp.use().info,
 									client->transfer.sctp.use().complete
@@ -32938,13 +32938,13 @@ namespace io {
 											bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size,
-												&::trust_cast <struct sockaddr> (client->endpoint.server),
+												&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 												client->endpoint.size,
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в UDP-сокет
-										else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+										else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -33286,13 +33286,13 @@ namespace io {
 												bytes = eth->sctp.send(
 													client->transfer.fd,
 													buffer, size,
-													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
 													client->transfer.sctp.use().info,
 													client->transfer.sctp.use().complete
 												);
 											// Выполняем отправку данных в UDP-сокет
-											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -33617,13 +33617,13 @@ namespace io {
 								bytes = eth->sctp.send(
 									client->transfer.fd,
 									buffer, size,
-									&::trust_cast <struct sockaddr> (client->endpoint.server),
+									&::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server),
 									client->endpoint.size,
 									client->transfer.sctp.use().info,
 									client->transfer.sctp.use().complete
 								);
 							// Выполняем отправку данных в UDP-сокет
-							else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+							else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -35097,7 +35097,7 @@ namespace io {
 		// Длина адреса, к которому дескриптор привязан
 		socklen_t size = sizeof(endpoint);
 		// Если адрес привязки дескриптора получить не удалось
-		if(::getsockname(sock, &::trust_cast <struct sockaddr> (endpoint), &size) != 0)
+		if(::getsockname(sock, &::__awh_trust_cast__ <struct sockaddr> (endpoint), &size) != 0)
 			// Выводим отсутствие привязки дескриптора
 			return false;
 		/**
@@ -35107,11 +35107,11 @@ namespace io {
 			// Для семейства IPv4
 			case AF_INET:
 				// Выводим признак привязанности дескриптора к порту
-				return (::trust_cast <struct sockaddr_in> (endpoint).sin_port != 0);
+				return (::__awh_trust_cast__ <struct sockaddr_in> (endpoint).sin_port != 0);
 			// Для семейства IPv6
 			case AF_INET6:
 				// Выводим признак привязанности дескриптора к порту
-				return (::trust_cast <struct sockaddr_in6> (endpoint).sin6_port != 0);
+				return (::__awh_trust_cast__ <struct sockaddr_in6> (endpoint).sin6_port != 0);
 		}
 		// Выводим отсутствие привязки дескриптора
 		return false;
@@ -37563,9 +37563,9 @@ namespace io {
 									// Запоминаем размер структуры
 									server->endpoint.size = sizeof(struct sockaddr_un);
 									// Очищаем всю структуру для клиента
-									::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.client), 0, server->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client), 0, server->endpoint.size);
 									// Устанавливаем семейство IP-адресов
-									::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
+									::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
 								}
 							} break;
 							// Для семейства IPv4
@@ -37581,9 +37581,9 @@ namespace io {
 									// Запоминаем размер структуры
 									server->endpoint.size = sizeof(struct sockaddr_in);
 									// Очищаем всю структуру для клиента
-									::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
 									// Устанавливаем семейство IP-адресов
-									::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
+									::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
 								}
 							} break;
 							// Для семейства IPv6
@@ -37599,9 +37599,9 @@ namespace io {
 									// Запоминаем размер структуры
 									server->endpoint.size = sizeof(struct sockaddr_in6);
 									// Очищаем всю структуру для клиента
-									::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
 									// Устанавливаем семейство IP-адресов
-									::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
+									::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
 								}
 							} break;
 						}
@@ -37618,7 +37618,7 @@ namespace io {
 							// Если протокол интернета установлен как TCP
 							case static_cast <uint8_t> (event::protocol_t::TCP):
 								// Определяем разрешено ли подключение к прокси серверу
-								sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size));
+								sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client), &server->endpoint.size));
 							break;
 							// Если протокол интернета установлен как SCTP
 							case static_cast <uint8_t> (event::protocol_t::SCTP): {
@@ -37629,7 +37629,7 @@ namespace io {
 									// Если событие принадлежит к типу STREAM
 									case static_cast <uint8_t> (event::type_t::STREAM):
 										// Определяем разрешено ли подключение к прокси серверу
-										sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size));
+										sock = ((ready != net::invalid_socket_t) ? ready : ::accept(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client), &server->endpoint.size));
 									break;
 									// Если событие принадлежит к типу SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
@@ -37638,7 +37638,7 @@ namespace io {
 											server->fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
-											&::trust_cast <struct sockaddr> (server->endpoint.client),
+											&::__awh_trust_cast__ <struct sockaddr> (server->endpoint.client),
 											&server->endpoint.size,
 											server->sctp.rinfo,
 											server->sctp.info,
@@ -37770,15 +37770,15 @@ namespace io {
 								// Выполняем инициализацию объекта IP-адреса
 								remote->ip = make_unique <net::addr_net_ipv4_t> ();
 								// Устанавливаем порт
-								remote->port = ntohs(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port);
+								remote->port = ntohs(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_port);
 								// Устанавливаем IP-адрес
-								awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+								awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
 									// Временный объект для извлечения сетевого интерфейса
 									net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 									// Устанавливаем полученный IP-адрес во временный объект
-									awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+									awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 									/**
 									 * @note Извлечение MAC-адреса выполняется только при заданных списках
 									 *       доступа. Оно обходит ARP-таблицу ядра целиком: два вызова
@@ -37867,7 +37867,7 @@ namespace io {
 										}
 									}
 									// Устанавливаем полученный IP-адрес
-									const_cast <net_addr_t *> (addr)->v4(trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->v4(__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
 									const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 									// Если адрес находится в чёрном списке
@@ -37968,15 +37968,15 @@ namespace io {
 								// Выполняем инициализацию объекта IP-адреса
 								remote->ip = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем порт
-								remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
+								remote->port = ntohs(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_port);
 								// Устанавливаем IP-адрес
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
 									// Временный объект для извлечения сетевого интерфейса
 									net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 									// Устанавливаем полученный IP-адрес во временный объект
-									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 									/**
 									 * @note Извлечение MAC-адреса выполняется только при заданных списках
 									 *       доступа. Оно обходит NDP-таблицу ядра целиком: два вызова
@@ -39473,17 +39473,17 @@ namespace io {
 				// Для семейства UNIX-доменных сокетов
 				case static_cast <uint8_t> (event::family_t::UDS):
 					// Формируем идентификатор источника
-					sid.from(::trust_cast <struct sockaddr_un> (server->endpoint.client));
+					sid.from(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client));
 				break;
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4):
 					// Формируем идентификатор источника
-					sid.from(::trust_cast <struct sockaddr_in> (server->endpoint.client));
+					sid.from(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client));
 				break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6):
 					// Формируем идентификатор источника
-					sid.from(::trust_cast <struct sockaddr_in6> (server->endpoint.client));
+					sid.from(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client));
 				break;
 			}
 			/**
@@ -39522,18 +39522,18 @@ namespace io {
 							// Получаем объект хоста IPv4-адреса
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 							// Устанавливаем порт нового пути
-							remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
+							remote->port = ntohs(::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_port);
 							// Устанавливаем IP-адрес нового пути
-							awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+							awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Получаем объект хоста IPv6-адреса
 							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
 							// Устанавливаем порт нового пути
-							remote->port = ntohs(::trust_cast <struct sockaddr_in6> (origin->endpoint.client).sin6_port);
+							remote->port = ntohs(::__awh_trust_cast__ <struct sockaddr_in6> (origin->endpoint.client).sin6_port);
 							// Устанавливаем IP-адрес нового пути
-							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (origin->endpoint.client).sin6_addr, 16);
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (origin->endpoint.client).sin6_addr, 16);
 						} break;
 					}
 				}
@@ -39624,7 +39624,7 @@ namespace io {
 					// Для семейства UNIX-доменных сокетов
 					case static_cast <uint8_t> (event::family_t::UDS): {
 						// Получаем путь UDS-сокета сервера к которому мы подключились
-						string address = ::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size);
+						string address = ::fs::unixSocketAddress(::__awh_trust_cast__ <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size);
 						// Если адрес UDS-сокета не пустой
 						if(!address.empty()){
 							// Выполняем инициализацию объекта хоста UDS-сокета
@@ -39680,15 +39680,15 @@ namespace io {
 						// Выполняем инициализацию объекта IP-адреса
 						remote->ip = make_unique <net::addr_net_ipv4_t> ();
 						// Устанавливаем порт
-						remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
+						remote->port = ntohs(::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_port);
 						// Устанавливаем IP-адрес
-						awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+						awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем полученный IP-адрес во временный объект
-							awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+							awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 							/**
 							 * @note Извлечение MAC-адреса выполняется только при заданных списках
 							 *       доступа. Оно обходит ARP-таблицу ядра целиком: два вызова
@@ -39769,7 +39769,7 @@ namespace io {
 								}
 							}
 							// Устанавливаем полученный IP-адрес
-							const_cast <net_addr_t *> (addr)->v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+							const_cast <net_addr_t *> (addr)->v4(::__awh_trust_cast__ <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
 							const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 							// Если адрес находится в чёрном списке
@@ -39847,15 +39847,15 @@ namespace io {
 						// Выполняем инициализацию объекта IP-адреса
 						remote->ip = make_unique <net::addr_net_ipv6_t> ();
 						// Устанавливаем порт
-						remote->port = ntohs(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port);
+						remote->port = ntohs(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_port);
 						// Устанавливаем IP-адрес
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Устанавливаем полученный IP-адрес во временный объект
-							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 							/**
 							 * @note Извлечение MAC-адреса выполняется только при заданных списках
 							 *       доступа. Оно обходит NDP-таблицу ядра целиком: два вызова
@@ -43610,7 +43610,6 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 						// Выполняем подписку на метаданные принимаемых сообщений
 						this->_eth.sctp.receiveInfo(node->transfer.fd, true);
 				} break;
-
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение узла события
@@ -43627,7 +43626,6 @@ void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id,
 						// Выполняем подписку на метаданные принимаемых сообщений
 						this->_eth.sctp.receiveInfo(node->transfer.fd, true);
 				} break;
-
 				// Для других типов узлов
 				default: {
 					/**
@@ -45120,21 +45118,21 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Устанавливаем размер структуры для целевой машины
 									tunnel->endpoint.size = sizeof(struct sockaddr_in);
 									// Очищаем всю структуру для клиента
-									::memset(&::trust_cast <struct sockaddr_in> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
 									// Очищаем всю структуру для сервера
-									::memset(&::trust_cast <struct sockaddr_in> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
 									// Устанавливаем семейство IP-адресов у клиента
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_family = AF_INET;
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client).sin_family = AF_INET;
 									// Устанавливаем семейство IP-адресов у сервера
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_family = AF_INET;
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_family = AF_INET;
 									// Устанавливаем произвольный порт для локального подключения целевой машины
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_port = htons(0);
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client).sin_port = htons(0);
 									// Устанавливаем порт для локального подключения целевой машины
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_port = htons(0);
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_port = htons(0);
 									// Устанавливаем адрес для удаленного подключения целевой машины
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address;
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address;
 									// Устанавливаем адрес для локального подключения
-									::trust_cast <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
+									::__awh_trust_cast__ <struct sockaddr_in> (tunnel->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (tunnel->source.get())->address;
 									// Если адрес для удаленного подключения установлен
 									if(awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address > 0)
 										// Устанавливаем адрес IPv4 для клиента
@@ -45147,33 +45145,33 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Устанавливаем размер структуры для целевой машины
 									tunnel->endpoint.size = sizeof(struct sockaddr_in6);
 									// Очищаем всю структуру для клиента
-									::memset(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client), 0, tunnel->endpoint.size);
 									// Очищаем всю структуру для сервера
-									::memset(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
+									::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server), 0, tunnel->endpoint.size);
 									// Устанавливаем семейство IP-адресов у клиента
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_family = AF_INET6;
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_family = AF_INET6;
 									// Устанавливаем семейство IP-адресов у сервера
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_family = AF_INET6;
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_family = AF_INET6;
 									// Устанавливаем произвольный порт для локального подключения целевой машины
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_port = htons(0);
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_port = htons(0);
 									// Устанавливаем порт для локального подключения целевой машины
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_port = htons(0);
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_port = htons(0);
 									// Устанавливаем адрес для удаленного подключения целевой машины
-									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
+									::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], 16);
 									/**
 									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 									 * связи неоднозначны - система не знает, которым устройством их достигать,
 									 * и отвечает отказом в маршруте
 									 */
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->zone;
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->zone;
 									// Устанавливаем адрес IPv6 для клиента
-									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
+									::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
 									/**
 									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 									 * связи неоднозначны - система не знает, которым устройством их достигать,
 									 * и отвечает отказом в маршруте
 									 */
-									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone;
+									::__awh_trust_cast__ <struct sockaddr_in6> (tunnel->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone;
 									// Если адрес для удаленного подключения установлен
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], ::__awh_zero_ipv6__, 16) != 0)
 										// Устанавливаем адрес IPv6 для клиента
@@ -45506,29 +45504,29 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Устанавливаем размер структуры для целевой машины
 												client->endpoint.size = sizeof(struct sockaddr_in);
 												// Очищаем всю структуру для клиента
-												::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
-												::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
 												// Устанавливаем семейство IP-адресов у клиента
-												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
+												::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 												// Устанавливаем семейство IP-адресов у сервера
-												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+												::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 												// Получаем объект целевой машины
 												net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 												// Устанавливаем произвольный порт для локального подключения целевой машины
-												::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(target->port);
+												::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(target->port);
 												// Устанавливаем порт для локального подключения целевой машины
-												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
+												::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
-												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+												::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 												// Получаем объект источника сетевого адреса
 												net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 												// Если источник сетевого адреса установлен
 												if(source != nullptr)
 													// Устанавливаем адрес для локального подключения
-													::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+													::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-												else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+												else ::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
 												// Создаём запись списка изменений
 												::change::record_t event{};
 												// Устанавливаем событие на чтение но отключаем его
@@ -45598,41 +45596,41 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Устанавливаем размер структуры для целевой машины
 												client->endpoint.size = sizeof(struct sockaddr_in6);
 												// Очищаем всю структуру для клиента
-												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 												// Очищаем всю структуру для сервера
-												::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 												// Устанавливаем семейство IP-адресов у клиента
-												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
+												::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 												// Устанавливаем семейство IP-адресов у сервера
-												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+												::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 												// Получаем объект целевой машины
 												net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 												// Устанавливаем произвольный порт для локального подключения целевой машины
-												::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(target->port);
+												::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(target->port);
 												// Устанавливаем порт для локального подключения целевой машины
-												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
+												::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
-												::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+												::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 												/**
 												 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 												 * связи неоднозначны - система не знает, которым устройством их достигать,
 												 * и отвечает отказом в маршруте
 												 */
-												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
+												::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 												// Получаем объект источника сетевого адреса
 												net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 												// Если источник сетевого адреса установлен
 												if(source != nullptr){
 													// Устанавливаем адрес IPv6 для клиента
-													::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+													::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 													/**
 													 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 													 * связи неоднозначны - система не знает, которым устройством их достигать,
 													 * и отвечает отказом в маршруте
 													 */
-													::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+													::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-												} else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+												} else ::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 												// Создаём запись списка изменений
 												::change::record_t event{};
 												// Устанавливаем событие на чтение но отключаем его
@@ -45722,13 +45720,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													// Получаем установленный адрес клиента
 													const string & unixsocket = awh_cast <net::addr_fs_t *> (remote->path.get())->address;
 													// Если установленный адрес клиента не пустой
-													if((result = (!unixsocket.empty() && (unixsocket.length() < sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path))))){
+													if((result = (!unixsocket.empty() && (unixsocket.length() < sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path))))){
 														// Устанавливаем размер объекта подключения
 														client->endpoint.size = sizeof(struct sockaddr_un);
 														// Зануляем изначальную структуру данных клиента
-														::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.client), 0, client->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client), 0, client->endpoint.size);
 														// Зануляем изначальную структуру данных сервера
-														::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server), 0, client->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server), 0, client->endpoint.size);
 														/**
 														 * Определяем тип сокета
 														 */
@@ -45738,24 +45736,24 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
 																// Устанавливаем семейство IP-адресов
-																::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
+																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для сервера
-																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
+																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path));
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 															} break;
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
-																::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_family = AF_UNIX;
+																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_family = AF_UNIX;
 																// Устанавливаем семейство IP-адресов для сервера
-																::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
+																::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для клиента
-																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
+																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path));
 																// Очищаем всю структуру для сервера
-																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
+																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path));
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем путь к файлу unix-сокета
 																string fullpath = "", sockname = "";
 																// Выполняем поиск последнего слеша разделителя
@@ -45794,7 +45792,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Создаём адрес unix-сокета клиента
 																	filename = fmk::format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str());
 																	// Если длина имени файла превышает допустимую
-																	if(filename.length() > sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)){
+																	if(filename.length() > sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path)){
 																		// Если установлена функция обратного вызова
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова об ошибке отказа
@@ -45880,11 +45878,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Удаляем созданный временный файл unix-сокета
 																	::unlink(filename.c_str());
 																	// Копируем установленный адрес клиента
-																	::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path), filename.length()));
+																	::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path), filename.length()));
 																	// Получаем размер объекта сокета
-																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
+																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path));
 																	// Выполняем бинд сокета клиента на адрес unix-сокета
-																	if(::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), size) < 0){
+																	if(::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), size) < 0){
 																		// Если установлена функция обратного вызова
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова об ошибке отказа
@@ -46117,36 +46115,36 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Устанавливаем размер структуры для целевой машины
 														client->endpoint.size = sizeof(struct sockaddr_in);
 														// Очищаем всю структуру для клиента
-														::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 														// Очищаем всю структуру для сервера
-														::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
 														// Устанавливаем семейство IP-адресов у клиента
-														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
+														::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 														// Получаем объект источника сетевого адреса
 														net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 														// Если источник сетевого адреса установлен
 														if(source != nullptr){
 															// Устанавливаем произвольный порт для локального подключения
-															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
+															::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
 															// Устанавливаем адрес для локального подключения
-															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+															::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 														// Если источник сетевого адреса не установлен
 														} else {
 															// Устанавливаем произвольный порт для локального подключения
-															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+															::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
 															// Устанавливаем адрес по умолчанию
-															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+															::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
 														}
 														// Получаем объект целевой машины
 														net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 														// Устанавливаем семейство IP-адресов у сервера
-														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+														::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 														// Устанавливаем порт для локального подключения целевой машины
-														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
+														::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
 														// Устанавливаем адрес для удаленного подключения целевой машины
-														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+														::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 														// Обнуляем серверную структуру
-														::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
+														::memset(&(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_zero));
 														/**
 														 * Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
 														 *
@@ -46156,9 +46154,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 *       безусловно, хотя проверялся на пустоту двадцатью
 														 *       строками выше
 														 */
-														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
+														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -46174,7 +46172,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																#if defined(DEBUG_MODE)
 																	// Устанавливаем полученный IP-адрес
-																	this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																	this->_addr.v4(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
 																	log::debug("%s", __PRETTY_FUNCTION__, {client->transfer.fd, static_cast <string> (this->_addr)}, log::flag_t::CRITICAL, ::strerror(errno));
 																/**
@@ -46242,11 +46240,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Запоминаем размер структуры
 																		client->endpoint.size = sizeof(struct sockaddr_in);
 																		// Очищаем всю структуру для клиента
-																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
 																		// Устанавливаем семейство IP-адресов у сервера
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 																		// Устанавливаем адрес для удаленного подключения целевой машины
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																		// Создаём запись списка изменений
 																		::change::record_t event{};
 																		// Устанавливаем событие на чтение но отключаем его
@@ -46355,11 +46353,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Запоминаем размер структуры
 																		client->endpoint.size = sizeof(struct sockaddr_in);
 																		// Очищаем всю структуру для клиента
-																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
 																		// Устанавливаем семейство IP-адресов у сервера
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 																		// Устанавливаем адрес для удаленного подключения целевой машины
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																		// Создаём запись списка изменений
 																		::change::record_t event{};
 																		// Устанавливаем событие на чтение но отключаем его
@@ -46401,40 +46399,40 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Устанавливаем размер структуры для целевой машины
 																		client->endpoint.size = sizeof(struct sockaddr_in);
 																		// Очищаем всю структуру для клиента
-																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 																		// Очищаем всю структуру для сервера
-																		::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
 																		// Получаем объект целевой машины
 																		net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																		// Устанавливаем семейство IP-адресов у клиента
-																		::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 																		// Устанавливаем семейство IP-адресов у сервера
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 																		// Устанавливаем порт для локального подключения целевой машины
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
 																		// Получаем объект источника сетевого адреса
 																		net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																		// Если источник сетевого адреса установлен
 																		if(source != nullptr){
 																			// Устанавливаем произвольный порт для локального подключения
-																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
+																			::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
 																			// Устанавливаем адрес для локального подключения
-																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+																			::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 																		// Если источник сетевого адреса не установлен
 																		} else {
 																			// Устанавливаем произвольный порт для локального подключения
-																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+																			::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
 																			// Устанавливаем адрес по умолчанию
-																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+																			::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
 																		}
 																		// Устанавливаем адрес для удаленного подключения
-																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+																		::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 																		// Обнуляем серверную структуру
-																		::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
+																		::memset(&(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_zero));
 																		// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
-																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
+																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -46450,7 +46448,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				 */
 																				#if defined(DEBUG_MODE)
 																					// Устанавливаем полученный IP-адрес
-																					this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																					this->_addr.v4(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																					// Записываем ошибку в лог
 																					log::debug("%s", __PRETTY_FUNCTION__, {client->transfer.fd, static_cast <string> (this->_addr)}, log::flag_t::CRITICAL, ::strerror(errno));
 																				/**
@@ -46540,38 +46538,38 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Устанавливаем размер структуры для целевой машины
 																client->endpoint.size = sizeof(struct sockaddr_in);
 																// Очищаем всю структуру для клиента
-																::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
+																::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client), 0, client->endpoint.size);
 																// Очищаем всю структуру для сервера
-																::memset(&::trust_cast <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
+																::memset(&::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server), 0, client->endpoint.size);
 																// Устанавливаем семейство IP-адресов у клиента
-																::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
+																::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 																// Устанавливаем семейство IP-адресов у сервера
-																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
+																::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 																// Устанавливаем порт для локального подключения целевой машины
-																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(0);
+																::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_port = htons(0);
 																// Получаем объект источника сетевого адреса
 																net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																// Если источник сетевого адреса установлен
 																if(source != nullptr){
 																	// Устанавливаем произвольный порт для локального подключения
-																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
+																	::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
 																	// Устанавливаем адрес для локального подключения
-																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+																	::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 																// Если источник сетевого адреса не установлен
 																} else {
 																	// Устанавливаем произвольный порт для локального подключения
-																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+																	::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
 																	// Устанавливаем адрес по умолчанию
-																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+																	::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
 																}
 																// Устанавливаем адрес для удаленного подключения целевой машины
-																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
+																::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																// Обнуляем серверную структуру
-																::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
+																::memset(&(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_zero));
 																// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
-																const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
+																const bool isLoopback = (((source == nullptr) || (source->port == 0)) && ((ntohl(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F));
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -46587,7 +46585,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if defined(DEBUG_MODE)
 																			// Устанавливаем полученный IP-адрес
-																			this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																			this->_addr.v4(::__awh_trust_cast__ <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {client->transfer.fd, static_cast <string> (this->_addr)}, log::flag_t::CRITICAL, ::strerror(errno));
 																		/**
@@ -46781,50 +46779,50 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Устанавливаем размер структуры для целевой машины
 														client->endpoint.size = sizeof(struct sockaddr_in6);
 														// Очищаем всю структуру для клиента
-														::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 														// Очищаем всю структуру для сервера
-														::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 														// Устанавливаем семейство IP-адресов у клиента
-														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
+														::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 														// Получаем объект источника сетевого адреса
 														net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 														// Если источник сетевого адреса установлен
 														if(source != nullptr){
 															// Устанавливаем произвольный порт для локального подключения
-															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
+															::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 															// Устанавливаем адрес IPv6 для клиента
-															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+															::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 															/**
 															 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 															 * связи неоднозначны - система не знает, которым устройством их достигать,
 															 * и отвечает отказом в маршруте
 															 */
-															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+															::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 														// Если источник сетевого адреса не установлен
 														} else {
 															// Устанавливаем произвольный порт для локального подключения
-															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
+															::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
 															// Устанавливаем адрес по умолчанию
-															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+															::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 														}
 														// Получаем объект целевой машины
 														net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 														// Устанавливаем семейство IP-адресов у сервера
-														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+														::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 														// Устанавливаем порт для локального подключения
-														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
+														::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 														// Устанавливаем адрес для удаленного подключения
-														::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+														::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 														/**
 														 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 														 * связи неоднозначны - система не знает, которым устройством их достигать,
 														 * и отвечает отказом в маршруте
 														 */
-														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
+														::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 														// Определяем, является ли адрес клиента адресом обратной петли (::1)
-														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
+														const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+														if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -46908,16 +46906,16 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Запоминаем размер структуры
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
-																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 																		// Устанавливаем семейство IP-адресов удаленного сервера
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения целевой машины
-																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
+																		::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
 																		/**
 																		 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 																		 * связи неоднозначны - система не знает, которым устройством их достигать
 																		 */
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
 																		// Создаём запись списка изменений
 																		::change::record_t event{};
 																		// Устанавливаем событие на чтение но отключаем его
@@ -47026,16 +47024,16 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Запоминаем размер структуры
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
-																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 																		// Устанавливаем семейство IP-адресов удаленного сервера
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем адрес для удаленного подключения
-																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
+																		::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address[0], 16);
 																		/**
 																		 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 																		 * связи неоднозначны - система не знает, которым устройством их достигать
 																		 */
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
 																		// Создаём запись списка изменений
 																		::change::record_t event{};
 																		// Устанавливаем событие на чтение но отключаем его
@@ -47077,50 +47075,50 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Устанавливаем размер структуры для целевой машины
 																		client->endpoint.size = sizeof(struct sockaddr_in6);
 																		// Очищаем всю структуру для клиента
-																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 																		// Очищаем всю структуру для сервера
-																		::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																		::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 																		// Получаем объект целевой машины
 																		net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																		// Устанавливаем семейство IP-адресов у клиента
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 																		// Устанавливаем семейство IP-адресов у сервера
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																		// Устанавливаем порт для локального подключения удаленного сервера
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 																		// Получаем объект источника сетевого адреса
 																		net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																		// Если источник сетевого адреса установлен
 																		if(source != nullptr){
 																			// Устанавливаем произвольный порт для локального подключения
-																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
+																			::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 																			// Устанавливаем адрес IPv6 для клиента
-																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+																			::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 																			/**
 																			 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 																			 * связи неоднозначны - система не знает, которым устройством их достигать,
 																			 * и отвечает отказом в маршруте
 																			 */
-																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+																			::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 																		// Если источник сетевого адреса не установлен
 																		} else {
 																			// Устанавливаем произвольный порт для локального подключения
-																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
+																			::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
 																			// Устанавливаем адрес по умолчанию
-																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+																			::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 																		}
 																		// Устанавливаем адрес для удаленного подключения целевой машины
-																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+																		::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 																		/**
 																		 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 																		 * связи неоднозначны - система не знает, которым устройством их достигать,
 																		 * и отвечает отказом в маршруте
 																		 */
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
+																		::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 																		// Определяем, является ли адрес клиента адресом обратной петли (::1)
-																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
+																		const bool isLoopback = (((source == nullptr) || (source->port == 0)) && IN6_IS_ADDR_LOOPBACK(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr));
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																		if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -47226,45 +47224,45 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Устанавливаем размер структуры для целевой машины
 																client->endpoint.size = sizeof(struct sockaddr_in6);
 																// Очищаем всю структуру для клиента
-																::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
+																::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client), 0, client->endpoint.size);
 																// Очищаем всю структуру для сервера
-																::memset(&::trust_cast <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
+																::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server), 0, client->endpoint.size);
 																// Устанавливаем семейство IP-адресов у клиента
-																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
+																::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 																// Устанавливаем семейство IP-адресов у сервера
-																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
+																::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
 																// Устанавливаем произвольный порт для локального подключения
-																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
+																::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
 																// Устанавливаем порт для локального подключения удаленного сервера
-																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(0);
+																::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(0);
 																// Получаем объект источника сетевого адреса
 																net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																// Если источник сетевого адреса установлен
 																if(source != nullptr){
 																	// Устанавливаем адрес IPv6 для клиента
-																	::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+																	::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 																	/**
 																	 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 																	 * связи неоднозначны - система не знает, которым устройством их достигать,
 																	 * и отвечает отказом в маршруте
 																	 */
-																	::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
+																	::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
 																// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-																} else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+																} else ::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 																// Получаем объект целевой машины
 																net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																// Устанавливаем адрес для удаленного подключения целевой машины
-																::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+																::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 																/**
 																 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 																 * связи неоднозначны - система не знает, которым устройством их достигать,
 																 * и отвечает отказом в маршруте
 																 */
-																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
+																::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->zone;
 																// Определяем, является ли адрес клиента адресом обратной петли (::1)
-																const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
+																const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::__awh_trust_cast__ <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
+																if(!isLoopback && !(result = (::io::coherent(client, &this->_eth) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -47634,19 +47632,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Запоминаем размер структуры
 												server->endpoint.size = sizeof(struct sockaddr_in);
 												// Очищаем всю структуру для клиента
-												::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
 												// Очищаем всю структуру для сервера
-												::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.server), 0, server->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server), 0, server->endpoint.size);
 												// Устанавливаем семейство IP-адресов для клиента
-												::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
+												::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
 												// Устанавливаем семейство IP-адресов для сервера
-												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_family = AF_INET;
+												::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server).sin_family = AF_INET;
 												// Получаем объект текущего сервера
 												net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 												// Устанавливаем порт для локального подключения целевой машины
-												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
+												::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
-												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+												::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 												// Создаём запись списка изменений
 												::change::record_t event{};
 												// Устанавливаем событие на чтение но отключаем его
@@ -47718,25 +47716,25 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Запоминаем размер структуры
 												server->endpoint.size = sizeof(struct sockaddr_in6);
 												// Очищаем всю структуру для клиента
-												::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
 												// Очищаем всю структуру для сервера
-												::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.server), 0, server->endpoint.size);
+												::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server), 0, server->endpoint.size);
 												// Устанавливаем семейство IP-адресов у клиента
-												::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
+												::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
 												// Устанавливаем семейство IP-адресов у сервера
-												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_family = AF_INET6;
+												::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_family = AF_INET6;
 												// Получаем объект текущего сервера
 												net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 												// Устанавливаем порт для локального подключения целевой машины
-												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
+												::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
-												::memcpy(&::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+												::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 												/**
 												 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 												 * связи неоднозначны - система не знает, которым устройством их достигать,
 												 * и отвечает отказом в маршруте
 												 */
-												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
+												::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
 												// Создаём запись списка изменений
 												::change::record_t event{};
 												// Устанавливаем событие на чтение но отключаем его
@@ -47828,13 +47826,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													// Получаем установленный адрес сервера
 													const string & unixsocket = awh_cast <net::addr_fs_t *> (host->path.get())->address;
 													// Если установленный адрес сервера не пустой
-													if((result = (!unixsocket.empty() && (unixsocket.length() < sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))))){
+													if((result = (!unixsocket.empty() && (unixsocket.length() < sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path))))){
 														// Устанавливаем размер объекта подключения
 														server->endpoint.size = sizeof(struct sockaddr_un);
 														// Зануляем изначальную структуру данных клиента
-														::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.client), 0, server->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client), 0, server->endpoint.size);
 														// Зануляем изначальную структуру данных сервера
-														::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server), 0, server->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server), 0, server->endpoint.size);
 														/**
 														 * Определяем тип сокета
 														 */
@@ -47853,15 +47851,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::unlink(unixsocket.c_str());
 																}
 																// Устанавливаем семейство IP-адресов
-																::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
+																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для сервера
-																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
+																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд сокета сервера на адрес целевой машины
-																if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
+																if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -47902,13 +47900,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
-																::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
+																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
 																// Устанавливаем семейство IP-адресов для сервера
-																::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
+																::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_family = AF_UNIX;
 																// Очищаем всю структуру для клиента
-																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_path));
+																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.client).sun_path));
 																// Очищаем всю структуру для сервера
-																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																::memset(&::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Структура статистики файла
 																struct stat info;
 																// Выполняем извлечение данных статистики
@@ -47919,11 +47917,11 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::unlink(unixsocket.c_str());
 																}
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
+																::strncpy(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд сокета сервера на адрес целевой машины
-																if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
+																if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), size) == 0))){
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -48140,23 +48138,23 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Устанавливаем размер структуры для целевой машины
 														server->endpoint.size = sizeof(struct sockaddr_in);
 														// Очищаем всю структуру для клиента
-														::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
 														// Очищаем всю структуру для сервера
-														::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.server), 0, server->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server), 0, server->endpoint.size);
 														// Устанавливаем семейство IP-адресов у клиента
-														::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
+														::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
 														// Получаем объект текущего сервера
 														net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 														// Устанавливаем семейство IP-адресов у сервера
-														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_family = AF_INET;
+														::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server).sin_family = AF_INET;
 														// Устанавливаем порт для локального подключения целевой машины
-														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
+														::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
 														// Устанавливаем адрес для удаленного подключения целевой машины
-														::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+														::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 														// Обнуляем серверную структуру
-														::memset(&(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero), 0, sizeof(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero));
+														::memset(&(::__awh_trust_cast__  <struct sockaddr_in> (server->endpoint.server).sin_zero), 0, sizeof(::__awh_trust_cast__  <struct sockaddr_in> (server->endpoint.server).sin_zero));
 														// Выполняем бинд сокета сервера на адрес целевой машины
-														if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
+														if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -48172,7 +48170,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																#if defined(DEBUG_MODE)
 																	// Устанавливаем полученный IP-адрес
-																	this->_addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+																	this->_addr.v4(::__awh_trust_cast__  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
 																	log::debug("%s", __PRETTY_FUNCTION__, {server->fd, static_cast <string> (this->_addr)}, log::flag_t::CRITICAL, ::strerror(errno));
 																/**
@@ -48344,27 +48342,27 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Устанавливаем размер структуры для целевой машины
 														server->endpoint.size = sizeof(struct sockaddr_in6);
 														// Очищаем всю структуру для клиента
-														::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
 														// Очищаем всю структуру для сервера
-														::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.server), 0, server->endpoint.size);
+														::memset(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server), 0, server->endpoint.size);
 														// Устанавливаем семейство IP-адресов у клиента
-														::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
+														::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
 														// Получаем объект текущего сервера
 														net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 														// Устанавливаем семейство IP-адресов у сервера
-														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_family = AF_INET6;
+														::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_family = AF_INET6;
 														// Устанавливаем порт для локального подключения целевой машины
-														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
+														::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_port = htons(host->port);
 														// Устанавливаем адрес для удаленного подключения целевой машины
-														::memcpy(&::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+														::memcpy(&::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 														/**
 														 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
 														 * связи неоднозначны - система не знает, которым устройством их достигать,
 														 * и отвечает отказом в маршруте
 														 */
-														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
+														::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
 														// Выполняем бинд события
-														if(!(result = (::bind(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
+														if(!(result = (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -50447,7 +50445,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									// Получаем размер структуры адреса IPv4
 									socklen_t length = sizeof(addr);
 									// Извлекаем внутренний порт из сокета клиента
-									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (addr), &length) == 0)){
 										// Если внутренний порт предположительно подготовлен
 										if(addr.sin_port > 0)
 											// Выводим результат
@@ -50461,7 +50459,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									// Получаем размер структуры адреса IPv6
 									socklen_t length = sizeof(addr);
 									// Извлекаем внутренний порт из сокета клиента
-									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (addr), &length) == 0)){
 										// Если внутренний порт предположительно подготовлен
 										if(addr.sin6_port > 0)
 											// Выводим результат
@@ -50497,7 +50495,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 											// Получаем размер структуры адреса IPv4
 											socklen_t length = sizeof(addr);
 											// Извлекаем внутренний порт из сокета клиента
-											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::__awh_trust_cast__ <struct sockaddr> (addr), &length) == 0)){
 												// Если внутренний порт предположительно подготовлен
 												if(addr.sin_port > 0)
 													// Выводим результат
@@ -50521,7 +50519,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 											// Получаем размер структуры адреса IPv6
 											socklen_t length = sizeof(addr);
 											// Извлекаем внутренний порт из сокета клиента
-											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::__awh_trust_cast__ <struct sockaddr> (addr), &length) == 0)){
 												// Если внутренний порт предположительно подготовлен
 												if(addr.sin6_port > 0)
 													// Выводим результат
@@ -54115,11 +54113,11 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
-											if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
+											if(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
 												net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+												awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
@@ -54244,11 +54242,11 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
-											if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
+											if(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
 												net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
@@ -54566,9 +54564,9 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
-												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
+												if(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
-													this->_addr.v4(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
+													this->_addr.v4(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Выводим результат
 													return static_cast <string> (this->_addr);
 												}
@@ -54698,11 +54696,11 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
-												if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
+												if(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 													// Создаём массив байтов для хранения IPv6-адреса
 													array <uint8_t, 16> buffer;
 													// Копируем полученный IPv6-адрес во временный буфер
-													::memcpy(&buffer[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+													::memcpy(&buffer[0], ::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 													// Устанавливаем полученный IPv6-адрес
 													this->_addr.v6(buffer, net_addr_t::endian_t::LITTLE);
 													/**
@@ -54716,15 +54714,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 													 *          тот идёт через `source`, зону сохраняющий
 													 *
 													 */
-													if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id > 0){
+													if(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id > 0){
 														// Буфер названия устройства зоны адреса
 														char zone[IF_NAMESIZE];
 														// Выполняем перевод номера устройства зоны в его название
-														if(::if_indextoname(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id, zone) != nullptr)
+														if(::if_indextoname(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id, zone) != nullptr)
 															// Устанавливаем название устройства зоны адреса
 															this->_addr.zone(zone);
 														// Если устройства с таким номером в системе больше нет, записываем зону номером
-														else this->_addr.zone(::to_string(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id));
+														else this->_addr.zone(::to_string(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id));
 													}
 													// Выводим результат
 													return static_cast <string> (this->_addr);
@@ -57838,11 +57836,11 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
-											if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
+											if(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
 												net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+												awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
@@ -57963,11 +57961,11 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
-											if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
+											if(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
 												net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
@@ -58320,9 +58318,9 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
-												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
+												if(::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
-													awh_cast <net::addr_net_ipv4_t *> (value.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+													awh_cast <net::addr_net_ipv4_t *> (value.get())->address = ::__awh_trust_cast__ <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 													// Выводим результат
 													return result;
 												}
@@ -58473,11 +58471,11 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
-												if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
+												if(::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 													// Копируем полученный IPv6-адрес во временный буфер
-													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], ::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 													// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
-													awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id;
+													awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = ::__awh_trust_cast__ <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id;
 													// Выводим результат
 													return result;
 												}
@@ -61199,7 +61197,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -61326,7 +61324,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -61465,7 +61463,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Обнуляем серверную структуру
 										::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(server->fd) && (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -61598,7 +61596,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										endpoint.sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source.get())->zone;
 										// Выполняем бинд события, если дескриптор ещё не привязан
-										if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+										if(!::io::bound(server->fd) && (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
@@ -61861,7 +61859,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -61922,7 +61920,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(client->transfer.fd) && (::bind(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -61995,7 +61993,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								// Обнуляем серверную структуру
 								::memset(&endpoint.sin_zero, 0, sizeof(endpoint.sin_zero));
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(server->fd) && (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -62062,7 +62060,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 								 */
 								endpoint.sin6_scope_id = awh_cast <const net::addr_net_ipv6_t *> (source)->zone;
 								// Выполняем бинд события, если дескриптор ещё не привязан
-								if(!::io::bound(server->fd) && (::bind(server->fd, &::trust_cast <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
+								if(!::io::bound(server->fd) && (::bind(server->fd, &::__awh_trust_cast__ <struct sockaddr> (endpoint), sizeof(endpoint)) < 0)){
 									// Если установлена функция обратного вызова
 									if(server->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об ошибке отказа
@@ -67815,11 +67813,11 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														// Получаем размер объекта сокета
 														client->endpoint.size = (
 															offsetof(struct sockaddr_un, sun_path) +
-															::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
+															::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.server).sun_path)
 														);
 													}
 													// Если подключение к удаленному серверу не выполнено
-													if(!(result = (::connect(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
+													if(!(result = (::connect(client->transfer.fd, &::__awh_trust_cast__ <struct sockaddr> (client->endpoint.server), client->endpoint.size) == 0))){
 														// Если ошибка не является ошибкой в процессе подключения
 														if(!(result = (errno == EINPROGRESS))){
 															// Если установлена функция обратного вызова
@@ -76672,8 +76670,8 @@ void awh::engine::IO::clear() noexcept {
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Извлекаем файл сокета клиента
 										const string & address = ::fs::unixSocketAddress(
-											::trust_cast <struct sockaddr_un> (client->endpoint.client),
-											(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+											::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client),
+											(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path))
 										);
 										// Если адрес получен
 										if(!address.empty())
@@ -76741,8 +76739,8 @@ void awh::engine::IO::clear() noexcept {
 							if(server->state.family == event::family_t::UDS){
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
-									::trust_cast <struct sockaddr_un> (server->endpoint.server),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+									::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server),
+									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -77752,8 +77750,8 @@ bool awh::engine::IO::deinitialize() noexcept {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
-									::trust_cast <struct sockaddr_un> (client->endpoint.client),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+									::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client),
+									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -77784,8 +77782,8 @@ bool awh::engine::IO::deinitialize() noexcept {
 					if(server->state.family == event::family_t::UDS){
 						// Извлекаем файл сокета клиента
 						const string & address = ::fs::unixSocketAddress(
-							::trust_cast <struct sockaddr_un> (server->endpoint.server),
-							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+							::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server),
+							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path))
 						);
 						// Если адрес получен
 						if(!address.empty())
@@ -81051,7 +81049,6 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
 					 *          потому что очередь пуста
 					 */
-
 				} break;
 				/**
 				 * Для других типов узлов
@@ -81360,8 +81357,8 @@ awh::engine::IO::~IO() noexcept {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
-									::trust_cast <struct sockaddr_un> (client->endpoint.client),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+									::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client),
+									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (client->endpoint.client).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -81388,8 +81385,8 @@ awh::engine::IO::~IO() noexcept {
 					if(server->state.family == event::family_t::UDS){
 						// Извлекаем файл сокета клиента
 						const string & address = ::fs::unixSocketAddress(
-							::trust_cast <struct sockaddr_un> (server->endpoint.server),
-							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+							::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server),
+							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::__awh_trust_cast__ <struct sockaddr_un> (server->endpoint.server).sun_path))
 						);
 						// Если адрес получен
 						if(!address.empty())

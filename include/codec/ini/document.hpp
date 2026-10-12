@@ -124,11 +124,9 @@ namespace awh {
 			 *
 			 * @par Порядок работы
 			 *
-			 * @warning Выдаваемые последовательности знаков ссылаются на хранилище дерева
-			 *          и остаются пригодными **до первой правки**: @c set(), @c erase() и
-			 *
-			 * @c create() вправе перестроить хранилище. Значение, нужное после правки,
-			 *                   следует скопировать
+			 * @warning Выдаваемые последовательности знаков ссылаются на хранилище дерева и остаются пригодными **до
+			 *          первой правки**: @c set(), @c erase() и @c create() вправе перестроить хранилище. Значение,
+			 *          нужное после правки, следует скопировать
 			 *
 			 * @par Намеренные решения
 			 *
@@ -150,7 +148,7 @@ namespace awh {
 			 * @li **Обращение, ставшее неразрешимым после правки, отвергает запись, но
 			 *     не правку.** Удаление значения, на которое ссылаются, проходит, и @c get()
 			 *     выдаёт значение в том виде, как оно записано, вместе с самим обращением.
-			 *     А вот @c text() отвечает отказом @c error_t::UNKNOWN_REFERENCE: разбор
+			 *     А вот @c dump() отвечает отказом @c error_t::UNKNOWN_REFERENCE: разбор
 			 *     такой текст с включённой подстановкой не примет, и выдать его значило бы
 			 *     отдать потребителю заведомо негодный файл
 			 *
@@ -163,21 +161,16 @@ namespace awh {
 			 *     запись отвергала негодную кодировку безусловно, - основание её сняла смена
 			 *     правила, а не оплошность
 			 *
-			 * @li **Годность значения к записи решает ЗАПИСЬ, а не правка.** Значение,
-			 *     какое читающий прочёл бы иначе, а оградить его настройками нечем -
-			 *     пробельная обвязка при отбрасывании её, знак примечания при внутристрочных
-			 *     примечаниях, перевод строки без продолжений и отмен, - деревом принимается,
-			 *     а отвергается выдачей текста. Дерево от того выходит незаписываемым целиком:
-			 *
-			 * @c text() отвечает пустотою, и прежнее содержимое уходит вместе с нею.
-			 *                   Решение это НАМЕРЕННОЕ и закреплено проверками @c WriteFailure,
-			 *
-			 * @c UnquotableValues и @c WritingKeptQuotes. Заведение заставы на пути правки
-			 *                   пробовалось 07.09.2026 пробною записью - решение бралось у самой записи, не
-			 *                   заводя второго написания правил, - и было отвергнуто: правило это договор, а
-			 *                   не оплошность. Заставы правки стоят лишь там, где построение недостижимо
-			 *                   РАЗБОРОМ: имя свойства с разделителем, имя раздела с знаком-разделителем,
-			 *                   свойство вне разделов при читающем, таких свойств не признающем
+			 * @li **Годность значения к записи решает ЗАПИСЬ, а не правка.** Значение, какое читающий прочёл бы
+			 *     иначе, а оградить его настройками нечем - пробельная обвязка при отбрасывании её, знак примечания
+			 *     при внутристрочных примечаниях, перевод строки без продолжений и отмен, - деревом принимается, а
+			 *     отвергается выдачей текста. Дерево от того выходит незаписываемым целиком: @c dump() отвечает
+			 *     пустотою, и прежнее содержимое уходит вместе с нею. Решение это НАМЕРЕННОЕ и закреплено проверками
+			 *     @c WriteFailure, @c UnquotableValues и @c WritingKeptQuotes. Заведение заставы на пути правки
+			 *     пробовалось 07.09.2026 пробною записью - решение бралось у самой записи, не заводя второго
+			 *     написания правил, - и было отвергнуто: правило это договор, а не оплошность. Заставы правки стоят
+			 *     лишь там, где построение недостижимо РАЗБОРОМ: имя свойства с разделителем, имя раздела с
+			 *     знаком-разделителем, свойство вне разделов при читающем, таких свойств не признающем
 			 *
 			 * @li **Удалённая запись остаётся в хранилище надгробием.** Изъятие её из
 			 *     середины сдвинуло бы порядковые номера всех записей за нею, а на них
@@ -210,20 +203,16 @@ namespace awh {
 			 *
 			 * @par Order of the work
 			 *
-			 * @warning The issued sequences of characters refer to the storage of the tree
-			 *          and remain valid **until the first editing**: @c set(), @c erase() and
-			 *
-			 * @c create() have the right to rebuild the storage. A value needed after an editing
-			 *                   should be copied
+			 * @warning The issued sequences of characters refer to the storage of the tree and remain valid **until
+			 *          the first editing**: @c set(), @c erase() and @c create() have the right to rebuild the
+			 *          storage. A value needed after an editing should be copied
 			 *
 			 * @par Deliberate decisions
 			 *
-			 * @li **A repeated property is stored in full.** All the declarations get into
-			 *     the tree, while the setting of the treatment of the repetitions decides only which of them
-			 *
-			 * @c get() issues. The list of all the values is issued by @c values() independently of
-			 *                   this setting: the Git and systemd dialects give a list by a repetition, and to lose
-			 *                   it at the parsing is impermissible
+			 * @li **A repeated property is stored in full.** All the declarations get into the tree, while the
+			 *     setting of the treatment of the repetitions decides only which of them @c get() issues. The list
+			 *     of all the values is issued by @c values() independently of this setting: the Git and systemd
+			 *     dialects give a list by a repetition, and to lose it at the parsing is impermissible
 			 *
 			 * @li **The substitution of the references is recomputed lazily.** A value being
 			 *     referred to has the right to stand lower in the text, and a reference can be resolved only
@@ -237,7 +226,7 @@ namespace awh {
 			 * @li **A reference that has become unresolvable after an editing rejects the writing but
 			 *     not the editing.** A removal of a value being referred to goes through, and @c get()
 			 *     issues the value in the form in which it has been written, together with the reference itself.
-			 *     But @c text() answers with an @c error_t::UNKNOWN_REFERENCE refusal: the parsing
+			 *     But @c dump() answers with an @c error_t::UNKNOWN_REFERENCE refusal: the parsing
 			 *     will not accept such a text with the substitution enabled, and to issue it would mean
 			 *     to give the consumer a knowingly unfit file
 			 *
@@ -249,22 +238,19 @@ namespace awh {
 			 *     and @c PASS. It stood rightly as long as the writing rejected a malformed encoding
 			 *     unconditionally - it was a change of the rule, not an oversight, that removed its ground
 			 *
-			 * @li **The fitness of a value for the writing is decided by the WRITING, not by the editing.**
-			 *     A value which the reading would have read differently, and which there is no setting to
-			 *     fence off - the whitespace wrapping when it is dropped, a comment character with inline
-			 *     comments, a line ending without continuations and cancellations - is accepted by the tree,
-			 *     and rejected by the issuing of the text. The tree thereby turns unwritable as a whole:
-			 *
-			 * @c text() answers with emptiness, and the previous content goes away together with it. This
-			 *                   decision is DELIBERATE and is fixed by the checks @c WriteFailure,
-			 *
-			 * @c UnquotableValues and @c WritingKeptQuotes. The instituting of a guard on the path of the
-			 *                   editing was tried on 2026-09-07 by a trial writing - the decision was taken from the
-			 *                   writing itself, without instituting a second rendition of the rules - and was rejected:
-			 *                   this rule is a contract, and not an oversight. The guards of the editing stand only where
-			 *                   the construction is unreachable by the PARSING: a property name with a separator, a
-			 *                   section name with a separator character, a property outside the sections under a
-			 *                   reading not recognizing such properties
+			 * @li **The fitness of a value for the writing is decided by the WRITING, not by the editing.** A value
+			 *     which the reading would have read differently, and which there is no setting to fence off - the
+			 *     whitespace wrapping when it is dropped, a comment character with inline comments, a line ending
+			 *     without continuations and cancellations - is accepted by the tree, and rejected by the issuing of
+			 *     the text. The tree thereby turns unwritable as a whole: @c dump() answers with emptiness, and the
+			 *     previous content goes away together with it. This decision is DELIBERATE and is fixed by the
+			 *     checks @c WriteFailure, @c UnquotableValues and @c WritingKeptQuotes. The instituting of a guard
+			 *     on the path of the editing was tried on 2026-09-07 by a trial writing - the decision was taken
+			 *     from the writing itself, without instituting a second rendition of the rules - and was rejected:
+			 *     this rule is a contract, and not an oversight. The guards of the editing stand only where the
+			 *     construction is unreachable by the PARSING: a property name with a separator, a section name with
+			 *     a separator character, a property outside the sections under a reading not recognizing such
+			 *     properties
 			 *
 			 * @li **A removed record remains in the storage as a tombstone.** Its extraction from
 			 *     the middle would shift the ordinal numbers of all the records after it, while the pointers of the search
@@ -2207,7 +2193,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					string text(const writer_t::settings_t & settings) const noexcept;
+					string dump(const writer_t::settings_t & settings) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод чтения настроек из файла

@@ -2716,7 +2716,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					string text(const writer_t::settings_t & settings) const noexcept;
+					string dump(const writer_t::settings_t & settings) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод чтения настроек из файла

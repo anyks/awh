@@ -1972,7 +1972,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	// Устанавливаем пустую строку перед объявлением таблицы
 	writing.separated = pretty;
 	// Выполняем изъятие собранной записи TOML
-	result = document.text(writing);
+	result = document.dump(writing);
 	/**
 	 * Если собиратель записи отвечал отказом
 	 *
@@ -3422,7 +3422,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 		settings.separated = pretty;
 	}
 	// Выполняем изъятие собранной записи INI
-	result = document.text(settings);
+	result = document.dump(settings);
 	/**
 	 * Если собиратель записи отвечал отказом
 	 *

@@ -98,6 +98,7 @@ namespace awh {
 			 * @note The kinds of the dictionary and the full names are held as KINDS of the sequences of
 			 *       characters, not as strings: the table lies in the constant memory of the binary file in full
 			 *       and costs neither an allocation of memory nor a parsing at the start
+			 *
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Entry {
@@ -146,6 +147,7 @@ namespace awh {
 			 * @li **The search is conducted by a binary search over a sorted table.** A mapping with the counting
 			 *     of fingerprints is not introduced: the table is immutable, lies in the constant memory in full,
 			 *     and costs neither an allocation of memory at the start nor the parsing of it
+			 *
 			 * \~
 			 */
 			namespace dictionary {

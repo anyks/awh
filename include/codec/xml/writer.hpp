@@ -699,6 +699,10 @@ namespace awh {
 					 * @param uri      обозначение пространства имён открываемого узла
 					 * @param declares связывания префиксов, объявляемые самим узлом
 					 * @param prefix   желаемый префикс имени узла, пустой - на выбор потока
+					 * @param oneline  признак записи содержимого узла в одну строку без отступов
+					 * @param verbatim признак записи имени узла дословно, вместе с разделителем
+					 *          префикса: разбор без пространств имён кладёт имя в дерево целиком,
+					 *          и делить его нечем
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
@@ -721,7 +725,6 @@ namespace awh {
 					 * @param verbatim flag of the writing of the name of the node verbatim, together with the separator
 					 *          of a prefix: the parsing without the namespaces puts a name into the tree
 					 *          in full, and there is nothing to divide it by
-					 *
 					 * @return         result of performing the operation
 					 *
 					 * \~
@@ -754,10 +757,13 @@ namespace awh {
 					 *          содержимого: дописать атрибут узлу, у которого уже есть содержимое,
 					 *          нельзя
 					 *
-					 * @param local местное имя атрибута
-					 * @param value значение атрибута
-					 * @param uri   обозначение пространства имён атрибута
-					 * @return      результат выполнения операции
+					 * @param local    местное имя атрибута
+					 * @param value    значение атрибута
+					 * @param uri      обозначение пространства имён атрибута
+					 * @param verbatim признак записи имени атрибута дословно, вместе с разделителем
+					 *          префикса: разбор без пространств имён кладёт имя в дерево целиком,
+					 *          и делить его нечем
+					 * @return         результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing an attribute of an open node
@@ -769,14 +775,13 @@ namespace awh {
 					 * @warning Written only right after the opening of a node, before its
 					 *          content: an attribute cannot be appended to a node which already has a content
 					 *
-					 * @param local local name of the attribute
-					 * @param value value of the attribute
-					 * @param uri   designation of the namespace of the attribute
-					 * @param verbatim flag of the writing of the name of the attribute verbatim, together with
-					 *          the separator of a prefix: the parsing without the namespaces puts a name
-					 *          into the tree in full, and there is nothing to divide it by
-					 *
-					 * @return      result of performing the operation
+					 * @param local    local name of the attribute
+					 * @param value    value of the attribute
+					 * @param uri      designation of the namespace of the attribute
+					 * @param verbatim flag of the writing of the name of the attribute verbatim, together
+					 *          with the separator of a prefix: the parsing without the namespaces puts a
+					 *          name into the tree in full, and there is nothing to divide it by
+					 * @return         result of performing the operation
 					 *
 					 * \~
 					 */

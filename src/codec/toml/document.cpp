@@ -3031,7 +3031,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 	 *          какое запись умолчанием приняла бы, - строгость сверх записи
 	 *
 	 * @note При правиле `REFUSE` потребитель узнаёт о беде у записи, а не у правки, - тем
-	 *       же порядком, каким узнаёт о всяком ином незаписываемом содержимом: `text()`
+	 *       же порядком, каким узнаёт о всяком ином незаписываемом содержимом: `dump()`
 	 *       отвечает пустотою и ставит код. Замерено на подаче перевода строки при
 	 *       выключенных продолжениях: правка проходит без кода, запись даёт
 	 *       `INVALID_CHARACTER`. Договор один, и исключения у него более нет
@@ -3900,7 +3900,7 @@ void awh::codec::toml::Document::clear() noexcept {
  * @return         собранный текст настроек
  *
  */
-string awh::codec::toml::Document::text(const writer_t::settings_t & settings) const noexcept {
+string awh::codec::toml::Document::dump(const writer_t::settings_t & settings) const noexcept {
 	/**
 	 * Выполняем сброс кода отказа прежней работы
 	 *
@@ -4282,7 +4282,7 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
  */
 string awh::codec::toml::Document::dump() const noexcept {
 	// Выполняем запись дерева обратно в текст настроек
-	return this->text(this->writing());
+	return this->dump(this->writing());
 }
 /**
  * @brief Метод получения настроек записи, отвечающих настройкам разбора

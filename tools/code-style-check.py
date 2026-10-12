@@ -41,8 +41,87 @@ def strip_comments_strings(line, in_block):
         out.append(c); i += 1
     return "".join(out), in_block
 
+
+def parse_sections(block_lines):
+	"""Разбор doc-блока: {язык: [(tag, blank_before, lineno, conts, width), ...]}"""
+	sections = {}
+	cur_lang = None
+	groups = []
+	prev_blank = True
+	i = 0
+	n = len(block_lines)
+	while i < n:
+		l = block_lines[i].strip()
+		m = re.match(r"^\*\s*\\~(russian|english)?\s*$", l)
+		if m:
+			if cur_lang is not None or groups:
+				sections[cur_lang or "?"] = groups
+			groups = []
+			cur_lang = m.group(1) or "_"
+			prev_blank = True
+			i += 1
+			continue
+		tag = re.match(r"^\*\s*@(\w+)", l)
+		if tag:
+			conts = 0
+			j = i + 1
+			while j < n:
+				sj = block_lines[j].strip()
+				if re.match(r"^\*\s*@", sj) or re.match(r"^\*\s*\\~", sj) or sj in ("", "*/"):
+					break
+				# строки-продолжения: после '*' два+ пробела
+				if re.match(r"^\*\s{2,}\S", sj):
+					conts += 1
+					j += 1
+					continue
+				break
+			groups.append((tag.group(1), prev_blank, i + 1, conts, len(l)))
+			prev_blank = False
+			i = j
+			continue
+		if re.match(r"^\*\s*$", l):
+			prev_blank = True
+		i += 1
+	sections[cur_lang or "?"] = groups
+	return sections
+
+def check_doc_parity(path, lines, report, fixes=None):
+	in_block = False
+	start = 0
+	block = []
+	for n, raw in enumerate(lines, 1):
+		line = raw.rstrip("\n")
+		if not in_block and re.match(r"\s*/\*\*", line):
+			in_block = True; start = n; block = []
+		if in_block:
+			block.append(line)
+			if "*/" in line:
+				in_block = False
+				if len(block) > 2:  # инлайновые /*!< ... */ не трогаем: блок из одной строки
+					sec = parse_sections(block)
+					ru, en = sec.get("russian"), sec.get("english")
+					if ru and en:
+						tags_ru = [t[0] for t in ru]
+						tags_en = [t[0] for t in en]
+						if tags_ru != tags_en:
+							report(path, start, "ERROR", "§7.6", f"английская секция: набор тегов {tags_en} != русская {tags_ru}")
+						else:
+							for (te, be, le, ce, we), (tr, br, lr, cr, wr) in zip(en, ru):
+								lineno = start + le - 1
+								if br and not be:
+									report(path, lineno, "ERROR", "§7.6", f"английская секция: перед @{te} нет пустой строки ' *' (в русской есть)")
+									if fixes is not None:
+										fixes.add(lineno - 1)
+								elif be and not br:
+									report(path, lineno, "ERROR", "§7.6", f"английская секция: лишняя пустая строка перед @{te} (в русской нет)")
+								if cr > 0 and ce == 0:
+									report(path, lineno, "ERROR", "§7.6", f"английская секция: @{te} смят в одну строку ({we} симв.) — русская группа разбита на {cr} продолжений, английская обязана быть разбита так же")
+				block = []
+
 SNAKE_STOP = {"operator", "no_except", "decltype", "sizeof_", "alignof_", "return_type"}
 STD_CALLS = {"make_pair", "make_tuple", "make_unique", "make_shared", "forward_like"}
+# слово перед именем в позиции типа означает вызов, а не объявление
+KEYWORD_HEAD = {"return", "throw", "co_return", "co_await", "new", "delete", "case", "else"}
 
 def is_snake_name(s):
     """snake_case имя в позиции объявления: внутренние подчёркивания, не член/статика/тип."""
@@ -97,7 +176,7 @@ def check_class_order(lines, report, path):
         if ctor and proto and ctor < proto:
             report(path, ctor, "ERROR", "§5.1", "конструктор объявлен до методов — конструктор в конце блока")
 
-def check_file(path, lines, members, report):
+def check_file(path, lines, members, report, fixes=None):
     is_cpp = path.endswith(".cpp") or "/src/" in path
     is_hdr = path.endswith((".hpp", ".h")) and "/include/" in path
     in_block = False
@@ -105,7 +184,7 @@ def check_file(path, lines, members, report):
     in_func = False
     blank_ctx = None
     prev_code = ""
-    static_names = set(re.findall(r"^\s*static\s+[\w:<>]+(?:\s*[*&][\w:<>]*)?\s+(\w+)\s*\(", "\n".join(lines), re.M))
+    static_names = set(re.findall(r"^\s*(?:\[\[.*?\]\]\s*)?static\s+(?:[\w:<>]+\s+)+?[*&]?\s*(\w+)\s*\(", "\n".join(lines), re.M))
     eng_words = re.compile(r"\b(the|with|from|where|which|this value|returns|performs?|we (perform|check|set|get))\b")
     for n, raw in enumerate(lines, 1):
         line = raw.rstrip("\n")
@@ -116,6 +195,8 @@ def check_file(path, lines, members, report):
             continue
         if blank_ctx is not None:
             report(path, blank_ctx, "ERROR", "§1.3", "пустая строка внутри тела функции")
+            if fixes is not None:
+                fixes.add(blank_ctx - 1)
         blank_ctx = None
         # отступы табами
         indent = re.match(r"^([ \t]*)\S", line)
@@ -159,12 +240,16 @@ def check_file(path, lines, members, report):
         def is_declaration(name, pos):
             head = code[:pos]
             return bool(re.match(r"^[\w:]+(?:\s*[*&]\s*)?\s+", head.lstrip())) and (head.strip() == "" or re.search(r"[\w:*>\s]$", head)) and (head.lstrip() != "" or pos == 0) and re.match(r"^[\w:]+(?:<[^>]*>)?(?:\s*[*&])?\s+" + re.escape(name) + r"\s*\(", code.lstrip())
-        for m in re.finditer(r"(?<![\w:>.])" + DEF_LIST_ERR + r"\s*\(", code):
+        for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_ERR + r"\s*\(", code):
             if m.group(1) in static_names or is_declaration(m.group(1), m.start()):
                 continue
             report(path, n, "ERROR", "§6.2", f"обращение '{m.group(1)}(' без :: — системные функции только через ::")
-        for m in re.finditer(r"(?<![\w:>.])" + DEF_LIST_WARN + r"\s*\(", code):
-            if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"::\s*$", code[:m.start()]):
+        for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_WARN + r"\s*\(", code):
+            if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
+                continue
+            if not code[:m.start()].strip() and prev_code.rstrip().endswith((":", ",")):
+                continue
+            if re.search(r"#\s*define\s+$", code[:m.start()]):
                 continue
             report(path, n, "WARN", "§6.2", f"возможно голое обращение к системной '{m.group(1)}(' (без ::)")
         # snake_case в именах функций/методов (§4.2), кроме внутренней статики __awh_{name}__ (§4.10)
@@ -173,7 +258,7 @@ def check_file(path, lines, members, report):
         if fm and "class" not in code and "struct" not in code.split("(")[0]:
             fname = fm.group(1).split("::")[-1]
             head = code[:fm.start(1)]
-            call_kw = bool(re.search(r"\b(return|offsetof|sizeof|static_cast|awh_cast|co_return)\b[^;]*$", head))
+            call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast)\b[^;]*$", head))
             if call_kw or fname in STD_CALLS:
                 pass
             elif is_snake_name(fname) and "__awh" not in fm.group(1):
@@ -186,7 +271,9 @@ def check_file(path, lines, members, report):
                 continue
             before = code[:vm.start()]
             headtok = code[vm.start(0):vm.start(1)].strip()
-            if re.fullmatch(r"(?:const\s+)?(?:struct|union|enum)\s*", headtok):
+            if headtok and headtok.split()[-1] in KEYWORD_HEAD:
+                continue
+            if headtok == "const" or re.fullmatch(r"(?:const\s+)?(?:struct|union|enum)\s*", headtok):
                 continue
             if re.search(r"(?:__awh_\w*__|::|\b(?:return|offsetof|sizeof|static_cast|awh_cast|co_return|struct|union|enum|reinterpret_cast|const_cast))$", before.rstrip()) or re.search(r"(offsetof|sizeof)\s*\($", before.rstrip()) or re.search(r"<[^>]*$", before):
                 continue
@@ -224,6 +311,8 @@ def check_file(path, lines, members, report):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     strict = "--strict" in sys.argv
+    do_fix = "--fix" in sys.argv
+    fixes = {}
     files = []
     for a in args:
         if os.path.isdir(a):
@@ -243,8 +332,28 @@ def main():
             lines = open(f, errors="ignore").read().split("\n")
         except OSError as e:
             print(f"{f}: не читаю ({e})", file=sys.stderr); unreadable += 1; continue
-        check_file(f, lines, members, report)
+        fixset = set() if do_fix else None
+        check_file(f, lines, members, report, fixset)
         check_class_order(lines, report, f)
+        check_doc_parity(f, lines, report, fixset)
+        if fixset:
+            fixes[f] = fixset
+    if do_fix and fixes:
+        for f, idxs in fixes.items():
+            fl = open(f, errors="ignore").read().split("\n")
+            ins = 0
+            dele = 0
+            for idx in sorted(idxs, reverse=True):
+                anchor = fl[idx] if idx < len(fl) else ""
+                if anchor.strip() == "":
+                    del fl[idx]
+                    dele += 1
+                    continue
+                m = re.match(r"^(\s*)\*", anchor)
+                fl.insert(idx, (m.group(1) + "*") if m else anchor)
+                ins += 1
+            open(f, "w").write("\n".join(fl))
+            print(f"{f}: вставлено {ins}, удалено {dele}")
     results.sort()
     errors = warns = 0
     for path, n, level, rule, msg in results:

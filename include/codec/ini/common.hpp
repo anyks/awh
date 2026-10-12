@@ -1016,11 +1016,10 @@ namespace awh {
 			 *          сняты, управляющие последовательности разобраны, строки продолжения склеены,
 			 *          обращения к другим значениям подставлены - в объёме, разрешённом настройками.
 			 *
-			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения к @c next() либо
-			 *
-			 * @c feed(). Ссылаются они на буфер разбора, и подача его перевыделяет: вид,
-			 *                   удержанный прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит
-			 *                   это настоящим обращением к освобождённому - замерено щупом на трёхстах записях
+			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения к @c next() либо @c feed(). Ссылаются они на
+			 *          буфер разбора, и подача его перевыделяет: вид, удержанный прежде, указывает на память
+			 *          ОСВОБОЖДЁННУЮ. Надзор за памятью валит это настоящим обращением к освобождённому - замерено
+			 *          щупом на трёхстах записях
 			 *
 			 * @warning Срок этот ИНОЙ, нежели у свёрток имени раздела и примечания: те
 			 *          ссылаются на удержанные строки чтения, остаются читаемыми и молча отдают чужое
@@ -1033,11 +1032,10 @@ namespace awh {
 			 *          removed, the escape sequences are parsed, the continuation lines are glued together,
 			 *          the references to the other values are substituted — in the volume permitted by the settings.
 			 *
-			 * @warning The views of the fold live ONLY until the next call to @c next() or
-			 *
-			 * @c feed(). They refer to the parsing buffer, and its feed reallocates it: a view
-			 *                   kept before points to memory FREED. Memory supervision takes this for a genuine
-			 *                   access to freed memory - measured by a probe on three hundred records
+			 * @warning The views of the fold live ONLY until the next call to @c next() or @c feed(). They refer to
+			 *          the parsing buffer, and its feed reallocates it: a view kept before points to memory FREED.
+			 *          Memory supervision takes this for a genuine access to freed memory - measured by a probe on
+			 *          three hundred records
 			 *
 			 * @warning This term is DIFFERENT from that of the folds of the section name and the comment:
 			 *          those refer to the held strings of the reading, remain readable and silently give

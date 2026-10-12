@@ -396,26 +396,21 @@ namespace awh {
 						 * \~russian
 						 * Признак того, что читающий снимает кавычки со значения
 						 *
-						 * @note Задаёт не запись кавычек, а толкование их читающим: значение,
-						 *       кавычкой начинающееся, такой читающий прочтёт без неё, и записать
-						 *       её нужно управляющей последовательностью. Признак этот и
-						 *
-						 * @c quoting задают разное: первый - как прочтут, второй - как
-						 *                   писать, и противоречие между ними запись обнаруживает сама.
-						 *                   Настройки, отвечающие наречию разбора, выдаёт @c document_t по
-						 *                   своим настройкам чтения
+						 * @note Задаёт не запись кавычек, а толкование их читающим: значение, кавычкой начинающееся, такой
+						 *       читающий прочтёт без неё, и записать её нужно управляющей последовательностью. Признак этот и
+						 *       @c quoting задают разное: первый - как прочтут, второй - как писать, и противоречие между
+						 *       ними запись обнаруживает сама. Настройки, отвечающие наречию разбора, выдаёт @c document_t по
+						 *       своим настройкам чтения
 						 *
 						 * \~english
 						 * Flag of the reader removing the quotes from a value
 						 *
-						 * @note Gives not the writing of the quotes but their interpretation by the reader: a value
-						 *       beginning with a quote such a reader will read without it, and it needs to be written
-						 *       with an escape sequence. This flag and
-						 *
-						 * @c quoting give different things: the first — how it will be read, the second — how
-						 *                   to write, and the contradiction between them is detected by the writing itself.
-						 *                   The settings corresponding to the dialect of the parsing are issued by @c document_t from
-						 *                   its reading settings
+						 * @note Gives not the writing of the quotes but their interpretation by the reader: a value beginning
+						 *       with a quote such a reader will read without it, and it needs to be written with an escape
+						 *       sequence. This flag and @c quoting give different things: the first — how it will be read,
+						 *       the second — how to write, and the contradiction between them is detected by the writing
+						 *       itself. The settings corresponding to the dialect of the parsing are issued by @c document_t
+						 *       from its reading settings
 						 *
 						 * \~
 						 */

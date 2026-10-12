@@ -159,6 +159,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Class of the management of the transmission protocol with the flow control
+			 *
 			 * @details A companion of the engine, serving what only SCTP has and what does not
 			 *          fit into the common surface of `engine::io_t`. The event itself of
 			 *          an SCTP socket is started by the engine in the ordinary order — with the protocol
@@ -183,6 +184,7 @@ namespace awh {
 			 *            which notifications of the protocol should be delivered to the application code;
 			 *          - **the authentication by RFC 4895** — `authenticateKey()`,
 			 *            `authenticateChunks()`, `authenticateSupportAlgorithms()`.
+			 *
 			 * @note    The class is declared for Linux, FreeBSD, Solaris and illumos, but is
 			 *          **debugged and works only under FreeBSD**. macOS and OpenBSD have
 			 *          no SCTP in the kernel at all, and NetBSD holds the header without the support
@@ -190,22 +192,26 @@ namespace awh {
 			 *          and will not refuse during the work. The application code reckoned on
 			 *          the portability is obliged to wrap the addresses into the same check
 			 *          `#if __linux__ || __FreeBSD__ || __sun`.
+			 *
 			 * @note    The working examples lie in [`sample/net/sctp/`](../../sample/net/sctp):
 			 *          the stream and the sequential-packet modes, over TLS and
 			 *          DTLS, with the authentication of the chunks — a pair of a client and a server for
 			 *          every case. They are the ones to look at, and not the example below: it
 			 *          shows only the order of the calls.
+			 *
 			 * @note    The object is created separately from the engine and holds no state of its own about the
 			 *          events: it only converts the calls into the parameters of
 			 *          a socket by the identifier of an event. Therefore one object
 			 *          serves however many events, and the order of its creation
 			 *          relative to the engine does not matter.
+			 *
 			 * @note    The `setTimeout()` timeouts are the timers **of the protocol itself**
 			 *          (`INIT`, `DATA`, `SACK`, `SHUTDOWN`, `HEARTBEAT`, `COOKIE`,
 			 *          `SHUTDOWNACK`), and not the timeouts of an event of the engine. Confusing them with
 			 *          `engine::io_t::setTimeout()` is not allowed: those the engine counts and
 			 *          reports about them by the callback functions, these the kernel counts
 			 *          and acts by them itself
+			 *
 			 * @par Example: an SCTP client with several streams in an association
 			 *
 			 * @code{.cpp}
@@ -251,6 +257,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the informational metadata of an SCTP message
+					 *
 					 * @param id identifier of the event
 					 * @return   informational metadata of the SCTP message
 					 *
@@ -266,6 +273,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the informational metadata of an SCTP message
+					 *
 					 * @param id   identifier of the event
 					 * @param info informational metadata of the SCTP message
 					 *
@@ -282,6 +290,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the parameters of the status of the initialization of SCTP
+					 *
 					 * @param id identifier of the event
 					 * @return   parameters of the status of the initialization of SCTP
 					 *
@@ -297,6 +306,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the parameters of the initialization of SCTP
+					 *
 					 * @param id      identifier of the event
 					 * @param initmsg parameters of the initialization of the SCTP event
 					 *
@@ -313,6 +323,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the options of the subscription to the SCTP events
+					 *
 					 * @param id identifier of the event
 					 * @return   list of the SCTP events the subscription is performed to
 					 *
@@ -328,6 +339,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the options of the subscription to the SCTP events
+					 *
 					 * @param id     identifier of the event
 					 * @param events list of the SCTP events to subscribe to
 					 *
@@ -345,6 +357,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the timeout of an SCTP event
+					 *
 					 * @param id   identifier of the event
 					 * @param type type of the timeout
 					 * @return     value of the timeout in milliseconds
@@ -363,6 +376,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the timeout of an SCTP event
+					 *
 					 * @param id      identifier of the event
 					 * @param type    type of the timeout
 					 * @param timeout value of the timeout in milliseconds
@@ -383,6 +397,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the key of the authentication of an SCTP socket
+					 *
 					 * @param id  identifier of the event
 					 * @param num number of the key of the authentication
 					 * @param key key of the authentication
@@ -402,6 +417,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the activation/deactivation of the key of the authentication of an SCTP socket
+					 *
 					 * @param id   identifier of the event
 					 * @param mode mode of the setting of the action of the event
 					 * @param num  number of the key of the authentication
@@ -421,6 +437,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the chunks of the authentication of an SCTP socket
+					 *
 					 * @param id     identifier of the event
 					 * @param chunks list of the chunks subject to the authentication
 					 * @return       result of the work of the function
@@ -439,6 +456,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of extracting the chunks of the authentication of an SCTP socket
+					 *
 					 * @param id     identifier of the event
 					 * @param origin source of the event
 					 * @param chunks list of the chunks subject to the authentication
@@ -458,6 +476,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the supported algorithms of the authentication of an SCTP socket
+					 *
 					 * @param id    identifier of the event
 					 * @param types list of the supported algorithms of the authentication
 					 * @return      result of the work of the function
@@ -480,10 +499,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the support of the sending of a message in parts
+					 *
 					 * @details The sending of a message in parts requires from the system an explicit mode
 					 *          of the boundary of a record, and it is not everywhere: FreeBSD and Solaris have it,
 					 *          Linux does not have it at all. Checking the support follows before a sending,
 					 *          and not by a refusal
+					 *
 					 * @param id identifier of the event
 					 * @return   result of the check of the support
 					 *
@@ -540,6 +561,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the callback function for the getting of the metadata of an SCTP message
+					 *
 					 * @param id identifier of the event
 					 * @param cb callback function
 					 *
@@ -555,6 +577,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the callback function for the getting of the SCTP events
+					 *
 					 * @param id identifier of the event
 					 * @param cb callback function
 					 *
@@ -575,10 +598,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the callback function for the reading of the data together with the metadata
+					 *
 					 * @details This callback is optional: for the tasks that do not need the metadata of the protocol
 					 *          it is simpler to use the common callback of the reading. Setting
 					 *          it, though, moves the reading of an event to the giving out of the data together with
 					 *          the metadata and switches on the subscription to them at the kernel
+					 *
 					 * @param id identifier of the event
 					 * @param cb callback function
 					 *
@@ -717,6 +742,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Type of the asynchronous input-output engine
+		 *
 		 * @details The engine serves the sockets, the files, the directories, the interprocess
 		 *          communication, the tunnels and the timers by a single loop of the events. Over
 		 *          the mechanism of the polling of the operating system — kqueue at BSD and macOS,
@@ -748,19 +774,23 @@ namespace awh {
 		 *          To spin the loop is the business of the application code, and this allows it to be kept in
 		 *          one's own thread, to be embedded into a foreign loop of the events and to be stopped
 		 *          whenever.
+		 *
 		 * @note    The callback functions are called **inside** `poll()`. While
 		 *          a callback is being performed, the turn of the loop is not completed, and therefore
 		 *          a long work in it delays all the other events. The heavy things need
 		 *          to be taken away into one's own thread.
+		 *
 		 * @note    Releasing an event from inside its own callback is admissible:
 		 *          `destroy()` marks the event and postpones the release for two
 		 *          turns of the loop. The delay is needed not for the convenience, but by the necessity
 		 *          — the records of the subscription go into the kernel together with the waiting for the next
 		 *          turn, and were the engine to close the descriptor earlier, its number
 		 *          the operating system would manage to give out to another object.
+		 *
 		 * @note    The engine is reckoned on one thread of the polling. Addressing the events from
 		 *          the other threads is not allowed; for the passing of the work into the thread of the loop the
 		 *          user event `event::node_t::NOTIFY` is started.
+		 *
 		 * @par Example: a client
 		 * @par Example: a server
 		 *
@@ -839,6 +869,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of clearing the control list of an event
+						 *
 						 * @param id identifier of the event
 						 * @return   result of the performance of the clearing
 						 *
@@ -855,6 +886,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of adding an address into the control list of an event
+						 *
 						 * @param id    identifier of the event
 						 * @param value value of the address of the event
 						 * @return      result of the performance of the setting
@@ -872,6 +904,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of removing an address from the control list of an event
+						 *
 						 * @param id    identifier of the event
 						 * @param value address to remove from the control list
 						 * @return      result of the performance of the removal
@@ -888,6 +921,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of getting the control list of an event
+						 *
 						 * @param id identifier of the event
 						 * @return   control list of the event
 						 *
@@ -903,6 +937,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param type type of the control list
 						 *
 						 * \~
@@ -960,11 +995,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the fixation of the settings of an event
+				 *
 				 * @details Fixes everything that has been set out to the event after `event()`:
 				 *          the addresses, the ports, the options of the socket, the sizes of the buffers, the terms. Before this
 				 *          call the settings lie in the event itself and do not reach the socket, and
 				 *          after — they are applied, and the event passes from the state «started» into
 				 *          «initialized»
+				 *
 				 * @details The states of an event form a sequence, and every step
 				 *          requires the previous one:
 				 *          | Call | Requires the state | Leaves the state |
@@ -976,10 +1013,12 @@ namespace awh {
 				 *          | `launch()` | `INITIAL` or `SUCCESS` | `LAUNCHED` / `LISTENING` |
 				 *          Hence it follows that `connect()` and `listen()` are placed **between**
 				 *          the fixation and the launch, and not before the fixation and not after the launch.
+				 *
 				 * @note A repeated fixation of an already initialized event does nothing
 				 *       and returns a negative result: the `NONE` state happens at
 				 *       an event only once. The settings changed after the fixation
 				 *       are applied by their own methods at once, requiring no fixation
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the performance of the fixation
 				 *
@@ -1005,6 +1044,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the rebuilding of an event: the recreation of the underlying descriptor with the preservation of the event itself
+				 *
 				 * @note The application works with the identifier of an event, and not with a descriptor,
 				 *       and therefore the descriptor is recreated, and the event (its identifier,
 				 *       the callbacks, the address/the port, the options and the timers) is preserved — the substitution
@@ -1014,6 +1054,7 @@ namespace awh {
 				 *       descriptor, and the passed stages of the bringing up (commit/listen/launch)
 				 *       are replayed by the original status of the event. Is supported for
 				 *       the events of the SERVER type
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the performance of the rebuilding
 				 *
@@ -1030,6 +1071,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the network interface of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   network interface of the event
 				 *
@@ -1046,6 +1088,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the network interface of an event
+				 *
 				 * @param id   identifier of the event
 				 * @param name name of the network interface to set
 				 * @return     result of the performance of the setting
@@ -1113,6 +1156,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the local port of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   local port of the event
 				 *
@@ -1129,6 +1173,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the local port of an event
+				 *
 				 * @param id   identifier of the event
 				 * @param port local port of the event
 				 * @return     result of the performance of the setting
@@ -1146,6 +1191,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the port of the destination of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   port of the destination of the event
 				 *
@@ -1162,6 +1208,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the port of the destination of an event
+				 *
 				 * @param id   identifier of the event
 				 * @param port port of the destination of the event
 				 * @return     result of the performance of the setting
@@ -1179,6 +1226,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the host of the target machine
+				 *
 				 * @param id identifier of the event
 				 * @return   address of the host of the target machine
 				 *
@@ -1195,6 +1243,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the host of the target machine
+				 *
 				 * @param id     identifier of the event
 				 * @param target address of the host of the target machine
 				 * @return       result of the performance of the setting
@@ -1213,6 +1262,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the host of the target machine
+				 *
 				 * @param id     identifier of the event
 				 * @param target object to extract the address of the host of the target machine into
 				 * @return       result of the performance of the extraction of the address of the host of the target machine
@@ -1230,6 +1280,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of the host of the target machine
+				 *
 				 * @param id     identifier of the event
 				 * @param target address of the host of the target machine
 				 * @return       result of the performance of the setting
@@ -1248,6 +1299,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of an event
+				 *
 				 * @param id      identifier of the event
 				 * @param address type of the address of the event
 				 * @return        value of the address of the event
@@ -1266,6 +1318,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of an event
+				 *
 				 * @param id      identifier of the event
 				 * @param address type of the address of the event
 				 * @param value   value of the address of the event
@@ -1286,6 +1339,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of an event
+				 *
 				 * @param id      identifier of the event
 				 * @param address type of the address of the event
 				 * @param value   object to extract the address of the event into
@@ -1305,6 +1359,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the address of an event
+				 *
 				 * @param id      identifier of the event
 				 * @param address type of the address of the event
 				 * @param value   value of the address of the event
@@ -1323,6 +1378,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the MTU of a network interface
+				 *
 				 * @param id identifier of the event
 				 * @return   MTU of the network interface
 				 *
@@ -1339,6 +1395,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the MTU of a network interface
+				 *
 				 * @param id  identifier of the event
 				 * @param mtu size of the MTU of the interface
 				 * @return    result of the setting of the MTU of the network interface
@@ -1371,6 +1428,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the sign of the yielding by the system of the Explicit Congestion Notification (ECN) field of the received packets
+				 *
 				 * @details The mark of the congestion of a path is placed by a router into the header of a packet,
 				 *          and it is yielded to the receiving side already by the kernel — by a service message at
 				 *          the reception of a datagram. Not all the systems yield it: NetBSD and OpenBSD
@@ -1380,9 +1438,11 @@ namespace awh {
 				 *          with the support of the marks and not receiving the marks back is obliged by
 				 *          the contract to recognize the check as not having taken place and to switch the marks off —
 				 *          that is to make an extra round where the outcome is known in advance
+				 *
 				 * @note The sign is decided by the presence of the means of the request of the yielding, and not by a list
 				 *       of the systems by name: a list will become obsolete with the very first release which
 				 *       adds the means
+				 *
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @return       sign of the yielding by the system of the marks of the congestion of a path
 				 *
@@ -1400,6 +1460,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param id     identifier of the event
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @return       value of the DSCP
@@ -1418,6 +1479,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the value of the Differentiated Services Code Point (DSCP) field in the header of an IP packet
+				 *
 				 * @param id     identifier of the event
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @param dscp   value of the DSCP
@@ -1441,9 +1503,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the value of the Explicit Congestion Notification (ECN) field in the header of an IP packet
+				 *
 				 * @note Yields the value set on the outgoing packets. The sign of
 				 *       the congestion of the received packets comes separately for every
 				 *       datagram and is extracted by the getTrafficInfo method
+				 *
 				 * @param id     identifier of the event
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @return       value of the ECN
@@ -1466,9 +1530,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the value of the Explicit Congestion Notification (ECN) field in the header of an IP packet
+				 *
 				 * @note The class of the service (DSCP) is preserved: both fields occupy one
 				 *       octet of the header, and therefore the setting touches only the lower
 				 *       two bits
+				 *
 				 * @param id     identifier of the event
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @param ecn    value of the ECN
@@ -1488,6 +1554,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the discovery of the maximum size of a packet (MTU)
+				 *
 				 * @param id     identifier of the event
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @return       mode of the discovery of the maximum size of a packet (MTU)
@@ -1506,6 +1573,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the discovery of the maximum size of a packet (MTU)
+				 *
 				 * @param id     identifier of the event
 				 * @param family family of the protocols (IPv4 or IPv6)
 				 * @param mode   mode of the discovery of the maximum size of a packet (MTU)
@@ -1540,6 +1608,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the activation/deactivation of the multicast group of an event
+				 *
 				 * @details The method binds the descriptor to the port of the group: without this the reception
 				 *          from the group is not possible, and `commit` does not make such a binding — it
 				 *          binds the point of its own node, and not the point of the group.
@@ -1549,6 +1618,7 @@ namespace awh {
 				 *          when the node is bound to the needed port anyway.
 				 *          A refusal of the method does not change the state of the event: the event remains
 				 *          what it was, and continues to work
+				 *
 				 * @param id     identifier of the event
 				 * @param mode   mode of the activation/deactivation
 				 * @param group  multicast group for the activation/deactivation
@@ -1584,6 +1654,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the activation/deactivation of the multicast group of an event
+				 *
 				 * @details The method binds the descriptor to the port of the group: without this the reception
 				 *          from the group is not possible, and `commit` does not make such a binding — it
 				 *          binds the point of its own node, and not the point of the group.
@@ -1593,6 +1664,7 @@ namespace awh {
 				 *          when the node is bound to the needed port anyway.
 				 *          A refusal of the method does not change the state of the event: the event remains
 				 *          what it was, and continues to work
+				 *
 				 * @param id     identifier of the event
 				 * @param mode   mode of the activation/deactivation
 				 * @param group  multicast group for the activation/deactivation
@@ -1619,10 +1691,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of binding an additional key of the routing to a session
+				 *
 				 * @note One session is addressed by an arbitrary number of the keys: the protocols
 				 *       changing the identifier in the course of the work address it by
 				 *       any of the bound ones. The keys are removed automatically at
 				 *       the destruction of the session
+				 *
 				 * @param id  identifier of the event of the session
 				 * @param key bound key of the session
 				 * @return    result of the binding (false — the key is taken by another session)
@@ -1640,6 +1714,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing a key of the routing from a session
+				 *
 				 * @param id  identifier of the event of the session
 				 * @param key removed key of the session
 				 * @return    result of the removal (false — the key does not belong to the session)
@@ -1657,6 +1732,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limiting number of the simultaneous connections of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   limiting number of the simultaneous connections
 				 *
@@ -1678,10 +1754,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the limiting number of the simultaneous connections of an event
+				 *
 				 * @note For the stream events it limits the number of the accepted connections,
 				 *       for the datagram ones — the number of the sessions. The reaching of the limit means
 				 *       a refusal in the creation of a new session, and therefore the limit serves as a protection
 				 *       from the exhaustion of the memory by a stream of the datagrams from the foreign senders
+				 *
 				 * @param id  identifier of the event
 				 * @param max limiting number of the simultaneous connections
 				 * @return    result of the setting
@@ -1737,6 +1815,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing an event
+				 *
 				 * @details Releases an event from any state: from a set up one, from
 				 *          a working one, from a paused one. Removes the timeouts, closes
 				 *          the descriptor and takes the event out of the polling.
@@ -1749,16 +1828,20 @@ namespace awh {
 				 *          For the caller the delay is imperceptible: the addresses by this
 				 *          identifier stop acting at once, and the callback
 				 *          functions by it no longer come.
+				 *
 				 * @note    Calling it from inside the callback function of this same event
 				 *          is **admissible and safe** — exactly because of the delay. This is
 				 *          the ordinary way of closing a connection at an error of the parsing or at
 				 *          the completion of an exchange.
+				 *
 				 * @note    A repeated call by the same identifier refuses, and does not
 				 *          release the node twice: the event is already marked, and finding it
 				 *          by the identifier is no longer possible.
+				 *
 				 * @note    The release of an event of a server does not release the connections accepted by it
 				 *          — each has its own identifier and its own term of
 				 *          the life. They should be closed by one's own calls
+				 *
 				 * @par Example: the closing of a connection from a callback
 				 * @param id identifier of the event
 				 * @return   result of the performance of the removal
@@ -1786,6 +1869,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a pair of the events for a socket
+				 *
 				 * @param family   family of the addresses
 				 * @param type     type of the socket
 				 * @param protocol protocol of the socket
@@ -1846,6 +1930,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a new event
+				 *
 				 * @details The first step of the work with an event. Starts a node of an event,
 				 *          creates a descriptor of the operating system for it and
 				 *          puts the event into the `INITIAL` state, in which it
@@ -1860,16 +1945,20 @@ namespace awh {
 				 *          `DIR` — the observation of the file system, `IPC` —
 				 *          the interprocess communication, `NOTIFY` — a user
 				 *          event for the passing of the work into the thread of the loop.
+				 *
 				 * @note    For the timers the family of the addresses is set by the value
 				 *          `event::family_t::TIMER`, and the type and the protocol are not needed at all.
+				 *
 				 * @note    A `PEER` event is not created through this method: the accepted
 				 *          connections the engine starts itself and gives their identifier
 				 *          into the callback function of the acceptance of a connection already ready
 				 *          and subscribed to the reading.
+				 *
 				 * @note    A zero identifier means a refusal of the creation. It should be checked
 				 *          before the setup: the addresses by an invalid
 				 *          identifier silently do nothing, and without the check
 				 *          the refusal would be discovered only by the absence of the events
+				 *
 				 * @par Example: a timer
 				 * @param node     node of the event
 				 * @param family   family of the addresses
@@ -1898,6 +1987,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the offset in the file of an event
+				 *
 				 * @param id   identifier of the event
 				 * @param seek type of the offset in the file of the event
 				 * @return     offset in the file of the event
@@ -1916,6 +2006,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the offset in the file of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param seek   type of the offset in the file of the event
 				 * @param offset offset in the file of the event
@@ -1934,6 +2025,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the options of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   options of the event
 				 *
@@ -1950,6 +2042,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the options of an event
+				 *
 				 * @param id      identifier of the event
 				 * @param options options of the event to set
 				 * @return        result of the performance of the setting
@@ -1968,6 +2061,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting an option of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param option option of the event to set
 				 * @param mode   mode of the setting of the option of the event
@@ -2004,6 +2098,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the launch of an event
+				 *
 				 * @details The last step of the preparation: from it the event begins to participate in
 				 *          the polling. Before the launch the event is started, set up and, possibly,
 				 *          connected, but the callbacks do not come to it.
@@ -2013,11 +2108,14 @@ namespace awh {
 				 *          a datagram socket. From the `SUCCESS` state — an event that has passed
 				 *          through `connect()` or `listen()`; for it the launch at the same time
 				 *          applies the accumulated changes to the kernel.
+				 *
 				 * @note A datagram server may be launched without `listen()` as well: it has no reason to listen
 				 *       to the queue of the incoming connections. For a stream one `listen()`
 				 *       is obligatory, otherwise the launch will refuse
+				 *
 				 * @note A repeated launch of an already launched event refuses: it no longer has
 				 *       the required states
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the performance of the launch
 				 *
@@ -2052,20 +2150,25 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the disconnection of an event
+				 *
 				 * @details Breaks the connection: closes the descriptor and puts the event into
 				 *          the state of the cancellation, after which the `event_t` subscription with
 				 *          the action `DISCONNECT` is called. The event itself at that **remains
 				 *          alive** — its identifier is valid, the subscriptions are preserved.
 				 *          By this the disconnection differs from `destroy()`, which destroys
 				 *          the event.
+				 *
 				 * @note The descriptor is closed, and therefore simply launching the event again is not possible:
 				 *       returning it into the work is possible through `rebirth()`, recreating
 				 *       the descriptor with the preservation of the event itself
+				 *
 				 * @note The disconnection must be allowed to the event by the corresponding action.
 				 *       If it is forbidden, the method silently does nothing and returns
 				 *       a negative result
+				 *
 				 * @note An event already marked for the destruction or disconnected is not disconnected
 				 *       once more
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the performance of the disconnection
 				 *
@@ -2080,6 +2183,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Template of the method of the multi-connection of an event to the remote hosts
+				 *
 				 * @tparam Args list of the identifiers of the events to connect
 				 *
 				 * \~
@@ -2094,6 +2198,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the multi-connection of an event to the remote hosts
+				 *
 				 * @param args list of the identifiers of the events to connect
 				 * @return     result of the performance of the connection
 				 *
@@ -2165,6 +2270,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the multi-connection of an event to the remote hosts
+				 *
 				 * @details Begins a connection and **returns at once**, without waiting for its
 				 *          outcome: a connection on a non-blocking socket is established over
 				 *          several turns of the loop. A positive result means only
@@ -2196,11 +2302,14 @@ namespace awh {
 				 * @warning There is no simultaneity here at any protocol: the connections go
 				 *          sequentially in one thread. The parallelism is achievable only by the
 				 *          threads and is not given by this method
+				 *
 				 * @note Is placed **between** `commit()` and `launch()`: before the fixation the address is not yet
 				 *       applied, and the launch expects the event to be already connecting
+				 *
 				 * @note The limit of the time for the establishment of a connection is set through
 				 *       `setTimeout()` with the action `CONNECT`. Without it an unsuccessful attempt
 				 *       may hang for as long as the system allots
+				 *
 				 * @par Example: a client
 				 * @param ids list of the identifiers of the events to connect
 				 * @return    result of the performance of the connection
@@ -2251,14 +2360,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of putting an event into the mode of the listening for the incoming connections
+				 *
 				 * @details Opens the queue of the incoming connections: from this moment the kernel
 				 *          accepts them and puts them into the queue, and the event will begin to disassemble it
 				 *          from the call of `launch()`. The second parameter sets the limit of
 				 *          the simultaneously waiting connections — that very backlog.
+				 *
 				 * @note Is required **only by the stream** servers. A datagram server does not need
 				 *       a queue of the connections, and it gets by with one `launch()`
+				 *
 				 * @note The accepted connections come by the `accept_t` subscription as already started
 				 *       events, and starting them by one's own calls is not required
+				 *
 				 * @par Example: a stream server
 				 * @param id  identifier of the event
 				 * @param max maximum number of the incoming connections
@@ -2286,6 +2399,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the data of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the getting of the data
 				 *
@@ -2303,6 +2417,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of sending the data of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param buffer buffer of the data to send
 				 * @param size   size of the data to send
@@ -2336,10 +2451,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the redirection of the joined data into a receiver event (splice)
+				 *
 				 * @note If a function of the injection is set on the receiver event (the transport
 				 *       encrypts the data at the level of the connection, e.g. QUIC), the data is passed
 				 *       to it for the sending by its own stream; otherwise the ordinary
 				 *       sending of the bytes into the socket is performed
+				 *
 				 * @note A datagram receiver sends every record of the queue
 				 *       as a separate message, and a record exceeding the limit of the system
 				 *       cannot be sent at all. Such data is carried in the parts:
@@ -2348,6 +2465,7 @@ namespace awh {
 				 *       datagram. Divided is only what would otherwise not pass
 				 *       by a single octet, and therefore the boundaries of the messages at
 				 *       the datagrams passing entirely are preserved
+				 *
 				 * @param id     identifier of the receiver event
 				 * @param buffer buffer of the redirected data
 				 * @param size   size of the redirected data
@@ -2367,6 +2485,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the joining of the data between the events
+				 *
 				 * @param eid  identifier of the source event
 				 * @param dest identifier of the receiver event
 				 * @return     result of the performance of the joining
@@ -2450,6 +2569,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the depth of the queue of the acceptance of the incoming connections of an event
+				 *
 				 * @param id       identifier of the event
 				 * @param depth    depth of the queue of the acceptance of the incoming connections
 				 * @param adaptive flag of the adaptive depth of the queue of the acceptance of the incoming connections
@@ -2468,6 +2588,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the size of the buffer of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param action type of the action of the event
 				 * @return       size of the buffer of the event
@@ -2486,6 +2607,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the size of the buffer of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param action type of the action of the event
 				 * @param size   size of the buffer of the event
@@ -2504,6 +2626,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of the events
+				 *
 				 * @param limiting  mode of the limitation of the bandwidth of an event (egress or ingress)
 				 * @param bandwidth bandwidth of an event to set (for example, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" or "auto")
 				 *
@@ -2521,6 +2644,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the bandwidth of an event for an event
+				 *
 				 * @param id        identifier of the event
 				 * @param limiting  mode of the limitation of the bandwidth of the event (egress or ingress)
 				 * @param bandwidth bandwidth of the event to set (for example, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" or "auto")
@@ -2539,6 +2663,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mode of the transmission of the packets for an event
+				 *
 				 * @param id identifier of the event
 				 * @return   mode of the transmission of the packets (unicast, multicast, broadcast)
 				 *
@@ -2555,6 +2680,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the mode of the transmission of the packets for an event
+				 *
 				 * @param id       identifier of the event
 				 * @param delivery mode of the transmission of the packets (unicast, multicast, broadcast)
 				 * @return         result of the performance of the setting
@@ -2572,6 +2698,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the metadata of the last received datagram packet
+				 *
 				 * @param id identifier of the event
 				 * @return   metadata of the last received datagram packet
 				 *
@@ -2588,6 +2715,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the hops of the last received packet
+				 *
 				 * @param id identifier of the event
 				 * @return   number of the hops of the last received packet
 				 *
@@ -2617,14 +2745,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the hops by an exact number
+				 *
 				 * @details Sets the lifetime of the OUTGOING packets by a number from 0 to 255 and
 				 *          applies it to the socket. It differs from setHops only by the kind of the argument:
 				 *          that one takes a hops_t rank, this one takes an exact number.
+				 *
 				 * @warning The method is NOT a counterpart of getCountHops, in spite of the name: that one
                  *          returns the number of the hops of the LAST RECEIVED packet, while this one
                  *          corrects the lifetime of the sent ones
+                 *
                  * @note The given number is coarsened to the nearest hops_t rank in the state of the node,
                  *       so getHops returns a rank and not that very number
+				 *
 				 * @param id   identifier of the event
 				 * @param hops maximum number of the hops (0-255)
 				 * @return     result of the performance of the setting
@@ -2666,6 +2798,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the maximum number of the hops a packet may pass through
+				 *
 				 * @param id   identifier of the event
 				 * @param hops maximum number of the hops
 				 * @return     result of the work of the function
@@ -2683,6 +2816,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mode of the use of the timeout for the handling of an event of the reading
+				 *
 				 * @param id identifier of the event
 				 * @return   mode of the use of the timeout for the handling of an event of the reading
 				 *
@@ -2720,6 +2854,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the mode of the use of the timeout for the handling of an event of the reading
+				 *
 				 * @details Determines what to do with the term of the reading, set through
 				 *          `setTimeout()` with the action `READ`, after the data has come.
 				 *          The two modes answer two tasks different in the meaning.
@@ -2732,11 +2867,14 @@ namespace awh {
 				 *          the idling, but a **waiting for an answer**: a request is sent — the count has gone,
 				 *          an answer is received — the count is removed. Suits the exchange «request-answer», where
 				 *          the silence in the pause between the requests is lawful.
+				 *
 				 * @note The mode by default is `DISPOSABLE`. For the connections expecting a permanent
 				 *       activity the mode should be changed explicitly, otherwise the idling
 				 *       between the requests will not be noticed
+				 *
 				 * @note Is in force only on the events with a non-blocking or with a partially
 				 *       blocking input-output: on the blocking ones the terms are held by the socket itself
+				 *
 				 * @param id    identifier of the event
 				 * @param usage mode of the use of the timeout for the handling of an event of the reading (reusable or disposable)
 				 *
@@ -2758,9 +2896,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the timeout of an event
+				 *
 				 * @details Returns the **set** term, and not the remainder until the triggering:
 				 *          how much time is left to the timer cannot be found out from here. A zero
 				 *          value means that the term is not set out or is removed.
+				 *
 				 * @param id     identifier of the event
 				 * @param action type of the action of the event
 				 * @return       value of the timeout in milliseconds
@@ -2830,6 +2970,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the timeout of an event
+				 *
 				 * @details One method serves two cases different in the meaning, and tells
 				 *          them apart by the type of the node.
 				 *          **The timer nodes** (`TIMEOUT`, `INTERVAL`) — here the value sets
@@ -2842,15 +2983,19 @@ namespace awh {
 				 *          here the value sets the limit of the idling, and the action says the idling
 				 *          in what should be counted. At the expiration of the term the subscription to
 				 *          `timeout_t` is called, and if there is none, the connection is destroyed unconditionally.
+				 *
 				 * @note A zero value **removes** the term: a started timer is disarmed,
 				 *       and the event returns into the initial state. This is the way of
 				 *       cancelling a previously set out timeout — there is no separate method for the cancellation
+				 *
 				 * @note It may be set out at any moment, including to an already working
 				 *       event: a living timer is re-raised right away, with the new term
+				 *
 				 * @note On the **blocking** events the terms of the reading and of the writing are placed by the options
 				 *       of the socket, and not by the timers of the engine. The observed behaviour is the same, but
 				 *       the `timeout_t` subscription in this case does not work — the system
 				 *       call itself waits
+				 *
 				 * @par The admissible actions
 				 * | Action | For whom | Meaning |
 				 * |---|---|---|
@@ -2861,6 +3006,7 @@ namespace awh {
 				 * | `RECONNECT` | only `CLIENT` | the pause before a repeated attempt |
 				 * An action not suiting a node does not set out the term: a warning goes into the log,
 				 * and the subscription to `status_t` receives the status `FAILURE`.
+				 *
 				 * @par Example: a timer and a limit of the idling
 				 * @param id      identifier of the event
 				 * @param action  type of the action of the event
@@ -2933,6 +3079,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the continuation of an interrupted waiting
+				 *
 				 * @details A single-use term of the waiting for the reading (`usage_t::DISPOSABLE`) is removed
 				 *          by the arrival of the data, and is removed **before** the call of the response. For the engine this
 				 *          is enough: the data has come, the waiting has ended. For the contract — not always:
@@ -2951,14 +3098,17 @@ namespace awh {
 				 *          A non-zero delay sets the waiting anew, for the specified term.
 				 *          Is needed where the contract knows more than the engine: an answer has come partially,
 				 *          and it is reasonable to wait for the remainder otherwise than the whole was waited for
+				 *
 				 * @note There is nothing to continue if the waiting was not interrupted, is interrupted at another event,
 				 *       at another term or has managed to expire. In all these cases the method
 				 *       answers with a refusal, raising nothing
+				 *
 				 * @warning The continuation by a zero delay is meaningful **only inside the response**,
 				 *          called by that very reading which has interrupted the waiting. The engine remembers
 				 *          one interrupted term, and not all of them: an address later will find the record
 				 *          already a foreign one and will receive a refusal. Going around this by remembering the remainder at oneself,
 				 *          is not advisable — it is better to call the method there, where the decision is taken as well
+				 *
 				 * @par Example: a foreign answer does not interrupt the waiting
 				 * @param id     identifier of the event
 				 * @param action type of the action of the event
@@ -2988,6 +3138,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting an action of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param action type of the action of the event
 				 * @return       mode of the action of the event
@@ -3006,6 +3157,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting an action of an event
+				 *
 				 * @param id     identifier of the event
 				 * @param action type of the action of the event
 				 * @param mode   mode of the setting of the action of the event
@@ -3027,6 +3179,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the parameters of the keep-alive for an event
+				 *
 				 * @param id    identifier of the event
 				 * @param cnt   number of the keep-alive packets
 				 * @param idle  time of the idling before the sending of the first keep-alive packet in seconds
@@ -3060,17 +3213,21 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the pausing of an event
+				 *
 				 * @details Switches off the reading, without breaking the connection: the data remains in
 				 *          the receiving buffer of the kernel, the sender runs into the exhaustion of the window and
 				 *          lowers the rate itself. This is the regular way of holding back a stream, when
 				 *          the receiving side does not manage to disassemble what has been received, — unlike
 				 *          `disconnect()`, the connection at that is intact.
+				 *
 				 * @note The removal of the reading is performed **immediately**, without waiting for the next
 				 *       turn of the loop: otherwise another portion of the data would manage to come. The
 				 *       resumption, though, is postponed until the next turn, and this
 				 *       divergence is a deliberate one
+				 *
 				 * @note Only a launched event may be paused, and resumed —
 				 *       only a paused one. The repeated calls refuse
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the performance of the pausing
 				 *
@@ -3090,9 +3247,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the resumption of an event
+				 *
 				 * @details Returns the reading to a paused event. What has accumulated in
 				 *          the receiving buffer of the kernel will come by the ordinary subscriptions to the reading,
 				 *          starting from the next turn of the loop/
+				 *
 				 * @param id identifier of the event
 				 * @return   result of the performance of the resumption
 				 *
@@ -3109,6 +3268,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the state of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   state of the event
 				 *
@@ -3135,6 +3295,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the forced kick to the base of the events
+				 *
 				 * @return result of the performance of the operation
 				 *
 				 * \~
@@ -3148,6 +3309,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the initialization of the network engine
+				 *
 				 * @return result of the performance of the initialization
 				 *
 				 * \~
@@ -3161,6 +3323,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the reinitialization of the network engine
+				 *
 				 * @return result of the performance of the reinitialization
 				 *
 				 * \~
@@ -3174,6 +3337,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the deinitialization of the network engine
+				 *
 				 * @return result of the performance of the deinitialization
 				 *
 				 * \~
@@ -3188,6 +3352,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the state of the initialization of the network engine
+				 *
 				 * @return state of the initialization
 				 *
 				 * \~
@@ -3202,6 +3367,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the events in the network engine
+				 *
 				 * @return number of the events
 				 *
 				 * \~
@@ -3216,6 +3382,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the type of the internal timers
+				 *
 				 * @return type of the timer for the events of the network engine
 				 *
 				 * \~
@@ -3253,6 +3420,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the type of the internal timers
+				 *
 				 * @details Chooses the structure in which the engine holds the terms of the events.
 				 *          `SIMPLE` — an ordered set with a hash table of the positions:
 				 *          is modest in the memory, but every placement of a term allocates a node in
@@ -3263,9 +3431,11 @@ namespace awh {
 				 *          reckoned on the weakest machine and on the most common case.
 				 *          For an application that holds many terms and places them often,
 				 *          the switching is profitable, and the gain is measured in multiples.
+				 *
 				 * @note The choice is common for the whole engine, and not for a separate event, and it should be changed
 				 *       **before** the starting of the events: the switching resets the already
 				 *       started timers
+				 *
 				 * @par Example: switching on the structure for a large number of the terms
 				 * @param timer type of the timer for the events of the network engine
 				 *
@@ -3288,6 +3458,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the size of an observed file
+				 *
 				 * @param id identifier of the event
 				 * @return   size of the file
 				 *
@@ -3304,6 +3475,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the bytes available for the writing into the queue of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   number of the bytes available for the writing
 				 *
@@ -3320,6 +3492,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the type of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   type of the event
 				 *
@@ -3335,6 +3508,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the type of the node of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   type of the node of the event
 				 *
@@ -3350,6 +3524,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the family of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   family of the addresses
 				 *
@@ -3365,6 +3540,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the status of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   status of the event
 				 *
@@ -3380,6 +3556,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the protocol of an event
+				 *
 				 * @param id identifier of the event
 				 * @return   protocol of the event
 				 *
@@ -3438,6 +3615,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the polling of the events
+				 *
 				 * @details Performs **one turn** of the loop of the events and returns
 				 *          the control. The engine creates no thread of its own and does not spin
 				 *          itself — the loop is kept by the caller:
@@ -3451,6 +3629,7 @@ namespace awh {
 				 *          method. While they are being performed, the turn is not completed, and therefore
 				 *          a long work in a callback delays both the other
 				 *          events, and the triggering of the timers.
+				 *
 				 * @note    The time of the waiting is limited not only by the passed
 				 *          timeout, but by the term of the nearest internal timer as well:
 				 *          the engine is obliged to wake up by the deadline, even if the caller
@@ -3534,10 +3713,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of an event of the reading
+				 *
 				 * @details The subscription to the reception of the data. The buffer coming into the function
 				 *          belongs to the engine and is valid **only for the time of the call**:
 				 *          it is reused for the next reading, and therefore the data
 				 *          needed later should be copied.
+				 *
 				 * @par The common rules for all the overloads of `on()`
 				 * All the overloads are arranged identically, and what is said here relates to
 				 * each of them.
@@ -3557,14 +3738,17 @@ namespace awh {
 				 * the event without a handler.
 				 * Calling `on()` from inside a callback function is safe, including
 				 * the replacement of a handler by itself.
+				 *
 				 * @note The cast through `static_cast` is required where by one lambda
 				 *       an overload cannot be chosen unambiguously. So it happens with the pair
 				 *       `write_t` and `connect_t`: their second parameter is a `size_t` and a `bool`, and
 				 *       they are cast to each other implicitly. The overloads differing by
 				 *       the types of the enumerations or by the type of the return are chosen by themselves, and
 				 *       require no cast
+				 *
 				 * @par The supported types of the nodes
 				 * `FILE`, `NOTIFY`, `IPC`, `PEER`, `ORIGIN`, `MEDIATOR`, `CLIENT`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3590,13 +3774,17 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of an event of the writing
+				 *
 				 * @details Reports how many bytes have gone into the socket. Is useful where the speed
 				 *          of the sending needs to be agreed with the source of the data: the size of
 				 *          what is written is the room freed in the queue.
+				 *
 				 * @note Requires a cast through `static_cast`, otherwise the overload
 				 *       is indistinguishable from `connect_t`
+				 *
 				 * @par The supported types of the nodes
 				 * `FILE`, `NOTIFY`, `IPC`, `PEER`, `ORIGIN`, `CLIENT`, `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3626,17 +3814,21 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of the return of the unsent data
+				 *
 				 * @details Triggers when the data could not be sent, and returns it
 				 *          to the calling side: the engine does not save it and after the exit from
 				 *          the function releases it. The decision about the fate of the bytes — to repeat
 				 *          later, to put aside into one's own buffer or to discard — remains at
 				 *          the calling side. The second parameter says where the data
 				 *          has returned from: from the event itself or from its queue of the sending.
+				 *
 				 * @note Without this subscription the unsent data is lost without a trace.
 				 *       For the events where a loss is inadmissible the subscription should be set out
 				 *       on a par with the reading
+				 *
 				 * @par The supported types of the nodes
 				 * `FILE`, `IPC`, `PEER`, `ORIGIN`, `CLIENT`, `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3661,13 +3853,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of a common event
+				 *
 				 * @details A single point of the observation of what is happening with an event: into the function
 				 *          the type of an action comes, and not its consequences. Is needed where
 				 *          the fact itself matters — for the journaling, for the counters, for the debugging — and
 				 *          there is no reason to disassemble the data.
+				 *
 				 * @par The supported types of the nodes
 				 * `NOTIFY`, `DIR`, `FILE`, `IPC`, `PEER`, `ORIGIN`, `MEDIATOR`, `CLIENT`,
 				 * `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3696,16 +3891,20 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of an error of an event
+				 *
 				 * @details Receives the code of an error and its text description. This subscription
 				 *          at the same time **suppresses the output of the errors into the log**: while it is not
 				 *          set out, the engine prints the errors itself, and with it — passes them
 				 *          entirely to the discretion of the calling side.
+				 *
 				 * @note Is supported by almost all the types of the nodes, including the timers, and
 				 *       it is worth setting out always: without it the reason of a refusal of an event
 				 *       remains only in the log
+				 *
 				 * @par The supported types of the nodes
 				 * `NOTIFY`, `TIMEOUT`, `INTERVAL`, `DIR`, `FILE`, `IPC`, `PEER`,
 				 * `ORIGIN`, `TUNNEL`, `MEDIATOR`, `CLIENT`, `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3729,11 +3928,15 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of the changes of an event
+				 *
 				 * @details The observation of the file system: reports what exactly
 				 *          has happened to a file or to a directory, and with which exactly.
+				 *
 				 * @note The name coming into the function is valid ONLY for the time of the call
+				 *
 				 * @par The supported types of the nodes
 				 * `DIR`, `FILE`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3757,12 +3960,15 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function of the injection of the joined data (splice)
+				 *
 				 * @details Allows a transport encrypting the data at the level of the connection
 				 *          to accept the bytes redirected from a source event and to send
 				 *          them by its own stream, and not to write them raw into the socket.
 				 *          A negative result means a refusal to accept the data.
+				 *
 				 * @par The supported types of the nodes
 				 * `PEER`, `ORIGIN`, `MEDIATOR`, `CLIENT`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3803,13 +4009,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the update of the status of an event
+				 *
 				 * @details Reports the change of the state of an event — connected, disconnected,
 				 *          a refusal and so on.
+				 *
 				 * @note Through this same subscription the **timer nodes** report about their triggering:
 				 *       they have no separate function, and a triggered `TIMEOUT` or
 				 *       `INTERVAL` comes here with the status `event::status_t::SUCCESS`.
 				 *       This is the only way of finding out about the triggering of a timer, and in
 				 *       the function the status should be checked: the other states come as well
+				 *
 				 * @par Example: the triggering of an interval
 				 * @par The supported types of the nodes
 				 * `NOTIFY`, `TIMEOUT`, `INTERVAL`, `DIR`, `FILE`, `IPC`, `PEER`,
@@ -3852,15 +4061,19 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the acceptance of an incoming connection
+				 *
 				 * @details An accepted connection comes as an **already started event**: its
 				 *          identifier is passed by the second parameter, and starting it
 				 *          through `event()`, setting it up and launching it is not required. All that
 				 *          needs to be done in this function is to set out the subscriptions to the accepted event,
 				 *          otherwise there will be nobody to handle the data received by it.
+				 *
 				 * @note The time of the life of an accepted event does not belong to the engine: it should be closed
 				 *       by one's own call of `destroy()`
+				 *
 				 * @par The supported types of the nodes
 				 * `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3880,9 +4093,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the determination of the session of a datagram packet
+				 *
 				 * @note Is supported only by the server nodes. The setting of the function
 				 *       switches the event to the routing of the datagrams by the key
 				 *       of the application instead of the address of the sender
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3906,12 +4121,15 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function on the receipt of the informational metadata about a datagram packet
+				 *
 				 * @details The accompanying information about a datagram — where it has come from, by which
 				 *          interface it is received, what it carries in the headers. The data itself
 				 *          comes by the ordinary subscription to the reading, and here there gets what is not
 				 *          contained in it.
+				 *
 				 * @par The supported types of the nodes
 				 * `CLIENT`, `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3938,14 +4156,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of a connection
+				 *
 				 * @details Reports the outcome of an attempt of a connection: the sign says
 				 *          whether the connection has taken place or not. Before this call there is nowhere to send the data,
 				 *          and therefore the first sending of a client is usually done exactly
 				 *          from here.
+				 *
 				 * @note Requires a cast through `static_cast`, otherwise the overload
 				 *       is indistinguishable from `write_t`
+				 *
 				 * @par The supported types of the nodes
 				 * `CLIENT`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -3967,10 +4189,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function on the receipt of the information about the packets in a tunnel interface
+				 *
 				 * @details The information about the packets that have passed through a tunnel interface, together
 				 *          with the identifier of the remote node they belong to.
+				 *
 				 * @par The supported types of the nodes
 				 * `TUNNEL`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
@@ -4022,23 +4247,28 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of the timeout of an event
+				 *
 				 * @details Triggers when the term set through `setTimeout()` has expired:
 				 *          the connection has not accepted the data (`READ`), has not managed to send it
 				 *          (`WRITE`), has not been established (`CONNECT`) or the time has come to repeat
 				 *          the attempt (`RECONNECT`).
+				 *
 				 * @warning The meaning of the returned sign **depends on the action**. For
 				 *          `READ`, `WRITE` and `CONNECT` a positive sign destroys the node,
 				 *          and a negative one leaves it alive. For `RECONNECT` everything is
 				 *          the other way round: a positive one means «reconnect», and the attempt should be interrupted
 				 *          by a negative one. One function serves all
 				 *          the actions at once, and it is obliged to tell these cases apart
+				 *
 				 * @note If the subscription is not set out, the node at the expiration of the term of `READ`,
 				 *       `WRITE` or `CONNECT` is destroyed **unconditionally**. That is it
 				 *       is needed exactly in order to prevent the break or to surround it with one's own
 				 *       actions
+				 *
 				 * @note At the expiration of the term of `CONNECT` the `connect_t` subscription
 				 *       is additionally called with a negative outcome, and this happens **before** the call
 				 *       of this function
+				 *
 				 * @par Example: different actions — a different meaning of the answer
 				 * @par The supported types of the nodes
 				 * `PEER`, `ORIGIN`, `CLIENT`
@@ -4078,14 +4308,17 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of the availability of the queue of an event
+				 *
 				 * @details Reports that the room in the queue of the sending has been freed, and passes
 				 *          the available size. This is the feedback for the source of the data:
 				 *          it makes sense to send the next portion from here, and not blindly —
 				 *          thus the queue does not grow without a limit, and the sending goes with the speed
 				 *          which the connection holds.
+				 *
 				 * @par The supported types of the nodes
 				 * `NOTIFY`, `TIMEOUT`, `INTERVAL`, `DIR`, `FILE`, `IPC`, `PEER`,
 				 * `ORIGIN`, `TUNNEL`, `MEDIATOR`, `CLIENT`, `SERVER`
+				 *
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *

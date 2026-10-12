@@ -680,7 +680,7 @@ namespace awh {
 							 * @brief Метод извлечения значения вместимого по его номеру
 							 *
 							 * @param index номер значения вместимого
-							 * @return      ссылка на значение вместимого
+							 * @return       ссылка на значение вместимого
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a value of a container by its number
@@ -699,7 +699,7 @@ namespace awh {
 							 *          не только строка, но и число, и отметка времени, и опознаватель.
 							 *
 							 * @param index номер пары отображения
-							 * @return      ссылка на имя поля отображения
+							 * @return       ссылка на имя поля отображения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the name of a field of a mapping by its number
@@ -796,7 +796,7 @@ namespace awh {
 							 *       докажет - два разных узла вправе нести одно и то же
 							 *
 							 * @param value сличаемая ссылка на значение
-							 * @return      признак того, что обе ссылки ведут к одному узлу
+							 * @return       признак того, что обе ссылки ведут к одному узлу
 							 *
 							 * \~english
 							 * @brief Method of the checking that two references lead to the SAME node of a tree
@@ -901,7 +901,7 @@ namespace awh {
 							 * @brief Метод извлечения логического значения
 							 *
 							 * @param result извлекаемое значение
-							 * @return       признак успешности извлечения
+							 * @return        признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a logical value
@@ -917,7 +917,7 @@ namespace awh {
 							 * @brief Метод извлечения числа видом целого без знака
 							 *
 							 * @param result извлекаемое значение
-							 * @return       признак успешности извлечения
+							 * @return        признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind of an integer without a sign
@@ -933,7 +933,7 @@ namespace awh {
 							 * @brief Метод извлечения числа видом целого со знаком
 							 *
 							 * @param result извлекаемое значение
-							 * @return       признак успешности извлечения
+							 * @return        признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind of an integer with a sign
@@ -949,7 +949,7 @@ namespace awh {
 							 * @brief Метод извлечения числа видом дробного
 							 *
 							 * @param result извлекаемое значение
-							 * @return       признак успешности извлечения
+							 * @return        признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind of a fractional one
@@ -1076,7 +1076,7 @@ namespace awh {
 					 *          разбором и им же разрушается, и без переноса место его пропадало бы.
 					 *
 					 * \~english
-					 * @brief Location where the failure of the parsing has occurred
+					 * Location where the failure of the parsing has occurred
 					 *
 					 * @details The location is taken from the parser upon a failure: the parser is created by the
 					 *          parsing and destroyed by it too, and without a transfer its location would be lost.
@@ -1093,7 +1093,7 @@ namespace awh {
 					 *          настройки живут при документе и опрашиваются `settings()`
 					 *
 					 * \~english
-					 * @brief Settings of the parsing of a record stored by the tree
+					 * Settings of the parsing of a record stored by the tree
 					 *
 					 * @details They are kept for the sake of the agreement of the codec contracts: for six other codecs
 					 *          the settings live at the document and are queried by `settings()`
@@ -1132,7 +1132,7 @@ namespace awh {
 					 * @brief Метод заведения указателя имён полей отображения
 					 *
 					 * @param index номер узла отображения в дереве документа
-					 * @return      заведённый указатель имён полей
+					 * @return       заведённый указатель имён полей
 					 *
 					 * \~english
 					 * @brief Method of the creation of an index of the names of the fields of a mapping
@@ -1161,7 +1161,7 @@ namespace awh {
 					 *
 					 * @param left  номер узла первого сличаемого поддерева
 					 * @param right номер узла второго сличаемого поддерева
-					 * @return      признак совпадения поддеревьев
+					 * @return       признак совпадения поддеревьев
 					 *
 					 * \~english
 					 * @brief Method of the comparison of two subtrees of the tree of a document
@@ -1231,7 +1231,7 @@ namespace awh {
 					 *          тот слой донёс о нём сам, и второе донесение лишь двоило бы записи.
 					 *
 					 * @param error объявляемый код отказа
-					 * @return      признак успешности, всегда ложь
+					 * @return       признак успешности, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a failure
@@ -1242,7 +1242,7 @@ namespace awh {
 					 *          reported it itself, and a second report would only double the records.
 					 *
 					 * @param error code of the failure being declared
-					 * @return      flag of the success, always false
+					 * @return       flag of the success, always false
 					 *
 					 * \~
 					 */
@@ -1315,7 +1315,7 @@ namespace awh {
 					 * @param self    документ, чьё дерево собирается
 					 * @param reader  разбиратель бинарной записи
 					 * @param event   вид принимаемого события разбора
-					 * @return        признак успешности сборки дерева
+					 * @return         признак успешности сборки дерева
 					 *
 					 * \~english
 					 * @brief Method of the assembling of the tree of a document by an event of the parsing
@@ -1358,7 +1358,7 @@ namespace awh {
 					 * @param buffer   буфер разбираемой записи
 					 * @param size     размер разбираемой записи в октетах
 					 * @param settings настройки разбора записи
-					 * @return         признак успешности разбора
+					 * @return          признак успешности разбора
 					 *
 					 * @note Настройка `stream` записью из НЕСКОЛЬКИХ документов складывает их
 					 *       в ОДНО дерево: корень отдаёт первый документ, прочие стоят за ним
@@ -1399,18 +1399,26 @@ namespace awh {
 					 *       на треть быстрее. У сборки записи рычаг этот вчетверо крупнее -
 					 *       см. `Writer::reset`
 					 *
+					 * @param buffer буфер разбираемой записи
+					 * @param size   размер разбираемой записи в октетах
+					 * @return       признак успешности разбора
+					 *
 					 * \~english
 					 * @brief Method of the parsing of a record into a tree of a document
 					 *
 					 * @details The parsing empties the former tree itself, KEEPING the reserve of its
-					 *          containers: one parsing many records in a row ought to keep a SINGLE tree.
+					 *          containers: one parsing many records in a row ought to keep a SINGLE tree
+					 *          and call the parsing in a circle, rather than to start a new tree at every
+					 *          record.
 					 *
-					 * @note Measurement of 23.08.2026, a small record, 200 000 rounds: an own tree per
-					 *       every record runs at 0.27 us, a single tree in a circle — at 0.20 us
+					 * @note Measurement of 2026-08-23, a small record, 200 000 rounds: an own tree per
+					 *       every record runs at 0.27 us, a single tree in a circle — at 0.20 us, that is
+					 *       by a third faster. For the assembling of a record this lever is four times
+					 *       larger - see `Writer::reset`
 					 *
 					 * @param buffer buffer of the record being parsed
-					 * @param size size of the record being parsed in octets
-					 * @return sign of the success of the parsing
+					 * @param size   size of the record being parsed in octets
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1429,7 +1437,7 @@ namespace awh {
 					 *          дословность, тот держит исходные октеты сам, а не пересобирает их деревом
 					 *
 					 * @param writer сборщик бинарной записи
-					 * @return       признак успешности сборки
+					 * @return        признак успешности сборки
 					 *
 					 * \~english
 					 * @brief Method of the assembling of a record from a tree of a document
@@ -1482,7 +1490,7 @@ namespace awh {
 					 * @brief Метод сборки записи из дерева документа затребованными настройками
 					 *
 					 * @param settings настройки сборки записи
-					 * @return         собранная запись, пустая при отказе сборки
+					 * @return          собранная запись, пустая при отказе сборки
 					 *
 					 * \~english
 					 * @brief Method of the assembling of a record out of the tree of a document by the requested settings

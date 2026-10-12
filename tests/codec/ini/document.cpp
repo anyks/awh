@@ -597,7 +597,7 @@ TEST(CodecIniDocument, RoundtripInline) {
 	// Устанавливаем знак начала примечания
 	options.marker = ';';
 	// Выполняем проверку совпадения записанного текста с исходным
-	ASSERT_EQ(document.text(options), text);
+	ASSERT_EQ(document.dump(options), text);
 }
 /**
  * @brief Проверка сохранения обращения к значению при обратной записи
@@ -830,7 +830,7 @@ TEST(CodecIniDocument, WriteFailure) {
 	// Устанавливаем запись управляющих последовательностей в значении
 	settings.escapes = true;
 	// Выполняем проверку прохождения записи с управляющими последовательностями
-	ASSERT_FALSE(document.text(settings).empty());
+	ASSERT_FALSE(document.dump(settings).empty());
 }
 /**
  * @brief Проверка сохранности точки с запятой в значении наречия Git
@@ -851,7 +851,7 @@ TEST(CodecIniDocument, RoundtripGitMarkers) {
 	// Выполняем установку значения со знаком примечания внутри
 	ASSERT_TRUE(document.set("k", "one ; two", "a"));
 	// Получаем записанный текст настроек
-	const string text = document.text(ini::writer_t::settings_t::git());
+	const string text = document.dump(ini::writer_t::settings_t::git());
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем разбор записанного текста настроек
@@ -976,7 +976,7 @@ TEST(CodecIniDocument, RoundtripControls) {
 	// Устанавливаем запись управляющих последовательностей в значении
 	writing.escapes = true;
 	// Получаем записанный текст настроек
-	const string text = document.text(writing);
+	const string text = document.dump(writing);
 	// Выполняем проверку прохождения записи
 	ASSERT_FALSE(text.empty());
 	// Дерево настроек обратного чтения
@@ -4272,7 +4272,7 @@ TEST(CodecIniDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	// Назначаем отказ на негодную последовательность
 	settings.malformed = ini::malformed_t::REFUSE;
 	// Выполняем проверку того, что запись отвергнута пустотою
-	ASSERT_TRUE(document.text(settings).empty());
+	ASSERT_TRUE(document.dump(settings).empty());
 	// Выполняем проверку того, что отказ записи причину назвал
 	ASSERT_EQ(document.error(), ini::error_t::INVALID_ENCODING) << ini::message(document.error());
 	/**

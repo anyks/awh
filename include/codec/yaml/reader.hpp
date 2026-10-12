@@ -205,21 +205,43 @@ namespace awh {
 				 */
 				bool flow;
 				/**
+				 * \~russian
 				 * Схема, действовавшая при выдаче события
 				 *
 				 * @note Схема эта берётся событием, а не чтением целиком: директива `%YAML 1.1`
 				 *       переводит на наречие 1.1 один свой документ, а поток вправе нести
-				 *       документы обоих наречий. Спроси схему у чтения по concу разбора - и
+				 *       документы обоих наречий. Спроси схему у чтения по концу разбора - и
 				 *       получишь наречие документа последнего, каким бы ни был первый
+				 *
+				 * \~english
+				 * The schema in force at the moment of the issuance of an event
+				 *
+				 * @note This schema is taken by an event rather than by the reading as a whole: the directive `%YAML 1.1`
+				 *       switches to the dialect 1.1 one document of its own, while a stream is entitled to carry the
+				 *       documents of both dialects. Ask the schema of the reading by the place of the parsing — and you
+				 *       receive the dialect of the last document, whichever the first one was
+				 *
+				 * \~
 				 */
 				schema_t schema;
 				/**
+				 * \~russian
 				 * Признак того, что документ наречие своё директивой объявил
 				 *
 				 * @note Признак этот принадлежит документу, а не потоку: директива есть
 				 *       принадлежность документа и стоит перед каждою чертою начала своею.
 				 *       Держащему документ целиком он велит вернуть директиву перезаписью
 				 *       ровно тем документам, у каких она стояла
+				 *
+				 * \~english
+				 * Sign that a document declared its dialect by a directive
+				 *
+				 * @note This sign belongs to a document rather than to a stream: a directive is an appurtenance of
+				 *       a document and stands before each of the dashes of its beginning. For the one holding a document
+				 *       in full it orders a rewriting to return the directive exactly to those documents where it
+				 *       had stood
+				 *
+				 * \~
 				 */
 				bool versioned;
 				/**
@@ -416,6 +438,7 @@ namespace awh {
 						// Признак того, что построение уже несёт значения
 						bool filled;
 						/**
+						 * \~russian
 						 * Признак того, что запись построения начата и разделителем не закрыта
 						 *
 						 * @details Признак наполнения не годится: он объявляет, что построение
@@ -425,23 +448,56 @@ namespace awh {
 						 *
 						 * @note Прежде обе получали его поровну, и запятая перед скобкою рождала
 						 *       лишнюю пустую пару. Случаи 4ABK и FRK4 набора yaml-test-suite
+						 *
+						 * \~english
+						 * Sign that a record of a construction is begun and is not closed by a separator
+						 *
+						 * @details A sign of the filling does not serve: it declares that a construction of a value carried
+						 *          something ever, while what is needed is to know whether a record is begun NOW. The record
+						 *          `{a}` receives an empty value of a pair, while the record `{a: 1,}` does not: a comma closed
+						 *          the record, and a closing bracket no longer sees a pair.
+						 *
+						 * @note Formerly both received it alike, and a comma before a bracket gave birth to a superfluous empty
+						 *       pair. Cases 4ABK and FRK4 of the yaml-test-suite set
+						 *
+						 * \~
 						 */
 						bool entered;
 						/**
+						 * \~russian
 						 * Признак того, что запись объявлена вопросом составного имени
 						 *
 						 * @note Вопрос, содержимого за собою не имеющий, даёт пару из двух
 						 *       пустот - имени и значения, - тогда как имя без двоеточия даёт
 						 *       одну лишь пустоту значения. Различить их можно только этим
 						 *       признаком. Случай DFF7 набора yaml-test-suite
+						 *
+						 * \~english
+						 * Sign that a record is declared by the question of a complex key
+						 *
+						 * @note A question with no content behind it gives a pair of two emptinesses — of a name and of a
+						 *       value, — while a name without a colon gives an emptiness of a value alone. Only this sign
+						 *       distinguishes the two. Case DFF7 of the yaml-test-suite set
+						 *
+						 * \~
 						 */
 						bool asked;
 						/**
+						 * \~russian
 						 * Признак того, что разбирается значение пары, а не имя её
 						 *
 						 * @note Отображение `{a, b}` описанием дозволено: значения пар пусты. Отличить
 						 *       имя без значения от значения можно лишь признаком этим - двоеточие,
 						 *       имя от значения отделяющее, стоит уже позади
+						 *
+						 * \~english
+						 * Sign that a value of a pair is being parsed, and not its name
+						 *
+						 * @note A mapping `{a, b}` is allowed by the description: the values of the pairs are empty. To tell a
+						 *       name without a value apart from a value is possible by this sign alone — the colon separating
+						 *       a name from a value is already behind
+						 *
+						 * \~
 						 */
 						bool valued;
 						/**
@@ -511,12 +567,23 @@ namespace awh {
 						// Отступ, на котором уровень открыт
 						uint32_t indent;
 						/**
+						 * \~russian
 						 * Признак того, что уровень открыт значением пары, стоящим на отступе имени её
 						 *
 						 * @note Перечень, стоящий на отступе имени своей пары, описанием дозволен, и
 						 *       закрытием по отступу он не снимается: снимает его следующая пара того
 						 *       же отображения. Уровень же, на том отступе открытый сам по себе, есть
 						 *       смешение перечня с отображением, и его надлежит отвергнуть
+						 *
+						 * \~english
+						 * Sign that a level is opened by a value of a pair standing at the indentation of its name
+						 *
+						 * @note A sequence standing at the indentation of the name of its own pair is allowed by the
+						 *       description, and a closing by an indentation does not remove it: it is removed by the next pair
+						 *       of the same mapping. A level, however, opened at that indentation on its own is a mixture of
+						 *       a sequence with a mapping, and it is to be refused
+						 *
+						 * \~
 						 */
 						bool implied;
 						/**
@@ -640,6 +707,7 @@ namespace awh {
 					string _storage;
 					// Очередь собранных событий разбора, готовых к выдаче
 					/**
+					 * \~russian
 					 * Очередь событий, выдачи ожидающих
 					 *
 					 * @details Держится она перечнем с указателем на выданное, а не двусторонней
@@ -647,17 +715,38 @@ namespace awh {
 					 *          приходом следующего события, отчего разбор крупного текста обходился в
 					 *          десятки тысяч выделений. Перечень же память свою переиспользует, и
 					 *          выделений на весь разбор приходится десяток.
+					 *
+					 * \~english
+					 * The queue of the events awaiting the issuance
+					 *
+					 * @details It is held by a list with a pointer onto the issued one, and not by a two-sided
+					 *          queue: a queue releases a memory chunk that has emptied and creates it anew at the arrival
+					 *          of the next event, whereby the parsing of a large text cost tens of thousands of allocations.
+					 *          A list, on the contrary, reuses its memory, and a dozen allocations fall to the whole parsing.
+					 *
+					 * \~
 					 */
 					vector <item_t> _events;
 					// Номер очередного события очереди, выдачи ожидающего
 					size_t _reading;
 					/**
+					 * \~russian
 					 * События разбираемой строки, выдачи ещё не ожидающие
 					 *
 					 * @note Строка собирается целиком и лишь затем переносится в очередь выдачи:
 					 *       отказ посреди строки не вправе оставить потребителя с началом
 					 *       построения без конца его, а исход разбора не вправе зависеть от того,
 					 *       на каком куске отказ случился
+					 *
+					 * \~english
+					 * The events of the line being parsed, not awaiting the issuance yet
+					 *
+					 * @note A line is collected in full and only then transferred into the queue of the issuance: a
+					 *       refusal in the middle of a line is not entitled to leave a consumer with a beginning of a
+					 *       construction without its end, and the outcome of the parsing is not entitled to depend on which
+					 *       chunk the refusal happened at
+					 *
+					 * \~
 					 */
 					vector <item_t> _staged;
 					// Событие, выданное последним
@@ -674,6 +763,7 @@ namespace awh {
 					bool _started;
 				private:
 					/**
+					 * \~russian
 					 * Признак получения последнего куска исходного текста
 					 *
 					 * @note Признак этот заведён затем, чтобы состояние окончания разбора
@@ -681,6 +771,16 @@ namespace awh {
 					 *       прочих кодеков рамки. Заслон подачи после объявленного конца стоит
 					 *       на нём же, а не на состоянии: перенеси состояние, а заслон оставь -
 					 *       и подача после конца снова стала бы приниматься
+					 *
+					 * \~english
+					 * Sign of the receiving of the last chunk of the source text
+					 *
+					 * @note This sign was created so that the state of the end of the parsing is set AFTER the queue of
+					 *       the events is drained, as it is set in the other codecs of the frame. The guard of a feeding
+					 *       after the declared end stands on this very sign, and not on the state: move the state and keep
+					 *       the guard — and a feeding after the end would again be accepted
+					 *
+					 * \~
 					 */
 					bool _final;
 					// Признак того, что документ открыт
@@ -755,6 +855,7 @@ namespace awh {
 					 */
 					bool _asked;
 					/**
+					 * \~russian
 					 * Признак того, что ожидается значение имени, вопросом объявленного
 					 *
 					 * @details Признак ожидания у имени и у значения его один и тот же, и
@@ -768,11 +869,27 @@ namespace awh {
 					 *       строкою ниже отказ получало: метка имени пустого откладывалась
 					 *       вместилищу и его не дожидалась. Случай PW8X набора
 					 *       yaml-test-suite
+					 *
+					 * \~english
+					 * Sign that a value of a name declared by a question is expected
+					 *
+					 * @details The sign of the expectation is one and the same for a name and for its value, and the two
+					 *          are to be told apart: an emptiness of a name belongs to a mapping of a question directly, while
+					 *          an emptiness of a value comes after the closing of a construction of a name. The colon of an
+					 *          answer, however, postpones an emptiness of a value, but an emptiness of a name it is obliged
+					 *          to issue — otherwise a label placed before a name does not receive its node at all.
+					 *
+					 * @note Formerly there was no such sign, and the writing `? &label` with an answer by a line below
+					 *       received a refusal: a label of an empty name was deferred to a container and did not wait for
+					 *       it. Case PW8X of the yaml-test-suite set
+					 *
+					 * \~
 					 */
 					bool _answering;
 					// Отступ, на котором стоит вопрос составного имени
 					uint32_t _questioned;
 					/**
+					 * \~russian
 					 * Количество открытых уровней на миг объявления имени вопросом
 					 *
 					 * @details Имя, вопросом объявленное, вправе быть построением, и стоит оно
@@ -782,6 +899,19 @@ namespace awh {
 					 *
 					 * @note Прежде перечень имени и перечень значения сливались в один: записи
 					 *       второго дописывались к первому. Случай 6PBE набора yaml-test-suite
+					 *
+					 * \~english
+					 * The number of the opened levels at the moment of the declaration of a name by a question
+					 *
+					 * @details A name declared by a question is entitled to be a construction, and it stands at the
+					 *          indentation of the very question: it cannot be closed by an indentation — the indentation of a
+					 *          name and of a colon is one. Whereby it is closed by a count of the levels: a colon removes
+					 *          all that opened after the question of its own.
+					 *
+					 * @note Formerly a list of a name and a list of a value merged into one: the records of the second
+					 *       were appended to the first. Case 6PBE of the yaml-test-suite set
+					 *
+					 * \~
 					 */
 					size_t _asking;
 					/**
@@ -867,8 +997,8 @@ namespace awh {
 					 *       непустой строки содержимого: отступ содержимого берётся именно по
 					 *       ней, и строка, её глубже, оказалась бы содержимым, отступ которого
 					 *       заголовком не задан и первою строкой не подтверждён
-					 * \~english
 					 *
+					 * \~english
 					 * @brief The greatest indentation of the empty lines preceding a content of a block value
 					 *
 					 * @note The standard forbids a preceding empty line to stand deeper than the first non-empty line of
@@ -887,8 +1017,8 @@ namespace awh {
 					 *       разделяющий, стоят на отступе содержимого: строка, стоящая глубже,
 					 *       свёртке не подлежит ни собою, ни соседкой своей, и переводы вокруг
 					 *       неё сохраняются как есть
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign that the last appended line stood deeper than the indentation of the content
 					 *
 					 * @note A folding of the lines applies only when both lines, a line feed dividing them, stand at the
@@ -908,8 +1038,8 @@ namespace awh {
 					 *       её, и содержимому нечем отличить значение пары, строкою ниже имени
 					 *       её стоящее, от записи, глубже уже завершённой пары стоящей.
 					 *       Написание первое описанием дозволено, второе - запрещено
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign that a line gives a value of a pair declared earlier
 					 *
 					 * @note The sign of an expectation is extinguished by the parsing of a line before the parsing of its
@@ -927,8 +1057,8 @@ namespace awh {
 					 * @note Описание дозволяет строке блочного построения нести одно имя пары:
 					 *       запись `a: b: c` двусмысленна, и разбор её наугад выдал бы дерево,
 					 *       исходному тексту не отвечающее
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign that a value of a pair standing in the same line is being parsed
 					 *
 					 * @note The description allows a line of a block construction to carry one name of a pair: a record
@@ -944,8 +1074,8 @@ namespace awh {
 					 *
 					 * @note Блочное построение строки этой не занимает: отступ его
 					 *       отсчитывался бы от черты, а не от начала строки
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign of a parsing of a content on the line of the dash of a document beginning
 					 *
 					 * @note A block construction does not occupy this line: its indentation would be counted from the
@@ -961,8 +1091,8 @@ namespace awh {
 					 * @note Свойства блочного построения отделяются от него переводом
 					 *       строки, и признак этот отличает написание `&метка - запись`
 					 *       от написания той же метки строкою выше черты
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign of a parsing of the properties of a node in the line being parsed
 					 *
 					 * @note The properties of a block construction are separated from it by a line feed, and this sign
@@ -979,8 +1109,8 @@ namespace awh {
 					 * @note Отступ вложенного построения задан правилом `s-indent`
 					 *       описания, а тот пробелами набирается: подача отступом не
 					 *       является, и вложенному построению отступа не даёт
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign of a feeding inside an indentation of a nested construction
 					 *
 					 * @note The indentation of a nested construction is set by the rule `s-indent` of the description,
@@ -996,8 +1126,8 @@ namespace awh {
 					 *
 					 * @note Построений над ним нет, и содержимое его вправе стоять с
 					 *       начала строки: описание берёт там отступ мельче нулевого
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign that a block value stands as a content of a document as a whole
 					 *
 					 * @note There are no constructions above it, and its content is entitled to stand from the beginning
@@ -1015,8 +1145,8 @@ namespace awh {
 					 * @note Различие это в одном: черта на отступе ожидания есть для пары
 					 *       значение её, а для записи перечня - запись следующая, и пустоту
 					 *       прежней записи надлежит выдать прежде неё
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign that an expected value belongs to a record of a list, and not to a pair
 					 *
 					 * @note This distinction is in one thing only: a dash at the indentation of an expectation is a value
@@ -1036,8 +1166,8 @@ namespace awh {
 					 *       правит её на схему наречия 1.1 - но лишь тогда, когда потребитель
 					 *       схему свою не назначил: назначенное потребителем прямо текст
 					 *       перебивать не вправе
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A scheme of the resolution of the kinds, acting over the document being parsed
 					 *
 					 * @note This scheme is taken from the settings of the parsing, and a directive `%YAML 1.1` amends it
@@ -1063,8 +1193,8 @@ namespace awh {
 					 * @note Прежде вторая метка отвергалась знаком недопустимым: поле
 					 *       было занято первою. Нашло это сличение с набором
 					 *       yaml-test-suite
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A name of a label, deferred to a container, declared by a line above
 					 *
 					 * @details The properties preceding a node by a line above belong to the container which this very
@@ -1087,8 +1217,8 @@ namespace awh {
 					 * @note Признак разбора свойств один на оба вида их, и метка типа,
 					 *       строкою выше объявленная, отвергалась бы им при метке узла,
 					 *       в этой строке стоящей. Слежение ведётся оттого порознь
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign of a declaration of a label of a node in the line being parsed
 					 *
 					 * @note The sign of a parsing of the properties is one for both kinds of them, and a label of a
@@ -1111,8 +1241,8 @@ namespace awh {
 					 * @note Простое значение, добежавшее до конца строки, вправе продолжиться
 					 *       строкою ниже, и оттого выдача его откладывается до строки той:
 					 *       выдать его сразу значило бы выдать половину значения
-					 * \~english
 					 *
+					 * \~english
 					 * @brief A sign that a simple value able to grow is being assembled
 					 *
 					 * @note A simple value having reached the end of a line is entitled to continue by a line below,
@@ -1499,7 +1629,8 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the assignment of the kind of an empty value to the last event
 					 *
-					 * @details Emptiness is a DEFAULT, and it yields to a tag.
+					 * @details Emptiness is a DEFAULT, and it yields to a tag: the writing `foo: !!str` is by the
+					 *          description an empty string, and not an empty value.
 					 *
 					 * \~
 					 */

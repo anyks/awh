@@ -1664,7 +1664,7 @@ namespace {
 			 *       Остаток прежнего разбора, в указателях уже не значащийся, снятию
 			 *       невидим вовсе - подпоркою это и вскрылось
 			 */
-			if(recycled.text() != document.dump()){
+			if(recycled.dump() != document.dump()){
 				// Выводим сообщение о расхождении перезаписей
 				::fprintf(stderr, "toml fuzz: reused tree rewrite differs from a fresh one\n");
 				// Выводим разбираемый текст настроек
@@ -1672,7 +1672,7 @@ namespace {
 				// Выводим перезапись свежего дерева
 				dump(document.dump());
 				// Выводим перезапись дерева, прежним разбором занятого
-				dump(recycled.text());
+				dump(recycled.dump());
 				// Выводим результат проверки дерева настроек
 				return false;
 			}
@@ -1712,7 +1712,7 @@ namespace {
 			return false;
 		}
 		// Выполняем повторную перезапись дерева настроек
-		const string second = reread.text();
+		const string second = reread.dump();
 		/**
 		 * Если повторная перезапись с первой разошлась
 		 *
@@ -1785,7 +1785,7 @@ namespace {
 			// Устанавливаем вид знака конца строки наудачу
 			writing.newline = (((engine() % 2) == 0) ? toml::newline_t::LF : toml::newline_t::CRLF);
 			// Выполняем перезапись дерева настроек выбранным оформлением
-			const string restyled = document.text(writing);
+			const string restyled = document.dump(writing);
 			/**
 			 * Если перезапись отвергнута названною причиною
 			 *
@@ -1967,7 +1967,7 @@ namespace {
 		/**
 		 * Если повторная перезапись правленого дерева с первой разошлась
 		 */
-		if(after.text() != edited){
+		if(after.dump() != edited){
 			// Выводим сообщение о расхождении повторной перезаписи правленого дерева
 			::fprintf(stderr, "toml fuzz: edited rewrite is not stable\n");
 			// Выводим внесённые в дерево настроек правки
@@ -1977,7 +1977,7 @@ namespace {
 			// Выводим перезапись правленого дерева настроек
 			dump(edited);
 			// Выводим повторную перезапись правленого дерева настроек
-			dump(after.text());
+			dump(after.dump());
 			// Выводим результат проверки дерева настроек
 			return false;
 		}

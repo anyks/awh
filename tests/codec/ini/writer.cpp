@@ -1286,7 +1286,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("# примечание\n[раздел]\n\tключ = значение\n"));
 		// Выполняем перевод дерева настроек в наречие MS Windows
-		const string text = document.text(ini::writer_t::settings_t::windows());
+		const string text = document.dump(ini::writer_t::settings_t::windows());
 		// Выполняем проверку того, что перевод дерева настроек удался
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Настройки дерева настроек наречия MS Windows
@@ -2084,7 +2084,7 @@ TEST(CodecIniWriter, GreedySectionNamesRoundTrip){
 		// Выполняем установку свойства объявленного раздела
 		ASSERT_TRUE(document.set("k", "v", name)) << name;
 		// Получаем записанный текст настроек наречием python
-		const string text = document.text(ini::writer_t::settings_t::python());
+		const string text = document.dump(ini::writer_t::settings_t::python());
 		// Выполняем проверку того, что запись имя приняла
 		ASSERT_FALSE(text.empty()) << name;
 		// Объект дерева настроек, записанное читающего обратно
@@ -2127,14 +2127,14 @@ TEST(CodecIniWriter, ColonInNameRefusedForPythonDialect){
 	 * @note Отказ здесь есть верное поведение: имя это наречием невыразимо, а
 	 *       записанное как есть читалось бы обратно пустым
 	 */
-	ASSERT_TRUE(document.text(ini::writer_t::settings_t::python()).empty());
+	ASSERT_TRUE(document.dump(ini::writer_t::settings_t::python()).empty());
 	/**
 	 * Выполняем проверку перевода дерева в наречие MS Windows
 	 *
 	 * @note Наречие это разделителем признаёт одно равенство, и двоеточие в имени ему
 	 *       не мешает: отвергать такое имя не за что
 	 */
-	const string translated = document.text(ini::writer_t::settings_t::windows());
+	const string translated = document.dump(ini::writer_t::settings_t::windows());
 	// Выполняем проверку того, что перевод состоялся
 	ASSERT_FALSE(translated.empty()) << ini::message(document.error());
 	// Настройки обратного чтения перевода наречием MS Windows
@@ -2235,7 +2235,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 	 * @note Отказ здесь есть верное поведение: имя это наречием невыразимо, а
 	 *       записанное как есть обращало бы объявление в незакрытое
 	 */
-	ASSERT_TRUE(document.text(ini::writer_t::settings_t::git()).empty());
+	ASSERT_TRUE(document.dump(ini::writer_t::settings_t::git()).empty());
 	/**
 	 * Выполняем проверку того, что имя СВОЙСТВА со знаком примечания отвергается тоже
 	 *
@@ -2250,7 +2250,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 		// Выполняем проверку того, что имя свойства прочитано целиком
 		ASSERT_TRUE(keyed.has("k#v", "s"));
 		// Выполняем проверку отказа перевода дерева в наречие Git
-		ASSERT_TRUE(keyed.text(ini::writer_t::settings_t::git()).empty());
+		ASSERT_TRUE(keyed.dump(ini::writer_t::settings_t::git()).empty());
 	}
 	/**
 	 * Выполняем проверку того, что наречием без примечаний в конце строки имя годно
@@ -2264,7 +2264,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 		// Выполняем разбор текста со знаком примечания внутри имени свойства
 		ASSERT_TRUE(keyed.parse("[s]\r\nk#v=1\r\n")) << ini::message(keyed.error());
 		// Получаем перевод дерева настроек в наречие systemd
-		const string translated = keyed.text(ini::writer_t::settings_t::systemd());
+		const string translated = keyed.dump(ini::writer_t::settings_t::systemd());
 		// Выполняем проверку того, что перевод состоялся
 		ASSERT_FALSE(translated.empty()) << ini::message(keyed.error());
 		// Настройки обратного чтения перевода наречием systemd

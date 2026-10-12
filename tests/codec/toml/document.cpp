@@ -2197,7 +2197,7 @@ TEST(CodecTomlDocument, DumpRefusalPropagates) {
 		// Запоминаем предел глубины вложенности записываемого текста настроек
 		settings.maxDepth = probe.depth;
 		// Выполняем проверку того, что снятое дерево пусто
-		EXPECT_TRUE(document.text(settings).empty()) << probe.note;
+		EXPECT_TRUE(document.dump(settings).empty()) << probe.note;
 		// Выполняем проверку выданного кода ошибки записи дерева
 		EXPECT_EQ(document.error(), toml::error_t::DEPTH_EXCEEDED) << probe.note;
 		/**
@@ -2206,7 +2206,7 @@ TEST(CodecTomlDocument, DumpRefusalPropagates) {
 		 * @note Заход этот стоит рядом нарочно: отказ, приходящий на всякое снятие,
 		 *       отвечал бы тому же ожиданию, и порча снятия осталась бы незамечена
 		 */
-		EXPECT_FALSE(document.text(writing).empty()) << probe.note;
+		EXPECT_FALSE(document.dump(writing).empty()) << probe.note;
 	}
 	/**
 	 * Выполняем проверку передачи отказа имени ключа пары встроенной таблицы
@@ -2221,7 +2221,7 @@ TEST(CodecTomlDocument, DumpRefusalPropagates) {
 		// Запоминаем предел длины имени ключа, имени верхнего уровня отвечающий
 		settings.maxKey = 1;
 		// Выполняем проверку того, что снятое дерево пусто
-		ASSERT_TRUE(document.text(settings).empty());
+		ASSERT_TRUE(document.dump(settings).empty());
 		// Выполняем проверку выданного кода ошибки записи дерева
 		ASSERT_EQ(document.error(), toml::error_t::KEY_TOO_LONG);
 	}
@@ -2522,7 +2522,7 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		// Дозволяем знаки письменностей мира в имени ключа
 		settings.unicode = true;
 		// Записанный текст настроек с дозволением знаков письменностей
-		const string text = document.text(settings);
+		const string text = document.dump(settings);
 		// Выполняем проверку того, что дозволением имя записано голым
 		ASSERT_NE(text.find("ключ = "), string::npos);
 		// Выполняем проверку того, что кавычек у имени не осталось
@@ -3061,7 +3061,7 @@ TEST(CodecTomlDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	// Назначаем отказ на негодную последовательность
 	settings.malformed = toml::malformed_t::REFUSE;
 	// Выполняем проверку того, что запись отвергнута пустотою
-	ASSERT_TRUE(document.text(settings).empty());
+	ASSERT_TRUE(document.dump(settings).empty());
 	// Выполняем проверку того, что отказ записи причину назвал
 	ASSERT_EQ(document.error(), toml::error_t::INVALID_ENCODING) << toml::message(document.error());
 	/**
@@ -4088,7 +4088,7 @@ TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
 	// Дозволяем знаки письменностей мира в имени ключа записи
 	settings.unicode = true;
 	// Выполняем проверку того, что запись при несогласном чтении отвергнута
-	ASSERT_TRUE(document.text(settings).empty());
+	ASSERT_TRUE(document.dump(settings).empty());
 	// Выполняем проверку того, что разлад назван поимённо
 	ASSERT_EQ(document.error(), toml::error_t::CONFLICTING_SETTINGS) << toml::message(document.error());
 	/**
@@ -4105,7 +4105,7 @@ TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
 	// Настройки записи, Юникода в голом имени не дозволяющие
 	toml::writer_t::settings_t narrow;
 	// Записанный текст настроек при чтении, Юникод признающем
-	const string text = document.text(narrow);
+	const string text = document.dump(narrow);
 	// Выполняем проверку того, что запись при том не отвергнута
 	ASSERT_FALSE(text.empty()) << toml::message(document.error());
 	// Выполняем проверку того, что имя обнесено оградою
@@ -4115,9 +4115,9 @@ TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
 	 *       и запись, отвергающая ВСЯКОЕ сочетание, зеленела бы исправно
 	 */
 	// Выполняем проверку того, что согласные настройки принимаются
-	ASSERT_FALSE(document.text(settings).empty()) << toml::message(document.error());
+	ASSERT_FALSE(document.dump(settings).empty()) << toml::message(document.error());
 	// Выполняем проверку того, что при согласии имя записано голым
-	ASSERT_NE(document.text(settings).find("ключ = "), string::npos) << document.text(settings);
+	ASSERT_NE(document.dump(settings).find("ключ = "), string::npos) << document.dump(settings);
 }
 
 /**

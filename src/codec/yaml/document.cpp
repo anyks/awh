@@ -531,7 +531,6 @@ void awh::codec::yaml::Document::clear() noexcept {
 	this->_generation++;
 	// Выполняем сброс перечня узлов дерева
 	this->_nodes.clear();
-
 	// Выполняем сброс перечня свойств узлов
 	this->_props.clear();
 	// Выполняем сброс хранилища имён и записей значений
@@ -977,7 +976,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 	 * @note Разрешение ссылки метка эта получает отдельно - записью имени пары, - и
 	 *       перечень `keyed` тому порукой: одно нужно чтению ссылок, другое перезаписи
 	 */
-	props_t keyed_props;
+	props_t keyedProps;
 	// Признак того, что метка имени пары узла своего ожидает
 	bool keyProperted = false;
 	// Смещение начала записи следующего узла в удержанном исходном тексте
@@ -1618,17 +1617,17 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 			 */
 			if(keyProperted){
 				// Запоминаем смещение имени метки, имени пары предпосланной
-				properties.keyAnchor = keyed_props.keyAnchor;
+				properties.keyAnchor = keyedProps.keyAnchor;
 				// Запоминаем длину имени метки, имени пары предпосланной
-				properties.keyAnchored = keyed_props.keyAnchored;
+				properties.keyAnchored = keyedProps.keyAnchored;
 				// Запоминаем смещение метки типа, имени пары предпосланной
-				properties.keyTag = keyed_props.keyTag;
+				properties.keyTag = keyedProps.keyTag;
 				// Запоминаем длину метки типа, имени пары предпосланной
-				properties.keyTagged = keyed_props.keyTagged;
+				properties.keyTagged = keyedProps.keyTagged;
 				// Выполняем сброс признака метки, узла своего ожидающей
 				keyProperted = false;
 				// Выполняем сброс метки имени пары
-				keyed_props = props_t();
+				keyedProps = props_t();
 			}
 			// Запоминаем номер свойств узла в перечне свойств
 			this->_nodes.at(result).props = static_cast <uint32_t> (this->_props.size() + 1);
@@ -2011,9 +2010,9 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 								// Запоминаем метку имени пары среди объявленных документом
 								keyed[string(this->_storage, properties.anchor, properties.anchored)] = ::std::move(record);
 								// Запоминаем смещение имени метки, имени пары предпосланной
-								keyed_props.keyAnchor = properties.anchor;
+								keyedProps.keyAnchor = properties.anchor;
 								// Запоминаем длину имени метки, имени пары предпосланной
-								keyed_props.keyAnchored = properties.anchored;
+								keyedProps.keyAnchored = properties.anchored;
 							}
 							/**
 							 * Если имени пары предпослана метка типа
@@ -2023,9 +2022,9 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 							 */
 							if(properties.tagged > 0){
 								// Запоминаем смещение метки типа, имени пары предпосланной
-								keyed_props.keyTag = properties.tag;
+								keyedProps.keyTag = properties.tag;
 								// Запоминаем длину метки типа, имени пары предпосланной
-								keyed_props.keyTagged = properties.tagged;
+								keyedProps.keyTagged = properties.tagged;
 							}
 							// Запоминаем признак метки имени пары, узла своего ожидающей
 							keyProperted = true;
@@ -2110,13 +2109,13 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 				 */
 				if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::INT))
 					// Запоминаем разобранное число целым видом
-					node.number_of(number.integer);
+					node.numberOf(number.integer);
 				/**
 				 * Если значение является числом дробного вида
 				 */
 				else if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::REAL))
 					// Запоминаем разобранное число дробным видом
-					node.number_of(number.real);
+					node.numberOf(number.real);
 				/**
 				 * Если значение является логическим
 				 */
@@ -2128,7 +2127,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					 (text.front() == 'y') || (text.front() == 'Y') || (text.compare("on") == 0) ||
 					 (text.compare("On") == 0) || (text.compare("ON") == 0)));
 					// Запоминаем разобранное логическое значение
-					node.number_of(static_cast <int64_t> (truth ? 1 : 0));
+					node.numberOf(static_cast <int64_t> (truth ? 1 : 0));
 				}
 				/**
 				 * Если имя метки, значению предпосланной, объявлено
@@ -2784,7 +2783,6 @@ bool awh::codec::yaml::Document::load(const string & filename) noexcept {
 		// Выводим признак неудачного чтения настроек
 		return false;
 	}
-
 	// Выводим признак успешного чтения текста
 	return this->parse(text);
 }
@@ -3058,7 +3056,6 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 		return false;
 	// Получаем начало записи пролёта в удержанном тексте
 	const uint32_t origin = this->_nodes.at(first).origin;
-
 	// Получаем границу записи пролёта в удержанном тексте
 	const uint32_t edge = this->bound(last);
 	/**
@@ -5158,7 +5155,7 @@ void awh::codec::yaml::Document::inscribe(const uint32_t index, const string_vie
 	// Запоминаем вид записи значения
 	node.style = style;
 	// Выполняем сброс разобранного числа значения
-	node.number_of(static_cast <int64_t> (0));
+	node.numberOf(static_cast <int64_t> (0));
 	/**
 	 * Если значение обнесено оградою
 	 *
@@ -5195,13 +5192,13 @@ void awh::codec::yaml::Document::inscribe(const uint32_t index, const string_vie
 	 */
 	if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::INT))
 		// Запоминаем разобранное число целым видом
-		node.number_of(number.integer);
+		node.numberOf(number.integer);
 	/**
 	 * Если значение является числом дробного вида
 	 */
 	else if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::REAL))
 		// Запоминаем разобранное число дробным видом
-		node.number_of(number.real);
+		node.numberOf(number.real);
 	/**
 	 * Если значение является логическим
 	 */
@@ -5211,7 +5208,7 @@ void awh::codec::yaml::Document::inscribe(const uint32_t index, const string_vie
 		 (text.front() == 'y') || (text.front() == 'Y') || (text.compare("on") == 0) ||
 		 (text.compare("On") == 0) || (text.compare("ON") == 0)));
 		// Запоминаем разобранное логическое значение
-		node.number_of(static_cast <int64_t> (truth ? 1 : 0));
+		node.numberOf(static_cast <int64_t> (truth ? 1 : 0));
 	}
 }
 /**
@@ -5262,7 +5259,6 @@ uint32_t awh::codec::yaml::Document::implant(const uint32_t owner) noexcept {
 		this->_index.clear();
 	// Выполняем заведение узла на своём месте
 	this->_nodes.emplace(this->_nodes.begin() + place);
-
 	// Выводим номер заведённого узла
 	return place;
 }
@@ -5354,7 +5350,6 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 	if(latest >= this->_source.size())
 		// Выводим предел, ниже какого опускаться нельзя
 		return static_cast <uint32_t> (this->_source.size());
-
 	/**
 	 * Начало строки, глубину записи задающей
 	 *
@@ -6116,7 +6111,6 @@ bool awh::codec::yaml::Document::extract(const uint32_t index) noexcept {
 		this->_index.clear();
 	// Выполняем снятие поддерева узла из перечня узлов
 	this->_nodes.erase((this->_nodes.begin() + index), (this->_nodes.begin() + index + extent));
-
 	// Номер разбираемого корня документа
 	size_t root = 0;
 	/**
@@ -6575,13 +6569,13 @@ void awh::codec::yaml::Document::endow(const uint32_t index, const string_view a
 				 */
 				if(static_cast <uint32_t> (narrowed) & static_cast <uint32_t> (type_t::INT))
 					// Запоминаем разобранное число целым видом
-					this->_nodes.at(index).number_of(number.integer);
+					this->_nodes.at(index).numberOf(number.integer);
 				/**
 				 * Если число является дробным
 				 */
 				else if(static_cast <uint32_t> (narrowed) & static_cast <uint32_t> (type_t::REAL))
 					// Запоминаем разобранное число дробным видом
-					this->_nodes.at(index).number_of(number.real);
+					this->_nodes.at(index).numberOf(number.real);
 			}
 		}
 		/**
@@ -6598,7 +6592,7 @@ void awh::codec::yaml::Document::endow(const uint32_t index, const string_view a
 			// Запоминаем вид значения, меткою типа заданный
 			this->_nodes.at(index).type = type_t::BOOL;
 			// Запоминаем разобранное логическое значение
-			this->_nodes.at(index).number_of(static_cast <int64_t> (truth ? 1 : 0));
+			this->_nodes.at(index).numberOf(static_cast <int64_t> (truth ? 1 : 0));
 		}
 	}
 }
@@ -6689,7 +6683,6 @@ void awh::codec::yaml::Document::prune(const uint32_t index) noexcept {
 			this->_index.clear();
 		// Выполняем снятие детей узла из перечня узлов
 		this->_nodes.erase((this->_nodes.begin() + index + 1), (this->_nodes.begin() + index + extent));
-
 		/**
 		 * Выполняем перебор всех корней документов текста
 		 */
@@ -8012,7 +8005,7 @@ bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
 	 */
 	if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::SIGNED)){
 		// Устанавливаем извлечённое значение приведением языка
-		result = static_cast <T> (node.number_of <int64_t> ());
+		result = static_cast <T> (node.numberOf <int64_t> ());
 		// Выводим признак успешного извлечения
 		return true;
 	}
@@ -8030,7 +8023,7 @@ bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
 	 */
 	if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::UNSIGNED)){
 		// Устанавливаем извлечённое значение приведением языка
-		result = static_cast <T> (node.number_of <uint64_t> ());
+		result = static_cast <T> (node.numberOf <uint64_t> ());
 		// Выводим признак успешного извлечения
 		return true;
 	}
@@ -8039,7 +8032,7 @@ bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
 	 */
 	if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::REAL)){
 		// Устанавливаем извлечённое значение приведением дробного
-		result = ::awh::codec::convert <T> (node.number_of <double> ());
+		result = ::awh::codec::convert <T> (node.numberOf <double> ());
 		// Выводим признак успешного извлечения
 		return true;
 	}
@@ -8081,7 +8074,7 @@ bool awh::codec::yaml::Document::Value::value(bool & result) const noexcept {
 		// Выводим признак неудачного извлечения
 		return false;
 	// Устанавливаем извлечённое логическое значение
-	result = (this->_doc->_nodes.at(this->_index).number_of <int64_t> () != 0);
+	result = (this->_doc->_nodes.at(this->_index).numberOf <int64_t> () != 0);
 	// Выводим признак успешного извлечения
 	return true;
 }

@@ -685,7 +685,7 @@ namespace awh {
 					 *          закрытие вместимого и достаётся следующему той же глубины.
 					 *
 					 * \~english
-					 * @brief Indexes of the names of the fields, own for every depth of the nesting
+					 * Indexes of the names of the fields, own for every depth of the nesting
 					 *
 					 * @details They are held by the ASSEMBLY, not by a link of the stack: a link is created and removed
 					 *          for every container, and an index beside it would cost a memory allocation for each of them.

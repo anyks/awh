@@ -1146,7 +1146,6 @@ namespace awh {
 					 * @param local local name of the property being searched for
 					 * @param uri   designation of the namespace of the property
 					 * @return      value of the property, an empty one - there is no such property
-					 * @return value of the property, an empty one — there is no such property
 					 *
 					 * \~
 					 */

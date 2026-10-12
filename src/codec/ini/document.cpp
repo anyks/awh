@@ -2199,7 +2199,7 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 	 *          какое запись умолчанием приняла бы, - строгость сверх записи
 	 *
 	 * @note При правиле `REFUSE` потребитель узнаёт о беде у записи, а не у правки, - тем
-	 *       же порядком, каким узнаёт о всяком ином незаписываемом содержимом: `text()`
+	 *       же порядком, каким узнаёт о всяком ином незаписываемом содержимом: `dump()`
 	 *       отвечает пустотою и ставит код. Замерено на подаче перевода строки при
 	 *       выключенных продолжениях: правка проходит без кода, запись даёт
 	 *       `INVALID_CHARACTER`. Договор один, и исключения у него более нет
@@ -3234,9 +3234,9 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
  */
 string awh::codec::ini::Document::dump() const noexcept {
 	// Выполняем запись дерева настройками, отвечающими настройкам разбора
-	return this->text(this->writing());
+	return this->dump(this->writing());
 }
-string awh::codec::ini::Document::text(const writer_t::settings_t & settings) const noexcept {
+string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода ошибки последней операции
 	this->fault(error_t::NONE);
 	// Выполняем пересчёт подстановки обращений, устаревшей после правки

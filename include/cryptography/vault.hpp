@@ -185,26 +185,6 @@ namespace awh {
 					}
 					/**
 					 * \~russian
-					 * @brief Метод получения содержимого тайны
-					 *
-					 * @deprecated Ход этот УСТАРЕЛ и оставлен ради потребителей, написанных
-					 * прежде заведения обращения через обработчик. Зови `apply()`: указатель,
-					 * вынесенный за границу договора, отменяет защиту хранения, а с заведением
-					 * закрытия страниц (`awh::alloc::Allocator::shield`) обращение по нему за
-					 * пределами вызова повалит программу
-					 *
-					 * @return содержимое тайны
-					 *
-					 * \~english
-					 * @brief Method of getting the secret content
-					 * @deprecated This access is DEPRECATED and is left for the sake of the consumers written
-					 * before the introduction of the access through a handler. Call `apply()`
-					 *
-					 * \~
-					 */
-					const char * data() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод получения размера тайны
 					 *
 					 * @return размер тайны в байтах

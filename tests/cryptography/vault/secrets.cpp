@@ -36,6 +36,28 @@
 #include "../../../include/alloc/alloc.hpp"
 
 /**
+ * @brief Снятие содержимого рукояти через обращение к складу
+ *
+ * @note Указателя на содержимое у рукояти нет: оно доступно лишь внутри
+ *       обработчика обращения, и проверка забирает его тем же обращением
+ *
+ * @param handle рукоять взятия тайны
+ * @return содержимое тайны, снятое обращением
+ *
+ */
+static std::string secretOf(const awh::vault_t::Handle & handle) {
+	// Снимаемое содержимое тайны
+	std::string seen;
+	// Обращаемся к содержимому рукояти
+	static_cast <void> (handle.apply([&seen](const char * data, const size_t size) noexcept -> void {
+		// Снимаем поданное содержимое
+		seen = (data != nullptr ? std::string(data, size) : std::string(""));
+	}));
+	// Выводим снятое содержимое тайны
+	return seen;
+}
+
+/**
  * @brief Тест заведения склада
  *
  */
@@ -63,14 +85,22 @@ TEST_F(VaultFixture, StoredSecretIsBorrowedBack){
 	ASSERT_TRUE(handle.valid());
 	// Содержимое обязано совпасть с уложенным
 	ASSERT_EQ(handle.size(), secret.size());
-	EXPECT_EQ(::memcmp(handle.data(), secret.data(), secret.size()), 0);
+	// Уложенное содержимое обязано вернуться рукоятью
+	EXPECT_EQ(secretOf(handle), secret);
 	/**
 	 * Открытый текст обязан лежать в памяти НАШЕГО распределителя
 	 *
 	 * Обычное хранилище языка отдало бы его в общую кучу - оттуда он ушёл бы в
 	 * подкачку и попал бы в снимок памяти при падении
 	 */
-	EXPECT_GE(awh::alloc::Allocator::resolve(handle.data()).size, handle.size());
+	// Снимаем объём распределителя под адресом содержимого
+	size_t held = 0;
+	static_cast <void> (handle.apply([&held](const char * data, const size_t) noexcept -> void {
+		// Запоминаем объём нашего распределителя
+		held = awh::alloc::Allocator::resolve(data).size;
+	}));
+	// Открытый текст обязан стоять в памяти нашего распределителя
+	EXPECT_GE(held, handle.size());
 }
 /**
  * @brief Тест хранения тайны в шифрованном виде
@@ -114,7 +144,7 @@ TEST_F(VaultFixture, StoredSecretIsNotPlain){
 	awh::vault_t::Handle first = this->_vault->borrow("first");
 	awh::vault_t::Handle second = this->_vault->borrow("second");
 	ASSERT_TRUE(first.valid() && second.valid());
-	EXPECT_EQ(std::string(first.data(), first.size()), std::string(second.data(), second.size()));
+	EXPECT_EQ(secretOf(first), secretOf(second));
 }
 /**
  * @brief Тест взятия неизвестной тайны
@@ -125,7 +155,8 @@ TEST_F(VaultFixture, UnknownSecretGivesInvalidHandle){
 	awh::vault_t::Handle handle = this->_vault->borrow("unknown");
 	EXPECT_FALSE(handle.valid());
 	EXPECT_EQ(handle.size(), static_cast <size_t> (0));
-	EXPECT_EQ(handle.data(), nullptr);
+	// Обращение к негодной рукояти обязано ответить отказом и не звать обработчик
+	EXPECT_FALSE(handle.apply([](const char *, const size_t) noexcept -> void {}));
 }
 /**
  * @brief Тест укладки пустой тайны
@@ -181,7 +212,7 @@ TEST_F(VaultFixture, HandleIsMovableOnly){
 	awh::vault_t::Handle target(std::move(source));
 	// Содержимое обязано перейти к новой рукояти
 	EXPECT_TRUE(target.valid());
-	EXPECT_EQ(std::string(target.data(), target.size()), secret);
+	EXPECT_EQ(secretOf(target), secret);
 	// Отданная рукоять обязана стать негодной
 	EXPECT_FALSE(source.valid());
 	EXPECT_EQ(source.size(), static_cast <size_t> (0));
@@ -216,7 +247,7 @@ TEST_F(VaultFixture, RewrittenSecretReplacesTheFormerOne){
 	// Взятие обязано отдать НОВОЕ содержимое, а не прежнее
 	awh::vault_t::Handle handle = this->_vault->borrow("password");
 	ASSERT_TRUE(handle.valid());
-	EXPECT_EQ(std::string(handle.data(), handle.size()), latter);
+	EXPECT_EQ(secretOf(handle), latter);
 	// Шифротекст обязан смениться целиком
 	std::vector <char> after;
 	ASSERT_TRUE(this->_vault->sealed("password", after));
