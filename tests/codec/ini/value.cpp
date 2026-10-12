@@ -734,7 +734,7 @@ TEST(CodecIniValue, GraftingRefusesTheMalformedEncoding) {
 		 *       выдаче, какую тело ни выдай
 		 */
 				// Текст дерева, негодное содержимое несущего
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку того, что текст собрался
 		ASSERT_FALSE(text.empty()) << content;
 		// Дерево, записанный текст обратно читающее
@@ -823,9 +823,9 @@ TEST(CodecIniValue, GraftingList) {
 	// Выполняем проверку того, что перечень раздела не удвоился
 	ASSERT_EQ(document.values("port", "server").size(), 2);
 	// Выполняем проверку того, что перечень уходит в текст настроек повтором имени
-	ASSERT_NE(document.text().find("tags = one"), string::npos);
+	ASSERT_NE(document.dump().find("tags = one"), string::npos);
 	// Выполняем проверку того, что второе значение перечня записано тем же именем
-	ASSERT_NE(document.text().find("tags = two"), string::npos);
+	ASSERT_NE(document.dump().find("tags = two"), string::npos);
 	/**
 	 * Выполняем проверку отказа переноса перечня со вложенным значением
 	 *
@@ -1300,7 +1300,7 @@ TEST(CodecIniValue, LiftingWithReferences) {
 	 * @note Ровно это и расходилось: перезаписи обязаны совпасть знак в знак, ибо несут
 	 *       одно и то же содержимое вместе с его оформлением
 	 */
-	ASSERT_EQ(lifted.dump(), document.text());
+	ASSERT_EQ(lifted.dump(), document.dump());
 }
 
 /**
@@ -1350,7 +1350,7 @@ TEST(CodecIniValue, GraftSurvivesRewrite) {
 		// Выполняем перенос владеющего значения в дерево настроек
 		ASSERT_TRUE(value.graft(document)) << probe.title;
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку сохранности прежнего содержимого дерева
 		ASSERT_EQ((text.find("старое") != string::npos), probe.kept) << probe.title;
 		// Дерево настроек, перезаписью полученное
@@ -1397,7 +1397,7 @@ TEST(CodecIniValue, GraftReplacesListDeclarations) {
 	// Выполняем перенос владеющего значения в дерево настроек
 	ASSERT_TRUE(value.graft(document));
 	// Выполняем перезапись дерева настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Выполняем проверку того, что прежние объявления перечня снесены
 	ASSERT_EQ(text.find("старое"), string::npos);
 	// Выполняем проверку того, что второе прежнее объявление снесено тоже
@@ -1670,7 +1670,7 @@ TEST(CodecIniValue, QuotingMemory) {
 		// Выполняем проверку признака ограды значения с оградою
 		ASSERT_TRUE(quoted.front());
 		// Выполняем проверку совпадения перезаписи дерева с перезаписью значения
-		ASSERT_EQ(document.text(), value.dump());
+		ASSERT_EQ(document.dump(), value.dump());
 	}
 	// Выполняем проверку выдачи вида владеющего значения
 	ASSERT_EQ(value["bare"].type(), ini::type_t::STRING);
@@ -1728,7 +1728,7 @@ TEST(CodecIniValue, EmptyNameIsUnknownToDialect) {
 		// Выполняем проверку длины имени, из двух кавычек составленного
 		ASSERT_EQ(string(lifted.key(0)), "\"\"");
 		// Выполняем проверку сохранности пары при перезаписи снятого значения
-		ASSERT_EQ(lifted.dump(quoted.writing()), quoted.text());
+		ASSERT_EQ(lifted.dump(quoted.writing()), quoted.dump());
 	}
 	// Собираемое владеющее значение настроек
 	ini::value_t value;
@@ -1774,7 +1774,7 @@ TEST(CodecIniValue, RewriteInventsNoSections) {
 		// Выполняем проверку успешности разбора текста с подразделом
 		ASSERT_TRUE(document.parse("[a \"b\"]\nk = 1\n"));
 		// Перезапись дерева настроек
-		const string origin = document.text();
+		const string origin = document.dump();
 		// Выполняем проверку того, что перезапись дерева не пуста
 		ASSERT_FALSE(origin.empty());
 		// Значение, с дерева настроек снятое
@@ -1868,7 +1868,7 @@ TEST(CodecIniValue, GraftLeavesTreeIntact) {
 		// Выполняем проверку того, что причина отказа названа
 		ASSERT_NE(target.error(), ini::error_t::NONE) << name;
 		// Выполняем проверку того, что дерево осталось пустым
-		ASSERT_TRUE(target.text().empty()) << name << ": [" << target.text() << "]";
+		ASSERT_TRUE(target.dump().empty()) << name << ": [" << target.dump() << "]";
 	}
 	/**
 	 * Выполняем проверку того, что перенос годного значения проходит целиком
@@ -1888,7 +1888,7 @@ TEST(CodecIniValue, GraftLeavesTreeIntact) {
 		// Выполняем проверку успешности переноса владеющего значения
 		ASSERT_TRUE(value.graft(target));
 		// Выполняем проверку того, что перенесённое легло в дерево
-		ASSERT_EQ(target.text(), "годное = раз\n");
+		ASSERT_EQ(target.dump(), "годное = раз\n");
 	}
 }
 /**
@@ -1955,13 +1955,13 @@ TEST(CodecIniValue, GraftKeepsTreeOnSectionRefusal) {
 		// Выполняем проверку успешности разбора текста настроек
 		ASSERT_TRUE(target.parse("[цел]\nсторож = на месте\n"));
 		// Получаем запись дерева до переноса
-		const string before = target.text();
+		const string before = target.dump();
 		// Выполняем проверку отказа переноса владеющего значения
 		ASSERT_FALSE(value.graft(target)) << refusal.section << "/" << refusal.subsection << "/" << refusal.key;
 		// Выполняем проверку того, что причина отказа названа
 		ASSERT_NE(target.error(), ini::error_t::NONE) << refusal.section;
 		// Выполняем проверку того, что дерево отказом не тронуто
-		ASSERT_EQ(target.text(), before) << refusal.section;
+		ASSERT_EQ(target.dump(), before) << refusal.section;
 	}
 	/**
 	 * Выполняем проверку того, что дерево двухуровневое годное переносится целиком

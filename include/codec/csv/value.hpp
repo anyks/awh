@@ -84,16 +84,16 @@ namespace awh {
 			 * @brief Владеющее значение CSV
 			 *
 			 * @details Тип этот стоит **над** таблицей, а не вместо неё. Таблица разбирает
-			 * текст, удерживает его хранилище знаков и отдаёт наружу ВИДЫ в это хранилище,
-			 * тогда как владеющее значение держит содержимое собственной памятью и оттого
-			 * копируется, передаётся внутрь и отдаётся наружу итогом метода
+			 *          текст, удерживает его хранилище знаков и отдаёт наружу ВИДЫ в это хранилище,
+			 *          тогда как владеющее значение держит содержимое собственной памятью и оттого
+			 *          копируется, передаётся внутрь и отдаётся наружу итогом метода.
 			 *
 			 * @warning Довод к заведению этого типа - не соразмерность прочим кодекам, а
-			 * беда, замеренная у самой таблицы: всякое `get`, `row`, `col` и `header`
-			 * отдаёт `string_view` в общее хранилище знаков, и хранилище это ПЕРЕЕЗЖАЕТ
-			 * при росте. Вид, переживший добавление записи, читает чужое содержимое - молча,
-			 * не падая и не подавая знака. Владеющее значение снимает эту заботу целиком:
-			 * взятое им живёт своей памятью и таблице более не подвластно
+			 *          беда, замеренная у самой таблицы: всякое `get`, `row`, `col` и `header`
+			 *          отдаёт `string_view` в общее хранилище знаков, и хранилище это ПЕРЕЕЗЖАЕТ
+			 *          при росте. Вид, переживший добавление записи, читает чужое содержимое - молча,
+			 *          не падая и не подавая знака. Владеющее значение снимает эту заботу целиком:
+			 *          взятое им живёт своей памятью и таблице более не подвластно
 			 *
 			 * @note Построение здесь мельче, нежели у прочих кодеков, и это не упущение, а
 			 *       свойство наречия: таблица есть перечень записей, запись - перечень
@@ -113,16 +113,30 @@ namespace awh {
 			 * @brief Owning value of CSV
 			 *
 			 * @details This type stands **above** the table, and not instead of it. The table parses
-			 * the text, holds its storage of the characters and issues outwards the VIEWS into that storage,
-			 * whereas the owning value holds the content by its own memory and hence is copied,
-			 * passed inwards and issued outwards as a result of a method
+			 *          the text, holds its storage of the characters and issues outwards the VIEWS into that storage,
+			 *          whereas the owning value holds the content by its own memory and hence is copied,
+			 *          passed inwards and issued outwards as a result of a method.
 			 *
 			 * @warning The argument for the introduction of this type is not the proportionality to the other
-			 * codecs, but a trouble measured at the table itself: every `get`, `row`, `col` and `header`
-			 * issues a `string_view` into the common storage of the characters, and that storage MOVES
-			 * at a growth. A view which has survived an addition of a record reads a foreign content — silently,
-			 * without falling and without giving a sign. The owning value removes that care entirely:
-			 * what is taken by it lives by its own memory and is no longer subject to the table
+			 *          codecs, but a trouble measured at the table itself: every `get`, `row`, `col` and `header`
+			 *          issues a `string_view` into the common storage of the characters, and that storage MOVES
+			 *          at a growth. A view which has survived an addition of a record reads a foreign content — silently,
+			 *          without falling and without giving a sign. The owning value removes that care entirely:
+			 *          what is taken by it lives by its own memory and is no longer subject to the table
+			 *
+			 * @note The construction here is shallower than among the other codecs, and that is not an
+			 *       omission but a property of the dialect: a table is a list of records, a record is a list
+			 *       of fields, a field is a sequence of characters. Three steps are enough, and RFC 4180 has
+			 *       no fourth
+			 *
+			 * @note The CSV dialect has no kinds of a value of its own at all: a field is a sequence of
+			 *       characters, and whether it is a number or a logical value is decided by the extraction.
+			 *       That is why a simple value here is always a string one, and the extraction of a number
+			 *       parses its writing upon every access. The order is the same as at the INI dialect
+			 *
+			 * @note The header of the table is held APART from the records, and not as the first of them:
+			 *       otherwise the count of the records would depend on the setting of the parsing, and
+			 *       `size()` of one and the same text would issue two, then three
 			 *
 			 * \~
 			 */
@@ -138,6 +152,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Kind of the stored value
+					 *
+					 * @note There are THREE kinds here and not one more: a table, a record and a field. The dialect
+					 *       builds no deeper, and to introduce a kind of a "common list" would mean promising a
+					 *       construction that cannot be written out as a text
 					 *
 					 * \~
 					 */
@@ -166,7 +184,7 @@ namespace awh {
 					 *
 					 * @details Отдаётся оно обращением к отсутствующему полю: ссылка обязана
 					 *          указывать на что-то живое, а заводить пустое значение при
-					 *          каждом промахе значило бы плодить их без счёта
+					 *          каждом промахе значило бы плодить их без счёта.
 					 *
 					 * @warning Значение это ОБЩЕЕ, и правка его сквозь снятое постоянство
 					 *          отравила бы всякое последующее обращение к отсутствующему
@@ -176,6 +194,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting an empty value of a common use
+					 *
+					 * @details It is issued by an access to an absent field: a reference must point at something
+					 *          alive, and to introduce an empty value upon every miss would mean breeding them without
+					 *          count.
+					 *
+					 * @warning This value is COMMON, and a change of it through a removed constancy would poison
+					 *          every subsequent access to an absent field. That is why it is issued outwards only as
+					 *          a constant reference
+					 *
 					 * @return empty value of a common use
 					 *
 					 * \~
@@ -190,6 +217,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the validity of the value
+					 *
 					 * @return sign of the validity of the value
 					 *
 					 * \~
@@ -200,21 +228,34 @@ namespace awh {
 					 * @brief Метод получения кода отказа последней работы над значением
 					 *
 					 * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор
-					 * текста, чтение файла, выдача текста и запись его в файл ставят его
-					 * заново каждая. Без канала отказа пустой текст выдачи неотличим от
-					 * значения пустого
+					 *          текста, чтение файла, выдача текста и запись его в файл ставят его
+					 *          заново каждая. Без канала отказа пустой текст выдачи неотличим от
+					 *          значения пустого.
 					 *
 					 * @note Договор этот ОБЩИЙ у кодеков: владеющие значения документа JSON
 					 *       и разметки XML отвечают тем же кодом и тем же порядком
 					 *
 					 * @warning Работы, отказать не могущие, кода НЕ трогают: снятие вида,
-					 * размера и содержимого поля оставляют его как есть. Ставь мы код всякою
-					 * работой, и донесение об отказе стиралось бы первым же чтением следом
+					 *          размера и содержимого поля оставляют его как есть. Ставь мы код всякою
+					 *          работой, и донесение об отказе стиралось бы первым же чтением следом
 					 *
 					 * @return код отказа последней работы
 					 *
 					 * \~english
 					 * @brief Method of the getting of the code of the refusal of the last operation over the value
+					 *
+					 * @details This code answers the question of why the operation did not come off: the parsing of
+					 *          a text, the reading of a file, the issuing of a text and the writing of it into a file
+					 *          each set it anew. Without a channel of the refusal an empty text of the issuing is
+					 *          indistinguishable from an empty value.
+					 *
+					 * @note This contract is COMMON among the codecs: the owning values of a JSON document and of an
+					 *       XML markup answer with the same code and in the same order
+					 *
+					 * @warning The operations that cannot refuse do NOT touch the code: the removal of the kind, of
+					 *          the size and of the content of a field leave it as it is. Were every operation to set
+					 *          the code, the report of a refusal would be erased by the very first reading after it
+					 *
 					 * @return code of the refusal of the last operation
 					 *
 					 * \~
@@ -227,12 +268,17 @@ namespace awh {
 					 *
 					 * @details Место называет строку и столбец текста, на которых разбор
 					 *          споткнулся. У работ, места не имеющих - запись в файл, выдача
-					 *          текста, - оно остаётся пустым
+					 *          текста, - оно остаётся пустым.
 					 *
 					 * @return место отказа последней работы
 					 *
 					 * \~english
 					 * @brief Method of the getting of the location of the refusal of the last operation over the value
+					 *
+					 * @details The location names the line and the column of the text at which the parsing has
+					 *          stumbled. Among the operations having no location - the writing into a file, the
+					 *          issuing of a text - it stays empty.
+					 *
 					 * @return location of the refusal of the last operation
 					 *
 					 * \~
@@ -246,6 +292,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the kind of the stored value
+					 *
 					 * @return kind of the stored value
 					 *
 					 * \~
@@ -260,6 +307,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the kind of the stored value
+					 *
 					 * @param type kind of the value being compared
 					 * @return     sign of the coincidence of the kind
 					 *
@@ -271,7 +319,7 @@ namespace awh {
 					 * @brief Метод извлечения количества вложенных значений
 					 *
 					 * @details У таблицы это число ЗАПИСЕЙ, у записи - число полей, у поля -
-					 *          длина содержимого в знаках
+					 *          длина содержимого в знаках.
 					 *
 					 * @warning Заголовок в счёт записей НЕ входит: он удерживается отдельно,
 					 *          и вхождение его обращало бы счёт в зависимость от настройки
@@ -281,6 +329,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the quantity of the nested values
+					 *
+					 * @details For a table this is the number of the RECORDS, for a record - the number of the
+					 *          fields, for a field - the length of the content in characters.
+					 *
+					 * @warning The header is NOT in the count of the records: it is held apart, and its inclusion
+					 *          would turn the count into a dependence upon the setting of the parsing
+					 *
 					 * @return quantity of the nested values
 					 *
 					 * \~
@@ -294,6 +349,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the emptiness of the value
+					 *
 					 * @return sign of the emptiness of the value
 					 *
 					 * \~
@@ -322,6 +378,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the content of the field
+					 *
+					 * @warning Among the values of the other kinds the content is empty: a gluing of the fields of a
+					 *          record is NOT done here on purpose, for any gluing would demand a separator, and a
+					 *          separator is a matter of the settings of the writing, and not of the value
+					 *
 					 * @return content of the field
 					 *
 					 * \~
@@ -336,6 +397,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the names of the columns of the table
+					 *
 					 * @return names of the columns of the table
 					 *
 					 * \~
@@ -354,6 +416,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the names of the columns of the table
+					 *
+					 * @warning A repetition of a name is refused ALWAYS: a column unreachable by its name would
+					 *          stay silent, and the check here is free of any expense on the parsing. The order is
+					 *          the same as at `Document::header`
+					 *
 					 * @param names names of the columns of the table
 					 * @return      sign of the success of the setting
 					 *
@@ -368,18 +435,30 @@ namespace awh {
 					 *          владеющих значений документа JSON, разметки XML и трёх
 					 *          наречий INI, TOML и YAML наличие вложенного значения по имени
 					 *          спрашивается словом `contains`, а слово `has` занято у
-					 *          разметки под наличие СВОЙСТВА узла - величины иной
+					 *          разметки под наличие СВОЙСТВА узла - величины иной.
 					 *
 					 * @warning Первая редакция звала этот ход `has`, и расхождение вышло бы
-					 * тихим: потребитель, переносящий разбор с документа на таблицу, получил
-					 * бы отказ сборки в лучшем случае, а в худшем - попал бы у разметки в
-					 * ход об ином предмете
+					 *          тихим: потребитель, переносящий разбор с документа на таблицу, получил
+					 *          бы отказ сборки в лучшем случае, а в худшем - попал бы у разметки в
+					 *          ход об ином предмете
 					 *
 					 * @param name имя столбца
 					 * @return     признак наличия столбца
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a column with the indicated name
+					 *
+					 * @details The name of this method is given common with the other codecs DELIBERATELY: among the
+					 *          owning values of a JSON document, of an XML markup and of the three dialects INI, TOML
+					 *          and YAML the presence of a nested value by a name is asked by the word `contains`,
+					 *          while the word `has` is occupied among the markup for the presence of a PROPERTY of a
+					 *          node - a quantity of another kind.
+					 *
+					 * @warning The first edition called this method `has`, and the divergence would have come out
+					 *          quiet: a consumer moving the parsing from a document onto a table would have got a
+					 *          refusal of the build at best, and at worst would have landed, among the markup, upon
+					 *          a method about another subject
+					 *
 					 * @param name name of the column
 					 * @return     sign of the presence of the column
 					 *
@@ -396,6 +475,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for the number of a column by a name
+					 *
 					 * @param name name of the column
 					 * @return     number of the column, `SIZE_MAX` in an absence
 					 *
@@ -411,6 +491,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of addressing a nested value by a number
+					 *
 					 * @param index number of the nested value
 					 * @return      nested value
 					 *
@@ -431,6 +512,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of addressing a field of a record by a name of a column
+					 *
+					 * @warning The names of the columns belong to the TABLE, and a record does not know them. That is
+					 *          why this access works at a record taken from the table by the method `at`, and stays
+					 *          silent at a record on its own: a name has nowhere to be compared. The order is forced
+					 *          by the device of the dialect
+					 *
 					 * @param name name of the column
 					 * @return     field of the record
 					 *
@@ -443,20 +530,31 @@ namespace awh {
 					 *
 					 * @details Путь строится звеньями, разделёнными косой чертой: «/2/имя»
 					 *          ведёт к полю столбца «имя» третьей записи, «/2/1» - к полю
-					 *          вторым по счёту. Пустой путь ведёт к самому значению
+					 *          вторым по счёту. Пустой путь ведёт к самому значению.
 					 *
 					 * @warning Пустой путь и одиночная косая черта РАЗНЫЕ: по RFC 6901 пустой
-					 * путь означает весь документ, а «/» - звено с пустым именем. Столбца с
-					 * пустым именем у таблицы не бывает вовсе, оттого «/» ведёт в никуда
-					 * всегда - тем же итогом, каким отвечает документ JSON без поля с пустым
-					 * именем. Приравняй мы их, и одна и та же запись пути значила бы у
-					 * кодеков разное
+					 *          путь означает весь документ, а «/» - звено с пустым именем. Столбца с
+					 *          пустым именем у таблицы не бывает вовсе, оттого «/» ведёт в никуда
+					 *          всегда - тем же итогом, каким отвечает документ JSON без поля с пустым
+					 *          именем. Приравняй мы их, и одна и та же запись пути значила бы у
+					 *          кодеков разное
 					 *
 					 * @param path путь к искомому значению
 					 * @return     найденное значение
 					 *
 					 * \~english
 					 * @brief Method of addressing a value by a path
+					 *
+					 * @details A path is built by links separated by a slash: «/2/name» leads to the field of the
+					 *          column «name» of the third record, «/2/1» - to the field second by the count. An empty
+					 *          path leads to the value itself.
+					 *
+					 * @warning An empty path and a lone slash are DIFFERENT: by RFC 6901 an empty path means the
+					 *          whole document, while «/» means a link with an empty name. A table never has a column
+					 *          with an empty name, and therefore «/» leads nowhere always - with the same result by
+					 *          which a JSON document answers without a field with an empty name. Were we to equate
+					 *          them, one and the same writing of a path would mean different things among the codecs
+					 *
 					 * @param path path to the sought value
 					 * @return     value which is found
 					 *
@@ -473,6 +571,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the addition of a record into the table
+					 *
 					 * @param value value being added
 					 * @return      sign of the success of the addition
 					 *
@@ -488,6 +587,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the removal of a nested value by a number
+					 *
 					 * @param index number of the value being removed
 					 * @return      sign of the success of the removal
 					 *
@@ -502,6 +602,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the type of a number to which the extraction is conducted
+					 *
 					 * @tparam T type of a number to which the extraction is conducted
 					 *
 					 * \~
@@ -514,7 +615,7 @@ namespace awh {
 					 *          им однажды: целое, в затребованный вид не помещающееся,
 					 *          заворачивается по кругу приведением языка, а дробное, целая
 					 *          часть которого лежит за пределами вида, выдаётся пределом
-					 *          этого вида - там у языка поведение неопределено
+					 *          этого вида - там у языка поведение неопределено.
 					 *
 					 * @note Уклад этот взят у кодеков JSON и XML СЛОВО В СЛОВО, а приведение
 					 *       дробного ведётся общим ходом рамки `awh::codec::convert`. Пиши
@@ -526,6 +627,18 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a numeric value of a field
+					 *
+					 * @details This method is COMMON to the whole row of the extractions, and the order of the
+					 *          narrowing is set by it once and for all: an integer that does not fit into the kind
+					 *          asked is wrapped around by the conversion of the language, while a fractional number
+					 *          whose integer part lies beyond the bounds of the kind is issued as the bound of that
+					 *          kind - there the behaviour of the language is undefined.
+					 *
+					 * @note This order is taken from the JSON and XML codecs WORD FOR WORD, and the conversion of a
+					 *       fractional number is conducted by the common method of the framework, `awh::codec::convert`.
+					 *       Were we to write a conversion of our own, the divergence would come out where nobody
+					 *       looks for it: at the edges of the kind
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -542,6 +655,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a boolean value of a field
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -561,7 +675,13 @@ namespace awh {
 					 * @return       признак успешности извлечения
 					 *
 					 * \~english
-					 * @brief Method of the extraction of an integer value of a field
+					 * @brief Method of the extraction of an integer value of a field of a one-byte type
+					 *
+					 * @note The rounding of a fractional writing goes by the rules of mathematics with a half taken
+					 *       away from zero. A writing that does not fit into the kind asked does NOT answer with a
+					 *       refusal: an integer is wrapped around, while a fractional number is issued as the bound
+					 *       of the kind - the order is the same as at the JSON and XML codecs
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -578,6 +698,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an integer value of a field of a two-byte type
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -593,6 +714,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an integer value of a field of a four-byte type
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -608,6 +730,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an integer value of a field of an eight-byte type
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -623,6 +746,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an unsigned integer value of a field of a one-byte type
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -638,6 +762,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an unsigned integer value of a field of a two-byte type
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -653,6 +778,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an unsigned integer value of a field of a four-byte type
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -668,6 +794,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an unsigned integer value of a field
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -683,6 +810,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a floating value of a field
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -698,6 +826,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a floating value of a field of a double precision
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -713,6 +842,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a string value of a field
+					 *
 					 * @param result value being extracted
 					 * @return       sign of the success of the extraction
 					 *
@@ -725,13 +855,17 @@ namespace awh {
 					 *
 					 * @details Снятие идёт СОБСТВЕННОЙ памятью: виды в хранилище таблицы
 					 *          копируются знак в знак, и снятое значение таблице более не
-					 *          подвластно
+					 *          подвластно.
 					 *
 					 * @param document таблица, с которой снимается значение
 					 * @return         признак успешности снятия
 					 *
 					 * \~english
 					 * @brief Method of the taking of a value from a table
+					 *
+					 * @details The taking is done by an OWN memory: the views in the storage of the table are copied
+					 *          character by character, and the value taken is no longer subject to the table.
+					 *
 					 * @param document table from which the value is taken
 					 * @return         sign of the success of the taking
 					 *
@@ -751,6 +885,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the grafting of a value onto a table
+					 *
+					 * @warning The grafting REMOVES the previous content of the table in full: the value is a table
+					 *          by itself, and a merging of two tables would demand a rule of the reduction of the
+					 *          headers, which RFC 4180 does not have
+					 *
 					 * @param document table onto which the value is grafted
 					 * @return         sign of the success of the grafting
 					 *
@@ -766,6 +905,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a text of a table
+					 *
 					 * @param text source text of the table
 					 * @return     sign of the success of the parsing
 					 *
@@ -782,6 +922,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a text of a table with the specified settings
+					 *
 					 * @param text     source text of the table
 					 * @param settings settings of the parsing of the text of the table
 					 * @return         sign of the success of the parsing
@@ -798,6 +939,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the reading of a table from a file
+					 *
 					 * @param filename address of the file of the table
 					 * @return         sign of the success of the reading
 					 *
@@ -814,6 +956,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the reading of a table from a file with the specified settings
+					 *
 					 * @param filename address of the file of the table
 					 * @param settings settings of the parsing of the text of the table
 					 * @return         sign of the success of the reading
@@ -826,20 +969,31 @@ namespace awh {
 					 * @brief Метод сохранения таблицы в файл
 					 *
 					 * @details Запись ведётся во временный файл рядом с целевым, а тот
-					 *          подменяется переименованием - действием неделимым
+					 *          подменяется переименованием - действием неделимым.
 					 *
 					 * @warning Уклад этот ОБЯЗАТЕЛЕН, а не желателен: прямая запись в целевой
-					 * файл усекает его первым же действием, и отказ на середине - место на
-					 * устройстве кончилось, предел размера достигнут, работа прервана -
-					 * оставляет потребителя без прежнего содержимого И без нового. Замер
-					 * пределом `RLIMIT_FSIZE` показал ровно это до правки: прежний файл
-					 * пропадал целиком
+					 *          файл усекает его первым же действием, и отказ на середине - место на
+					 *          устройстве кончилось, предел размера достигнут, работа прервана -
+					 *          оставляет потребителя без прежнего содержимого И без нового. Замер
+					 *          пределом `RLIMIT_FSIZE` показал ровно это до правки: прежний файл
+					 *          пропадал целиком
 					 *
 					 * @param filename адрес файла таблицы
 					 * @return         признак успешности сохранения
 					 *
 					 * \~english
 					 * @brief Method of the saving of the table into a file
+					 *
+					 * @details The writing goes into a temporary file next to the target one, and that one is
+					 *          replaced by a renaming - an indivisible action.
+					 *
+					 * @warning This order is MANDATORY, and not desirable: a direct writing into the target file
+					 *          truncates it by the very first action, and a failure in the middle - the room on the
+					 *          device has ended, the size limit is reached, the work is interrupted - leaves the
+					 *          consumer without the previous content AND without the new one. The measurement by the
+					 *          limit `RLIMIT_FSIZE` showed exactly this before the fix: the previous file was lost
+					 *          entirely
+					 *
 					 * @param filename address of the file of the table
 					 * @return         sign of the success of the saving
 					 *
@@ -855,6 +1009,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the issuing of a text of the table
+					 *
 					 * @return assembled text of the table
 					 *
 					 * \~
@@ -869,6 +1024,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Operator of the comparison of the values
+					 *
 					 * @param value value being compared
 					 * @return      sign of the equality of the values
 					 *
@@ -884,6 +1040,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Operator of the comparison of the values for an inequality
+					 *
 					 * @param value value being compared
 					 * @return      sign of the inequality of the values
 					 *
@@ -908,6 +1065,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a kind of a value
+					 *
 					 * @param type kind of the value being created
 					 *
 					 * \~
@@ -921,6 +1079,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a field
+					 *
 					 * @param text content of the field being created
 					 *
 					 * \~
@@ -934,6 +1093,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of the taking of a value from a table
+					 *
 					 * @param document table from which the value is taken
 					 *
 					 * \~
@@ -955,27 +1115,40 @@ namespace awh {
 			 * @brief Потоковая сборка владеющего значения CSV
 			 *
 			 * @details Сборщик этот повторяет договор потока записи слово в слово: подать
-			 * поле, завершить запись, завершить таблицу. Оттого «пишу текстом» и «строю
-			 * таблицу» отличаются у потребителя одной буквой, а не двумя разными договорами
+			 *          поле, завершить запись, завершить таблицу. Оттого «пишу текстом» и «строю
+			 *          таблицу» отличаются у потребителя одной буквой, а не двумя разными договорами.
 			 *
 			 * @details Заведён сборщик ради тех, кто строит таблицу с нуля полем за полем:
-			 * сборка записи через перечень требовала бы держать её целиком, а поток
-			 * добавляет поле за полем и о собранном не помнит
+			 *          сборка записи через перечень требовала бы держать её целиком, а поток
+			 *          добавляет поле за полем и о собранном не помнит.
 			 *
 			 * @note Числа подаются сборщику РОДНЫМ своим видом, а не записью: подстановка
 			 *       числа текстом заставила бы потребителя собирать запись самому. Уклад
 			 *       этот один со сборщиками прочих кодеков
 			 *
 			 * @warning Заголовок объявляется ОТДЕЛЬНЫМ ходом и до первой записи: объяви его
-			 * первой поданной записью, и сборщик не отличал бы таблицу без заголовка от
-			 * таблицы, у которой первая запись есть данные
+			 *          первой поданной записью, и сборщик не отличал бы таблицу без заголовка от
+			 *          таблицы, у которой первая запись есть данные
 			 *
 			 * \~english
 			 * @brief Streaming assembly of an owning value of CSV
 			 *
 			 * @details This builder repeats the contract of the writing stream word for word: to pass
-			 * a field, to finish a record, to finish the table. Whereby "I write a text" and "I build
-			 * a table" differ for a consumer by one letter rather than by two different contracts
+			 *          a field, to finish a record, to finish the table. Whereby "I write a text" and "I build
+			 *          a table" differ for a consumer by one letter rather than by two different contracts.
+			 *
+			 * @details The builder is introduced for the sake of those who build a table from the very
+			 *          beginning field by field: the assembly of a record through a list would demand holding
+			 *          it in full, while a stream adds a field after a field and does not remember what has
+			 *          been assembled.
+			 *
+			 * @note Numbers are passed to the builder by their NATIVE kind, and not by a writing: a
+			 *       substitution of a number by a text would force a consumer to assemble the record in
+			 *       person. The order is the same as at the builders of the other codecs
+			 *
+			 * @warning The header is declared by a SEPARATE method and before the first record: were it
+			 *          declared by the first record passed, the builder would not tell a table without a
+			 *          header from a table whose first record is data
 			 *
 			 * \~
 			 */
@@ -993,13 +1166,17 @@ namespace awh {
 					 * @brief Метод объявления имён столбцов таблицы
 					 *
 					 * @warning Объявляется заголовок ДО первой записи: подача его после
-					 * отвечает отказом, ибо записи, поданные прежде, столбцов не знали бы
+					 *          отвечает отказом, ибо записи, поданные прежде, столбцов не знали бы
 					 *
 					 * @param names имена столбцов таблицы
 					 * @return      признак успешности объявления
 					 *
 					 * \~english
 					 * @brief Method of the declaration of the names of the columns of the table
+					 *
+					 * @warning The header is declared BEFORE the first record: its passing after that answers with a
+					 *          refusal, for the records passed earlier would not know the columns
+					 *
 					 * @param names names of the columns of the table
 					 * @return      sign of the success of the declaration
 					 *
@@ -1015,6 +1192,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the passing of a field of a record by a string value
+					 *
 					 * @param text content of the field being passed
 					 * @return     sign of the success of the passing
 					 *
@@ -1033,6 +1211,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the passing of a field of a record by an integer value
+					 *
+					 * @note A number is passed by its NATIVE kind, and not by a writing: were a consumer to assemble
+					 *       the record in person, its order would diverge from the order of the writing of the table
+					 *
 					 * @param number number being passed
 					 * @return       sign of the success of the passing
 					 *
@@ -1048,6 +1230,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the passing of a field of a record by a floating value
+					 *
 					 * @param number number being passed
 					 * @return       sign of the success of the passing
 					 *
@@ -1063,6 +1246,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the passing of a field of a record by a boolean value
+					 *
 					 * @param flag boolean value being passed
 					 * @return     sign of the success of the passing
 					 *
@@ -1075,12 +1259,17 @@ namespace awh {
 					 *
 					 * @details Запись, ни одного поля не получившая, в таблицу НЕ ложится:
 					 *          у наречия пустая запись неотличима от записи с одним пустым
-					 *          полем, и ложись она в таблицу - круг разошёлся бы
+					 *          полем, и ложись она в таблицу - круг разошёлся бы.
 					 *
 					 * @return признак успешности завершения записи
 					 *
 					 * \~english
 					 * @brief Method of the finishing of a record of the table
+					 *
+					 * @details A record that has received not a single field is NOT laid into the table: among the
+					 *          dialect an empty record is indistinguishable from a record with one empty field, and
+					 *          were it laid into the table, the round trip would come apart.
+					 *
 					 * @return sign of the success of the finishing of the record
 					 *
 					 * \~
@@ -1094,6 +1283,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the quantity of the fields of an open record
+					 *
 					 * @return quantity of the fields of an open record
 					 *
 					 * \~
@@ -1104,14 +1294,20 @@ namespace awh {
 					 * @brief Метод завершения сборки таблицы
 					 *
 					 * @warning Запись, не закрытая ходом `close`, отвечает ОТКАЗОМ, а не
-					 * закрывается сама: закрой мы её молча, и потеря вызова `close` у
-					 * потребителя проходила бы незамеченной, а таблица выходила бы верной
-					 * по виду с записью, полей недобравшей
+					 *          закрывается сама: закрой мы её молча, и потеря вызова `close` у
+					 *          потребителя проходила бы незамеченной, а таблица выходила бы верной
+					 *          по виду с записью, полей недобравшей
 					 *
 					 * @return собранное значение таблицы
 					 *
 					 * \~english
 					 * @brief Method of the finishing of the assembly of the table
+					 *
+					 * @warning A record not closed by the method `close` answers with a REFUSAL, and is not closed by
+					 *          itself: were we to close it in silence, the loss of a call of `close` at a consumer
+					 *          would pass unnoticed, and the table would come out correct by its look with a record
+					 *          that has not gathered its fields
+					 *
 					 * @return assembled value of the table
 					 *
 					 * \~

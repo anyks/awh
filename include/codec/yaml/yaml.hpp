@@ -22,6 +22,7 @@
  * \~english
  * @brief Header file of the YAML container — the single point of the inclusion of the streaming reading
  *        of a text, of the writing of it and of the document held in full
+ *
  * @note The module is being created by the parts, and this point includes so far only what is ready: the other
  *       header files are added here as they appear
  *

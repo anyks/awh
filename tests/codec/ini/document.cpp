@@ -570,7 +570,7 @@ TEST(CodecIniDocument, Roundtrip) {
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем проверку совпадения записанного текста с исходным
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 }
 /**
  * @brief Проверка обратного хода с примечаниями в конце строк
@@ -621,7 +621,7 @@ TEST(CodecIniDocument, RoundtripReferences) {
 	// Выполняем проверку подстановки обращения при чтении значения
 	ASSERT_EQ(document.get("logs", "paths"), "/opt/awh/logs");
 	// Выполняем проверку сохранения обращения при обратной записи
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 }
 /**
  * @brief Проверка сохранения знака примечания при обратной записи
@@ -640,7 +640,7 @@ TEST(CodecIniDocument, RoundtripMarkers) {
 	 * @note Знак берётся из исходного текста, а не из настроек записи: выбрал
 	 *       его тот, кто файл настроек писал
 	 */
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 }
 /**
  * @brief Проверка правки значения свойства на месте
@@ -660,19 +660,19 @@ TEST(CodecIniDocument, Set) {
 	/**
 	 * Выполняем проверку сохранения оформления при правке
 	 */
-	ASSERT_EQ(document.text(), "; шапка\n[server]\nhost = 127.0.0.1\nport = 9090\n");
+	ASSERT_EQ(document.dump(), "; шапка\n[server]\nhost = 127.0.0.1\nport = 9090\n");
 	// Выполняем добавление свойства в объявленный раздел
 	ASSERT_TRUE(document.set("timeout", "30", "server"));
 	// Выполняем проверку добавленного значения свойства
 	ASSERT_EQ(document.get("timeout", "server"), "30");
 	// Выполняем проверку записи добавленного свойства в конец раздела
-	ASSERT_EQ(document.text(), "; шапка\n[server]\nhost = 127.0.0.1\nport = 9090\ntimeout = 30\n");
+	ASSERT_EQ(document.dump(), "; шапка\n[server]\nhost = 127.0.0.1\nport = 9090\ntimeout = 30\n");
 	// Выполняем добавление свойства в необъявленный раздел
 	ASSERT_TRUE(document.set("level", "debug", "logs"));
 	// Выполняем проверку количества объявленных разделов
 	ASSERT_EQ(document.size(), 2u);
 	// Выполняем проверку записи объявленного раздела
-	ASSERT_EQ(document.text(), "; шапка\n[server]\nhost = 127.0.0.1\nport = 9090\ntimeout = 30\n\n[logs]\nlevel = debug\n");
+	ASSERT_EQ(document.dump(), "; шапка\n[server]\nhost = 127.0.0.1\nport = 9090\ntimeout = 30\n\n[logs]\nlevel = debug\n");
 }
 /**
  * @brief Проверка удаления свойства и раздела
@@ -688,7 +688,7 @@ TEST(CodecIniDocument, Erase) {
 	// Выполняем проверку отсутствия удалённого свойства
 	ASSERT_FALSE(document.has("first", "a"));
 	// Выполняем проверку записи дерева без удалённого свойства
-	ASSERT_EQ(document.text(), "[a]\nsecond = 2\n\n[b]\nthird = 3\n");
+	ASSERT_EQ(document.dump(), "[a]\nsecond = 2\n\n[b]\nthird = 3\n");
 	// Выполняем проверку отклонения удаления необъявленного свойства
 	ASSERT_FALSE(document.erase("missing", "a"));
 	// Выполняем удаление раздела
@@ -698,7 +698,7 @@ TEST(CodecIniDocument, Erase) {
 	// Выполняем проверку количества объявленных разделов
 	ASSERT_EQ(document.size(), 1u);
 	// Выполняем проверку записи дерева без удалённого раздела
-	ASSERT_EQ(document.text(), "[b]\nthird = 3\n");
+	ASSERT_EQ(document.dump(), "[b]\nthird = 3\n");
 }
 /**
  * @brief Проверка объявления раздела
@@ -716,7 +716,7 @@ TEST(CodecIniDocument, Create) {
 	// Выполняем объявление второго раздела
 	ASSERT_TRUE(document.create("second"));
 	// Выполняем проверку записи объявленных разделов
-	ASSERT_EQ(document.text(), "[first]\n\n[second]\n");
+	ASSERT_EQ(document.dump(), "[first]\n\n[second]\n");
 	// Выполняем проверку отклонения объявления раздела с пустым именем
 	ASSERT_FALSE(document.create(""));
 }
@@ -742,7 +742,7 @@ TEST(CodecIniDocument, Assembly) {
 	 */
 	ASSERT_TRUE(document.set("second", "2", "a"));
 	// Выполняем проверку записи добавленного свойства в конец своего раздела
-	ASSERT_EQ(document.text(), "[a]\nfirst = 1\nsecond = 2\n\n[b]\nthird = 3\n");
+	ASSERT_EQ(document.dump(), "[a]\nfirst = 1\nsecond = 2\n\n[b]\nthird = 3\n");
 	// Выполняем проверку доступности свойств сдвинутого раздела
 	ASSERT_EQ(document.get("third", "b"), "3");
 	// Выполняем проверку порядка выдачи имён свойств раздела
@@ -763,7 +763,7 @@ TEST(CodecIniDocument, Assembly) {
 	// Выполняем проверку порядка выдачи имён свойств после заведения
 	ASSERT_EQ(document.keys("a"), (vector <string_view> {"second", "first"}));
 	// Выполняем проверку записи дерева после правок
-	ASSERT_EQ(document.text(), "[a]\nsecond = 2\nfirst = 10\n\n[b]\nthird = 3\n");
+	ASSERT_EQ(document.dump(), "[a]\nsecond = 2\nfirst = 10\n\n[b]\nthird = 3\n");
 	// Выполняем сборку раздела вызовами установки значения
 	for(uint32_t i = 0; i < 64; i++)
 		// Выполняем добавление свойства в заводимый раздел
@@ -822,7 +822,7 @@ TEST(CodecIniDocument, WriteFailure) {
 	 * @note Запись управляющих последовательностей по умолчанию снята, и знак
 	 *       конца строки внутри значения записать нечем
 	 */
-	ASSERT_TRUE(document.text().empty());
+	ASSERT_TRUE(document.dump().empty());
 	// Выполняем проверку кода ошибки записи
 	ASSERT_NE(document.error(), ini::error_t::NONE);
 	// Собираемые настройки записи текста настроек
@@ -875,7 +875,7 @@ TEST(CodecIniDocument, RoundtripArrays) {
 	// Выполняем проверку количества значений свойства
 	ASSERT_EQ(document.values("k", "a").size(), 2u);
 	// Выполняем проверку сохранности записи добавления к перечню
-	ASSERT_EQ(document.text(), "[a]\nk[] = one\nk[] = two\n");
+	ASSERT_EQ(document.dump(), "[a]\nk[] = one\nk[] = two\n");
 }
 /**
  * @brief Проверка соблюдения предела подстановки удвоенным знаком обращения
@@ -916,7 +916,7 @@ TEST(CodecIniDocument, GlobalAssembly) {
 	// Выполняем проверку установленного значения свойства
 	ASSERT_EQ(document.get("name"), "значение");
 	// Выполняем проверку записи собранного дерева
-	ASSERT_EQ(document.text(), "name = значение\n");
+	ASSERT_EQ(document.dump(), "name = значение\n");
 	/**
 	 * Выполняем проверку того, что раздел без имени объявленным не считается
 	 */
@@ -1036,7 +1036,7 @@ TEST(CodecIniDocument, InvalidNames) {
 	// Выполняем проверку кода ошибки правки
 	ASSERT_EQ(document.error(), ini::error_t::INVALID_SECTION);
 	// Выполняем проверку прохождения записи собранного дерева
-	ASSERT_EQ(document.text(), "[a]\n");
+	ASSERT_EQ(document.dump(), "[a]\n");
 }
 /**
  * @brief Проверка обращения к значению чужого подраздела
@@ -1089,7 +1089,7 @@ TEST(CodecIniDocument, NamesMatchWriter) {
 	// Выполняем проверку допустимости знака примечания в имени раздела
 	ASSERT_TRUE(document.create("a;b"));
 	// Выполняем проверку прохождения записи собранного дерева
-	ASSERT_EQ(document.text(), "[sec]\na;b = 1\n\n[a;b]\n");
+	ASSERT_EQ(document.dump(), "[sec]\na;b = 1\n\n[a;b]\n");
 	{
 		// Собираемые настройки дерева настроек
 		ini::document_t::settings_t settings;
@@ -1170,11 +1170,11 @@ TEST(CodecIniDocument, RoundtripMarkedNames) {
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a;b]\nk;x = v\n"));
 	// Выполняем проверку сохранности имён при обратной записи
-	ASSERT_EQ(document.text(), "[a;b]\nk;x = v\n");
+	ASSERT_EQ(document.dump(), "[a;b]\nk;x = v\n");
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем разбор записанного текста настроек
-	ASSERT_TRUE(again.parse(document.text()));
+	ASSERT_TRUE(again.parse(document.dump()));
 	// Выполняем проверку сохранности значения при обороте
 	ASSERT_EQ(again.get("k;x", "a;b"), "v");
 }
@@ -1196,7 +1196,7 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a.b]\nk = v\n", settings));
 		// Выполняем проверку обратной записи без явных настроек
-		ASSERT_EQ(document.text(), "[a.b]\nk = v\n");
+		ASSERT_EQ(document.dump(), "[a.b]\nk = v\n");
 	}{
 		// Собираемые настройки дерева настроек
 		ini::document_t::settings_t settings;
@@ -1207,7 +1207,7 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host\n", settings));
 		// Получаем записанный текст настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку прохождения обратной записи
 		ASSERT_FALSE(text.empty());
 		// Дерево настроек обратного чтения
@@ -1252,7 +1252,7 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 		// Выполняем проверку того, что кавычки остались частью значения
 		ASSERT_EQ(document.get("k", "a"), "\"x\"");
 		// Выполняем проверку сохранности значения при обратной записи
-		ASSERT_EQ(document.text(), "[a]\nk = \"x\"\n");
+		ASSERT_EQ(document.dump(), "[a]\nk = \"x\"\n");
 	}{
 		// Дерево настроек
 		ini::document_t document;
@@ -1266,7 +1266,7 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 		 * @note Значение это записать нечем: обвязку читающий отбросит, а оградить её
 		 *       кавычками нельзя - кавычки достанутся ему частью значения
 		 */
-		ASSERT_TRUE(document.text().empty());
+		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку кода ошибки записи
 		ASSERT_NE(document.error(), ini::error_t::NONE);
 	}
@@ -1296,7 +1296,7 @@ TEST(CodecIniDocument, MarkersByDialect) {
 	// Выполняем проверку отклонения знака примечания этого наречия
 	ASSERT_FALSE(document.set(";path", "v", "a"));
 	// Выполняем проверку прохождения обратной записи
-	ASSERT_EQ(document.text(), "[a]\n#path = d:\\bin\n");
+	ASSERT_EQ(document.dump(), "[a]\n#path = d:\\bin\n");
 }
 /**
  * @brief Проверка правки подразделов, заключаемых в кавычки
@@ -1323,7 +1323,7 @@ TEST(CodecIniDocument, QuotedSubsectionNames) {
 	// Выполняем проверку принятия имени подраздела с кавычкой
 	ASSERT_TRUE(document.create("remote", "a\"b"));
 	// Получаем записанный текст настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем проверку прохождения обратного чтения
@@ -1387,7 +1387,7 @@ TEST(CodecIniDocument, SetDropsAppend) {
 	 *
 	 * @note Установка значения заменяет прежнее, а не добавляет к перечню
 	 */
-	ASSERT_EQ(document.text(), "[a]\nk = 2\n");
+	ASSERT_EQ(document.dump(), "[a]\nk = 2\n");
 }
 /**
  * @brief Проверка предела глубины подразделов при объявлении раздела
@@ -1412,7 +1412,7 @@ TEST(CodecIniDocument, DepthOnCreate) {
 	// Выполняем проверку кода ошибки правки
 	ASSERT_EQ(document.error(), ini::error_t::DEPTH_EXCEEDED);
 	// Получаем записанный текст настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Дерево настроек обратного чтения
 	ini::document_t again;
 	// Выполняем проверку прохождения обратного чтения
@@ -1456,7 +1456,7 @@ TEST(CodecIniDocument, CreateSpacing) {
 	 *
 	 * @note Пустая строка перед объявлением ставится лишь тогда, когда её ещё нет
 	 */
-	ASSERT_EQ(document.text(), "[a]\nk = v\n\n[b]\n");
+	ASSERT_EQ(document.dump(), "[a]\nk = v\n\n[b]\n");
 }
 /**
  * @brief Проверка сохранения кавычек значения при обратной записи
@@ -1473,7 +1473,7 @@ TEST(CodecIniDocument, RoundtripQuotes) {
 	// Выполняем проверку снятия кавычек со значения
 	ASSERT_EQ(document.get("k", "a"), "x");
 	// Выполняем проверку сохранности кавычек при обратной записи
-	ASSERT_EQ(document.text(), "[a]\nk = \"x\"\nplain = y\n");
+	ASSERT_EQ(document.dump(), "[a]\nk = \"x\"\nplain = y\n");
 	// Выполняем установку нового значения свойства
 	ASSERT_TRUE(document.set("k", "z", "a"));
 	/**
@@ -1482,7 +1482,7 @@ TEST(CodecIniDocument, RoundtripQuotes) {
 	 * @note Кавычки сохраняются у значения, прочитанного в них; значение,
 	 *       установленное правкой, в них не нуждается
 	 */
-	ASSERT_EQ(document.text(), "[a]\nk = z\nplain = y\n");
+	ASSERT_EQ(document.dump(), "[a]\nk = z\nplain = y\n");
 }
 /**
  * @brief Проверка отсутствия сдвоенной пустой строки после удаления раздела
@@ -1501,7 +1501,7 @@ TEST(CodecIniDocument, CreateAfterRemove) {
 	// Выполняем объявление нового раздела
 	ASSERT_TRUE(document.create("c"));
 	// Выполняем проверку записи собранного дерева
-	ASSERT_EQ(document.text(), "[a]\nk = 1\n\n[c]\n");
+	ASSERT_EQ(document.dump(), "[a]\nk = 1\n\n[c]\n");
 }
 /**
  * @brief Проверка примечания конца строки у значения из строк продолжения
@@ -1530,7 +1530,7 @@ TEST(CodecIniDocument, InlineCommentContinued) {
 	// Выполняем проверку значения следующего свойства
 	ASSERT_EQ(document.get("m", "a"), "2");
 	// Получаем записанный текст настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Выполняем проверку прохождения обратной записи
 	ASSERT_FALSE(text.empty());
 	// Дерево настроек обратного чтения
@@ -1540,7 +1540,7 @@ TEST(CodecIniDocument, InlineCommentContinued) {
 	// Выполняем проверку сохранности значения при обороте
 	ASSERT_EQ(again.get("k", "a"), "one\ntwo");
 	// Выполняем проверку устойчивости записи при повторном обороте
-	ASSERT_EQ(again.text(), text);
+	ASSERT_EQ(again.dump(), text);
 }
 /**
  * @brief Проверка отклонения неправильного построения текста настроек
@@ -1580,7 +1580,7 @@ TEST(CodecIniDocument, Clear) {
 	// Выполняем проверку количества объявленных разделов
 	ASSERT_EQ(document.size(), 0u);
 	// Выполняем проверку пустоты записанного текста настроек
-	ASSERT_TRUE(document.text().empty());
+	ASSERT_TRUE(document.dump().empty());
 }
 
 /**
@@ -1709,7 +1709,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 */
 		ini::document_t back(options);
 		// Выполняем проверку того, что разбор записанного дерева удался
-		ASSERT_TRUE(back.parse(document.text()));
+		ASSERT_TRUE(back.parse(document.dump()));
 		// Выполняем проверку совпадения значений обращения
 		ASSERT_EQ(back.get("k", "a"), document.get("k", "a"));
 		/**
@@ -1718,7 +1718,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 * @note В файл настроек уходит обращение, а не подставленное значение: оно на
 		 *       то и записано, чтобы разрешаться заново при каждом чтении файла
 		 */
-		ASSERT_NE(document.text().find("${a:b}"), string::npos) << document.text();
+		ASSERT_NE(document.dump().find("${a:b}"), string::npos) << document.dump();
 	}
 	/**
 	 * Выполняем проверку разрешения обращения, заведённого правкой
@@ -1774,7 +1774,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 * @note Разбор такой текст с включённой подстановкой не примет, и выдать его
 		 *       значило бы отдать потребителю заведомо негодный файл настроек
 		 */
-		ASSERT_TRUE(document.text().empty());
+		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку кода ошибки отказа записи
 		ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_REFERENCE);
 		// Выполняем заведение источника обращения заново
@@ -1852,7 +1852,7 @@ TEST(CodecIniDocument, GlobalAfterSection) {
 	// Выполняем установку свойства в разделе без имени
 	ASSERT_TRUE(document.set("g", "глобальное", ""));
 	// Выполняем перезапись дерева настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Выполняем проверку того, что свойство записано прежде объявления раздела
 	ASSERT_LT(text.find("g = глобальное"), text.find("[a]"));
 	// Объект дерева настроек, собираемого обратным разбором
@@ -1905,7 +1905,7 @@ TEST(CodecIniDocument, PushFromOwnView) {
 	 * @note Перечень записи INI есть последовательность одноимённых свойств, и
 	 *       записаться иначе он не вправе
 	 */
-	ASSERT_NE(document.text().find("перечень = второе"), string::npos);
+	ASSERT_NE(document.dump().find("перечень = второе"), string::npos);
 }
 
 /**
@@ -2115,7 +2115,7 @@ TEST(CodecIniDocument, HeaderCommentKeepsSpace) {
 	// Выполняем разбор текста настроек с примечанием за объявлением раздела
 	ASSERT_TRUE(document.parse("[c] ; хвост [не раздел]\nkey = value\n", settings));
 	// Выполняем первую перезапись дерева настроек
-	const string first = document.text();
+	const string first = document.dump();
 	/**
 	 * Выполняем проверку того, что пробел перед примечанием записан
 	 *
@@ -2135,7 +2135,7 @@ TEST(CodecIniDocument, HeaderCommentKeepsSpace) {
 	 */
 	ASSERT_TRUE(again.section("c"));
 	// Выполняем проверку устойчивости перезаписи
-	ASSERT_EQ(again.text(), first);
+	ASSERT_EQ(again.dump(), first);
 }
 
 /**
@@ -2393,7 +2393,7 @@ TEST(CodecIniDocument, PushCreatesSection) {
 		// Выполняем проверку того, что свойство найдено
 		ASSERT_EQ(document.get("ключ"), "значение");
 		// Выполняем проверку записи дерева
-		ASSERT_EQ(document.text(), "ключ = значение\n");
+		ASSERT_EQ(document.dump(), "ключ = значение\n");
 	}
 	/**
 	 * Выполняем проверку долива в раздел, ещё не заведённый
@@ -2525,7 +2525,7 @@ TEST(CodecIniDocument, SourcesYieldRecordsBeforeSubstitution) {
 	 */
 	{
 		// Выполняем проверку того, что перезапись несёт обращение, а не разрешённое значение
-		ASSERT_NE(document.text().find("${root}/logs"), string::npos) << document.text();
+		ASSERT_NE(document.dump().find("${root}/logs"), string::npos) << document.dump();
 	}
 }
 /**
@@ -2635,7 +2635,7 @@ TEST(CodecIniDocument, UnsetReaderSettingsFields) {
 	 */
 	const auto fingerprint = [](const ini::document_t & document) noexcept -> string {
 		// Собираемый отпечаток разобранного дерева
-		string result = document.text();
+		string result = document.dump();
 		/**
 		 * Выполняем перебор имён разделов дерева
 		 */
@@ -2960,7 +2960,7 @@ TEST(CodecIniDocument, BracketedKeyEditWithoutArrays) {
 	// Выполняем проверку того, что правленое свойство снимается тем же именем
 	ASSERT_EQ(plain.get("m[]"), "b");
 	// Выполняем проверку того, что перезапись читается обратно
-	ASSERT_NE(plain.text().find("m[] = b"), string::npos);
+	ASSERT_NE(plain.dump().find("m[] = b"), string::npos);
 	// Владеющее значение, с дерева снятое
 	const ini::value_t lifted(plain);
 	// Дерево настроек, куда переносится значение
@@ -3017,7 +3017,7 @@ TEST(CodecIniDocument, ZeroConventionOfNumericLimits) {
 		// Выполняем проверку того, что правленое свойство на месте
 		ASSERT_EQ(document.get("m", "a"), "w");
 		// Выполняем проверку того, что перезапись правку несёт
-		ASSERT_NE(document.text().find("m = w"), string::npos);
+		ASSERT_NE(document.dump().find("m = w"), string::npos);
 	}{
 		// Настройки дерева настроек
 		ini::document_t::settings_t settings;
@@ -4281,7 +4281,7 @@ TEST(CodecIniDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	 * @note Половина эта сторожит заслон с другой стороны: отвергни он при всяком правиле -
 	 *       и настройка перестала бы значить что-либо
 	 */
-	ASSERT_FALSE(document.text().empty());
+	ASSERT_FALSE(document.dump().empty());
 	// Выполняем проверку того, что запись умолчанием кода отказа не поставила
 	ASSERT_EQ(document.error(), ini::error_t::NONE) << ini::message(document.error());
 }
@@ -4881,11 +4881,11 @@ TEST(CodecIniDocument, MissingLinksOfThePathAreCreated) {
 	// Выполняем проверку постановки значения в раздел, коего в дереве нет вовсе
 	ASSERT_TRUE(document.set("ключ", "2", "нетути")) << ini::message(document.error());
 	// Выполняем проверку того, что недостающий раздел заведён
-	ASSERT_NE(document.text().find("[нетути]"), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("[нетути]"), string::npos) << document.dump();
 	// Выполняем проверку того, что значение поставлено внутрь заведённого раздела
-	ASSERT_NE(document.text().find("ключ = 2"), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("ключ = 2"), string::npos) << document.dump();
 	// Выполняем проверку того, что прежний узел дерева не пострадал
-	ASSERT_NE(document.text().find("есть = 1"), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("есть = 1"), string::npos) << document.dump();
 }
 
 /**

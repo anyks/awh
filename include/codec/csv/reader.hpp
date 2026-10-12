@@ -105,6 +105,13 @@ namespace awh {
 			 * \~english
 			 * @brief State of the reading of a table text
 			 *
+			 * @note The contract is common to the seven codecs of the framework, and its members mean exactly
+			 *       the same: the interpretations must not differ, otherwise a loop written by the pattern of
+			 *       one codec would turn out correct by its look and wrong by its exit condition
+			 *
+			 * @warning Do not confound it with `complete()`: that one finishes the current FIELD, and not
+			 *          the parsing, and its name happened to coincide with the common contract by chance
+			 *
 			 * \~
 			 */
 			enum class state_t : uint8_t {
@@ -119,21 +126,22 @@ namespace awh {
 			 * @brief Класс потокового чтения текста CSV
 			 *
 			 * @details Текст принимается кусками произвольного размера, а выдача ведётся
-			 * событиями по мере разбора: удерживать текст целиком чтению не требуется
+			 *          событиями по мере разбора: удерживать текст целиком чтению не требуется.
 			 *
 			 * @par Порядок работы
 			 *
 			 * @warning Выдача разбора не зависит от того, как исходный текст нарезан на
-			 * куски: одна и та же последовательность событий с одними и теми же местами
-			 * получается при всякой нарезке. Договор этот проверяется дифференциальной
-			 * сверкой подачи и нарушается легче, чем кажется - всякий знак, требующий
-			 * взгляда на следующий за ним, нарушает его при нарезке ровно между ними
+			 *          куски: одна и та же последовательность событий с одними и теми же местами
+			 *          получается при всякой нарезке. Договор этот проверяется дифференциальной
+			 *          сверкой подачи и нарушается легче, чем кажется - всякий знак, требующий
+			 *          взгляда на следующий за ним, нарушает его при нарезке ровно между ними
+			 *
 			 * @note Поле выдаётся своим событием, а запись - отдельным событием конца.
-			 * Собирать запись целиком чтению не нужно, и запись из тысячи полей проходит
-			 * через него, не оседая в памяти
+			 *       Собирать запись целиком чтению не нужно, и запись из тысячи полей проходит
+			 *       через него, не оседая в памяти
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader();
+			 *          reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -144,24 +152,29 @@ namespace awh {
 			 *          case event_t::RECORD: break;
 			 *      }
 			 *  }
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a CSV text
+			 *
 			 * @details The text is accepted by chunks of an arbitrary size, while the issuance is conducted
-			 * by events as the parsing goes on: the reading is not required to hold the text in full
+			 *          by events as the parsing goes on: the reading is not required to hold the text in full.
+			 *
 			 * @par Order of the work
+			 *
 			 * @warning The output of the parsing does not depend on how the source text is cut into
-			 * chunks: one and the same sequence of the events with one and the same places
-			 * is obtained at any cutting. This contract is checked by a differential
-			 * comparison of the feeding and is violated more easily than it seems — every character requiring
-			 * a look at the one following it violates it at a cutting exactly between them
+			 *          chunks: one and the same sequence of the events with one and the same places
+			 *          is obtained at any cutting. This contract is checked by a differential
+			 *          comparison of the feeding and is violated more easily than it seems — every character requiring
+			 *          a look at the one following it violates it at a cutting exactly between them
+			 *
 			 * @note A field is issued by its own event, while a record — by a separate event of the end.
-			 * The reading does not need to assemble a record in full, and a record of a thousand fields passes
-			 * through it without settling in the memory
+			 *       The reading does not need to assemble a record in full, and a record of a thousand fields passes
+			 *       through it without settling in the memory
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader();
+			 *          reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -172,8 +185,10 @@ namespace awh {
 			 *          case event_t::RECORD: break;
 			 *      }
 			 *  }
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
 				public:
@@ -192,14 +207,15 @@ namespace awh {
 						 * Знак-разделитель полей, ноль - определять по содержимому
 						 *
 						 * @note Умолчанием берётся запятая, названная договором. Ноль
-						 * включает определение по содержимому: разбор откладывает выдачу
-						 * до тех пор, пока разделитель не определится
+						 *       включает определение по содержимому: разбор откладывает выдачу
+						 *       до тех пор, пока разделитель не определится
 						 *
 						 * \~english
 						 * Separator character of the fields, zero — determine by the content
+						 *
 						 * @note By default the comma named by the protocol is taken. Zero
-						 * enables the determination by the content: the parsing postpones the issuance
-						 * until the separator is determined
+						 *       enables the determination by the content: the parsing postpones the issuance
+						 *       until the separator is determined
 						 *
 						 * \~
 						 */
@@ -211,12 +227,13 @@ namespace awh {
 						 * Знак, начинающий строку примечания, ноль - примечаний нет
 						 *
 						 * @note Договор примечаний не описывает вовсе, потому умолчанием
-						 * их нет: строка, начинающаяся с решётки, обыкновенная запись
+						 *       их нет: строка, начинающаяся с решётки, обыкновенная запись
 						 *
 						 * \~english
 						 * Character beginning a comment line, zero — there are no comments
+						 *
 						 * @note The protocol does not describe the comments at all, therefore by default
-						 * there are none: a line beginning with a hash is an ordinary record
+						 *       there are none: a line beginning with a hash is an ordinary record
 						 *
 						 * \~
 						 */
@@ -236,25 +253,31 @@ namespace awh {
 						 * Признак строгого следования RFC 4180
 						 *
 						 * @note Строгий разбор отвечает отказом на одиночную кавычку
-						 * внутри поля без кавычек, на знаки за закрывающей кавычкой и на
-						 * одиночный перевод строки в качестве конца записи. Обиход этого
-						 * не соблюдает, потому умолчанием разбор нестрогий
+						 *       внутри поля без кавычек, на знаки за закрывающей кавычкой и на
+						 *       одиночный перевод строки в качестве конца записи. Обиход этого
+						 *       не соблюдает, потому умолчанием разбор нестрогий
 						 *
 						 * @note Всякое из трёх правил называет свою причину СВОИМ кодом:
-						 * `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` и `BARE_LINE_BREAK`.
-						 * Последний заведён 05.09.2026: прежде негодный конец записи -
-						 * одиночный перевод строки и возврат каретки без пары - отвечал
-						 * общим `INVALID_CHARACTER`, и потребитель не отличал нарушения
-						 * грамматики от недопустимого знака в самом содержимом
+						 *       `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` и `BARE_LINE_BREAK`.
+						 *       Последний заведён 05.09.2026: прежде негодный конец записи -
+						 *       одиночный перевод строки и возврат каретки без пары - отвечал
+						 *       общим `INVALID_CHARACTER`, и потребитель не отличал нарушения
+						 *       грамматики от недопустимого знака в самом содержимом
 						 *
 						 * \~english
 						 * Flag of the strict following of RFC 4180
+						 *
 						 * @note The strict parsing answers with a refusal to a single quote
-						 * inside a field without quotes, to the characters after a closing quote and to
-						 * a single line feed as the end of a record. The custom does not
-						 * observe this, therefore by default the parsing is a non-strict one
+						 *       inside a field without quotes, to the characters after a closing quote and to
+						 *       a single line feed as the end of a record. The custom does not
+						 *       observe this, therefore by default the parsing is a non-strict one
+						 *
 						 * @note Each of the three rules names its cause with its OWN code:
-						 * `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` and `BARE_LINE_BREAK`
+						 *       `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` and `BARE_LINE_BREAK`. The last one was
+						 *       introduced on 2026-09-05: formerly an unfit end of a record - a single line feed and a
+						 *       carriage return without a pair - answered with the common `INVALID_CHARACTER`, and a
+						 *       consumer could not tell a breach of the grammar from an inadmissible character in the
+						 *       content itself
 						 *
 						 * \~
 						 */
@@ -264,20 +287,27 @@ namespace awh {
 						 * Признак выдачи событий пустых строк
 						 *
 						 * @note Признак этот правит ПОТОКОМ СОБЫТИЙ, а не составом таблицы:
-						 * контейнер `document_t` пустые строки содержимым не считает и в
-						 * записи их не заносит НИ ПРИ КАКОМ его значении. Закреплено
-						 * проверкою `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
+						 *       контейнер `document_t` пустые строки содержимым не считает и в
+						 *       записи их не заносит НИ ПРИ КАКОМ его значении. Закреплено
+						 *       проверкою `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
 						 *
 						 * @note Толкование это расходится с обиходом иных средств - разбор
-						 * таблиц у языка Python выдаёт пустую строку записью без полей, и
-						 * грамматика RFC 4180 такому толкованию не противоречит, - и
-						 * расхождение здесь описано нарочно. Сличено внешним судьёю 17.09.2026
+						 *       таблиц у языка Python выдаёт пустую строку записью без полей, и
+						 *       грамматика RFC 4180 такому толкованию не противоречит, - и
+						 *       расхождение здесь описано нарочно. Сличено внешним судьёю 17.09.2026
 						 *
 						 * \~english
 						 * Flag of the issuance of the events of the blank lines
+						 *
 						 * @note This flag governs the STREAM OF EVENTS rather than the composition of the table:
-						 * the container `document_t` does not consider the blank lines to be a content and does not
-						 * put them into the records under ANY of its values
+						 *       the container `document_t` does not consider the blank lines to be a content and does not
+						 *       put them into the records under ANY of its values. It is fixed by the check
+						 *       `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
+						 *
+						 * @note This interpretation diverges from the usage of other means - the parsing of tables in
+						 *       the Python language issues a blank line as a record without fields, and the grammar of
+						 *       RFC 4180 does not contradict such an interpretation, - and the divergence is described
+						 *       here on purpose. Compared by an external judge on 2026-09-17
 						 *
 						 * \~
 						 */
@@ -287,12 +317,13 @@ namespace awh {
 						 * Признак выдачи событий примечаний
 						 *
 						 * @note Довод общий с `emitBlanks`: поток событий правится, состав
-						 * таблицы - нет
+						 *       таблицы - нет
 						 *
 						 * \~english
 						 * Flag of the issuance of the events of the comments
+						 *
 						 * @note The argument is common with `emitBlanks`: the stream of the events is governed,
-						 * the composition of the table is not
+						 *       the composition of the table is not
 						 *
 						 * \~
 						 */
@@ -302,14 +333,14 @@ namespace awh {
 						 * Признак проверки повторного объявления имён полей в заголовке
 						 *
 						 * @note Проверка стоит памяти - разбор удерживает имена, - и
-						 * отключают её там, где заголовок заведомо свой
+						 *       отключают её там, где заголовок заведомо свой
 						 *
 						 * @warning Отключение есть отказ от платы, а НЕ дозволение повтора: повтор,
-						 * прошедший отключённую проверку, оставляет столбец недостижимым по имени.
-						 * Обращение по имени доходит до ПЕРВОГО столбца с этим именем, прочие же
-						 * достижимы одним лишь номером - молча, без отказа и без признака. Замер:
-						 * заголовок «имя,имя,возраст» при отключённой проверке принимается, столбцов
-						 * выходит три, а `has("имя")` истинен и указывает на нулевой
+						 *          прошедший отключённую проверку, оставляет столбец недостижимым по имени.
+						 *          Обращение по имени доходит до ПЕРВОГО столбца с этим именем, прочие же
+						 *          достижимы одним лишь номером - молча, без отказа и без признака. Замер:
+						 *          заголовок «имя,имя,возраст» при отключённой проверке принимается, столбцов
+						 *          выходит три, а `has("имя")` истинен и указывает на нулевой
 						 *
 						 * @note Установка заголовка извне (`document_t::header`) повтор отвергает
 						 *       ВСЕГДА, признака этого не спрашивая: проверка там даровая - она
@@ -318,14 +349,21 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of the check of a repeated declaration of the names of the fields in the header
+						 *
 						 * @note The check costs memory — the parsing holds the names — and
-						 * it is disabled where the header is known to be one's own
+						 *       it is disabled where the header is known to be one's own
+						 *
 						 * @warning The disabling is a refusal of the cost and NOT a permission of a repetition:
-						 * a repetition which has passed the disabled check leaves a column unreachable by name.
-						 * The addressing by name reaches the FIRST column with this name, while the others
-						 * are reachable by the index alone — silently, without a refusal and without a sign
+						 *          a repetition which has passed the disabled check leaves a column unreachable by name.
+						 *          The addressing by name reaches the FIRST column with this name, while the others
+						 *          are reachable by the index alone — silently, without a refusal and without a sign.
+						 *          A measurement: the header «name,name,age» with the check disabled is accepted, three
+						 *          columns come out, and `has("name")` is true and points at the zero one
+						 *
 						 * @note The setting of the header from the outside (`document_t::header`) refuses a repetition
-						 *       ALWAYS, without asking this flag: the check there is free, and the divergence is deliberate
+						 *       ALWAYS, without asking this flag: the check there is free - it follows from the
+						 *       correspondence of the names, which is built anyway, - and there is nothing to pay for
+						 *       it. The divergence is deliberate, and not an omission
 						 *
 						 * \~
 						 */
@@ -341,19 +379,19 @@ namespace awh {
 						 * Количество первых записей, по которым определяется разделитель
 						 *
 						 * @details Определение ведётся лишь тогда, когда разделитель не задан
-						 * настройкою. Проверяются ЧЕТЫРЕ знака и только они: запятая, точка с
-						 * запятой, знак табуляции и вертикальная черта. Прочие знаки
-						 * разделителями не признаются вовсе - текст, разделённый двоеточием
-						 * либо пробелом, выходит одним полем на запись, и отказа при этом не
-						 * следует. Замер 01.09.2026 подтвердил всё перечисленное поимённо
+						 *          настройкою. Проверяются ЧЕТЫРЕ знака и только они: запятая, точка с
+						 *          запятой, знак табуляции и вертикальная черта. Прочие знаки
+						 *          разделителями не признаются вовсе - текст, разделённый двоеточием
+						 *          либо пробелом, выходит одним полем на запись, и отказа при этом не
+						 *          следует. Замер 01.09.2026 подтвердил всё перечисленное поимённо.
 						 *
 						 * @details Достоинством знака считается ПОСТОЯНСТВО количества полей в
-						 * записях, а не частота самого знака: частота обманывается текстом, где
-						 * запятых в значениях больше, чем настоящих разделителей. Побеждает
-						 * знак, давший наибольшее число записей с одним и тем же количеством
-						 * полей, а при равенстве - знак, давший полей больше. Замер: текст
-						 * «"а,б,в";"г,д,е"» разбирается точкою с запятой, хотя запятых в нём
-						 * втрое больше
+						 *          записях, а не частота самого знака: частота обманывается текстом, где
+						 *          запятых в значениях больше, чем настоящих разделителей. Побеждает
+						 *          знак, давший наибольшее число записей с одним и тем же количеством
+						 *          полей, а при равенстве - знак, давший полей больше. Замер: текст
+						 *          «"а,б,в";"г,д,е"» разбирается точкою с запятой, хотя запятых в нём
+						 *          втрое больше.
 						 *
 						 * @warning Ноль здесь означает НЕ «без предела», в отличие от соседних
 						 *          настроек этой же записи: `maxField`, `maxRecord` и `maxFields`
@@ -370,14 +408,33 @@ namespace awh {
 						 *
 						 * \~english
 						 * Number of the first records by which the separator is determined
+						 *
 						 * @details The determination is conducted only when the separator is not set by a setting.
-						 * FOUR characters and only they are checked: the comma, the semicolon, the tab
-						 * and the vertical bar. Other characters are not recognized as separators at all
+						 *          FOUR characters and only they are checked: the comma, the semicolon, the tab and the
+						 *          vertical bar. The other characters are not recognised as separators at all - a text
+						 *          divided by a colon or by a space comes out as one field per record, and no refusal
+						 *          follows upon it. The measurement of 2026-09-01 confirmed all of the listed things
+						 *          by name.
+						 *
 						 * @details The merit of a character is the CONSTANCY of the number of the fields in the
-						 * records rather than the frequency of the character itself
+						 *          records rather than the frequency of the character itself: the frequency is deceived
+						 *          by a text where there are more commas in the values than real separators. The winner
+						 *          is the character that gave the greatest number of records with one and the same number
+						 *          of fields, and upon an equality - the character that gave more fields. A measurement:
+						 *          the text «"a,b,c";"d,e,f"» is parsed by the semicolon, though there are three times
+						 *          as many commas in it.
+						 *
 						 * @warning Zero here does NOT mean «no limit», unlike the neighbouring settings of this
-						 *          same record: zero reduces `detect` to ONE record, that is to the strictest
-						 *          examination rather than to the widest one
+						 *          same record: `maxField`, `maxRecord` and `maxFields` are switched off by zero, while
+						 *          `detect` by zero is reduced to ONE record - that is, to the strictest examination
+						 *          rather than to the widest one. A measurement: the text «a,b\r\nc;d;e\r\n» at zero and
+						 *          at one is parsed by the comma, and at two - by the semicolon. It is reserved here
+						 *          because the neighbourhood of three settings with the reverse order reads as the common
+						 *          order of the whole record
+						 *
+						 * @note The default is `DETECT_RECORDS`, declared as a value in the common header of the codec:
+						 *       this contract is reproducible from the outside in full, without a recourse to the body
+						 *       of the parsing
 						 *
 						 * \~
 						 */
@@ -407,16 +464,23 @@ namespace awh {
 					 *       развести было нельзя, а договор общий главнее внутреннего имени
 					 *
 					 * @details Состояние хранит и то, что обыкновенно достаётся взглядом на
-					 * следующий знак: знак, чьё значение зависит от следующего за ним, лишь
-					 * переводит разбор в отдельное состояние. Иначе нарезка текста ровно
-					 * между такими знаками меняла бы выдачу
+					 *          следующий знак: знак, чьё значение зависит от следующего за ним, лишь
+					 *          переводит разбор в отдельное состояние. Иначе нарезка текста ровно
+					 *          между такими знаками меняла бы выдачу.
 					 *
 					 * \~english
 					 * @brief State of the parsing of a text
+					 *
+					 * @note It was named `state_t` until 2026-09-07 and was renamed for the sake of the agreement
+					 *       of the seven codecs: the name `state_t` carries among them an OPEN state of the streaming
+					 *       reading (`READY`, `HUNGRY`, `FINISHED`, `FAILED`), while here the type describes a closed
+					 *       character-by-character automaton. Two different senses under one name inside one codec
+					 *       could not be told apart, and the common contract weighs more than an internal name
+					 *
 					 * @details The state stores also what is ordinarily obtained by a look at the
-					 * next character: a character whose meaning depends on the one following it merely
-					 * moves the parsing into a separate state. Otherwise a cutting of the text exactly
-					 * between such characters would change the output
+					 *          next character: a character whose meaning depends on the one following it merely
+					 *          moves the parsing into a separate state. Otherwise a cutting of the text exactly
+					 *          between such characters would change the output.
 					 *
 					 * \~
 					 */
@@ -435,14 +499,15 @@ namespace awh {
 						 * Знак отмены внутри поля без кавычек
 						 *
 						 * @details Стоит последним, а не рядом с состоянием знака отмены внутри
-						 * поля в кавычках, ибо перечень этот вызывающему виден: перенумеровать
-						 * прежние состояния значило бы переменить договор ради порядка чтения
+						 *          поля в кавычках, ибо перечень этот вызывающему виден: перенумеровать
+						 *          прежние состояния значило бы переменить договор ради порядка чтения.
 						 *
 						 * \~english
 						 * Escape character inside a field without quotes
+						 *
 						 * @details It stands last rather than beside the state of the escape character inside
-						 * a field in quotes, for this list is visible to the caller: to renumber the previous
-						 * states would mean to change the contract for the sake of the order of reading
+						 *          a field in quotes, for this list is visible to the caller: to renumber the previous
+						 *          states would mean to change the contract for the sake of the order of reading.
 						 *
 						 * \~
 						 */
@@ -452,11 +517,11 @@ namespace awh {
 						 * Возврат каретки при строгом разборе, запись ещё не завершена
 						 *
 						 * @details Строгий разбор знает концом записи одну лишь пару возврата
-						 * каретки с переводом строки, а потому завершать запись самим возвратом
-						 * каретки не вправе: пара может и не сложиться, и тогда текст выпадает из
-						 * грамматики. Завершение откладывается сюда и совершается лишь по
-						 * приходе перевода строки - иначе отказ приходил бы уже ПОСЛЕ выдачи
-						 * записи, которой в тексте не было
+						 *          каретки с переводом строки, а потому завершать запись самим возвратом
+						 *          каретки не вправе: пара может и не сложиться, и тогда текст выпадает из
+						 *          грамматики. Завершение откладывается сюда и совершается лишь по
+						 *          приходе перевода строки - иначе отказ приходил бы уже ПОСЛЕ выдачи
+						 *          записи, которой в тексте не было.
 						 *
 						 * @note Отличается от `AFTER_CR` тем лишь, что там запись уже завершена.
 						 *       Свести их в одно нельзя: разбор нестрогий возврат каретки концом
@@ -464,12 +529,17 @@ namespace awh {
 						 *
 						 * \~english
 						 * Carriage return at the strict parsing, the record is not finished yet
+						 *
 						 * @details The strict parsing knows as the end of a record only the pair of the carriage
-						 * return with the line feed, and therefore it has no right to finish a record by the carriage
-						 * return itself: the pair may fail to come together, and then the text falls out of
-						 * the grammar. The finishing is postponed to here and is performed only upon
-						 * the arrival of the line feed — otherwise the refusal would come already AFTER the issuance
-						 * of a record which was not in the text
+						 *          return with the line feed, and therefore it has no right to finish a record by the carriage
+						 *          return itself: the pair may fail to come together, and then the text falls out of
+						 *          the grammar. The finishing is postponed to here and is performed only upon
+						 *          the arrival of the line feed — otherwise the refusal would come already AFTER the issuance
+						 *          of a record which was not in the text.
+						 *
+						 * @note It differs from `AFTER_CR` only in that there the record is already finished. Bringing
+						 *       them into one is impossible: a non-strict parsing recognises the carriage return as the
+						 *       end of a record, and it has nothing to postpone
 						 *
 						 * \~
 						 */
@@ -534,6 +604,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of the fields which every record ought to possess
+					 *
 					 * @note Established only at the check of the number of the fields and without a header:
 					 *       it is assigned by the first record, while zero means that there have been
 					 *       no records yet and there is nothing to assign the number by
@@ -586,6 +657,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Queue of the assembled parsing events
+					 *
 					 * @note The queue has been made a list with a pointer to the head rather than a deque:
 					 *       the latter creates a block of memory per every few
 					 *       dozen events and releases it upon the emptying, from which the parsing
@@ -605,6 +677,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Pointer to the first unissued event in the queue
+					 *
 					 * @note Upon the issuance of the last event the queue is cleared in full, while
 					 *       what has been allocated for it remains: that is how the reuse is achieved
 					 *
@@ -617,6 +690,7 @@ namespace awh {
 					// Положение начала текущего поля в исходном тексте
 					location_t _position;
 					/**
+					 * \~russian
 					 * Место обнаружения отказа разбора
 					 *
 					 * @note Поле это отдельно от `_position` намеренно: то несёт положение
@@ -626,6 +700,20 @@ namespace awh {
 					 *       место конца текста вместо пустого умолчания - тогда как JSON и XML
 					 *       выдают там `NO_OFFSET`. Замер 01.09.2026: текст «а,б\r\n» давал
 					 *       у CSV место 3(1:4) при коде `NONE`
+					 *
+					 * \~english
+					 * The place where a parse failure was detected
+					 *
+					 * @note This field is kept apart from `_position` on purpose: that one carries
+					 *       the position of the start of the CURRENT field and is moved by the whole
+					 *       parse, while the place of a failure is obliged to stay exactly where the
+					 *       failure was detected. Previously both were taken from `_position`, and a
+					 *       parse WITHOUT a failure made `errorLocation()` issue the end of the text
+					 *       instead of an empty default - whereas JSON and XML answer `NO_OFFSET`
+					 *       there. The measurement of 2026-09-01: the text «а,б\r\n» gave CSV the
+					 *       place 3(1:4) with the code `NONE`
+					 *
+					 * \~
 					 */
 					location_t _errorLocation;
 					// Смещение от начала текста в байтах
@@ -649,16 +737,17 @@ namespace awh {
 					 * Смещение первого значащего знака текущего поля в хранилище записи
 					 *
 					 * @details Значащая часть поля - то, что останется от него по снятии
-					 * обвязки, - отслеживается по ходу разбора, а не считается по его
-					 * окончании: предел длины поля обязан отвечать отказом в том месте, где
-					 * он переполнен, а не тогда, когда поле уже осело в памяти целиком
+					 *          обвязки, - отслеживается по ходу разбора, а не считается по его
+					 *          окончании: предел длины поля обязан отвечать отказом в том месте, где
+					 *          он переполнен, а не тогда, когда поле уже осело в памяти целиком.
 					 *
 					 * \~english
 					 * Offset of the first significant character of the current field in the storage of the record
+					 *
 					 * @details The significant part of a field — what will be left of it once the trimming
-					 * is taken off — is tracked along the parsing rather than counted at its
-					 * end: the limit of the length of a field must answer with a refusal at the place where
-					 * it is overflown rather than when the field has already settled into the memory in full
+					 *          is taken off — is tracked along the parsing rather than counted at its
+					 *          end: the limit of the length of a field must answer with a refusal at the place where
+					 *          it is overflown rather than when the field has already settled into the memory in full.
 					 *
 					 * \~
 					 */
@@ -668,12 +757,13 @@ namespace awh {
 					 * Смещение за последним значащим знаком текущего поля в хранилище записи
 					 *
 					 * @note Совпадение его с началом поля означает, что значащих знаков поле
-					 * ещё не набрало: всё накопленное - обвязка
+					 *       ещё не набрало: всё накопленное - обвязка
 					 *
 					 * \~english
 					 * Offset past the last significant character of the current field in the storage of the record
+					 *
 					 * @note Its coincidence with the beginning of the field means that the field has not gathered
-					 * significant characters yet: everything accumulated is the trimming
+					 *       significant characters yet: everything accumulated is the trimming
 					 *
 					 * \~
 					 */
@@ -687,9 +777,9 @@ namespace awh {
 					 * Разметка знаков, разбор поля без кавычек прерывающих
 					 *
 					 * @details Разметка эта служит быстрому проходу по знакам, состояния
-					 * разбора не меняющим: знак, в ней не отмеченный, содержимым поля и
-					 * является, и потому целые куски такого содержимого переносятся в
-					 * хранилище разом, минуя переключение состояний
+					 *          разбора не меняющим: знак, в ней не отмеченный, содержимым поля и
+					 *          является, и потому целые куски такого содержимого переносятся в
+					 *          хранилище разом, минуя переключение состояний.
 					 *
 					 * @note Разметка перестраивается при всякой смене настроек и по
 					 *       определении разделителя: знаки, разбор прерывающие, зависят и
@@ -697,10 +787,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * Map of the characters interrupting the parsing of a field without quotes
+					 *
 					 * @details This map serves the fast pass over the characters not changing the states
-					 * of the parsing: a character not marked in it is the content of the field
-					 * itself, and therefore whole chunks of such content are transferred into
-					 * the storage at once, bypassing the switching of the states
+					 *          of the parsing: a character not marked in it is the content of the field
+					 *          itself, and therefore whole chunks of such content are transferred into
+					 *          the storage at once, bypassing the switching of the states.
+					 *
 					 * @note The map is rebuilt at every change of the settings and upon the
 					 *       determination of the separator: the characters interrupting the parsing depend both
 					 *       on the separator, and on the quote character, and on the way of the escaping
@@ -726,10 +818,10 @@ namespace awh {
 					 * @brief Метод быстрого прохода по знакам, состояния не меняющим
 					 *
 					 * @details Проходятся знаки, содержимым поля являющиеся: переносятся они
-					 * в хранилище разом, а учёт положения ведётся сложением. Договор о
-					 * независимости выдачи от нарезки текста проход этот не задевает:
-					 * знаки, чьё значение зависит от следующего за ними, разметкой отмечены
-					 * и проходом не берутся
+					 *          в хранилище разом, а учёт положения ведётся сложением. Договор о
+					 *          независимости выдачи от нарезки текста проход этот не задевает:
+					 *          знаки, чьё значение зависит от следующего за ними, разметкой отмечены
+					 *          и проходом не берутся.
 					 *
 					 * @param buffer буфер проходимых знаков текста
 					 * @param size   размер буфера проходимых знаков текста
@@ -737,11 +829,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the fast pass over the characters not changing the state
+					 *
 					 * @details The characters being the content of a field are passed: they are transferred
-					 * into the storage at once, while the accounting of the position is conducted by an addition. The contract about
-					 * the independence of the output from the cutting of the text is not affected by this pass:
-					 * the characters whose meaning depends on the one following them are marked in the map
-					 * and are not taken by the pass
+					 *          into the storage at once, while the accounting of the position is conducted by an addition. The contract about
+					 *          the independence of the output from the cutting of the text is not affected by this pass:
+					 *          the characters whose meaning depends on the one following them are marked in the map
+					 *          and are not taken by the pass.
+					 *
 					 * @param buffer buffer of the characters of the text being passed
 					 * @param size   size of the buffer of the characters of the text being passed
 					 * @return       number of the passed characters
@@ -758,6 +852,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a converted chunk of a text
+					 *
 					 * @param text converted chunk of the text being parsed
 					 * @return     flag of the continuation of the parsing
 					 *
@@ -773,6 +868,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the next character of a text
+					 *
 					 * @param letter character being parsed
 					 * @return       flag of the continuation of the parsing
 					 *
@@ -784,19 +880,21 @@ namespace awh {
 					 * @brief Метод разбора знака состоянием разбора
 					 *
 					 * @details Знак, сменивший состояние, разбирается заново уже новым
-					 * состоянием, и разбор потому вызывает себя повторно тем же знаком. Учёт
-					 * пределов вынесен наружу именно поэтому: считаемый здесь, он рос бы на
-					 * всякий заход
+					 *          состоянием, и разбор потому вызывает себя повторно тем же знаком. Учёт
+					 *          пределов вынесен наружу именно поэтому: считаемый здесь, он рос бы на
+					 *          всякий заход.
 					 *
 					 * @param letter разбираемый знак
 					 * @return       признак продолжения разбора
 					 *
 					 * \~english
 					 * @brief Method of parsing a character by the state of the parsing
+					 *
 					 * @details A character that has changed the state is parsed anew already by the new
-					 * state, and therefore the parsing calls itself again with the same character. The accounting of the
-					 * limits is taken outside exactly for this reason: counted here, it would grow at
-					 * every entry
+					 *          state, and therefore the parsing calls itself again with the same character. The accounting of the
+					 *          limits is taken outside exactly for this reason: counted here, it would grow at
+					 *          every entry.
+					 *
 					 * @param letter character being parsed
 					 * @return       flag of the continuation of the parsing
 					 *
@@ -808,14 +906,15 @@ namespace awh {
 					 * @brief Метод завершения разбора текста
 					 *
 					 * @details Вызывается по окончании текста и доводит до конца то, что
-					 * осталось незавершённым: последнее поле без знака конца строки,
-					 * последнюю запись и отложенное состояние возврата каретки
+					 *          осталось незавершённым: последнее поле без знака конца строки,
+					 *          последнюю запись и отложенное состояние возврата каретки.
 					 *
 					 * \~english
 					 * @brief Method of completing the parsing of a text
+					 *
 					 * @details Called upon the end of the text and brings to the end what has
-					 * remained unfinished: the last field without a line ending character,
-					 * the last record and the postponed state of a carriage return
+					 *          remained unfinished: the last field without a line ending character,
+					 *          the last record and the postponed state of a carriage return.
 					 *
 					 * \~
 					 */
@@ -826,17 +925,21 @@ namespace awh {
 					 * @brief Метод определения разделителя по отложенному тексту
 					 *
 					 * @details Разделитель определяется постоянством количества полей в
-					 * записях, а не частотой знака: частота обманывается текстом, где
-					 * запятых в значениях больше, чем разделителей
+					 *          записях, а не частотой знака: частота обманывается текстом, где
+					 *          запятых в значениях больше, чем разделителей.
 					 *
 					 * @note Отказать определение не умеет: текст, разделителя не содержащий,
 					 *       разбирается в один столбец с запятой, названной договором
 					 *
 					 * \~english
 					 * @brief Method of determining the separator by the postponed text
+					 *
 					 * @details The separator is determined by the constancy of the number of the fields in the
-					 * records rather than by the frequency of a character: the frequency is deceived by a text where
-					 * there are more commas in the values than separators
+					 *          records rather than by the frequency of a character: the frequency is deceived by a text where
+					 *          there are more commas in the values than separators.
+					 *
+					 * @note The determination cannot refuse: a text containing no separator is parsed into one
+					 *       column with the comma, named by the contract
 					 *
 					 * \~
 					 */
@@ -851,6 +954,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of counting the fields at a given separator
+					 *
 					 * @param separator separator character to be checked
 					 * @param counts    number of the fields by the records
 					 * @return          flag of the suitability of the separator
@@ -867,6 +971,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of completing the current field
+					 *
 					 * @return flag of the continuation of the parsing
 					 *
 					 * \~
@@ -880,6 +985,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of completing the current record
+					 *
 					 * @return flag of the continuation of the parsing
 					 *
 					 * \~
@@ -894,6 +1000,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of recording a parsing error
+					 *
 					 * @param error error code of the parsing
 					 * @return      flag of the continuation of the parsing, always false
 					 *
@@ -905,10 +1012,10 @@ namespace awh {
 					 * @brief Метод занесения ошибки разбора с указанием места
 					 *
 					 * @details Место указывается там, где знак, отказ вызвавший, к мигу
-					 * обнаружения отказа уже пройден: предел, сличаемый по накопленному,
-					 * узнаёт о переполнении лишь по дописывании знака, а указывать обязан
-					 * на сам знак - ровно так же, как это делает предел длины записи,
-					 * сличаемый до его прохождения
+					 *          обнаружения отказа уже пройден: предел, сличаемый по накопленному,
+					 *          узнаёт о переполнении лишь по дописывании знака, а указывать обязан
+					 *          на сам знак - ровно так же, как это делает предел длины записи,
+					 *          сличаемый до его прохождения.
 					 *
 					 * @param error    код ошибки разбора
 					 * @param location место ошибки в исходном тексте
@@ -916,11 +1023,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of recording a parsing error with an indication of the place
+					 *
 					 * @details The place is indicated there where the character that has caused the refusal has
-					 * already been passed by the moment of the detection of the refusal: a limit compared against what has been
-					 * accumulated learns of the overflow only upon the appending of the character, while it is obliged to point
-					 * at the character itself — exactly as the limit of the length of a record does, being
-					 * compared before the passing of it
+					 *          already been passed by the moment of the detection of the refusal: a limit compared against what has been
+					 *          accumulated learns of the overflow only upon the appending of the character, while it is obliged to point
+					 *          at the character itself — exactly as the limit of the length of a record does, being
+					 *          compared before the passing of it.
+					 *
 					 * @param error    error code of the parsing
 					 * @param location place of the error in the source text
 					 * @return         flag of the continuation of the parsing, always false
@@ -938,6 +1047,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of removing the padding from the accumulated content of a field
+					 *
 					 * @param offset offset of the beginning of the content in the storage of the record
 					 * @return       segment of the content without the padding
 					 *
@@ -949,16 +1059,18 @@ namespace awh {
 					 * @brief Метод учёта значащей части поля по вновь накопленным знакам
 					 *
 					 * @details Учёт ведётся по знакам, дописанным в хранилище с указанного
-					 * места: обвязка предела не расходует, и потому отслеживаются границы
-					 * значащей части, а не общая длина накопленного
+					 *          места: обвязка предела не расходует, и потому отслеживаются границы
+					 *          значащей части, а не общая длина накопленного.
 					 *
 					 * @param offset размер хранилища записи до дописывания знаков
 					 *
 					 * \~english
 					 * @brief Method of the accounting of the significant part of a field by the newly accumulated characters
+					 *
 					 * @details The accounting is kept by the characters appended into the storage from the specified
-					 * place: the trimming does not spend the limit, and therefore the boundaries of the significant
-					 * part are tracked rather than the total length of what has been accumulated
+					 *          place: the trimming does not spend the limit, and therefore the boundaries of the significant
+					 *          part are tracked rather than the total length of what has been accumulated.
+					 *
 					 * @param offset size of the storage of the record before the appending of the characters
 					 *
 					 * \~
@@ -969,14 +1081,16 @@ namespace awh {
 					 * @brief Метод получения длины поля, пределом ограничиваемой
 					 *
 					 * @details Длина эта считается по значащей части поля, если обвязка
-					 * настройками снимается, и по накопленному целиком, если сохраняется
+					 *          настройками снимается, и по накопленному целиком, если сохраняется.
 					 *
 					 * @return длина текущего поля в байтах
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the length of a field restricted by the limit
+					 *
 					 * @details This length is counted by the significant part of a field if the trimming
-					 * is taken off by the settings, and by what has been accumulated in full if it is preserved
+					 *          is taken off by the settings, and by what has been accumulated in full if it is preserved.
+					 *
 					 * @return length of the current field in bytes
 					 *
 					 * \~
@@ -990,6 +1104,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the removal of the trimming of the current field
+					 *
 					 * @return sign that the trimming of the current field is taken off by the settings
 					 *
 					 * \~
@@ -1000,16 +1115,18 @@ namespace awh {
 					 * @brief Метод проверки нахождения разбора внутри поля
 					 *
 					 * @details Хранилище записи копит не одни лишь поля: строка примечания
-					 * ложится туда же, полем не являясь. Предел длины поля её не касается,
-					 * и сличаться он обязан лишь пока разбор внутри поля
+					 *          ложится туда же, полем не являясь. Предел длины поля её не касается,
+					 *          и сличаться он обязан лишь пока разбор внутри поля.
 					 *
 					 * @return признак того, что разбор находится внутри поля
 					 *
 					 * \~english
 					 * @brief Method of the check of the presence of the parsing inside a field
+					 *
 					 * @details The storage of a record accumulates not the fields alone: a line of a comment
-					 * lies down there as well without being a field. The limit of the length of a field does not concern it,
-					 * and it must be compared only while the parsing is inside a field
+					 *          lies down there as well without being a field. The limit of the length of a field does not concern it,
+					 *          and it must be compared only while the parsing is inside a field.
+					 *
 					 * @return sign that the parsing is inside a field
 					 *
 					 * \~
@@ -1020,18 +1137,20 @@ namespace awh {
 					 * @brief Метод получения длины поля, какою она станет при значащем знаке следом
 					 *
 					 * @details Пробельные знаки остаются обвязкою лишь до тех пор, пока за ними
-					 * не встал знак значащий: встав, он обращает их в середину значащей части, и
-					 * длина поля прирастает разом на всю их череду. Быстрый проход укорачивается
-					 * потому по худшему случаю, а не по нынешней длине значащей части
+					 *          не встал знак значащий: встав, он обращает их в середину значащей части, и
+					 *          длина поля прирастает разом на всю их череду. Быстрый проход укорачивается
+					 *          потому по худшему случаю, а не по нынешней длине значащей части.
 					 *
 					 * @return длина текущего поля в байтах по худшему случаю
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the length of a field as it will become upon a significant character next
+					 *
 					 * @details Whitespace characters remain a trimming only for as long as a significant character has not
-					 * stood after them: having stood, it turns them into the middle of the significant part, and
-					 * the length of the field grows at once by their whole run. The fast pass is therefore shortened
-					 * by the worst case rather than by the present length of the significant part
+					 *          stood after them: having stood, it turns them into the middle of the significant part, and
+					 *          the length of the field grows at once by their whole run. The fast pass is therefore shortened
+					 *          by the worst case rather than by the present length of the significant part.
+					 *
 					 * @return length of the current field in bytes by the worst case
 					 *
 					 * \~
@@ -1043,12 +1162,13 @@ namespace awh {
 					 * @brief Метод сброса состояния разбора
 					 *
 					 * @details Настройки разбора сохраняются: сбрасывается лишь состояние,
-					 * накопленное разбором поданного текста
+					 *          накопленное разбором поданного текста.
 					 *
 					 * \~english
 					 * @brief Method of resetting the state of the parsing
+					 *
 					 * @details The settings of the parsing are preserved: only the state accumulated
-					 * by the parsing of the fed text is reset
+					 *          by the parsing of the fed text is reset.
 					 *
 					 * \~
 					 */
@@ -1059,17 +1179,17 @@ namespace awh {
 					 * @brief Метод подачи очередного куска текста
 					 *
 					 * @note Пустой указатель на буфер приравнивается к пустой подаче независимо от
-					 * заданного размера: проверка стоит в приведении текста, и разыменования не
-					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
+					 *       заданного размера: проверка стоит в приведении текста, и разыменования не
+					 *       происходит. Отвечает разбор при этом по своему правилу о пустом тексте
 					 *
 					 * @note Разбор идёт ПРЯМО В ПОДАЧЕ, и отказ виден возвратом самой подачи:
 					 *       код отказа стоит уже к возврату, до всякого перебора событий. Замер:
 					 *       текст `a,"b` - подача отвечает ложью и кодом сразу
 					 *
 					 * @warning Разбор разметки XML поступает ОБРАТНО: подача там лишь принимает
-					 * кусок в очередь, разбирается он перебором событий, и отказ подача выдаёт
-					 * УСПЕХОМ. Единый цикл на несколько кодеков обязан спрашивать `error()`,
-					 * а не один лишь возврат подачи
+					 *          кусок в очередь, разбирается он перебором событий, и отказ подача выдаёт
+					 *          УСПЕХОМ. Единый цикл на несколько кодеков обязан спрашивать `error()`,
+					 *          а не один лишь возврат подачи
 					 *
 					 * @param buffer буфер с куском текста
 					 * @param size   размер куска текста в байтах
@@ -1078,16 +1198,20 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of feeding the next chunk of a text
+					 *
 					 * @note A null pointer to the buffer is equated to an empty feeding independently of
-					 * the given size: the check stands in the conversion of the text, and no dereferencing
-					 * takes place. The parsing answers thereby by its own rule about an empty text
+					 *       the given size: the check stands in the conversion of the text, and no dereferencing
+					 *       takes place. The parsing answers thereby by its own rule about an empty text
+					 *
 					 * @note The parsing goes RIGHT IN THE FEEDING, and a refusal is visible by the return of the feeding itself:
 					 *       the code of the refusal is already set by the return, before any traversal of the events. Measurement:
 					 *       the text `a,"b` — the feeding answers with false and with a code at once
+					 *
 					 * @warning The parsing of the XML markup acts the OPPOSITE way: the feeding there only accepts
-					 * a chunk into the queue, it is parsed by the traversal of the events, and the feeding issues a refusal
-					 * as a SUCCESS. A single loop over several codecs is obliged to ask `error()`,
-					 * rather than the return of the feeding alone
+					 *          a chunk into the queue, it is parsed by the traversal of the events, and the feeding issues a refusal
+					 *          as a SUCCESS. A single loop over several codecs is obliged to ask `error()`,
+					 *          rather than the return of the feeding alone
+					 *
 					 * @param buffer buffer with the chunk of the text
 					 * @param size   size of the chunk of the text in bytes
 					 * @param end    flag of the chunk being the last one
@@ -1105,6 +1229,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of feeding a text in full
+					 *
 					 * @param text text to be parsed
 					 * @return     flag of a successful parsing
 					 *
@@ -1120,6 +1245,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of moving to the next parsing event
+					 *
 					 * @return flag of the presence of an event
 					 *
 					 * \~
@@ -1135,6 +1261,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the kind of the current parsing event
+					 *
 					 * @return kind of the current parsing event
 					 *
 					 * \~
@@ -1145,14 +1272,16 @@ namespace awh {
 					 * @brief Метод получения поля текущего события разбора
 					 *
 					 * @details Ссылки поля живут до следующего обращения к next: хранилище
-					 * записи дописывается по ходу разбора и при росте перемещается
+					 *          записи дописывается по ходу разбора и при росте перемещается.
 					 *
 					 * @return поле текущего события разбора
 					 *
 					 * \~english
 					 * @brief Method of getting the field of the current parsing event
+					 *
 					 * @details The references of a field live until the next call to next: the storage
-					 * of the record is appended to in the course of the parsing and at a growth it is moved
+					 *          of the record is appended to in the course of the parsing and at a growth it is moved.
+					 *
 					 * @return field of the current parsing event
 					 *
 					 * \~
@@ -1166,6 +1295,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the position of the current parsing event
+					 *
 					 * @return position of the current event in the source text
 					 *
 					 * \~
@@ -1176,8 +1306,8 @@ namespace awh {
 					 * @brief Метод получения места обнаружения отказа
 					 *
 					 * @details Место это выдаётся независимо от того, исчерпаны ли события
-					 * разбора: `location()` отдаёт его лишь по исчерпании их, оставаясь до
-					 * того местом текущего события, и обойтись одним им можно не всегда
+					 *          разбора: `location()` отдаёт его лишь по исчерпании их, оставаясь до
+					 *          того местом текущего события, и обойтись одним им можно не всегда.
 					 *
 					 * @note Доступ этот заведён ради единообразия с кодеками JSON и XML: там
 					 *       место отказа иначе не получить вовсе
@@ -1186,11 +1316,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of an error
+					 *
 					 * @details This place is issued independently of whether the events of the parsing are
-					 * exhausted: `location()` issues it only upon their exhaustion, remaining until then
-					 * the place of the current event, and it is not always possible to make do with it alone
+					 *          exhausted: `location()` issues it only upon their exhaustion, remaining until then
+					 *          the place of the current event, and it is not always possible to make do with it alone.
+					 *
 					 * @note This accessor is provided for the sake of the uniformity with the codecs JSON and XML:
 					 *       there the place of the error cannot be obtained otherwise at all
+					 *
 					 * @return position of the detected error in the source text
 					 *
 					 * \~
@@ -1202,13 +1335,18 @@ namespace awh {
 					 * @brief Метод получения текущего состояния чтения
 					 *
 					 * @details Состояние вычисляется по имеющемуся, а не хранится полем:
-					 * события собираются в очередь при подаче куска, и хранимое состояние
-					 * расходилось бы с нею при всякой выдаче события
+					 *          события собираются в очередь при подаче куска, и хранимое состояние
+					 *          расходилось бы с нею при всякой выдаче события.
 					 *
 					 * @return текущее состояние чтения текста таблицы
 					 *
 					 * \~english
 					 * @brief Method of getting the current state of the reading
+					 *
+					 * @details The state is calculated by what is at hand, and is not stored as a field: the
+					 *          events are gathered into a queue upon the feeding of a chunk, and a stored state would
+					 *          diverge from it upon every issuance of an event.
+					 *
 					 * @return current state of the reading of a table text
 					 *
 					 * \~
@@ -1222,6 +1360,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the parsing
+					 *
 					 * @return error code of the parsing
 					 *
 					 * \~
@@ -1235,6 +1374,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the encoding of the source text
+					 *
 					 * @return encoding determined by the byte order mark
 					 *
 					 * \~
@@ -1245,14 +1385,16 @@ namespace awh {
 					 * @brief Метод получения знака-разделителя полей
 					 *
 					 * @details Разделитель, определённый по содержимому, известен лишь
-					 * после того, как определение состоялось: до тех пор выводится ноль
+					 *          после того, как определение состоялось: до тех пор выводится ноль.
 					 *
 					 * @return знак-разделитель полей
 					 *
 					 * \~english
 					 * @brief Method of getting the separator character of the fields
+					 *
 					 * @details A separator determined by the content is known only
-					 * after the determination has taken place: until then zero is output
+					 *          after the determination has taken place: until then zero is output.
+					 *
 					 * @return separator character of the fields
 					 *
 					 * \~
@@ -1264,7 +1406,7 @@ namespace awh {
 					 * @brief Метод получения имён полей заголовка
 					 *
 					 * @details Имена доступны лишь при включённом признаке заголовка и
-					 * лишь после того, как заголовок разобран
+					 *          лишь после того, как заголовок разобран.
 					 *
 					 * @note Виды эти живут до сброса состояния чтения и подачу переживают:
 					 *       имена лежат в СВОЁМ хранилище, отдельном от буфера записей, и
@@ -1278,8 +1420,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the names of the fields of the header
+					 *
 					 * @details The names are available only when the flag of the header is enabled and
-					 * only after the header has been parsed
+					 *          only after the header has been parsed.
+					 *
 					 * @note These views live until the reset of the state of the reading and survive a feeding:
 					 *       the names lie in THEIR OWN storage, separate from the buffer of the records, and
 					 *       a parsed header does not grow any more. This guarantee is named
@@ -1287,6 +1431,7 @@ namespace awh {
 					 *       its views live only until the next feeding — and one who reads both
 					 *       contracts side by side would conclude the same here. Measurement: the views taken
 					 *       after the first chunk survived two hundred subsequent feedings
+					 *
 					 * @return names of the fields of the header in the order of the declaration
 					 *
 					 * \~
@@ -1301,6 +1446,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the settings of the parsing of a text
+					 *
 					 * @return settings of the parsing of a text
 					 *
 					 * \~
@@ -1315,32 +1461,36 @@ namespace awh {
 					 *       Сброс состояния идёт лишь до начала разбора
 					 *
 					 * @warning Разделитель полей посреди текста НЕ меняется: он либо задан настройками
-					 * с самого начала, либо уже определён образцом, и смена его разошлась бы с уже
-					 * разобранными записями. Замер: по смене разделителя на `;` запись `3;4` осталась
-					 * ОДНИМ полем, отказа не было. Так же поступает и запись таблицы, где грамматика,
-					 * поданная посреди сборки, отбрасывается
+					 *          с самого начала, либо уже определён образцом, и смена его разошлась бы с уже
+					 *          разобранными записями. Замер: по смене разделителя на `;` запись `3;4` осталась
+					 *          ОДНИМ полем, отказа не было. Так же поступает и запись таблицы, где грамматика,
+					 *          поданная посреди сборки, отбрасывается
 					 *
 					 * @warning Навязывание кодировки посреди текста отвергается СНЯТИЕМ указания:
-					 * настройки после того говорят `NONE` и лгать о несбывшемся не будут. Замер:
-					 * подача проходит, код пуст, настройки отвечают `NONE`. Разбор JSON на ту же
-					 * просьбу отвечает ОТКАЗОМ подачи - переносить поведение отсюда нельзя
+					 *          настройки после того говорят `NONE` и лгать о несбывшемся не будут. Замер:
+					 *          подача проходит, код пуст, настройки отвечают `NONE`. Разбор JSON на ту же
+					 *          просьбу отвечает ОТКАЗОМ подачи - переносить поведение отсюда нельзя
 					 *
 					 * @param settings настройки разбора текста
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing of a text
+					 *
 					 * @note The settings put IN THE MIDDLE of the parsing take effect from the nearest
 					 *       character being parsed: what has been parsed by the previous settings stays parsed.
 					 *       The reset of the state goes only before the beginning of the parsing
+					 *
 					 * @warning The separator of the fields is NOT changed in the middle of a text: it is either set by the settings
-					 * from the very beginning, or already determined by a sample, and its change would diverge from the already
-					 * parsed records. Measurement: upon a change of the separator to `;` the record `3;4` remained
-					 * ONE field, there was no refusal. The writing of a table acts the same way, where a grammar
-					 * fed in the middle of the assembly is dropped
+					 *          from the very beginning, or already determined by a sample, and its change would diverge from the already
+					 *          parsed records. Measurement: upon a change of the separator to `;` the record `3;4` remained
+					 *          ONE field, there was no refusal. The writing of a table acts the same way, where a grammar
+					 *          fed in the middle of the assembly is dropped
+					 *
 					 * @warning The forcing of an encoding in the middle of a text is rejected by the REMOVAL of the instruction:
-					 * the settings after that say `NONE` and will not lie about what did not happen. Measurement:
-					 * the feeding passes, the code is empty, the settings answer `NONE`. The parsing of JSON answers the same
-					 * request with a REFUSAL of the feeding — the behaviour cannot be carried over from here
+					 *          the settings after that say `NONE` and will not lie about what did not happen. Measurement:
+					 *          the feeding passes, the code is empty, the settings answer `NONE`. The parsing of JSON answers the same
+					 *          request with a REFUSAL of the feeding — the behaviour cannot be carried over from here
+					 *
 					 * @param settings settings of the parsing of a text
 					 *
 					 * \~
@@ -1366,6 +1516,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the parsing of a text
 					 *
 					 * \~

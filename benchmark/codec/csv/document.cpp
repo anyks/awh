@@ -338,7 +338,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(large().size(), ::LARGE_ROUNDS, [&document]() noexcept {
 			// Выводим размер перезаписанного текста таблицы
-			return static_cast <uint64_t> (document.text().size());
+			return static_cast <uint64_t> (document.dump().size());
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);

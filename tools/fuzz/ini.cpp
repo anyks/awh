@@ -1637,7 +1637,7 @@ namespace {
 			 *          расхождением ровно то, чего настройка и требует. Половина же исхода
 			 *          разбора настройке той неподвластна и остаётся строгой
 			 */
-			if(parsed && !blanked && (tailed.text() != document.text())){
+			if(parsed && !blanked && (tailed.text() != document.dump())){
 				// Выводим сообщение о расхождении записей написаний
 				::fprintf(stderr, "ini fuzz: trailing newline changes the rewrite\n");
 				// Выводим разбираемый текст настроек
@@ -1645,7 +1645,7 @@ namespace {
 				// Выводим запись написания иного
 				dump(tailed.text());
 				// Выводим запись исходного написания
-				dump(document.text());
+				dump(document.dump());
 				// Выводим результат проверки дерева настроек
 				return false;
 			}
@@ -1810,7 +1810,7 @@ namespace {
 						// Выводим исходный текст настроек
 						dump(text);
 						// Выводим перезапись дерева настроек
-						dump(document.text());
+						dump(document.dump());
 						// Выводим перезапись снятого значения
 						dump(taken);
 						// Выводим перезапись значения, с перезаписи снятого
@@ -1858,7 +1858,7 @@ namespace {
 			/**
 			 * Если перезаписи деревьев разошлись
 			 */
-			if(recycled.text() != document.text()){
+			if(recycled.text() != document.dump()){
 				// Выводим сообщение о расхождении перезаписей
 				::fprintf(stderr, "ini fuzz: reused tree rewrite differs from a fresh one\n");
 				// Выводим настройки разбора исходного текста настроек
@@ -1866,7 +1866,7 @@ namespace {
 				// Выводим разбираемый текст настроек
 				dump(text);
 				// Выводим перезапись свежего дерева
-				dump(document.text());
+				dump(document.dump());
 				// Выводим перезапись дерева, прежним разбором занятого
 				dump(recycled.text());
 				// Выводим результат проверки дерева настроек
@@ -1892,7 +1892,7 @@ namespace {
 			}
 		}
 		// Выполняем перезапись дерева настроек
-		const string first = document.text();
+		const string first = document.dump();
 		// Выполняем учёт перезаписи дерева настроек
 		totals.rewrites++;
 		// Если перезапись дерева настроек не удалась, то проверку прекращаем
@@ -2296,10 +2296,10 @@ namespace {
 					/**
 					 * Если повторная перезапись с первой разошлась
 					 */
-					if(back.text() != written){
+					if(back.dump() != written){
 						// Выводим сообщение о неустойчивости перезаписи значения
 						::fprintf(stderr, "ini fuzz: hostile value rewrite unstable\n  first  [%s]\n  second [%s]\n",
-							written.c_str(), back.text().c_str());
+							written.c_str(), back.dump().c_str());
 						// Выходим из приложения с кодом ошибки
 						return false;
 					}
@@ -2307,7 +2307,7 @@ namespace {
 			}
 		}
 		// Выполняем перезапись правленого дерева настроек
-		const string edited = document.text();
+		const string edited = document.dump();
 		// Выполняем учёт перезаписи дерева настроек
 		totals.rewrites++;
 		// Если перезапись правленого дерева настроек не удалась, то проверку прекращаем
@@ -2360,13 +2360,13 @@ namespace {
 			}
 		}
 		// Если перезапись правленого дерева настроек оказалась неустойчивой
-		if(rebuilt.text() != edited){
+		if(rebuilt.dump() != edited){
 			// Выводим сообщение о расхождении перезаписи правленого дерева настроек
 			::fprintf(stderr, "ini fuzz: edited rewrite unstable\n");
 			// Выводим перезапись правленого дерева настроек
 			dump(edited);
 			// Выводим повторную перезапись правленого дерева настроек
-			dump(rebuilt.text());
+			dump(rebuilt.dump());
 			// Выводим результат проверки дерева настроек
 			return false;
 		}
@@ -2427,9 +2427,9 @@ namespace {
 						// Выводим исходный текст настроек
 						dump(text);
 						// Выводим перезапись дерева, с какого значение снято
-						dump(document.text());
+						dump(document.dump());
 						// Выводим перезапись дерева переноса
-						dump(target.text());
+						dump(target.dump());
 						// Выводим результат проверки дерева настроек
 						return false;
 					}

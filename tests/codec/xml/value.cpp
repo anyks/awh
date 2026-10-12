@@ -971,7 +971,7 @@ TEST(CodecXmlValue, Graft) {
 	// Снятое с дерева прививаемое значение
 	const xml::value_t value(source.element());
 	// Выполняем прививку значения в дерево разметки
-	ASSERT_TRUE(document.graft("/a/b", value));
+	ASSERT_TRUE(document.set("/a/b", value));
 	// Поток записи текста разметки
 	xml::writer_t writer;
 	// Выполняем запись дерева разметки
@@ -994,7 +994,7 @@ TEST(CodecXmlValue, GraftIndexed) {
 	// Прививаемое значение
 	const xml::value_t value(string("z"));
 	// Выполняем прививку значения на место второго вложенного узла
-	ASSERT_TRUE(document.graft("/a/1", value));
+	ASSERT_TRUE(document.set("/a/1", value));
 	// Поток записи текста разметки
 	xml::writer_t writer;
 	// Выполняем запись дерева разметки
@@ -1023,7 +1023,7 @@ TEST(CodecXmlValue, GraftFailure) {
 	 *       либо заменяет целиком: без хода этого дерево нельзя было бы построить вовсе,
 	 *       минуя разбор текста
 	 */
-	ASSERT_TRUE(document.graft("", value)) << xml::message(document.error());
+	ASSERT_TRUE(document.set("", value)) << xml::message(document.error());
 	// Выполняем проверку замены корневого узла разметки прививкой
 	ASSERT_EQ(document.dump(), "<z/>");
 	// Выполняем повторный разбор текста разметки для дальнейших проверок
@@ -1034,17 +1034,17 @@ TEST(CodecXmlValue, GraftFailure) {
 	 * @note Отступление это от документа JSON, где корнем становится значение любого
 	 *       вида, предписано XML 1.0: корневой элемент у документа ровно один
 	 */
-	ASSERT_FALSE(document.graft("", xml::value_t(xml::kind_t::TEXT, "просто текст")));
+	ASSERT_FALSE(document.set("", xml::value_t(xml::kind_t::TEXT, "просто текст")));
 	// Выполняем проверку кода отказа прививки корня
 	ASSERT_EQ(document.error(), xml::error_t::MISSING_ROOT);
 	// Выполняем проверку отказа прививки на отсутствующем узле разметки
-	ASSERT_FALSE(document.graft("/a/нет", value));
+	ASSERT_FALSE(document.set("/a/нет", value));
 	// Выполняем проверку отказа прививки на отсутствующем узле верхнего уровня
-	ASSERT_FALSE(document.graft("/нет", value));
+	ASSERT_FALSE(document.set("/нет", value));
 	// Выполняем проверку отказа прививки на отсутствующем номере вложенного узла
-	ASSERT_FALSE(document.graft("/a/7", value));
+	ASSERT_FALSE(document.set("/a/7", value));
 	// Выполняем проверку отказа прививки значения недействительного
-	ASSERT_FALSE(document.graft("/a/b", xml::value_t()));
+	ASSERT_FALSE(document.set("/a/b", xml::value_t()));
 }
 
 /**
@@ -1063,7 +1063,7 @@ TEST(CodecXmlValue, GraftRoundtrip) {
 	// Снятое с дерева прививаемое значение
 	const xml::value_t value(source.element());
 	// Выполняем прививку значения в дерево разметки
-	ASSERT_TRUE(document.graft("/a/b", value));
+	ASSERT_TRUE(document.set("/a/b", value));
 	// Поток записи текста разметки
 	xml::writer_t writer;
 	// Выполняем запись дерева разметки
@@ -1096,7 +1096,7 @@ TEST(CodecXmlValue, GraftIntegrity) {
 	// Прививаемое значение
 	const xml::value_t value(string("z"));
 	// Выполняем прививку значения на место среднего вложенного узла
-	ASSERT_TRUE(document.graft("/a/c", value));
+	ASSERT_TRUE(document.set("/a/c", value));
 	// Получаем корневой узел разметки
 	const xml::node_t element = document.element();
 	// Собираемый перечень имён вложенных узлов
@@ -1152,7 +1152,7 @@ TEST(CodecXmlValue, GraftDocumentKind) {
 	ASSERT_EQ(single.kind(), xml::kind_t::DOCUMENT);
 	ASSERT_EQ(single.size(), static_cast <size_t> (1));
 	// Выполняем проверку того, что прививка корня с единственным узлом проходит
-	ASSERT_TRUE(document.graft("/a/b", single));
+	ASSERT_TRUE(document.set("/a/b", single));
 	// Прививаемое значение, разобранное из текста нескольких узлов
 	xml::value_t several;
 	// Выполняем разбор текста разметки с примечанием над узлом разметки
@@ -1160,7 +1160,7 @@ TEST(CodecXmlValue, GraftDocumentKind) {
 	// Выполняем проверку того, что корень заведён с двумя узлами
 	ASSERT_EQ(several.size(), static_cast <size_t> (2));
 	// Выполняем проверку того, что прививка корня с несколькими узлами отвергается
-	ASSERT_FALSE(document.graft("/a/x", several));
+	ASSERT_FALSE(document.set("/a/x", several));
 	// Поток записи текста разметки
 	xml::writer_t writer;
 	// Выполняем запись дерева разметки
@@ -2055,11 +2055,11 @@ TEST(CodecXmlValue, AccessAndFiles) {
 		// Выполняем установку имени прививаемого узла
 		value.name("x");
 		// Выполняем проверку отклонения пути без ведущего отделителя
-		ASSERT_FALSE(document.graft("a", value));
+		ASSERT_FALSE(document.set("a", value));
 		// Выполняем разбор текста дерева разметки
 		ASSERT_TRUE(document.parse("<r><a/></r>"));
 		// Выполняем проверку отклонения пути через узел, деревом не содержащийся
-		ASSERT_FALSE(document.graft("/r/zz/q", value));
+		ASSERT_FALSE(document.set("/r/zz/q", value));
 	}
 }
 /**

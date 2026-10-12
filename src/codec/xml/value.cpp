@@ -49,7 +49,7 @@
 using namespace std;
 
 /**
- * @brief Безымянное пространство имён вспомогательных объявлений значения
+ * @brief Инкапсулируем вспомогательные функции и константы модуля в аннонимное пространство имён
  *
  */
 namespace {
@@ -4274,10 +4274,6 @@ awh::codec::xml::node_t awh::codec::xml::Document::at(const string & path) const
 		return node_t();
 	// Выводим разысканный узел дерева разметки
 	return node_t(this, target);
-}
-bool awh::codec::xml::Document::graft(const string & path, const xml::Value & value) noexcept {
-	// Выводим итог правки дерева разметки по пути
-	return this->set(path, value);
 }
 /**
  * @brief Метод правки дерева разметки по пути

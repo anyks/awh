@@ -95,141 +95,141 @@ namespace awh {
 			 * @brief Класс правки контейнера на месте
 			 *
 			 * @details Правка ведётся дописыванием, а не перезаписью: новая запись ложится
-			 * в конец, а строка оглавления перенаправляется на неё. Прежние октеты
-			 * остаются на носителе мусором до уборки. Перезапись же обязала бы двигать всё,
-			 * что лежит за правимой записью, а контейнер тем и ценен, что велик
+			 *          в конец, а строка оглавления перенаправляется на неё. Прежние октеты
+			 *          остаются на носителе мусором до уборки. Перезапись же обязала бы двигать всё,
+			 *          что лежит за правимой записью, а контейнер тем и ценен, что велик.
 			 *
 			 * @details **Правки копятся в памяти и ложатся на носитель фиксацией.** Иначе
-			 * всякая правка стоила бы сжатия, шифрования и перезаписи оглавления, а
-			 * фиксацией они платятся однажды за целую пачку
+			 *          всякая правка стоила бы сжатия, шифрования и перезаписи оглавления, а
+			 *          фиксацией они платятся однажды за целую пачку.
 			 *
 			 * @note **Отказ фиксации накопленного не сбрасывает.** Место на носителе может
-			 * появиться, и следующая фиксация пройдёт по тем же данным
+			 *       появиться, и следующая фиксация пройдёт по тем же данным
 			 *
 			 * @note Накопленное читается наравне с закреплённым: данные уже в памяти, и
-			 * отказывать в них до фиксации значило бы обязать потребителя держать их
-			 * вторым списком
+			 *       отказывать в них до фиксации значило бы обязать потребителя держать их
+			 *       вторым списком
 			 *
 			 * @note **О местах отказа, каких проверкою не навести.** Сплошной щуп подменою
-			 * причин 05.09.2026 прошёл все места отказа правки порознь. Молчание щупа у
-			 * части из них законно, и различать надлежит три вида:
-			 * - **последняя рука** - заслон, чьё УСЛОВИЕ недостижимо, покуда держатся
-			 *   уговоры выше: таковы все места `SIGNING_FAILED` (дерево свёрток отказывает
-			 *   лишь при недостающем снаряжении, а здесь модуль отдан и кадр непуст всегда;
-			 *   дорога стережётся `SignatureFixture.MerkleRefusesWithoutItsGear` и `SignatureFixture.MerkleRootWithAnAppendedChunkRefusesWithoutItsGear`) и правка
-			 *   строки оглавления, номер какой поверен при накоплении.
-			 *   **Недостижимо УСЛОВИЕ, а не сам путь, и разница эта измерена, а не выведена
-			 *   рассуждением:** подмена `Merkle::add` на постоянный отказ красит ДЕВЯТНАДЦАТЬ
-			 *   проверок (замер 05.09.2026). То есть пути эти хожены всяким подписанным
-			 *   контейнером, заслоны живы, и порча снаряжения будет поймана немедленно, -
-			 *   мёртвым кодом их звать нельзя. Молчание же щупа законно: он подменяет
-			 *   ПРИЧИНУ, а причины здесь не спрашивает никто, ибо отказу неоткуда взяться;
-			 * - **отказ носителя** - `UNWRITABLE_SINK` и `UNREADABLE_SOURCE`: наводятся
-			 *   поддельным носителем проверок (`Medium::allow`, `Medium::sight`), и
-			 *   стерегутся обходом по точке обрыва
-			 *   (`EditorFixture.EveryReadRefusalNamesItsCause` и соседние).
-			 *   **Прежняя редакция этой записи мест переоценивала:** обходы те утверждали,
-			 *   что причина НАЗВАНА (`ASSERT_NE(error, NONE)`), а не КАКАЯ, и договор «обрыв
-			 *   чтения есть `UNREADABLE_SOURCE`, обрыв записи есть `UNWRITABLE_SINK`»
-			 *   держался ничем: сплошной щуп 05.09.2026 назвал девятнадцать мест носителя
-			 *   слепыми по РОДУ причины. Закреплено `EditorFixture.MediumRefusalNamesItsKind`,
-			 *   обходящей тридцать две точки обрыва по чтению и столько же по записи через
-			 *   открытие, выборку, подпись, фиксацию и уборку. Три подробности добыты
-			 *   ЗАМЕРОМ, а не рассуждением: пределы носителя правки и носителя уборки
-			 *   обязаны ставиться ПОРОЗНЬ (одним числом отказ фиксации опережал уборку);
-			 *   чтение прежней записи подписи требует контейнера ТРЕТЬЕГО поколения; а
-			 *   запись подписи при уборке достижима лишь у контейнера ПОДПИСАННОГО;
-			 * - **правка строки оглавления** - `INVALID_INDEX` у `_index.replace(...)`, три
-			 *   места: `Index::replace` отказывает ЕДИНСТВЕННО при номере за пределом
-			 *   (`number >= entries.size()`), а номер сюда приходит поверенным выше либо
-			 *   взятым из самого оглавления. Отказ здесь означал бы расхождение оглавления
-			 *   с самим собою. Разобрано по коду 05.09.2026, а не выведено из молчания щупа.
-			 *   Четвёртое место той же ПРИЧИНЫ отказа - сличение отрезка накопленной правки
-			 *   с содержимым снятого кадра - тоже последняя рука, но довод у него ИНОЙ, и
-			 *   прежняя запись «по тому же доводу» была шире правды (поправлено 06.09.2026):
-			 *   `replace` там не зовётся вовсе. Смещение правки берётся длиною накопления
-			 *   ДО дописывания записи, а длина - длиною самой записи, и буфер этот целиком
-			 *   становится содержимым кадра. Выйти за содержимое отрезок мог бы лишь тогда,
-			 *   когда снятие вернёт МЕНЬШЕ уложенного, а это договором укладчика запрещено;
-			 * - **настоящий пробел** - закрывается проверкой, и таковых закрыто девять
+			 *       причин 05.09.2026 прошёл все места отказа правки порознь. Молчание щупа у
+			 *       части из них законно, и различать надлежит три вида:
+			 *       - **последняя рука** - заслон, чьё УСЛОВИЕ недостижимо, покуда держатся
+			 *       уговоры выше: таковы все места `SIGNING_FAILED` (дерево свёрток отказывает
+			 *       лишь при недостающем снаряжении, а здесь модуль отдан и кадр непуст всегда;
+			 *       дорога стережётся `SignatureFixture.MerkleRefusesWithoutItsGear` и `SignatureFixture.MerkleRootWithAnAppendedChunkRefusesWithoutItsGear`) и правка
+			 *       строки оглавления, номер какой поверен при накоплении.
+			 *       **Недостижимо УСЛОВИЕ, а не сам путь, и разница эта измерена, а не выведена
+			 *       рассуждением:** подмена `Merkle::add` на постоянный отказ красит ДЕВЯТНАДЦАТЬ
+			 *       проверок (замер 05.09.2026). То есть пути эти хожены всяким подписанным
+			 *       контейнером, заслоны живы, и порча снаряжения будет поймана немедленно, -
+			 *       мёртвым кодом их звать нельзя. Молчание же щупа законно: он подменяет
+			 *       ПРИЧИНУ, а причины здесь не спрашивает никто, ибо отказу неоткуда взяться;
+			 *       - **отказ носителя** - `UNWRITABLE_SINK` и `UNREADABLE_SOURCE`: наводятся
+			 *       поддельным носителем проверок (`Medium::allow`, `Medium::sight`), и
+			 *       стерегутся обходом по точке обрыва
+			 *       (`EditorFixture.EveryReadRefusalNamesItsCause` и соседние).
+			 *       **Прежняя редакция этой записи мест переоценивала:** обходы те утверждали,
+			 *       что причина НАЗВАНА (`ASSERT_NE(error, NONE)`), а не КАКАЯ, и договор «обрыв
+			 *       чтения есть `UNREADABLE_SOURCE`, обрыв записи есть `UNWRITABLE_SINK`»
+			 *       держался ничем: сплошной щуп 05.09.2026 назвал девятнадцать мест носителя
+			 *       слепыми по РОДУ причины. Закреплено `EditorFixture.MediumRefusalNamesItsKind`,
+			 *       обходящей тридцать две точки обрыва по чтению и столько же по записи через
+			 *       открытие, выборку, подпись, фиксацию и уборку. Три подробности добыты
+			 *       ЗАМЕРОМ, а не рассуждением: пределы носителя правки и носителя уборки
+			 *       обязаны ставиться ПОРОЗНЬ (одним числом отказ фиксации опережал уборку);
+			 *       чтение прежней записи подписи требует контейнера ТРЕТЬЕГО поколения; а
+			 *       запись подписи при уборке достижима лишь у контейнера ПОДПИСАННОГО;
+			 *       - **правка строки оглавления** - `INVALID_INDEX` у `_index.replace(...)`, три
+			 *       места: `Index::replace` отказывает ЕДИНСТВЕННО при номере за пределом
+			 *       (`number >= entries.size()`), а номер сюда приходит поверенным выше либо
+			 *       взятым из самого оглавления. Отказ здесь означал бы расхождение оглавления
+			 *       с самим собою. Разобрано по коду 05.09.2026, а не выведено из молчания щупа.
+			 *       Четвёртое место той же ПРИЧИНЫ отказа - сличение отрезка накопленной правки
+			 *       с содержимым снятого кадра - тоже последняя рука, но довод у него ИНОЙ, и
+			 *       прежняя запись «по тому же доводу» была шире правды (поправлено 06.09.2026):
+			 *       `replace` там не зовётся вовсе. Смещение правки берётся длиною накопления
+			 *       ДО дописывания записи, а длина - длиною самой записи, и буфер этот целиком
+			 *       становится содержимым кадра. Выйти за содержимое отрезок мог бы лишь тогда,
+			 *       когда снятие вернёт МЕНЬШЕ уложенного, а это договором укладчика запрещено;
+			 *       - **настоящий пробел** - закрывается проверкой, и таковых закрыто девять
 			 *
 			 * @note Молчание щупа причин у всех семнадцати означает НЕДОСТИЖИМОСТЬ УСЛОВИЯ,
-			 * а НЕ мёртвый путь, и это замерено, а не выведено: щуп пути 06.09.2026 принудил
-			 * каждый заслон срабатывать всегда, и всякий из семнадцати покрасил от двух до
-			 * двенадцати проверок. Дорога хожена у всех; недостижимо лишь само условие
+			 *       а НЕ мёртвый путь, и это замерено, а не выведено: щуп пути 06.09.2026 принудил
+			 *       каждый заслон срабатывать всегда, и всякий из семнадцати покрасил от двух до
+			 *       двенадцати проверок. Дорога хожена у всех; недостижимо лишь само условие
 			 *
 			 * @note **Причина отказа обязана пережить ВОССТАНОВЛЕНИЕ.** Откат состояния при
-			 * отказе фиксации ЧИТАЕТ носитель сбором свёрток заново, и чтение это отказать
-			 * может тоже, - а всякий отказ причину перезаписывает. Наружу выходила причина
-			 * ОТКАТА, а не причина отказа: зовущий, встретивший отказ шифрования, читал бы
-			 * «работа чтения октетов отвечена отказом». Исправлено 05.09.2026 запоминанием
-			 * причины на время отката
+			 *       отказе фиксации ЧИТАЕТ носитель сбором свёрток заново, и чтение это отказать
+			 *       может тоже, - а всякий отказ причину перезаписывает. Наружу выходила причина
+			 *       ОТКАТА, а не причина отказа: зовущий, встретивший отказ шифрования, читал бы
+			 *       «работа чтения октетов отвечена отказом». Исправлено 05.09.2026 запоминанием
+			 *       причины на время отката
 			 *
 			 * @note Прятался дефект за СОВПАДЕНИЕМ причин: на обрыве носителя обе одинаковы,
-			 * и подмена невидима. Вскрыт он сличением ДВУХ замеров: щуп причин говорил «место
-			 * не стережёт никто», а счётчик - «место срабатывает дважды за прогон».
-			 * Противоречие это и было находкой; одно молчание щупа списали бы на
-			 * недостижимость. Сито того же рода по прочим кодекам дало ноль
-			 * (`causesieve.py`), но лишь по дополнении его лямбдами: откат ABC - лямбда, и
-			 * первая редакция сита своей же находки не видела
+			 *       и подмена невидима. Вскрыт он сличением ДВУХ замеров: щуп причин говорил «место
+			 *       не стережёт никто», а счётчик - «место срабатывает дважды за прогон».
+			 *       Противоречие это и было находкой; одно молчание щупа списали бы на
+			 *       недостижимость. Сито того же рода по прочим кодекам дало ноль
+			 *       (`causesieve.py`), но лишь по дополнении его лямбдами: откат ABC - лямбда, и
+			 *       первая редакция сита своей же находки не видела
 			 *
 			 * @note Щуп подменою причин СЛЕП к дефекту, где причина ставится верно, а
-			 * гибнет по дороге наружу: подменённая гибнет ровно так же. Такое стережётся
-			 * сличением причины у внешнего слоя с причиной у внутреннего -
-			 * `EditorFixture.TheCauseCrossesTheBoundaryOfTheLayers`. Приём взят у кодека
-			 * разметки 05.09.2026
+			 *       гибнет по дороге наружу: подменённая гибнет ровно так же. Такое стережётся
+			 *       сличением причины у внешнего слоя с причиной у внутреннего -
+			 *       `EditorFixture.TheCauseCrossesTheBoundaryOfTheLayers`. Приём взят у кодека
+			 *       разметки 05.09.2026
 			 *
 			 * @note Головной заголовок правится последним, а перед ним ложится хвостовой:
-			 * обрыв посреди фиксации оставит контейнер прежнего поколения, а не битым
+			 *       обрыв посреди фиксации оставит контейнер прежнего поколения, а не битым
 			 *
 			 * @note **Раскладка правленного контейнера ОТЛИЧНА от собранного сборщиком.**
-			 * Сборщик кончает контейнер кадром оглавления, а правка кладёт следом ещё
-			 * один, хвостовой, заголовок опознания - и уборка тоже. Оба пути правки при
-			 * этом держат ту же связь смещений, что и сборщик: оглавление ложится ровно
-			 * за телом (`index` = `HEADER_LENGTH` + `length`), а подпись - ровно за кадром
-			 * оглавления. Связь эта не украшение: выборка записи поверяет длину кадра
-			 * оглавления полем `extent` заголовка, полагая, что кадр по смещению `index`
-			 * и есть кадр оглавления. Закреплено проверками
-			 * `EditorFixture.LayoutOffsetsFollowBody` и
-			 * `ContainerFixture.LayoutOffsetsFollowBody`
+			 *       Сборщик кончает контейнер кадром оглавления, а правка кладёт следом ещё
+			 *       один, хвостовой, заголовок опознания - и уборка тоже. Оба пути правки при
+			 *       этом держат ту же связь смещений, что и сборщик: оглавление ложится ровно
+			 *       за телом (`index` = `HEADER_LENGTH` + `length`), а подпись - ровно за кадром
+			 *       оглавления. Связь эта не украшение: выборка записи поверяет длину кадра
+			 *       оглавления полем `extent` заголовка, полагая, что кадр по смещению `index`
+			 *       и есть кадр оглавления. Закреплено проверками
+			 *       `EditorFixture.LayoutOffsetsFollowBody` и
+			 *       `ContainerFixture.LayoutOffsetsFollowBody`
 			 *
 			 * @note **О заслонах правщика, ни разу не сработавших.** Сплошной щуп нужности
-			 * 07.09.2026 обесточил порознь все 124 заслона `editor`, сохраняя условие
-			 * вычисляемым (`if((X) && false)`). Под сторожем 64 места, молчат 60, и
-			 * молчание сведено по существу зовомого:
-			 * - **тридцать пять** суть последние руки: отказы носителя (`_sink`, `_source`),
-			 *   дерева свёрток, укладки и подписи. Красит их лишь отказ шифрования, сжатия
-			 *   либо самой файловой системы, - одного вида с прочими по кодеку;
-			 * - **двадцать пять** к последней руке не сводятся, и разбор их идёт поштучно.
-			 *   Пятнадцать мест закрыто ПОРОЗНЬ с доказанной зрячестью, и всякая проверка
-			 *   поверена щупом на СВОЁМ же заслоне; шестнадцатая пара закреплена СОВМЕСТНО -
-			 *   укладка отпечатка ключа при фиксации и при уборке затеняют друг друга, ибо
-			 *   уборка зовёт фиксацию безусловно, и порознь ни одна проверкою не берётся
-			 *   (обесточенные РАЗОМ красят
-			 *   `CompactionStoresTheFingerprintOfTheCurrentSigner`, разбор при самом коде): подъём нулевых порогов
-			 *   настроек (`ZeroThresholdsAreRaisedToTheSmallest`, порознь двумя половинами -
-			 *   подъём обоих разом прошёл бы и при единственном работающем заслоне),
-			 *   заворот смещения кадра (`RefusedChunkOffsetNeverReachesTheMedium`), снятие
-			 *   подписи нулём (`SigningWithoutTheCryptoRemovesTheSignature`), расхождение
-			 *   двух объявленных длин оглавления (`IndexLengthDisagreeingWithTheHeaderIsRefused`),
-			 *   повторный снос записи (`RepeatedErasureDoesNotDoubleTheGarbage` - без заслона
-			 *   длина легла бы в счёт мусора вторично) и два восстановления счёта мусора при
-			 *   переоткрытии, идущие РАЗНЫМИ путями: обходом строк оглавления
-			 *   (`GarbageIsRecoveredFromTheIndexOnReopening`) и обходом заголовков кадров
-			 *   (`WastedChunkIsCountedOnReopening`), да удержание снятого кадра
-			 *   (`RepeatedRecordFetchDoesNotTouchTheMedium` - повторная выборка обязана
-			 *   не трогать носителя вовсе), да пересборка дерева свёрток откатом
-			 *   (`RefusedCommitRebuildsTheSigningTree` - дерево растёт лишь вперёд, и без
-			 *   пересборки СЛЕДУЮЩАЯ фиксация уложила бы корень по лишним кадрам, пройдя
-			 *   при том успешно, а подпись не сошлась бы молча), да прекращение обхода
-			 *   мусора кадром, в тело не умещающимся
-			 *   (`ChunkLengthBeyondTheBodyStopsTheWasteWalk` - длина взята из самого кадра
-			 *   и недоверенна, и без заслона счёт вобрал бы объявленное целиком, погнав
-			 *   уборку за мусором, какого нет), да донесение причины журналу самою
-			 *   воронкою отказа (`TheRefusalFunnelReportsItsCauseToTheJournal` -
-			 *   объявление это единственный путь, каким об отказе узнаёт СТОРОННИЙ
-			 *   наблюдатель, а набор спрашивал лишь `error()`, оттого обесточенная
-			 *   воронка оставила бы его зелёным);
+			 *       07.09.2026 обесточил порознь все 124 заслона `editor`, сохраняя условие
+			 *       вычисляемым (`if((X) && false)`). Под сторожем 64 места, молчат 60, и
+			 *       молчание сведено по существу зовомого:
+			 *       - **тридцать пять** суть последние руки: отказы носителя (`_sink`, `_source`),
+			 *       дерева свёрток, укладки и подписи. Красит их лишь отказ шифрования, сжатия
+			 *       либо самой файловой системы, - одного вида с прочими по кодеку;
+			 *       - **двадцать пять** к последней руке не сводятся, и разбор их идёт поштучно.
+			 *       Пятнадцать мест закрыто ПОРОЗНЬ с доказанной зрячестью, и всякая проверка
+			 *       поверена щупом на СВОЁМ же заслоне; шестнадцатая пара закреплена СОВМЕСТНО -
+			 *       укладка отпечатка ключа при фиксации и при уборке затеняют друг друга, ибо
+			 *       уборка зовёт фиксацию безусловно, и порознь ни одна проверкою не берётся
+			 *       (обесточенные РАЗОМ красят
+			 *       `CompactionStoresTheFingerprintOfTheCurrentSigner`, разбор при самом коде): подъём нулевых порогов
+			 *       настроек (`ZeroThresholdsAreRaisedToTheSmallest`, порознь двумя половинами -
+			 *       подъём обоих разом прошёл бы и при единственном работающем заслоне),
+			 *       заворот смещения кадра (`RefusedChunkOffsetNeverReachesTheMedium`), снятие
+			 *       подписи нулём (`SigningWithoutTheCryptoRemovesTheSignature`), расхождение
+			 *       двух объявленных длин оглавления (`IndexLengthDisagreeingWithTheHeaderIsRefused`),
+			 *       повторный снос записи (`RepeatedErasureDoesNotDoubleTheGarbage` - без заслона
+			 *       длина легла бы в счёт мусора вторично) и два восстановления счёта мусора при
+			 *       переоткрытии, идущие РАЗНЫМИ путями: обходом строк оглавления
+			 *       (`GarbageIsRecoveredFromTheIndexOnReopening`) и обходом заголовков кадров
+			 *       (`WastedChunkIsCountedOnReopening`), да удержание снятого кадра
+			 *       (`RepeatedRecordFetchDoesNotTouchTheMedium` - повторная выборка обязана
+			 *       не трогать носителя вовсе), да пересборка дерева свёрток откатом
+			 *       (`RefusedCommitRebuildsTheSigningTree` - дерево растёт лишь вперёд, и без
+			 *       пересборки СЛЕДУЮЩАЯ фиксация уложила бы корень по лишним кадрам, пройдя
+			 *       при том успешно, а подпись не сошлась бы молча), да прекращение обхода
+			 *       мусора кадром, в тело не умещающимся
+			 *       (`ChunkLengthBeyondTheBodyStopsTheWasteWalk` - длина взята из самого кадра
+			 *       и недоверенна, и без заслона счёт вобрал бы объявленное целиком, погнав
+			 *       уборку за мусором, какого нет), да донесение причины журналу самою
+			 *       воронкою отказа (`TheRefusalFunnelReportsItsCauseToTheJournal` -
+			 *       объявление это единственный путь, каким об отказе узнаёт СТОРОННИЙ
+			 *       наблюдатель, а набор спрашивал лишь `error()`, оттого обесточенная
+			 *       воронка оставила бы его зелёным);
 			 *
 			 *   Три из пятнадцати молчащих мест заслонами не были ВОВСЕ, и это отдельная
 			 *   пожива обхода: самочинная фиксация по РАЗМЕРУ правок
@@ -263,38 +263,196 @@ namespace awh {
 			 *   а условие при оптимизации либо при выборе способа молчит законно
 			 *
 			 * @warning Молчание само по себе не есть довод лишности, и снимать по нему
-			 * ничего нельзя. Три случая за один день показали обратное: место, названное
-			 * молчащим, оказывалось несущим (выход из цикла), затенённым соседом с ТОЙ ЖЕ
-			 * причиной, либо лежащим под неактивной условной сборкой - тогда подмена до
-			 * компилятора не доходит вовсе, и щуп молчит о себе. Всякое молчание
-			 * разбирается ЧТЕНИЕМ зовомого
+			 *          ничего нельзя. Три случая за один день показали обратное: место, названное
+			 *          молчащим, оказывалось несущим (выход из цикла), затенённым соседом с ТОЙ ЖЕ
+			 *          причиной, либо лежащим под неактивной условной сборкой - тогда подмена до
+			 *          компилятора не доходит вовсе, и щуп молчит о себе. Всякое молчание
+			 *          разбирается ЧТЕНИЕМ зовомого
 			 *
 			 * @warning Четвёртый случай, найденный 09.09.2026 и стоящий особняком: заслон,
-			 * обещающий «делай ЛИШЬ при условии». Щуп отнимает условие ЦЕЛИКОМ, то есть
-			 * отнимает само ДЕЙСТВИЕ, - а отнятое действие часто безвредно, и щуп отвечает
-			 * «не ловит ничего» с той же уверенностью, что и на настоящей слепоте.
-			 * Обещание такого заслона поверяется ИЗВРАЩЕНИЕМ - отнятием ПОЛОВИНЫ условия, -
-			 * и снятием не поверяется никогда. Образец: усечение разобранной части буфера у
-			 * `Reader::trim` молчало под щупом, а отнятие поверки очереди событий окрасило
-			 * две проверки разом. Прежде чем счесть молчание слепотою, читай, что заслон
-			 * ОБЕЩАЕТ: «отвергни при X» поверяется снятием, «делай лишь при X» - извращением
+			 *          обещающий «делай ЛИШЬ при условии». Щуп отнимает условие ЦЕЛИКОМ, то есть
+			 *          отнимает само ДЕЙСТВИЕ, - а отнятое действие часто безвредно, и щуп отвечает
+			 *          «не ловит ничего» с той же уверенностью, что и на настоящей слепоте.
+			 *          Обещание такого заслона поверяется ИЗВРАЩЕНИЕМ - отнятием ПОЛОВИНЫ условия, -
+			 *          и снятием не поверяется никогда. Образец: усечение разобранной части буфера у
+			 *          `Reader::trim` молчало под щупом, а отнятие поверки очереди событий окрасило
+			 *          две проверки разом. Прежде чем счесть молчание слепотою, читай, что заслон
+			 *          ОБЕЩАЕТ: «отвергни при X» поверяется снятием, «делай лишь при X» - извращением
 			 *
 			 * \~english
 			 * @brief Class of the editing of a container in place
+			 *
 			 * @details The editing is led by an appending rather than by a rewriting: a new record lies
-			 * at the end, while the row of the index is redirected to it. The former octets
-			 * remain on the medium as a waste until a compaction. A rewriting would oblige one to move everything
-			 * that lies after the record being edited, while a container is valuable exactly by being large
+			 *          at the end, while the row of the index is redirected to it. The former octets
+			 *          remain on the medium as a waste until a compaction. A rewriting would oblige one to move everything
+			 *          that lies after the record being edited, while a container is valuable exactly by being large.
+			 *
 			 * @details **The edits accumulate in the memory and lie on the medium by a commit.** Otherwise
-			 * every edit would cost a compression, an encryption and a rewriting of the index, while by
-			 * a commit they are paid once for a whole batch
+			 *          every edit would cost a compression, an encryption and a rewriting of the index, while by
+			 *          a commit they are paid once for a whole batch.
+			 *
 			 * @note **A failure of the commit does not discard the accumulated.** The space on the medium may
-			 * appear, and the next commit will pass over the same data
+			 *       appear, and the next commit will pass over the same data
+			 *
 			 * @note The accumulated is read on a par with the committed: the data is already in the memory, and
-			 * to refuse it before the commit would mean to oblige the consumer to hold it
-			 * as a second list
+			 *       to refuse it before the commit would mean to oblige the consumer to hold it
+			 *       as a second list
+			 *
+			 * @note **Of the failure sites that a check cannot reach.** The full probe by a substitution of the
+			 *       causes on 2026-09-05 went over every editing failure site apart. The silence of the probe at a
+			 *       part of them is lawful, and three kinds must be told apart:
+			 *       - **the last hand** - a guard whose CONDITION is unreachable while the agreements above hold:
+			 *       such are all the sites of `SIGNING_FAILED` (the digest tree refuses only at a missing gear, while
+			 *       here the module is given and a chunk is never empty; the road is guarded by
+			 *       `SignatureFixture.MerkleRefusesWithoutItsGear` and
+			 *       `SignatureFixture.MerkleRootWithAnAppendedChunkRefusesWithoutItsGear`) and the editing of an
+			 *       index row whose number is verified upon accumulation. **It is the CONDITION that is unreachable,
+			 *       not the path itself, and this difference is measured, not inferred by reasoning:** a substitution
+			 *       of `Merkle::add` by a constant refusal turns NINETEEN checks red (a measurement of 2026-09-05).
+			 *       That is, these roads are travelled by every signed container, the guards are alive, and a
+			 *       corruption of the gear will be caught immediately - to call them dead code is impossible. Yet the
+			 *       silence of the probe is lawful: it substitutes the CAUSE, and no one asks a cause here, for a
+			 *       refusal has nowhere to come from;
+			 *       - **the refusal of a medium** - `UNWRITABLE_SINK` and `UNREADABLE_SOURCE`: induced by a forged
+			 *       medium of the checks (`Medium::allow`, `Medium::sight`), and guarded by a walk over a break point
+			 *       (`EditorFixture.EveryReadRefusalNamesItsCause` and the neighbours). **The former edition of this
+			 *       record over-rated the sites:** those walks asserted that the cause is NAMED
+			 *       (`ASSERT_NE(error, NONE)`), not WHICH, and the contract "a break of a reading is
+			 *       `UNREADABLE_SOURCE`, a break of a writing is `UNWRITABLE_SINK`" rested on nothing: the full probe
+			 *       of 2026-09-05 named nineteen medium sites blind by the KIND of the cause. Fixed by
+			 *       `EditorFixture.MediumRefusalNamesItsKind`, walking thirty-two break points by a reading and as
+			 *       many by a writing through the opening, the fetching, the signing, the commit and the cleanup.
+			 *       Three details were gained by a MEASUREMENT, not by reasoning: the limits of the editing medium and
+			 *       the cleanup medium are obliged to be set APART (by one number a commit refusal outran the
+			 *       cleanup); the reading of a former signature record requires a THIRD-generation container; while
+			 *       the writing of a signature upon a cleanup is reachable only for a SIGNED container;
+			 *       - **the editing of an index row** - `INVALID_INDEX` at `_index.replace(...)`, three sites:
+			 *       `Index::replace` refuses ONLY at a number beyond the bound (`number >= entries.size()`), while a
+			 *       number comes here verified above or taken from the index itself. A refusal here would mean a
+			 *       divergence of the index from itself. Resolved by the code on 2026-09-05, not inferred from the
+			 *       silence of the probe. The fourth site of the same CAUSE of a refusal - the comparison of a segment
+			 *       of an accumulated edit with the content of a taken chunk - is also the last hand, but its
+			 *       argument is DIFFERENT, and the former record "by the same argument" was wider than the truth
+			 *       (corrected on 2026-09-06): `replace` is not called there at all. The offset of an edit is taken by
+			 *       the length of the accumulation BEFORE the appending of a record, while the length - by the length
+			 *       of the record itself, and this buffer becomes the content of a chunk entirely. A segment could go
+			 *       beyond the content only when a taking returns LESS than was laid, and this is forbidden by the
+			 *       contract of the layer;
+			 *       - **a genuine gap** - is closed by a check, and nine such are closed
+			 *
+			 * @note The silence of the probe of the causes at all seventeen means the UNREACHABILITY OF THE
+			 *       CONDITION, not a dead path, and this is measured, not inferred: a path probe of 2026-09-06 forced
+			 *       every guard to fire always, and each of the seventeen turned from two to twelve checks red. The
+			 *       road is travelled by all; only the condition itself is unreachable
+			 *
+			 * @note **The cause of a refusal is obliged to outlive the RESTORATION.** The rollback of the state at a
+			 *       commit failure READS the medium by gathering the digests anew, and this reading too may refuse, -
+			 *       while every refusal rewrites the cause. What came outward was the cause of the ROLLBACK, not the
+			 *       cause of the refusal: a caller who met a failure of the encryption would read "the octet reading
+			 *       work was answered with a refusal". Corrected on 2026-09-05 by remembering the cause for the time
+			 *       of the rollback
+			 *
+			 * @note The defect hid behind a COINCIDENCE of the causes: at a break of the medium both are the same,
+			 *       and the substitution is invisible. It was revealed by comparing TWO measurements: the probe of the
+			 *       causes said "no one guards the site", while the counter said "the site fires twice per run". This
+			 *       contradiction was the very finding; a single silence of the probe would have been written off as
+			 *       unreachability. A sieve of the same kind over the other codecs gave zero (`causesieve.py`), but
+			 *       only after supplementing it with lambdas: the rollback of ABC is a lambda, and the first edition
+			 *       of the sieve did not see its own finding
+			 *
+			 * @note A probe by a substitution of the causes is BLIND to a defect where the cause is set correctly
+			 *       but perishes on the way outward: a substituted one perishes exactly the same. Such a thing is
+			 *       guarded by comparing the cause at the outer layer with the cause at the inner one -
+			 *       `EditorFixture.TheCauseCrossesTheBoundaryOfTheLayers`. The technique was taken from the markup
+			 *       codec on 2026-09-05
+			 *
 			 * @note The head header is edited last, and before it the tail one is laid:
-			 * an interruption in the middle of a commit will leave the container of the previous generation rather than broken
+			 *       an interruption in the middle of a commit will leave the container of the previous generation rather than broken
+			 *
+			 * @note **The layout of an edited container DIFFERS from one assembled by the assembler.** The assembler
+			 *       ends a container by an index chunk, while the editing lays after it one more, tail, identifying
+			 *       header - and the cleanup too. Both editing roads at that hold the same relation of the offsets as
+			 *       the assembler: the index lies exactly after the body (`index` = `HEADER_LENGTH` + `length`), and
+			 *       the signature exactly after the index chunk. This relation is not an ornament: the fetching of a
+			 *       record verifies the length of the index chunk by the `extent` field of the header, supposing that
+			 *       a chunk at the offset `index` is exactly the index chunk. Fixed by the checks
+			 *       `EditorFixture.LayoutOffsetsFollowBody` and `ContainerFixture.LayoutOffsetsFollowBody`
+			 *
+			 * @note **Of the guards of the editor, never once triggered.** The full necessity probe of 2026-09-07
+			 *       de-energized all 124 `editor` guards apart, keeping the condition computable (`if((X) && false)`).
+			 *       Under the watch 64 sites, 60 stand silent, and the silence is reduced by the substance of what is
+			 *       called:
+			 *       - **thirty five** are the last hands: the refusals of the media (`_sink`, `_source`), the digest
+			 *       tree, the laying and the signing. Only a failure of the encryption, the compression or the very
+			 *       file system turns them red - of one kind with the others across the codec;
+			 *       - **twenty five** do not reduce to the last hand, and their resolution goes one by one. Fifteen
+			 *       sites are closed APART with a proven sight, and every check is verified by a probe at ITS OWN
+			 *       guard; the sixteenth pair is fixed JOINTLY - the laying of the fingerprint of the key at a commit
+			 *       and at a cleanup shadow one another, for a cleanup calls a commit unconditionally, and apart
+			 *       neither is taken by a check (de-energized TOGETHER they turn
+			 *       `CompactionStoresTheFingerprintOfTheCurrentSigner` red, a resolution at the code itself): the
+			 *       raising of the zero thresholds of the settings (`ZeroThresholdsAreRaisedToTheSmallest`, apart by
+			 *       two halves - a raising of both together would pass even at a single working guard), the turn of
+			 *       the offset of a chunk (`RefusedChunkOffsetNeverReachesTheMedium`), the removal of a signature by a
+			 *       zero (`SigningWithoutTheCryptoRemovesTheSignature`), the divergence of the two declared lengths of
+			 *       the index (`IndexLengthDisagreeingWithTheHeaderIsRefused`), a repeated erasure of a record
+			 *       (`RepeatedErasureDoesNotDoubleTheGarbage` - without a guard the length would lie into the garbage
+			 *       count a second time) and two restorations of the garbage count upon a reopening, going by
+			 *       DIFFERENT roads: by a walk of the index rows (`GarbageIsRecoveredFromTheIndexOnReopening`) and by
+			 *       a walk of the chunk headers (`WastedChunkIsCountedOnReopening`), and the holding of a taken chunk
+			 *       (`RepeatedRecordFetchDoesNotTouchTheMedium` - a repeated fetching is obliged not to touch the
+			 *       medium at all), and the rebuilding of the digest tree by a rollback
+			 *       (`RefusedCommitRebuildsTheSigningTree` - the tree grows only forward, and without a rebuilding the
+			 *       NEXT commit would have laid a root over the extra chunks, passing successfully at that, while the
+			 *       signature would not have agreed silently), and the stopping of a garbage walk by a chunk not
+			 *       fitting into the body (`ChunkLengthBeyondTheBodyStopsTheWasteWalk` - the length is taken from the
+			 *       chunk itself and is untrusted, and without a guard the count would have swallowed the declared one
+			 *       entirely, sending the cleanup after a garbage that is not there), and the reporting of the cause to
+			 *       the journal by the very funnel of a refusal (`TheRefusalFunnelReportsItsCauseToTheJournal` - this
+			 *       declaration is the only road by which an OUTSIDE observer learns of a refusal, while the set asked
+			 *       only `error()`, so a de-energized funnel would have left it green);
+			 *       Three of the fifteen silent sites were NOT guards at ALL, and this is a separate harvest of the
+			 *       walk: an automatic commit by the SIZE of the edits (`CommitBySizeOfPendingEdits` - the twin by the
+			 *       count was fixed, while by the size by no one), the check of the deadline by the FETCHING, not by a
+			 *       single edit (`DeadlineIsCheckedByTheFetchAsWell` - a case when the edits ended while the
+			 *       accumulated remained), and the accumulation of a chunk at a cleanup
+			 *       (`CompactionBatchesRecordsByTheBlockThreshold` - the cleanup was verified by the content, while the
+			 *       number of the chunks no one counted, and a cancellation of the accumulation would have left the
+			 *       container correct but with a chunk per every record). These properties are handed to the consumer
+			 *       on a par with the others, but had no checks;
+			 *       The OTHER silent sites are resolved by reading on 2026-09-08 and recognized as UNREACHABLE by a
+			 *       black box - not closed, but DOOMED, and there is no need to reopen them: `add` about the bound of
+			 *       the offset field (`_pending.size() + size` above `uint32`) requires four gigabytes of the
+			 *       accumulated; `erase` about the editing of an index row is an internal affair, the number is
+			 *       verified by a row above, and a refusal there would mean a divergence of the index from itself;
+			 *       `record` about the exit of a segment beyond the content of a chunk compares with a chunk LAID by
+			 *       us ourselves into the memory, and there is nothing with which to spoil it from outside; while an
+			 *       automatic commit at `replace` and `erase`, with the condition kept, remains the last hand - the
+			 *       commit rings, only the return at its refusal perishes
+			 *       TWO writings the probe rejected as green - `RefusedChunkOffsetNeverReachesTheMedium` and
+			 *       `IndexLengthDisagreeingWithTheHeaderIsRefused`, - and both for one reason: the CAUSE of a refusal
+			 *       was asserted, the same one a neighbour names. A guard is fixed only by what a neighbour does not
+			 *       give, and that is always an ACTION - the number of the appeals to the medium, the fact of a
+			 *       reading, the state after a refusal. A recount: these checks are named here by name, the other ten
+			 *       were verified by a probe from the first writing;
+			 *       - a part of the silent sites are NOT guards at all: the probe goes over every `if(`, while a
+			 *       condition at an optimization or at the choice of a way is lawfully silent
+			 *
+			 * @warning A silence by itself is not an argument of superfluity, and nothing may be removed by it.
+			 *          Three cases over a single day showed the opposite: a site named silent turned out to carry
+			 *          (an exit from a loop), to be shadowed by a neighbour with THE SAME cause, or to lie under an
+			 *          inactive conditional build - then a substitution does not reach the compiler at all, and the
+			 *          probe is silent about itself. Every silence is resolved by READING of what is called
+			 *
+			 * @warning The fourth case, found on 2026-09-09 and standing apart: a guard promising "do ONLY upon a
+			 *          condition". The probe takes the condition WHOLE, that is, takes the very ACTION, - while a
+			 *          taken action is often harmless, and the probe answers "catches nothing" with the same
+			 *          confidence as at a genuine blindness. The promise of such a guard is verified by INVERSION - by
+			 *          taking HALF of the condition, - and is never verified by a removal. An example: the truncation
+			 *          of the parsed part of the buffer at `Reader::trim` stood silent under the probe, while taking
+			 *          the check of the event queue turned two checks red at once. Before counting a silence a
+			 *          blindness, read what the guard PROMISES: "reject upon X" is verified by a removal, "do only
+			 *          upon X" - by an inversion
 			 *
 			 * \~
 			 */
@@ -305,23 +463,29 @@ namespace awh {
 					 * @brief Работа чтения октетов контейнера
 					 *
 					 * @warning Затребованный размер чтения НЕДОВЕРЕНЕН: берётся он из длины,
-					 * объявленной самим контейнером, а её вправе испортить кто угодно. Работа
-					 * обязана сперва сличить смещение и размер с настоящим размером носителя и
-					 * ответить отказом, и лишь потом заводить место: порча четырёх октетов длины
-					 * кадра заставляла заводить 4 ГиБ, чтобы следом ответить отказом по
-					 * недочитанному (замер 25.08.2026 на файле в 216 октетов). Приёмник
-					 * `Storage::source()` сторожа этого держит
+					 *          объявленной самим контейнером, а её вправе испортить кто угодно. Работа
+					 *          обязана сперва сличить смещение и размер с настоящим размером носителя и
+					 *          ответить отказом, и лишь потом заводить место: порча четырёх октетов длины
+					 *          кадра заставляла заводить 4 ГиБ, чтобы следом ответить отказом по
+					 *          недочитанному (замер 25.08.2026 на файле в 216 октетов). Приёмник
+					 *          `Storage::source()` сторожа этого держит
 					 *
 					 * @note Чтение за концом носителя обязано отвечать ОТКАЗОМ, а не усечённой
-					 * выдачей: обрывок иначе неотличим от целого кадра
+					 *       выдачей: обрывок иначе неотличим от целого кадра
 					 *
 					 * \~english
 					 * @brief Work of the reading of the octets of a container
+					 *
 					 * @warning The requested size of the reading is UNTRUSTED: it is taken from the length
-					 * declared by the container itself. The work is obliged first to compare the offset and the size
-					 * with the real size of the medium and to answer with a refusal, and only then to allocate
+					 *          declared by the container itself, and anyone has the right to spoil that length. The work is
+					 *          obliged first to compare the offset and the size with the real size of the medium and to answer
+					 *          with a refusal, and only then to allocate: the corruption of the four octets of the length of a
+					 *          chunk forced one to allocate 4 GiB, so as next to answer with a refusal by an under-reading (a
+					 *          measurement of 2026-08-25 on a file of 216 octets). The receiver `Storage::source()` holds this
+					 *          guard
+					 *
 					 * @note The reading past the end of the medium is obliged to answer with a REFUSAL rather than
-					 * with a truncated issue
+					 *       with a truncated issue
 					 *
 					 * \~
 					 */
@@ -341,14 +505,15 @@ namespace awh {
 					 * @brief Способы фиксации накопленных правок
 					 *
 					 * @details Способ по сроку здесь не объявлен намеренно: срок отбивается
-					 * не кодеком, а либо юнитом таймера сетевого движка, либо своим потоком,
-					 * и подаётся сюда обычной ручной фиксацией
+					 *          не кодеком, а либо юнитом таймера сетевого движка, либо своим потоком,
+					 *          и подаётся сюда обычной ручной фиксацией.
 					 *
 					 * \~english
 					 * @brief Modes of the commit of the accumulated edits
+					 *
 					 * @details The mode by a deadline is not declared here deliberately: the deadline is beaten out
-					 * not by the codec but either by the unit of the timer of the network engine or by an own thread,
-					 * and is submitted here by an ordinary manual commit
+					 *          not by the codec but either by the unit of the timer of the network engine or by an own thread,
+					 *          and is submitted here by an ordinary manual commit.
 					 *
 					 * \~
 					 */
@@ -390,16 +555,17 @@ namespace awh {
 						 * Срок самочинной фиксации в миллисекундах
 						 *
 						 * @note Срок этот берётся лишь способами фиксации по сроку. Где
-						 * поднят сетевой движок, срок надлежит отбивать юнитом таймера его, а
-						 * сюда приводить обычной ручной фиксацией: свой поток был бы вторым
-						 * сроком при одном уже отбиваемом
+						 *       поднят сетевой движок, срок надлежит отбивать юнитом таймера его, а
+						 *       сюда приводить обычной ручной фиксацией: свой поток был бы вторым
+						 *       сроком при одном уже отбиваемом
 						 *
 						 * \~english
 						 * Deadline of the self-willed commit in milliseconds
+						 *
 						 * @note This deadline is taken only by the modes of the commit by a deadline. Where
-						 * the network engine is raised, the deadline should be beaten out by the unit of its timer, while
-						 * here it should be led by an ordinary manual commit: an own thread would be a second
-						 * deadline while one is already being beaten out
+						 *       the network engine is raised, the deadline should be beaten out by the unit of its timer, while
+						 *       here it should be led by an ordinary manual commit: an own thread would be a second
+						 *       deadline while one is already being beaten out
 						 *
 						 * \~
 						 */
@@ -463,19 +629,21 @@ namespace awh {
 					 * Замок состояния правки контейнера
 					 *
 					 * @note Замок возвратный намеренно: самочинная фиксация зовётся изнутри
-					 * внесения записи, и невозвратный замок затянул бы сам себя
+					 *       внесения записи, и невозвратный замок затянул бы сам себя
 					 *
 					 * @note Замок этот берётся всяким обращением, а не одним лишь способом
-					 * фиксации своим потоком: замок, берущийся выборочно, разошёлся бы с
-					 * настройкой, смененной на ходу, и разошёлся бы молча
+					 *       фиксации своим потоком: замок, берущийся выборочно, разошёлся бы с
+					 *       настройкой, смененной на ходу, и разошёлся бы молча
 					 *
 					 * \~english
 					 * Lock of the state of the editing of a container
+					 *
 					 * @note The lock is recursive deliberately: the self-willed commit is called from within
-					 * the adding of a record, and a non-recursive lock would deadlock itself
+					 *       the adding of a record, and a non-recursive lock would deadlock itself
+					 *
 					 * @note This lock is taken by every appeal rather than by the mode of the commit
-					 * by an own thread alone: a lock taken selectively would diverge from
-					 * a setting changed on the fly, and would diverge silently
+					 *       by an own thread alone: a lock taken selectively would diverge from
+					 *       a setting changed on the fly, and would diverge silently
 					 *
 					 * \~
 					 */
@@ -524,14 +692,20 @@ namespace awh {
 					 * Количество октетов, ОБРАЩАЕМЫХ в мусор накопленным сносом записей
 					 *
 					 * @details Счёт этот держится отдельно от `_garbage` и переливается в него
-					 * лишь удавшейся фиксацией. Довод тому - слово «на носителе» в договоре
-					 * работы `garbage()`: снос копится в памяти, носителя до фиксации не
-					 * трогает, и сосчитанный сразу он обещал бы уборке мусор, какого на
-					 * носителе ещё нет. Отказ фиксации при том счёт этот СОХРАНЯЕТ: правки
-					 * не сброшены и лягут следующей фиксацией
+					 *          лишь удавшейся фиксацией. Довод тому - слово «на носителе» в договоре
+					 *          работы `garbage()`: снос копится в памяти, носителя до фиксации не
+					 *          трогает, и сосчитанный сразу он обещал бы уборке мусор, какого на
+					 *          носителе ещё нет. Отказ фиксации при том счёт этот СОХРАНЯЕТ: правки
+					 *          не сброшены и лягут следующей фиксацией.
 					 *
 					 * \~english
 					 * Count of the octets being turned into the waste by the accumulated erasing of the records
+					 *
+					 * @details This count is held apart from `_garbage` and is poured into it only by a succeeded commit.
+					 *          The argument for it is the word "on the medium" in the contract of the `garbage()` work: an
+					 *          erasure accumulates in the memory, does not touch the medium before a commit, and counted at
+					 *          once it would promise the cleanup a garbage that is not yet on the medium. A commit failure at
+					 *          that PRESERVES this count: the edits are not discarded and will lie by the next commit.
 					 *
 					 * \~
 					 */
@@ -554,14 +728,15 @@ namespace awh {
 					 * Уложенные кадры, ещё не записанные на носитель
 					 *
 					 * @note Кадр укладывается по достижении порога либо по смене вида
-					 * содержимого, а не при фиксации: тем накопление большой пачки не
-					 * оборачивается укладкой её целиком единым мигом
+					 *       содержимого, а не при фиксации: тем накопление большой пачки не
+					 *       оборачивается укладкой её целиком единым мигом
 					 *
 					 * \~english
 					 * Laid chunks not yet written onto the medium
+					 *
 					 * @note A chunk is laid upon the reaching of the threshold or upon a change of the kind
-					 * of the content rather than at the commit: by that an accumulation of a large batch does not
-					 * turn into a laying of the whole of it at a single moment
+					 *       of the content rather than at the commit: by that an accumulation of a large batch does not
+					 *       turn into a laying of the whole of it at a single moment
 					 *
 					 * \~
 					 */
@@ -593,15 +768,20 @@ namespace awh {
 					 * @brief Метод объявления отказа правки контейнера
 					 *
 					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
-					 * работа отвечает отказом множеством путей, и запись в каждом из них
-					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
-					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
+					 *          работа отвечает отказом множеством путей, и запись в каждом из них
+					 *          разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
+					 *          тот слой донёс о нём сам, и второе донесение лишь двоило бы записи.
 					 *
 					 * @param error объявляемый код отказа
 					 * @return      признак успешности, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a failure
+					 *
+					 * @details The report comes from here, from the single place of the declaration of a failure: the
+					 *          work answers with a failure by many roads, and a record at each of them would diverge from the
+					 *          others. A failure ACCEPTED from a lower layer does not come here - that layer has reported it
+					 *          itself, and a second report would only double the records.
 					 *
 					 * @param error code of the failure being declared
 					 * @return      flag of the success, always false
@@ -619,6 +799,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the taking of a chunk of a container from the medium
+					 *
 					 * @param origin offset of the chunk from the beginning of the body of the container
 					 * @return sign of a successfully taken chunk
 					 *
@@ -630,18 +811,20 @@ namespace awh {
 					 * @brief Метод сбора свёрток по кадрам тела контейнера
 					 *
 					 * @details Сбор идёт по октетам, как они лежат, и ключа расшифровки не
-					 * требует: подписан шифротекст. Идёт он единожды при объявлении подписи,
-					 * а далее дерево ведётся дописыванием - иначе всякая фиксация обязала бы
-					 * перечитывать контейнер целиком
+					 *          требует: подписан шифротекст. Идёт он единожды при объявлении подписи,
+					 *          а далее дерево ведётся дописыванием - иначе всякая фиксация обязала бы
+					 *          перечитывать контейнер целиком.
 					 *
 					 * @return признак успешного сбора свёрток
 					 *
 					 * \~english
 					 * @brief Method of the gathering of the digests over the chunks of the body of a container
+					 *
 					 * @details The gathering goes over the octets as they lie and does not require the key of the decryption:
-					 * the ciphertext is signed. It goes once at the declaration of the signature,
-					 * while further the tree is led by an appending — otherwise every commit would oblige one
-					 * to reread the whole container
+					 *          the ciphertext is signed. It goes once at the declaration of the signature,
+					 *          while further the tree is led by an appending — otherwise every commit would oblige one
+					 *          to reread the whole container.
+					 *
 					 * @return sign of a successful gathering of the digests
 					 *
 					 * \~
@@ -655,6 +838,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the accumulated records by a chunk into the memory
+					 *
 					 * @return sign of the success of the laying
 					 *
 					 * \~
@@ -673,6 +857,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the accumulation of a record as an edit of a container
+					 *
 					 * @param buffer buffer of the record being accumulated
 					 * @param size size of the record being accumulated
 					 * @param kind kind of the content of the record being accumulated
@@ -693,6 +878,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the module of the compression
+					 *
 					 * @param value module of the compression being set, zero — removal of the module
 					 *
 					 * \~
@@ -706,6 +892,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the module of the encryption
+					 *
 					 * @param value module of the encryption being set, zero — removal of the module
 					 *
 					 * \~
@@ -716,11 +903,11 @@ namespace awh {
 					 * @brief Метод объявления подписи правимого контейнера
 					 *
 					 * @details Подпись объявляется по открытии контейнера, а не до него: сбор
-					 * свёрток по кадрам тела требует чтения, а читать до открытия нечего
+					 *          свёрток по кадрам тела требует чтения, а читать до открытия нечего.
 					 *
 					 * @note Всякая фиксация кладёт свою подпись: поколение сменилось, а
-					 * подпись прежнего поколения на новое тело не сходится и сходиться не
-					 * должна
+					 *       подпись прежнего поколения на новое тело не сходится и сходиться не
+					 *       должна
 					 *
 					 * @param crypto модуль шифрования, ноль - снятие подписи
 					 * @param name   имя ключа владельца контейнера
@@ -729,11 +916,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the declaration of the signature of an edited container
+					 *
 					 * @details The signature is declared after the opening of the container rather than before it: the gathering
-					 * of the digests over the chunks of the body requires a reading, while there is nothing to read before the opening
+					 *          of the digests over the chunks of the body requires a reading, while there is nothing to read before the opening.
+					 *
 					 * @note Every commit lays its own signature: the generation has changed, while
-					 * the signature of the previous generation does not agree with the new body and must not
-					 * agree
+					 *       the signature of the previous generation does not agree with the new body and must not
+					 *       agree
+					 *
 					 * @param crypto module of the encryption, zero — removal of the signature
 					 * @param name name of the key of the owner of the container
 					 * @param hash desired kind of the hash of the signature
@@ -749,8 +939,8 @@ namespace awh {
 					 * @brief Метод открытия контейнера отданными работами чтения и записи
 					 *
 					 * @details Заголовок берётся головной, а при негодности его - хвостовой:
-					 * негодный головной значит обрыв посреди правки, и контейнер откатывается
-					 * к поколению, какое было до неё
+					 *          негодный головной значит обрыв посреди правки, и контейнер откатывается
+					 *          к поколению, какое было до неё.
 					 *
 					 * @param source устанавливаемая работа чтения октетов контейнера
 					 * @param sink   устанавливаемая работа записи октетов контейнера
@@ -759,9 +949,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a container by the given works of the reading and of the writing
+					 *
 					 * @details The header is taken as the head one, and at its unfitness the tail one:
-					 * an unfit head one means an interruption in the middle of an editing, and the container is rolled back
-					 * to the generation which was before it
+					 *          an unfit head one means an interruption in the middle of an editing, and the container is rolled back
+					 *          to the generation which was before it.
+					 *
 					 * @param source work of the reading of the octets of the container being set
 					 * @param sink work of the writing of the octets of the container being set
 					 * @param length full length of the container on the medium
@@ -782,6 +974,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the adding of a record to the end of a container
+					 *
 					 * @param buffer buffer of the record being added
 					 * @param size size of the record being added
 					 * @param kind kind of the content of the record being added
@@ -802,6 +995,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the editing of a record of a container by its number
+					 *
 					 * @param number ordinal number of the record being edited
 					 * @param buffer buffer of the new record
 					 * @param size size of the new record
@@ -817,17 +1011,19 @@ namespace awh {
 					 * @brief Метод сноса записи контейнера по номеру
 					 *
 					 * @details Строка снесённой записи остаётся в оглавлении помеченной, а не
-					 * изымается: изъятие сдвинуло бы номера соседей, и всякая ссылка на них
-					 * извне обратилась бы в ссылку на чужую запись
+					 *          изымается: изъятие сдвинуло бы номера соседей, и всякая ссылка на них
+					 *          извне обратилась бы в ссылку на чужую запись.
 					 *
 					 * @param number порядковый номер сносимой записи
 					 * @return       признак успешности сноса
 					 *
 					 * \~english
 					 * @brief Method of the erasure of a record of a container by its number
+					 *
 					 * @details The row of an erased record remains in the index marked rather than
-					 * being removed: a removal would shift the numbers of the neighbours, and every reference to them
-					 * from outside would turn into a reference to a foreign record
+					 *          being removed: a removal would shift the numbers of the neighbours, and every reference to them
+					 *          from outside would turn into a reference to a foreign record.
+					 *
 					 * @param number ordinal number of the record being erased
 					 * @return sign of the success of the erasure
 					 *
@@ -844,6 +1040,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the fetching of a record of a container by its number
+					 *
 					 * @param number ordinal number of the record being fetched
 					 * @param result buffer the fetched record should be placed into
 					 * @return sign of a successfully fetched record
@@ -860,6 +1057,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the commit of the accumulated edits onto the medium
+					 *
 					 * @return sign of the success of the commit
 					 *
 					 * \~
@@ -870,26 +1068,26 @@ namespace awh {
 					 * @brief Метод уборки мусора перестройкой контейнера
 					 *
 					 * @details Уборка пишет контейнер начисто на отданный носитель, беря лишь
-					 * живые записи: правка дописыванием мусор копит, а вернуть место может
-					 * лишь перестройка. Правка на месте того не сделает - мусор лежит между
-					 * живыми записями, и вычеркнуть его значило бы двигать всё, что за ним
+					 *          живые записи: правка дописыванием мусор копит, а вернуть место может
+					 *          лишь перестройка. Правка на месте того не сделает - мусор лежит между
+					 *          живыми записями, и вычеркнуть его значило бы двигать всё, что за ним.
 					 *
 					 * @details **Строки снесённых записей уборкой сохраняются пустыми.**
-					 * Изъятие их сдвинуло бы номера соседей, а номера эти живут и вне
-					 * контейнера. Место они занимают лишь строкой оглавления, а не записью
+					 *          Изъятие их сдвинуло бы номера соседей, а номера эти живут и вне
+					 *          контейнера. Место они занимают лишь строкой оглавления, а не записью.
 					 *
 					 * @note Незакреплённые правки уборка сперва закрепляет: убирать по
-					 * оглавлению, разошедшемуся с памятью, значило бы терять накопленное
+					 *       оглавлению, разошедшемуся с памятью, значило бы терять накопленное
 					 *
 					 * @note Вид содержимого записи оглавлением не хранится, оттого уборке он
-					 * подаётся снаружи: хранить его строкой значило бы платить за него
-					 * всякой записью ради одной лишь уборки
+					 *       подаётся снаружи: хранить его строкой значило бы платить за него
+					 *       всякой записью ради одной лишь уборки
 					 *
 					 * @warning Носитель уборки обязан быть ИНЫМ, нежели тот, откуда контейнер
-					 * читается: уборка читает живые записи кадр за кадром и тут же кладёт
-					 * убранное, и общий носитель разрушается по мере чтения. Отказа при том не
-					 * будет - выйдет успех и урезанный контейнер. Убирать на место исходного
-					 * следует переносом убранного, а не подачей той же работы записи
+					 *          читается: уборка читает живые записи кадр за кадром и тут же кладёт
+					 *          убранное, и общий носитель разрушается по мере чтения. Отказа при том не
+					 *          будет - выйдет успех и урезанный контейнер. Убирать на место исходного
+					 *          следует переносом убранного, а не подачей той же работы записи
 					 *
 					 * @param target работа записи октетов убираемого контейнера
 					 * @param kind   вид содержимого записей убираемого контейнера
@@ -898,22 +1096,28 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the compaction of the waste by a rebuilding of a container
+					 *
 					 * @details The compaction writes a container anew onto a given medium taking only
-					 * the live records: an editing by an appending accumulates a waste, while the space can be returned
-					 * only by a rebuilding. An editing in place will not do that — the waste lies between
-					 * the live records, and to cross it out would mean to move everything that is behind it
+					 *          the live records: an editing by an appending accumulates a waste, while the space can be returned
+					 *          only by a rebuilding. An editing in place will not do that — the waste lies between
+					 *          the live records, and to cross it out would mean to move everything that is behind it.
+					 *
 					 * @details **The rows of the erased records are preserved empty by the compaction.**
-					 * Their removal would shift the numbers of the neighbours, while these numbers live outside
-					 * the container as well. They occupy the space only by a row of the index rather than by a record
+					 *          Their removal would shift the numbers of the neighbours, while these numbers live outside
+					 *          the container as well. They occupy the space only by a row of the index rather than by a record.
+					 *
 					 * @note The uncommitted edits are committed by the compaction first: to compact by
-					 * an index which has diverged from the memory would mean to lose the accumulated
+					 *       an index which has diverged from the memory would mean to lose the accumulated
+					 *
 					 * @note The kind of the content of a record is not stored by the index, therefore it is submitted
-					 * to the compaction from outside: to store it by a row would mean to pay for it
-					 * at every record for the sake of the compaction alone
+					 *       to the compaction from outside: to store it by a row would mean to pay for it
+					 *       at every record for the sake of the compaction alone
+					 *
 					 * @warning The medium of the compaction is obliged to be OTHER than the one the container
-					 * is read from: the compaction reads the live records chunk by chunk and lays the compacted
-					 * at once, and a shared medium is destroyed as it is read. There will be no refusal at that —
-					 * a success and a truncated container will come out
+					 *          is read from: the compaction reads the live records chunk by chunk and lays the compacted
+					 *          at once, and a shared medium is destroyed as it is read. There will be no refusal at that —
+					 *          a success and a truncated container will come out
+					 *
 					 * @param target work of the writing of the octets of the container being compacted
 					 * @param kind kind of the content of the records of the container being compacted
 					 * @param length full length of the compacted container
@@ -942,6 +1146,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the count of the records of a container
+					 *
 					 * @return count of the records of the container, the erased ones are included in the count
 					 *
 					 * \~
@@ -952,25 +1157,41 @@ namespace awh {
 					 * @brief Метод извлечения количества октетов, обращённых в мусор
 					 *
 					 * @details Счёт ведётся о носителе, а не о накопленном: снос и правка копятся
-					 * в памяти и до фиксации носителя не трогают, оттого до неё счёт и не растёт.
-					 * Свежее открытие контейнера счёт ВОССТАНАВЛИВАЕТ обходом: длины снесённых
-					 * строк оглавления да кадры, целиком обращённые в мусор
+					 *          в памяти и до фиксации носителя не трогают, оттого до неё счёт и не растёт.
+					 *          Свежее открытие контейнера счёт ВОССТАНАВЛИВАЕТ обходом: длины снесённых
+					 *          строк оглавления да кадры, целиком обращённые в мусор.
 					 *
 					 * @warning **Счёт этот - НИЖНЯЯ ГРАНИЦА.** Записей, вытесненных правкой внутри
-					 * ЖИВОГО кадра, на носителе не сыскать: строка оглавления вытесненной записи
-					 * перезаписана новой, а длина её нигде более не хранится. Оттого счёт,
-					 * восстановленный открытием, бывает МЕНЬШЕ сосчитанного правкой, его
-					 * сделавшей. Точный счёт потребовал бы места в заголовке, сиречь смены вида
-					 * записи
+					 *          ЖИВОГО кадра, на носителе не сыскать: строка оглавления вытесненной записи
+					 *          перезаписана новой, а длина её нигде более не хранится. Оттого счёт,
+					 *          восстановленный открытием, бывает МЕНЬШЕ сосчитанного правкой, его
+					 *          сделавшей. Точный счёт потребовал бы места в заголовке, сиречь смены вида
+					 *          записи
 					 *
 					 * @note Граница именно нижняя, а не какая придётся, и это безопасно для
-					 * решения об уборке: она не обещает уборке больше, чем та выручит.
-					 * Закреплено проверкой `EditorFixture.GarbageMeansTheWasteOnTheMedium`
+					 *       решения об уборке: она не обещает уборке больше, чем та выручит.
+					 *       Закреплено проверкой `EditorFixture.GarbageMeansTheWasteOnTheMedium`
 					 *
 					 * @return количество октетов мусора на носителе
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the count of the octets turned into a waste
+					 *
+					 * @details The count is kept about the medium, not about the accumulated: an erasure and an edit
+					 *          accumulate in the memory and do not touch the medium before a commit, so before it the count
+					 *          does not grow. A fresh opening of a container RESTORES the count by a walk: the lengths of the
+					 *          erased index rows and the chunks turned into a garbage entirely.
+					 *
+					 * @warning **This count is a LOWER BOUND.** The records displaced by an edit inside a LIVE chunk cannot
+					 *          be found on the medium: the index row of a displaced record is overwritten by a new one, and its
+					 *          length is stored nowhere else. Therefore a count restored by an opening can be LESS than the one
+					 *          counted by the very edit that made it. An exact count would require a place in the header, that
+					 *          is, a change of the record kind
+					 *
+					 * @note The bound is exactly a lower one, not any other, and this is safe for the decision about a
+					 *       cleanup: it promises the cleanup no more than the cleanup will gain. Fixed by a check
+					 *       `EditorFixture.GarbageMeansTheWasteOnTheMedium`
+					 *
 					 * @return count of the octets of the waste on the medium
 					 *
 					 * \~
@@ -984,6 +1205,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the size of the accumulated edits
+					 *
 					 * @return size of the accumulated records in octets
 					 *
 					 * \~
@@ -997,6 +1219,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the full length of a container on the medium
+					 *
 					 * @return full length of the container in octets
 					 *
 					 * \~
@@ -1010,6 +1233,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the identifying header of an edited container
+					 *
 					 * @return identifying header of the container
 					 *
 					 * \~
@@ -1023,6 +1247,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the index of an edited container
+					 *
 					 * @return index of the container
 					 *
 					 * \~
@@ -1036,6 +1261,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the error code of the editing of a container
+					 *
 					 * @return error code
 					 *
 					 * \~
@@ -1049,6 +1275,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the module of the laying and of the taking of a chunk
+					 *
 					 * @return module of the laying and of the taking of a chunk
 					 *
 					 * \~
@@ -1062,6 +1289,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the settings of the editing of a container
+					 *
 					 * @return settings of the editing of a container
 					 *
 					 * \~
@@ -1075,6 +1303,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the editing of a container
+					 *
 					 * @param settings settings of the editing of a container being set
 					 *
 					 * \~

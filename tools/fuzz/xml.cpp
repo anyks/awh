@@ -1946,7 +1946,7 @@ namespace {
 						/**
 						 * Если прививка значения в дерево разметки не удалась
 						 */
-						if(!host.graft("/host/graft", value)){
+						if(!host.set("/host/graft", value)){
 							// Выводим сообщение об отказе прививки значения
 							::fprintf(stderr, "xml fuzz: value graft refused\n  запись [%s]\n", value.dump().c_str());
 							// Выводим исходный текст разметки
@@ -2032,7 +2032,7 @@ namespace {
 						/**
 						 * Если корень несёт несколько узлов, а прививка им отказом не завершилась
 						 */
-						if((root.size() != 1) && host.graft("/host/0", root)){
+						if((root.size() != 1) && host.set("/host/0", root)){
 							// Выводим сообщение о принятой прививке значением корня дерева
 							::fprintf(stderr, "xml fuzz: document graft accepted\n  запись [%s]\n", value.dump().c_str());
 							// Выводим исходный текст разметки

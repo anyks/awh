@@ -90,8 +90,8 @@ namespace awh {
 			 * @brief Класс записи событий в запись CEF
 			 *
 			 * @details Обходит дерево контейнера ABC и собирает запись CEF: приставку
-			 * syslog, заголовок из семи полей и расширение из пар «ключ=значение».
-			 * Второго представления по дороге не заводится вовсе
+			 *          syslog, заголовок из семи полей и расширение из пар «ключ=значение».
+			 *          Второго представления по дороге не заводится вовсе.
 			 *
 			 * @par Намеренные решения
 			 *
@@ -99,28 +99,52 @@ namespace awh {
 			 * задачи, и каждое из решений закреплено проверочным испытанием
 			 *
 			 * @li **Отмена знаков ставится порознь по областям.** В заголовке отменяются
-			 * прямая черта и обратная косая, а знак равенства НЕ отменяется; в
-			 * расширении отменяется знак равенства и обратная косая, а прямая черта НЕ
-			 * отменяется. Правило это взято прямо из описания ArcSight, и общего
-			 * правила на обе области у него нет вовсе
+			 *     прямая черта и обратная косая, а знак равенства НЕ отменяется; в
+			 *     расширении отменяется знак равенства и обратная косая, а прямая черта НЕ
+			 *     отменяется. Правило это взято прямо из описания ArcSight, и общего
+			 *     правила на обе области у него нет вовсе
 			 *
 			 * @li **Перевод строки в значении расширения записывается «\n».** Настоящий
-			 * перевод строки означал бы конец записи, и запись, им разорванная,
-			 * разбиралась бы двумя, из которых вторая слова «CEF:» не несёт
+			 *     перевод строки означал бы конец записи, и запись, им разорванная,
+			 *     разбиралась бы двумя, из которых вторая слова «CEF:» не несёт
 			 *
 			 * @li **Вложенное значение обращается по правилу настройки.** Дерева
-			 * произвольной глубины запись CEF не несёт: исход выбирает тот, кто пишет,
-			 * а не кодек
+			 *     произвольной глубины запись CEF не несёт: исход выбирает тот, кто пишет,
+			 *     а не кодек
 			 *
 			 * @li **Дословного совпадения записи перевод не обещает - обещает значение.**
-			 * Число «1e2» выдаётся как «100», лишняя отмена снимается, порядок пар
-			 * расширения берётся порядком дерева. Обратимость закрепляется сличением
-			 * ДЕРЕВЬЕВ, а не текстов
+			 *     Число «1e2» выдаётся как «100», лишняя отмена снимается, порядок пар
+			 *     расширения берётся порядком дерева. Обратимость закрепляется сличением
+			 *     ДЕРЕВЬЕВ, а не текстов
 			 *
 			 * \~english
 			 * @brief Class of the writing of the events into a CEF record
+			 *
 			 * @details Traverses the tree of the ABC container and assembles a CEF record: the syslog
-			 * prefix, the header of seven fields and the extension of the pairs «key=value»
+			 *          prefix, the header of seven fields and the extension of the pairs «key=value».
+			 *          No second representation is introduced along the way at all.
+			 *
+			 * @par Deliberate decisions
+			 *
+			 * The list below is not a gap of the implementation: these are the outlined boundaries of the task,
+			 * and each of the decisions is fixed by a verifying test
+			 *
+			 * @li **The escaping of the signs is put separately by the areas.** In the header the vertical bar and
+			 *     the backslash are escaped, while the equals sign is NOT escaped; in the extension the equals sign
+			 *     and the backslash are escaped, while the vertical bar is NOT escaped. This rule is taken straight
+			 *     from the description of ArcSight, which has no common rule for both areas at all
+			 *
+			 * @li **A line feed in the value of an extension is written as «\n».** A real line feed would mean the
+			 *     end of a record, and a record torn by it would be parsed as two, of which the second does not
+			 *     carry the words «CEF:»
+			 *
+			 * @li **A nested value is turned by the rule of a setting.** A record of CEF does not carry a tree of an
+			 *     arbitrary depth: the outcome is chosen by the one who writes, and not by the codec
+			 *
+			 * @li **The translation promises the value, not a verbatim match of the record.** The number «1e2» is
+			 *     issued as «100», a redundant escaping is removed, and the order of the pairs of an extension is
+			 *     taken by the order of the tree. The reversibility is fixed by a comparison of the TREES, and not
+			 *     of the texts
 			 *
 			 * \~
 			 */
@@ -177,6 +201,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the termination of the writing by an error
+					 *
 					 * @param error error code of the writing
 					 * @param name  name of the field the writing is terminated on
 					 * @return      flag of the success of the writing
@@ -190,7 +215,7 @@ namespace awh {
 					 * @brief Метод постановки отмены знаков в значении
 					 *
 					 * @details Правила отмены у областей записи РАЗНЫЕ, и область
-					 * передаётся доводом именно поэтому
+					 *          передаётся доводом именно поэтому.
 					 *
 					 * @param text   значение, отмены знаков требующее
 					 * @param area   область записи, в которую значение ставится
@@ -198,7 +223,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the placing of the escaping of the characters in a value
-					 * @details The rules of the escaping of the areas of a record are DIFFERENT
+					 *
+					 * @details The rules of the escaping of the areas of a record are DIFFERENT.
+					 *
 					 * @param text   value requiring the escaping of the characters
 					 * @param area   area of the record the value is placed into
 					 * @param result value with the escaping of the characters placed
@@ -216,6 +243,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the conversion of a value of a tree into a sequence of characters
+					 *
 					 * @param value  value of a tree of the ABC container
 					 * @param result value as a sequence of characters
 					 * @return       flag of the success of the conversion of the value
@@ -232,6 +260,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the settings of the writing of the events
+					 *
 					 * @return settings of the writing of the events
 					 *
 					 * \~
@@ -245,6 +274,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing of the events
+					 *
 					 * @param settings settings of the writing of the events
 					 *
 					 * \~
@@ -259,6 +289,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the writing
+					 *
 					 * @return error code of the last operation of the writing
 					 *
 					 * \~
@@ -270,8 +301,8 @@ namespace awh {
 					 * @brief Метод сборки записи CEF из дерева контейнера ABC
 					 *
 					 * @details Дерево ожидается тем же по устройству, какое собирает
-					 * разбор: приставка полем «syslog», поля заголовка отображением
-					 * «header», пары расширения отображением «extension»
+					 *          разбор: приставка полем «syslog», поля заголовка отображением
+					 *          «header», пары расширения отображением «extension»
 					 *
 					 * @param value  дерево контейнера ABC
 					 * @param result собранная запись CEF
@@ -279,8 +310,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the assembly of a CEF record from a tree of the ABC container
+					 *
 					 * @details The tree is expected to be of the same construction as the one assembled by
-					 * the parsing
+					 *          the parsing: the prefix as a field «syslog», the fields of the header as a mapping
+					 *          «header», the pairs of an extension as a mapping «extension»
+					 *
 					 * @param value  tree of the ABC container
 					 * @param result assembled CEF record
 					 * @return       flag of the success of the assembly of the record

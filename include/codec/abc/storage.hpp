@@ -90,85 +90,148 @@ namespace awh {
 			 * @brief Класс хранения контейнера в файле
 			 *
 			 * @details Правка контейнера на месте ведётся работами чтения и записи октетов,
-			 * какие потребитель подаёт правке сам. Хранилище это их и подаёт, избавляя
-			 * потребителя от писания их всякий раз заново
+			 *          какие потребитель подаёт правке сам. Хранилище это их и подаёт, избавляя
+			 *          потребителя от писания их всякий раз заново.
 			 *
 			 * @warning **Сводки сплошных щупов 06-07.09.2026 СНЯТЫ, и вот почему.** Они судили
-			 * код, какого более не существует: хранилище держало свой поток `FILE *` и звало
-			 * `fopen`, `fread`, `fwrite`, `fseeko`, `fflush`, `ferror`, `fsync` и `F_FULLFSYNC`
-			 * своею рукой. 12.09.2026 всё это уступило место `awh::fs_t`, и вместе с кодом
-			 * ушли и места отказа, о каких сводки говорили: `measure` о двух ветвях систем,
-			 * перемотка потока, короткое `fread`, различение конца файла и отказа через
-			 * `ferror`. Держать приговоры о снесённом коде хуже, чем не держать никаких:
-			 * читающий принял бы их за описание нынешнего устройства
+			 *          код, какого более не существует: хранилище держало свой поток `FILE *` и звало
+			 *          `fopen`, `fread`, `fwrite`, `fseeko`, `fflush`, `ferror`, `fsync` и `F_FULLFSYNC`
+			 *          своею рукой. 12.09.2026 всё это уступило место `awh::fs_t`, и вместе с кодом
+			 *          ушли и места отказа, о каких сводки говорили: `measure` о двух ветвях систем,
+			 *          перемотка потока, короткое `fread`, различение конца файла и отказа через
+			 *          `ferror`. Держать приговоры о снесённом коде хуже, чем не держать никаких:
+			 *          читающий принял бы их за описание нынешнего устройства
 			 *
 			 * @note **Что из прежних находок уцелело по существу, а не по букве:**
-			 * - **усечение подачи ловится СЧЁТОМ, а не `ferror`.** Прежде нулевое чтение
-			 *   значило либо конец файла, либо отказ, и различал их один `ferror`; без него
-			 *   отказ посреди файла докладывался успехом - замер 25.08.2026 на файле о ста
-			 *   кадрах дал успешную подачу трёх кадров из ста. Ныне `load` сличает полный
-			 *   счёт поданных октетов с длиною контейнера, и усечение видно даже тогда,
-			 *   когда чтение отказом себя не назвало;
-			 * - **каталог и канал отсекаются ПРЕЖДЕ открытия.** Прежде их отсекал вид `r+b`
-			 *   у `fopen` - следствие, на какое опереться было можно лишь замером на двух
-			 *   системах. Ныне `open` спрашивает вид пути прямо, и отсечение это намеренное,
-			 *   а не побочное;
-			 * - **укладка нулевой длины** держится на усечении до нуля: заведение потока
-			 *   видом `w+b` заводило пустой файл само, а у файловой системы записи нулевой
-			 *   длины нет вовсе. Работа `fs_t::truncate` заведена ради этого и закрывает
-			 *   заодно усечение, какого записью не выразить;
-			 * - **последние руки носителя** остались последними руками: отказы чтения,
-			 *   записи и сброса наводятся лишь отказом самой файловой системы, и поддельной
-			 *   у набора нет. Ныне они лежат ВНУТРИ `sys/fs` и разбираются его сводкой, а не
-			 *   этой: хранилище лишь читает признак, какой ему отдан
+			 *       - **усечение подачи ловится СЧЁТОМ, а не `ferror`.** Прежде нулевое чтение
+			 *       значило либо конец файла, либо отказ, и различал их один `ferror`; без него
+			 *       отказ посреди файла докладывался успехом - замер 25.08.2026 на файле о ста
+			 *       кадрах дал успешную подачу трёх кадров из ста. Ныне `load` сличает полный
+			 *       счёт поданных октетов с длиною контейнера, и усечение видно даже тогда,
+			 *       когда чтение отказом себя не назвало;
+			 *       - **каталог и канал отсекаются ПРЕЖДЕ открытия.** Прежде их отсекал вид `r+b`
+			 *       у `fopen` - следствие, на какое опереться было можно лишь замером на двух
+			 *       системах. Ныне `open` спрашивает вид пути прямо, и отсечение это намеренное,
+			 *       а не побочное;
+			 *       - **укладка нулевой длины** держится на усечении до нуля: заведение потока
+			 *       видом `w+b` заводило пустой файл само, а у файловой системы записи нулевой
+			 *       длины нет вовсе. Работа `fs_t::truncate` заведена ради этого и закрывает
+			 *       заодно усечение, какого записью не выразить;
+			 *       - **последние руки носителя** остались последними руками: отказы чтения,
+			 *       записи и сброса наводятся лишь отказом самой файловой системы, и поддельной
+			 *       у набора нет. Ныне они лежат ВНУТРИ `sys/fs` и разбираются его сводкой, а не
+			 *       этой: хранилище лишь читает признак, какой ему отдан
 			 *
 			 * @note **Сплошной щуп ПРОВЕДЁН ЗАНОВО 16.09.2026**, и вот его цифры. Заслонов у
-			 * хранилища тридцать четыре; обесточенные по одному, семнадцать из них не покрасили
-			 * ни одной своей проверки. Разобрано молчание по природе, и природы эти три:
-			 * - **девятеро стерегли ЧУЖИЕ кодеки**, а не свои проверки: CSV и XML кладут файлы
-			 *   через это же хранилище, и краснели на заслонах чтения и записи одни лишь они.
-			 *   Заведены свои: `TheSourceWorkGuardsItsOwnBounds`, `TheSinkWorkGuardsItsOwnArguments`,
-			 *   `TheSourceWorkCatchesTheTruncationUnderfoot`, `TruncationUnderfootIsRefusedByTheFeeding`
-			 *   и `TheStorageFunnelReportsItsCauseToTheJournal` - воронка отказа была ПЯТОЙ
-			 *   незакреплённой, тогда как четыре её сестры пинены порознь ещё 08.09.2026;
-			 * - **шестеро ИЗБЫТОЧНЫ для исхода**, и это измерено, а не выведено: заслоны
-			 *   непривязанности у чтения, записи и обеих привязок, заслон нулевой длины и заслон
-			 *   несуществующего буфера. Обесточенные, они пропускают вызов соседу, а тот
-			 *   отвечает тем же исходом и тою же причиною. Держатся ради внятности доклада;
-			 * - **остальные суть заслоны ПОСЛЕДНЕЙ РУКИ**: отказ сброса, отказ записи, короткое
-			 *   чтение у `fetch` и отказ подачи снимателю. Навести их нечем - поддельной файловой
-			 *   системы у набора нет, - и молчание щупа здесь означает недостижимость условия
-			 *   ценою прогона, а не мёртвый путь. Разобраны они на месте, всякий своим доводом
+			 *       хранилища тридцать четыре; обесточенные по одному, семнадцать из них не покрасили
+			 *       ни одной своей проверки. Разобрано молчание по природе, и природы эти три:
+			 *       - **девятеро стерегли ЧУЖИЕ кодеки**, а не свои проверки: CSV и XML кладут файлы
+			 *       через это же хранилище, и краснели на заслонах чтения и записи одни лишь они.
+			 *       Заведены свои: `TheSourceWorkGuardsItsOwnBounds`, `TheSinkWorkGuardsItsOwnArguments`,
+			 *       `TheSourceWorkCatchesTheTruncationUnderfoot`, `TruncationUnderfootIsRefusedByTheFeeding`
+			 *       и `TheStorageFunnelReportsItsCauseToTheJournal` - воронка отказа была ПЯТОЙ
+			 *       незакреплённой, тогда как четыре её сестры пинены порознь ещё 08.09.2026;
+			 *       - **шестеро ИЗБЫТОЧНЫ для исхода**, и это измерено, а не выведено: заслоны
+			 *       непривязанности у чтения, записи и обеих привязок, заслон нулевой длины и заслон
+			 *       несуществующего буфера. Обесточенные, они пропускают вызов соседу, а тот
+			 *       отвечает тем же исходом и тою же причиною. Держатся ради внятности доклада;
+			 *       - **остальные суть заслоны ПОСЛЕДНЕЙ РУКИ**: отказ сброса, отказ записи, короткое
+			 *       чтение у `fetch` и отказ подачи снимателю. Навести их нечем - поддельной файловой
+			 *       системы у набора нет, - и молчание щупа здесь означает недостижимость условия
+			 *       ценою прогона, а не мёртвый путь. Разобраны они на месте, всякий своим доводом
 			 *
 			 * @warning Цифры эти держатся ровно до следующей правки устройства: щуп мерит ТОТ код,
-			 * какой есть, и всякая новая работа обязана быть промерена заново
+			 *          какой есть, и всякая новая работа обязана быть промерена заново
 			 *
 			 * @warning **Привязка отдавала отказ БЕЗМОЛВНЫМ.** `bind` возвращал исход
-			 * `open()` нижнего слоя напрямую, и причина оставалась у правщика либо
-			 * выборщика, а хранилище отвечало «ошибки нет». Зовущий, держащий одно лишь
-			 * хранилище, узнавал об отказе, но не о причине его. Исправлено 05.09.2026
-			 * переносом причины снизу; вскрыто усечением файла под ногами
+			 *          `open()` нижнего слоя напрямую, и причина оставалась у правщика либо
+			 *          выборщика, а хранилище отвечало «ошибки нет». Зовущий, держащий одно лишь
+			 *          хранилище, узнавал об отказе, но не о причине его. Исправлено 05.09.2026
+			 *          переносом причины снизу; вскрыто усечением файла под ногами
 			 *
 			 * @warning Чужую проверку своим сторожем не числить. Кодеки TOML, INI и JSON
-			 * кладут файлы через ЭТО ЖЕ хранилище, и щуп 04.09.2026 показал их сторожами
-			 * четырёх мест, а к прогону 05.09.2026 таких мест осталось два: кодеки
-			 * те правились, и охрана ушла вместе с правками. Охрана, пришедшая
-			 * извне, уходит с первой правкой чужого кодека
+			 *          кладут файлы через ЭТО ЖЕ хранилище, и щуп 04.09.2026 показал их сторожами
+			 *          четырёх мест, а к прогону 05.09.2026 таких мест осталось два: кодеки
+			 *          те правились, и охрана ушла вместе с правками. Охрана, пришедшая
+			 *          извне, уходит с первой правкой чужого кодека
 			 *
 			 * @details **Кодек файлов не открывает сам.** Носитель у контейнера бывает
-			 * всякий - файл, память, сеть, - и правка знает о нём лишь две работы. Оттого
-			 * хранилище стоит отдельным классом, а не полем правки: потребителю, чей
-			 * носитель не файл, оно не нужно вовсе, а собранная библиотека его не несёт
+			 *          всякий - файл, память, сеть, - и правка знает о нём лишь две работы. Оттого
+			 *          хранилище стоит отдельным классом, а не полем правки: потребителю, чей
+			 *          носитель не файл, оно не нужно вовсе, а собранная библиотека его не несёт.
 			 *
 			 * \~english
 			 * @brief Class of the storing of a container in a file
+			 *
 			 * @details The editing of a container in place is conducted by the works of the reading and of the writing
-			 * of the octets which the consumer submits to the editing itself. This storage submits them, relieving
-			 * the consumer of writing them anew every time
+			 *          of the octets which the consumer submits to the editing itself. This storage submits them, relieving
+			 *          the consumer of writing them anew every time.
+			 *
+			 * @warning **The summaries of the full probes of 2026-09-06/07 are REMOVED, and here is why.** They judged
+			 *          code that no longer exists: the storage held its own `FILE *` stream and called `fopen`, `fread`,
+			 *          `fwrite`, `fseeko`, `fflush`, `ferror`, `fsync` and `F_FULLFSYNC` with its own hand. On 2026-09-12
+			 *          all this gave way to `awh::fs_t`, and together with the code went the failure sites of which the
+			 *          summaries spoke: a `measure` about two system branches, the rewinding of a stream, a short `fread`,
+			 *          the distinction of an end-of-file and a refusal through `ferror`. To keep verdicts about removed
+			 *          code is worse than to keep none at all: a reader would have taken them for a description of the
+			 *          current design
+			 *
+			 * @note **Which of the former findings survived by the substance, not by the letter:**
+			 *       - **a truncation of a feeding is caught by a COUNT, not by `ferror`.** Before, a zero reading meant
+			 *       either an end of a file or a refusal, and only `ferror` told them apart; without it a refusal in the
+			 *       middle of a file was reported as a success - a measurement of 2026-08-25 on a file of a hundred
+			 *       chunks gave a successful feeding of three chunks out of a hundred. Now `load` compares the full
+			 *       count of the fed octets with the length of a container, and a truncation is visible even when a
+			 *       reading did not name itself a refusal;
+			 *       - **a directory and a pipe are cut off BEFORE the opening.** Before, the `r+b` kind of `fopen` cut
+			 *       them off - a consequence on which one could rely only by a measurement on two systems. Now `open`
+			 *       asks the kind of a path directly, and this cutting is deliberate, not incidental;
+			 *       - **the laying of a zero length** holds on a truncation to zero: creating a stream by a `w+b` kind
+			 *       created an empty file itself, while a file system has no writing of a zero length at all. The
+			 *       `fs_t::truncate` work was introduced for this and closes as well a truncation that cannot be
+			 *       expressed by a writing;
+			 *       - **the last hands of a medium** remained the last hands: the refusals of a reading, a writing and
+			 *       a flush are induced only by a refusal of the file system itself, and there is no forged one in the
+			 *       set. Now they lie INSIDE `sys/fs` and are resolved by its summary, not this one: the storage only
+			 *       reads a sign given to it
+			 *
+			 * @note **The full probe was CONDUCTED ANEW on 2026-09-16**, and here are its numbers. The storage has
+			 *       thirty-four guards; de-energized one by one, seventeen of them turned not a single own check red.
+			 *       The silence is resolved by nature, and these natures are three:
+			 *       - **nine guarded FOREIGN codecs**, not their own checks: CSV and XML lay files through this same
+			 *       storage, and only they turned red at the reading and writing guards. Own ones were introduced:
+			 *       `TheSourceWorkGuardsItsOwnBounds`, `TheSinkWorkGuardsItsOwnArguments`,
+			 *       `TheSourceWorkCatchesTheTruncationUnderfoot`, `TruncationUnderfootIsRefusedByTheFeeding` and
+			 *       `TheStorageFunnelReportsItsCauseToTheJournal` - the funnel of a refusal was the FIFTH unfixed,
+			 *       while its four sisters were pinned apart as early as 2026-09-08;
+			 *       - **six are REDUNDANT for the outcome**, and this is measured, not inferred: the guards of
+			 *       un-bondedness at a reading, a writing and both bindings, the guard of a zero length and the guard
+			 *       of a nonexistent buffer. De-energized, they pass a call to a neighbour, and that answers with the
+			 *       same outcome and the same cause. They are kept for the sake of a clear report;
+			 *       - **the rest are the guards of the LAST HAND**: a flush refusal, a writing refusal, a short
+			 *       reading at `fetch` and a feeding refusal to the taker. There is nothing with which to induce them
+			 *       - there is no forged file system in the set, - and the silence of the probe here means the
+			 *       unreachability of a condition at the price of a run, not a dead path. They are resolved on the
+			 *       spot, each by its own argument
+			 *
+			 * @warning These numbers hold exactly until the next edit of the design: a probe measures THE code that
+			 *          exists, and every new work is obliged to be measured anew
+			 *
+			 * @warning **The binding returned a refusal SILENTLY.** `bind` returned the outcome of the lower layer's
+			 *          `open()` directly, and the cause stayed at the editor or the fetcher, while the storage answered
+			 *          "there is no error". A caller holding only the storage learned of a refusal but not of its cause.
+			 *          Corrected on 2026-09-05 by a transfer of the cause from below; revealed by a truncation of a file
+			 *          underfoot
+			 *
+			 * @warning Do not count another's check as your own guard. The codecs TOML, INI and JSON lay files through
+			 *          THIS SAME storage, and a probe of 2026-09-04 showed them as guards of four sites, while by a run
+			 *          of 2026-09-05 only two such sites remained: those codecs were being edited, and the guard went
+			 *          away with the edits. A guard that came from outside leaves with the first edit of a foreign codec
+			 *
 			 * @details **The codec does not open the files itself.** The medium of a container may be
-			 * any — a file, a memory, a network, — and the editing knows only two works about it. Whereby
-			 * the storage stands as a separate class rather than as a field of the editing: a consumer whose
-			 * medium is not a file does not need it at all
+			 *          any — a file, a memory, a network, — and the editing knows only two works about it. Whereby
+			 *          the storage stands as a separate class rather than as a field of the editing: a consumer whose
+			 *          medium is not a file does not need it at all.
 			 *
 			 * \~
 			 */
@@ -179,17 +242,25 @@ namespace awh {
 					 * @brief Способы сброса записанного на носитель
 					 *
 					 * @details Разница способов видна ЛИШЬ у систем Apple. Там `fsync` выносит
-					 * записанное из ядра в НАКОПИТЕЛЬ, но опустошить вместилище самого накопителя
-					 * не велит, и обрыв питания записанное теряет; доводит до пластины только
-					 * `F_FULLFSYNC`. У прочих систем `fsync` доводит сам, и способы там равны
+					 *          записанное из ядра в НАКОПИТЕЛЬ, но опустошить вместилище самого накопителя
+					 *          не велит, и обрыв питания записанное теряет; доводит до пластины только
+					 *          `F_FULLFSYNC`. У прочих систем `fsync` доводит сам, и способы там равны.
 					 *
 					 * @note Цена полного сброса высока и замерена: 200 кругов по 4 КиБ на macOS
-					 * ARM64 (02.09.2026) дали 43 мкс на `fsync` против 4604 мкс на `F_FULLFSYNC` -
-					 * в сто шесть раз дороже, сиречь 4.6 мс на всякую фиксацию правки
+					 *       ARM64 (02.09.2026) дали 43 мкс на `fsync` против 4604 мкс на `F_FULLFSYNC` -
+					 *       в сто шесть раз дороже, сиречь 4.6 мс на всякую фиксацию правки
 					 *
 					 * \~english
 					 * @brief Ways of the flushing of the written to the medium
-					 * @details The difference of the ways is visible ONLY at the systems of Apple
+					 *
+					 * @details The difference of the ways is visible ONLY at the systems of Apple. There `fsync` carries
+					 *          the written out of the kernel into the STORAGE DEVICE, but does not bid the buffer of the device
+					 *          itself to empty, and a power loss loses the written; only `F_FULLFSYNC` reaches the platter. At the
+					 *          other systems `fsync` reaches it itself, and the ways there are equal.
+					 *
+					 * @note The price of a full flush is high and is measured: 200 rounds of 4 KiB on macOS ARM64
+					 *       (2026-09-02) gave 43 µs at `fsync` against 4604 µs at `F_FULLFSYNC` - a hundred and six times
+					 *       dearer, that is, 4.6 ms at every edit commit
 					 *
 					 * \~
 					 */
@@ -209,12 +280,16 @@ namespace awh {
 					 * Способ сброса записанного на носитель
 					 *
 					 * @note Умолчанием взят ПОЛНЫЙ сброс: обещание «правки ложатся на носитель
-					 * фиксацией» без него не исполняется у систем Apple, а умолчание обязано
-					 * держать обещание, а не быстроту. Кому тысяча фиксаций в секунду дороже
-					 * переживания обрыва питания - тот снимет его сам
+					 *       фиксацией» без него не исполняется у систем Apple, а умолчание обязано
+					 *       держать обещание, а не быстроту. Кому тысяча фиксаций в секунду дороже
+					 *       переживания обрыва питания - тот снимет его сам
 					 *
 					 * \~english
 					 * Way of the flushing of the written to the medium
+					 *
+					 * @note The FULL flush is taken by default: the promise "the edits lie on the medium by a commit" is not
+					 *       fulfilled at the Apple systems without it, and a default is obliged to keep a promise, not a speed.
+					 *       Whoever finds a thousand commits per second dearer than enduring a power loss will remove it himself
 					 *
 					 * \~
 					 */
@@ -237,6 +312,16 @@ namespace awh {
 					 * \~english
 					 * @brief Object of the file of the container opened for the reading
 					 *
+					 * @note There are TWO objects, not one, and this is not a waste. An object of the file system carries the
+					 *       rights of the work that created it: one created by a reading is fit for a reading only, one created
+					 *       by a writing - for both a writing and a reading. And they are created lazily, by a first access,
+					 *       while the order of the accesses is not under the storage's control - it reads and writes in turns.
+					 *       One object would therefore have fallen to whoever came first and would have answered the second with
+					 *       a refusal
+					 *
+					 * @note The price for this is one extra opening per OPENING of a container, not per an access: the
+					 *       descriptors live while the storage is bound to a file
+					 *
 					 * \~
 					 */
 					handle_file_t _reader;
@@ -255,6 +340,10 @@ namespace awh {
 					 * \~english
 					 * @brief Sign of the binding of the storage to the file of the container
 					 *
+					 * @note A own sign is needed: the file objects are created LAZILY, by a first access, and before it both
+					 *       are invalid. To judge an openness by them would mean to call a container closed right after a
+					 *       successful opening
+					 *
 					 * \~
 					 */
 					bool _opened;
@@ -266,12 +355,22 @@ namespace awh {
 					error_t _error;
 				protected:
 					/**
+					 * \~russian
 					 * Объект работы с логами
 					 *
 					 * @note Объекта фреймворка хранилище НЕ держит: фреймворк принял своим
 					 *       конструктором объект файловой системы, а иных потребителей у
 					 *       него здесь нет. Держать ссылку без потребителя значило бы
 					 *       заводить поле, о каком собиратель справедливо предупреждает
+					 *
+					 * \~english
+					 * Object of the work with the logs
+					 *
+					 * @note The storage does NOT hold a framework object: the framework took a file system object by its
+					 *       own constructor, and there are no other consumers of it here. To hold a reference without a
+					 *       consumer would mean creating a field of which the assembler rightly warns
+					 *
+					 * \~
 					 */
 				private:
 					/**
@@ -279,15 +378,20 @@ namespace awh {
 					 * @brief Метод объявления отказа работы с носителем
 					 *
 					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
-					 * работа отвечает отказом множеством путей, и запись в каждом из них
-					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
-					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
+					 *          работа отвечает отказом множеством путей, и запись в каждом из них
+					 *          разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
+					 *          тот слой донёс о нём сам, и второе донесение лишь двоило бы записи.
 					 *
 					 * @param error объявляемый код отказа
 					 * @return      признак успешности, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a failure
+					 *
+					 * @details The report comes from here, from the single place of the declaration of a failure: the
+					 *          work answers with a failure by many roads, and a record at each of them would diverge from the
+					 *          others. A failure ACCEPTED from a lower layer does not come here - that layer has reported it
+					 *          itself, and a second report would only double the records.
 					 *
 					 * @param error code of the failure being declared
 					 * @return      flag of the success, always false
@@ -301,15 +405,17 @@ namespace awh {
 					 * @brief Метод открытия существующего файла контейнера
 					 *
 					 * @details Файл открывается на чтение вместе с записью: правка контейнера
-					 * ведётся на месте, и одного чтения ей мало
+					 *          ведётся на месте, и одного чтения ей мало.
 					 *
 					 * @param filename название открываемого файла контейнера
 					 * @return         признак успешно открытого файла
 					 *
 					 * \~english
 					 * @brief Method of the opening of an existing file of a container
+					 *
 					 * @details The file is opened for the reading together with the writing: the editing of a container
-					 * is conducted in place, and the reading alone is not enough for it
+					 *          is conducted in place, and the reading alone is not enough for it.
+					 *
 					 * @param filename name of the file of the container being opened
 					 * @return sign of a successfully opened file
 					 *
@@ -321,15 +427,17 @@ namespace awh {
 					 * @brief Метод заведения нового файла контейнера
 					 *
 					 * @note Файл, стоявший под этим названием прежде, усекается до пустого:
-					 * заведение нового контейнера поверх старого есть замена его целиком
+					 *       заведение нового контейнера поверх старого есть замена его целиком
 					 *
 					 * @param filename название заводимого файла контейнера
 					 * @return         признак успешно заведённого файла
 					 *
 					 * \~english
 					 * @brief Method of the creation of a new file of a container
+					 *
 					 * @note A file which stood under this name before is truncated to an empty one:
-					 * the creation of a new container over an old one is its replacement as a whole
+					 *       the creation of a new container over an old one is its replacement as a whole
+					 *
 					 * @param filename name of the file of the container being created
 					 * @return sign of a successfully created file
 					 *
@@ -355,6 +463,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the flushing of the written to the medium
+					 *
 					 * @return sign of the success of the flushing
 					 *
 					 * \~
@@ -366,18 +475,27 @@ namespace awh {
 					 * @brief Метод установки способа сброса записанного на носитель
 					 *
 					 * @details Полный сброс доводит записанное до пластины и переживает обрыв
-					 * ПИТАНИЯ; обычный выносит его лишь из ядра накопителю и переживает обрыв
-					 * ПРОГРАММЫ. Разница видна лишь у систем Apple, у прочих способы равны
+					 *          ПИТАНИЯ; обычный выносит его лишь из ядра накопителю и переживает обрыв
+					 *          ПРОГРАММЫ. Разница видна лишь у систем Apple, у прочих способы равны.
 					 *
 					 * @warning Снятие полного сброса ОСЛАБЛЯЕТ обещание правки: контейнер,
-					 * фиксация какого застигнута обрывом питания, откатится к прежнему поколению
-					 * не всегда - хвостовой заголовок может не успеть лечь на пластину. Плата за
-					 * обещание замерена: 4.6 мс на фиксацию против 43 мкс
+					 *          фиксация какого застигнута обрывом питания, откатится к прежнему поколению
+					 *          не всегда - хвостовой заголовок может не успеть лечь на пластину. Плата за
+					 *          обещание замерена: 4.6 мс на фиксацию против 43 мкс
 					 *
 					 * @param value устанавливаемый способ сброса
 					 *
 					 * \~english
 					 * @brief Method of the setting of the way of the flushing of the written to the medium
+					 *
+					 * @details A full flush carries the written to the platter and outlives a power LOSS; an ordinary one
+					 *          carries it only out of the kernel to the storage device and outlives a PROGRAM loss. The
+					 *          difference is visible only at the Apple systems; at the others the ways are equal.
+					 *
+					 * @warning The removal of a full flush WEAKENS the promise of an edit: a container whose commit is met by
+					 *          a power loss will not always roll back to the former generation - a tail header may fail to reach
+					 *          the platter in time. The price of the promise is measured: 4.6 ms at a commit against 43 µs
+					 *
 					 * @param value way of the flushing being set
 					 *
 					 * \~
@@ -391,6 +509,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the way of the flushing of the written to the medium
+					 *
 					 * @return way of the flushing of the written to the medium
 					 *
 					 * \~
@@ -405,6 +524,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the issuing of the work of the reading of the octets of a container
+					 *
 					 * @return work of the reading of the octets of the container
 					 *
 					 * \~
@@ -418,6 +538,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the issuing of the work of the writing of the octets of a container
+					 *
 					 * @return work of the writing of the octets of the container
 					 *
 					 * \~
@@ -428,15 +549,17 @@ namespace awh {
 					 * @brief Метод открытия контейнера файла правкой
 					 *
 					 * @details Работы чтения и записи ссылаются на хранилище: жить оно обязано
-					 * дольше правки, ибо правка зовёт их и при фиксации, и при уборке мусора
+					 *          дольше правки, ибо правка зовёт их и при фиксации, и при уборке мусора.
 					 *
 					 * @param editor правка, какой открывается контейнер
 					 * @return       признак успешно открытого контейнера
 					 *
 					 * \~english
 					 * @brief Method of the opening of the container of the file by an editing
+					 *
 					 * @details The works of the reading and of the writing refer to the storage: it is obliged to live
-					 * longer than the editing, for the editing calls them both at a commit and at a compaction
+					 *          longer than the editing, for the editing calls them both at a commit and at a compaction.
+					 *
 					 * @param editor editing the container is opened by
 					 * @return sign of a successfully opened container
 					 *
@@ -448,20 +571,30 @@ namespace awh {
 					 * @brief Метод открытия контейнера файла выборкой записей
 					 *
 					 * @details Близнец связывания с правкой, и заведён он по той же надобности:
-					 * выборка сама открывается ОДНИМ источником, и полной длины контейнера ей знать
-					 * неоткуда, - а по ней поверяется, умещается ли кадр оглавления в контейнер.
-					 * Хранилище длину ведёт полем и подаёт её выборке само, оттого сторож работает
-					 * без участия зовущего
+					 *          выборка сама открывается ОДНИМ источником, и полной длины контейнера ей знать
+					 *          неоткуда, - а по ней поверяется, умещается ли кадр оглавления в контейнер.
+					 *          Хранилище длину ведёт полем и подаёт её выборке само, оттого сторож работает
+					 *          без участия зовущего.
 					 *
 					 * @note Открывать выборку можно и напрямую, `open(storage.source())`, - но тогда
-					 * длина остаётся неведомой, сторож снимается, и последней преградой становится
-					 * сам источник
+					 *       длина остаётся неведомой, сторож снимается, и последней преградой становится
+					 *       сам источник
 					 *
 					 * @param fetcher выборка, какой открывается контейнер
 					 * @return        признак успешно открытого контейнера
 					 *
 					 * \~english
 					 * @brief Method of the opening of the container of the file by a fetcher of the records
+					 *
+					 * @details The twin of the binding with an editing, and it is introduced by the same need: a fetching
+					 *          itself opens by a SINGLE source, and it has nowhere to know the full length of a container, - yet
+					 *          by that length it is checked whether an index chunk fits into a container. The storage keeps the
+					 *          length as a field and issues it to a fetching itself, whereby the guard works without the
+					 *          participation of a caller.
+					 *
+					 * @note One may open a fetching directly too, `open(storage.source())`, - but then the length stays
+					 *       unknown, the guard is removed, and the last barrier becomes the source itself
+					 *
 					 * @param fetcher fetcher the container is opened by
 					 * @return sign of a successfully opened container
 					 *
@@ -474,7 +607,7 @@ namespace awh {
 					 * @brief Метод записи собранного контейнера в файл
 					 *
 					 * @details Сборка контейнера выдаёт октеты его целиком, и работа эта кладёт
-					 * их в заведённый файл
+					 *          их в заведённый файл.
 					 *
 					 * @param filename название заводимого файла контейнера
 					 * @param buffer   буфер октетов собранного контейнера
@@ -483,8 +616,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an assembled container into a file
+					 *
 					 * @details The assembling of a container issues its octets as a whole, and this work places
-					 * them into a created file
+					 *          them into a created file.
+					 *
 					 * @param filename name of the file of the container being created
 					 * @param buffer buffer of the octets of the assembled container
 					 * @param size size of the octets of the assembled container
@@ -498,10 +633,10 @@ namespace awh {
 					 * @brief Метод чтения октетов файла целиком
 					 *
 					 * @details Работа эта есть БЛИЗНЕЦ записи `store`: та кладёт октеты в файл, эта
-					 * берёт их оттуда обратно. Держится пара затем, что потребителю, которому нужна
-					 * ГОЛАЯ запись в файле, а не вместилище с заголовком да кадрами, обе половины
-					 * дороги нужны, и вторая её половина отсутствовала - положить запись было чем,
-					 * а взять обратно нечем, и потребителю оставалось звать `fopen` самому
+					 *          берёт их оттуда обратно. Держится пара затем, что потребителю, которому нужна
+					 *          ГОЛАЯ запись в файле, а не вместилище с заголовком да кадрами, обе половины
+					 *          дороги нужны, и вторая её половина отсутствовала - положить запись было чем,
+					 *          а взять обратно нечем, и потребителю оставалось звать `fopen` самому.
 					 *
 					 * @note Работа эта вместилища НЕ РАЗБИРАЕТ и заголовка его не ждёт: отдаёт она
 					 *       октеты как есть. Разбор вместилища ведут `bind` да `load`, и путать их
@@ -523,7 +658,26 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the reading of the octets of a file as a whole
-					 * @details This work is the TWIN of the writing `store`
+					 *
+					 * @details This work is the TWIN of the writing `store`: that one lays the octets into a file, this one
+					 *          takes them back from there. The pair is kept because a consumer who needs a BARE record in a
+					 *          file, not a container with a header and chunks, needs both halves of the road, and the second
+					 *          half of it was absent - there was something with which to lay a record, but nothing with which to
+					 *          take it back, and a consumer was left to call `fopen` itself.
+					 *
+					 * @note This work does NOT PARSE a container and does not expect its header: it issues the octets as they
+					 *       are. The parsing of a container is led by `bind` and `load`, and one should not confuse them with it
+					 *       - they have their own design and their own refusals
+					 *
+					 * @warning The limit of a length here is mandatory and by default is NOT INFINITE: a reading as a whole
+					 *          takes as much memory as a file weighs, and a submitted name comes from outside. A file beyond the
+					 *          limit is refused, not read
+					 *
+					 * @note A limit equal to ZERO means "without a limit" - by the same agreement by which `maxString` and
+					 *       `maxBlob` live in the parsing settings. This agreement is single across the codec, and were it to
+					 *       diverge here - a consumer who fed a zero in the meaning "not a single octet" would have got the
+					 *       opposite
+					 *
 					 * @param filename name of the file being read
 					 * @param result read octets of the file
 					 * @param limit largest admissible length of the file in octets
@@ -538,7 +692,7 @@ namespace awh {
 					 * @brief Метод подачи файла контейнера снимателю
 					 *
 					 * @details Файл подаётся кусками, а не целиком: снятие ведётся потоком, и
-					 * держать контейнер в памяти целиком ему незачем
+					 *          держать контейнер в памяти целиком ему незачем.
 					 *
 					 * @param loader сниматель, какому подаётся файл контейнера
 					 * @param block  размер подаваемого куска в октетах
@@ -546,8 +700,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the submission of the file of a container to a loader
+					 *
 					 * @details The file is submitted by the chunks rather than as a whole: the taking is conducted by a stream,
-					 * and there is no need for it to hold the container in the memory as a whole
+					 *          and there is no need for it to hold the container in the memory as a whole.
+					 *
 					 * @param loader loader the file of the container is submitted to
 					 * @param block size of the submitted chunk in octets
 					 * @return sign of the success of the submission
@@ -564,6 +720,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the checking of the openness of the file of a container
+					 *
 					 * @return sign of an opened file of the container
 					 *
 					 * \~
@@ -577,6 +734,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the full length of a container on the medium
+					 *
 					 * @return full length of the container in octets
 					 *
 					 * \~
@@ -590,6 +748,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the name of the file of a container
+					 *
 					 * @return name of the file of the container
 					 *
 					 * \~
@@ -603,6 +762,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the error code of the work with the file of a container
+					 *
 					 * @return error code of the work with the file of the container
 					 *
 					 * \~
@@ -617,6 +777,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief The copy operator is absent deliberately
+					 *
 					 * @note The storage owns the stream of the file: its copy would close the stream twice
 					 *
 					 * \~
@@ -633,6 +794,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
+					 * @note The objects of the framework and of the journal are taken by POINTERS from a user, as is the
+					 *       custom across all AWH: one cannot create them at oneself
 					 *
 					 * \~
 					 */

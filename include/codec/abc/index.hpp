@@ -89,19 +89,28 @@ namespace awh {
 			 * @brief Длина строки оглавления в октетах
 			 *
 			 * @details Занято строкою ДВАДЦАТЬ октетов: смещение кадра восемью, смещение
-			 * записи в кадре четырьмя, длина записи четырьмя и разряды свойств четырьмя.
-			 * Четыре хвостовых октета (20…24) ОСТАВЛЕНЫ ВПРОК и обязаны быть нулевыми:
-			 * укладка кладёт их нулями, а снятие нулевыми их и требует
+			 *          записи в кадре четырьмя, длина записи четырьмя и разряды свойств четырьмя.
+			 *          Четыре хвостовых октета (20…24) ОСТАВЛЕНЫ ВПРОК и обязаны быть нулевыми:
+			 *          укладка кладёт их нулями, а снятие нулевыми их и требует.
 			 *
 			 * @note Требование это равняется на сличение разрядов свойств, стоящее рядом:
-			 * оба поля приходят с провода, и оба обязаны быть опознаны. Ценою тому -
-			 * невозможность занять хвостовые октеты, подняв одну лишь младшую версию вида
-			 * записи; занимаются они подъёмом СТАРШЕЙ, как и свойства строки
+			 *       оба поля приходят с провода, и оба обязаны быть опознаны. Ценою тому -
+			 *       невозможность занять хвостовые октеты, подняв одну лишь младшую версию вида
+			 *       записи; занимаются они подъёмом СТАРШЕЙ, как и свойства строки
 			 *
 			 * \~english
 			 * @brief Length of a row of the index in octets
-			 * @details TWENTY octets are occupied by a row; the four trailing octets (20…24) are
-			 * RESERVED and must be zero
+			 *
+			 * @details TWENTY octets are occupied by a row: the offset of a chunk by eight, the offset of
+			 *          a record inside the chunk by four, the length of the record by four and the bits of the
+			 *          properties by four. The four trailing octets (20…24) are RESERVED and must be zero: the
+			 *          laying puts them as zeros, and the taking requires them to be zeros.
+			 *
+			 * @note This requirement keeps to the comparison of the bits of the properties standing beside
+			 *       it: both fields come off the wire, and both are obliged to be identified. The price of that
+			 *       is the impossibility to take over the trailing octets by a raising of the minor version of
+			 *       the kind of the record alone; taken over they are by a raising of the MAJOR one, as are the
+			 *       properties of a row
 			 *
 			 * \~
 			 */
@@ -112,14 +121,15 @@ namespace awh {
 			 * @brief Строка оглавления контейнера
 			 *
 			 * @details Строка указывает не на октеты носителя, а на кадр и место в его
-			 * содержимом. Указывать на носитель нельзя: содержимое кадра сжато и
-			 * зашифровано, и места записи в нём попросту нет до снятия кадра
+			 *          содержимом. Указывать на носитель нельзя: содержимое кадра сжато и
+			 *          зашифровано, и места записи в нём попросту нет до снятия кадра.
 			 *
 			 * \~english
 			 * @brief Row of the index of a container
+			 *
 			 * @details A row points not to the octets of the medium but to a chunk and to a place in its
-			 * content. It is impossible to point to the medium: the content of a chunk is compressed and
-			 * encrypted, and the place of the record simply does not exist in it until the taking of the chunk
+			 *          content. It is impossible to point to the medium: the content of a chunk is compressed and
+			 *          encrypted, and the place of the record simply does not exist in it until the taking of the chunk.
 			 *
 			 * \~
 			 */
@@ -149,14 +159,15 @@ namespace awh {
 				 * Разряды свойств строки оглавления
 				 *
 				 * @note Снос записи ведётся разрядом, а не изъятием строки: номера записей
-				 * при изъятии сдвинулись бы, и всякая ссылка на них извне обратилась бы в
-				 * ссылку на соседа
+				 *       при изъятии сдвинулись бы, и всякая ссылка на них извне обратилась бы в
+				 *       ссылку на соседа
 				 *
 				 * \~english
 				 * Bits of the properties of a row of the index
+				 *
 				 * @note The erasure of a record is led by a bit rather than by a removal of the row: the numbers of the records
-				 * would shift at a removal, and every reference to them from outside would turn into
-				 * a reference to a neighbour
+				 *       would shift at a removal, and every reference to them from outside would turn into
+				 *       a reference to a neighbour
 				 *
 				 * \~
 				 */
@@ -181,6 +192,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the checking of a declared property of a row of the index
+				 *
 				 * @param mark property of the row being checked
 				 * @return sign of the declaration of the property
 				 *
@@ -196,6 +208,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the declaration of a property of a row of the index
+				 *
 				 * @param mark property of the row being declared
 				 * @param value value of the property being set
 				 *
@@ -209,51 +222,81 @@ namespace awh {
 			 * @brief Класс оглавления контейнера
 			 *
 			 * @details Оглавление даёт добраться до одной записи, не разбирая всего
-			 * контейнера: по номеру записи оно указывает кадр и место в нём. Без него до
-			 * последней записи пришлось бы снять все кадры до неё
+			 *          контейнера: по номеру записи оно указывает кадр и место в нём. Без него до
+			 *          последней записи пришлось бы снять все кадры до неё.
 			 *
 			 * @note **О местах отказа, каких проверкою не навести.** Два щупа 05.09.2026
-			 * прошли все места отказа порознь, и ответы их РАЗНЫЕ по смыслу:
-			 * - щуп ПРИЧИН (подмена кода отказа на иной) молчит, когда причины не
-			 *   спрашивает никто, - в том числе когда отказу неоткуда взяться;
-			 * - щуп ПУТИ (заслон принуждается срабатывать всегда) молчит, лишь когда по
-			 *   пути не ходит ни одна проверка.
-			 * Здесь щуп пути НЕ ПРОМОЛЧАЛ НИ РАЗУ: восемь мест оглавления краснят от 27 до
-			 * 47 проверок каждое. То есть заслоны стоят на торных дорогах, порчу поймают
-			 * немедленно, и мёртвым кодом их звать нельзя. Недостижимо УСЛОВИЕ - оно есть
-			 * уговор, держащийся выше по работе, - а не сам путь. Различение это пришло
-			 * от разбора сетевых движков, где вывод о пути был записан, имея замер
-			 * только об условии
+			 *       прошли все места отказа порознь, и ответы их РАЗНЫЕ по смыслу:
+			 *       - щуп ПРИЧИН (подмена кода отказа на иной) молчит, когда причины не
+			 *       спрашивает никто, - в том числе когда отказу неоткуда взяться;
+			 *       - щуп ПУТИ (заслон принуждается срабатывать всегда) молчит, лишь когда по
+			 *       пути не ходит ни одна проверка.
+			 *       Здесь щуп пути НЕ ПРОМОЛЧАЛ НИ РАЗУ: восемь мест оглавления краснят от 27 до
+			 *       47 проверок каждое. То есть заслоны стоят на торных дорогах, порчу поймают
+			 *       немедленно, и мёртвым кодом их звать нельзя. Недостижимо УСЛОВИЕ - оно есть
+			 *       уговор, держащийся выше по работе, - а не сам путь. Различение это пришло
+			 *       от разбора сетевых движков, где вывод о пути был записан, имея замер
+			 *       только об условии
 			 *
 			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
-			 * 30 заслонов части, условие при том сохранялось вычисляемым (`if((X) && false)`).
-			 * Под сторожем оказалось 27 мест, молчали ТРИ - и все три закрыты в тот же день
-			 * с доказанной зрячестью:
-			 * - воронка отказа выборщика, доносящая причину журналу
-			 *   (`TheFetcherFunnelReportsItsCauseToTheJournal`) - набор спрашивал `error()`,
-			 *   а журнала не спрашивал никто, и обесточенная воронка оставила бы его зелёным;
-			 * - перенос причины отказа снятия заголовка опознания
-			 *   (`TheHeaderRefusalIsCarriedOutwardByTheFetcher`) - обесточенное, место отказа
-			 *   НЕ отменяет, и наружу выходила бы причина соседа;
-			 * - состояние выборщика после отказа снятия оглавления
-			 *   (`TheIndexRefusalLeavesTheFetcherClosed`) - признак открытости ставится
-			 *   строкою ниже, и контейнер о четырёх записях предстал бы зовущему ПУСТЫМ.
-			 * Прочие места ловятся от одной до 34 проверок каждое; пять краснят падением
-			 * набора, что нужность устанавливает крепче всякого покраснения. Разбор при
-			 * самих местах
+			 *       30 заслонов части, условие при том сохранялось вычисляемым (`if((X) && false)`).
+			 *       Под сторожем оказалось 27 мест, молчали ТРИ - и все три закрыты в тот же день
+			 *       с доказанной зрячестью:
+			 *       - воронка отказа выборщика, доносящая причину журналу
+			 *       (`TheFetcherFunnelReportsItsCauseToTheJournal`) - набор спрашивал `error()`,
+			 *       а журнала не спрашивал никто, и обесточенная воронка оставила бы его зелёным;
+			 *       - перенос причины отказа снятия заголовка опознания
+			 *       (`TheHeaderRefusalIsCarriedOutwardByTheFetcher`) - обесточенное, место отказа
+			 *       НЕ отменяет, и наружу выходила бы причина соседа;
+			 *       - состояние выборщика после отказа снятия оглавления
+			 *       (`TheIndexRefusalLeavesTheFetcherClosed`) - признак открытости ставится
+			 *       строкою ниже, и контейнер о четырёх записях предстал бы зовущему ПУСТЫМ.
+			 *       Прочие места ловятся от одной до 34 проверок каждое; пять краснят падением
+			 *       набора, что нужность устанавливает крепче всякого покраснения. Разбор при
+			 *       самих местах
 			 *
 			 * @note Оглавление лежит за телом контейнера, а не перед ним: места записей
-			 * известны лишь по укладке кадров, и вести оглавление впереди значило бы
-			 * возвращаться к нему правкой на всякую запись
+			 *       известны лишь по укладке кадров, и вести оглавление впереди значило бы
+			 *       возвращаться к нему правкой на всякую запись
 			 *
 			 * \~english
 			 * @brief Class of the index of a container
+			 *
 			 * @details The index allows one to reach one record without parsing the whole
-			 * container: by the number of the record it points to a chunk and to a place in it. Without it in order to reach
-			 * the last record one would have to take all the chunks before it
+			 *          container: by the number of the record it points to a chunk and to a place in it. Without it in order to reach
+			 *          the last record one would have to take all the chunks before it.
+			 *
+			 * @note **Of the failure sites that a check cannot reach.** Two probes of 2026-09-05 went over
+			 *       every failure site apart, and their answers DIFFER by the sense:
+			 *       - the probe of the CAUSES (a substitution of the refusal code by another) keeps silent when
+			 *       no one asks a cause, - including when a refusal has nowhere to come from;
+			 *       - the probe of the PATH (a guard is forced to fire always) keeps silent only when no check
+			 *       at all travels that path. Here the probe of the path DID NOT KEEP SILENT EVEN ONCE: eight
+			 *       sites of the index turn from 27 to 47 checks red each. That is, the guards stand on beaten
+			 *       roads, will catch a corruption at once, and to call them dead code is impossible.
+			 *       Unreachable there is the CONDITION - it is an agreement held above by the work - and not the
+			 *       road itself. This distinction came from the reading of the network engines, where a
+			 *       conclusion about the road was written down having a measurement only of the condition
+			 *
+			 * @note **The NEEDNESS audit (a guard is removed), 2026-09-08.** All 30 guards of the part were
+			 *       de-energized apart, the condition being kept computable (`if((X) && false)`). Under the
+			 *       watch there turned out 27 sites, THREE kept silent - and all three were closed the very
+			 *       same day with a proven sight:
+			 *       - the funnel of a refusal of the fetcher, reporting the cause to the journal
+			 *       (`TheFetcherFunnelReportsItsCauseToTheJournal`) - the fixture asked `error()`, while no one
+			 *       asked the journal, and a de-energized funnel would have left it green;
+			 *       - the carrying of the cause of a refusal of the taking of the identifying header outward
+			 *       (`TheHeaderRefusalIsCarriedOutwardByTheFetcher`) - de-energized, the site of a refusal does
+			 *       NOT undo itself, and the cause of a neighbour would have come outward;
+			 *       - the state of the fetcher after the refusal of the taking of the index
+			 *       (`TheIndexRefusalLeavesTheFetcherClosed`) - the sign of the openness is set one row below,
+			 *       and a container of four records would have appeared EMPTY to the caller. The other sites
+			 *       are caught from one to 34 checks each; five turn red by a crash of the fixture, which
+			 *       settles their needness harder than any reddening. The parsing goes at the sites themselves
+			 *
 			 * @note The index lies after the body of a container rather than before it: the places of the records
-			 * are known only upon the laying of the chunks, and to lead the index in front would mean
-			 * to return to it by an editing at every record
+			 *       are known only upon the laying of the chunks, and to lead the index in front would mean
+			 *       to return to it by an editing at every record
 			 *
 			 * \~
 			 */
@@ -270,6 +313,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the adding of a row of the index
+					 *
 					 * @param entry row of the index being added
 					 *
 					 * \~
@@ -283,6 +327,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the rows of the index
+					 *
 					 * @return rows of the index of the container
 					 *
 					 * \~
@@ -298,6 +343,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the editing of a row of the index
+					 *
 					 * @param number number of the row of the index being edited
 					 * @param entry row of the index being set
 					 * @return sign of a successful editing
@@ -313,6 +359,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the count of the rows of the index
+					 *
 					 * @return count of the rows of the index
 					 *
 					 * \~
@@ -334,19 +381,22 @@ namespace awh {
 					 * @brief Метод усечения оглавления до заданного количества строк
 					 *
 					 * @details Служит ОТКАТУ: фиксация вносит строки по ходу записи кадров, а
-					 * отказ посреди неё обязан вернуть оглавление к тому, чем оно было. Без
-					 * отката повторная фиксация вносила строки заново, и записи двоились
+					 *          отказ посреди неё обязан вернуть оглавление к тому, чем оно было. Без
+					 *          отката повторная фиксация вносила строки заново, и записи двоились.
 					 *
 					 * @note Количество, большее нынешнего, оглавления не трогает: работа
-					 * усекает, а не заводит строк из ничего
+					 *       усекает, а не заводит строк из ничего
 					 *
 					 * @param size количество строк, до какого следует усечь оглавление
 					 *
 					 * \~english
 					 * @brief Method of the truncation of the index to a given count of the rows
+					 *
 					 * @details Serves the ROLLBACK: the commit brings the rows in as the chunks are written,
-					 * and a refusal in the middle of it is obliged to return the index to what it was
+					 *          and a refusal in the middle of it is obliged to return the index to what it was.
+					 *
 					 * @note A count greater than the present one does not touch the index
+					 *
 					 * @param size count of the rows the index should be truncated to
 					 *
 					 * \~
@@ -361,6 +411,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an index into the octets
+					 *
 					 * @param result buffer the index should be laid into
 					 *
 					 * \~
@@ -377,6 +428,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the taking of an index from the octets
+					 *
 					 * @param buffer buffer of the submitted octets
 					 * @param size size of the submitted octets
 					 * @param error error code if the index could not be taken
@@ -414,52 +466,62 @@ namespace awh {
 			 * @brief Класс выборки записи контейнера по номеру
 			 *
 			 * @note **Обрыв чтения носителя закреплён по РОДУ причины.** Выборщик читает на
-			 * четырёх местах - заголовок кадра оглавления, кадр оглавления целиком, заголовок
-			 * кадра записи и кадр записи целиком, - и всякое обязано объявлять
-			 * `UNREADABLE_SOURCE`. Прежние проверки утверждали, что отказ СЛУЧИЛСЯ, а не какою
-			 * причиною назван, и четыре места стояли слепыми по роду до 05.09.2026. Закреплено
-			 * `IndexFixture.ReadRefusalNamesItsKind`, обходящей двадцать четыре точки обрыва
-			 *			 * @brief Класс выборки записи контейнера по номеру
+			 *       четырёх местах - заголовок кадра оглавления, кадр оглавления целиком, заголовок
+			 *       кадра записи и кадр записи целиком, - и всякое обязано объявлять
+			 *       `UNREADABLE_SOURCE`. Прежние проверки утверждали, что отказ СЛУЧИЛСЯ, а не какою
+			 *       причиною назван, и четыре места стояли слепыми по роду до 05.09.2026. Закреплено
+			 *       `IndexFixture.ReadRefusalNamesItsKind`, обходящей двадцать четыре точки обрыва
+			 *       			 * @brief Класс выборки записи контейнера по номеру
 			 *
 			 * @details Выборщик держит в памяти оглавление и один снятый кадр, а не
-			 * контейнер целиком: тем большой контейнер и читается на машине, в память
-			 * какой он не влезает
+			 *          контейнер целиком: тем большой контейнер и читается на машине, в память
+			 *          какой он не влезает.
 			 *
 			 * @details **Октеты подаются отданной извне работой.** Откуда они берутся -
-			 * из файла, из сети либо из памяти - выборщика не касается, и заводить чтение
-			 * файла он не станет
+			 *          из файла, из сети либо из памяти - выборщика не касается, и заводить чтение
+			 *          файла он не станет.
 			 *
 			 * @note Последний снятый кадр удерживается: соседние записи чаще всего лежат
-			 * в одном кадре, и снимать его наново на всякую запись значило бы платить
-			 * расшифровкой и разжатием за каждую из них
+			 *       в одном кадре, и снимать его наново на всякую запись значило бы платить
+			 *       расшифровкой и разжатием за каждую из них
 			 *
 			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
-			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
-			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
-			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
-			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
-			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
-			 * свободно
+			 *          лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 *          равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 *          тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 *          четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 *          ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 *          свободно
 			 *
 			 * \~english
 			 * @brief Class of the fetching of a record of a container by its number
+			 *
+			 * @note **The break of the reading of the medium is fixed by the KIND of the cause.** The
+			 *       fetcher reads at four sites - the header of the index chunk, the index chunk in full, the
+			 *       header of a record chunk and a record chunk in full, - and every one of them is obliged to
+			 *       declare `UNREADABLE_SOURCE`. The former checks asserted that a refusal HAPPENED, and not by
+			 *       which cause it was named, and four sites stood blind by the kind until 2026-09-05. Fixed by
+			 *       `IndexFixture.ReadRefusalNamesItsKind`, walking twenty-four break points
+			 *
 			 * @details The fetcher holds in the memory the index and one taken chunk rather than
-			 * the whole container: by that a large container is read on a machine into the memory of which
-			 * it does not fit
+			 *          the whole container: by that a large container is read on a machine into the memory of which
+			 *          it does not fit.
+			 *
 			 * @details **The octets are submitted by a work given from outside.** Where they are taken from —
-			 * from a file, from the network or from the memory — does not concern the fetcher, and it will not create
-			 * a reading of a file
+			 *          from a file, from the network or from the memory — does not concern the fetcher, and it will not create
+			 *          a reading of a file.
+			 *
 			 * @note The last taken chunk is retained: the neighbouring records most often lie
-			 * in one chunk, and to take it anew at every record would mean to pay
-			 * by a decryption and a decompression for each of them
+			 *       in one chunk, and to take it anew at every record would mean to pay
+			 *       by a decryption and a decompression for each of them
+			 *
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 *          holds a lock, and one must not judge the others by it. A measurement of 2026-08-25, one `Fetcher`
+			 *          on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 *          silently. An own object per thread over a SHARED source of the reading: zero reports, zero
+			 *          divergences - the source is read and not edited, and it is shared freely
 			 *
 			 * \~
-			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
-			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
-			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
-			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
-			 * zero divergences
-			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Fetcher {
 				public:
@@ -468,12 +530,13 @@ namespace awh {
 					 * @brief Работа чтения октетов контейнера
 					 *
 					 * @details Работа обязана вычитать ровно затребованное: недочитанное
-					 * значит отказ, а не конец. Конец же виден по заголовку опознания
+					 *          значит отказ, а не конец. Конец же виден по заголовку опознания.
 					 *
 					 * \~english
 					 * @brief Work of the reading of the octets of a container
+					 *
 					 * @details The work is obliged to read exactly what has been requested: an underread
-					 * means a failure rather than an end. While the end is visible by the identifying header
+					 *          means a failure rather than an end. While the end is visible by the identifying header.
 					 *
 					 * \~
 					 */
@@ -511,15 +574,20 @@ namespace awh {
 					 * @brief Метод объявления отказа выборки записи
 					 *
 					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
-					 * работа отвечает отказом множеством путей, и запись в каждом из них
-					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
-					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
+					 *          работа отвечает отказом множеством путей, и запись в каждом из них
+					 *          разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
+					 *          тот слой донёс о нём сам, и второе донесение лишь двоило бы записи.
 					 *
 					 * @param error объявляемый код отказа
 					 * @return      признак успешности, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a failure
+					 *
+					 * @details The report goes from here, from the single place of the declaration of a refusal: the
+					 *          work answers with a refusal by a multitude of paths, and a record in each of them would
+					 *          diverge from the others. A refusal ACCEPTED from the lower layer does not come here -
+					 *          that layer has reported it itself, and a second report would only double the records.
 					 *
 					 * @param error code of the failure being declared
 					 * @return      flag of the success, always false
@@ -536,6 +604,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the module of the compression
+					 *
 					 * @param value module of the compression being set, zero — removal of the module
 					 *
 					 * \~
@@ -549,6 +618,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the module of the encryption
+					 *
 					 * @param value module of the encryption being set, zero — removal of the module
 					 *
 					 * \~
@@ -560,12 +630,12 @@ namespace awh {
 					 * @brief Метод открытия контейнера отданной работой чтения
 					 *
 					 * @warning Полную длину контейнера подавать НАДЛЕЖИТ всякому, кто её знает: по
-					 * ней поверяется, умещается ли кадр оглавления в контейнер. Длина кадра объявлена
-					 * заголовком, а заголовок подделыватель пересчитывает вместе с суммой его, - и по
-					 * подделанной длине выборка ЗАТРЕБОВАЛА У ИСТОЧНИКА 4 294 967 327 октетов на
-					 * контейнере в 197 (замер 03.09.2026, то же число вышло у правки). Нуль означает
-					 * «длина неведома», и сторож при нём снимается: последней преградой остаётся тогда
-					 * источник, а полагаться на разумность чужой работы нельзя
+					 *          ней поверяется, умещается ли кадр оглавления в контейнер. Длина кадра объявлена
+					 *          заголовком, а заголовок подделыватель пересчитывает вместе с суммой его, - и по
+					 *          подделанной длине выборка ЗАТРЕБОВАЛА У ИСТОЧНИКА 4 294 967 327 октетов на
+					 *          контейнере в 197 (замер 03.09.2026, то же число вышло у правки). Нуль означает
+					 *          «длина неведома», и сторож при нём снимается: последней преградой остаётся тогда
+					 *          источник, а полагаться на разумность чужой работы нельзя
 					 *
 					 * @param source устанавливаемая работа чтения октетов контейнера
 					 * @param length полная длина контейнера на носителе, ноль - длина неведома
@@ -573,6 +643,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a container by a given work of the reading
+					 *
+					 * @warning The full length of a container MUST be submitted by whoever knows it: by it is
+					 *          verified whether the index chunk fits into the container. The length of a chunk is
+					 *          declared by the header, and a header a forger recomputes together with its sum, - and by
+					 *          a forged length the fetching DEMANDED FROM THE SOURCE 4 294 967 327 octets over a
+					 *          container of 197 (a measurement of 2026-09-03, the same number came out of an editing).
+					 *          A zero means "the length is unknown", and at it the guard is lifted: the last barrier
+					 *          remains the source in that case, and one may not lean on the reasonableness of a foreign
+					 *          work
+					 *
 					 * @param source work of the reading of the octets of the container being set
 					 * @param length full length of the container on the medium, zero — the length is unknown
 					 * @return sign of a successfully opened container
@@ -590,6 +670,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the fetching of a record of a container by its number
+					 *
 					 * @param number ordinal number of the record being fetched
 					 * @param result buffer the fetched record should be placed into
 					 * @return sign of a successfully fetched record
@@ -617,6 +698,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the count of the records of a container
+					 *
 					 * @return count of the records of the container
 					 *
 					 * \~
@@ -630,6 +712,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the taken identifying header of a container
+					 *
 					 * @return taken identifying header
 					 *
 					 * \~
@@ -643,6 +726,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the taken index of a container
+					 *
 					 * @return taken index of the container
 					 *
 					 * \~
@@ -656,6 +740,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the error code of the fetching of a record
+					 *
 					 * @return error code
 					 *
 					 * \~
@@ -669,6 +754,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the module of the taking of a chunk
+					 *
 					 * @return module of the taking of a chunk
 					 *
 					 * \~

@@ -680,7 +680,7 @@ namespace {
 			// Выполняем сборку дерева разметки, принимающего прививку
 			doc.parse(host);
 			// Выполняем прививку значения в дерево разметки
-			return static_cast <uint64_t> (doc.graft("/host/graft", value));
+			return static_cast <uint64_t> (doc.set("/host/graft", value));
 		});
 		// Устанавливаем измеренное значение
 		/**

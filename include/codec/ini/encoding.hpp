@@ -108,26 +108,29 @@ namespace awh {
 			 * @brief Метод проверки знака на допустимость в тексте настроек
 			 *
 			 * @details Из управляющих знаков допускаются лишь горизонтальная табуляция,
-			 * перевод строки и возврат каретки: прочие в файле настроек означают либо
-			 * двоичный мусор, попавший туда по ошибке, либо попытку скрыть содержимое от
-			 * читающего глазами
+			 *          перевод строки и возврат каретки: прочие в файле настроек означают либо
+			 *          двоичный мусор, попавший туда по ошибке, либо попытку скрыть содержимое от
+			 *          читающего глазами.
 			 *
 			 * @note Знак забоя и прочие управляющие знаки отвергаются даже внутри кавычек:
-			 * записать их в значение можно управляющей последовательностью, и путь этот
-			 * оставляет запись обозримой
+			 *       записать их в значение можно управляющей последовательностью, и путь этот
+			 *       оставляет запись обозримой
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility in the text of the settings
+			 *
 			 * @details Of the control characters only the horizontal tabulation,
-			 * the line feed and the carriage return are admitted: the rest of them in a settings file mean either
-			 * binary rubbish that has got there by mistake or an attempt to hide the content from
-			 * the one reading with the eyes
+			 *          the line feed and the carriage return are admitted: the rest of them in a settings file mean either
+			 *          binary rubbish that has got there by mistake or an attempt to hide the content from
+			 *          the one reading with the eyes.
+			 *
 			 * @note The backspace character and the other control characters are rejected even inside the quotes:
-			 * they can be written into a value by an escape sequence, and that path
-			 * leaves the record surveyable
+			 *       they can be written into a value by an escape sequence, and that path
+			 *       leaves the record surveyable
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -140,8 +143,8 @@ namespace awh {
 			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @details Проверяется не только построение последовательности, но и её
-			 * кратчайшесть: избыточно длинная запись кодового значения отвергается как
-			 * ошибочная, поскольку служит обходом проверок содержимого
+			 *          кратчайшесть: избыточно длинная запись кодового значения отвергается как
+			 *          ошибочная, поскольку служит обходом проверок содержимого.
 			 *
 			 * @param buffer буфер исходного текста в кодировке UTF-8
 			 * @param size   размер буфера исходного текста
@@ -150,9 +153,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 *
 			 * @details Not only the construction of the sequence is checked but also its
-			 * shortestness: an overlong record of a code value is rejected as
-			 * an erroneous one, since it serves as a bypass of the checks of the content
+			 *          shortestness: an overlong record of a code value is rejected as
+			 *          an erroneous one, since it serves as a bypass of the checks of the content.
+			 *
 			 * @param buffer buffer of the source text in the UTF-8 encoding
 			 * @param size   size of the buffer of the source text
 			 * @param length length of the read sequence in bytes
@@ -172,6 +177,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of writing a code value in the UTF-8 encoding
+			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended
 			 * @return       result of performing the operation
@@ -185,25 +191,27 @@ namespace awh {
 			 * @brief Класс приведения исходного текста настроек к кодировке UTF-8
 			 *
 			 * @details Определяет кодировку исходного текста по метке порядка байтов, после
-			 * чего приводит текст к кодировке UTF-8, на которой работает разбор. Приведение
-			 * ведётся по кускам: последовательность знака, разорванная границей куска,
-			 * удерживается до прихода недостающих байтов
+			 *          чего приводит текст к кодировке UTF-8, на которой работает разбор. Приведение
+			 *          ведётся по кускам: последовательность знака, разорванная границей куска,
+			 *          удерживается до прихода недостающих байтов.
 			 *
 			 * @note Текст настроек, в отличие от разметки XML, кодировку свою не объявляет:
-			 * определить её можно лишь по метке порядка байтов, а при её отсутствии -
-			 * принять UTF-8. Кодировку, известную из внешнего источника, следует навязать
-			 * настройками разбора
+			 *       определить её можно лишь по метке порядка байтов, а при её отсутствии -
+			 *       принять UTF-8. Кодировку, известную из внешнего источника, следует навязать
+			 *       настройками разбора
 			 *
 			 * \~english
 			 * @brief Class of the conversion of the source text of the settings to the UTF-8 encoding
+			 *
 			 * @details Determines the encoding of the source text by the byte order mark, after
-			 * which it converts the text to the UTF-8 encoding on which the parsing works. The conversion
-			 * is conducted by chunks: a character sequence torn by the boundary of a chunk
-			 * is held until the missing bytes arrive
-			 * @note A text, unlike an XML markup, does not announce its encoding:
-			 * @note A settings text, unlike an XML markup, does not announce its encoding:
-			 * UTF-8 is assumed. An encoding known from an external source should be imposed
-			 * by the settings of the parsing
+			 *          which it converts the text to the UTF-8 encoding on which the parsing works. The conversion
+			 *          is conducted by chunks: a character sequence torn by the boundary of a chunk
+			 *          is held until the missing bytes arrive.
+			 *
+			 * @note A settings text, unlike an XML markup, does not announce its encoding: it can be
+			 *       determined only by the byte order mark, and when that one is absent - UTF-8 is
+			 *       assumed. An encoding known from an external source should be imposed by the
+			 *       settings of the parsing
 			 *
 			 * \~
 			 */
@@ -214,12 +222,13 @@ namespace awh {
 					 * @brief Метод вывода сообщения об отказе в лог
 					 *
 					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 * его не заменяет, а лишь оповещает о случившемся
+					 *          его не заменяет, а лишь оповещает о случившемся.
 					 *
 					 * \~english
 					 * @brief Method of the output of the message about a refusal into the log
+					 *
 					 * @details The code of the refusal remains available to the consumer through error():
-					 * the log does not replace it but merely notifies about what has happened
+					 *          the log does not replace it but merely notifies about what has happened.
 					 *
 					 * \~
 					 */
@@ -270,14 +279,16 @@ namespace awh {
 					 * @brief Метод определения кодировки по метке порядка байтов
 					 *
 					 * @details Метка снимается с начала удержанных байтов, а при её отсутствии
-					 * кодировкой принимается UTF-8
+					 *          кодировкой принимается UTF-8.
 					 *
 					 * @return признак того, что определение кодировки завершено
 					 *
 					 * \~english
 					 * @brief Method of determining the encoding by the byte order mark
+					 *
 					 * @details The mark is taken from the beginning of the held bytes, and in its absence
-					 * UTF-8 is assumed as the encoding
+					 *          UTF-8 is assumed as the encoding.
+					 *
 					 * @return flag of the determination of the encoding being completed
 					 *
 					 * \~
@@ -295,6 +306,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting the held bytes to the UTF-8 encoding
+					 *
 					 * @param buffer buffer of the bytes of the source text being converted
 					 * @param size   size of the buffer of the bytes of the source text being converted
 					 * @param end    flag of the bytes being converted being the last ones
@@ -313,6 +325,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the determined encoding of the source text
+					 *
 					 * @return determined encoding of the source text
 					 *
 					 * \~
@@ -326,6 +339,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the flag of the detection of the byte order mark
+					 *
 					 * @return flag of the detection of the byte order mark
 					 *
 					 * \~
@@ -336,22 +350,25 @@ namespace awh {
 					 * @brief Метод установки кодировки исходного текста
 					 *
 					 * @details Навязывает кодировку вопреки метке порядка байтов. Применяется
-					 * там, где кодировка известна из внешнего источника - скажем, из имени
-					 * местности системы либо из поля ответа по договору HTTP
+					 *          там, где кодировка известна из внешнего источника - скажем, из имени
+					 *          местности системы либо из поля ответа по договору HTTP.
 					 *
 					 * @warning Устанавливается лишь до приведения первого куска: сменить
-					 * кодировку посреди текста нельзя, и такое указание отвергается
+					 *          кодировку посреди текста нельзя, и такое указание отвергается
 					 *
 					 * @param encoding устанавливаемая кодировка исходного текста
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of setting the encoding of the source text
+					 *
 					 * @details Imposes the encoding contrary to the byte order mark. Applied
-					 * where the encoding is known from an external source — say, from the name
-					 * of the locale of the system or from a field of an answer over the HTTP protocol
+					 *          where the encoding is known from an external source — say, from the name
+					 *          of the locale of the system or from a field of an answer over the HTTP protocol.
+					 *
 					 * @warning It is set only before the conversion of the first chunk: the encoding cannot be
-					 * changed in the middle of a text, and such an indication is rejected
+					 *          changed in the middle of a text, and such an indication is rejected
+					 *
 					 * @param encoding encoding of the source text being set
 					 * @return         result of performing the operation
 					 *
@@ -364,8 +381,8 @@ namespace awh {
 					 * @brief Метод приведения куска исходного текста к кодировке UTF-8
 					 *
 					 * @details Первый кусок определяет кодировку по метке порядка байтов,
-					 * если она не навязана извне. Приведённый текст дописывается к
-					 * переданному, а не замещает его
+					 *          если она не навязана извне. Приведённый текст дописывается к
+					 *          переданному, а не замещает его.
 					 *
 					 * @param buffer буфер очередного куска исходного текста
 					 * @param size   размер буфера очередного куска исходного текста
@@ -375,9 +392,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting a chunk of the source text to the UTF-8 encoding
+					 *
 					 * @details The first chunk determines the encoding by the byte order mark,
-					 * if it has not been imposed from the outside. The converted text is appended to
-					 * what has been passed rather than replacing it
+					 *          if it has not been imposed from the outside. The converted text is appended to
+					 *          what has been passed rather than replacing it.
+					 *
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one
@@ -396,6 +415,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the conversion
+					 *
 					 * @return error code of the last operation of the conversion
 					 *
 					 * \~

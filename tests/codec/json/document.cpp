@@ -1879,7 +1879,7 @@ TEST(CodecJsonDocument, GraftSurvivesRewrite){
 		// Выполняем правку прививаемого значения JSON
 		item.second(value);
 		// Выполняем прививку значения в дерево JSON
-		ASSERT_TRUE(doc.graft("/target", value)) << item.first;
+		ASSERT_TRUE(doc.set("/target", value)) << item.first;
 		// Записанный текст JSON
 		const string text = doc.dump();
 		// Дерево JSON, разбирающее записанный текст
@@ -2691,7 +2691,7 @@ TEST(CodecJsonDocument, WritingRefusalNamesFirstCause){
 	// Выполняем добавление числа, установленными настройками записи непредставимого
 	ASSERT_TRUE(value.insert("ч", json::value_t(::nan(""))));
 	// Выполняем прививку значения в дерево документа
-	ASSERT_TRUE(doc.graft("/а", value));
+	ASSERT_TRUE(doc.set("/а", value));
 	// Выполняем проверку того, что выдача текста отказала
 	ASSERT_TRUE(doc.dump().empty());
 	// Выполняем проверку того, что названа ПЕРВАЯ причина отказа
@@ -2731,7 +2731,7 @@ TEST(CodecJsonDocument, GraftAnswersForItself){
 	// Владеющее значение, прививаемое в дерево документа
 	json::value_t value(json::kind_t::OBJECT);
 	// Выполняем проверку успеха прививки значения
-	ASSERT_TRUE(doc.graft("/а", value));
+	ASSERT_TRUE(doc.set("/а", value));
 	// Выполняем проверку того, что удавшаяся прививка кода не поставила
 	ASSERT_EQ(doc.error(), json::error_t::NONE);
 	/**
@@ -2739,7 +2739,7 @@ TEST(CodecJsonDocument, GraftAnswersForItself){
 	 */
 	{
 		// Выполняем проверку отказа прививки по указателю в никуда
-		ASSERT_FALSE(doc.graft("/нет/такого", value));
+		ASSERT_FALSE(doc.set("/нет/такого", value));
 		/**
 		 * Выполняем проверку того, что отказ прививки чужого кода не занёс
 		 *
@@ -2865,7 +2865,7 @@ TEST(CodecJsonDocument, ReferenceDoesNotSurviveRebuild){
 		// Выполняем разбор текста прививаемого значения
 		ASSERT_TRUE(value.parse("{\"d\":\"два\"}"));
 		// Выполняем прививку значения
-		ASSERT_TRUE(document.graft("/b", value));
+		ASSERT_TRUE(document.set("/b", value));
 		// Выполняем проверку того, что прежняя ссылка недействительна
 		ASSERT_FALSE(node.valid());
 		// Выполняем проверку того, что ссылка, снятая заново, отдаёт прежнее значение
@@ -3622,7 +3622,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 		// Владеющее значение, устанавливаемое правкой
 		json::value_t value(static_cast <int64_t> (7));
 		// Выполняем правку дерева устаревшим именем
-		ASSERT_TRUE(deprecated.graft("/c", value));
+		ASSERT_TRUE(deprecated.set("/c", value));
 		// Объект документа, правимого общим именем
 		json::document_t renamed;
 		// Выполняем разбор текста документа

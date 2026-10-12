@@ -88,44 +88,49 @@ namespace awh {
 			 * @brief Класс отбоя срока
 			 *
 			 * @details Кодек сетевого движка не тянет и тянуть не станет: зависимость эта
-			 * обратила бы всякую работу с файлом в работу с сетью. Оттого срок отбивается
-			 * одним из трёх путей, и выбор между ними за потребителем
+			 *          обратила бы всякую работу с файлом в работу с сетью. Оттого срок отбивается
+			 *          одним из трёх путей, и выбор между ними за потребителем.
 			 *
 			 * @details **Путь первый - юнит таймера сетевого движка.** Кодеку для того не
-			 * нужно ничего: потребитель подписывает свой таймер на фиксацию сам. Путь этот
-			 * и надлежит там, где движок уже поднят - свой поток был бы вторым сроком при
-			 * одном уже отбиваемом
+			 *          нужно ничего: потребитель подписывает свой таймер на фиксацию сам. Путь этот
+			 *          и надлежит там, где движок уже поднят - свой поток был бы вторым сроком при
+			 *          одном уже отбиваемом.
 			 *
 			 * @details **Путь второй - штамп времени, поверяемый при обращении.** Ни потока,
-			 * ни замка: срок поверяется тем же вызовом, каким вносится запись. Тем он и
-			 * ограничен - без обращений срок не наступит вовсе, и последняя пачка будет
-			 * ждать следующей записи
+			 *          ни замка: срок поверяется тем же вызовом, каким вносится запись. Тем он и
+			 *          ограничен - без обращений срок не наступит вовсе, и последняя пачка будет
+			 *          ждать следующей записи.
 			 *
 			 * @details **Путь третий - свой поток.** Срок отбивается и в тишине, но работа
-			 * зовётся чужим потоком, и состояние приходится сторожить замком
+			 *          зовётся чужим потоком, и состояние приходится сторожить замком.
 			 *
 			 * @note Ожидание идёт на условной переменной, а не выдержкой: выдержка обязала
-			 * бы остановку дожидаться конца срока, а отсрочка выхода на минуту при остановке
-			 * на минутном сроке - это зависание, а не остановка
+			 *       бы остановку дожидаться конца срока, а отсрочка выхода на минуту при остановке
+			 *       на минутном сроке - это зависание, а не остановка
 			 *
 			 * \~english
 			 * @brief Class of the beating out of a deadline
+			 *
 			 * @details The codec does not pull the network engine and will not: this dependency
-			 * would turn every work with a file into a work with the network. Therefore the deadline is beaten out
-			 * by one of three ways, and the choice among them is the consumer's
+			 *          would turn every work with a file into a work with the network. Therefore the deadline is beaten out
+			 *          by one of three ways, and the choice among them is the consumer's.
+			 *
 			 * @details **The first way is the unit of the timer of the network engine.** The codec needs
-			 * nothing for that: the consumer subscribes its own timer to the commit itself. This way
-			 * is proper where the engine is already raised — an own thread would be a second deadline while one is
-			 * already being beaten out
+			 *          nothing for that: the consumer subscribes its own timer to the commit itself. This way
+			 *          is proper where the engine is already raised — an own thread would be a second deadline while one is
+			 *          already being beaten out.
+			 *
 			 * @details **The second way is a timestamp checked at an appeal.** Neither a thread
-			 * nor a lock: the deadline is checked by the same call by which a record is added. By that it is
-			 * limited as well — without appeals the deadline will not come at all, and the last batch will
-			 * wait for the next record
+			 *          nor a lock: the deadline is checked by the same call by which a record is added. By that it is
+			 *          limited as well — without appeals the deadline will not come at all, and the last batch will
+			 *          wait for the next record.
+			 *
 			 * @details **The third way is an own thread.** The deadline is beaten out in the silence as well, but the work
-			 * is called by a foreign thread, and the state has to be guarded by a lock
+			 *          is called by a foreign thread, and the state has to be guarded by a lock.
+			 *
 			 * @note The waiting goes on a conditional variable rather than by a sleep: a sleep would oblige
-			 * the stopping to wait for the end of the deadline, and a postponement of the exit by a minute at a stopping
-			 * at a minute deadline is a hanging rather than a stopping
+			 *       the stopping to wait for the end of the deadline, and a postponement of the exit by a minute at a stopping
+			 *       at a minute deadline is a hanging rather than a stopping
 			 *
 			 * \~
 			 */
@@ -163,15 +168,23 @@ namespace awh {
 					 * Номер круга отбоя срока
 					 *
 					 * @details Круг растёт всяким запуском и служит потоку отбоя опознанием себя:
-					 * поток, круг которого более не нынешний, выходит сам. Без него поток судил бы
-					 * о своей нужности по одному лишь признаку работы, общему на всех, - а перезапуск
-					 * ИЗ ОТКЛИКА ставит признак этот обратно в истину прежде, чем отставленный поток
-					 * успеет его прочесть, и отставленный продолжал отбивать наравне с новым. Замер
-					 * щупом 16.09.2026: после перезапуска из отклика срок отбивали ДВА потока,
-					 * 32 отбоя вместо двадцати
+					 *          поток, круг которого более не нынешний, выходит сам. Без него поток судил бы
+					 *          о своей нужности по одному лишь признаку работы, общему на всех, - а перезапуск
+					 *          ИЗ ОТКЛИКА ставит признак этот обратно в истину прежде, чем отставленный поток
+					 *          успеет его прочесть, и отставленный продолжал отбивать наравне с новым. Замер
+					 *          щупом 16.09.2026: после перезапуска из отклика срок отбивали ДВА потока,
+					 *          32 отбоя вместо двадцати.
 					 *
 					 * \~english
 					 * Round number of the beating out of a deadline
+					 *
+					 * @details The round grows by every start and serves the thread of the deadline as the
+					 *          recognition of itself: a thread whose round is no longer the present one goes out on its
+					 *          own. Without it a thread would judge its own needness by the one flag of the work, common
+					 *          to all, - while a restart FROM THE CALLBACK sets that flag back into truth before the
+					 *          retired thread has time to read it, and the retired one went on beating out on a par with
+					 *          the new. Measured by a probe on 2026-09-16: after a restart from the callback the deadline
+					 *          was beaten out by TWO threads, 32 beatings instead of twenty.
 					 *
 					 * \~
 					 */
@@ -190,16 +203,25 @@ namespace awh {
 					 * Потоки отбоя, ушедшие в отставку и ждущие ожидания
 					 *
 					 * @details Поток, остановленный ИЗ САМОГО СЕБЯ, ожидать нельзя - стандарт зовёт
-					 * это тупиком, - но и оставить его в поле нельзя тоже: следующий запуск положил
-					 * бы новый поток поверх ожидаемого, а это `std::terminate`. Отставка разводит
-					 * два эти требования: поле освобождается тут же, а ожидание берёт на себя
-					 * следующая остановка либо разрушитель, когда звать их будет уже иной поток
+					 *          это тупиком, - но и оставить его в поле нельзя тоже: следующий запуск положил
+					 *          бы новый поток поверх ожидаемого, а это `std::terminate`. Отставка разводит
+					 *          два эти требования: поле освобождается тут же, а ожидание берёт на себя
+					 *          следующая остановка либо разрушитель, когда звать их будет уже иной поток.
 					 *
 					 * @note Отвязать такой поток нельзя: отвязанный, он трогал бы замок объекта уже
-					 * разрушенного
+					 *       разрушенного
 					 *
 					 * \~english
 					 * Threads of the deadline retired and awaiting the joining
+					 *
+					 * @details A thread stopped FROM ITSELF cannot be joined - the standard calls it a deadlock, -
+					 *          yet to leave it in the field is impossible as well: the next start would lay a new thread
+					 *          over a joinable one, and that is `std::terminate`. The retirement parts these two
+					 *          demands: the field is set free at once, while the joining is taken upon itself by the
+					 *          next stop or by the destructor, when it is already another thread that calls them.
+					 *
+					 * @note Such a thread cannot be detached: detached, it would touch the lock of an object already
+					 *       destroyed
 					 *
 					 * \~
 					 */
@@ -216,6 +238,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the beating out of a deadline by an own thread
+					 *
 					 * @param round round number of the deadline the thread is created on
 					 *
 					 * \~
@@ -230,6 +253,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the work called upon the coming of the deadline
+					 *
 					 * @param callback work being set
 					 *
 					 * \~
@@ -245,6 +269,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the start of the beating out of a deadline
+					 *
 					 * @param mode way of the beating out of the deadline
 					 * @param delay deadline in milliseconds
 					 * @return sign of a successful start
@@ -258,29 +283,46 @@ namespace awh {
 					 *
 					 *
 					 * @note **Остановку ВОЛЬНО звать из самого отклика наступившего срока.**
-					 * Ход этот потребителю естественен - «отбей однажды и остановись», - и
-					 * иного мига остановить отбой ему неоткуда. Ожидание конца потока при том
-					 * не делается (ожидать себя самого стандарт запрещает), а перекладывается
-					 * на следующую остановку либо на разрушитель: признак работы снят, и поток
-					 * выйдет сам, едва отклик вернётся
+					 *       Ход этот потребителю естественен - «отбей однажды и остановись», - и
+					 *       иного мига остановить отбой ему неоткуда. Ожидание конца потока при том
+					 *       не делается (ожидать себя самого стандарт запрещает), а перекладывается
+					 *       на следующую остановку либо на разрушитель: признак работы снят, и поток
+					 *       выйдет сам, едва отклик вернётся
 					 *
 					 * @note Остановка, застав отбой уже остановленным, работы не бросает:
-					 * ожидание конца потока делается и в этом случае. Прежде тут стоял выход
-					 * вперёд, и он терял ожидание после остановки из отклика - поток оставался
-					 * ожидаемым, а разрушитель его либо новый запуск поверх него дают
-					 * `std::terminate` по стандарту. Закреплено проверками
-					 * `CodecAbcSchedule.StopFromCallbackDoesNotAbort` и
-					 * `CodecAbcSchedule.RestartAfterStopFromCallbackSurvives`
+					 *       ожидание конца потока делается и в этом случае. Прежде тут стоял выход
+					 *       вперёд, и он терял ожидание после остановки из отклика - поток оставался
+					 *       ожидаемым, а разрушитель его либо новый запуск поверх него дают
+					 *       `std::terminate` по стандарту. Закреплено проверками
+					 *       `CodecAbcSchedule.StopFromCallbackDoesNotAbort` и
+					 *       `CodecAbcSchedule.RestartAfterStopFromCallbackSurvives`
 					 *
 					 * @warning Запуск и остановка от РАЗНЫХ потоков между собою не разведены:
-					 * поле потока читается вне замка, ибо под замком его ожидать нельзя -
-					 * поток берёт тот же замок. Договор таков: заводит и останавливает отбой
-					 * тот, кто им владеет, а отклику вольна лишь остановка
+					 *          поле потока читается вне замка, ибо под замком его ожидать нельзя -
+					 *          поток берёт тот же замок. Договор таков: заводит и останавливает отбой
+					 *          тот, кто им владеет, а отклику вольна лишь остановка
 					 *
 					 * \~english
 					 * @brief Method of the stop of the beating out of a deadline
-					 * @note **It is allowed to call the stop from the callback of the come deadline itself.**
-					 * @warning The start and the stop from DIFFERENT threads are not separated between themselves
+					 *
+					 * @note **It is allowed to call the stop from the callback of the come deadline itself.** The
+					 *       course is natural for a consumer - "beat out once and stop" - and there is no other moment
+					 *       for him to stop the beating out from. The joining of the thread is not done at that (the
+					 *       standard forbids joining oneself), but is laid upon the next stop or upon the destructor:
+					 *       the flag of the work is cleared, and the thread goes out on its own as soon as the callback
+					 *       returns
+					 *
+					 * @note A stop which finds the beating out already stopped does not abandon the work: the joining
+					 *       of the thread is done in this case too. A forward exit stood here before, and it lost the
+					 *       joining after a stop from the callback - the thread stayed joinable, while its destructor or
+					 *       a new start over it give `std::terminate` by the standard. Fixed by the checks
+					 *       `CodecAbcSchedule.StopFromCallbackDoesNotAbort` and
+					 *       `CodecAbcSchedule.RestartAfterStopFromCallbackSurvives`
+					 *
+					 * @warning The start and the stop from DIFFERENT threads are not separated between themselves: the
+					 *          field of the thread is read outside the lock, for under the lock it cannot be joined -
+					 *          the thread takes that same lock. The contract is such: the beating out is started and
+					 *          stopped by the one who owns it, while the callback is allowed only the stop
 					 *
 					 * \~
 					 */
@@ -290,14 +332,16 @@ namespace awh {
 					 * @brief Метод поверки наступления срока при обращении
 					 *
 					 * @details Поверка эта надлежит способу штампа времени: при прочих
-					 * способах она отвечает отказом, ибо срок отбивается не ею
+					 *          способах она отвечает отказом, ибо срок отбивается не ею.
 					 *
 					 * @return признак наступления срока
 					 *
 					 * \~english
 					 * @brief Method of the checking of the coming of the deadline at an appeal
+					 *
 					 * @details This checking is proper to the way of the timestamp: at the other
-					 * ways it answers by a refusal, for the deadline is beaten out not by it
+					 *          ways it answers by a refusal, for the deadline is beaten out not by it.
+					 *
 					 * @return sign of the coming of the deadline
 					 *
 					 * \~
@@ -312,6 +356,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the checking of the work of the beating out of a deadline
+					 *
 					 * @return sign of the work of the beating out of the deadline
 					 *
 					 * \~
@@ -325,6 +370,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the way of the beating out of a deadline
+					 *
 					 * @return way of the beating out of the deadline
 					 *
 					 * \~
@@ -350,6 +396,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Copy assignment operator (prohibited)
+					 *
 					 * @return current value of the object
 					 *
 					 * \~
@@ -361,11 +408,15 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @details Журнала расписание не берёт намеренно: доносить ему не о чем -
-					 * «ложь» его вызовов означает «отбой не затребован» либо «срок не наступил»,
-					 * а это исходы работы, а не отказы. Пара берётся там, где она нужна
+					 *          «ложь» его вызовов означает «отбой не затребован» либо «срок не наступил»,
+					 *          а это исходы работы, а не отказы. Пара берётся там, где она нужна.
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
+					 * @details The schedule does not take a journal on purpose: it has nothing to report - the "false"
+					 *          of its calls means "the beating out was not requested" or "the deadline has not come",
+					 *          and these are the issues of the work, not refusals. The pair is taken where it is needed.
 					 *
 					 * \~
 					 */

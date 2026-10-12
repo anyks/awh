@@ -83,8 +83,8 @@ namespace awh {
 		 * @brief Пространство имён контейнера INI
 		 *
 		 * @details Разбор и запись текста настроек в записи INI - разделов в квадратных
-		 * скобках, свойств вида «имя = значение» и примечаний. Записи этой единого
-		 * описания не существует, и разбор ведётся по наречию, выбранному настройками
+		 *          скобках, свойств вида «имя = значение» и примечаний. Записи этой единого
+		 *          описания не существует, и разбор ведётся по наречию, выбранному настройками.
 		 *
 		 * @par Намеренные решения
 		 *
@@ -92,90 +92,99 @@ namespace awh {
 		 * задачи, и каждое из решений закреплено проверочным испытанием
 		 *
 		 * @li **Договора RFC на запись INI не существует.** Ни один документ IETF этой
-		 * записи не описывает, и «соответствие договору» здесь невозможно по существу.
-		 * Вместо этого поддержаны наречия, сложившиеся на деле: MS Windows, configparser
-		 * языка Python, файлы описания служб systemd, настройки Git и разбор языка PHP.
-		 * Наречия эти между собой **несовместимы** - расходятся и в знаках примечания, и
-		 * в разделителе имени со значением, и в обращении с кавычками, - поэтому выбор
-		 * наречия задаётся настройками, а не зашит. Умолчание берёт общее их пересечение
+		 *     записи не описывает, и «соответствие договору» здесь невозможно по существу.
+		 *     Вместо этого поддержаны наречия, сложившиеся на деле: MS Windows, configparser
+		 *     языка Python, файлы описания служб systemd, настройки Git и разбор языка PHP.
+		 *     Наречия эти между собой **несовместимы** - расходятся и в знаках примечания, и
+		 *     в разделителе имени со значением, и в обращении с кавычками, - поэтому выбор
+		 *     наречия задаётся настройками, а не зашит. Умолчание берёт общее их пересечение
 		 *
 		 * @li **Примечание в конце строки значения по умолчанию не признаётся.** Наречия
-		 * MS Windows и systemd считают такое примечание частью значения: запись
-		 * «key=value ; текст» даёт значение «value ; текст» целиком. Признание его -
-		 * настройка, а не поведение по умолчанию: обратный выбор молча отрезал бы
-		 * значащую часть значения у тех, кто пишет точку с запятой в пути или в пароле
+		 *     MS Windows и systemd считают такое примечание частью значения: запись
+		 *     «key=value ; текст» даёт значение «value ; текст» целиком. Признание его -
+		 *     настройка, а не поведение по умолчанию: обратный выбор молча отрезал бы
+		 *     значащую часть значения у тех, кто пишет точку с запятой в пути или в пароле
 		 *
 		 * @li **Тип значения не выводится.** Значение свойства всегда выдаётся
-		 * последовательностью знаков, а приведение к числу либо к логическому значению
-		 * делается по явному запросу. Угадывание типа порождает разночтения: запись
-		 * «1.10» числом теряет разряд, а «011» разбирается то восьмеричным, то
-		 * десятичным - в зависимости от разбирающего
+		 *     последовательностью знаков, а приведение к числу либо к логическому значению
+		 *     делается по явному запросу. Угадывание типа порождает разночтения: запись
+		 *     «1.10» числом теряет разряд, а «011» разбирается то восьмеричным, то
+		 *     десятичным - в зависимости от разбирающего
 		 *
 		 * @li **Вложенность разделов не встроена.** Запись «[a.b]» разбирается на раздел
-		 * и подраздел лишь при включённой настройке; иначе именем раздела считается вся
-		 * последовательность знаков между скобками. Наречия расходятся и здесь: Git
-		 * отделяет подраздел кавычками и учитывает его регистр, а разбор языка Python
-		 * точку в имени раздела значащей не считает вовсе
+		 *     и подраздел лишь при включённой настройке; иначе именем раздела считается вся
+		 *     последовательность знаков между скобками. Наречия расходятся и здесь: Git
+		 *     отделяет подраздел кавычками и учитывает его регистр, а разбор языка Python
+		 *     точку в имени раздела значащей не считает вовсе
 		 *
 		 * @li **Подстановка значений выключена по умолчанию.** Обращение вида «${имя}»
-		 * либо «%(имя)s» подставляется лишь по настройке и ограничено глубиной связи и
-		 * общим объёмом подстановки. Без этих пределов подставной файл настроек в
-		 * несколько сотен байт исчерпывает память узла многократным разрастанием - тот
-		 * же разряд нападений, что подстановка сущностей в разметке XML
+		 *     либо «%(имя)s» подставляется лишь по настройке и ограничено глубиной связи и
+		 *     общим объёмом подстановки. Без этих пределов подставной файл настроек в
+		 *     несколько сотен байт исчерпывает память узла многократным разрастанием - тот
+		 *     же разряд нападений, что подстановка сущностей в разметке XML
 		 *
 		 * @li **Запись TOML отдельным наречием не считается.** Внешне она на INI похожа,
-		 * но имеет собственное описание со своим набором типов, со своими таблицами и
-		 * перечнями. Натягивать её на настройки разбора INI значило бы разбирать оба
-		 * неверно; место ей в отдельном модуле
+		 *     но имеет собственное описание со своим набором типов, со своими таблицами и
+		 *     перечнями. Натягивать её на настройки разбора INI значило бы разбирать оба
+		 *     неверно; место ей в отдельном модуле
 		 *
 		 * @li **Внешние файлы не подключаются.** Указания вида «include» разбором не
-		 * исполняются: ни обращения к файловой системе, ни к сети разбор не совершает.
-		 * Кому такое подключение нужно, тот исполняет его сам, разбирая полученное
-		 * повторно - это оставляет ему и проверку пути, и защиту от круговых ссылок
+		 *     исполняются: ни обращения к файловой системе, ни к сети разбор не совершает.
+		 *     Кому такое подключение нужно, тот исполняет его сам, разбирая полученное
+		 *     повторно - это оставляет ему и проверку пути, и защиту от круговых ссылок
 		 *
 		 * \~english
 		 * @brief INI container namespace
+		 *
 		 * @details The parsing and the writing of a settings text in the INI notation — of the sections in square
-		 * brackets, of the properties of the form «name = value» and of the comments. There is no single description
-		 * of this notation, and the parsing is conducted by the dialect chosen by the settings
+		 *          brackets, of the properties of the form «name = value» and of the comments. There is no single description
+		 *          of this notation, and the parsing is conducted by the dialect chosen by the settings.
+		 *
 		 * @par Deliberate decisions
-		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
-		 * task, and each of the decisions is fixed by a verifying test
+		 *      What is listed below is not a gap of the implementation: these are the outlined boundaries of the
+		 *      task, and each of the decisions is fixed by a verifying test
+		 *
 		 * @li **There is no RFC protocol for the INI notation.** No IETF document describes this
-		 * notation, and a «conformance to the protocol» is here impossible in essence.
-		 * Instead of that the dialects that have taken shape in practice are supported: MS Windows, the configparser
-		 * of the Python language, the unit files of systemd, the settings of Git and the parsing of the PHP language.
-		 * Those dialects are **incompatible** with one another — they diverge both in the comment characters, and
-		 * in the separator of a name from a value, and in the treatment of the quotes — therefore the choice of the
-		 * dialect is given by the settings rather than being hardwired. The default takes their common intersection
+		 *     notation, and a «conformance to the protocol» is here impossible in essence.
+		 *     Instead of that the dialects that have taken shape in practice are supported: MS Windows, the configparser
+		 *     of the Python language, the unit files of systemd, the settings of Git and the parsing of the PHP language.
+		 *     Those dialects are **incompatible** with one another — they diverge both in the comment characters, and
+		 *     in the separator of a name from a value, and in the treatment of the quotes — therefore the choice of the
+		 *     dialect is given by the settings rather than being hardwired. The default takes their common intersection
+		 *
 		 * @li **A comment at the end of a value line is not recognized by default.** The dialects
-		 * of MS Windows and of systemd consider such a comment a part of the value: the record
-		 * «key=value ; text» gives the value «value ; text» in full. Its recognition is
-		 * a setting rather than a behaviour by default: the opposite choice would silently cut off
-		 * a significant part of the value from those who write a semicolon in a path or in a password
+		 *     of MS Windows and of systemd consider such a comment a part of the value: the record
+		 *     «key=value ; text» gives the value «value ; text» in full. Its recognition is
+		 *     a setting rather than a behaviour by default: the opposite choice would silently cut off
+		 *     a significant part of the value from those who write a semicolon in a path or in a password
+		 *
 		 * @li **The type of a value is not inferred.** The value of a property is always issued as
-		 * a sequence of characters, while a conversion to a number or to a logical value
-		 * is done upon an explicit request. A guessing of the type gives birth to discrepancies: the record
-		 * «1.10» as a number loses a digit, while «011» is parsed now as an octal, now as a
-		 * decimal one — depending on the one parsing
+		 *     a sequence of characters, while a conversion to a number or to a logical value
+		 *     is done upon an explicit request. A guessing of the type gives birth to discrepancies: the record
+		 *     «1.10» as a number loses a digit, while «011» is parsed now as an octal, now as a
+		 *     decimal one — depending on the one parsing
+		 *
 		 * @li **A nesting of the sections is not built in.** The record «[a.b]» is parsed into a section
-		 * and a subsection only when the setting is enabled; otherwise the whole
-		 * sequence of characters between the brackets is considered the name of the section. The dialects diverge here as well: Git
-		 * separates a subsection with quotes and takes its case into account, while the parsing of the Python language
-		 * does not consider a dot in the name of a section significant at all
+		 *     and a subsection only when the setting is enabled; otherwise the whole
+		 *     sequence of characters between the brackets is considered the name of the section. The dialects diverge here as well: Git
+		 *     separates a subsection with quotes and takes its case into account, while the parsing of the Python language
+		 *     does not consider a dot in the name of a section significant at all
+		 *
 		 * @li **The substitution of the values is disabled by default.** A reference of the form «${name}»
-		 * or «%(name)s» is substituted only by a setting and is limited by the depth of the linkage and
-		 * by the total volume of the substitution. Without those limits a planted settings file of
-		 * several hundred bytes exhausts the memory of a node by a multiple expansion — the
-		 * same class of attacks as the substitution of the entities in an XML markup
+		 *     or «%(name)s» is substituted only by a setting and is limited by the depth of the linkage and
+		 *     by the total volume of the substitution. Without those limits a planted settings file of
+		 *     several hundred bytes exhausts the memory of a node by a multiple expansion — the
+		 *     same class of attacks as the substitution of the entities in an XML markup
+		 *
 		 * @li **The TOML notation is not considered a separate dialect.** Outwardly it resembles INI,
-		 * but it has its own specification with its own set of types, with its own tables and
-		 * arrays. To stretch it onto the settings of the INI parsing would mean to parse both
-		 * wrongly; its place is in a separate module
+		 *     but it has its own specification with its own set of types, with its own tables and
+		 *     arrays. To stretch it onto the settings of the INI parsing would mean to parse both
+		 *     wrongly; its place is in a separate module
+		 *
 		 * @li **External files are not included.** Directives of the form «include» are not executed by
-		 * the parsing: the parsing performs neither calls to the file system nor to the network.
-		 * The one who needs such an inclusion executes it himself, parsing what has been obtained
-		 * once more — this leaves him both the checking of the path and the protection from the circular references
+		 *     the parsing: the parsing performs neither calls to the file system nor to the network.
+		 *     The one who needs such an inclusion executes it himself, parsing what has been obtained
+		 *     once more — this leaves him both the checking of the path and the protection from the circular references
 		 *
 		 * \~
 		 */
@@ -185,12 +194,13 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина логической строки в байтах
 			 *
 			 * @details Предел считается на строку целиком - вместе со всеми её
-			 * продолжениями, - иначе продолжение строки давало бы обход предела
+			 *          продолжениями, - иначе продолжение строки давало бы обход предела.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of a logical line in bytes
+			 *
 			 * @details The limit is counted over the line as a whole — together with all its
-			 * continuations — otherwise a continuation of a line would give a bypass of the limit
+			 *          continuations — otherwise a continuation of a line would give a bypass of the limit.
 			 *
 			 * \~
 			 */
@@ -223,20 +233,25 @@ namespace awh {
 			 * @brief Количество пар вместилища, начиная с какого заводится указатель имён
 			 *
 			 * @details Ниже порога имя разыскивается перебором, и это дешевле всякого
-			 * указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
-			 * выделения памяти и подсчёта отпечатка на всякое имя. Выше порога перебор
-			 * обращает и сборку вместилища, и чтение его по именам в квадратичные, и
-			 * указатель окупается
+			 *          указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
+			 *          выделения памяти и подсчёта отпечатка на всякое имя. Выше порога перебор
+			 *          обращает и сборку вместилища, и чтение его по именам в квадратичные, и
+			 *          указатель окупается.
 			 *
 			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
-			 * не при разборе. Вместилище, к которому по имени не обращались, не платит ничего
+			 *       не при разборе. Вместилище, к которому по имени не обращались, не платит ничего
 			 *
 			 * \~english
 			 * @brief Number of the pairs of a container starting from which the index of the names is created
+			 *
 			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
-			 * index: above the threshold an enumeration turns both the assembly of a container and the reading of it
-			 * by the names into quadratic ones, and the index pays off
-			 * @note The index is created **on demand** — at the first access by a name
+			 *          index: the comparison of names runs over memory in a row, while the creating of an
+			 *          index costs an allocation of memory and the counting of a fingerprint for every name.
+			 *          Above the threshold an enumeration turns both the assembly of a container and the
+			 *          reading of it by the names into quadratic ones, and the index pays off.
+			 *
+			 * @note The index is created **on demand** - at the first access by a name, and not by the
+			 *       parsing. A container never addressed by a name pays nothing at all
 			 *
 			 * \~
 			 */
@@ -270,21 +285,23 @@ namespace awh {
 			 * @brief Наибольший допустимый общий объём подстановки значений в байтах
 			 *
 			 * @details Предел считается на разбор целиком, а не на отдельную подстановку:
-			 * вложенные друг в друга обращения наращивают объём произведением, и уследить
-			 * за этим можно только по общей сумме
+			 *          вложенные друг в друга обращения наращивают объём произведением, и уследить
+			 *          за этим можно только по общей сумме.
 			 *
 			 * @warning Снятие этого предела открывает многократное разрастание текста при
-			 * разборе - способ исчерпать память узла подставным файлом настроек в
-			 * несколько сотен байт
+			 *          разборе - способ исчерпать память узла подставным файлом настроек в
+			 *          несколько сотен байт
 			 *
 			 * \~english
 			 * @brief Largest admissible total volume of the substitution of the values in bytes
+			 *
 			 * @details The limit is counted over the parsing as a whole rather than over a separate substitution:
-			 * the references nested into one another increase the volume by a multiplication, and it is possible to keep track
-			 * of this only by the total sum
+			 *          the references nested into one another increase the volume by a multiplication, and it is possible to keep track
+			 *          of this only by the total sum.
+			 *
 			 * @warning The removal of this limit opens up a multiple expansion of the text at the
-			 * parsing — a way to exhaust the memory of a node with a planted settings file of
-			 * several hundred bytes
+			 *          parsing — a way to exhaust the memory of a node with a planted settings file of
+			 *          several hundred bytes
 			 *
 			 * \~
 			 */
@@ -313,6 +330,7 @@ namespace awh {
 			constexpr uint32_t NO_RECORD = static_cast <uint32_t> (~0u);
 
 			/**
+			 * \~russian
 			 * @warning ОБЪЯВЛЕННЫЕ, НО НИКОГДА НЕ ВЫДАВАЕМЫЕ отказы: замерено 08.09.2026 розыском
 			 *          `error_t::<имя>` по исходникам кодека за вычетом `common.cpp`, где стоит
 			 *          лишь таблица сообщений. Таковых ДВА из сорока: UNEXPECTED_EOF да OVERFLOW_LIMIT
@@ -349,23 +367,70 @@ namespace awh {
 			 *          у прочих четырёх 121, суммою по кодекам 123 против 109. Довод стоял на
 			 *          числе без признака счёта и оттого лжив; находки же на нём НЕ стояли -
 			 *          они стоят на отсутствии двух имён, названных выше
+			 *
+			 * \~english
+			 * @warning DECLARED YET NEVER ISSUED refusals: measured 2026-09-08 by a search
+			 *          for `error_t::<name>` across the sources of the codec, `common.cpp` excepted,
+			 *          where only the table of messages stands. There are TWO of them out of forty:
+			 *          UNEXPECTED_EOF and OVERFLOW_LIMIT
+			 *
+			 * @note Re-measured 2026-09-17 by the same search: the composition stays the former
+			 *       one, while the list has grown from thirty-six names to forty, and the denominator
+			 *       of the record has fallen behind it. The number is named together with its
+			 *       denominator on purpose - "two dead ones" without it cannot be matched against a
+			 *       new measurement at all
+			 *
+			 * @note They are as visible to a consumer as the living ones: it is entitled to expect
+			 *       them and to build a parse upon them that will never fire. Moved out as a separate
+			 *       question - whether to remove them, to bring them to life, or to mark them as
+			 *       reserved; this is decided outside the codec, because the list of refusals is a
+			 *       contract handed to the consumer
+			 *
+			 * @note The number is named together with the token of the count: the names of the list
+			 *       were counted, and any mention outside the table of messages is taken as an
+			 *       issuance. It is re-counted by the same search
+			 *
+			 * @warning TWO CROSS-CODEC codes are ABSENT, ones declared by JSON, XML and CSV with
+			 *          all three, and by my three with none: `FILE_NOT_READ` (a file could not be
+			 *          read) and `TEXT_ALREADY_ENDED` (a feeding after the end of the text). Measured
+			 *          2026-09-08 by a comparison of the lists of nine codecs of the frame. This
+			 *          absence is not a deliberate one, it is exactly a cross-codec one:
+			 *          `FILE_NOT_WRITTEN` and `STORAGE_EXHAUSTED` are declared by ALL six, and only
+			 *          these two fall out
+			 *
+			 * @note Both findings, moved outside the codec, ran exactly into these: the feeding of a
+			 *       directory (there is nothing to answer with but zero) and the feeding after the end
+			 *       of the text (the codec answers with a code foreign in sense, or with success). The
+			 *       other divergences of the lists are DELIBERATE - the marks of XML, the fields of
+			 *       CSV, the chunks of ABC, - and are not open to comparison
+			 *
+			 * @warning My former argument that "the lists of refusals at my three already run 87
+			 *          against 98" is WITHDRAWN 2026-09-08: the number 87 is right (the distinct names
+			 *          at my three), while 98 is reproduced by no token of the count - the other three
+			 *          give 85, the other four give 121, and by the sum over the codecs 123 against
+			 *          109. The argument stood on a number without a token of the count and was false
+			 *          for that; the findings did NOT stand on it - they stand on the absence of the
+			 *          two names called above
+			 *
+			 * \~
 			 */
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора текста настроек
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
-			 * вместе с положением в исходном тексте, где отказ произошёл
+			 *          вместе с положением в исходном тексте, где отказ произошёл.
 			 *
 			 * \~english
 			 * @brief Error codes of the parsing of a settings text
+			 *
 			 * @details The parsing does not throw exceptions: the error code together with the position
-			 * in the source text where the refusal has occurred serves as the sign of a refusal
+			 *          in the source text where the refusal has occurred serves as the sign of a refusal.
 			 *
 			 * \~
 			 * @note Перечень этот общ у кодеков INI, TOML и YAML ИМЕНАМИ, а не числами, и
-			 * равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
-			 * трёх одинаково, и потребитель учит одно имя, а не три.
+			 *       равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
+			 *       трёх одинаково, и потребитель учит одно имя, а не три
 			 *
 			 * @warning ЧИСЛА при общих именах РАЗЛИЧНЫ, и прежняя запись - «потребитель,
 			 *          разбирающий отказы по КОДУ, иначе учил бы для каждого кодека свой
@@ -382,23 +447,23 @@ namespace awh {
 			 * @note Оттого часть кодов кодеком INI не выдаётся:
 			 *
 			 * @note - `UNEXPECTED_EOF` мест выдачи не имеет вовсе: у наречия INI записи
-			 * многострочной нет, и текст, оборвавшийся на середине строки, есть
-			 * законченная строка, а не обрыв записи;
+			 *       многострочной нет, и текст, оборвавшийся на середине строки, есть
+			 *       законченная строка, а не обрыв записи;
 			 *
 			 * @note - `UNSUPPORTED_ENCODING` выдавался опознанием кодировки, а с заведением
-			 * UTF-32 и однобайтовых кодировок опознание отказа более не даёт - заход
-			 * остался заставой на случай кодировки, впредь заведённой;
+			 *       UTF-32 и однобайтовых кодировок опознание отказа более не даёт - заход
+			 *       остался заставой на случай кодировки, впредь заведённой;
 			 *
 			 * @note - `OVERFLOW_LIMIT` мест выдачи не имеет вовсе: пределы, настройками
-			 * заданные, у разбора INI не заведены, а переполнение хранилища знаков
-			 * отвечает своим кодом `STORAGE_EXHAUSTED`;
+			 *       заданные, у разбора INI не заведены, а переполнение хранилища знаков
+			 *       отвечает своим кодом `STORAGE_EXHAUSTED`;
 			 *
 			 * @note - `INTERNAL` выдаётся одними лишь заставами: всякое место его помечено
-			 * доводом недостижимости, и выдача его означала бы изъян самого кодека
+			 *       доводом недостижимости, и выдача его означала бы изъян самого кодека
 			 *
 			 * @warning Молчание кода означает НЕПРОВЕРЕННОСТЬ пути, а не исправность его:
-			 * снасть молчащих кодов перебирает места выдачи по трём прогонам, и код, ни
-			 * разу не выданный, обещания своего потребителю не даёт
+			 *          снасть молчащих кодов перебирает места выдачи по трём прогонам, и код, ни
+			 *          разу не выданный, обещания своего потребителю не даёт
 			 *
 			 */
 			enum class error_t : uint8_t {
@@ -448,11 +513,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Виды событий чтения текста настроек
 			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a settings text
-			 * @details The reading issues the events as the text is parsed without holding it in full
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
 			 *
 			 * \~
 			 */
@@ -470,18 +536,23 @@ namespace awh {
 			 * @brief Кодировки исходного текста настроек
 			 *
 			 * @details Текст настроек кодировку не объявляет, и определяется она по метке
-			 * порядка байтов в начале текста; при её отсутствии текст считается записанным
-			 * в UTF-8
+			 *          порядка байтов в начале текста; при её отсутствии текст считается записанным
+			 *          в UTF-8.
 			 *
 			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
-			 * порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
-			 * только навязанными извне
+			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 *       только навязанными извне
 			 *
 			 * \~english
 			 * @brief Encodings of the source settings text
+			 *
 			 * @details A settings text does not announce its encoding, and it is determined by the byte
-			 * order mark at the beginning of the text; in its absence the text is considered written
-			 * in UTF-8
+			 *          order mark at the beginning of the text; in its absence the text is considered written
+			 *          in UTF-8.
+			 *
+			 * @note The single-byte encodings - ISO-8859-1, US-ASCII and Windows-1252 - have no byte
+			 *       order mark at all and cannot be recognized: they are accepted only when imposed
+			 *       from outside
 			 *
 			 * \~
 			 */
@@ -502,12 +573,13 @@ namespace awh {
 			 * @brief Знаки, начинающие примечание
 			 *
 			 * @details Наречия расходятся: MS Windows и PHP признают лишь точку с запятой,
-			 * а Git и systemd - оба знака
+			 *          а Git и systemd - оба знака.
 			 *
 			 * \~english
 			 * @brief Characters beginning a comment
+			 *
 			 * @details The dialects diverge: MS Windows and PHP recognize only the semicolon,
-			 * while Git and systemd — both characters
+			 *          while Git and systemd — both characters.
 			 *
 			 * \~
 			 */
@@ -523,12 +595,13 @@ namespace awh {
 			 * @brief Знаки, разделяющие имя свойства и его значение
 			 *
 			 * @details Разбор языка Python признаёт наравне со знаком равенства двоеточие,
-			 * прочие наречия - только знак равенства
+			 *          прочие наречия - только знак равенства.
 			 *
 			 * \~english
 			 * @brief Characters separating the name of a property and its value
+			 *
 			 * @details The parsing of the Python language recognizes the colon on a par with the equals sign,
-			 * the other dialects — only the equals sign
+			 *          the other dialects — only the equals sign.
 			 *
 			 * \~
 			 */
@@ -543,12 +616,13 @@ namespace awh {
 			 * @brief Обращение с повторным объявлением свойства в разделе
 			 *
 			 * @details Наречия расходятся и здесь: MS Windows берёт первое объявление,
-			 * разбор языка Python - последнее, а Git и systemd собирают перечень значений
+			 *          разбор языка Python - последнее, а Git и systemd собирают перечень значений.
 			 *
 			 * \~english
 			 * @brief Treatment of a repeated declaration of a property in a section
+			 *
 			 * @details The dialects diverge here as well: MS Windows takes the first declaration,
-			 * the parsing of the Python language — the last one, while Git and systemd assemble a list of the values
+			 *          the parsing of the Python language — the last one, while Git and systemd assemble a list of the values.
 			 *
 			 * \~
 			 */
@@ -564,10 +638,10 @@ namespace awh {
 			 * @brief Виды значения владеющего типа
 			 *
 			 * @details Своих видов значения у наречия INI нет вовсе: значение свойства
-			 * есть последовательность знаков, а число ли это, логическое значение либо
-			 * запись как она есть - решает извлечение. Перечисление это описывает не вид
-			 * записи, а устройство владеющего значения: простое оно, перечнем является
-			 * либо вместилищем пар
+			 *          есть последовательность знаков, а число ли это, логическое значение либо
+			 *          запись как она есть - решает извлечение. Перечисление это описывает не вид
+			 *          записи, а устройство владеющего значения: простое оно, перечнем является
+			 *          либо вместилищем пар.
 			 *
 			 * @note Перечисление заведено ради владеющего значения из `value.hpp` и им
 			 *       одним употребляется: разбор, запись и дерево настроек видов значения
@@ -575,11 +649,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Kinds of the value of the owning type
+			 *
 			 * @details The INI dialect has no kinds of a value of its own at all: the value of a property
-			 * is a sequence of characters, while whether this is a number, a logical value or
-			 * a record as it is — is decided by the extraction. This enumeration describes not the kind of
-			 * the record but the arrangement of the owning value: whether it is a simple one, an array
-			 * or a container of the pairs
+			 *          is a sequence of characters, while whether this is a number, a logical value or
+			 *          a record as it is — is decided by the extraction. This enumeration describes not the kind of
+			 *          the record but the arrangement of the owning value: whether it is a simple one, an array
+			 *          or a container of the pairs.
+			 *
 			 * @note The enumeration is created for the sake of the owning value from `value.hpp` and is used
 			 *       by it alone: the parsing, the writing and the settings tree do not distinguish the kinds
 			 *       of a value at all, and there is no point in introducing them there
@@ -672,13 +748,14 @@ namespace awh {
 			 * @brief Правила обхождения с негодной последовательностью UTF-8 при записи
 			 *
 			 * @details Читающий байты, кодировке не отвечающие, отвергает - того требует
-			 * описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
-			 * прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
-			 * сетевых сообщений, битые байты несут делом обычным
+			 *          описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
+			 *          прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
+			 *          сетевых сообщений, битые байты несут делом обычным.
+			 *
 			 * @details Замена, а не отказ, взята правилом по умолчанию. Отказ записи режет
-			 * ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
-			 * бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
-			 * выданном тексте виден глазом, а не проглатывается молча
+			 *          ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
+			 *          бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
+			 *          выданном тексте виден глазом, а не проглатывается молча.
 			 *
 			 * @note Правило это положено одинаковым у всех кодеков
 			 *
@@ -688,15 +765,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
+			 *
 			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
-			 * requires that. The writing, however, passed them through, and the codec gave away a text which it itself
-			 * could not read. This case is not invented: the values taken from the logs and
-			 * the network messages carry the broken bytes as a usual matter
+			 *          requires that. The writing, however, passed them through, and the codec gave away a text which it itself
+			 *          could not read. This case is not invented: the values taken from the logs and
+			 *          the network messages carry the broken bytes as a usual matter.
+			 *
 			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
-			 * cuts off the **whole** text rather than a single value, and one broken byte in one
-			 * message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
-			 * and is visible to the eye in the given text rather than being swallowed silently
+			 *          cuts off the **whole** text rather than a single value, and one broken byte in one
+			 *          message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
+			 *          and is visible to the eye in the given text rather than being swallowed silently.
+			 *
 			 * @note This rule is decided by the owner to be identical for all the codecs
+			 *
+			 * @note The settings INI have no single specification, and their encoding is set by the
+			 *       environment. The `PASS` rule here therefore does not lead beyond the specification,
+			 *       but only gives the bytes such as they were fed
 			 *
 			 * \~
 			 */
@@ -726,16 +810,17 @@ namespace awh {
 			 * @brief Отрезок общего хранилища знаков
 			 *
 			 * @details Хранилища знаков дописываются по мере разбора и при росте
-			 * перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
-			 * отрезка вместо ссылки на него - единственный способ пережить такое
-			 * перемещение
+			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
+			 *          отрезка вместо ссылки на него - единственный способ пережить такое
+			 *          перемещение.
 			 *
 			 * \~english
 			 * @brief Segment of the common storage of the characters
+			 *
 			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
-			 * are moved, invalidating the references to their content. To keep the position of a
-			 * segment instead of a reference to it is the only way to survive such a
-			 * move
+			 *          are moved, invalidating the references to their content. To keep the position of a
+			 *          segment instead of a reference to it is the only way to survive such a
+			 *          move.
 			 *
 			 * \~
 			 */
@@ -764,6 +849,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param offset offset of the beginning of the segment in the storage of the characters
 				 * @param length length of the segment in bytes
 				 *
@@ -777,17 +863,19 @@ namespace awh {
 			 * @brief Положение в исходном тексте настроек
 			 *
 			 * @details Служит для указания места ошибки и для привязки записей к исходному
-			 * тексту
+			 *          тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 * смещение - в байтах исходного текста до перекодирования
+			 *       смещение - в байтах исходного текста до перекодирования
 			 *
 			 * \~english
 			 * @brief Position in the source settings text
+			 *
 			 * @details Serves for indicating the place of an error and for binding the records to the source
-			 * text
+			 *          text.
+			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 * the offset — in the bytes of the source text before the transcoding
+			 *       the offset — in the bytes of the source text before the transcoding
 			 *
 			 * \~
 			 */
@@ -816,36 +904,50 @@ namespace awh {
 			 * @brief Имя раздела текста настроек
 			 *
 			 * @details Имя состоит из имени раздела и необязательного имени подраздела.
-			 * Разделены они бывают знаком-разделителем либо кавычками - в зависимости от
-			 * наречия, - но смысл их от записи не зависит
+			 *          Разделены они бывают знаком-разделителем либо кавычками - в зависимости от
+			 *          наречия, - но смысл их от записи не зависит.
 			 *
 			 * @warning Сличать имена следует по паре из раздела и подраздела, а не по
-			 * записи целиком: наречие Git учитывает регистр подраздела и не учитывает
-			 * регистр раздела, и сличение по записи целиком на таких именах расходится
+			 *          записи целиком: наречие Git учитывает регистр подраздела и не учитывает
+			 *          регистр раздела, и сличение по записи целиком на таких именах расходится
 			 *
 			 * @note Поля ссылаются на память, принадлежащую разбираемому тексту либо
-			 * хранилищу имён, и живут не дольше их
+			 *       хранилищу имён, и живут не дольше их
 			 *
 			 * @warning Виды свёртки живут ЛИШЬ до следующего события ТОГО ЖЕ РОДА. Ссылаются
-			 * они не на буфер разбора, а на удержанные строки чтения, и оттого остаются
-			 * ЧИТАЕМЫМИ после - но отдают содержимое чужой записи, пришедшей следом. Надзор
-			 * за памятью такого не ловит вовсе: память жива, лгут одни лишь данные. Замерено
-			 * щупом на трёхстах записях с несхожими именами
+			 *          они не на буфер разбора, а на удержанные строки чтения, и оттого остаются
+			 *          ЧИТАЕМЫМИ после - но отдают содержимое чужой записи, пришедшей следом. Надзор
+			 *          за памятью такого не ловит вовсе: память жива, лгут одни лишь данные. Замерено
+			 *          щупом на трёхстах записях с несхожими именами
 			 *
 			 * @warning Срок этот ИНОЙ, нежели у свёртки свойства: та ссылается на буфер
-			 * разбора и по подаче указывает на память освобождённую - отказ там явен. Здесь
-			 * же ответ правдоподобен, и оттого беда хуже. Держать надлежит копию, а не вид
+			 *          разбора и по подаче указывает на память освобождённую - отказ там явен. Здесь
+			 *          же ответ правдоподобен, и оттого беда хуже. Держать надлежит копию, а не вид
 			 *
 			 * \~english
 			 * @brief Name of a section of a settings text
+			 *
 			 * @details The name consists of the name of the section and of an optional name of a subsection.
-			 * They happen to be separated by a separator character or by quotes — depending on the
-			 * dialect — but their meaning does not depend on the notation
+			 *          They happen to be separated by a separator character or by quotes — depending on the
+			 *          dialect — but their meaning does not depend on the notation.
+			 *
 			 * @warning The names should be compared by the pair of the section and the subsection rather than by the
-			 * record as a whole: the Git dialect takes the case of a subsection into account and does not take into account
-			 * the case of a section, and a comparison by the record as a whole diverges on such names
+			 *          record as a whole: the Git dialect takes the case of a subsection into account and does not take into account
+			 *          the case of a section, and a comparison by the record as a whole diverges on such names
+			 *
 			 * @note The fields refer to the memory belonging to the text being parsed or to
-			 * the storage of the names, and they live no longer than they do
+			 *       the storage of the names, and they live no longer than they do
+			 *
+			 * @warning The views of the fold live ONLY until the next event OF THE SAME KIND. They refer
+			 *          not to the parsing buffer, but to the held strings of the reading, and therefore
+			 *          remain READABLE after - yet they give away the content of the foreign record which
+			 *          came next. Memory supervision does not catch this at all: the memory is alive, only
+			 *          the data lie. Measured by a probe on three hundred records with dissimilar names
+			 *
+			 * @warning This term is DIFFERENT from that of the fold of a property: that one refers to the
+			 *          parsing buffer and upon a feed points to memory FREED - a failure there is plain.
+			 *          Here, however, the answer is plausible, and for that reason the trouble is worse.
+			 *          One ought to hold a copy, not a view
 			 *
 			 * \~
 			 */
@@ -864,6 +966,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the coincidence of a name
+				 *
 				 * @param section    name of the section for the comparison
 				 * @param subsection name of the subsection for the comparison
 				 * @return           result of the check
@@ -880,6 +983,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Comparison operator
+				 *
 				 * @param name name for the comparison
 				 * @return     result of the comparison
 				 *
@@ -895,6 +999,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Comparison operator
+				 *
 				 * @param name name for the comparison
 				 * @return     result of the comparison
 				 *
@@ -908,23 +1013,35 @@ namespace awh {
 			 * @brief Свойство раздела текста настроек
 			 *
 			 * @details Значение выдаётся уже приведённым к окончательному виду: кавычки
-			 * сняты, управляющие последовательности разобраны, строки продолжения склеены,
-			 * обращения к другим значениям подставлены - в объёме, разрешённом настройками
+			 *          сняты, управляющие последовательности разобраны, строки продолжения склеены,
+			 *          обращения к другим значениям подставлены - в объёме, разрешённом настройками.
 			 *
 			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения к @c next() либо
+			 *
 			 * @c feed(). Ссылаются они на буфер разбора, и подача его перевыделяет: вид,
-			 * удержанный прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит
-			 * это настоящим обращением к освобождённому - замерено щупом на трёхстах записях
+			 *                   удержанный прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит
+			 *                   это настоящим обращением к освобождённому - замерено щупом на трёхстах записях
 			 *
 			 * @warning Срок этот ИНОЙ, нежели у свёрток имени раздела и примечания: те
-			 * ссылаются на удержанные строки чтения, остаются читаемыми и молча отдают чужое
-			 * содержимое. Держать надлежит копию, а не вид
+			 *          ссылаются на удержанные строки чтения, остаются читаемыми и молча отдают чужое
+			 *          содержимое. Держать надлежит копию, а не вид
 			 *
 			 * \~english
 			 * @brief Property of a section of a settings text
+			 *
 			 * @details The value is issued already brought to its final form: the quotes are
-			 * removed, the escape sequences are parsed, the continuation lines are glued together,
-			 * the references to the other values are substituted — in the volume permitted by the settings
+			 *          removed, the escape sequences are parsed, the continuation lines are glued together,
+			 *          the references to the other values are substituted — in the volume permitted by the settings.
+			 *
+			 * @warning The views of the fold live ONLY until the next call to @c next() or
+			 *
+			 * @c feed(). They refer to the parsing buffer, and its feed reallocates it: a view
+			 *                   kept before points to memory FREED. Memory supervision takes this for a genuine
+			 *                   access to freed memory - measured by a probe on three hundred records
+			 *
+			 * @warning This term is DIFFERENT from that of the folds of the section name and the comment:
+			 *          those refer to the held strings of the reading, remain readable and silently give
+			 *          away the content of another. One ought to hold a copy, not a view
 			 *
 			 * \~
 			 */
@@ -948,6 +1065,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of the property having been written without a separator and a value
+				 *
 				 * @note The Git dialect recognizes such a record as truth, the other dialects
 				 *       answer it with a refusal. The value of such a property is empty, and
 				 *       it can be distinguished from a property with an empty value only by the present
@@ -967,6 +1085,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of the property having been written as an addition to a list
+				 *
 				 * @note The record «name[] = value» is accepted by the parsing of the PHP language and means
 				 *       an addition to a list of the values rather than a replacement of the previous one. The brackets in
 				 *       the name are thereby removed: such a property can be distinguished from an ordinary one
@@ -993,26 +1112,38 @@ namespace awh {
 			 * @brief Примечание текста настроек
 			 *
 			 * @details Примечания в тексте настроек пишет человек, и при перезаписи файла
-			 * их надлежит сохранять: файл настроек без примечаний своему хозяину
-			 * непонятен. Оттого примечание выдаётся событием со всеми своими признаками,
-			 * а не отбрасывается разбором
+			 *          их надлежит сохранять: файл настроек без примечаний своему хозяину
+			 *          непонятен. Оттого примечание выдаётся событием со всеми своими признаками,
+			 *          а не отбрасывается разбором.
 			 *
 			 * @warning Виды свёртки живут ЛИШЬ до следующего события ТОГО ЖЕ РОДА. Ссылаются
-			 * они не на буфер разбора, а на удержанные строки чтения, и оттого остаются
-			 * ЧИТАЕМЫМИ после - но отдают содержимое чужой записи, пришедшей следом. Надзор
-			 * за памятью такого не ловит вовсе: память жива, лгут одни лишь данные. Замерено
-			 * щупом на трёхстах записях с несхожими именами
+			 *          они не на буфер разбора, а на удержанные строки чтения, и оттого остаются
+			 *          ЧИТАЕМЫМИ после - но отдают содержимое чужой записи, пришедшей следом. Надзор
+			 *          за памятью такого не ловит вовсе: память жива, лгут одни лишь данные. Замерено
+			 *          щупом на трёхстах записях с несхожими именами
 			 *
 			 * @warning Срок этот ИНОЙ, нежели у свёртки свойства: та ссылается на буфер
-			 * разбора и по подаче указывает на память освобождённую - отказ там явен. Здесь
-			 * же ответ правдоподобен, и оттого беда хуже. Держать надлежит копию, а не вид
+			 *          разбора и по подаче указывает на память освобождённую - отказ там явен. Здесь
+			 *          же ответ правдоподобен, и оттого беда хуже. Держать надлежит копию, а не вид
 			 *
 			 * \~english
 			 * @brief Comment of a settings text
+			 *
 			 * @details The comments in a settings text are written by a human, and at a rewriting of the file
-			 * they ought to be preserved: a settings file without the comments is incomprehensible to its
-			 * owner. Because of that a comment is issued as an event with all its attributes
-			 * rather than being discarded by the parsing
+			 *          they ought to be preserved: a settings file without the comments is incomprehensible to its
+			 *          owner. Because of that a comment is issued as an event with all its attributes
+			 *          rather than being discarded by the parsing.
+			 *
+			 * @warning The views of the fold live ONLY until the next event OF THE SAME KIND. They refer
+			 *          not to the parsing buffer, but to the held strings of the reading, and therefore
+			 *          remain READABLE after - yet they give away the content of the foreign record which
+			 *          came next. Memory supervision does not catch this at all: the memory is alive, only
+			 *          the data lie. Measured by a probe on three hundred records with dissimilar names
+			 *
+			 * @warning This term is DIFFERENT from that of the fold of a property: that one refers to the
+			 *          parsing buffer and upon a feed points to memory FREED - a failure there is plain.
+			 *          Here, however, the answer is plausible, and for that reason the trouble is worse.
+			 *          One ought to hold a copy, not a view
 			 *
 			 * \~
 			 */
@@ -1047,6 +1178,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the description of an error code of the parsing
+			 *
 			 * @param error error code of the parsing
 			 * @return      description of the error code in the English language
 			 *
@@ -1063,6 +1195,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of an encoding
+			 *
 			 * @param encoding encoding of the source text
 			 * @return         commonly accepted name of the encoding
 			 *
@@ -1079,6 +1212,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining an encoding by its name
+			 *
 			 * @param text name of the encoding in any case
 			 * @return     determined encoding of the source text
 			 *
@@ -1095,22 +1229,35 @@ namespace awh {
 			 * @return       результат проверки
 			 *
 			 * @warning Приговор здесь один: ПРИНАДЛЕЖИТ ли знак набору признаваемых.
-			 * Начинает ли он примечание в разбираемом тексте, посредник не знает и
-			 * знать не может: у него на входе один знак - ни места его в строке, ни
-			 * настроек. Читающий же судит по трём: примечание в конце строки
-			 * признаётся лишь при `inlineComments`, знак признаётся началом лишь
-			 * стоящим первым либо отделённым пробельным знаком при `spacedComments`.
-			 * Замер: `commented(';')` истинен всегда, а строка «k = a;b» умолчанием
-			 * даёт значение «a;b» целиком, при `inlineComments` - тоже «a;b», при
-			 * `inlineComments` без `spacedComments` - «a», а «k = a ;b» при
-			 * `inlineComments` - «a». Приговор посредника и приговор кодека совпали
-			 * в одном случае из четырёх
+			 *          Начинает ли он примечание в разбираемом тексте, посредник не знает и
+			 *          знать не может: у него на входе один знак - ни места его в строке, ни
+			 *          настроек. Читающий же судит по трём: примечание в конце строки
+			 *          признаётся лишь при `inlineComments`, знак признаётся началом лишь
+			 *          стоящим первым либо отделённым пробельным знаком при `spacedComments`.
+			 *          Замер: `commented(';')` истинен всегда, а строка «k = a;b» умолчанием
+			 *          даёт значение «a;b» целиком, при `inlineComments` - тоже «a;b», при
+			 *          `inlineComments` без `spacedComments` - «a», а «k = a ;b» при
+			 *          `inlineComments` - «a». Приговор посредника и приговор кодека совпали
+			 *          в одном случае из четырёх
 			 *
 			 * \~english
 			 * @brief Method of checking a character for being the beginning of a comment
+			 *
 			 * @param letter character being checked
 			 * @param marker recognized characters of the beginning of a comment
 			 * @return       result of the check
+			 *
+			 * @warning The verdict here is one: whether the character BELONGS to the set of recognized
+			 *          ones. Whether it begins a comment in the text being parsed, the intermediary neither
+			 *          knows nor can know: at its input there is a single character - neither its place in
+			 *          the line, nor the settings. The reading, however, judges by three things: a comment at
+			 *          the end of a line is recognized only under `inlineComments`, the character is
+			 *          recognized as a beginning only when standing first or separated by a whitespace
+			 *          character under `spacedComments`. Measurement: `commented(';')` is true always, and
+			 *          the line «k = a;b» by default gives the value «a;b» in full, under `inlineComments`
+			 *          - also «a;b», under `inlineComments` without `spacedComments` - «a», and «k = a ;b»
+			 *          under `inlineComments` - «a». The verdict of the intermediary and the verdict of the
+			 *          codec coincided in one case out of four
 			 *
 			 * \~
 			 */
@@ -1125,16 +1272,24 @@ namespace awh {
 			 * @return          результат проверки
 			 *
 			 * @warning Приговор здесь один: ПРИНАДЛЕЖИТ ли знак набору признаваемых.
-			 * Отделяет ли он имя от значения в разбираемом тексте, посредник не знает:
-			 * читающий берёт ПЕРВЫЙ такой знак строки, а всё, что за ним, есть
-			 * значение. Замер: `separated('=')` истинен всегда, а строка «k = a = b»
-			 * даёт свойству «k» значение «a = b» - второй знак есть данные
+			 *          Отделяет ли он имя от значения в разбираемом тексте, посредник не знает:
+			 *          читающий берёт ПЕРВЫЙ такой знак строки, а всё, что за ним, есть
+			 *          значение. Замер: `separated('=')` истинен всегда, а строка «k = a = b»
+			 *          даёт свойству «k» значение «a = b» - второй знак есть данные
 			 *
 			 * \~english
 			 * @brief Method of checking a character for being a separator of a name and a value
+			 *
 			 * @param letter    character being checked
 			 * @param separator recognized characters of the separator of a name and a value
 			 * @return          result of the check
+			 *
+			 * @warning The verdict here is one: whether the character BELONGS to the set of recognized
+			 *          ones. Whether it separates the name from the value in the text being parsed, the
+			 *          intermediary does not know: the reader takes the FIRST such character of the line,
+			 *          and all that is behind it is the value. Measurement: `separated('=')` is true
+			 *          always, and the line «k = a = b» gives the property «k» the value «a = b» - the
+			 *          second character is data
 			 *
 			 * \~
 			 */
@@ -1149,6 +1304,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the line ending character
+			 *
 			 * @param newline kind of the line ending character
 			 * @return        sequence of the line ending characters
 			 *
@@ -1161,8 +1317,8 @@ namespace awh {
 			 * @brief Метод разбора целого числа со знаком из значения свойства
 			 *
 			 * @details Пробельная обвязка по краям отбрасывается, а разобрано обязано быть
-			 * всё значение целиком: остаток за числом считается отказом. Разбор ведётся
-			 * по правилам местности «C» и от установленной в приложении местности не зависит
+			 *          всё значение целиком: остаток за числом считается отказом. Разбор ведётся
+			 *          по правилам местности «C» и от установленной в приложении местности не зависит.
 			 *
 			 * @param text   разбираемое значение свойства
 			 * @param result ссылка на результат разбора
@@ -1170,9 +1326,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a signed integer from the value of a property
+			 *
 			 * @details The whitespace padding at the edges is discarded, while the whole value as a whole is obliged to be
-			 * parsed: a remainder after the number is considered a refusal. The parsing is conducted
-			 * by the rules of the «C» locale and does not depend on the locale set in the application
+			 *          parsed: a remainder after the number is considered a refusal. The parsing is conducted
+			 *          by the rules of the «C» locale and does not depend on the locale set in the application.
+			 *
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1191,6 +1349,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing an unsigned integer from the value of a property
+			 *
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1204,7 +1363,7 @@ namespace awh {
 			 * @brief Метод разбора числа с плавающей точкой из значения свойства
 			 *
 			 * @details Разбор совпадает с разбором функции strtod в местности «C» вплоть до
-			 * последнего бита мантиссы
+			 *          последнего бита мантиссы.
 			 *
 			 * @param text   разбираемое значение свойства
 			 * @param result ссылка на результат разбора
@@ -1212,8 +1371,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a floating-point number from the value of a property
+			 *
 			 * @details The parsing coincides with the parsing of the strtod function in the «C» locale down to
-			 * the last bit of the mantissa
+			 *          the last bit of the mantissa.
+			 *
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1227,9 +1388,9 @@ namespace awh {
 			 * @brief Метод разбора логического значения из значения свойства
 			 *
 			 * @details Записи «yes», «no», «on» и «off» признаются наравне с «true» и
-			 * «false», пока не запрошена строгая запись. Расширенная запись взята
-			 * умолчанием намеренно: в текстах настроек она встречается чаще строгой, и
-			 * отказ на «on» удивил бы всякого, кто такой файл писал руками
+			 *          «false», пока не запрошена строгая запись. Расширенная запись взята
+			 *          умолчанием намеренно: в текстах настроек она встречается чаще строгой, и
+			 *          отказ на «on» удивил бы всякого, кто такой файл писал руками.
 			 *
 			 * @param text   разбираемое значение свойства
 			 * @param result ссылка на результат разбора
@@ -1238,10 +1399,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a logical value from the value of a property
+			 *
 			 * @details The records «yes», «no», «on» and «off» are recognized on a par with «true» and
-			 * «false» until the strict notation is requested. The extended notation has been taken as the
-			 * default deliberately: in the settings texts it is met more often than the strict one, and
-			 * a refusal on «on» would surprise anyone who has written such a file by hand
+			 *          «false» until the strict notation is requested. The extended notation has been taken as the
+			 *          default deliberately: in the settings texts it is met more often than the strict one, and
+			 *          a refusal on «on» would surprise anyone who has written such a file by hand.
+			 *
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
 			 * @param forms  recognized notation of a logical value
@@ -1260,6 +1423,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the number type of the parsing result
+			 *
 			 * @tparam T number type of the parsing result
 			 *
 			 * \~
@@ -1270,16 +1434,16 @@ namespace awh {
 			 * @brief Метод разбора числа из значения свойства
 			 *
 			 * @details Отказом разбор завершается лишь тогда, когда значение числом не
-			 * является вовсе. Запись значения разбору не указ: дробная запись извлекается
-			 * и целым видом, а целая - и дробным. Тип определяется запрошенным типом
-			 * результата, отдельного указания не требуя
+			 *          является вовсе. Запись значения разбору не указ: дробная запись извлекается
+			 *          и целым видом, а целая - и дробным. Тип определяется запрошенным типом
+			 *          результата, отдельного указания не требуя.
 			 *
 			 * @details Дробное, извлекаемое целым видом, округляется по правилам математики
-			 * с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` - минус двойкой.
-			 * Целое, за отрезок затребованного вида выходящее, переносится младшими
-			 * разрядами, а дробное вне его пределов выдаётся пределом: приведение такое
-			 * стандарт зовёт неопределённым поведением, а неопределённого поведения в
-			 * кодеке не будет
+			 *          с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` - минус двойкой.
+			 *          Целое, за отрезок затребованного вида выходящее, переносится младшими
+			 *          разрядами, а дробное вне его пределов выдаётся пределом: приведение такое
+			 *          стандарт зовёт неопределённым поведением, а неопределённого поведения в
+			 *          кодеке не будет.
 			 *
 			 * @note Прежде разбор вёлся с проверкой выхода за пределы запрошенного типа, и
 			 *       значение, в тип не помещающееся, отвергалось. Отменено решением
@@ -1292,31 +1456,40 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * @note Перечень поддерживаемых типов задан заранее и порождается явно в
-			 * файле реализации: логический тип, целые числа со знаком и без знака
-			 * разрядностью от восьми до шестидесяти четырёх, а также числа с плавающей
-			 * точкой одинарной и двойной точности. Запрос иного типа отвечает отказом
-			 * сборки, а не молчаливым приведением
+			 *       файле реализации: логический тип, целые числа со знаком и без знака
+			 *       разрядностью от восьми до шестидесяти четырёх, а также числа с плавающей
+			 *       точкой одинарной и двойной точности. Запрос иного типа отвечает отказом
+			 *       сборки, а не молчаливым приведением
 			 *
 			 * \~english
 			 * @brief Method of parsing a number from the value of a property
+			 *
 			 * @details The parsing ends with a refusal only when the value is not a number at all.
-			 * The notation of the value is not a directive to the parsing: a fractional notation is extracted
-			 * also as an integer kind, and an integer one — also as a fractional. The type
-			 * is determined by the requested type of the result without requiring a separate indication
+			 *          The notation of the value is not a directive to the parsing: a fractional notation is extracted
+			 *          also as an integer kind, and an integer one — also as a fractional. The type
+			 *          is determined by the requested type of the result without requiring a separate indication.
+			 *
 			 * @details A fractional number extracted as an integer kind is rounded by the rules of mathematics
-			 * with a half taken away from zero: `1.5` is issued as a two, while `-1.5` — as a minus two.
-			 * An integer going beyond the range of the requested kind is carried over by the lower bits,
-			 * while a fractional one beyond its limits is issued as the limit: such a conversion is called
-			 * an undefined behaviour by the standard, and there will be no undefined behaviour in the codec
+			 *          with a half taken away from zero: `1.5` is issued as a two, while `-1.5` — as a minus two.
+			 *          An integer going beyond the range of the requested kind is carried over by the lower bits,
+			 *          while a fractional one beyond its limits is issued as the limit: such a conversion is called
+			 *          an undefined behaviour by the standard, and there will be no undefined behaviour in the codec.
+			 *
+			 * @note Formerly the parsing was conducted with a check of going beyond the bounds of the
+			 *       requested type, and a value not fitting into the type was rejected. It was cancelled
+			 *       by a decision of 2026-08-20: the contract of extraction is common to all the codecs of
+			 *       the framework, and a conversion by the language refuses nowhere
+			 *
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
 			 * @param forms  recognized notation of a logical value
 			 * @return       flag of a successful parsing
+			 *
 			 * @note The list of the supported types is given beforehand and is generated explicitly in
-			 * the implementation file: the logical type, the signed and unsigned integers
-			 * of a width from eight to sixty-four bits, and also the floating-point
-			 * numbers of a single and a double precision. A request of another type answers with a refusal
-			 * of the build rather than with a silent conversion
+			 *       the implementation file: the logical type, the signed and unsigned integers
+			 *       of a width from eight to sixty-four bits, and also the floating-point
+			 *       numbers of a single and a double precision. A request of another type answers with a refusal
+			 *       of the build rather than with a silent conversion
 			 *
 			 * \~
 			 */

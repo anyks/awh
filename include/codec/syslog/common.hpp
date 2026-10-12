@@ -84,9 +84,9 @@ namespace awh {
 		 * @brief Пространство имён контейнера SysLog
 		 *
 		 * @details Разбор и запись сообщений системного журнала двух описаний: устаревшего
-		 * RFC 3164, где за приоритетом следуют дата, узел и метка приложения, и нынешнего
-		 * RFC 5424, где к ним добавлены номер описания, опознаватель сообщения и
-		 * структурированные данные
+		 *          RFC 3164, где за приоритетом следуют дата, узел и метка приложения, и нынешнего
+		 *          RFC 5424, где к ним добавлены номер описания, опознаватель сообщения и
+		 *          структурированные данные.
 		 *
 		 * @par Намеренные решения
 		 *
@@ -94,44 +94,87 @@ namespace awh {
 		 * задачи, и каждое из решений закреплено проверочным испытанием
 		 *
 		 * @li **RFC 3164 и RFC 5424 суть РАЗНЫЕ разборы, а не разновидности одного.**
-		 * Совпадает у них лишь приставка приоритета; далее расходится всё - вид даты,
-		 * состав полей, разделители, обращение с отсутствующим значением. Свести их к
-		 * одному ходу с ветвлениями значило бы разбирать неверно оба, оттого разборы
-		 * разделены, а выбор между ними отдан настройке. Умолчание - самоопределение по
-		 * виду записи, ибо живой сборщик журналов принимает поток от многих устройств
-		 * разом и описания в нём перемешаны
+		 *     Совпадает у них лишь приставка приоритета; далее расходится всё - вид даты,
+		 *     состав полей, разделители, обращение с отсутствующим значением. Свести их к
+		 *     одному ходу с ветвлениями значило бы разбирать неверно оба, оттого разборы
+		 *     разделены, а выбор между ними отдан настройке. Умолчание - самоопределение по
+		 *     виду записи, ибо живой сборщик журналов принимает поток от многих устройств
+		 *     разом и описания в нём перемешаны
 		 *
 		 * @li **Приоритет хранится ЧИСЛОМ, а источник и важность выдаются вычислением.**
-		 * Описание задаёт приоритет одним числом, из какого источник есть частное от
-		 * деления на восемь, а важность - остаток. Хранить все три значило бы держать
-		 * одно сведение в трёх местах и открывать путь к их расхождению при правке
+		 *     Описание задаёт приоритет одним числом, из какого источник есть частное от
+		 *     деления на восемь, а важность - остаток. Хранить все три значило бы держать
+		 *     одно сведение в трёх местах и открывать путь к их расхождению при правке
 		 *
 		 * @li **Отсутствующее значение и пустая последовательность знаков РАЗЛИЧАЮТСЯ.**
-		 * RFC 5424 назначает знак «-» отсутствию значения (NILVALUE), и различие это
-		 * несущее: «узел неизвестен» и «узел есть пустая строка» суть разные утверждения.
-		 * Оттого поле со знаком «-» в дерево НЕ кладётся вовсе, а не кладётся строкою из
-		 * одного знака. Обратное толкование берётся настройкой
+		 *     RFC 5424 назначает знак «-» отсутствию значения (NILVALUE), и различие это
+		 *     несущее: «узел неизвестен» и «узел есть пустая строка» суть разные утверждения.
+		 *     Оттого поле со знаком «-» в дерево НЕ кладётся вовсе, а не кладётся строкою из
+		 *     одного знака. Обратное толкование берётся настройкой
 		 *
 		 * @li **Даты разбираются ходом `awh::chrono_t`, а не своим разбором.** Оба
-		 * описания дат уже известны каркасу: `standard_t::RFC3164` и `standard_t::RFC3339`.
-		 * Заводить рядом второй разбор значило бы держать один договор в двух местах, а
-		 * расхождение между ними всплыло бы на високосном годе либо на переходе зоны
+		 *     описания дат уже известны каркасу: `standard_t::RFC3164` и `standard_t::RFC3339`.
+		 *     Заводить рядом второй разбор значило бы держать один договор в двух местах, а
+		 *     расхождение между ними всплыло бы на високосном годе либо на переходе зоны
 		 *
 		 * @li **Метка порядка байтов перед текстом сообщения снимается, а не хранится.**
-		 * RFC 5424 позволяет предварять текст сообщения меткой UTF-8, и метка эта есть
-		 * признак кодировки, а не часть сообщения. Оставить её в тексте значило бы
-		 * отдать потребителю три лишних октета, каких он не писал; снятие берётся
-		 * настройкой, ибо обратная сборка обязана уметь вернуть её на место
+		 *     RFC 5424 позволяет предварять текст сообщения меткой UTF-8, и метка эта есть
+		 *     признак кодировки, а не часть сообщения. Оставить её в тексте значило бы
+		 *     отдать потребителю три лишних октета, каких он не писал; снятие берётся
+		 *     настройкой, ибо обратная сборка обязана уметь вернуть её на место
 		 *
 		 * @li **Структурированные данные суть дерево, а не последовательность знаков.**
-		 * Отмена знаков внутри них своя: отменяются «\\"», «\\]» и «\\\\», и только они.
-		 * Разбирать их позже, вторым проходом, значило бы разбирать дважды и хранить
-		 * между проходами текст, уже разобранный
+		 *     Отмена знаков внутри них своя: отменяются «\\"», «\\]» и «\\\\», и только они.
+		 *     Разбирать их позже, вторым проходом, значило бы разбирать дважды и хранить
+		 *     между проходами текст, уже разобранный
 		 *
 		 * \~english
 		 * @brief Namespace of the SysLog container
-		 * @details The parsing and the writing of the messages of the system log of two descriptions: the outdated
-		 * RFC 3164 and the present RFC 5424
+		 *
+		 * @details The parsing and the writing of the messages of the system log of two descriptions: the
+		 *          outdated RFC 3164, where a date, a host and a label of an application follow the priority,
+		 *          and the present RFC 5424, where a number of the description, an identifier of a message and
+		 *          the structured data are added to those.
+		 *
+		 * @par Deliberate decisions
+		 *
+		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
+		 * task, and each of the decisions is fixed by a verifying test
+		 *
+		 * @li **RFC 3164 and RFC 5424 are DIFFERENT parsings, and not varieties of one.** Only the prefix of
+		 *     the priority is common to them; after that everything diverges — the kind of a date, the
+		 *     composition of the fields, the separators, the handling of an absent value. To reduce them to a
+		 *     single method with the branches would mean to parse both of them wrongly, so the parsings are
+		 *     separated, and the choice between them is given to a setting. The default is a
+		 *     self-determination by the appearance of a record, for a living collector of journals accepts a
+		 *     stream from many devices at once and the descriptions are mixed up in it
+		 *
+		 * @li **A priority is stored by a NUMBER, while a source and a severity are issued by a computation.**
+		 *     The description sets a priority by one number, out of which a source is the quotient of the
+		 *     division by eight and a severity is the remainder. To keep all three would mean to hold one
+		 *     piece of knowledge in three places and to open a way to their divergence at an editing
+		 *
+		 * @li **An absent value and an empty sequence of characters are DISTINGUISHED.** RFC 5424 appoints
+		 *     the sign «-» to an absence of a value (NILVALUE), and that distinction is carrying: «a host is
+		 *     unknown» and «a host is an empty string» are different assertions. Therefore a field carrying
+		 *     the sign «-» is NOT laid into the tree at all, and is not laid as a string of one sign. The
+		 *     opposite interpretation is taken by a setting
+		 *
+		 * @li **The dates are parsed by the method `awh::chrono_t`, and not by a parsing of one's own.** Both
+		 *     descriptions of a date are already known to the frame: `standard_t::RFC3164` and
+		 *     `standard_t::RFC3339`. To raise a second parsing nearby would mean to keep one contract in two
+		 *     places, and a divergence between them would surface on a leap year or on a change of a zone
+		 *
+		 * @li **The mark of the order of the bytes before a text of a message is removed, and not stored.**
+		 *     RFC 5424 allows a text of a message to be preceded by a UTF-8 mark, and that mark is a sign of
+		 *     an encoding, not a part of the message. To leave it in the text would mean to give a consumer
+		 *     three extra octets which he did not write; the removal is taken by a setting, for the reverse
+		 *     assembly has to be able to put it back in its place
+		 *
+		 * @li **The structured data are a tree, and not a sequence of characters.** The escaping of the signs
+		 *     inside them is their own: «\\"», «\\]» and «\\\\» are escaped, and they alone. To parse them
+		 *     later, by a second pass, would mean to parse twice and to keep between the passes a text
+		 *     already parsed
 		 *
 		 * \~
 		 */
@@ -141,11 +184,15 @@ namespace awh {
 			 * @brief Наибольший поддерживаемый номер описания записи
 			 *
 			 * @details RFC 5424 объявляет описание номером первым и оговаривает, что номер
-			 * высший вправе нести иной состав полей. Разбирать его значило бы ГАДАТЬ,
-			 * оттого номер выше отвергается отказом
+			 *          высший вправе нести иной состав полей. Разбирать его значило бы ГАДАТЬ,
+			 *          оттого номер выше отвергается отказом.
 			 *
 			 * \~english
 			 * @brief Largest supported number of the description of a record
+			 *
+			 * @details RFC 5424 declares the description by a number first and stipulates that a higher number
+			 *          may carry a different composition of the fields. To parse it would mean to GUESS, so any
+			 *          number above is rejected by a refusal.
 			 *
 			 * \~
 			 */
@@ -156,10 +203,13 @@ namespace awh {
 			 * @brief Наибольшее допустимое значение приоритета
 			 *
 			 * @details Приоритет есть источник, восьмикратно взятый, и важность: источников
-			 * двадцать четыре, важностей восемь, отчего предел равен 191
+			 *          двадцать четыре, важностей восемь, отчего предел равен 191.
 			 *
 			 * \~english
 			 * @brief Largest admissible value of the priority
+			 *
+			 * @details A priority is a source taken eightfold and a severity: there are twenty-four sources and
+			 *          eight severities, whereby the limit equals 191.
 			 *
 			 * \~
 			 */
@@ -170,12 +220,17 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина одной записи в байтах
 			 *
 			 * @details RFC 5424 требует от принимающего принимать не менее 480 октетов и
-			 * советует принимать 2048, верхнего же предела не назначает вовсе. Предел
-			 * здесь взят с большим запасом: живые устройства шлют записи в сотни килобайт,
-			 * и отвергать их значило бы терять события
+			 *          советует принимать 2048, верхнего же предела не назначает вовсе. Предел
+			 *          здесь взят с большим запасом: живые устройства шлют записи в сотни килобайт,
+			 *          и отвергать их значило бы терять события.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of one record in bytes
+			 *
+			 * @details RFC 5424 requires a receiver to accept no less than 480 octets and advises to accept
+			 *          2048, while appointing no upper limit at all. The limit here is taken with a large
+			 *          margin: the living devices send records of hundreds of kilobytes, and to refuse them
+			 *          would mean to lose events.
 			 *
 			 * \~
 			 */
@@ -185,10 +240,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Наибольшая допустимая длина имени узла в байтах
 			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.4
+			 * @details Предел назначен RFC 5424, раздел 6.2.4.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of the name of the host in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.4.
 			 *
 			 * \~
 			 */
@@ -198,10 +255,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Наибольшая допустимая длина названия приложения в байтах
 			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.5
+			 * @details Предел назначен RFC 5424, раздел 6.2.5.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of the name of the application in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.5.
 			 *
 			 * \~
 			 */
@@ -211,10 +270,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Наибольшая допустимая длина опознавателя работы в байтах
 			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.6
+			 * @details Предел назначен RFC 5424, раздел 6.2.6.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of the identifier of the process in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.6.
 			 *
 			 * \~
 			 */
@@ -224,10 +285,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Наибольшая допустимая длина опознавателя сообщения в байтах
 			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.7
+			 * @details Предел назначен RFC 5424, раздел 6.2.7.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of the identifier of a message in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.7.
 			 *
 			 * \~
 			 */
@@ -238,10 +301,13 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина имени внутри структурированных данных
 			 *
 			 * @details Предел назначен RFC 5424, раздел 6.3.2, и общий у опознавателя
-			 * блока и у имени поля
+			 *          блока и у имени поля.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of a name inside the structured data
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.3.2, and is common to the identifier of a
+			 *          block and to the name of a field.
 			 *
 			 * \~
 			 */
@@ -274,10 +340,13 @@ namespace awh {
 			 * @brief Метка порядка байтов, тексту сообщения предшествующая
 			 *
 			 * @details RFC 5424, раздел 6.4, позволяет предварять текст сообщения меткой
-			 * UTF-8: она объявляет кодировку, но частью сообщения не является
+			 *          UTF-8: она объявляет кодировку, но частью сообщения не является.
 			 *
 			 * \~english
 			 * @brief Byte order mark preceding the text of a message
+			 *
+			 * @details RFC 5424, section 6.4, allows a text of a message to be preceded by a UTF-8 mark: it
+			 *          declares an encoding but is not a part of the message.
 			 *
 			 * \~
 			 */
@@ -288,10 +357,12 @@ namespace awh {
 			 * @brief Знак, отсутствию значения назначенный
 			 *
 			 * @details Назначен RFC 5424, раздел 6: поле, значения не имеющее, несёт один
-			 * этот знак
+			 *          этот знак.
 			 *
 			 * \~english
 			 * @brief Character assigned to the absence of a value
+			 *
+			 * @details It is appointed by RFC 5424, section 6: a field having no value carries this one sign only.
 			 *
 			 * \~
 			 */
@@ -302,18 +373,23 @@ namespace awh {
 			 * @brief Коды отказов разбора и записи
 			 *
 			 * @details Перечень содержит лишь те коды, какие разбор ВЫСТАВЛЯЕТ хотя бы на
-			 * одном пути: недостижимый код отказа хуже отсутствующего, ибо потребитель
-			 * пишет по нему ветвь, какая не исполнится никогда
+			 *          одном пути: недостижимый код отказа хуже отсутствующего, ибо потребитель
+			 *          пишет по нему ветвь, какая не исполнится никогда.
 			 *
 			 * \~english
 			 * @brief The codes of the refusals of the parsing and the writing
+			 *
+			 * @details The list holds only those codes which the parsing RAISES at least on one path: an
+			 *          unreachable code of a refusal is worse than an absent one, for a consumer writes by it a
+			 *          branch that will never be executed.
 			 *
 			 * \~
 			 */
 			enum class error_t : uint8_t {
 				NONE                  = 0x00, // Ошибок не обнаружено
 				/**
-				 * Запись не открывается приставкой приоритета
+				 * \~russian
+				 * @brief Запись не открывается приставкой приоритета
 				 *
 				 * @warning Код этот НЕ НАВОДИТСЯ кодеком ни одним местом, и это решение
 				 *          намеренное, а не упущение: отсутствие приставки отказом не
@@ -327,6 +403,21 @@ namespace awh {
 				 *       `EMPTY_HEADER_FIELD`, каковой оказался обещанием невыполненным и
 				 *       был наведён поверкою. Этот же - обещанием отменённым, и записка
 				 *       здесь затем, чтобы следующий аудит не «чинил» его снова
+				 *
+				 * \~english
+				 * @brief A record does not begin with a prefix of the priority
+				 *
+				 * @warning No place of the codec RAISES this code, and that is a deliberate decision, not an
+				 *          oversight: the absence of a prefix is not a refusal at all — the living devices send the
+				 *          records without it as well, and the collectors of journals accept them (see the section of
+				 *          the deliberate decisions of the reader). The code is left for a consumer conducting his own
+				 *          parsing: its removal from the list would shift the values of the neighbours and would break
+				 *          the comparisons of others
+				 *
+				 * @note It was found by the map of the refusal codes on 2026-09-16 on a par with
+				 *       `EMPTY_HEADER_FIELD`, which turned out to be an unfulfilled promise and was raised by a
+				 *       verification. This one is a cancelled promise, and the note stands here so that the next
+				 *       audit does not "fix" it again
 				 */
 				MISSING_PRIORITY      = 0x01, // Запись не открывается приставкой приоритета
 				INVALID_PRIORITY      = 0x02, // Приоритет построен ошибочно либо выходит за предел
@@ -362,10 +453,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Виды событий чтения сообщения системного журнала
 			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a system log message
+			 *
+			 * @details The reading issues the events as the text is parsed, without holding it in full.
 			 *
 			 * \~
 			 */
@@ -384,12 +477,17 @@ namespace awh {
 			 * @brief Описания записи системного журнала
 			 *
 			 * @details Самоопределение сличает вид поля, за приоритетом стоящего: число с
-			 * пробелом означает RFC 5424, всё прочее - RFC 3164. Признак этот назначен
-			 * самим RFC 5424, а не выведен из наблюдений: номер описания там обязателен и
-			 * стоит первым после приоритета
+			 *          пробелом означает RFC 5424, всё прочее - RFC 3164. Признак этот назначен
+			 *          самим RFC 5424, а не выведен из наблюдений: номер описания там обязателен и
+			 *          стоит первым после приоритета.
 			 *
 			 * \~english
 			 * @brief Descriptions of a record of the system log
+			 *
+			 * @details A self-determination compares the appearance of the field standing after the priority: a
+			 *          number with a space means RFC 5424, everything else — RFC 3164. This sign is appointed by
+			 *          RFC 5424 itself and is not drawn from the observations: there the number of the description
+			 *          is mandatory and stands first after the priority.
 			 *
 			 * \~
 			 */
@@ -404,12 +502,17 @@ namespace awh {
 			 * @brief Поля заголовка записи системного журнала
 			 *
 			 * @details Порядок членов отвечает порядку полей в записи и служит их
-			 * указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
-			 * заголовка запись не несёт вовсе. Поля VERSION, MESSAGE_ID и STRUCTURE
-			 * принадлежат лишь RFC 5424, поле TAG - лишь RFC 3164
+			 *          указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
+			 *          заголовка запись не несёт вовсе. Поля VERSION, MESSAGE_ID и STRUCTURE
+			 *          принадлежат лишь RFC 5424, поле TAG - лишь RFC 3164.
 			 *
 			 * \~english
 			 * @brief Fields of the header of a system log record
+			 *
+			 * @details The order of the members answers the order of the fields in a record and serves as their
+			 *          index: a field is parsed by count and not by name, for a record carries no names of the
+			 *          fields of the header at all. The fields VERSION, MESSAGE_ID and STRUCTURE belong only to
+			 *          RFC 5424, the field TAG only to RFC 3164.
 			 *
 			 * \~
 			 */
@@ -429,10 +532,13 @@ namespace awh {
 			 * @brief Источники сообщения системного журнала
 			 *
 			 * @details Значения назначены RFC 5424, таблица 1. Источник есть частное от
-			 * деления приоритета на восемь
+			 *          деления приоритета на восемь.
 			 *
 			 * \~english
 			 * @brief Sources of a system log message
+			 *
+			 * @details The values are appointed by RFC 5424, table 1. A source is the quotient of the division
+			 *          of the priority by eight.
 			 *
 			 * \~
 			 */
@@ -468,10 +574,13 @@ namespace awh {
 			 * @brief Степени важности сообщения системного журнала
 			 *
 			 * @details Значения назначены RFC 5424, таблица 2. Важность есть остаток от
-			 * деления приоритета на восемь, и меньшее число означает БОЛЬШУЮ важность
+			 *          деления приоритета на восемь, и меньшее число означает БОЛЬШУЮ важность.
 			 *
 			 * \~english
 			 * @brief Degrees of the importance of a system log message
+			 *
+			 * @details The values are appointed by RFC 5424, table 2. A severity is the remainder of the
+			 *          division of the priority by eight, and a lesser number means a GREATER severity.
 			 *
 			 * \~
 			 */
@@ -491,11 +600,15 @@ namespace awh {
 			 * @brief Строгость сличения разбираемой записи с описанием
 			 *
 			 * @details Сличение стоит времени и потому берётся настройкой, а не ведётся
-			 * всегда: сборщик журналов принимает миллионы записей от устройств, описанию
-			 * следующих нестрого, и отвергать их значило бы терять события
+			 *          всегда: сборщик журналов принимает миллионы записей от устройств, описанию
+			 *          следующих нестрого, и отвергать их значило бы терять события.
 			 *
 			 * \~english
 			 * @brief Strictness of the matching of a parsed record against the description
+			 *
+			 * @details A comparison costs time, and therefore it is taken by a setting and is not conducted
+			 *          always: a collector of journals accepts millions of records from the devices following
+			 *          the description not strictly, and to refuse them would mean to lose events.
 			 *
 			 * \~
 			 */
@@ -510,10 +623,13 @@ namespace awh {
 			 * @brief Правила обращения с отсутствующим значением
 			 *
 			 * @details RFC 5424 назначает знак «-» отсутствию значения. Умолчание -
-			 * опустить поле вовсе, ибо «неизвестно» и «пусто» суть разные утверждения
+			 *          опустить поле вовсе, ибо «неизвестно» и «пусто» суть разные утверждения.
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of an absent value
+			 *
+			 * @details RFC 5424 appoints the sign «-» to an absence of a value. The default is to drop the
+			 *          field entirely, for «unknown» and «empty» are different assertions.
 			 *
 			 * \~
 			 */
@@ -528,13 +644,18 @@ namespace awh {
 			 * @brief Правила обращения с вложенностью при записи дерева в запись SysLog
 			 *
 			 * @details Дерева произвольной глубины запись системного журнала не несёт:
-			 * поля заголовка суть знаки, а структурированные данные глубже одного слоя
-			 * не идут. Выбор исхода принадлежит не кодеку, а тому, кто пишет:
-			 * молчаливое обращение в знаки оставляло бы потребителя с записью, которая
-			 * разбирается, но означает иное
+			 *          поля заголовка суть знаки, а структурированные данные глубже одного слоя
+			 *          не идут. Выбор исхода принадлежит не кодеку, а тому, кто пишет:
+			 *          молчаливое обращение в знаки оставляло бы потребителя с записью, которая
+			 *          разбирается, но означает иное.
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of a nesting at the writing of a tree into a SysLog record
+			 *
+			 * @details A record of the system log carries no tree of an arbitrary depth: the fields of the
+			 *          header are characters, while the structured data go no deeper than one layer. The choice
+			 *          of the outcome belongs not to the codec but to the one who writes: a silent turning into
+			 *          characters would leave a consumer with a record that is parsed but means something else.
 			 *
 			 * \~
 			 */
@@ -549,13 +670,17 @@ namespace awh {
 			 * @brief Метод получения текста сообщения об ошибке разбора
 			 *
 			 * @details Текст выдаётся на английском языке и предназначен журналу, а не
-			 * потребителю: разбирать отказы надлежит по коду, а не по тексту
+			 *          потребителю: разбирать отказы надлежит по коду, а не по тексту.
 			 *
 			 * @param error код ошибки разбора
 			 * @return      текст сообщения об ошибке разбора
 			 *
 			 * \~english
 			 * @brief Method of getting the text of the message about an error of the parsing
+			 *
+			 * @details The text is issued in English and is meant for a journal, and not for a consumer: the
+			 *          refusals are to be parsed by the code, and not by the text.
+			 *
 			 * @param error error code of the parsing
 			 * @return      text of the message about an error of the parsing
 			 *
@@ -568,13 +693,17 @@ namespace awh {
 			 * @brief Метод получения имени источника сообщения
 			 *
 			 * @details Имена взяты из описания RFC 5424 и общеприняты службами журналов;
-			 * при значении, за предел таблицы выходящем, выдаётся пустая строка
+			 *          при значении, за предел таблицы выходящем, выдаётся пустая строка.
 			 *
 			 * @param facility источник сообщения
 			 * @return         имя источника сообщения
 			 *
 			 * \~english
 			 * @brief Method of getting the name of the source of a message
+			 *
+			 * @details The names are taken from the description of RFC 5424 and are commonly accepted by the
+			 *          journal services; for a value going beyond the table an empty string is issued.
+			 *
 			 * @param facility source of a message
 			 * @return         name of the source of a message
 			 *
@@ -591,6 +720,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of the degree of the importance of a message
+			 *
 			 * @param severity degree of the importance of a message
 			 * @return         name of the degree of the importance of a message
 			 *
@@ -603,10 +733,13 @@ namespace awh {
 			 * @brief Положение в разбираемом тексте
 			 *
 			 * @details Положение несёт и смещение в октетах от начала текста, и номер
-			 * строки со столбцом
+			 *          строки со столбцом.
 			 *
 			 * \~english
 			 * @brief Position in the parsed text
+			 *
+			 * @details A position carries both an offset in octets from the beginning of a text and the
+			 *          numbers of a line and of a column.
 			 *
 			 * \~
 			 */

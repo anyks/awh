@@ -36,7 +36,7 @@ using namespace std;
 using namespace awh::codec::yaml;
 
 /**
- * @brief Внутренние помощники потокового чтения
+ * @brief Инкапсулируем вспомогательные функции и константы модуля в аннонимное пространство имён
  *
  */
 namespace {
@@ -47,6 +47,7 @@ namespace {
 	 *       начало это лишь директивой `%TAG !! ...`, объявленной самим текстом
 	 */
 	static constexpr string_view STANDARD_TAG = "tag:yaml.org,2002:";
+
 	/**
 	 * @brief Функция проверки содержимого метки `!!binary` на запись base64
 	 *

@@ -57,7 +57,7 @@
  *
  * @details Обход дерева и снятие событий разбора - самые горячие пути контейнера, а работы
  *          в них одна арифметика. Оставленные в переводимом наборе, они обращаются в вызовы
- *          через границу единиц трансляции и стоят дороже самой работы
+ *          через границу единиц трансляции и стоят дороже самой работы.
  *
  * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных файлах:
  *       реализация живёт в `.cpp`, а для встраивания заводятся посредники с
@@ -65,12 +65,14 @@
  *
  * \~english
  * @brief Forced inlining of the hot accessors of the container
+ *
  * @details The traversal of the tree and the taking of the parsing events are the hottest paths of the container,
- * while the work in them is mere arithmetic. Left in the translation unit, they turn into calls
- * across the boundary of the translation units and cost more than the work itself
+ *          while the work in them is mere arithmetic. Left in the translation unit, they turn into calls
+ *          across the boundary of the translation units and cost more than the work itself.
+ *
  * @note This device is an accepted exception in AWH from the rule about clean header files:
- * the implementation lives in `.cpp`, while for the inlining mediators with
- * `always_inline` are made. See `include/codec/json/common.hpp`
+ *       the implementation lives in `.cpp`, while for the inlining mediators with
+ *       `always_inline` are made. See `include/codec/json/common.hpp`
  *
  * \~
  */
@@ -119,75 +121,93 @@ namespace awh {
 		 * @brief Пространство имён бинарного контейнера ABC
 		 *
 		 * @details ABC (ANYKS Binary Container) хранит те же построения, что и текстовые
-		 * кодеки библиотеки - значения, массивы и отображения любой глубины вложенности, -
-		 * но записью двоичной, а не знаковой. Устройство его задано четырьмя решениями:
+		 *          кодеки библиотеки - значения, массивы и отображения любой глубины вложенности, -
+		 *          но записью двоичной, а не знаковой. Устройство его задано четырьмя решениями:
 		 *
 		 * @li **Метка ведёт значение.** Ведущий октет несёт крупный вид в трёх старших
-		 * разрядах и подробность в пяти младших: малое число, короткая строка и все
-		 * значения-одиночки умещаются в него целиком, не занимая ни октета сверх
+		 *     разрядах и подробность в пяти младших: малое число, короткая строка и все
+		 *     значения-одиночки умещаются в него целиком, не занимая ни октета сверх
+		 *
 		 * @li **Вид числа записан, а не выведен.** Текстовый кодек хранит запись числа и
-		 * определяет вид её разбором; здесь вид стоит в метке, и разбирать нечего
+		 *     определяет вид её разбором; здесь вид стоит в метке, и разбирать нечего
+		 *
 		 * @li **Строки и двоичные данные не перекодируются.** Экранирования в двоичной
-		 * записи нет вовсе, оттого значение при чтении из поданного целиком буфера не
-		 * копируется, а отмечается отрезком в нём
+		 *     записи нет вовсе, оттого значение при чтении из поданного целиком буфера не
+		 *     копируется, а отмечается отрезком в нём
+		 *
 		 * @li **Узел дерева несёт размах своего поддерева.** Обход собранного дерева идёт
-		 * вперёд по памяти, а пропуск вложенного построения целиком стоит сложения. В самой
-		 * же записи вместимое несёт **количество** значений, а не размах в октетах: пропуск
-		 * по записи оттого стоит обхода. Даётся он вынесенным поддеревом страничного
-		 * хранилища, а не полем длины у всякого вместимого - поле такое платило бы октетами
-		 * на всяком вместимом ради выигрыша, нужного лишь крупным
+		 *     вперёд по памяти, а пропуск вложенного построения целиком стоит сложения. В самой
+		 *     же записи вместимое несёт **количество** значений, а не размах в октетах: пропуск
+		 *     по записи оттого стоит обхода. Даётся он вынесенным поддеревом страничного
+		 *     хранилища, а не полем длины у всякого вместимого - поле такое платило бы октетами
+		 *     на всяком вместимом ради выигрыша, нужного лишь крупным
 		 *
 		 * @details **Намеренные решения.** Перечисленное ниже выбрано осознанно, и
-		 * возвращаться к этим вопросам при разборе кода не следует:
+		 *          возвращаться к этим вопросам при разборе кода не следует:
 		 *
 		 * @li **Имя поля отображения - значение любого вида, кроме вместимого.** Двоичной
-		 * записи ограничение строкою ничего не даёт, а целое именем и короче, и сличается
-		 * быстрее. Вместимое же именем отвергается: розыск по такому имени требовал бы
-		 * сличения поддеревьев, и цена его несоразмерна получаемому
+		 *     записи ограничение строкою ничего не даёт, а целое именем и короче, и сличается
+		 *     быстрее. Вместимое же именем отвергается: розыск по такому имени требовал бы
+		 *     сличения поддеревьев, и цена его несоразмерна получаемому
+		 *
 		 * @li **Число свыше родных видов хранится точно.** Целое шире 64 разрядов и
-		 * десятичное с точным дробным разрядом записываются своими видами через `awh::BigNum`,
-		 * а не обращаются в `double` с потерей точности
+		 *     десятичное с точным дробным разрядом записываются своими видами через `awh::BigNum`,
+		 *     а не обращаются в `double` с потерей точности
+		 *
 		 * @li **Двоичные данные - полноправное значение.** Текстовые кодеки вынуждены гнать
-		 * их через BASE64, прирастая на треть; здесь они лежат как есть
+		 *     их через BASE64, прирастая на треть; здесь они лежат как есть
+		 *
 		 * @li **Глубина вложенности ограничена.** Разбор ведётся без рекурсии, но предел
-		 * нужен и без неё: миллион открытых вместимых иначе съедает память под стек состояний
+		 *     нужен и без неё: миллион открытых вместимых иначе съедает память под стек состояний
+		 *
 		 * @li **Порядок октетов записи - от младшего к старшему.** Он совпадает с родным
-		 * порядком у всех целевых машин, и перестановка на них не стоит ничего
+		 *     порядком у всех целевых машин, и перестановка на них не стоит ничего
 		 *
 		 * \~english
 		 * @brief ABC binary container namespace
+		 *
 		 * @details ABC (ANYKS Binary Container) stores the same constructions as the textual codecs
-		 * of the library — the values, the arrays and the mappings of any depth of the nesting — but
-		 * by a binary record rather than by a character one. Its structure is set by four decisions:
+		 *          of the library — the values, the arrays and the mappings of any depth of the nesting — but
+		 *          by a binary record rather than by a character one. Its structure is set by four decisions:
+		 *
 		 * @li **A tag leads a value.** The leading octet carries the group kind in its three high bits
-		 * and the detail in its five low ones: a small number, a short string and all the singleton values
-		 * fit into it entirely without occupying a single octet more
+		 *     and the detail in its five low ones: a small number, a short string and all the singleton values
+		 *     fit into it entirely without occupying a single octet more
+		 *
 		 * @li **The kind of a number is recorded rather than deduced.** A textual codec stores the record of a number
-		 * and determines its kind by a parsing; here the kind stands in the tag, and there is nothing to parse
+		 *     and determines its kind by a parsing; here the kind stands in the tag, and there is nothing to parse
+		 *
 		 * @li **The strings and the binary data are not transcoded.** There is no escaping in a binary
-		 * record at all, whereby a value at the reading from a buffer submitted in full is not
-		 * copied but marked by a segment in it
+		 *     record at all, whereby a value at the reading from a buffer submitted in full is not
+		 *     copied but marked by a segment in it
+		 *
 		 * @li **A node of the tree carries the extent of its own subtree.** The traversal of an assembled tree goes
-		 * forward through the memory, and the skipping of a nested construction as a whole costs an addition. In the record
-		 * itself a container carries the **number** of the values rather than the extent in octets: the skipping
-		 * by the record therefore costs a traversal. It is given by an external subtree of the paged
-		 * storage rather than by a length field on every container — such a field would pay by the octets
-		 * on every container for the sake of a gain needed only by the large ones
+		 *     forward through the memory, and the skipping of a nested construction as a whole costs an addition. In the record
+		 *     itself a container carries the **number** of the values rather than the extent in octets: the skipping
+		 *     by the record therefore costs a traversal. It is given by an external subtree of the paged
+		 *     storage rather than by a length field on every container — such a field would pay by the octets
+		 *     on every container for the sake of a gain needed only by the large ones
+		 *
 		 * @details **Deliberate decisions.** The below is chosen consciously, and one should not
-		 * return to these questions at the reading of the code:
+		 *          return to these questions at the reading of the code:
+		 *
 		 * @li **The name of a field of a mapping is a value of any kind except a container.** The restriction
-		 * to a string gives nothing to a binary record, while an integer as a name is both shorter and compared
-		 * faster. A container as a name is rejected: a search by such a name would require
-		 * a comparison of the subtrees, and its price is disproportionate to what is obtained
+		 *     to a string gives nothing to a binary record, while an integer as a name is both shorter and compared
+		 *     faster. A container as a name is rejected: a search by such a name would require
+		 *     a comparison of the subtrees, and its price is disproportionate to what is obtained
+		 *
 		 * @li **A number above the native kinds is stored exactly.** An integer wider than 64 bits and
-		 * a decimal one with an exact fractional bit are written by their own kinds through `awh::BigNum`
-		 * rather than turned into a `double` with a loss of the precision
+		 *     a decimal one with an exact fractional bit are written by their own kinds through `awh::BigNum`
+		 *     rather than turned into a `double` with a loss of the precision
+		 *
 		 * @li **The binary data are a full-fledged value.** The textual codecs are forced to drive
-		 * them through BASE64 growing by a third; here they lie as they are
+		 *     them through BASE64 growing by a third; here they lie as they are
+		 *
 		 * @li **The depth of the nesting is limited.** The parsing is conducted without a recursion, but the limit
-		 * is needed even without it: a million of the opened containers would otherwise eat up the memory for the stack of the states
+		 *     is needed even without it: a million of the opened containers would otherwise eat up the memory for the stack of the states
+		 *
 		 * @li **The order of the octets of the record is from the low to the high one.** It coincides with the native
-		 * order on all the target machines, and a rearrangement on them costs nothing
+		 *     order on all the target machines, and a rearrangement on them costs nothing
 		 *
 		 * \~
 		 */
@@ -197,14 +217,15 @@ namespace awh {
 			 * @brief Наибольшая допустимая глубина вложенности
 			 *
 			 * @details Предел этот бережёт не стек вызовов - разбор ведётся без рекурсии, - а
-			 * память под стек состояний: запись из одних открывающих вместимых иначе заняла бы
-			 * её всю
+			 *          память под стек состояний: запись из одних открывающих вместимых иначе заняла бы
+			 *          её всю.
 			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting
+			 *
 			 * @details This limit guards not the stack of the calls — the parsing is conducted without a recursion —
-			 * but the memory for the stack of the states: a record of the opening containers alone would otherwise occupy
-			 * all of it
+			 *          but the memory for the stack of the states: a record of the opening containers alone would otherwise occupy
+			 *          all of it.
 			 *
 			 * \~
 			 */
@@ -226,19 +247,21 @@ namespace awh {
 			 * @brief Количество полей отображения, начиная с какого заводится указатель имён
 			 *
 			 * @details Ниже этого порога имя разыскивается перебором, и это дешевле всякого
-			 * отображения: сличение имён идёт по памяти подряд, а заведение отображения
-			 * стоит выделения памяти и подсчёта хеша на всякое имя
+			 *          отображения: сличение имён идёт по памяти подряд, а заведение отображения
+			 *          стоит выделения памяти и подсчёта хеша на всякое имя.
 			 *
 			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
-			 * не при разборе. Отображение, к которому по имени не обращались, не платит ничего
+			 *       не при разборе. Отображение, к которому по имени не обращались, не платит ничего
 			 *
 			 * \~english
 			 * @brief Number of the fields of a mapping starting from which the index of the names is created
+			 *
 			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
-			 * mapping: the comparison of the names goes through the memory consecutively, while the creation of a mapping
-			 * costs an allocation of the memory and a computation of a hash for every name
+			 *          mapping: the comparison of the names goes through the memory consecutively, while the creation of a mapping
+			 *          costs an allocation of the memory and a computation of a hash for every name.
+			 *
 			 * @note The index is created **on demand** — at the first access by a name rather
-			 * than at the parsing. A mapping which has not been accessed by a name pays nothing
+			 *       than at the parsing. A mapping which has not been accessed by a name pays nothing
 			 *
 			 * \~
 			 */
@@ -271,25 +294,29 @@ namespace awh {
 			 * @brief Крупные виды проволочной записи
 			 *
 			 * @details Ведущий октет всякого значения несёт крупный вид в трёх старших
-			 * разрядах, а подробность - в пяти младших. Подробность значит одно из трёх:
-			 * само значение, когда оно умещается в пять разрядов; ширину следующей за
-			 * меткой длины; либо разновидность одиночного значения
+			 *          разрядах, а подробность - в пяти младших. Подробность значит одно из трёх:
+			 *          само значение, когда оно умещается в пять разрядов; ширину следующей за
+			 *          меткой длины; либо разновидность одиночного значения.
 			 *
 			 * @note Целое разделено на два крупных вида по знаку намеренно. Единый вид
-			 * потребовал бы записи со смещённым нулём либо зигзагом, и малое отрицательное
-			 * число перестало бы умещаться в ведущий октет. Обещание это о РАЗМЕРЕ записи,
-			 * и закреплено проверкой `CodecAbcWriter.SmallNumbersFitLeadingOctet`: числа
-			 * от −24 до 23 обязаны укладываться одним октетом, а 24 и −25 - двумя
+			 *       потребовал бы записи со смещённым нулём либо зигзагом, и малое отрицательное
+			 *       число перестало бы умещаться в ведущий октет. Обещание это о РАЗМЕРЕ записи,
+			 *       и закреплено проверкой `CodecAbcWriter.SmallNumbersFitLeadingOctet`: числа
+			 *       от −24 до 23 обязаны укладываться одним октетом, а 24 и −25 - двумя
 			 *
 			 * \~english
 			 * @brief Major kinds of the wire record
+			 *
 			 * @details The leading octet of every value carries the group kind in its three high bits,
-			 * and the detail in its five low ones. The detail means one of the three: the value
-			 * itself when it fits into the five bits; the width of the length following the tag;
-			 * or the variety of a singleton value
+			 *          and the detail in its five low ones. The detail means one of the three: the value
+			 *          itself when it fits into the five bits; the width of the length following the tag;
+			 *          or the variety of a singleton value.
+			 *
 			 * @note The integer is divided into two group kinds by the sign deliberately. A single kind
-			 * would require a record with a shifted zero or a zigzag, and a small negative
-			 * number would cease to fit into the leading octet
+			 *       would require a record with a shifted zero or a zigzag, and a small negative
+			 *       number would cease to fit into the leading octet. The promise is of the SIZE of the
+			 *       record, and it is fixed by the check `CodecAbcWriter.SmallNumbersFitLeadingOctet`: the
+			 *       numbers from −24 to 23 are obliged to be laid by one octet, while 24 and −25 - by two
 			 *
 			 * \~
 			 */
@@ -309,26 +336,40 @@ namespace awh {
 			 * @brief Разновидности одиночного значения
 			 *
 			 * @details Значения эти умещаются в ведущий октет целиком либо ведут за собой
-			 * запись установленной ширины. Длины у них нет, оттого и подробность метки
-			 * занята разновидностью
+			 *          запись установленной ширины. Длины у них нет, оттого и подробность метки
+			 *          занята разновидностью.
+			 *
+			 * @note Логическая пара зовётся `NO`/`YES`, а не `FALSE`/`TRUE`, НАМЕРЕННО.
+			 *       `windef.h` заводит `FALSE` и `TRUE` макросами-значениями, а раскрытие макроса
+			 *       идёт ДО всякого разбора имён - квалификация `abc::single_t::FALSE` от него не
+			 *       спасает, и пара снятия макросов в заголовке тоже: она бережёт текст СВОЙ, а не
+			 *       место вызова у потребителя. Замер 01.09.2026 на Windows 11 ARM64: из 177 имён
+			 *       открытого договора ABC сталкивались ровно эти два и более ни одного.
+			 *       Переименование - решение от 02.09.2026
+			 *
+			 * @warning Числа договора при переименовании НЕ тронуты: `NO` есть прежний
+			 *          `FALSE` (0x01), `YES` - прежний `TRUE` (0x02). Запись проволочная не менялась
+			 *          ни октетом
 			 *
 			 * \~english
 			 * @brief Varieties of a singleton value
+			 *
 			 * @details These values fit into the leading octet entirely or lead a record
-			 * of a set width. They have no length, whereby the detail of the tag is occupied
-			 * by the variety
+			 *          of a set width. They have no length, whereby the detail of the tag is occupied
+			 *          by the variety.
 			 *
-			 * @note Логическая пара зовётся `NO`/`YES`, а не `FALSE`/`TRUE`, НАМЕРЕННО.
-			 * `windef.h` заводит `FALSE` и `TRUE` макросами-значениями, а раскрытие макроса
-			 * идёт ДО всякого разбора имён - квалификация `abc::single_t::FALSE` от него не
-			 * спасает, и пара снятия макросов в заголовке тоже: она бережёт текст СВОЙ, а не
-			 * место вызова у потребителя. Замер 01.09.2026 на Windows 11 ARM64: из 177 имён
-			 * открытого договора ABC сталкивались ровно эти два и более ни одного.
-			 * Переименование - решение от 02.09.2026
+			 * @note The logical pair is called `NO`/`YES`, and not `FALSE`/`TRUE`, and this is
+			 *       DELIBERATE. `windef.h` introduces `FALSE` and `TRUE` as value-like macros, while a
+			 *       macro expands BEFORE any parsing of the names - a qualification
+			 *       `abc::single_t::FALSE` does not save from it, and the pair of the macro removals in the
+			 *       header does not either: that one guards its OWN text, and not the place of the call at
+			 *       a consumer. A measurement of 2026-09-01 on Windows 11 ARM64: out of 177 names of the
+			 *       open contract of ABC exactly these two collided, and not one more. The renaming is a
+			 *       decision of 2026-09-02
 			 *
-			 * @warning Числа договора при переименовании НЕ тронуты: `NO` есть прежний
-			 * `FALSE` (0x01), `YES` - прежний `TRUE` (0x02). Запись проволочная не менялась
-			 * ни октетом
+			 * @warning The numbers of the contract were NOT touched by the renaming: `NO` is the former
+			 *          `FALSE` (0x01), `YES` - the former `TRUE` (0x02). The wire record has not changed
+			 *          by a single octet
 			 *
 			 * \~
 			 */
@@ -348,12 +389,13 @@ namespace awh {
 			 * @brief Разновидности расширения
 			 *
 			 * @details Расширением записывается то, чему родного вида в машине нет вовсе:
-			 * число, не вместимое в восемь октетов, и десятичное с точным дробным разрядом
+			 *          число, не вместимое в восемь октетов, и десятичное с точным дробным разрядом.
 			 *
 			 * \~english
 			 * @brief Varieties of an extension
+			 *
 			 * @details By an extension is written that which has no native kind in a machine at all:
-			 * a number not containable in eight octets and a decimal one with an exact fractional bit
+			 *          a number not containable in eight octets and a decimal one with an exact fractional bit.
 			 *
 			 * \~
 			 */
@@ -369,16 +411,17 @@ namespace awh {
 			 * @brief Ширина записи размаха вместимого в октетах
 			 *
 			 * @details Размах кладётся записью ПОСТОЯННОЙ ширины, а не переменной: сборка
-			 * узнаёт его лишь при закрытии вместимого, и место под него отводится наперёд,
-			 * а заполняется задним числом. Переменная ширина обязала бы сдвигать всё
-			 * уложенное следом
+			 *          узнаёт его лишь при закрытии вместимого, и место под него отводится наперёд,
+			 *          а заполняется задним числом. Переменная ширина обязала бы сдвигать всё
+			 *          уложенное следом.
 			 *
 			 * \~english
 			 * @brief Width of the record of the span of a container in octets
+			 *
 			 * @details The span is laid by a record of a CONSTANT width rather than of a variable one:
-			 * the assembling learns it only upon the closing of the container, and the place for it is
-			 * set aside in advance and filled in after the fact. A variable width would oblige one to
-			 * shift everything laid afterwards
+			 *          the assembling learns it only upon the closing of the container, and the place for it is
+			 *          set aside in advance and filled in after the fact. A variable width would oblige one to
+			 *          shift everything laid afterwards.
 			 *
 			 * \~
 			 */
@@ -389,12 +432,13 @@ namespace awh {
 			 * @brief Наибольшее значение, умещающееся в подробность ведущего октета
 			 *
 			 * @details Значения от нуля до этого предела записываются ведущим октетом целиком.
-			 * Значения выше ведут за собой запись, а подробность занимается её шириною
+			 *          Значения выше ведут за собой запись, а подробность занимается её шириною.
 			 *
 			 * \~english
 			 * @brief Largest value fitting into the detail of the leading octet
+			 *
 			 * @details The values from zero to this limit are written by the leading octet entirely.
-			 * The values above lead a record, and the detail is occupied by its width
+			 *          The values above lead a record, and the detail is occupied by its width.
 			 *
 			 * \~
 			 */
@@ -405,8 +449,8 @@ namespace awh {
 			 * @brief Виды узлов документа
 			 *
 			 * @details Вид узла отвечает на вопрос о построении: чем значение является, -
-			 * тогда как вид значения отвечает на вопрос о хранении: каким именно числом оно
-			 * записано
+			 *          тогда как вид значения отвечает на вопрос о хранении: каким именно числом оно
+			 *          записано.
 			 *
 			 * @note Перечень `abc::kind_t` — алиас общего `codec::kind_t`, объявленного
 			 *       в `include/codec/value.hpp`. Внутренний вид узла ABC и общий вид
@@ -420,11 +464,20 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Kinds of the nodes of a document
+			 *
 			 * @details The kind of a node answers the question about the construction: what the value is, —
-			 * whereas the kind of a value answers the question about the storage: by which number exactly it
-			 * is written
+			 *          whereas the kind of a value answers the question about the storage: by which number exactly it
+			 *          is written.
+			 *
+			 * @note The list `abc::kind_t` is an alias of the common `codec::kind_t`, declared in
+			 *       `include/codec/value.hpp`. The inner kind of a node of ABC and the common kind of a value
+			 *       of all the nine text codecs are one and the same series of values (eleven names, the same
+			 *       zero byte NONE), and to breed two different types under one entity is a surplus code. The
+			 *       decision was taken on 2026-10-10 together with the moving of the common enum out into
+			 *       `codec/value.hpp`
+			 *
 			 * @note An integer and a fractional number are not divided by the kind of a node: this division
-			 * belongs not to the construction but to that by which kind the value is demanded
+			 *       belongs not to the construction but to that by which kind the value is demanded
 			 *
 			 * \~
 			 */
@@ -435,21 +488,23 @@ namespace awh {
 			 * @brief Виды значений документа
 			 *
 			 * @details Виды заданы разрядами, а сборные виды - объединением разрядов. Оттого
-			 * точный вопрос (`INT32`) и сборный (`SIGNED`, `NUMBER`) стоят ровно одинаково -
-			 * одно наложение разрядов
+			 *          точный вопрос (`INT32`) и сборный (`SIGNED`, `NUMBER`) стоят ровно одинаково -
+			 *          одно наложение разрядов.
 			 *
 			 * @note Вид хранения извлечению не указ: `INT8` извлекается и как `double`, и как
-			 * `uint64_t`. Извлечение сличает само значение с пределами затребованного вида,
-			 * а не вид хранения с видом затребованным
+			 *       `uint64_t`. Извлечение сличает само значение с пределами затребованного вида,
+			 *       а не вид хранения с видом затребованным
 			 *
 			 * \~english
 			 * @brief Kinds of the values of a document
+			 *
 			 * @details The kinds are set by the bits, and the composite kinds by a union of the bits. Whereby
-			 * an exact question (`INT32`) and a composite one (`SIGNED`, `NUMBER`) cost exactly the same —
-			 * one overlaying of the bits
+			 *          an exact question (`INT32`) and a composite one (`SIGNED`, `NUMBER`) cost exactly the same —
+			 *          one overlaying of the bits.
+			 *
 			 * @note The kind of the storage is not a directive to the extraction: `INT8` is extracted both as a `double` and as
-			 * a `uint64_t`. The extraction compares the value itself with the limits of the demanded kind
-			 * rather than the kind of the storage with the demanded kind
+			 *       a `uint64_t`. The extraction compares the value itself with the limits of the demanded kind
+			 *       rather than the kind of the storage with the demanded kind
 			 *
 			 * \~
 			 */
@@ -497,12 +552,13 @@ namespace awh {
 			 * @brief Коды ошибок разбора записи
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
-			 * вместе со смещением в поданной записи, где отказ произошёл
+			 *          вместе со смещением в поданной записи, где отказ произошёл.
 			 *
 			 * \~english
 			 * @brief Error codes of the parsing of a record
+			 *
 			 * @details The parsing does not throw exceptions: the error code together with the offset
-			 * in the submitted record where the refusal has occurred serves as the sign of a refusal
+			 *          in the submitted record where the refusal has occurred serves as the sign of a refusal.
 			 *
 			 * \~
 			 */
@@ -559,25 +615,28 @@ namespace awh {
 			 * \~russian
 			 * @brief Виды событий чтения записи
 			 *
-			 * @details Чтение выдаёт события по мере разбора записи, не удерживая её целиком
+			 * @details Чтение выдаёт события по мере разбора записи, не удерживая её целиком.
 			 *
 			 * @note Начало и конец вместимого выдаются отдельными событиями, а не одним
-			 * событием с готовым вместимым: массив на миллион значений иначе удерживался бы
-			 * в памяти целиком прежде первой выдачи, и потоковое чтение потеряло бы смысл
+			 *       событием с готовым вместимым: массив на миллион значений иначе удерживался бы
+			 *       в памяти целиком прежде первой выдачи, и потоковое чтение потеряло бы смысл
 			 *
 			 * @note Имя поля отображения выдаётся своим событием, предшествующим событию
-			 * значения. Значением при этом вправе оказаться вместимое, и тогда за именем
-			 * идёт начало вместимого
+			 *       значения. Значением при этом вправе оказаться вместимое, и тогда за именем
+			 *       идёт начало вместимого
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a record
-			 * @details The reading issues the events as the record is parsed without holding it in full
+			 *
+			 * @details The reading issues the events as the record is parsed without holding it in full.
+			 *
 			 * @note The beginning and the end of a container are issued by separate events rather than by one
-			 * event with a ready container: an array of a million values would otherwise be held
-			 * in the memory in full before the first issuance, and the streaming reading would lose its sense
+			 *       event with a ready container: an array of a million values would otherwise be held
+			 *       in the memory in full before the first issuance, and the streaming reading would lose its sense
+			 *
 			 * @note The name of a field of a mapping is issued by its own event preceding the event
-			 * of the value. The value may thereby turn out to be a container, and then the name
-			 * is followed by the beginning of a container
+			 *       of the value. The value may thereby turn out to be a container, and then the name
+			 *       is followed by the beginning of a container
 			 *
 			 * \~
 			 */
@@ -609,12 +668,13 @@ namespace awh {
 			 * @brief Правила обращения с повторяющимся именем поля отображения
 			 *
 			 * @details Молчаливый выбор одного из значений означал бы потерю данных, оттого
-			 * отказ и взят по умолчанию
+			 *          отказ и взят по умолчанию.
 			 *
 			 * \~english
 			 * @brief Rules of the handling of a repeating name of a field of a mapping
+			 *
 			 * @details A silent choice of one of the values would mean a loss of the data, whereby
-			 * the refusal is taken by default
+			 *          the refusal is taken by default.
 			 *
 			 * \~
 			 */
@@ -628,24 +688,36 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @note Правила эти живут РАЗНЫМИ слоями кодека, и знать о том потребителю
-			 * должно. `REFUSE` отвечается потоковым разбором: повтор виден ему сразу, и
-			 * запись отвергается кодом `DUPLICATE_KEY`, не дойдя до дерева. `FIRST` и
-			 * `LAST` осуществлены ДЕРЕВОМ: выбор одного из двух значений требует видеть
-			 * отображение целиком, а события выдаются по одному и назад разбор не ходит,
-			 * оттого потоковый разбор пропускает их наравне с `KEEP`, а выбор ведётся в
-			 * миг закрытия отображения. Потребителю потока правила эти обещанного не
-			 * дают, и опираться на них следует лишь при разборе в дерево либо в значение
+			 *       должно. `REFUSE` отвечается потоковым разбором: повтор виден ему сразу, и
+			 *       запись отвергается кодом `DUPLICATE_KEY`, не дойдя до дерева. `FIRST` и
+			 *       `LAST` осуществлены ДЕРЕВОМ: выбор одного из двух значений требует видеть
+			 *       отображение целиком, а события выдаются по одному и назад разбор не ходит,
+			 *       оттого потоковый разбор пропускает их наравне с `KEEP`, а выбор ведётся в
+			 *       миг закрытия отображения. Потребителю потока правила эти обещанного не
+			 *       дают, и опираться на них следует лишь при разборе в дерево либо в значение
 			 *
 			 * @note Сличение имён у `FIRST` и `LAST` ведётся по ЗНАЧЕНИЮ узлов, тогда как
-			 * `REFUSE` сличает полную запись имени вместе с меткой. Оттого два имени, несущие
-			 * одно число, но писанные разной шириною метки, деревом сочтутся повтором, а
-			 * потоковым разбором - различными именами. Расхождение это намеренно: `FIRST`
-			 * и `LAST` выбирают между значениями, и ширина метки к выбору отношения не имеет
+			 *       `REFUSE` сличает полную запись имени вместе с меткой. Оттого два имени, несущие
+			 *       одно число, но писанные разной шириною метки, деревом сочтутся повтором, а
+			 *       потоковым разбором - различными именами. Расхождение это намеренно: `FIRST`
+			 *       и `LAST` выбирают между значениями, и ширина метки к выбору отношения не имеет
 			 *
 			 * \~english
-			 * @note These rules live in DIFFERENT layers of the codec. `REFUSE` is answered by the
-			 * streaming parsing, while `FIRST` and `LAST` are realized by the tree and are passed
-			 * through by the streaming parsing on a par with `KEEP`
+			 * @note These rules live in DIFFERENT layers of the codec, and a consumer is bound to know of
+			 *       that. `REFUSE` is answered by the streaming parsing: a repeat is seen by it at once, and the
+			 *       record is refused by the code `DUPLICATE_KEY` without reaching the tree. `FIRST` and `LAST`
+			 *       are realized by the TREE: a choice of one of two values requires seeing the mapping in
+			 *       full, while the events are issued one by one and the parsing does not walk back, that is why
+			 *       the streaming parsing passes them on a par with `KEEP`, and the choice is made at the moment
+			 *       of the closing of the mapping. To a consumer of a stream these rules promise nothing, and to
+			 *       lean on them beseems only at a parsing into a tree or into a value
+			 *
+			 * @note The comparison of the names at `FIRST` and `LAST` is conducted by the VALUE of the nodes,
+			 *       whereas `REFUSE` compares the whole record of the name together with its tag. That is why
+			 *       two names carrying one number, but written by a different width of the tag, will count as a
+			 *       repeat by the tree, and as different names by the streaming parsing. This divergence is
+			 *       deliberate: `FIRST` and `LAST` choose between the values, and the width of the tag bears on
+			 *       the choice in no way
 			 *
 			 * \~
 			 */
@@ -655,14 +727,15 @@ namespace awh {
 			 * @brief Правила обращения со строкой, не отвечающей кодировке UTF-8
 			 *
 			 * @details Строка записи объявлена кодировкой UTF-8, и байты, ей не отвечающие,
-			 * разбор отвергает. Данные, кодировке не подчинённые, записываются двоичным
-			 * значением, а не строкой, - на то оно и заведено
+			 *          разбор отвергает. Данные, кодировке не подчинённые, записываются двоичным
+			 *          значением, а не строкой, - на то оно и заведено.
 			 *
 			 * \~english
 			 * @brief Rules of the handling of a string not conforming to the UTF-8 encoding
+			 *
 			 * @details A string of the record is declared to be in the UTF-8 encoding, and the bytes not conforming to it
-			 * the parsing rejects. The data not subordinate to an encoding are written by a binary
-			 * value rather than by a string — that is what it is made for
+			 *          the parsing rejects. The data not subordinate to an encoding are written by a binary
+			 *          value rather than by a string — that is what it is made for.
 			 *
 			 * \~
 			 */
@@ -677,14 +750,15 @@ namespace awh {
 			 * @brief Отрезок в хранилище октетов
 			 *
 			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт
-			 * дописыванием и вправе переехать в памяти, и указатель после переезда стал бы
-			 * недействителен
+			 *          дописыванием и вправе переехать в памяти, и указатель после переезда стал бы
+			 *          недействителен.
 			 *
 			 * \~english
 			 * @brief Segment in the storage of the octets
+			 *
 			 * @details A segment holds an offset and a length rather than a pointer: the storage grows
-			 * by an appending and may move in the memory, and a pointer after the move would become
-			 * invalid
+			 *          by an appending and may move in the memory, and a pointer after the move would become
+			 *          invalid.
 			 *
 			 * \~
 			 */
@@ -713,6 +787,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param offset offset of the beginning of the segment in the storage of the octets
 				 * @param length length of the segment in octets
 				 *
@@ -726,17 +801,19 @@ namespace awh {
 			 * @brief Кусок выдачи собранной записи
 			 *
 			 * @details Служит выдаче записи без склейки её в один буфер: куски подаются
-			 * средству записи россыпью, и содержимое, взятое ссылкой, не копируется вовсе
+			 *          средству записи россыпью, и содержимое, взятое ссылкой, не копируется вовсе.
 			 *
 			 * @note Кусок ссылается на чужую память и живёт не дольше её: содержимое,
-			 * уложенное ссылкой, обязано пережить выдачу записи
+			 *       уложенное ссылкой, обязано пережить выдачу записи
 			 *
 			 * \~english
 			 * @brief Piece of the issuance of an assembled record
+			 *
 			 * @details Serves the issuance of a record without gluing it into one buffer: the pieces are submitted
-			 * to the means of the writing scattered, and the content taken by a reference is not copied at all
+			 *          to the means of the writing scattered, and the content taken by a reference is not copied at all.
+			 *
 			 * @note A piece refers to a foreign memory and lives no longer than it: the content
-			 * laid by a reference is obliged to outlive the issuance of the record
+			 *       laid by a reference is obliged to outlive the issuance of the record
 			 *
 			 * \~
 			 */
@@ -765,6 +842,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param buffer buffer of the octets of the piece of the issuance
 				 * @param size size of the octets of the piece of the issuance
 				 *
@@ -778,14 +856,15 @@ namespace awh {
 			 * @brief Положение в поданной записи
 			 *
 			 * @details Служит для указания места отказа и для привязки значений к поданной
-			 * записи. Строк и столбцов у двоичной записи нет, оттого положение и задаётся
-			 * одним смещением
+			 *          записи. Строк и столбцов у двоичной записи нет, оттого положение и задаётся
+			 *          одним смещением.
 			 *
 			 * \~english
 			 * @brief Position in the submitted record
+			 *
 			 * @details Serves for the indication of the place of a refusal and for the binding of the values to the submitted
-			 * record. A binary record has no lines and columns, whereby the position is set
-			 * by one offset
+			 *          record. A binary record has no lines and columns, whereby the position is set
+			 *          by one offset.
 			 *
 			 * \~
 			 */
@@ -816,6 +895,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the textual description of a refusal code
+			 *
 			 * @param error error code of the parsing
 			 * @return textual description of the error code
 			 *
@@ -831,6 +911,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the name of a kind of a node
+			 *
 			 * @param kind kind of a node of a document
 			 * @return name of the kind of the node
 			 *
@@ -849,8 +930,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the name of a kind of a value
+			 *
 			 * @note The name is issued for an exact kind rather than for a composite one: a composite kind cannot be
 			 *       named, for it is a set of the kinds rather than a kind
+			 *
 			 * @param type kind of a value of a document
 			 * @return name of the kind of the value
 			 *
@@ -862,15 +945,17 @@ namespace awh {
 			 * @brief Функция получения вида узла по виду значения
 			 *
 			 * @details Вид узла есть огрубление вида значения до словаря построения: всякое
-			 * число, каким бы видом оно ни хранилось, есть узел вида `NUMBER`
+			 *          число, каким бы видом оно ни хранилось, есть узел вида `NUMBER`
 			 *
 			 * @param type вид значения документа
 			 * @return     вид узла документа
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the kind of a node by the kind of a value
+			 *
 			 * @details The kind of a node is a coarsening of the kind of a value down to the vocabulary of the construction: every
-			 * number, by whichever kind it is stored, is a node of the kind `NUMBER`
+			 *          number, by whichever kind it is stored, is a node of the kind `NUMBER`
+			 *
 			 * @param type kind of a value of a document
 			 * @return kind of a node of a document
 			 *
@@ -887,6 +972,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the assembling of the leading octet of a value
+			 *
 			 * @param group group kind of the wire record
 			 * @param detail detail of the tag
 			 * @return assembled leading octet
@@ -903,6 +989,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the extraction of the group kind from the leading octet
+			 *
 			 * @param tag leading octet of a value
 			 * @return group kind of the wire record
 			 *
@@ -918,6 +1005,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the extraction of the detail from the leading octet
+			 *
 			 * @param tag leading octet of a value
 			 * @return detail of the tag
 			 *
@@ -929,8 +1017,8 @@ namespace awh {
 			 * @brief Функция получения ширины записи, ведомой подробностью метки
 			 *
 			 * @details Подробность до `INLINE_LIMIT` включительно несёт само значение, и
-			 * ширина ведомой записи равна нулю. Подробности выше означают ширину в один, два,
-			 * четыре и восемь октетов
+			 *          ширина ведомой записи равна нулю. Подробности выше означают ширину в один, два,
+			 *          четыре и восемь октетов.
 			 *
 			 * @note Подробности от `0x1C` до `0x1E` отведены под будущее, а `0x1F` означает
 			 *       у вместимого неопределённую длину, а у одиночного значения - конец такого
@@ -942,12 +1030,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the width of the record led by the detail of a tag
+			 *
 			 * @details A detail up to `INLINE_LIMIT` inclusive carries the value itself, and
-			 * the width of the led record equals zero. The details above mean a width of one, two,
-			 * four and eight octets
+			 *          the width of the led record equals zero. The details above mean a width of one, two,
+			 *          four and eight octets.
+			 *
 			 * @note The details from `0x1C` to `0x1E` are reserved for the future, while `0x1F` means
 			 *       an indefinite length for a container and the end of such a container for a singleton value.
 			 *       They lead no width, and the work answers with a refusal for all the four
+			 *
 			 * @param detail detail of the tag
 			 * @param result width of the led record in octets
 			 * @return sign of the recognition of the detail
@@ -960,19 +1051,21 @@ namespace awh {
 			 * @brief Функция получения наименьшей подробности, вмещающей значение
 			 *
 			 * @details Служит записи: значение до `INLINE_LIMIT` укладывается в саму метку, а
-			 * прочие получают наименьшую ширину, какая их вмещает. Наименьшая запись обязана
-			 * быть единственной, иначе одно и то же значение записалось бы двумя видами, и
-			 * строгий вид записи стал бы невозможен
+			 *          прочие получают наименьшую ширину, какая их вмещает. Наименьшая запись обязана
+			 *          быть единственной, иначе одно и то же значение записалось бы двумя видами, и
+			 *          строгий вид записи стал бы невозможен.
 			 *
 			 * @param value укладываемое значение
 			 * @return      подробность метки
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the smallest detail containing a value
+			 *
 			 * @details Serves the writing: a value up to `INLINE_LIMIT` is laid into the tag itself, while
-			 * the others receive the smallest width which contains them. The smallest record must
-			 * be the only one, otherwise one and the same value would be written by two kinds, and
-			 * a strict kind of the record would become impossible
+			 *          the others receive the smallest width which contains them. The smallest record must
+			 *          be the only one, otherwise one and the same value would be written by two kinds, and
+			 *          a strict kind of the record would become impossible.
+			 *
 			 * @param value value being laid
 			 * @return detail of the tag
 			 *
@@ -984,23 +1077,23 @@ namespace awh {
 			 * @brief Функция выдачи очередного звена пути
 			 *
 			 * @details Разбор пути держится ЗДЕСЬ, в одном месте на всех, и заведён он
-			 * намеренно общим: правила эти нужны четверым - извлечению и заведению у
-			 * владеющего значения, извлечению и опросу наличия у дерева разбора, - а
-			 * сторож, поставленный на одной дороге и забытый на близнеце, есть почерк,
-			 * каким вскрыты двенадцать находок этого кодека
+			 *          намеренно общим: правила эти нужны четверым - извлечению и заведению у
+			 *          владеющего значения, извлечению и опросу наличия у дерева разбора, - а
+			 *          сторож, поставленный на одной дороге и забытый на близнеце, есть почерк,
+			 *          каким вскрыты двенадцать находок этого кодека.
 			 *
 			 * @details Правила равняются на RFC 6901. Путь пустой значит ВЕСЬ документ и
-			 * звеньев не даёт вовсе. Ведущая косая черта есть приставка указателя и
-			 * отбрасывается, а не даёт пустого звена: `/a/b` суть два звена. Косая черта
-			 * ОДНА даёт одно звено с пустым именем. Звено пустое ВНУТРИ пути есть законное
-			 * имя поля, а не пропуск: `a//b` суть три звена, среднее из них - поле с
-			 * пустым именем
+			 *          звеньев не даёт вовсе. Ведущая косая черта есть приставка указателя и
+			 *          отбрасывается, а не даёт пустого звена: `/a/b` суть два звена. Косая черта
+			 *          ОДНА даёт одно звено с пустым именем. Звено пустое ВНУТРИ пути есть законное
+			 *          имя поля, а не пропуск: `a//b` суть три звена, среднее из них - поле с
+			 *          пустым именем.
 			 *
 			 * @note Путь без ведущей косой черты принимается наравне с указателем: `a/b`
-			 * даёт то же, что `/a/b`. Оставлено ради написанного прежде
+			 *       даёт то же, что `/a/b`. Оставлено ради написанного прежде
 			 *
 			 * @note О том, взять ли звено номером либо именем, работа эта НЕ судит: судит
-			 * о том вид ВМЕСТИЛИЩА у зовущего, как то и велит RFC 6901
+			 *       о том вид ВМЕСТИЛИЩА у зовущего, как то и велит RFC 6901
 			 *
 			 * @param path   разбираемый путь
 			 * @param offset смещение разбора, изменяемое работой
@@ -1009,6 +1102,25 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the issuance of the next segment of a path
+			 *
+			 * @details The parsing of a path is held HERE, in one place for all, and introduced deliberately
+			 *          as a common one: these rules are needed by four - by the extraction and the setting at the
+			 *          owning value, by the extraction and the query of the presence at the tree of the parsing,
+			 *          - while a guard set on one road and forgotten on its twin is the very hand by which twelve
+			 *          findings of this codec were laid open.
+			 *
+			 * @details The rules keep to RFC 6901. An empty path means the WHOLE document and gives no segments
+			 *          at all. A leading slash is the prefix of a pointer and is dropped, rather than giving an
+			 *          empty segment: `/a/b` is two segments. A SINGLE slash gives one segment with an empty
+			 *          name. An empty segment INSIDE a path is a lawful name of a field, and not a gap: `a//b`
+			 *          is three segments, and the middle of them is a field with an empty name.
+			 *
+			 * @note A path without a leading slash is taken on a par with a pointer: `a/b` gives the same as
+			 *       `/a/b`. Left for the sake of what was written before
+			 *
+			 * @note Of whether a segment is taken by a number or by a name, this work does NOT judge: of that
+			 *       judges the kind of the CONTAINER at the caller, as RFC 6901 itself commands
+			 *
 			 * @param path path being parsed
 			 * @param offset offset of the parsing, changed by the function
 			 * @param result segment of the path being issued
@@ -1023,14 +1135,14 @@ namespace awh {
 			 * @brief Функция разбора звена пути номером значения
 			 *
 			 * @details Работа эта решает лишь ОДНО: годится ли запись звена номером. О том
-			 * же, брать ли звено номером, судит вид ВМЕСТИЛИЩА у зовущего: у отображения
-			 * звено есть имя поля всегда, хотя бы и записанное цифрами
+			 *          же, брать ли звено номером, судит вид ВМЕСТИЛИЩА у зовущего: у отображения
+			 *          звено есть имя поля всегда, хотя бы и записанное цифрами.
 			 *
 			 * @details Ведущий нуль номером негоден по RFC 6901 (раздел 4): без того `01` и
-			 * `1` означали бы одно и то же, и путь перестал бы задавать значение однозначно
+			 *          `1` означали бы одно и то же, и путь перестал бы задавать значение однозначно.
 			 *
 			 * @note Работа вынесена сюда из владеющего значения 03.09.2026, когда путь
-			 * понадобился и дереву разбора: правила пути держатся В ОДНОМ месте на всех
+			 *       понадобился и дереву разбора: правила пути держатся В ОДНОМ месте на всех
 			 *
 			 * @param segment разбираемое звено пути
 			 * @param result  разобранный номер значения
@@ -1038,6 +1150,17 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the parsing of a segment of a path as an index of a value
+			 *
+			 * @details This work decides ONLY ONE thing: whether the record of a segment is fit as a number.
+			 *          Of whether a segment is to be taken by a number, judges the kind of the CONTAINER at the
+			 *          caller: at a mapping a segment is a name of a field always, even when written by digits.
+			 *
+			 * @details A leading zero is unfit as a number by RFC 6901 (section 4): without that `01` and `1`
+			 *          would mean one and the same, and a path would cease to set a value unambiguously.
+			 *
+			 * @note The work was moved out here from the owning value on 2026-09-03, when a path became
+			 *       needed by the tree of the parsing as well: the rules of a path are held in ONE place for all
+			 *
 			 * @param segment segment of the path being parsed
 			 * @param result parsed index of the value
 			 * @return sign of the fitness of the record as an index

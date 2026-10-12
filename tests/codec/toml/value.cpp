@@ -785,7 +785,7 @@ TEST(CodecTomlValue, GraftingRefusesTheMalformedEncoding) {
 		 *       выдаче, какую тело ни выдай
 		 */
 				// Текст дерева, негодное содержимое несущего
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку того, что текст собрался
 		ASSERT_FALSE(text.empty()) << content;
 		// Выполняем проверку того, что знак замены в записанном тексте есть
@@ -798,7 +798,7 @@ TEST(CodecTomlValue, GraftingRefusesTheMalformedEncoding) {
 	// Выполняем проверку того, что годное содержимое переносится по-прежнему
 	ASSERT_TRUE(value.graft(document, {})) << toml::message(document.error());
 		// Выполняем проверку записи перенесённого значения
-	ASSERT_NE(document.text().find("значение"), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("значение"), string::npos) << document.dump();
 }
 
 /**
@@ -843,13 +843,13 @@ TEST(CodecTomlValue, GraftingRefusesTheValueDeeperThanAllowed) {
 	// Выполняем проверку причины отказа, названной поимённо
 	ASSERT_EQ(document.error(), toml::error_t::DEPTH_EXCEEDED) << toml::message(document.error());
 	// Выполняем проверку того, что дерево осталось нетронутым
-	ASSERT_TRUE(document.text().empty()) << document.text();
+	ASSERT_TRUE(document.dump().empty()) << document.dump();
 	// Собранное владеющее значение глубины дозволенной
 	toml::value_t shallow = nested(4);
 	// Выполняем проверку того, что глубина дозволенная прививается по-прежнему
 	ASSERT_TRUE(shallow.graft(document, {})) << toml::message(document.error());
 	// Выполняем проверку записи перенесённого значения
-	ASSERT_NE(document.text().find("ключ"), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("ключ"), string::npos) << document.dump();
 }
 
 TEST(CodecTomlValue, Grafting) {
@@ -924,7 +924,7 @@ TEST(CodecTomlValue, GraftingArray) {
 	// Выполняем проверку того, что перечень не наращён повторным переносом
 	ASSERT_EQ(document.length({"numbers"}), 3);
 	// Выполняем проверку того, что перенесённый перечень уходит в текст настроек
-	ASSERT_NE(document.text().find("numbers = [1, 2, 3]"), string::npos);
+	ASSERT_NE(document.dump().find("numbers = [1, 2, 3]"), string::npos);
 }
 
 /**
@@ -976,7 +976,7 @@ TEST(CodecTomlValue, GraftingNested) {
 	 * @note Проверяется именно запись: дерево, вложенность потерявшее, чтением
 	 *       выдавало бы то же самое, а в текст ушло бы значение обеднённое
 	 */
-	ASSERT_NE(document.text().find("matrix = [[1, 2], [3]]"), string::npos);
+	ASSERT_NE(document.dump().find("matrix = [[1, 2], [3]]"), string::npos);
 }
 
 /**
@@ -1384,7 +1384,7 @@ TEST(CodecTomlValue, GraftRoundTripScattered) {
 		 */
 		toml::document_t reparsed;
 		// Выполняем разбор записанного текста настроек
-		ASSERT_TRUE(reparsed.parse(document.text())) << "заход " << i;
+		ASSERT_TRUE(reparsed.parse(document.dump())) << "заход " << i;
 		// Выполняем снятие владеющего значения с разобранного заново дерева
 		const toml::value_t restored(reparsed);
 		// Выполняем сличение снятого значения с исходным
@@ -1665,7 +1665,7 @@ TEST(CodecTomlValue, GraftSurvivesRewrite) {
 		// Выполняем перенос владеющего значения в дерево настроек
 		ASSERT_TRUE(value.graft(document, probe.path)) << probe.title;
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		/**
 		 * Выполняем проверку сохранности прежнего содержимого дерева
 		 *
@@ -1726,7 +1726,7 @@ TEST(CodecTomlValue, GraftRefusesOverExistingValue) {
 	// Выполняем проверку кода отказа переноса
 	ASSERT_EQ(document.error(), toml::error_t::REDEFINE_TABLE);
 	// Выполняем проверку того, что дерево осталось нетронутым
-	ASSERT_EQ(document.text(), "field = \"старое\"\n");
+	ASSERT_EQ(document.dump(), "field = \"старое\"\n");
 }
 
 /**
@@ -1912,7 +1912,7 @@ TEST(CodecTomlDocument, NestedArraysBelongToElement) {
 	// Выполняем проверку того, что второму элементу принадлежит свой набор
 	ASSERT_EQ(document.count({"a", "1", "b"}), 1);
 	// Выполняем проверку того, что перезапись дерева осталась дословной
-	ASSERT_EQ(document.text(), "[[a]]\nx = 1\n[[a.b]]\ny = 2\n[[a]]\nx = 3\n[[a.b]]\ny = 4\n");
+	ASSERT_EQ(document.dump(), "[[a]]\nx = 1\n[[a.b]]\ny = 2\n[[a]]\nx = 3\n[[a.b]]\ny = 4\n");
 }
 
 /**
@@ -2321,7 +2321,7 @@ TEST(CodecTomlValue, LiftedKeepsFormatting) {
 	// Выполняем проверку сохранности системы счисления
 	ASSERT_EQ(value["hex"].radix(), toml::radix_t::HEX);
 	// Выполняем проверку совпадения перезаписи значения с перезаписью дерева
-	ASSERT_EQ(value.dump(), document.text());
+	ASSERT_EQ(value.dump(), document.dump());
 }
 /**
  * @brief Проверка сохранности пары с пустым именем при снятии и перезаписи
@@ -2345,7 +2345,7 @@ TEST(CodecTomlValue, EmptyNameSurvives) {
 	// Выполняем проверку успешности разбора текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем проверку дословности перезаписи дерева настроек
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 	// Значение, с дерева настроек снятое
 	const toml::value_t lifted(document);
 	// Перезапись снятого значения настройками наречия разбора
@@ -2465,7 +2465,7 @@ TEST(CodecTomlValue, GraftLeavesTreeIntact) {
 	// Выполняем проверку того, что причина отказа названа
 	ASSERT_NE(target.error(), toml::error_t::NONE);
 	// Выполняем проверку того, что дерево осталось пустым
-	ASSERT_TRUE(target.text().empty()) << "[" << target.text() << "]";
+	ASSERT_TRUE(target.dump().empty()) << "[" << target.dump() << "]";
 	/**
 	 * Выполняем проверку того, что перенос годного значения проходит целиком
 	 *
@@ -2484,7 +2484,7 @@ TEST(CodecTomlValue, GraftLeavesTreeIntact) {
 		// Выполняем проверку успешности переноса владеющего значения
 		ASSERT_TRUE(sound.graft(clean, {}));
 		// Выполняем проверку того, что перенесённое легло в дерево
-		ASSERT_EQ(clean.text(), "\"годное\" = 1\n");
+		ASSERT_EQ(clean.dump(), "\"годное\" = 1\n");
 	}
 }
 /**
@@ -2519,7 +2519,7 @@ TEST(CodecTomlValue, GraftRefusesArrayHole) {
 	// Выполняем проверку того, что отказ назван причиною своею
 	ASSERT_EQ(target.error(), toml::error_t::INVALID_VALUE);
 	// Выполняем проверку того, что дерево отказом не тронуто
-	ASSERT_EQ(target.text(), "guard = 1\n");
+	ASSERT_EQ(target.dump(), "guard = 1\n");
 	/**
 	 * Выполняем проверку того, что перечень без дыр переносится
 	 *
@@ -2540,7 +2540,7 @@ TEST(CodecTomlValue, GraftRefusesArrayHole) {
 		// Выполняем проверку успешности переноса значения сплошного
 		ASSERT_TRUE(sound.graft(clean, {})) << toml::message(clean.error());
 		// Выполняем проверку того, что перенесённое легло в дерево
-		ASSERT_NE(clean.text().find("list"), string::npos);
+		ASSERT_NE(clean.dump().find("list"), string::npos);
 	}
 }
 /**
@@ -4443,7 +4443,7 @@ TEST(CodecTomlValue, GraftRefusalOfUndefinedNamesItsCause) {
 	// Выполняем проверку того, что причина отказа названа
 	ASSERT_EQ(target.error(), toml::error_t::INVALID_VALUE);
 	// Выполняем проверку того, что дерево осталось пустым
-	ASSERT_TRUE(target.text().empty());
+	ASSERT_TRUE(target.dump().empty());
 }
 
 /**

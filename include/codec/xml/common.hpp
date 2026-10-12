@@ -85,13 +85,12 @@ namespace awh {
 		 * @brief Пространство имён контейнера XML
 		 *
 		 * @details Разбор и запись текста в разметке XML 1.0 (пятое издание) с поддержкой
-		 * пространств имён по договору Namespaces in XML 1.0. Разбор проверяет правильность
-		 * построения текста и не выполняет проверки на соответствие описанию типа документа
+		 *          пространств имён по договору Namespaces in XML 1.0. Разбор проверяет правильность
+		 *          построения текста и не выполняет проверки на соответствие описанию типа документа.
 		 *
 		 * @par Намеренные решения
-		 *
-		 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-		 * задачи, и каждое решение О ПОВЕДЕНИИ закреплено проверочным испытанием
+		 *      Перечисленное ниже не является пробелом реализации: это очерченные границы
+		 *      задачи, и каждое решение О ПОВЕДЕНИИ закреплено проверочным испытанием
 		 *
 		 * @warning Оговорка «о поведении» стоит здесь по замеру 01.09.2026, а не для
 		 *          красоты: прежде обещание было дано перечню ЦЕЛИКОМ и оказалось ложным
@@ -102,52 +101,56 @@ namespace awh {
 		 *          было ни одного. Заведена `DocumentTypeIsParsedButNotValidated`
 		 *
 		 * @li **Внешние сущности не загружаются никогда.** Ни внешнее подмножество описания
-		 * типа документа, ни внешние разобранные сущности, ни объявление NOTATION не влекут
-		 * обращения к файловой системе или к сети. Ссылка на внешнюю сущность в тексте
-		 * считается ошибкой разбора. Это закрывает целый разряд нападений через подмену
-		 * сущностей, и отменить такое поведение настройкой нельзя
+		 *     типа документа, ни внешние разобранные сущности, ни объявление NOTATION не влекут
+		 *     обращения к файловой системе или к сети. Ссылка на внешнюю сущность в тексте
+		 *     считается ошибкой разбора. Это закрывает целый разряд нападений через подмену
+		 *     сущностей, и отменить такое поведение настройкой нельзя
 		 *
 		 * @li **Проверка на соответствие описанию типа документа не выполняется.** Внутреннее
-		 * подмножество разбирается лишь в объёме, который требует правильность построения:
-		 * объявления сущностей, значения атрибутов по умолчанию и ВИД атрибута, по какому
-		 * значение его приводится. Проверка структуры документа по описанию типа, по схеме
-		 * XSD или по договору RelaxNG - работа отдельная, к разбору отношения не имеющая
+		 *     подмножество разбирается лишь в объёме, который требует правильность построения:
+		 *     объявления сущностей, значения атрибутов по умолчанию и ВИД атрибута, по какому
+		 *     значение его приводится. Проверка структуры документа по описанию типа, по схеме
+		 *     XSD или по договору RelaxNG - работа отдельная, к разбору отношения не имеющая
+		 *
 		 * @note Приведение значения по виду атрибута к этой проверке НЕ ОТНОСИТСЯ и
-		 * выполняется независимо от неё: договор велит его всякому разбору, описания
-		 * читающему. Смешение этих двух вещей было дефектом и вскрылось поверкой на наборе
-		 * соответствия W3C 23.08.2026
+		 *       выполняется независимо от неё: договор велит его всякому разбору, описания
+		 *       читающему. Смешение этих двух вещей было дефектом и вскрылось поверкой на наборе
+		 *       соответствия W3C 23.08.2026
 		 *
 		 * @li **Договор о пространствах имён применяется по умолчанию.** Он ОТДЕЛЬНЫЙ от
-		 * договора о разметке и запрещает в именах то, что сам XML 1.0 дозволяет: двоеточие
-		 * вне разделения приставки от местного имени. Оттого восемь случаев набора
-		 * соответствия W3C, по XML 1.0 годных, разбором отвергаются - и это следствие
-		 * договора, а не отступление от него
+		 *     договора о разметке и запрещает в именах то, что сам XML 1.0 дозволяет: двоеточие
+		 *     вне разделения приставки от местного имени. Оттого восемь случаев набора
+		 *     соответствия W3C, по XML 1.0 годных, разбором отвергаются - и это следствие
+		 *     договора, а не отступление от него
+		 *
 		 * @note Снимается настройкою `namespaces` у чтения: с нею выключенной все восемь
-		 * принимаются, и соответствие чистому XML 1.0 полное
+		 *       принимаются, и соответствие чистому XML 1.0 полное
 		 *
 		 * @li **Ссылка на внешнюю сущность в содержимом не смертельна.** Внешние сущности не
-		 * загружаются никогда, и подставить такую ссылку нечем. Договор велит разбору, их не
-		 * читающему, ссылку РАСПОЗНАТЬ и пропустить, а текст принять; отказ - строгость сверх
-		 * договора, и вынесен он в настройку `externals`, по умолчанию снятую
+		 *     загружаются никогда, и подставить такую ссылку нечем. Договор велит разбору, их не
+		 *     читающему, ссылку РАСПОЗНАТЬ и пропустить, а текст принять; отказ - строгость сверх
+		 *     договора, и вынесен он в настройку `externals`, по умолчанию снятую
+		 *
 		 * @note В ЗНАЧЕНИИ АТРИБУТА такая ссылка запрещена самим договором, и отказ там
-		 * следует всегда. Запрещена договором и ссылка на сущность НЕРАЗБИРАЕМУЮ («NDATA») -
-		 * в содержимом тоже, и отказ на неё следует всегда
+		 *       следует всегда. Запрещена договором и ссылка на сущность НЕРАЗБИРАЕМУЮ («NDATA») -
+		 *       в содержимом тоже, и отказ на неё следует всегда
+		 *
 		 * @note Прежде отказ следовал во всех случаях без разбора, и 22 случая набора
-		 * соответствия, к принятию предписанных, отвергались. Безопасности перемена не
-		 * касается: сущность не загружается НИ В ОДНОМ из порядков
+		 *       соответствия, к принятию предписанных, отвергались. Безопасности перемена не
+		 *       касается: сущность не загружается НИ В ОДНОМ из порядков
 		 *
 		 * @li **Объявления за непрочитанной параметрической сущностью не обрабатываются.**
-		 * Договор велит разбору, внешних сущностей не читающему, обрабатывать объявления лишь
-		 * ДО первой ссылки на такую сущность: за нею они вправе быть отменены тем, что лежит
-		 * внутри непрочитанного. Исключение отведено одно - текст, объявленный самодостаточным
+		 *     Договор велит разбору, внешних сущностей не читающему, обрабатывать объявления лишь
+		 *     ДО первой ссылки на такую сущность: за нею они вправе быть отменены тем, что лежит
+		 *     внутри непрочитанного. Исключение отведено одно - текст, объявленный самодостаточным
 		 *
 		 * @li **Язык обращения к узлам XPath в состав не входит.** Обращение к содержимому
-		 * ведётся обходом дерева либо чтением событий. Язык обращения к узлам - самостоятельный
-		 * договор со своим разбором и своим вычислителем, и место ему в отдельном модуле
+		 *     ведётся обходом дерева либо чтением событий. Язык обращения к узлам - самостоятельный
+		 *     договор со своим разбором и своим вычислителем, и место ему в отдельном модуле
 		 *
 		 * @li **Разметка XML 1.1 не поддерживается.** Переиздание договора распространения не
-		 * получило, а его отличия - разрешение управляющих знаков в тексте и иной перечень
-		 * знаков конца строки - несут больше вреда, чем пользы
+		 *     получило, а его отличия - разрешение управляющих знаков в тексте и иной перечень
+		 *     знаков конца строки - несут больше вреда, чем пользы
 		 *
 		 * @note Неподдержка эта касается ПРАВИЛ, а не объявления: пятое издание договора 1.0
 		 *       велит принимать всякое издание вида «1.x» и разбирать текст по правилам
@@ -157,88 +160,163 @@ namespace awh {
 		 *       дозволенное, отвечает отказом `INVALID_NAMESPACE`
 		 *
 		 * @li **Многобайтовые кодировки поддержаны только договорные.** Договор требует
-		 * UTF-8 и UTF-16, они поддержаны полностью и разбираются своими ветвями: у UTF-8 знак
-		 * занимает от одного до четырёх байтов, у UTF-16 - два либо четыре, и перенос
-		 * недобранной последовательности через границу куска у каждой свой. Прочие
-		 * многобайтовые кодировки объявляются ошибкой, а не разбираются наугад
+		 *     UTF-8 и UTF-16, они поддержаны полностью и разбираются своими ветвями: у UTF-8 знак
+		 *     занимает от одного до четырёх байтов, у UTF-16 - два либо четыре, и перенос
+		 *     недобранной последовательности через границу куска у каждой свой. Прочие
+		 *     многобайтовые кодировки объявляются ошибкой, а не разбираются наугад
 		 *
 		 * @li **Однобайтовые кодировки берутся таблицею у `awh::charset`.** Решение это
-		 * ПЕРЕСМОТРЕНО 23.08.2026, и прежде здесь было записано обратное: «прочие кодировки
-		 * объявляются ошибкой, перекодирование - работа отдельного слоя». Довод тот остаётся
-		 * верен, но слой этот во фреймворке ЕСТЬ - `awh::charset` со своими таблицами, - и
-		 * взять у него таблицу значит довод исполнить, а не нарушить. Прежняя запись
-		 * оборачивалась тем, что разметка с объявлением `windows-1251` либо `koi8-r`
-		 * отвергалась наотрез, тогда как таблицы для неё лежали в дереве готовые. Разбор при
-		 * том остаётся своим: `charset::transcode` работает целою строкою, а чтение идёт
-		 * кусками. Берётся одна лишь таблица, и для однобайтовой кодировки разбор по ней
-		 * состояния не имеет вовсе - границы кусков ему безразличны по устройству
+		 *     ПЕРЕСМОТРЕНО 23.08.2026, и прежде здесь было записано обратное: «прочие кодировки
+		 *     объявляются ошибкой, перекодирование - работа отдельного слоя». Довод тот остаётся
+		 *     верен, но слой этот во фреймворке ЕСТЬ - `awh::charset` со своими таблицами, - и
+		 *     взять у него таблицу значит довод исполнить, а не нарушить. Прежняя запись
+		 *     оборачивалась тем, что разметка с объявлением `windows-1251` либо `koi8-r`
+		 *     отвергалась наотрез, тогда как таблицы для неё лежали в дереве готовые. Разбор при
+		 *     том остаётся своим: `charset::transcode` работает целою строкою, а чтение идёт
+		 *     кусками. Берётся одна лишь таблица, и для однобайтовой кодировки разбор по ней
+		 *     состояния не имеет вовсе - границы кусков ему безразличны по устройству
 		 *
 		 * @li **Значение атрибута xml:space, отличное от объявленных договором, ошибкой не
-		 * считается.** Договор допускает при этом атрибуте лишь значения default и preserve,
-		 * но задаёт их перечислением в объявлении типа документа, то есть требованием
-		 * действительности, а не правильности построения. Разбор действительность не
-		 * проверяет и отвергать такой текст не вправе; всё, что не preserve, принимается
-		 * за обращение с пробельным содержимым по умолчанию
+		 *     считается.** Договор допускает при этом атрибуте лишь значения default и preserve,
+		 *     но задаёт их перечислением в объявлении типа документа, то есть требованием
+		 *     действительности, а не правильности построения. Разбор действительность не
+		 *     проверяет и отвергать такой текст не вправе; всё, что не preserve, принимается
+		 *     за обращение с пробельным содержимым по умолчанию
 		 *
 		 * @li **При внешнем подмножестве необъявленная сущность пропускается молча.**
-		 * Внешнее подмножество описания типа документа и значение параметрической сущности
-		 * разбор не разворачивает, а объявление вправе лежать именно там. Отвергнуть текст
-		 * здесь значило бы объявить неправильно построенным то, чего мы попросту не читали,
-		 * и потому недостача объявления отнесена к действительности. Ссылка при этом
-		 * **из содержимого пропадает**: подставить нечего, а выдать её знаками текста
-		 * неверно - на письме она осталась бы ссылкой и прочлась бы обратно уже разметкой.
-		 * Отсюда следует, что при внешнем подмножестве выданное разбором содержимое
-		 * **полным не является**, и вызывающему полагаться на его полноту нельзя. Правильность
-		 * построения самой ссылки при этом проверяется по-прежнему: имя, построенное
-		 * ошибочно, отвергается и здесь. Без внешнего подмножества недостача объявления
-		 * остаётся ошибкой разбора
+		 *     Внешнее подмножество описания типа документа и значение параметрической сущности
+		 *     разбор не разворачивает, а объявление вправе лежать именно там. Отвергнуть текст
+		 *     здесь значило бы объявить неправильно построенным то, чего мы попросту не читали,
+		 *     и потому недостача объявления отнесена к действительности. Ссылка при этом
+		 *     **из содержимого пропадает**: подставить нечего, а выдать её знаками текста
+		 *     неверно - на письме она осталась бы ссылкой и прочлась бы обратно уже разметкой.
+		 *     Отсюда следует, что при внешнем подмножестве выданное разбором содержимое
+		 *     **полным не является**, и вызывающему полагаться на его полноту нельзя. Правильность
+		 *     построения самой ссылки при этом проверяется по-прежнему: имя, построенное
+		 *     ошибочно, отвергается и здесь. Без внешнего подмножества недостача объявления
+		 *     остаётся ошибкой разбора
 		 *
 		 * \~english
 		 * @brief XML container namespace
+		 *
 		 * @details The parsing and the writing of a text in the XML 1.0 markup (fifth edition) with support for
-		 * the namespaces by the Namespaces in XML 1.0 protocol. The parsing checks the well-formedness
-		 * of the construction of the text and does not perform the validation against a document type definition
+		 *          the namespaces by the Namespaces in XML 1.0 protocol. The parsing checks the well-formedness
+		 *          of the construction of the text and does not perform the validation against a document type definition.
+		 *
 		 * @par Deliberate decisions
-		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
-		 * task, and each of the decisions is fixed by a verifying test
+		 *      What is listed below is not a gap of the implementation: these are the outlined
+		 *      boundaries of the task, and each of the decisions ON THE BEHAVIOUR is fixed by a
+		 *      verifying test
+		 *
+		 * @warning The reservation "on the behaviour" stands here by a measurement of 2026-09-01,
+		 *          and not for beauty: before, the promise was given to the list IN FULL and proved
+		 *          false twice. An absence of the XPath node addressing language cannot be fixed by
+		 *          a test at all - it speaks of what is NOT in the composition. And the non-validation
+		 *          by a document type definition had no fixing: the set held only mentions of it in
+		 *          the notes of the neighbouring checks, while no comparison of the behaviour was
+		 *          there at all. `DocumentTypeIsParsedButNotValidated` was made
+		 *
 		 * @li **The external entities are never loaded.** Neither the external subset of a document
-		 * type definition, nor the external parsed entities, nor a NOTATION declaration entail
-		 * a call to the file system or to the network. A reference to an external entity in a text
-		 * is considered a parsing error. This closes a whole class of attacks through a substitution of the
-		 * entities, and such a behaviour cannot be cancelled by a setting
+		 *     type definition, nor the external parsed entities, nor a NOTATION declaration entail
+		 *     a call to the file system or to the network. A reference to an external entity in a text
+		 *     is considered a parsing error. This closes a whole class of attacks through a substitution of the
+		 *     entities, and such a behaviour cannot be cancelled by a setting
+		 *
 		 * @li **The validation against a document type definition is not performed.** The internal
-		 * subset is parsed only in the volume required by the well-formedness of the construction:
-		 * the entity declarations and the default values of the attributes. The validation of the structure of a
-		 * document against a type definition, against an XSD schema or against the RelaxNG protocol is a separate
-		 * work having no relation to the parsing
+		 *     subset is parsed only in the volume required by the well-formedness of the construction:
+		 *     the entity declarations, the default values of the attributes and the KIND of an
+		 *     attribute, by which its value is converted. The validation of the structure of a
+		 *     document against a type definition, against an XSD schema or against the RelaxNG
+		 *     protocol is a separate work having no relation to the parsing
+		 *
+		 * @note A conversion of a value by the kind of an attribute does NOT BELONG to this check
+		 *       and is performed independently of it: the protocol orders it to every parsing which
+		 *       reads the definitions. A mixing of these two things was a defect and was laid bare
+		 *       by a check upon the W3C conformance set on 2026-08-23
+		 *
+		 * @li **The protocol on the namespaces is applied by default.** It is SEPARATE from the
+		 *     protocol on the markup and forbids in the names what the XML 1.0 itself permits: a
+		 *     colon outside the separation of a prefix from a local name. Therefore eight cases of
+		 *     the W3C conformance set, admissible by the XML 1.0, are rejected by the parsing - and
+		 *     that is a consequence of the protocol, and not a departure from it
+		 *
+		 * @note It is removed by the `namespaces` setting of the reading: with it off all the
+		 *       eight are accepted, and the correspondence to a pure XML 1.0 is complete
+		 *
+		 * @li **A reference to an external entity in the content is not fatal.** The external
+		 *     entities are never loaded, and there is nothing to substitute such a reference
+		 *     with. The protocol orders a parsing which does not read them to RECOGNIZE the
+		 *     reference and pass it, and to accept the text; a refusal is a strictness beyond
+		 *     the protocol, and it has been moved into the `externals` setting, off by default
+		 *
+		 * @note IN AN ATTRIBUTE VALUE such a reference is forbidden by the protocol itself, and
+		 *       a refusal there follows always. A reference to an UNPARSEABLE entity ("NDATA")
+		 *       is forbidden by the protocol too - in the content as well, and a refusal upon it
+		 *       follows always
+		 *
+		 * @note Before, a refusal followed in all the cases without a distinction, and 22 cases
+		 *       of the conformance set, prescribed to be accepted, were rejected. The safety is
+		 *       not touched by the change: an entity is not loaded IN EITHER of the orders
+		 *
+		 * @li **The declarations behind an unread parameter entity are not processed.** The
+		 *     protocol orders a parsing which does not read the external entities to process the
+		 *     declarations only BEFORE the first reference to such an entity: behind it they have
+		 *     a right to be cancelled by what lies inside the unread. A single exception is set
+		 *     apart - a text declared to be standalone
+		 *
 		 * @li **The XPath node addressing language is not a part of the composition.** The addressing of the content
-		 * is conducted by a traversal of the tree or by a reading of the events. A node addressing language is an independent
-		 * protocol with its own parsing and its own evaluator, and its place is in a separate module
+		 *     is conducted by a traversal of the tree or by a reading of the events. A node addressing language is an independent
+		 *     protocol with its own parsing and its own evaluator, and its place is in a separate module
+		 *
 		 * @li **The XML 1.1 markup is not supported.** The reissue of the protocol has not gained
-		 * a wide spread, while its differences — the permission of the control characters in a text and another list
-		 * of the line ending characters — carry more harm than benefit
-		 * @li **The list of the supported encodings is limited.** The protocol requires UTF-8 and UTF-16,
-		 * they are supported in full; beyond that ISO-8859-1 and US-ASCII are supported as
-		 * the ones met in the old specifications. The other encodings are declared an error rather than being
-		 * parsed at random: a transcoding is the work of a separate layer
+		 *     a wide spread, while its differences — the permission of the control characters in a text and another list
+		 *     of the line ending characters — carry more harm than benefit
+		 *
+		 * @note This unsupport concerns the RULES, and not the declaration: the fifth edition of
+		 *       the protocol 1.0 orders to accept any edition of the «1.x» form and to parse a text
+		 *       by the rules of the edition 1.0, and a `version="1.1"` declaration causes no
+		 *       refusal. Therefore a construction, permitted by the edition 1.1 alone, answers with an
+		 *       ordinary parsing refusal, and not with `UNSUPPORTED_VERSION`: a removal of a prefix
+		 *       by an empty designation, permitted by the edition 1.1, answers with
+		 *       `INVALID_NAMESPACE`
+		 *
+		 * @li **Only the protocol's multibyte encodings are supported.** The protocol requires
+		 *     UTF-8 and UTF-16; they are supported in full and are parsed by their own branches: at
+		 *     UTF-8 a character takes from one to four bytes, at UTF-16 - two or four, and the
+		 *     carrying of an unpicked sequence across the bound of a piece is own to each. The other
+		 *     multibyte encodings are declared an error rather than being parsed at random
+		 *
+		 * @li **The single-byte encodings take their table from `awh::charset`.** The decision is
+		 *     REVISED on 2026-08-23, and before the opposite was written here: "the other encodings
+		 *     are declared an error, a transcoding is the work of a separate layer". That argument
+		 *     stays true, but the layer IS there in the framework - `awh::charset` with its tables -
+		 *     and to take a table from it means to carry the argument out, and not to break it. The
+		 *     former writing came to this, that a markup with a `windows-1251` or `koi8-r`
+		 *     declaration was refused outright, while the tables for it lay ready in the tree. The
+		 *     parsing thereupon remains its own: `charset::transcode` works over a whole string,
+		 *     while the reading goes by pieces. One single table is taken, and for a single-byte
+		 *     encoding a parsing by it has no state at all - the bounds of the pieces are indifferent
+		 *     to it by the arrangement
+		 *
 		 * @li **A value of the xml:space attribute other than the ones declared by the protocol is not considered
-		 * an error.** The protocol admits with this attribute only the values default and preserve,
-		 * but it gives them by an enumeration in the document type declaration, that is, by a requirement
-		 * of the validity rather than of the well-formedness. The parsing does not check the validity
-		 * and has no right to reject such a text; everything that is not preserve is taken
-		 * for the default treatment of the whitespace content
+		 *     an error.** The protocol admits with this attribute only the values default and preserve,
+		 *     but it gives them by an enumeration in the document type declaration, that is, by a requirement
+		 *     of the validity rather than of the well-formedness. The parsing does not check the validity
+		 *     and has no right to reject such a text; everything that is not preserve is taken
+		 *     for the default treatment of the whitespace content
+		 *
 		 * @li **With an external subset an undeclared entity is skipped silently.**
-		 * The external subset of a document type definition and the value of a parameter entity
-		 * the parsing does not expand, while a declaration has the right to lie exactly there. To reject a text
-		 * here would mean to declare not well-formed that which we have simply not read,
-		 * and therefore a missing declaration has been assigned to the validity. The reference thereby
-		 * **disappears from the content**: there is nothing to substitute, while to issue it as the characters of the text
-		 * is wrong — in the writing it would remain a reference and would be read back already as a markup.
-		 * It follows from this that with an external subset the content issued by the parsing
-		 * **is not complete**, and the caller must not rely on its completeness. The well-formedness
-		 * of the construction of the reference itself is thereby checked as before: a name constructed
-		 * erroneously is rejected here as well. Without an external subset a missing declaration
-		 * remains a parsing error
+		 *     The external subset of a document type definition and the value of a parameter entity
+		 *     the parsing does not expand, while a declaration has the right to lie exactly there. To reject a text
+		 *     here would mean to declare not well-formed that which we have simply not read,
+		 *     and therefore a missing declaration has been assigned to the validity. The reference thereby
+		 *     **disappears from the content**: there is nothing to substitute, while to issue it as the characters of the text
+		 *     is wrong — in the writing it would remain a reference and would be read back already as a markup.
+		 *     It follows from this that with an external subset the content issued by the parsing
+		 *     **is not complete**, and the caller must not rely on its completeness. The well-formedness
+		 *     of the construction of the reference itself is thereby checked as before: a name constructed
+		 *     erroneously is rejected here as well. Without an external subset a missing declaration
+		 *     remains a parsing error
 		 *
 		 * \~
 		 */
@@ -248,11 +326,11 @@ namespace awh {
 			 * @brief Наибольшая допустимая глубина вложенности узлов
 			 *
 			 * @details Ограничение защищает от исчерпания стека при разборе текста с
-			 * искусственно наращенной вложенностью
+			 *          искусственно наращенной вложенностью.
 			 *
 			 * @details Тем же пределом держатся и работы ПО ГОТОВОМУ ДЕРЕВУ, возвратные
-			 * по устройству: размножение владеющего значения, снятие его, запись и перенос
-			 * в арену дерева. Заведение по пути глубже предела оттого отвергается
+			 *          по устройству: размножение владеющего значения, снятие его, запись и перенос
+			 *          в арену дерева. Заведение по пути глубже предела оттого отвергается.
 			 *
 			 * @warning Предел этот, поднятый настройкою разбора, стек возвратных работ
 			 *          срывает: замер по стендам дал срыв около 9 000 уровней у NetBSD при
@@ -261,11 +339,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting of the nodes
+			 *
 			 * @details The restriction protects from an exhaustion of the stack at the parsing of a text with an
-			 * artificially increased nesting
+			 *          artificially increased nesting.
+			 *
 			 * @details By the very same limit are held the works UPON A READY TREE, recursive by their arrangement:
-			 * the duplication of an owning value, its taking, its writing and its transfer into the arena of a tree.
-			 * A creation by a path deeper than the limit is therefore refused
+			 *          the duplication of an owning value, its taking, its writing and its transfer into the arena of a tree.
+			 *          A creation by a path deeper than the limit is therefore refused.
+			 *
 			 * @warning This limit, raised by the setting of the parsing, overflows the stack of the recursive works:
 			 *          a measurement across the stands gave an overflow at about 9 000 levels at NetBSD with a stack
 			 *          of 4 MB, at about 12 000 at OpenBSD with the same 4 MB and at about 25 000 at macOS with 8 MB.
@@ -296,9 +377,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Largest admissible quantity of the attributes at one node of a markup
+			 *
 			 * @note The present constant has been introduced instead of a bare number in the constructor
-			 * of the settings: the rest of the limits of all the three codecs are named, while a default
-			 * written as a number was not disclosed to the caller in any way
+			 *       of the settings: the rest of the limits of all the three codecs are named, while a default
+			 *       written as a number was not disclosed to the caller in any way
 			 *
 			 * \~
 			 */
@@ -309,12 +391,13 @@ namespace awh {
 			 * @brief Наибольшая допустимая глубина вложенности ссылок на сущности
 			 *
 			 * @details Сущность вправе ссылаться на другую сущность, и глубина такой связи
-			 * ограничивается независимо от общего объёма подстановки
+			 *          ограничивается независимо от общего объёма подстановки.
 			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting of the references to the entities
+			 *
 			 * @details An entity has the right to refer to another entity, and the depth of such a linkage
-			 * is limited independently of the total volume of the substitution
+			 *          is limited independently of the total volume of the substitution.
 			 *
 			 * \~
 			 */
@@ -336,21 +419,23 @@ namespace awh {
 			 * @brief Наибольший допустимый общий объём подстановки сущностей в байтах
 			 *
 			 * @details Предел считается на весь документ, а не на отдельную подстановку:
-			 * вложенные друг в друга сущности наращивают объём произведением, и уследить за
-			 * этим можно только по общей сумме. Превышение прекращает разбор ошибкой
+			 *          вложенные друг в друга сущности наращивают объём произведением, и уследить за
+			 *          этим можно только по общей сумме. Превышение прекращает разбор ошибкой.
 			 *
 			 * @warning Снятие этого предела открывает многократное разрастание текста при
-			 * разборе - способ исчерпать память узла подставным документом в несколько
-			 * сотен байт
+			 *          разборе - способ исчерпать память узла подставным документом в несколько
+			 *          сотен байт
 			 *
 			 * \~english
 			 * @brief Largest admissible total volume of the substitution of the entities in bytes
+			 *
 			 * @details The limit is counted over the whole document rather than over a separate substitution:
-			 * the entities nested into one another increase the volume by a multiplication, and it is possible to keep track of
-			 * this only by the total sum. An excess terminates the parsing with an error
+			 *          the entities nested into one another increase the volume by a multiplication, and it is possible to keep track of
+			 *          this only by the total sum. An excess terminates the parsing with an error.
+			 *
 			 * @warning The removal of this limit opens up a multiple expansion of the text at the
-			 * parsing — a way to exhaust the memory of a node with a planted document of several
-			 * hundred bytes
+			 *          parsing — a way to exhaust the memory of a node with a planted document of several
+			 *          hundred bytes
 			 *
 			 * \~
 			 */
@@ -361,35 +446,38 @@ namespace awh {
 			 * @brief Наибольший допустимый объём одного события в байтах
 			 *
 			 * @details Чтение накапливает построение целиком, прежде чем его разбирать:
-			 * метка, примечание, указание обработчику, значение атрибута и описание типа
-			 * документа ложатся в память до того, как разбор к ним приступит. Предел этот -
-			 * ЕДИНСТВЕННОЕ, что накопление стережёт: прочие пределы сличаются по
-			 * разобранному, а до разбора дело не доходит вовсе
+			 *          метка, примечание, указание обработчику, значение атрибута и описание типа
+			 *          документа ложатся в память до того, как разбор к ним приступит. Предел этот -
+			 *          ЕДИНСТВЕННОЕ, что накопление стережёт: прочие пределы сличаются по
+			 *          разобранному, а до разбора дело не доходит вовсе.
 			 *
 			 * @warning Прежде предел этот умолчанием снимался, и разбор при умолчаниях
-			 * памяти не берёг вовсе: имя метки без закрывающей скобки, незакрытое
-			 * примечание, значение атрибута без кавычки и описание типа документа без
-			 * скобки набирали по 64 мегабайта и более, не отвечая отказом. Предел имени в
-			 * 8192 знака при этом стоял и не спасал: сличается он по имени разобранному,
-			 * а разбор ждал конца метки. Умолчание сведено к тем же 16 мегабайтам, какими
-			 * стерегут память кодеки JSON (`MAX_STRING`) и CSV (`MAX_RECORD`)
+			 *          памяти не берёг вовсе: имя метки без закрывающей скобки, незакрытое
+			 *          примечание, значение атрибута без кавычки и описание типа документа без
+			 *          скобки набирали по 64 мегабайта и более, не отвечая отказом. Предел имени в
+			 *          8192 знака при этом стоял и не спасал: сличается он по имени разобранному,
+			 *          а разбор ждал конца метки. Умолчание сведено к тем же 16 мегабайтам, какими
+			 *          стерегут память кодеки JSON (`MAX_STRING`) и CSV (`MAX_RECORD`)
 			 *
 			 * @note Снять предел по-прежнему можно, задав ноль: договор о том не изменился
 			 *
 			 * \~english
 			 * @brief Largest admissible volume of a single event in bytes
+			 *
 			 * @details The reading accumulates a construct in full before parsing it: a tag,
-			 * a comment, a processing instruction, an attribute value and a document type definition
-			 * lie down into the memory before the parsing gets to them. This limit is the ONLY thing
-			 * that guards that accumulation: the other limits are compared against what has been
-			 * parsed, while the parsing does not get to it at all
+			 *          a comment, a processing instruction, an attribute value and a document type definition
+			 *          lie down into the memory before the parsing gets to them. This limit is the ONLY thing
+			 *          that guards that accumulation: the other limits are compared against what has been
+			 *          parsed, while the parsing does not get to it at all.
+			 *
 			 * @warning Formerly this limit was removed by default, and the parsing did not guard the memory
-			 * at all under the defaults: a tag name without a closing bracket, an unclosed comment,
-			 * an attribute value without a quote and a document type definition without a bracket gathered
-			 * 64 megabytes and more without answering with a refusal. The limit of a name of 8192 characters
-			 * stood there and did not save: it is compared against a name that has been parsed, while the
-			 * parsing waited for the end of the tag. The default has been brought to the same 16 megabytes
-			 * with which the json (`MAX_STRING`) and csv (`MAX_RECORD`) codecs guard the memory
+			 *          at all under the defaults: a tag name without a closing bracket, an unclosed comment,
+			 *          an attribute value without a quote and a document type definition without a bracket gathered
+			 *          64 megabytes and more without answering with a refusal. The limit of a name of 8192 characters
+			 *          stood there and did not save: it is compared against a name that has been parsed, while the
+			 *          parsing waited for the end of the tag. The default has been brought to the same 16 megabytes
+			 *          with which the json (`MAX_STRING`) and csv (`MAX_RECORD`) codecs guard the memory
+			 *
 			 * @note It is still possible to remove the limit by giving a zero: the contract about that has not changed
 			 *
 			 * \~
@@ -412,15 +500,23 @@ namespace awh {
 			 * @brief Порог заведения отображения имён вложенных узлов
 			 *
 			 * @details Узел о немногих детях разыскивается перебором, а широкий -
-			 * отображением, заводимым по требованию: заведение его обходится дороже
-			 * сличения немногих имён, а узлов о немногих детях в обиходе подавляющее
-			 * большинство
+			 *          отображением, заводимым по требованию: заведение его обходится дороже
+			 *          сличения немногих имён, а узлов о немногих детях в обиходе подавляющее
+			 *          большинство.
 			 *
 			 * @note Порог тот же, каким пользуется кодек JSON: речь об одном и том же
 			 *       выборе, и разводить его двумя числами значило бы завести две правды
 			 *
 			 * \~english
 			 * @brief Threshold of the creation of the mapping of the names of the nested nodes
+			 *
+			 * @details A node of a few children is searched for by a traversal, while a wide one - by
+			 *          a mapping created on demand: to create it costs dearer than a comparison of a
+			 *          few names, and the nodes of a few children are the overwhelming majority in
+			 *          the everyday use.
+			 *
+			 * @note The threshold is the very one the codec JSON uses: the question is about one and
+			 *       the same choice, and to part it by two numbers would mean to make two truths
 			 *
 			 * \~
 			 */
@@ -442,12 +538,13 @@ namespace awh {
 			 * @brief Постоянное обозначение пространства имён «xml»
 			 *
 			 * @details Префикс «xml» связан с этим обозначением изначально и объявления не
-			 * требует, а переопределению не подлежит
+			 *          требует, а переопределению не подлежит.
 			 *
 			 * \~english
 			 * @brief Constant designation of the «xml» namespace
+			 *
 			 * @details The «xml» prefix is bound to this designation from the outset and requires no
-			 * declaration, while it is not subject to a redefinition
+			 *          declaration, while it is not subject to a redefinition.
 			 *
 			 * \~
 			 */
@@ -469,18 +566,20 @@ namespace awh {
 			 * @brief Коды ошибок разбора текста разметки
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
-			 * вместе с положением в исходном тексте, где отказ произошёл
+			 *          вместе с положением в исходном тексте, где отказ произошёл.
 			 *
 			 * \~english
 			 * @brief Error codes of the parsing of a markup text
+			 *
 			 * @details The parsing does not throw exceptions: the error code together with the position
-			 * in the source text where the refusal has occurred serves as the sign of a refusal
+			 *          in the source text where the refusal has occurred serves as the sign of a refusal.
 			 *
 			 * \~
 			 */
 			enum class error_t : uint8_t {
 				NONE                    = 0x00, // Ошибок не обнаружено
 				/**
+				 * \~russian
 				 * Внутренняя ошибка разбора
 				 *
 				 * @note Код этот ЗАПАСНОЙ и в исправной работе не рождается вовсе: ставится
@@ -488,6 +587,17 @@ namespace awh {
 				 *       рождённых кодов по всему набору - молчит он один из немногих, и
 				 *       молчание это ожидаемо: случай требует изъяна в самом кодеке, оттого
 				 *       проверкою он и не закреплён
+				 *
+				 * \~english
+				 * Internal error of the parsing
+				 *
+				 * @note This code is a FALLBACK and is not born at all in a sound work: it is set
+				 *       there where the lower layer refused without NAMING a code. Measured by a map
+				 *       of the born codes over the whole set - it is silent, one of the few, and the
+				 *       silence is expected: the case asks for a flaw in the codec itself, and therefore
+				 *       it is not fixed by a check
+				 *
+				 * \~
 				 */
 				INTERNAL                = 0x01, // Внутренняя ошибка разбора
 				INVALID_CHARACTER       = 0x02, // Знак недопустим в разметке
@@ -546,7 +656,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * The passed node of the tree is unsuitable
-				 * @note The code was instituted in place of `INTERNAL` which stood here before
+				 *
+				 * @note The code was instituted in place of `INTERNAL` which stood here before and sent a consumer
+				 *       looking for a defect at our side. The reason of the unsuitability is quite external: a node
+				 *       is held across a rebuilding of the tree, and the brand of a generation turned it into an
+				 *       unsuitable one. The full argument stands at the refusal itself —
+				 *       `Writer::element(const node_t &, const bool)`
 				 *
 				 * \~
 				 */
@@ -568,6 +683,17 @@ namespace awh {
 				 * \~english
 				 * The encoding of the source text has been changed in the middle of the feed
 				 *
+				 * @note The code was made on 2026-09-08 for the sake of the consent of three codecs: a
+				 *       change of the encoding in the middle of a feed is impossible, while none of them
+				 *       had a code of its own for such a case. The codec JSON answered `UNSUPPORTED_ENCODING`
+				 *       - a sense of another's, for the requested kind is supported in full, and the trouble
+				 *       lies in the moment of the change, - while the codecs XML and CSV dropped an
+				 *       unfulfilled pointer silently
+				 *
+				 * @note The silence was the first class of the trouble at the consumer: a request was
+				 *       accepted, while it cannot be carried out. Now all the three answer with A REFUSAL
+				 *       at the nearest feed, and a request does not vanish
+				 *
 				 * \~
 				 */
 				ENCODING_ALREADY_CHOSEN = 0x2F // Кодировка сменена посреди подачи текста
@@ -577,11 +703,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Виды событий чтения текста разметки
 			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a markup text
-			 * @details The reading issues the events as the text is parsed without holding it in full
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
 			 *
 			 * \~
 			 */
@@ -604,14 +731,15 @@ namespace awh {
 			 * @brief Кодировки исходного текста разметки
 			 *
 			 * @details Кодировка определяется по метке порядка байтов и по объявлению
-			 * разметки в начале текста; при их отсутствии договор предписывает считать
-			 * текст записанным в UTF-8
+			 *          разметки в начале текста; при их отсутствии договор предписывает считать
+			 *          текст записанным в UTF-8.
 			 *
 			 * \~english
 			 * @brief Encodings of the source markup text
+			 *
 			 * @details The encoding is determined by the byte order mark and by the declaration
-			 * of the markup at the beginning of the text; in their absence the protocol prescribes considering
-			 * the text written in UTF-8
+			 *          of the markup at the beginning of the text; in their absence the protocol prescribes considering
+			 *          the text written in UTF-8.
 			 *
 			 * \~
 			 */
@@ -627,10 +755,10 @@ namespace awh {
 				 * Однобайтовая кодировка, взятая таблицею у `awh::charset`
 				 *
 				 * @details Виды выше разбираются своими ветвями, ибо разбор их своеобразен:
-				 * у UTF-8 знак занимает от одного до четырёх байтов, у UTF-16 - два либо
-				 * четыре. Всякая же ОДНОБАЙТОВАЯ кодировка разбирается одинаково - байт в
-				 * кодовое значение по таблице, - и заводить каждой свой вид незачем: их
-				 * десятки, и все они уже лежат в `awh::charset`
+				 *          у UTF-8 знак занимает от одного до четырёх байтов, у UTF-16 - два либо
+				 *          четыре. Всякая же ОДНОБАЙТОВАЯ кодировка разбирается одинаково - байт в
+				 *          кодовое значение по таблице, - и заводить каждой свой вид незачем: их
+				 *          десятки, и все они уже лежат в `awh::charset`.
 				 *
 				 * @note Вид этот сам по себе кодировки НЕ называет: какая именно взята,
 				 *       хранится таблицею у разбора. Оттого `name()` выдаёт для него не имя
@@ -638,6 +766,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * Single-byte encoding taken as a table from `awh::charset`
+				 *
+				 * @details The kinds above are parsed by their own branches, for their parsing is own: at
+				 *          UTF-8 a character takes from one to four bytes, at UTF-16 - two or four. Any
+				 *          SINGLE-BYTE encoding, on the contrary, is parsed in the same way - a byte into a
+				 *          code value by a table, - and there is no sense in making an own kind for each:
+				 *          there are dozens of them, and all of them already lie in `awh::charset`.
+				 *
+				 * @note This kind by itself does NOT name an encoding: which exact one has been taken is
+				 *       kept by a table at the parsing. Therefore `name()` issues for it not a name of an
+				 *       encoding, but a designation of the kind
 				 *
 				 * \~
 				 */
@@ -649,12 +787,13 @@ namespace awh {
 			 * @brief Признак самодостаточности текста разметки
 			 *
 			 * @details Объявляется полем «standalone» объявления разметки и сообщает, влияет
-			 * ли внешнее подмножество описания типа документа на смысл текста
+			 *          ли внешнее подмножество описания типа документа на смысл текста.
 			 *
 			 * \~english
 			 * @brief Flag of the standaloneness of a markup text
+			 *
 			 * @details Declared by the «standalone» field of the markup declaration and reports whether
-			 * the external subset of a document type definition affects the meaning of the text
+			 *          the external subset of a document type definition affects the meaning of the text.
 			 *
 			 * \~
 			 */
@@ -669,26 +808,28 @@ namespace awh {
 			 * @brief Вид записи собираемого текста разметки
 			 *
 			 * @details Разметка допускает пробельное содержимое между узлами, и запись
-			 * вправе им пользоваться либо обходиться без него. Выбор здесь не
-			 * оформительский: расставленные отступы делают текст удобным для чтения
-			 * человеком, но добавляют в документ текстовые узлы, которых в нём не
-			 * задумывалось
+			 *          вправе им пользоваться либо обходиться без него. Выбор здесь не
+			 *          оформительский: расставленные отступы делают текст удобным для чтения
+			 *          человеком, но добавляют в документ текстовые узлы, которых в нём не
+			 *          задумывалось.
 			 *
 			 * @warning Отступы **меняют содержимое** документа: узел, к которому они
-			 * применены, получает пробельное содержимое, и сличение таких документов
-			 * знак в знак совпадения не даст. Там, где текст подписывается либо
-			 * сличается - скажем, в договоре о подписи XML, - применима лишь плотная запись
+			 *          применены, получает пробельное содержимое, и сличение таких документов
+			 *          знак в знак совпадения не даст. Там, где текст подписывается либо
+			 *          сличается - скажем, в договоре о подписи XML, - применима лишь плотная запись
 			 *
 			 * \~english
 			 * @brief Form of the writing of the markup text being assembled
+			 *
 			 * @details A markup admits a whitespace content between the nodes, and the writing
-			 * has the right to make use of it or to do without it. The choice here is not
-			 * a decorative one: the arranged indents make the text convenient for a reading by
-			 * a human but add into the document the text nodes which were not intended in it
+			 *          has the right to make use of it or to do without it. The choice here is not
+			 *          a decorative one: the arranged indents make the text convenient for a reading by
+			 *          a human but add into the document the text nodes which were not intended in it.
+			 *
 			 * @warning The indents **change the content** of a document: a node to which they
-			 * are applied receives a whitespace content, and a comparison of such documents
-			 * character by character will give no coincidence. There where a text is signed or
-			 * compared — say, in the XML signature protocol — only the dense writing is applicable
+			 *          are applied receives a whitespace content, and a comparison of such documents
+			 *          character by character will give no coincidence. There where a text is signed or
+			 *          compared — say, in the XML signature protocol — only the dense writing is applicable
 			 *
 			 * \~
 			 */
@@ -729,19 +870,21 @@ namespace awh {
 			 * @brief Знак отступа нарядной записи
 			 *
 			 * @details Отступ ставится ради удобства чтения, и знак его выбирается тем,
-			 * кто записанное потом читает: табуляция даёт вчетверо более лёгкий текст на
-			 * той же глубине вложенности, пробелы - одинаковый вид у всякого читающего
+			 *          кто записанное потом читает: табуляция даёт вчетверо более лёгкий текст на
+			 *          той же глубине вложенности, пробелы - одинаковый вид у всякого читающего.
 			 *
 			 * @note Отсутствие знака отступа нарядную запись не отменяет: переводы строк
-			 * она расставляет по-прежнему, а вложенность ими не отмечает
+			 *       она расставляет по-прежнему, а вложенность ими не отмечает
 			 *
 			 * \~english
 			 * @brief Indent character of the adorned writing
+			 *
 			 * @details The indent is put for the sake of the convenience of the reading, and its character is chosen by the one
-			 * who then reads what has been written: a tabulation gives a four times lighter text at
-			 * the same depth of the nesting, the spaces — an identical look for every reader
+			 *          who then reads what has been written: a tabulation gives a four times lighter text at
+			 *          the same depth of the nesting, the spaces — an identical look for every reader.
+			 *
 			 * @note The absence of an indent character does not cancel the adorned writing: it arranges the line breaks
-			 * as before while not marking the nesting by them
+			 *       as before while not marking the nesting by them
 			 *
 			 * \~
 			 */
@@ -762,6 +905,11 @@ namespace awh {
 			 * \~english
 			 * @brief Settings of the writing of a markup text
 			 *
+			 * @note This construction lies in a common header rather than in the writing, because a
+			 *       markup tree writes itself by the `dump(settings)` step, while it cannot include the
+			 *       writing into itself: the writing itself depends on the tree. Inside the writing it is
+			 *       available by the former name `writer_t::settings_t`
+			 *
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Settings {
@@ -780,23 +928,25 @@ namespace awh {
 				 * Наибольшая допустимая глубина вложенности узлов, ноль - без предела
 				 *
 				 * @details Предела по умолчанию нет: обход дерева ведётся собственным
-				 * стеком, а не рекурсией, и стеку задачи глубина записи не грозит. Держи
-				 * запись предел разбора, дерево, разобранное с поднятым `maxDepth`,
-				 * обратно бы не записывалось - а разобранное обязано записываться
+				 *          стеком, а не рекурсией, и стеку задачи глубина записи не грозит. Держи
+				 *          запись предел разбора, дерево, разобранное с поднятым `maxDepth`,
+				 *          обратно бы не записывалось - а разобранное обязано записываться.
 				 *
 				 * @note Предел нужен лишь тому, кто открывает узлы сам, не имея дерева:
-				 * ошибка в его собственном ходе иначе растит стек открытых узлов, пока
-				 * не исчерпается память. Превышение отвечает отказом `DEPTH_EXCEEDED`
+				 *       ошибка в его собственном ходе иначе растит стек открытых узлов, пока
+				 *       не исчерпается память. Превышение отвечает отказом `DEPTH_EXCEEDED`
 				 *
 				 * \~english
 				 * Largest admissible depth of the nesting of the nodes, zero — without a limit
+				 *
 				 * @details There is no limit by default: the traversal of the tree is conducted by an own
-				 * stack rather than by a recursion, and the depth of the writing does not threaten the stack of the task. Were the
-				 * writing to keep the limit of the parsing, a tree parsed with a raised `maxDepth`
-				 * would not be written back — while what has been parsed is obliged to be writable
+				 *          stack rather than by a recursion, and the depth of the writing does not threaten the stack of the task. Were the
+				 *          writing to keep the limit of the parsing, a tree parsed with a raised `maxDepth`
+				 *          would not be written back — while what has been parsed is obliged to be writable.
+				 *
 				 * @note The limit is needed only by the one who opens the nodes himself, having no tree:
-				 * an error in his own course would otherwise grow the stack of the open nodes until
-				 * the memory is exhausted. An excess answers with a `DEPTH_EXCEEDED` refusal
+				 *       an error in his own course would otherwise grow the stack of the open nodes until
+				 *       the memory is exhausted. An excess answers with a `DEPTH_EXCEEDED` refusal
 				 *
 				 * \~
 				 */
@@ -819,12 +969,13 @@ namespace awh {
 			 * @brief Обращение с пробельным содержимым внутри узла
 			 *
 			 * @details Задаётся отведённым договором атрибутом «xml:space» и наследуется
-			 * вложенными узлами
+			 *          вложенными узлами.
 			 *
 			 * \~english
 			 * @brief Treatment of the whitespace content inside a node
+			 *
 			 * @details Given by the «xml:space» attribute allotted by the protocol and inherited
-			 * by the nested nodes
+			 *          by the nested nodes.
 			 *
 			 * \~
 			 */
@@ -838,16 +989,17 @@ namespace awh {
 			 * @brief Отрезок общего хранилища знаков
 			 *
 			 * @details Хранилища знаков дописываются по мере разбора и при росте
-			 * перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
-			 * отрезка вместо ссылки на него - единственный способ пережить такое
-			 * перемещение
+			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
+			 *          отрезка вместо ссылки на него - единственный способ пережить такое
+			 *          перемещение.
 			 *
 			 * \~english
 			 * @brief Segment of the common storage of the characters
+			 *
 			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
-			 * are moved, invalidating the references to their content. To keep the position of a
-			 * segment instead of a reference to it is the only way to survive such a
-			 * move
+			 *          are moved, invalidating the references to their content. To keep the position of a
+			 *          segment instead of a reference to it is the only way to survive such a
+			 *          move.
 			 *
 			 * \~
 			 */
@@ -876,6 +1028,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param offset offset of the beginning of the segment in the storage of the characters
 				 * @param length length of the segment in bytes
 				 *
@@ -889,17 +1042,19 @@ namespace awh {
 			 * @brief Положение в исходном тексте разметки
 			 *
 			 * @details Служит для указания места ошибки и для привязки узлов дерева к
-			 * исходному тексту
+			 *          исходному тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 * смещение - в байтах исходного текста до перекодирования
+			 *       смещение - в байтах исходного текста до перекодирования
 			 *
 			 * \~english
 			 * @brief Position in the source markup text
+			 *
 			 * @details Serves for indicating the place of an error and for binding the nodes of the tree to the
-			 * source text
+			 *          source text.
+			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 * the offset — in the bytes of the source text before the transcoding
+			 *       the offset — in the bytes of the source text before the transcoding
 			 *
 			 * \~
 			 */
@@ -951,30 +1106,33 @@ namespace awh {
 			 * @brief Имя узла или атрибута с учётом пространства имён
 			 *
 			 * @details Имя в разметке с пространствами имён состоит из необязательного
-			 * префикса и местного имени. Смысл имени задаёт не префикс, а связанное с ним
-			 * обозначение пространства имён: один и тот же префикс в разных частях текста
-			 * вправе обозначать разное
+			 *          префикса и местного имени. Смысл имени задаёт не префикс, а связанное с ним
+			 *          обозначение пространства имён: один и тот же префикс в разных частях текста
+			 *          вправе обозначать разное.
 			 *
 			 * @warning Сличать имена следует по паре из обозначения пространства имён и
-			 * местного имени, а не по записи с префиксом. Устройства, отвечающие по договору
-			 * UPnP, ставят префиксы кто во что горазд, и сличение по записи с префиксом на
-			 * них разваливается
+			 *          местного имени, а не по записи с префиксом. Устройства, отвечающие по договору
+			 *          UPnP, ставят префиксы кто во что горазд, и сличение по записи с префиксом на
+			 *          них разваливается
 			 *
 			 * @note Поля ссылаются на память, принадлежащую разбираемому тексту либо
-			 * хранилищу имён, и живут не дольше их
+			 *       хранилищу имён, и живут не дольше их
 			 *
 			 * \~english
 			 * @brief Name of a node or of an attribute with regard to the namespace
+			 *
 			 * @details A name in a markup with the namespaces consists of an optional
-			 * prefix and a local name. The meaning of a name is given not by the prefix but by the designation of the
-			 * namespace bound to it: one and the same prefix in different parts of a text
-			 * has the right to designate different things
+			 *          prefix and a local name. The meaning of a name is given not by the prefix but by the designation of the
+			 *          namespace bound to it: one and the same prefix in different parts of a text
+			 *          has the right to designate different things.
+			 *
 			 * @warning The names should be compared by the pair of the designation of the namespace and the
-			 * local name rather than by the record with the prefix. The devices answering by the UPnP
-			 * protocol put the prefixes each in its own way, and a comparison by the record with the prefix
-			 * falls apart on them
+			 *          local name rather than by the record with the prefix. The devices answering by the UPnP
+			 *          protocol put the prefixes each in its own way, and a comparison by the record with the prefix
+			 *          falls apart on them
+			 *
 			 * @note The fields refer to the memory belonging to the text being parsed or to
-			 * the storage of the names, and they live no longer than they do
+			 *       the storage of the names, and they live no longer than they do
 			 *
 			 * \~
 			 */
@@ -995,6 +1153,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the coincidence of a name
+				 *
 				 * @param uri   designation of the namespace for the comparison
 				 * @param local local name for the comparison
 				 * @return      result of the check
@@ -1011,6 +1170,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Comparison operator
+				 *
 				 * @param name name for the comparison
 				 * @return     result of the comparison
 				 *
@@ -1026,6 +1186,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Comparison operator
+				 *
 				 * @param name name for the comparison
 				 * @return     result of the comparison
 				 *
@@ -1039,32 +1200,35 @@ namespace awh {
 			 * @brief Атрибут узла разметки
 			 *
 			 * @details Значение атрибута выдаётся уже приведённым к окончательному виду:
-			 * ссылки на сущности подставлены, знаки конца строки приведены к единому виду,
-			 * пробельные знаки заменены пробелом по правилам договора
+			 *          ссылки на сущности подставлены, знаки конца строки приведены к единому виду,
+			 *          пробельные знаки заменены пробелом по правилам договора.
 			 *
 			 * @note Объявления пространств имён - «xmlns» и «xmlns:*» - в перечне атрибутов
-			 * узла не выдаются: они не описывают узел, а связывают префиксы, и доступны
-			 * отдельным перечнем
+			 *       узла не выдаются: они не описывают узел, а связывают префиксы, и доступны
+			 *       отдельным перечнем
 			 *
 			 * @warning Значение живёт лишь до разбора следующего узла со свойствами:
-			 * хранилище свойств переиспользуется. Замер: значение, удержанное у первого
-			 * узла, после двухсот узлов со свойствами читало испорченное содержимое.
-			 * Ручательство названо нарочно - соседняя свёртка имени о своём сроке
-			 * ГОВОРИТ, и молчание здесь читалось бы как её срок
+			 *          хранилище свойств переиспользуется. Замер: значение, удержанное у первого
+			 *          узла, после двухсот узлов со свойствами читало испорченное содержимое.
+			 *          Ручательство названо нарочно - соседняя свёртка имени о своём сроке
+			 *          ГОВОРИТ, и молчание здесь читалось бы как её срок
 			 *
 			 * \~english
 			 * @brief Attribute of a markup node
+			 *
 			 * @details The value of an attribute is issued already brought to its final form:
-			 * the references to the entities are substituted, the line ending characters are brought to a single form,
-			 * the whitespace characters are replaced by a space by the rules of the protocol
+			 *          the references to the entities are substituted, the line ending characters are brought to a single form,
+			 *          the whitespace characters are replaced by a space by the rules of the protocol.
+			 *
 			 * @note The declarations of the namespaces — «xmlns» and «xmlns:*» — are not issued in the list of the attributes
-			 * of a node: they do not describe the node but bind the prefixes, and they are available
-			 * as a separate list
+			 *       of a node: they do not describe the node but bind the prefixes, and they are available
+			 *       as a separate list
+			 *
 			 * @warning The value lives only until the parsing of the next node with attributes:
-			 * the storage of the attributes is reused. Measurement: a value held at the first
-			 * node, after two hundred nodes with attributes read a corrupted content.
-			 * The lifetime is named deliberately — the neighbouring structure of a name DOES SPEAK
-			 * of its own lifetime, and a silence here would read as its lifetime
+			 *          the storage of the attributes is reused. Measurement: a value held at the first
+			 *          node, after two hundred nodes with attributes read a corrupted content.
+			 *          The lifetime is named deliberately — the neighbouring structure of a name DOES SPEAK
+			 *          of its own lifetime, and a silence here would read as its lifetime
 			 *
 			 * \~
 			 */
@@ -1095,23 +1259,25 @@ namespace awh {
 			 * @brief Связывание префикса с пространством имён
 			 *
 			 * @details Действует внутри узла, где объявлено, и внутри всех вложенных в него,
-			 * пока не будет переопределено
+			 *          пока не будет переопределено.
 			 *
 			 * @warning Поля живут лишь до закрытия узла, связывание объявившего: хранилище
-			 * областей переиспользуется. Замер: обозначение, удержанное у корневого узла,
-			 * по закрытии его читало СДВИНУТОЕ содержимое - «p» вместо «urn:A», - тогда как
-			 * зов `resolve()` отвечал пустым, то есть верно. Ответ о связывании надлежит
-			 * брать зовом, а нужное дольше - копировать
+			 *          областей переиспользуется. Замер: обозначение, удержанное у корневого узла,
+			 *          по закрытии его читало СДВИНУТОЕ содержимое - «p» вместо «urn:A», - тогда как
+			 *          зов `resolve()` отвечал пустым, то есть верно. Ответ о связывании надлежит
+			 *          брать зовом, а нужное дольше - копировать
 			 *
 			 * \~english
 			 * @brief Binding of a prefix to a namespace
+			 *
 			 * @details Acts inside the node where it is declared and inside all the ones nested into it,
-			 * until it is redefined
+			 *          until it is redefined.
+			 *
 			 * @warning The fields live only until the closing of the node that declared the binding: the storage
-			 * of the scopes is reused. Measurement: a designation held at the root node,
-			 * upon its closing read a SHIFTED content — «p» instead of «urn:A» — whereas
-			 * a call to `resolve()` answered empty, that is, correctly. The answer about a binding should be
-			 * taken by a call, and what is needed for longer — copied
+			 *          of the scopes is reused. Measurement: a designation held at the root node,
+			 *          upon its closing read a SHIFTED content — «p» instead of «urn:A» — whereas
+			 *          a call to `resolve()` answered empty, that is, correctly. The answer about a binding should be
+			 *          taken by a call, and what is needed for longer — copied
 			 *
 			 * \~
 			 */
@@ -1142,6 +1308,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the description of an error code of the parsing
+			 *
 			 * @param error error code of the parsing
 			 * @return      description of the error code in the English language
 			 *
@@ -1158,6 +1325,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of an encoding
+			 *
 			 * @param encoding encoding of the source text
 			 * @return         commonly accepted name of the encoding
 			 *
@@ -1174,6 +1342,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining an encoding by its name
+			 *
 			 * @param text name of the encoding in any case
 			 * @return     determined encoding of the source text
 			 *
@@ -1186,8 +1355,8 @@ namespace awh {
 			 * @brief Метод разбора целого числа со знаком из содержимого разметки
 			 *
 			 * @details Пробельная обвязка по краям отбрасывается, а разобрано обязано быть
-			 * всё содержимое целиком: остаток за числом считается отказом. Разбор ведётся
-			 * по правилам местности «C» и от установленной в приложении местности не зависит
+			 *          всё содержимое целиком: остаток за числом считается отказом. Разбор ведётся
+			 *          по правилам местности «C» и от установленной в приложении местности не зависит.
 			 *
 			 * @param text   разбираемое содержимое
 			 * @param result ссылка на результат разбора
@@ -1195,9 +1364,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a signed integer from the content of a markup
+			 *
 			 * @details The whitespace padding at the edges is discarded, while the whole content as a whole is obliged to be
-			 * parsed: a remainder after the number is considered a refusal. The parsing is conducted
-			 * by the rules of the «C» locale and does not depend on the locale set in the application
+			 *          parsed: a remainder after the number is considered a refusal. The parsing is conducted
+			 *          by the rules of the «C» locale and does not depend on the locale set in the application.
+			 *
 			 * @param text   content being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1216,6 +1387,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing an unsigned integer from the content of a markup
+			 *
 			 * @param text   content being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1229,7 +1401,7 @@ namespace awh {
 			 * @brief Метод разбора числа с плавающей точкой из содержимого разметки
 			 *
 			 * @details Разбор совпадает с разбором функции strtod в местности «C» вплоть до
-			 * последнего бита мантиссы
+			 *          последнего бита мантиссы.
 			 *
 			 * @param text   разбираемое содержимое
 			 * @param result ссылка на результат разбора
@@ -1237,8 +1409,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a floating-point number from the content of a markup
+			 *
 			 * @details The parsing coincides with the parsing of the strtod function in the «C» locale down to
-			 * the last bit of the mantissa
+			 *          the last bit of the mantissa.
+			 *
 			 * @param text   content being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1252,7 +1426,7 @@ namespace awh {
 			 * @brief Метод разбора логического значения из содержимого разметки
 			 *
 			 * @details Признаётся запись по договору XSD: «true», «false», «1» и «0».
-			 * Регистр учитывается - договор иных написаний не допускает
+			 *          Регистр учитывается - договор иных написаний не допускает.
 			 *
 			 * @param text   разбираемое содержимое
 			 * @param result ссылка на результат разбора
@@ -1260,8 +1434,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a logical value from the content of a markup
+			 *
 			 * @details The notation of the XSD protocol is recognized: «true», «false», «1» and «0».
-			 * The case is taken into account — the protocol admits no other spellings
+			 *          The case is taken into account — the protocol admits no other spellings.
+			 *
 			 * @param text   content being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing
@@ -1279,6 +1455,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the number type of the parsing result
+			 *
 			 * @tparam T number type of the parsing result
 			 *
 			 * \~
@@ -1289,12 +1466,12 @@ namespace awh {
 			 * @brief Метод разбора числа из содержимого разметки
 			 *
 			 * @details Пробельная обвязка отбрасывается, а вид разбора решается ЗАПИСЬЮ,
-			 * а не затребованным видом: `1e2` и `300.5` извлекаются и целым, округляясь по
-			 * правилам приведения, а запись, в разрядность не вмещающаяся, выдаётся пределом
-			 * затребованного вида. Уклад этот повторяет договор извлечения кодека JSON знак
-			 * в знак и заведён решением от 01.09.2026, снявшим расхождение двух
-			 * дверей разметки по четырём правилам разом. Записи `nan` и `inf` числом не
-			 * считаются. Затребованный вид отдельного указания не требует
+			 *          а не затребованным видом: `1e2` и `300.5` извлекаются и целым, округляясь по
+			 *          правилам приведения, а запись, в разрядность не вмещающаяся, выдаётся пределом
+			 *          затребованного вида. Уклад этот повторяет договор извлечения кодека JSON знак
+			 *          в знак и заведён решением от 01.09.2026, снявшим расхождение двух
+			 *          дверей разметки по четырём правилам разом. Записи `nan` и `inf` числом не
+			 *          считаются. Затребованный вид отдельного указания не требует.
 			 *
 			 * @note Переменная-приёмник при ОТКАЗЕ не трогается вовсе и сохраняет то, что
 			 *       несла до вызова. Уклад этот един у всех трёх кодеков и снят замером
@@ -1306,9 +1483,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a number from the content of a markup
-			 * @details The parsing is conducted with a check of going beyond the limits of the requested type:
-			 * a value that does not fit into the type is rejected rather than being truncated silently. The type
-			 * is determined by the requested type of the result without requiring a separate indication
+			 *
+			 * @details The whitespace padding is discarded, while the kind of the parsing is decided by
+			 *          the NOTATION, and not by the requested kind: `1e2` and `300.5` are extracted even
+			 *          as a whole number, rounding by the rules of the conversion, and a notation which
+			 *          does not fit into the bitness is issued as a bound of the requested kind. The
+			 *          order here repeats the extraction contract of the codec JSON character by
+			 *          character and was made by the decision of 2026-09-01, which took away a
+			 *          divergence of the two doors of the markup by four rules at once. The notations
+			 *          `nan` and `inf` are not counted as a number. A requested kind needs no separate
+			 *          indication.
+			 *
+			 * @note A receiving variable is not touched AT A REFUSAL at all and keeps what it carried
+			 *       before the call. This order is one across all the three codecs and was taken off by
+			 *       a measurement of 2026-09-01 over twenty paths of a refusal
+			 *
 			 * @param text   content being parsed
 			 * @param result reference to the result of the parsing
 			 * @return       flag of a successful parsing

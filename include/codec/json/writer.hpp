@@ -96,27 +96,33 @@ namespace awh {
 			 * @brief Запись текста JSON
 			 *
 			 * @details Текст собирается значение за значением, а собранное вправе изыматься
-			 * по мере накопления: сборщик отдаёт накопленное и остаётся готовым продолжать.
-			 * Оттого документ, в память не помещающийся, записывается тем же способом, что
-			 * и малый
+			 *          по мере накопления: сборщик отдаёт накопленное и остаётся готовым продолжать.
+			 *          Оттого документ, в память не помещающийся, записывается тем же способом, что
+			 *          и малый.
 			 *
 			 * @note Входная строка может ссылаться на результат `text()`: её содержимое
 			 *       сохраняется до изменения буфера. Срезы входных данных должны быть действительны
-			 *       в момент вызова; хранить их после изменения выходного буфера нельзя.
+			 *       в момент вызова; хранить их после изменения выходного буфера нельзя
 			 *
 			 * @note Сборщик стережёт правильность строения: закрытие вместилища, какое не
-			 * открывалось, и значение, поданное там, где ожидается имя поля, отвергаются.
-			 * Собранный текст оттого правилен по строению всегда
+			 *       открывалось, и значение, поданное там, где ожидается имя поля, отвергаются.
+			 *       Собранный текст оттого правилен по строению всегда
 			 *
 			 * \~english
 			 * @brief Writing of a JSON text
+			 *
 			 * @details The text is assembled value by value, while what has been assembled may be extracted
-			 * as it accumulates: the assembler gives away what has been accumulated and remains ready to continue.
-			 * Whereby a document not fitting into the memory is written by the same means as
-			 * a small one
+			 *          as it accumulates: the assembler gives away what has been accumulated and remains ready to continue.
+			 *          Whereby a document not fitting into the memory is written by the same means as
+			 *          a small one.
+			 *
+			 * @note The input string may refer to the result of `text()`: its content is
+			 *       preserved until the buffer is changed. The slices of the input data must be valid
+			 *       at the moment of the call; keeping them after the change of the output buffer is not allowed
+			 *
 			 * @note The assembler guards the correctness of the structure: the closing of a container which has not
-			 * been opened, and a value fed where the name of a field is expected, are rejected.
-			 * The assembled text is thereby always correct by its structure
+			 *       been opened, and a value fed where the name of a field is expected, are rejected.
+			 *       The assembled text is thereby always correct by its structure
 			 *
 			 * \~
 			 */
@@ -141,14 +147,15 @@ namespace awh {
 						 * Правило обращения с последовательностью, кодировке UTF-8 не отвечающей
 						 *
 						 * @note Умолчанием стоит замена знаком U+FFFD: текст обязан остаться
-						 * годным для разбора при любом содержимом строки, а знак замены
-						 * предписан самой кодировкой и в тексте виден глазом
+						 *       годным для разбора при любом содержимом строки, а знак замены
+						 *       предписан самой кодировкой и в тексте виден глазом
 						 *
 						 * \~english
 						 * Rule of the handling of a sequence not conforming to the UTF-8 encoding
+						 *
 						 * @note The replacement by the character U+FFFD stands as the default: a text must remain
-						 * suitable for the parsing at any content of a string, while the replacement character
-						 * is prescribed by the encoding itself and is visible to the eye in the text
+						 *       suitable for the parsing at any content of a string, while the replacement character
+						 *       is prescribed by the encoding itself and is visible to the eye in the text
 						 *
 						 * \~
 						 */
@@ -161,6 +168,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Number of the spaces of the indentation at the formatting with the indentations
+						 *
 						 * @note Zero means an indentation by a tabulation character
 						 *
 						 * \~
@@ -171,32 +179,51 @@ namespace awh {
 						 * Признак записи NaN и бесконечности словами вместо отказа
 						 *
 						 * @note Стандарт таких чисел не знает вовсе, и запись их делает
-						 * текст негодным для строгого разбора
+						 *       текст негодным для строгого разбора
 						 *
 						 * @warning Признак этот ПРОТИВОРЕЧИВ парному признаку читающего, и
-						 * противоречие ныне не отвергается. Замерено 07.09.2026: при
-						 * `writer.allowInfinityAndNan = true` и `reader.allowInfinityAndNan = false`
-						 * запись отвечает успехом при коде отказа нулевом, а чтение
-						 * записанного ТЕМИ ЖЕ настройками отвечает отказом `EXPECTED_VALUE` (0x0F).
-						 * Настройки документа держат оба набора разом, и противоречие
-						 * выразимо
+						 *          противоречие ныне не отвергается. Замерено 07.09.2026: при
+						 *          `writer.allowInfinityAndNan = true` и `reader.allowInfinityAndNan = false`
+						 *          запись отвечает успехом при коде отказа нулевом, а чтение
+						 *          записанного ТЕМИ ЖЕ настройками отвечает отказом `EXPECTED_VALUE` (0x0F).
+						 *          Настройки документа держат оба набора разом, и противоречие
+						 *          выразимо
 						 *
 						 * @note Молчание это НАМЕРЕННО и снимать его самовольно нельзя:
-						 * послабление имеет законное употребление - писать стороннему
-						 * потребителю, бесконечность принимающему, читая при этом строго
-						 * самому, - и отказ отнял бы его. Кодек INI то же сочетание
-						 * отвергает отказом `CONFLICTING_SETTINGS`, но по ИНОМУ доводу:
-						 * там разлад настроек искажает само значение, и годного
-						 * употребления у послабления нет вовсе
+						 *       послабление имеет законное употребление - писать стороннему
+						 *       потребителю, бесконечность принимающему, читая при этом строго
+						 *       самому, - и отказ отнял бы его. Кодек INI то же сочетание
+						 *       отвергает отказом `CONFLICTING_SETTINGS`, но по ИНОМУ доводу:
+						 *       там разлад настроек искажает само значение, и годного
+						 *       употребления у послабления нет вовсе
 						 *
 						 * @warning Расхождение семи кодеков в суждении об одном сочетании
-						 * настроек вынесено на решение 07.09.2026 и решения не имеет. Правку
-						 * вести ВСЕМИ семью разом, а не здесь одном
+						 *          настроек вынесено на решение 07.09.2026 и решения не имеет. Правку
+						 *          вести ВСЕМИ семью разом, а не здесь одном
 						 *
 						 * \~english
 						 * Flag of the writing of NaN and of the infinity by the words instead of a refusal
+						 *
 						 * @note The standard does not know such numbers at all, and the writing of them makes
-						 * the text unsuitable for a strict parsing
+						 *       the text unsuitable for a strict parsing
+						 *
+						 * @warning This flag is CONTRADICTORY to the paired flag of the reader, and the
+						 *          contradiction is not refused nowadays. Measured on 2026-09-07: with
+						 *          `writer.allowInfinityAndNan = true` and `reader.allowInfinityAndNan = false` the
+						 *          writing answers with success at a zero refusal code, while the reading of what was
+						 *          written with THE VERY SAME settings answers with a refusal `EXPECTED_VALUE`
+						 *          (0x0F). The settings of the
+						 *          document hold both sets at once, and the contradiction is expressible
+						 *
+						 * @note This silence is DELIBERATE and must not be removed on one's own: the lenity has a
+						 *       lawful use - writing to a foreign consumer that accepts infinity while reading
+						 *       strictly for oneself - and a refusal would take it away. The INI codec refuses the
+						 *       same combination by `CONFLICTING_SETTINGS`, but on ANOTHER ground: there the
+						 *       discord of the settings distorts the very value, and the lenity has no lawful use at all
+						 *
+						 * @warning The divergence of the seven codecs in judging one combination of the settings
+						 *          was brought up for a decision of 2026-09-07 and has no decision yet. The edit
+						 *          must be led WITH ALL SEVEN at once, and not here alone
 						 *
 						 * \~
 						 */
@@ -251,14 +278,18 @@ namespace awh {
 					 * @brief Метод отказа записи с сообщением о доводе его в журнал
 					 *
 					 * @details Способ этот зовётся лишь там, где отказ ВОЗНИКАЕТ. Проброс чужого
-					 * отказа через него не идёт: о беде сообщено там, где она случилась, и
-					 * второе сообщение лишь запутало бы читающего журнал
+					 *          отказа через него не идёт: о беде сообщено там, где она случилась, и
+					 *          второе сообщение лишь запутало бы читающего журнал.
 					 *
 					 * @param error код отказа записи
 					 * @return       всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the writing with a report of its reason to the log
+					 *
+					 * @details This way is called only where the refusal ARISES. The forwarding of a foreign
+					 *          refusal does not go through it: the trouble is reported where it has happened, and
+					 *          a second report would only confuse the one reading the log.
 					 *
 					 * @param error the code of the refusal of the writing
 					 * @return       always false, for the returning by it from the place of the refusal
@@ -278,22 +309,23 @@ namespace awh {
 					 * Признак того, что записанные документы разделены знаком перевода строки
 					 *
 					 * @details Заслон против склейки документов спрашивает ЭТОТ признак, а не
-					 * настройку потока. Прежде он спрашивал настройку - и в тот миг, когда
-					 * начинался второй документ, - тогда как разделитель пишется завершением
-					 * ПЕРВОГО. Включение потока после завершения первого документа заслон
-					 * проходило, а разделителя в тексте не было: замер дал `{"a":1}{` при
-					 * успехе записи и пустом коде отказа - два документа, склеенные в текст,
-					 * разбор какого распадётся на границе между ними
+					 *          настройку потока. Прежде он спрашивал настройку - и в тот миг, когда
+					 *          начинался второй документ, - тогда как разделитель пишется завершением
+					 *          ПЕРВОГО. Включение потока после завершения первого документа заслон
+					 *          проходило, а разделителя в тексте не было: замер дал `{"a":1}{` при
+					 *          успехе записи и пустом коде отказа - два документа, склеенные в текст,
+					 *          разбор какого распадётся на границе между ними.
 					 *
 					 * \~english
 					 * Sign that the written documents are separated by a line feed character
+					 *
 					 * @details The guard against the gluing of the documents asks THIS sign rather than
-					 * the setting of the stream. Formerly it asked the setting — and at the moment when
-					 * the second document began — whereas the separator is written by the finishing
-					 * of the FIRST one. The enabling of the stream after the finishing of the first document passed
-					 * the guard, while there was no separator in the text: the measurement gave `{"a":1}{` at
-					 * a success of the writing and an empty code of the refusal — two documents glued into a text
-					 * whose parsing would fall apart at the boundary between them
+					 *          the setting of the stream. Formerly it asked the setting — and at the moment when
+					 *          the second document began — whereas the separator is written by the finishing
+					 *          of the FIRST one. The enabling of the stream after the finishing of the first document passed
+					 *          the guard, while there was no separator in the text: the measurement gave `{"a":1}{` at
+					 *          a success of the writing and an empty code of the refusal — two documents glued into a text
+					 *          whose parsing would fall apart at the boundary between them.
 					 *
 					 * \~
 					 */
@@ -307,14 +339,16 @@ namespace awh {
 					 * @brief Метод записи разделителя перед очередным значением
 					 *
 					 * @details Записывает запятую, перевод строки и отступ - в объёме,
-					 * заданном настройками оформления
+					 *          заданном настройками оформления.
 					 *
 					 * @return признак допустимости записи значения в этом месте
 					 *
 					 * \~english
 					 * @brief Method of the writing of a separator before the next value
+					 *
 					 * @details Writes a comma, a line feed and an indentation — in the volume
-					 * set by the settings of the formatting
+					 *          set by the settings of the formatting.
+					 *
 					 * @return sign of the admissibility of the writing of a value in this place
 					 *
 					 * \~
@@ -328,6 +362,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string with an escaping
+					 *
 					 * @param text string being written
 					 *
 					 * \~
@@ -339,8 +374,8 @@ namespace awh {
 					 * @brief Метод переноса готовой записи числа в текст документа
 					 *
 					 * @details Запись переносится без сличения со стандартом: сюда попадает лишь
-					 * то, что писатель произвёл сам, а произвести негодную запись преобразование
-					 * числа не может. Сличается только запись, пришедшая извне
+					 *          то, что писатель произвёл сам, а произвести негодную запись преобразование
+					 *          числа не может. Сличается только запись, пришедшая извне.
 					 *
 					 * @param value переносимая запись числа
 					 * @param size  длина переносимой записи числа
@@ -348,9 +383,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the transfer of a ready record of a number into the text of a document
+					 *
 					 * @details The record is transferred without a comparison with the standard: only that which
-					 * the writer produced itself gets here, and the conversion of a number cannot produce
-					 * an unfit record. Only a record which came from the outside is compared
+					 *          the writer produced itself gets here, and the conversion of a number cannot produce
+					 *          an unfit record. Only a record which came from the outside is compared.
+					 *
 					 * @param value record of the number being transferred
 					 * @param size length of the record of the number being transferred
 					 * @return sign of the success of the writing
@@ -364,7 +401,7 @@ namespace awh {
 					 * @brief Метод очистки собранного текста документа
 					 *
 					 * @details Очистка возвращает сборщик к пустому тексту, а выделенную память
-					 * удерживает
+					 *          удерживает.
 					 *
 					 * @note Имя общее с записью разметки и таблицы намеренно: возвращение к
 					 *       пустому тексту у всех трёх кодеков зовётся `clear()`, а `reset()`
@@ -372,11 +409,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the clearing of the assembled text of a document
+					 *
 					 * @details The clearing returns the assembler to an empty text while holding
-					 * the allocated memory
+					 *          the allocated memory.
+					 *
 					 * @note The name is common with the writing of a markup and of a table deliberately:
-					 * the returning to an empty text is called `clear()` in all the three codecs, while
-					 * `reset()` is left to the reading in them
+					 *       the returning to an empty text is called `clear()` in all the three codecs, while
+					 *       `reset()` is left to the reading in them
 					 *
 					 * \~
 					 */
@@ -390,6 +429,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of an object
+					 *
 					 * @return sign of the success of the writing
 					 *
 					 * \~
@@ -403,6 +443,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of an array
+					 *
 					 * @return sign of the success of the writing
 					 *
 					 * \~
@@ -416,6 +457,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the closing of an opened container
+					 *
 					 * @return sign of the success of the writing
 					 *
 					 * \~
@@ -446,15 +488,18 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the name of a field of an object
+					 *
 					 * @warning The writing does NOT guard against a repetition of the name of a field, while
 					 *          the parsing by default REJECTS it: the rule `duplicate_t::ERROR` stands as
 					 *          the default of the reading, and the text `{"name":1,"name":2}`, issued by
 					 *          the writing without a single objection, is not accepted at all by its own
 					 *          parsing at the default settings
+					 *
 					 * @note The writing of an XML markup guards against a repetition of an attribute of a node
 					 *       and rejects it by the code `DUPLICATE_ATTRIBUTE`. The same is not done here:
 					 *       an object has as many fields as one likes, and a storage of the names for each
 					 *       opened object would lie upon the hot path of the writing
+					 *
 					 * @param name name of the field of the object being written
 					 * @return sign of the success of the writing
 					 *
@@ -470,6 +515,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an empty value
+					 *
 					 * @return sign of the success of the writing
 					 *
 					 * \~
@@ -484,6 +530,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a logical value
+					 *
 					 * @param value logical value being written
 					 * @return sign of the success of the writing
 					 *
@@ -495,32 +542,35 @@ namespace awh {
 					 * @brief Метод записи строкового значения
 					 *
 					 * @warning Негодная последовательность байтов UTF-8 в записываемом значении
-					 * ЗАМЕЩАЕТСЯ знаком замены U+FFFD, а запись отвечает успехом: договор JSON
-					 * велит тексту быть годным UTF-8, а замещение предписано самой кодировкой -
-					 * годной началом последовательности считается наибольшая её часть, оттого
-					 * `C3 28` даёт знак замены и скобку, а не два знака замены. Значение при этом
-					 * меняется молча, и вызывающему, кому важна сохранность байтов, проверять
-					 * их годность следует ДО записи
+					 *          ЗАМЕЩАЕТСЯ знаком замены U+FFFD, а запись отвечает успехом: договор JSON
+					 *          велит тексту быть годным UTF-8, а замещение предписано самой кодировкой -
+					 *          годной началом последовательности считается наибольшая её часть, оттого
+					 *          `C3 28` даёт знак замены и скобку, а не два знака замены. Значение при этом
+					 *          меняется молча, и вызывающему, кому важна сохранность байтов, проверять
+					 *          их годность следует ДО записи
 					 *
 					 * @note Кодек XML в том же положении отвечает отказом `INVALID_ENCODING`:
-					 * договор XML запрещает такие знаки прямо, тогда как JSON требует лишь
-					 * годной кодировки текста. Расхождение это задано форматами, а не недоделкой
+					 *       договор XML запрещает такие знаки прямо, тогда как JSON требует лишь
+					 *       годной кодировки текста. Расхождение это задано форматами, а не недоделкой
 					 *
 					 * @param value записываемое строковое значение
 					 * @return      признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value
+					 *
 					 * @warning An invalid sequence of UTF-8 bytes in the value being written is REPLACED
-					 * with the replacement character U+FFFD, while the writing answers with a success: the json
-					 * protocol orders a text to be a valid UTF-8, and the replacement is prescribed by the encoding
-					 * itself — the largest part of a sequence that is valid as its beginning is considered parsed,
-					 * therefore `C3 28` gives a replacement character and a bracket rather than two replacement characters.
-					 * The value thereby changes silently, and a caller to whom the preservation of the bytes matters
-					 * should check their validity BEFORE the writing
+					 *          with the replacement character U+FFFD, while the writing answers with a success: the json
+					 *          protocol orders a text to be a valid UTF-8, and the replacement is prescribed by the encoding
+					 *          itself — the largest part of a sequence that is valid as its beginning is considered parsed,
+					 *          therefore `C3 28` gives a replacement character and a bracket rather than two replacement characters.
+					 *          The value thereby changes silently, and a caller to whom the preservation of the bytes matters
+					 *          should check their validity BEFORE the writing
+					 *
 					 * @note The xml codec in the same position answers with an `INVALID_ENCODING` refusal:
-					 * the xml protocol forbids such characters directly, whereas json requires only
-					 * a valid encoding of the text. This divergence is set by the formats rather than by an omission
+					 *       the xml protocol forbids such characters directly, whereas json requires only
+					 *       a valid encoding of the text. This divergence is set by the formats rather than by an omission
+					 *
 					 * @param value string value being written
 					 * @return sign of the success of the writing
 					 *
@@ -532,21 +582,23 @@ namespace awh {
 					 * @brief Метод записи строкового значения, поданного строкой языка Си
 					 *
 					 * @details Способ этот обязателен, а не удобства ради: без него запись
-					 * строкового литерала уходила бы в запись ЛОГИЧЕСКОГО значения. Приведение
-					 * `const char *` к `bool` язык числит стандартным, а к `std::string` -
-					 * определяемым пользователем, и первое побеждает при выборе способа. Отказ
-					 * при этом не выдаётся вовсе: `writer.value("да")` молча записывает `true`
+					 *          строкового литерала уходила бы в запись ЛОГИЧЕСКОГО значения. Приведение
+					 *          `const char *` к `bool` язык числит стандартным, а к `std::string` -
+					 *          определяемым пользователем, и первое побеждает при выборе способа. Отказ
+					 *          при этом не выдаётся вовсе: `writer.value("да")` молча записывает `true`
 					 *
 					 * @param value записываемое строковое значение, ноль - пустое значение
 					 * @return      признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value passed as a C string
+					 *
 					 * @details This method is obligatory rather than a convenience: without it the writing
-					 * of a string literal would go into the writing of a LOGICAL value. The conversion
-					 * of `const char *` to `bool` is counted by the language as a standard one, and to `std::string` —
-					 * as a user-defined one, and the first one wins at the choice of the method. No failure
-					 * is issued at that: `writer.value("yes")` silently writes `true`
+					 *          of a string literal would go into the writing of a LOGICAL value. The conversion
+					 *          of `const char *` to `bool` is counted by the language as a standard one, and to `std::string` —
+					 *          as a user-defined one, and the first one wins at the choice of the method. No failure
+					 *          is issued at that: `writer.value("yes")` silently writes `true`
+					 *
 					 * @param value string value being written, zero — empty value
 					 * @return      sign of the success of the writing
 					 *
@@ -562,6 +614,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an integer
+					 *
 					 * @param value integer being written
 					 * @return sign of the success of the writing
 					 *
@@ -577,6 +630,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an unsigned integer
+					 *
 					 * @param value unsigned integer being written
 					 * @return sign of the success of the writing
 					 *
@@ -588,10 +642,10 @@ namespace awh {
 					 * @brief Шаблон записи целого числа записи любой
 					 *
 					 * @details Приём этот отвечает за написания, точного вида не несущие, -
-					 * `value(7)`, `value(size_t(9))`, `value(short(3))`. Без него запись
-					 * расходилась бы между целым со знаком, целым без знака и дробным видами
-					 * приведением РАВНОЙ силы, и сборка отвечала бы двусмысленностью:
-					 * годились ЛИШЬ `int64_t`, `uint64_t` и `double` дословно
+					 *          `value(7)`, `value(size_t(9))`, `value(short(3))`. Без него запись
+					 *          расходилась бы между целым со знаком, целым без знака и дробным видами
+					 *          приведением РАВНОЙ силы, и сборка отвечала бы двусмысленностью:
+					 *          годились ЛИШЬ `int64_t`, `uint64_t` и `double` дословно.
 					 *
 					 * @note Знаковость выбирает вид, которому число доводится: без знака через
 					 *       `uint64_t`, со знаком через `int64_t`. Обход через один лишь
@@ -611,6 +665,25 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the writing of an integer of any record
+					 *
+					 * @details This facility answers for the writings that carry no exact kind - `value(7)`,
+					 *          `value(size_t(9))`, `value(short(3))`. Without it the writing would diverge among
+					 *          the signed integer, unsigned integer and fractional kinds by casts of EQUAL
+					 *          strength, and the assembly would answer with an ambiguity: ONLY `int64_t`,
+					 *          `uint64_t` and `double` verbatim were fit.
+					 *
+					 * @note Signableness chooses the kind to which the number is brought: without a sign
+					 *       through `uint64_t`, with a sign through `int64_t`. A bypass through `int64_t`
+					 *       alone would turn `4294967295u` into a negative one
+					 *
+					 * @warning The `enable_if` fence is mandatory: without it the template would intercept also
+					 *          a fractional writing - `value(1.5f)` is brought to `float` by an exact match, while
+					 *          to `double` by a cast
+					 *
+					 * @warning The `char` kind is deliberately NOT produced: it is an integer kind, and
+					 *          `value('z')` would write the number 122 silently. For a character there is a
+					 *          writing by a string. The CSV codec keeps to the same rule
+					 *
 					 * @tparam T kind of the integer being written
 					 * @param number integer being written
 					 * @return sign of the success of the writing
@@ -624,15 +697,17 @@ namespace awh {
 					 * @brief Метод записи числа с плавающей запятой
 					 *
 					 * @details Записывается кратчайшей записью, читающейся обратно тем же
-					 * числом
+					 *          числом.
 					 *
 					 * @param value записываемое число с плавающей запятой
 					 * @return      признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of a floating-point number
+					 *
 					 * @details It is written by the shortest record read back as the same
-					 * number
+					 *          number.
+					 *
 					 * @param value floating-point number being written
 					 * @return sign of the success of the writing
 					 *
@@ -644,15 +719,17 @@ namespace awh {
 					 * @brief Метод записи числа его готовой записью
 					 *
 					 * @details Запись переносится в текст как есть, минуя преобразование.
-					 * Служит для переноса чисел, разобранных чтением, без потери точности
+					 *          Служит для переноса чисел, разобранных чтением, без потери точности.
 					 *
 					 * @param value записываемая запись числа
 					 * @return      признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of a number by its ready record
+					 *
 					 * @details The record is transferred into the text as it is bypassing the conversion.
-					 * Serves for the transfer of the numbers parsed by the reading without a loss of the precision
+					 *          Serves for the transfer of the numbers parsed by the reading without a loss of the precision.
+					 *
 					 * @param value record of the number being written
 					 * @return sign of the success of the writing
 					 *
@@ -668,6 +745,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the completion of a document at an NDJSON stream
+					 *
 					 * @return sign of the success of the writing
 					 *
 					 * \~
@@ -682,6 +760,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the assembled text
+					 *
 					 * @return assembled text
 					 *
 					 * \~
@@ -692,14 +771,16 @@ namespace awh {
 					 * @brief Метод изъятия собранного текста
 					 *
 					 * @details Отдаёт собранное и оставляет сборщик готовым продолжать: строение
-					 * документа при этом сохраняется, а память освобождается
+					 *          документа при этом сохраняется, а память освобождается.
 					 *
 					 * @return изъятый собранный текст
 					 *
 					 * \~english
 					 * @brief Method of the taking away of the assembled text
+					 *
 					 * @details Gives away what has been assembled and leaves the assembler ready to continue: the structure
-					 * of the document is thereby preserved, while the memory is released
+					 *          of the document is thereby preserved, while the memory is released.
+					 *
 					 * @return taken away assembled text
 					 *
 					 * \~
@@ -713,6 +794,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the size of the assembled text
+					 *
 					 * @return size of the assembled text in bytes
 					 *
 					 * \~
@@ -755,11 +837,29 @@ namespace awh {
 					 *
 					 * @return error code of the last operation of the writing
 					 *
+					 * @note Formerly the reason of a refusal went only to the log by a line, and a consumer
+					 *       who had not appointed a log was content with the `false` sign with no possibility to
+					 *       learn the cause at all. The writing of the XML markup issues the code of a refusal
+					 *       from the very beginning, and there is nothing to diverge from it here
+					 *
 					 * @note The refusal of the writing is LOCAL rather than terminal: the object remains
-					 *       usable, and a refused operation leaves no trace in the collected text
+					 *       usable, and a refused operation leaves no trace in the collected text,
+					 *       and the next operation is taken as if nothing had happened. A refused value at the
+					 *       name of a field leaves the name AWAITING a value, and a fit value may well take the
+					 *       place of the refused one
+					 *
 					 * @warning It follows that the return of EVERY operation of the writing must be checked:
 					 *          the caller who has checked none will assemble a text flawless in appearance
-					 *          and wrong in essence
+					 *          and wrong in essence: the measurement of 2026-09-01 - the refusal of a value at
+					 *          the name of a field «б» and the following writing of the pair «в» give
+					 *          `{"а":"годное","б":"третье"}`, where the value sat on ANOTHER name while the name
+					 *          «в» vanished. This text is parsed back without a single objection
+					 *
+					 * @note The writing of the XML markup behaves HERE DIFFERENTLY: there the refusal is
+					 *       terminal and closes the writing up to the very clearing. This divergence is
+					 *       deliberate and is fixed by the checks of both codecs - `MalformedRefuse` here and
+					 *       `TakeClosedByRefusal` at the markup, - while it was not stated in the description of
+					 *       the present codec at all
 					 *
 					 * \~
 					 */
@@ -772,6 +872,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the current depth of the nesting
+					 *
 					 * @return current depth of the nesting
 					 *
 					 * \~
@@ -786,6 +887,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the settings of the writing of a text
+					 *
 					 * @return settings of the writing of a text
 					 *
 					 * \~
@@ -799,6 +901,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the writing of a text
+					 *
 					 * @param settings settings of the writing of a text being set
 					 *
 					 * \~

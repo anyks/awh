@@ -1861,13 +1861,13 @@ TEST(CodecTomlWriter, MultilineOpeningNewline) {
 		// Выполняем проверку успешности разбора перечня с многострочным значением
 		ASSERT_TRUE(document.parse("k = [ \"один\", \"\"\"два\"\"\" ]\n"));
 		// Первая перезапись дерева настроек
-		const string first = document.text();
+		const string first = document.dump();
 		// Собираемое дерево настроек перезаписи
 		toml::document_t back;
 		// Выполняем проверку успешности разбора перезаписи
 		ASSERT_TRUE(back.parse(first));
 		// Выполняем проверку устойчивости перезаписи
-		ASSERT_EQ(back.text(), first);
+		ASSERT_EQ(back.dump(), first);
 	}
 }
 /**

@@ -1664,13 +1664,13 @@ namespace {
 			 *       Остаток прежнего разбора, в указателях уже не значащийся, снятию
 			 *       невидим вовсе - подпоркою это и вскрылось
 			 */
-			if(recycled.text() != document.text()){
+			if(recycled.text() != document.dump()){
 				// Выводим сообщение о расхождении перезаписей
 				::fprintf(stderr, "toml fuzz: reused tree rewrite differs from a fresh one\n");
 				// Выводим разбираемый текст настроек
 				dump(text);
 				// Выводим перезапись свежего дерева
-				dump(document.text());
+				dump(document.dump());
 				// Выводим перезапись дерева, прежним разбором занятого
 				dump(recycled.text());
 				// Выводим результат проверки дерева настроек
@@ -1680,7 +1680,7 @@ namespace {
 		// Выполняем учёт собранного дерева настроек
 		totals.trees++;
 		// Выполняем перезапись дерева настроек
-		const string first = document.text();
+		const string first = document.dump();
 		/**
 		 * Если перезапись дерева настроек отвергнута
 		 *
@@ -1939,7 +1939,7 @@ namespace {
 			}
 		}
 		// Выполняем перезапись правленого дерева настроек
-		const string edited = document.text();
+		const string edited = document.dump();
 		/**
 		 * Если перезапись правленого дерева настроек отвергнута
 		 */
@@ -2198,7 +2198,7 @@ namespace {
 				// Выводим исходный текст настроек
 				dump(text);
 				// Выводим перезапись дерева настроек
-				dump(document.text());
+				dump(document.dump());
 				// Выводим результат проверки кругового переноса
 				return false;
 			}
@@ -2245,7 +2245,7 @@ namespace {
 						// Выводим исходный текст настроек
 						dump(text);
 						// Выводим перезапись дерева настроек
-						dump(document.text());
+						dump(document.dump());
 						// Выводим перезапись снятого значения
 						dump(taken);
 						// Выводим перезапись значения, с перезаписи снятого
@@ -2308,9 +2308,9 @@ namespace {
 			// Выводим исходный текст настроек
 			dump(text);
 			// Выводим перезапись дерева, с какого значение снято
-			dump(document.text());
+			dump(document.dump());
 			// Выводим перезапись дерева переноса
-			dump(target.text());
+			dump(target.dump());
 			// Выводим запись снятого значения
 			dump(lifted.dump());
 			// Выводим запись перенесённого значения
@@ -2355,7 +2355,7 @@ namespace {
 			// Выводим результат проверки кругового хода
 			return true;
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		/**
 		 * Если перезапись дерева настроек отвергнута
 		 */

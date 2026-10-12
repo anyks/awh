@@ -83,17 +83,21 @@ namespace awh {
 			 * @brief Запись словаря расширений
 			 *
 			 * @details Запись связывает ключ, в записи CEF стоящий, с полным его именем,
-			 * с видом значения и с пределом длины, описанием ArcSight заданным
+			 *          с видом значения и с пределом длины, описанием ArcSight заданным.
 			 *
 			 * @note Виды словаря и полные имена держатся ВИДАМИ последовательностей
-			 * знаков, а не строками: таблица укладывается в постоянную память двоичного
-			 * файла целиком и не стоит ни выделения памяти, ни разбора при запуске
+			 *       знаков, а не строками: таблица укладывается в постоянную память двоичного
+			 *       файла целиком и не стоит ни выделения памяти, ни разбора при запуске
 			 *
 			 * \~english
 			 * @brief Record of the dictionary of the extensions
-			 * @details The record links a key standing in a CEF record with its full name,
-			 * with the kind of the value and with the limit of the length given by the ArcSight specification
 			 *
+			 * @details The record links a key standing in a CEF record with its full name,
+			 *          with the kind of the value and with the limit of the length given by the ArcSight specification.
+			 *
+			 * @note The kinds of the dictionary and the full names are held as KINDS of the sequences of
+			 *       characters, not as strings: the table lies in the constant memory of the binary file in full
+			 *       and costs neither an allocation of memory nor a parsing at the start
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Entry {
@@ -112,25 +116,36 @@ namespace awh {
 			 * @brief Пространство имён словаря расширений
 			 *
 			 * @details Словарь неизменен и общ у всех потребителей: сведений о состоянии
-			 * он не несёт вовсе, оттого заведён пространством имён, а не объектом
+			 *          он не несёт вовсе, оттого заведён пространством имён, а не объектом.
 			 *
 			 * @par Намеренные решения
 			 *
 			 * @li **Словарь неизменяем.** Расширить его своими ключами нельзя, и это
-			 * не пробел: ключ, словарю неизвестный, принимается разбором при
-			 * настройке сличения слабее строгой, а вид его выдаётся знаками. Иначе
-			 * два потребителя одного словаря видели бы разные его составы
+			 *     не пробел: ключ, словарю неизвестный, принимается разбором при
+			 *     настройке сличения слабее строгой, а вид его выдаётся знаками. Иначе
+			 *     два потребителя одного словаря видели бы разные его составы
 			 *
 			 * @li **Розыск ведётся двоичным поиском по упорядоченной таблице.**
-			 * Отображения с подсчётом отпечатков не заводится: таблица неизменна,
-			 * укладывается в постоянную память целиком и не стоит ни выделения
-			 * памяти при запуске, ни разбора её
+			 *     Отображения с подсчётом отпечатков не заводится: таблица неизменна,
+			 *     укладывается в постоянную память целиком и не стоит ни выделения
+			 *     памяти при запуске, ни разбора её
 			 *
 			 * \~english
 			 * @brief Namespace of the dictionary of the extensions
-			 * @details The dictionary is immutable and common to all the consumers: it carries no information
-			 * about a state at all, whereby it is made a namespace rather than an object
 			 *
+			 * @details The dictionary is immutable and common to all the consumers: it carries no information
+			 *          about a state at all, whereby it is made a namespace rather than an object.
+			 *
+			 * @par Deliberate decisions
+			 *
+			 * @li **The dictionary is immutable.** It cannot be extended with one's own keys, and that is not a
+			 *     gap: a key unknown to the dictionary is accepted by the parsing under a setting of the matching
+			 *     weaker than the strict one, and its kind is issued as characters. Otherwise two consumers of one
+			 *     dictionary would have seen different compositions of it
+			 *
+			 * @li **The search is conducted by a binary search over a sorted table.** A mapping with the counting
+			 *     of fingerprints is not introduced: the table is immutable, lies in the constant memory in full,
+			 *     and costs neither an allocation of memory at the start nor the parsing of it
 			 * \~
 			 */
 			namespace dictionary {
@@ -143,6 +158,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the search for a record of the dictionary by a key of an extension
+				 *
 				 * @param key key of an extension standing in a record
 				 * @return    record of the dictionary or nothing if the key is unknown to the dictionary
 				 *
@@ -154,13 +170,17 @@ namespace awh {
 				 * @brief Метод розыска записи словаря по полному имени ключа
 				 *
 				 * @details Ход этот и есть второй ход к сведённому именованию: обход
-				 * дерева выдаёт ключи сырыми, а полное имя разыскивается им
+				 *          дерева выдаёт ключи сырыми, а полное имя разыскивается им.
 				 *
 				 * @param name полное имя ключа расширения
 				 * @return     запись словаря либо ничто, если имя словарю неизвестно
 				 *
 				 * \~english
 				 * @brief Method of the search for a record of the dictionary by the full name of a key
+				 *
+				 * @details This method is the very second way to the reduced naming: a traversal of the tree issues
+				 *          the keys raw, while the full name is searched for by it.
+				 *
 				 * @param name full name of a key of an extension
 				 * @return     record of the dictionary or nothing if the name is unknown to the dictionary
 				 *
@@ -175,6 +195,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the keys of the extensions in the dictionary
+				 *
 				 * @return number of the keys of the extensions in the dictionary
 				 *
 				 * \~
@@ -185,14 +206,19 @@ namespace awh {
 				 * @brief Метод получения записи словаря по её порядковому номеру
 				 *
 				 * @details Обход словаря целиком нужен справке о применении и проверке
-				 * упорядоченности таблицы, розыском же пользоваться надлежит ходами
-				 * `find` и `search`
+				 *          упорядоченности таблицы, розыском же пользоваться надлежит ходами
+				 *          `find` и `search`
 				 *
 				 * @param index порядковый номер записи словаря
 				 * @return      запись словаря либо ничто, если номер за таблицу выходит
 				 *
 				 * \~english
 				 * @brief Method of getting a record of the dictionary by its ordinal number
+				 *
+				 * @details The traversal of the dictionary in full is needed by a reference on the application and by
+				 *          a check of the sortedness of the table, while the search itself is to be conducted by the
+				 *          methods `find` and `search`
+				 *
 				 * @param index ordinal number of a record of the dictionary
 				 * @return      record of the dictionary or nothing if the number goes beyond the table
 				 *

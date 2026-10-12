@@ -81,25 +81,25 @@ namespace awh {
 			 * @brief Длина заголовка опознания в октетах
 			 *
 			 * @details Длина постоянна намеренно: заголовок читается одним коротким чтением
-			 * прежде всего прочего, и переменная длина потребовала бы читать его дважды
+			 *          прежде всего прочего, и переменная длина потребовала бы читать его дважды.
 			 *
 			 * @details Раскладка заголовка по октетам, от нуля:
-			 * | смещение | длина | поле                                             |
-			 * |----------|-------|--------------------------------------------------|
-			 * | `0`      | 4     | опознавательная запись `A` `B` `C` `0x00`        |
-			 * | `4`      | 1     | старшая версия вида записи                       |
-			 * | `5`      | 1     | младшая версия вида записи                       |
-			 * | `6`      | 2     | разряды свойств контейнера (`flag_t`)            |
-			 * | `8`      | 16    | признак владельца контейнера                     |
-			 * | `24`     | 4     | вид содержимого контейнера                       |
-			 * | `28`     | 4     | длина содержимого кадра оглавления               |
-			 * | `32`     | 8     | длина тела контейнера                            |
-			 * | `40`     | 8     | количество записей в теле                        |
-			 * | `48`     | 8     | смещение оглавления                              |
-			 * | `56`     | 8     | смещение подписи                                 |
-			 * | `64`     | 16    | отпечаток открытого ключа владельца              |
-			 * | `80`     | 8     | поколение записи контейнера                      |
-			 * | `88`     | 8     | свёртка первых 88 октетов заголовка              |
+			 *          | смещение | длина | поле                                             |
+			 *          |----------|-------|--------------------------------------------------|
+			 *          | `0`      | 4     | опознавательная запись `A` `B` `C` `0x00`        |
+			 *          | `4`      | 1     | старшая версия вида записи                       |
+			 *          | `5`      | 1     | младшая версия вида записи                       |
+			 *          | `6`      | 2     | разряды свойств контейнера (`flag_t`)            |
+			 *          | `8`      | 16    | признак владельца контейнера                     |
+			 *          | `24`     | 4     | вид содержимого контейнера                       |
+			 *          | `28`     | 4     | длина содержимого кадра оглавления               |
+			 *          | `32`     | 8     | длина тела контейнера                            |
+			 *          | `40`     | 8     | количество записей в теле                        |
+			 *          | `48`     | 8     | смещение оглавления                              |
+			 *          | `56`     | 8     | смещение подписи                                 |
+			 *          | `64`     | 16    | отпечаток открытого ключа владельца              |
+			 *          | `80`     | 8     | поколение записи контейнера                      |
+			 *          | `88`     | 8     | свёртка первых 88 октетов заголовка              |.
 			 *
 			 * Числовые поля уложены целыми установленной ширины ОТ МЛАДШЕГО ОКТЕТА К
 			 * СТАРШЕМУ - тем же порядком, каким укладывается всякая ведомая запись
@@ -107,9 +107,9 @@ namespace awh {
 			 * владельца, отпечаток) лежат октет в октет, порядка не ведая
 			 *
 			 * @details **Выработка свёртки заголовка.** Свёртка кроет первые восемьдесят восемь
-			 * октетов, а САМА в них не входит: восемь последних - её место. Зерно её
-			 * `0x4142433130303031` - своё, отличное от зерна кадра: заголовок и кадр кроют
-			 * разное, и общее зерно роднило бы их без нужды
+			 *          октетов, а САМА в них не входит: восемь последних - её место. Зерно её
+			 *          `0x4142433130303031` - своё, отличное от зерна кадра: заголовок и кадр кроют
+			 *          разное, и общее зерно роднило бы их без нужды.
 			 *
 			 * @note Раскладка эта записана 01.09.2026, а прежде жила ЛИШЬ В РЕАЛИЗАЦИИ:
 			 *       потребитель, пишущий разбор контейнера на ином языке, вывести её
@@ -125,8 +125,48 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Length of the identifying header in octets
+			 *
 			 * @details The length is constant deliberately: the header is read by one short reading
-			 * before everything else, and a variable length would require reading it twice
+			 *          before everything else, and a variable length would require reading it twice.
+			 *
+			 * @details The layout of the header by octets, from zero:
+			 *          | offset   | length | field                                              |
+			 *          |----------|--------|----------------------------------------------------|
+			 *          | `0`      | 4      | the identifying record `A` `B` `C` `0x00`           |
+			 *          | `4`      | 1      | the major version of the kind of the record              |
+			 *          | `5`      | 1      | the minor version of the kind of the record              |
+			 *          | `6`      | 2      | the bits of the properties of a container (`flag_t`)     |
+			 *          | `8`      | 16     | the sign of the owner of a container                   |
+			 *          | `24`     | 4      | the kind of the content of a container                 |
+			 *          | `28`     | 4      | the length of the content of the index chunk           |
+			 *          | `32`     | 8      | the length of the body of a container                  |
+			 *          | `40`     | 8      | the number of the records in the body                    |
+			 *          | `48`     | 8      | the offset of the index                              |
+			 *          | `56`     | 8      | the offset of the signature                          |
+			 *          | `64`     | 16     | the fingerprint of the public key of the owner         |
+			 *          | `80`     | 8      | the generation of the record of a container            |
+			 *          | `88`     | 8      | the digest of the first 88 octets of the header        |.
+			 *
+			 * The numeric fields are laid by integers of a set width FROM THE LEAST SIGNIFICANT OCTET TO THE
+			 * MOST SIGNIFICANT ONE - by that same order in which every led record is laid (see `fixed` in
+			 * "encoding.hpp"). The fields-records (the identifying one, the sign of the owner, the
+			 * fingerprint) lie octet in octet, knowing no order
+			 *
+			 * @details **The production of the digest of the header.** The digest covers the first
+			 *          eighty-eight octets, while ITSELF is not among them: the last eight are its place. Its
+			 *          seed is `0x4142433130303031` - its own, distinct from the seed of a chunk: the header and
+			 *          a chunk cover different things, and a common seed would have kin them without a need.
+			 *
+			 * @note This layout was written on 2026-09-01, and before it lived ONLY IN THE IMPLEMENTATION: a
+			 *       consumer writing a parser of a container in another language could derive it from nowhere.
+			 *       The header is read before the body and by whoever holds a container in his hands - that is
+			 *       why its layout is a promise outward, not a detail of the device
+			 *
+			 * @warning It was written by a REMOVAL FROM THE IMPLEMENTATION, not the other way about, and it
+			 *          cannot serve as a support for a comparison with it: a judge written by such a record
+			 *          would repeat the implementation together with its mistakes, be there any. It will become
+			 *          a support when it outlives an editing of the implementation which is NOT confirmed by it
+			 *          - see `tools/verify/codec/abc/README.md`
 			 *
 			 * \~
 			 */
@@ -148,14 +188,15 @@ namespace awh {
 			 * @brief Длина отпечатка открытого ключа в октетах
 			 *
 			 * @details Отпечаток есть усечённая свёртка канонической записи открытого ключа.
-			 * Усечение задаётся здесь, а не модулем подписи: сколько его отрезать, решает вид
-			 * записи контейнера, а не устройство ключа
+			 *          Усечение задаётся здесь, а не модулем подписи: сколько его отрезать, решает вид
+			 *          записи контейнера, а не устройство ключа.
 			 *
 			 * \~english
 			 * @brief Length of the fingerprint of a public key in octets
+			 *
 			 * @details The fingerprint is a truncated digest of the canonical record of a public key.
-			 * The truncation is set here rather than by the module of the signature: how much of it to cut off is decided by the kind
-			 * of the record of the container rather than by the structure of the key
+			 *          The truncation is set here rather than by the module of the signature: how much of it to cut off is decided by the kind
+			 *          of the record of the container rather than by the structure of the key.
 			 *
 			 * \~
 			 */
@@ -188,18 +229,25 @@ namespace awh {
 			 * @brief Разряды свойств контейнера
 			 *
 			 * @details Разряды эти лежат в заголовке открыто и читаются прежде тела: по ним
-			 * потребитель узнаёт, что с телом делать, ещё не имея ни ключа, ни самого тела
+			 *          потребитель узнаёт, что с телом делать, ещё не имея ни ключа, ни самого тела.
+			 *
+			 * @note Признак `CANONICAL` есть ОБЪЯВЛЕНИЕ собирателя, а не поверенная истина:
+			 *       заголовок читается прежде тела, и поверить его наперёд нельзя. Поверяется он
+			 *       разбором самих записей - настройкой `Reader::Settings::canonical`, какую
+			 *       потребитель ставит по этому признаку: `reader.settings().canonical =
+			 *       fetcher.header().is(flag_t::CANONICAL)`
 			 *
 			 * \~english
 			 * @brief Bits of the properties of a container
-			 * @details These bits lie in the header openly and are read before the body: by them
-			 * the consumer learns what to do with the body while having neither the key nor the body itself
 			 *
-			 * @note Признак `CANONICAL` есть ОБЪЯВЛЕНИЕ собирателя, а не поверенная истина:
-			 * заголовок читается прежде тела, и поверить его наперёд нельзя. Поверяется он
-			 * разбором самих записей - настройкой `Reader::Settings::canonical`, какую
-			 * потребитель ставит по этому признаку: `reader.settings().canonical =
-			 * fetcher.header().is(flag_t::CANONICAL)`
+			 * @details These bits lie in the header openly and are read before the body: by them
+			 *          the consumer learns what to do with the body while having neither the key nor the body itself.
+			 *
+			 * @note The sign `CANONICAL` is a DECLARATION of the gatherer, and not a verified truth: the
+			 *       header is read before the body, and to verify it beforehand is impossible. It is
+			 *       verified by the parsing of the records themselves - by the setting
+			 *       `Reader::Settings::canonical`, which the consumer sets by this very sign:
+			 *       `reader.settings().canonical = fetcher.header().is(flag_t::CANONICAL)`
 			 *
 			 * \~
 			 */
@@ -218,28 +266,31 @@ namespace awh {
 			 * @brief Заголовок опознания контейнера
 			 *
 			 * @details Заголовок отвечает на вопрос «тот ли это контейнер либо подмена» до
-			 * загрузки тела, без ключа расшифровки и без разбора записи. Оттого он постоянной
-			 * длины, не сжат, не зашифрован и несёт свою контрольную сумму
+			 *          загрузки тела, без ключа расшифровки и без разбора записи. Оттого он постоянной
+			 *          длины, не сжат, не зашифрован и несёт свою контрольную сумму.
 			 *
 			 * @details **Признак владельца и вид содержимого кодеком не толкуются.** Их
-			 * ставит потребитель, а контейнер лишь хранит и выдаёт: что они означают, ведомо
-			 * тому, кто контейнер завёл
+			 *          ставит потребитель, а контейнер лишь хранит и выдаёт: что они означают, ведомо
+			 *          тому, кто контейнер завёл.
 			 *
 			 * @note Контрольная сумма отделяет подмену от усечения: обрезанный файл честно
-			 * скажет «оборван», а не «чужой». Подделку она не ловит и ловить не должна - на
-			 * то есть подпись владельца, а сумма стережёт порчу
+			 *       скажет «оборван», а не «чужой». Подделку она не ловит и ловить не должна - на
+			 *       то есть подпись владельца, а сумма стережёт порчу
 			 *
 			 * \~english
 			 * @brief Identifying header of a container
+			 *
 			 * @details The header answers the question "is this the right container or a substitution" before
-			 * the loading of the body, without the key of the decryption and without the parsing of the record. Therefore it is of a constant
-			 * length, is not compressed, is not encrypted and carries its own checksum
+			 *          the loading of the body, without the key of the decryption and without the parsing of the record. Therefore it is of a constant
+			 *          length, is not compressed, is not encrypted and carries its own checksum.
+			 *
 			 * @details **The sign of the owner and the kind of the content are not interpreted by the codec.** They
-			 * are set by the consumer, while the container only stores and issues them: what they mean is known
-			 * to the one who created the container
+			 *          are set by the consumer, while the container only stores and issues them: what they mean is known
+			 *          to the one who created the container.
+			 *
 			 * @note The checksum separates a substitution from a truncation: a cut file will honestly
-			 * say "truncated" rather than "foreign". It does not catch a forgery and must not — for
-			 * that there is the signature of the owner, while the sum guards against a corruption
+			 *       say "truncated" rather than "foreign". It does not catch a forgery and must not — for
+			 *       that there is the signature of the owner, while the sum guards against a corruption
 			 *
 			 * \~
 			 */
@@ -263,20 +314,25 @@ namespace awh {
 				 * Длина содержимого кадра оглавления в октетах
 				 *
 				 * @details Длина эта объявлена ЗАГОЛОВКОМ, а заголовок несёт контрольную сумму:
-				 * ею и поверяется длина, прочитанная из самого кадра оглавления. Тело контейнера
-				 * ограничено полем `length`, а оглавление лежит ЗА телом, и сличать его длину
-				 * было не с чем: испорченные четыре октета заставляли завести до четырёх
-				 * гигабайт памяти прежде, чем чтение ответит отказом по недочитанному
+				 *          ею и поверяется длина, прочитанная из самого кадра оглавления. Тело контейнера
+				 *          ограничено полем `length`, а оглавление лежит ЗА телом, и сличать его длину
+				 *          было не с чем: испорченные четыре октета заставляли завести до четырёх
+				 *          гигабайт памяти прежде, чем чтение ответит отказом по недочитанному.
 				 *
 				 * @note Ширина тридцать два разряда, а не шестьдесят четыре: длина содержимого
-				 * кадра и в самом кадре объявлена тридцатью двумя, и шире быть не может
+				 *       кадра и в самом кадре объявлена тридцатью двумя, и шире быть не может
 				 *
 				 * \~english
 				 * Length of the content of the index chunk in octets
+				 *
 				 * @details This length is declared by the HEADER, and the header carries a checksum: by it
-				 * the length read from the index chunk itself is checked
+				 *          the length read from the index chunk itself is checked. The body of a container is
+				 *          bounded by the `length` field, while the index lies BEYOND the body, and there was
+				 *          nothing to compare its length with: four corrupted octets forced one to take up to four
+				 *          gigabytes of memory before the reading answered with a refusal for what was not read.
+				 *
 				 * @note The width is thirty-two bits rather than sixty-four: the length of the content
-				 * of a chunk is declared by thirty-two bits in the chunk itself as well
+				 *       of a chunk is declared by thirty-two bits in the chunk itself as well
 				 *
 				 * \~
 				 */
@@ -286,15 +342,19 @@ namespace awh {
 				 * Смещение подписи от начала контейнера, ноль - подписи нет
 				 *
 				 * @note Ноль признаком отсутствия годится по доводу: заголовок занимает
-				 * первые `HEADER_LENGTH` октетов контейнера, и меньшим смещение подписи быть
-				 * не может. Довод этот поверяется сличением смещения с `HEADER_LENGTH`, а не
-				 * с нулём: сличение с нулём переживает подпись, объявленную ВНУТРИ заголовка.
-				 * То же и у смещения оглавления
+				 *       первые `HEADER_LENGTH` октетов контейнера, и меньшим смещение подписи быть
+				 *       не может. Довод этот поверяется сличением смещения с `HEADER_LENGTH`, а не
+				 *       с нулём: сличение с нулём переживает подпись, объявленную ВНУТРИ заголовка.
+				 *       То же и у смещения оглавления
 				 *
 				 * \~english
 				 * Offset of the signature from the beginning of a container, zero — there is no signature
+				 *
 				 * @note Zero is fit as a sign of an absence by the reason: the header occupies the first
-				 * `HEADER_LENGTH` octets of a container, and the offset of the signature cannot be less
+				 *       `HEADER_LENGTH` octets of a container, and the offset of the signature cannot be less. That
+				 *       reason is verified by comparing the offset with `HEADER_LENGTH`, and not with a zero: a
+				 *       comparison with a zero survives a signature declared INSIDE the header. The same holds for
+				 *       the offset of the index
 				 *
 				 * \~
 				 */
@@ -304,12 +364,13 @@ namespace awh {
 				 * Поколение записи контейнера
 				 *
 				 * @note Поколение растёт на всякую фиксацию правок. По нему и отличают
-				 * головной заголовок от хвостового, когда перезапись головного оборвалась
+				 *       головной заголовок от хвостового, когда перезапись головного оборвалась
 				 *
 				 * \~english
 				 * Generation of the record of a container
+				 *
 				 * @note The generation grows at every commit of the edits. By it the head header is distinguished
-				 * from the tail one when the rewriting of the head one has been interrupted
+				 *       from the tail one when the rewriting of the head one has been interrupted
 				 *
 				 * \~
 				 */
@@ -327,6 +388,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the checking of a declared property of a container
+				 *
 				 * @param flag property of the container being checked
 				 * @return sign of the declaration of the property
 				 *
@@ -342,6 +404,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the declaration of a property of a container
+				 *
 				 * @param flag property of the container being declared
 				 * @param value value of the property being set
 				 *
@@ -353,16 +416,18 @@ namespace awh {
 				 * @brief Метод укладки заголовка в октеты
 				 *
 				 * @details Контрольная сумма считается по уложенным октетам и кладётся в
-				 * последние восемь: считать её раньше значило бы считать по полям, а не по
-				 * тому, что ляжет на носитель
+				 *          последние восемь: считать её раньше значило бы считать по полям, а не по
+				 *          тому, что ляжет на носитель.
 				 *
 				 * @param result буфер, куда следует уложить заголовок
 				 *
 				 * \~english
 				 * @brief Method of the laying of a header into the octets
+				 *
 				 * @details The checksum is computed over the laid octets and is placed into
-				 * the last eight: to compute it earlier would mean to compute it over the fields rather than over
-				 * that which will lie on the medium
+				 *          the last eight: to compute it earlier would mean to compute it over the fields rather than over
+				 *          that which will lie on the medium.
+				 *
 				 * @param result buffer the header should be laid into
 				 *
 				 * \~
@@ -373,12 +438,12 @@ namespace awh {
 				 * @brief Метод снятия заголовка с октетов
 				 *
 				 * @details Заголовок, ОТВЕРГНУТЫЙ снятием, остаётся нетронутым целиком: ни одно поле
-				 * его не пишется, покуда не пройдены все сличения. Потребитель, признака успеха не
-				 * проверивший, читает тем свои прежние величины, а не полуснятые
+				 *          его не пишется, покуда не пройдены все сличения. Потребитель, признака успеха не
+				 *          проверивший, читает тем свои прежние величины, а не полуснятые.
 				 *
 				 * @note Уклад этот записан затем, что молчание о нём хуже всякого выбора: судьба
-				 * полей на пути отказа не выводится ниоткуда, а сличений в снятии пять - на опознание,
-				 * на свёртку, на старшую версию, на разряды свойств и на длину поданного
+				 *       полей на пути отказа не выводится ниоткуда, а сличений в снятии пять - на опознание,
+				 *       на свёртку, на старшую версию, на разряды свойств и на длину поданного
 				 *
 				 *
 				 * @param buffer буфер поданных октетов
@@ -388,6 +453,16 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the taking of a header from the octets
+				 *
+				 * @details A header REFUSED by the taking stays untouched in its whole: not a single field of it
+				 *          is written until every comparison has been passed. A consumer who has not verified the
+				 *          sign of the success reads thereby his own former values, and not the half-taken ones.
+				 *
+				 * @note This layout is written because a silence about it is worse than any choice: the fate of
+				 *       the fields on the road of a refusal is derived from nowhere, while the comparisons in the
+				 *       taking are five - on the identification, on the digest, on the major version, on the bits of
+				 *       the properties and on the length of what was submitted
+				 *
 				 * @param buffer buffer of the submitted octets
 				 * @param size size of the submitted octets
 				 * @param error error code if the header could not be taken
@@ -414,28 +489,28 @@ namespace awh {
 			 * @brief Функция быстрой проверки поданных октетов на признак контейнера
 			 *
 			 * @details Проверка эта служит опознанию до загрузки: она читает лишь длину
-			 * заголовка и отвечает, наш ли это контейнер, не разбирая полей его
+			 *          заголовка и отвечает, наш ли это контейнер, не разбирая полей его.
 			 *
 			 * @details Судит она о ДВУХ вещах и ни о чём более: об опознавательной записи и о
-			 * схождении свёртки заголовка. Ни старшая версия вида записи, ни разряды свойств ею
-			 * не поверяются - тем и вправе она отвечать истиной на контейнер, какого этот кодек
-			 * прочесть не может: опознать чужое поколение надобно прежде, чем объявить о нём
+			 *          схождении свёртки заголовка. Ни старшая версия вида записи, ни разряды свойств ею
+			 *          не поверяются - тем и вправе она отвечать истиной на контейнер, какого этот кодек
+			 *          прочесть не может: опознать чужое поколение надобно прежде, чем объявить о нём.
 			 *
 			 * @warning Истина её НЕ ОБЕЩАЕТ удачного снятия заголовка: сличений в `unpack` пять,
-			 * а здесь их два, и расстояние это РАСТЁТ со всяким новым сторожем там. Потребителю,
-			 * коему нужен годный заголовок, звать надлежит `unpack` и верить его признаку, а
-			 * `probe` брать лишь для опознания до загрузки. Расхождение закреплено проверкой
-			 * `CodecAbcHeader.ProbeDoesNotPromiseUnpack`
+			 *          а здесь их два, и расстояние это РАСТЁТ со всяким новым сторожем там. Потребителю,
+			 *          коему нужен годный заголовок, звать надлежит `unpack` и верить его признаку, а
+			 *          `probe` брать лишь для опознания до загрузки. Расхождение закреплено проверкой
+			 *          `CodecAbcHeader.ProbeDoesNotPromiseUnpack`
 			 *
 			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
-			 * 11 заслонов части. Молчали ДВА, и оба здесь, у опознания: пустой указатель и
-			 * чужая метка. Заслон длины у того же опознания сторожа имел - стало быть, до
-			 * опознания набор доходил, а этими доводами его не пробовал; затенения снятием
-			 * заголовка тут нет, ибо пути разные - снятие заводит причину, опознание
-			 * отвечает истинностью, и неверный ответ ниже не отвергается ничем. Оба закрыты
-			 * `CodecAbcHeader.ProbeRefusesTheAbsentBufferAndTheForeignMark`, причём заслон
-			 * пустоты - ПАДЕНИЕМ прогона, привязка какового доказана отдельным прогоном
-			 * одной лишь этой проверки
+			 *       11 заслонов части. Молчали ДВА, и оба здесь, у опознания: пустой указатель и
+			 *       чужая метка. Заслон длины у того же опознания сторожа имел - стало быть, до
+			 *       опознания набор доходил, а этими доводами его не пробовал; затенения снятием
+			 *       заголовка тут нет, ибо пути разные - снятие заводит причину, опознание
+			 *       отвечает истинностью, и неверный ответ ниже не отвергается ничем. Оба закрыты
+			 *       `CodecAbcHeader.ProbeRefusesTheAbsentBufferAndTheForeignMark`, причём заслон
+			 *       пустоты - ПАДЕНИЕМ прогона, привязка какового доказана отдельным прогоном
+			 *       одной лишь этой проверки
 			 *
 			 *
 			 * @param buffer буфер поданных октетов
@@ -444,8 +519,32 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the quick checking of the submitted octets for the sign of a container
+			 *
 			 * @details This check serves the identification before the loading: it reads only the length
-			 * of the header and answers whether this is our container without parsing its fields
+			 *          of the header and answers whether this is our container without parsing its fields.
+			 *
+			 * @details It judges TWO things and nothing beyond: the identifying record and the convergence of
+			 *          the digest of the header. Neither the major version of the kind of the record nor the
+			 *          bits of the properties are verified by it - that is why it is entitled to answer with
+			 *          truth upon a container which this codec cannot read: an alien generation must be
+			 *          identified before it is declared.
+			 *
+			 * @warning Its truth DOES NOT PROMISE a successful taking of the header: the comparisons in
+			 *          `unpack` are five, while here they are two, and that distance GROWS with every new guard
+			 *          there. A consumer in need of a fit header is obliged to call `unpack` and to trust its
+			 *          sign, and to take `probe` only for the identification before the loading. The divergence
+			 *          is fixed by the check `CodecAbcHeader.ProbeDoesNotPromiseUnpack`
+			 *
+			 * @note **The NEEDNESS audit (a guard is removed), 2026-09-08.** All 11 guards of the part were
+			 *       de-energized apart. TWO kept silent, and both are here, at the identification: an empty
+			 *       pointer and an alien mark. The guard of the length at that same identification had a watch
+			 *       - that is, the fixture did reach the identification, but never tried it by these arguments;
+			 *       there is no shadowing by the taking of a header here, for the roads are different - the
+			 *       taking sets a cause, the identification answers by truthiness, and a wrong answer below is
+			 *       refused by nothing. Both are closed by `CodecAbcHeader.ProbeRefusesTheAbsentBufferAndTheForeignMark`,
+			 *       and the guard of the emptiness by a CRASH of the run, the binding of which is proven by a
+			 *       separate run of this check alone
+			 *
 			 * @param buffer buffer of the submitted octets
 			 * @param size size of the submitted octets
 			 * @return sign that the octets begin a container

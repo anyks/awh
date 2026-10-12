@@ -458,7 +458,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 */
 	if(rewriting){
 		// Получаем перезапись дерева настроек
-		const string written = document.text();
+		const string written = document.dump();
 		/**
 		 * Если запись дерево отвергла
 		 */
@@ -518,7 +518,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			if(!(back == lifted)){
 				// Выводим сообщение о расхождении содержимого
 				::fprintf(stderr, "содержимое кругового хода разошлось\nдерево:\n[%s]\nзначение:\n[%s]\n",
-				 document.text().c_str(), written.c_str());
+				 document.dump().c_str(), written.c_str());
 				// Выходим из приложения с ошибкой
 				return 1;
 			}

@@ -94,13 +94,13 @@ namespace awh {
 			 * @brief Класс записи текста разметки
 			 *
 			 * @details Собирает текст разметки последовательными указаниями об открытии и
-			 * закрытии узлов. Запись сама следит за парностью меток, экранирует содержимое
-			 * и не позволяет собрать неправильно построенный текст: указание, нарушающее
-			 * строение, отвергается, а не записывается
+			 *          закрытии узлов. Запись сама следит за парностью меток, экранирует содержимое
+			 *          и не позволяет собрать неправильно построенный текст: указание, нарушающее
+			 *          строение, отвергается, а не записывается.
 			 *
 			 * @note Входная строка может ссылаться на результат `text()`: её содержимое
 			 *       сохраняется до изменения буфера. Срезы входных данных должны быть действительны
-			 *       в момент вызова; хранить их после изменения выходного буфера нельзя.
+			 *       в момент вызова; хранить их после изменения выходного буфера нельзя
 			 *
 			 * @note Отказ записи разметки ТЕРМИНАЛЕН: после отказа `text()` и `take()`
 			 *       возвращают пустоту, а последующие указания отвергаются до очистки
@@ -110,10 +110,10 @@ namespace awh {
 			 * @par Порядок работы
 			 *
 			 * @note Записывается текст в кодировке UTF-8. Прочие кодировки при записи не
-			 * применяются намеренно: они лишь сужают круг тех, кто сможет текст прочесть
+			 *       применяются намеренно: они лишь сужают круг тех, кто сможет текст прочесть
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *          writer_t writer;
 			 *
 			 *  writer.declaration();
 			 *  writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
@@ -123,14 +123,20 @@ namespace awh {
 			 *  writer.close();
 			 *
 			 *  const string & result = writer.text();
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the writing of a markup text
+			 *
 			 * @details Assembles a markup text by successive directives about the opening and
-			 * the closing of the nodes. The writing itself watches over the pairing of the tags, escapes the content
-			 * and does not allow assembling a text that is not well-formed: a directive violating
-			 * the construction is rejected rather than written
+			 *          the closing of the nodes. The writing itself watches over the pairing of the tags, escapes the content
+			 *          and does not allow assembling a text that is not well-formed: a directive violating
+			 *          the construction is rejected rather than written.
+			 *
+			 * @note An input string may refer to a result of `text()`: its content is kept up to a
+			 *       change of the buffer. The slices of the input data must be valid at the moment of the
+			 *       call; they cannot be kept after a change of the output buffer
 			 *
 			 * @note The refusal of the writing of a markup is TERMINAL: once a refusal occurs,
 			 *       `text()` and `take()` return emptiness, and subsequent directives are rejected
@@ -138,11 +144,12 @@ namespace awh {
 			 *       and the object remains usable
 			 *
 			 * @par Order of the work
+			 *
 			 * @note The text is written in the UTF-8 encoding. The other encodings are not applied at the writing
-			 * deliberately: they only narrow the circle of those who will be able to read the text
+			 *       deliberately: they only narrow the circle of those who will be able to read the text
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *          writer_t writer;
 			 *
 			 *  writer.declaration();
 			 *  writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
@@ -152,8 +159,10 @@ namespace awh {
 			 *  writer.close();
 			 *
 			 *  const string & result = writer.text();
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
 				public:
@@ -168,6 +177,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * Settings of the writing of a markup text
+					 *
+					 * @note The construction itself is moved into a common header of the codec because a
+					 *       markup tree writes itself by the `dump(settings)` step, while it cannot include the
+					 *       writing into itself: the writing itself depends on the tree. The name, however, is
+					 *       left the former one, and the consumer sees no difference at all
 					 *
 					 * \~
 					 */
@@ -196,14 +210,15 @@ namespace awh {
 						 * Признак записи содержимого узла в одну строку без отступов
 						 *
 						 * @note Взводится узлам со смешанным содержимым и узлам, требующим
-						 * сохранения пробельного содержимого: отступ внутри них - не украшение
-						 * записи, а перемена самого содержимого
+						 *       сохранения пробельного содержимого: отступ внутри них - не украшение
+						 *       записи, а перемена самого содержимого
 						 *
 						 * \~english
 						 * Flag of the writing of the content of a node in a single line without the indents
+						 *
 						 * @note Raised for the nodes with a mixed content and for the nodes requiring
-						 * a preservation of the whitespace content: an indent inside them is not an adornment
-						 * of the writing but a change of the content itself
+						 *       a preservation of the whitespace content: an indent inside them is not an adornment
+						 *       of the writing but a change of the content itself
 						 *
 						 * \~
 						 */
@@ -268,15 +283,21 @@ namespace awh {
 					 * @brief Метод отказа записи с сообщением о нём в журнал
 					 *
 					 * @details Способ этот стоит ГОРЛОМ: всякий отказ записи обязан идти через
-					 * него. Сообщение в журнал пишется в одном месте на всю запись, а не при
-					 * всяком присваивании кода отказа: иначе места записи разошлись бы с
-					 * местами отказа, и часть бед уходила бы молча
+					 *          него. Сообщение в журнал пишется в одном месте на всю запись, а не при
+					 *          всяком присваивании кода отказа: иначе места записи разошлись бы с
+					 *          местами отказа, и часть бед уходила бы молча.
 					 *
 					 * @param error код ошибки записи
 					 * @return      всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the writing with a report of it to the log
+					 *
+					 * @details This step stands THROAT-OUT: every refusal of the writing is bound to go
+					 *          through it. A message into the log is written at one place over the whole writing,
+					 *          and not upon every assigning of a code of a refusal: else the places of the writing
+					 *          would part from the places of the refusals, and part of the troubles would go off
+					 *          silently.
 					 *
 					 * @param error the code of the writing error
 					 * @return      always false, for the returning by it from the place of the refusal
@@ -305,7 +326,7 @@ namespace awh {
 					 *          вместе с занятой им памятью, и следующий узел заводил бы
 					 *          его заново: замер показывал по два выделения памяти на
 					 *          каждый записанный узел против семнадцати на чтение
-					 *          документа целиком
+					 *          документа целиком.
 					 *
 					 * @warning Обращаться к вершине стека следует по этой глубине, а не
 					 *          методом `back` хранилища: тот выдал бы запись давно
@@ -313,6 +334,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Depth of the stack of the open markup nodes
+					 *
 					 * @details The records of the open nodes are not popped off the stack but are
 					 *          reused: the depth is stored separately, and everything that
 					 *          lies in `_opened` beyond its limit is the records of the previously
@@ -321,7 +343,8 @@ namespace awh {
 					 *          together with the memory occupied by it, and the next node would create
 					 *          it anew: a measurement showed two memory allocations per
 					 *          every written node against seventeen for the reading of a
-					 *          document in full
+					 *          document in full.
+					 *
 					 * @warning The top of the stack should be addressed by this depth rather than
 					 *          by the `back` method of the storage: that one would issue the record of a long
 					 *          since closed node
@@ -339,18 +362,19 @@ namespace awh {
 					 * Число действующих связываний префиксов
 					 *
 					 * @note Держится отдельно от размера хранилища намеренно: снятое
-					 * связывание из хранилища не удаляется, а лишь перестаёт считаться
-					 * действующим - память, отведённая под его строки, остаётся и
-					 * достаётся следующему связыванию. Устройство то же, что у стека
-					 * открытых узлов, и по тому же доводу
+					 *       связывание из хранилища не удаляется, а лишь перестаёт считаться
+					 *       действующим - память, отведённая под его строки, остаётся и
+					 *       достаётся следующему связыванию. Устройство то же, что у стека
+					 *       открытых узлов, и по тому же доводу
 					 *
 					 * \~english
 					 * Number of the effective bindings of the prefixes
+					 *
 					 * @note It is kept separately from the size of the storage deliberately: a removed
-					 * binding is not deleted from the storage but only ceases to be considered
-					 * an effective one — the memory allotted for its strings remains and
-					 * goes to the next binding. The arrangement is the same as that of the stack
-					 * of the open nodes, and by the same argument
+					 *       binding is not deleted from the storage but only ceases to be considered
+					 *       an effective one — the memory allotted for its strings remains and
+					 *       goes to the next binding. The arrangement is the same as that of the stack
+					 *       of the open nodes, and by the same argument
 					 *
 					 * \~
 					 */
@@ -386,6 +410,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a sequence of characters with an escaping
+					 *
 					 * @param text      sequence of characters being written
 					 * @param attribute flag of the writing of the value of an attribute
 					 * @return          result of performing the operation
@@ -398,21 +423,23 @@ namespace awh {
 					 * @brief Метод проверки допустимости знаков дословно записываемой последовательности
 					 *
 					 * @details Содержимое примечания, дословного раздела и указания обработчику
-					 * попадает в текст без экранирования, и проверка знаков экранированием там
-					 * не выполняется. Проверять их всё равно необходимо: недопустимый в
-					 * разметке знак либо ошибочная последовательность кодировки делают
-					 * собранный текст непрочитываемым
+					 *          попадает в текст без экранирования, и проверка знаков экранированием там
+					 *          не выполняется. Проверять их всё равно необходимо: недопустимый в
+					 *          разметке знак либо ошибочная последовательность кодировки делают
+					 *          собранный текст непрочитываемым.
 					 *
 					 * @param text проверяемая последовательность знаков
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of checking the admissibility of the characters of a sequence being written literally
+					 *
 					 * @details The content of a comment, of a literal section and of a processing instruction
-					 * gets into the text without an escaping, and the check of the characters by the escaping there
-					 * is not performed. It is all the same necessary to check them: a character inadmissible in a
-					 * markup or an erroneous sequence of the encoding make the
-					 * assembled text unreadable
+					 *          gets into the text without an escaping, and the check of the characters by the escaping there
+					 *          is not performed. It is all the same necessary to check them: a character inadmissible in a
+					 *          markup or an erroneous sequence of the encoding make the
+					 *          assembled text unreadable.
+					 *
 					 * @param text sequence of characters being checked
 					 * @return     result of performing the operation
 					 *
@@ -424,7 +451,7 @@ namespace awh {
 					 * @brief Метод получения префикса для пространства имён
 					 *
 					 * @details Обозначение, ещё не связанное ни с одним префиксом,
-					 * объявляется при записываемом узле с самостоятельно назначенным префиксом
+					 *          объявляется при записываемом узле с самостоятельно назначенным префиксом.
 					 *
 					 * @param uri       обозначение пространства имён
 					 * @param attribute признак поиска префикса для имени атрибута
@@ -433,8 +460,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the prefix for a namespace
+					 *
 					 * @details A designation not yet bound to any prefix
-					 * is declared at the node being written with an independently assigned prefix
+					 *          is declared at the node being written with an independently assigned prefix.
+					 *
 					 * @param uri       designation of the namespace
 					 * @param attribute flag of the search of a prefix for the name of an attribute
 					 * @param result    found or assigned prefix
@@ -448,19 +477,21 @@ namespace awh {
 					 * @brief Метод занятия имени атрибута открытым узлом
 					 *
 					 * @details Договор не допускает повторного имени атрибута у одного узла,
-					 * а объявление пространства имён является таким же атрибутом. Без учёта
-					 * записанного запись собирала бы текст, который её же собственное чтение
-					 * принять не может
+					 *          а объявление пространства имён является таким же атрибутом. Без учёта
+					 *          записанного запись собирала бы текст, который её же собственное чтение
+					 *          принять не может.
 					 *
 					 * @param name имя атрибута в том виде, в каком оно попадает в текст
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of occupying the name of an attribute by an open node
+					 *
 					 * @details The protocol does not admit a repeated name of an attribute at a single node,
-					 * while a declaration of a namespace is the same kind of attribute. Without an accounting
-					 * of what has been written the writing would assemble a text which its own reading cannot
-					 * accept
+					 *          while a declaration of a namespace is the same kind of attribute. Without an accounting
+					 *          of what has been written the writing would assemble a text which its own reading cannot
+					 *          accept.
+					 *
 					 * @param name name of the attribute in the form in which it gets into the text
 					 * @return     result of performing the operation
 					 *
@@ -472,10 +503,10 @@ namespace awh {
 					 * @brief Метод открытия узла разметки с заданными объявлениями
 					 *
 					 * @details Объявления записываются узлу прежде подбора префикса, отчего подбор
-					 * находит заданный префикс уже связанным и своего не назначает. Порядок здесь
-					 * важен: имя узла записывается первым, а объявления стоят в метке за ним, - и
-					 * узнать, каким префиксом записать имя, требуется до того, как объявления
-					 * попадут в текст
+					 *          находит заданный префикс уже связанным и своего не назначает. Порядок здесь
+					 *          важен: имя узла записывается первым, а объявления стоят в метке за ним, - и
+					 *          узнать, каким префиксом записать имя, требуется до того, как объявления
+					 *          попадут в текст.
 					 *
 					 * @param local    местное имя открываемого узла
 					 * @param uri      обозначение пространства имён открываемого узла
@@ -487,11 +518,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of opening a markup node with the given declarations
+					 *
 					 * @details The declarations are written to the node before the selection of a prefix, from which the selection
-					 * finds the given prefix already bound and does not assign its own. The order here is
-					 * important: the name of the node is written first, while the declarations stand in the tag after it — and
-					 * it is required to learn by which prefix to write the name before the declarations
-					 * get into the text
+					 *          finds the given prefix already bound and does not assign its own. The order here is
+					 *          important: the name of the node is written first, while the declarations stand in the tag after it — and
+					 *          it is required to learn by which prefix to write the name before the declarations
+					 *          get into the text.
+					 *
 					 * @param local    local name of the node being opened
 					 * @param uri      designation of the namespace of the node being opened
 					 * @param declares  declarations of the namespaces being written to the node
@@ -509,14 +542,17 @@ namespace awh {
 					 *
 					 * @param node     записываемый узел дерева разметки
 					 * @param preserve признак сохранения пробельного содержимого, унаследованный
-					 *                 от объемлющих узлов
+					 *          от объемлющих узлов
+					 *
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a node of a markup tree with an inherited treatment of the spaces
+					 *
 					 * @param node     node of the markup tree being written
 					 * @param preserve flag of the preservation of the whitespace content inherited
-					 *                 from the enclosing nodes
+					 *          from the enclosing nodes
+					 *
 					 * @return         result of performing the operation
 					 *
 					 * \~
@@ -545,8 +581,22 @@ namespace awh {
 					 *
 					 * \~english
 					 * Counter of the independently assigned prefixes of the namespaces
-					 * @note Its bit width suffices with a large reserve, and there is DELIBERATELY no guard on it:
-					 *       a wraparound demands 2^32 self-assigned prefixes within a SINGLE text
+					 *
+					 * @note Its bit width suffices with a large reserve, and there is DELIBERATELY no guard
+					 *       on it: a wraparound demands 2^32 self-assigned prefixes within a SINGLE text, and
+					 *       every one of them is born only from its own namespace: so many different
+					 *       designations must first be kept somewhere. A tree which has come by a parsing runs
+					 *       before that into a guard of the bit width of the storage of the names at the reader,
+					 *       while a tree assembled by the consumer by hand - into the memory of the machine: the
+					 *       designations alone would take it all. This argument is one of an attainability, and
+					 *       not of a measurement, and it is named as such deliberately
+					 *
+					 * @warning A wraparound, should it happen, will NOT turn into a refusal: the counter
+					 *          issues a prefix already taken, and all the names written with it change their
+					 *          namespace at the reading back. Therefore the decision to leave the field without
+					 *          a guard holds by the very argument above, and if that argument ever falls - for
+					 *          instance, the designations come to be kept by a common table, - a guard will have
+					 *          to be made
 					 *
 					 * \~
 					 */
@@ -560,6 +610,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current settings of the writing
+					 *
 					 * @return current settings of the writing of a markup text
 					 *
 					 * \~
@@ -573,6 +624,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing
+					 *
 					 * @param settings settings of the writing of a markup text
 					 *
 					 * \~
@@ -583,17 +635,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи объявления разметки
 					 *
-					 * @details Записывается первым указанием, до всякого содержимого
+					 * @details Записывается первым указанием, до всякого содержимого.
 					 *
 					 * @note Изъятие текста через `take()` не разрешает повторное объявление.
-					 *       Новый документ начинается только после `clear()`.
+					 *       Новый документ начинается только после `clear()`
 					 *
 					 * @param standalone признак самодостаточности текста разметки
 					 * @return           результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing the markup declaration
-					 * @details Written as the first directive, before any content
+					 *
+					 * @details Written as the first directive, before any content.
+					 *
+					 * @note An extraction of the text by `take()` does not allow a repeated declaration.
+					 *       A new document begins only after a `clear()`
+					 *
 					 * @param standalone flag of the standaloneness of the markup text
 					 * @return           result of performing the operation
 					 *
@@ -606,7 +663,7 @@ namespace awh {
 					 * @brief Метод открытия узла разметки
 					 *
 					 * @details Непустое обозначение пространства имён объявляется при узле,
-					 * если оно ещё не объявлено выше по стеку открытых узлов
+					 *          если оно ещё не объявлено выше по стеку открытых узлов.
 					 *
 					 * @param local местное имя открываемого узла
 					 * @param uri   обозначение пространства имён открываемого узла
@@ -614,8 +671,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of opening a markup node
+					 *
 					 * @details A non-empty designation of a namespace is declared at the node
-					 * if it has not yet been declared higher up the stack of the open nodes
+					 *          if it has not yet been declared higher up the stack of the open nodes.
+					 *
 					 * @param local local name of the node being opened
 					 * @param uri   designation of the namespace of the node being opened
 					 * @return      result of performing the operation
@@ -628,13 +687,13 @@ namespace awh {
 					 * @brief Метод открытия узла разметки с его объявлениями и желаемым префиксом
 					 *
 					 * @details Объявления и префикс подаются вместе с именем намеренно: метка
-					 * узла собирается разом, и объявить связывание после открытия значит
-					 * опоздать - префикс имени к тому времени уже выбран
+					 *          узла собирается разом, и объявить связывание после открытия значит
+					 *          опоздать - префикс имени к тому времени уже выбран.
 					 *
 					 * @details Метод этот нужен всякому, кто записывает узел, у какого
-					 * объявления свои: без него поток записи назначает префикс сам, а
-					 * поданное следом объявление ложится в метку вторым, и запись выходит с
-					 * двумя объявлениями одного и того же пространства имён
+					 *          объявления свои: без него поток записи назначает префикс сам, а
+					 *          поданное следом объявление ложится в метку вторым, и запись выходит с
+					 *          двумя объявлениями одного и того же пространства имён.
 					 *
 					 * @param local    местное имя открываемого узла
 					 * @param uri      обозначение пространства имён открываемого узла
@@ -644,21 +703,25 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of opening a markup node with its declarations and a desired prefix
+					 *
 					 * @details The declarations and the prefix are passed together with the name deliberately: the tag
-					 * of a node is assembled at once, and to declare a binding after the opening means
-					 * to be late — the prefix of the name has been chosen by that time
+					 *          of a node is assembled at once, and to declare a binding after the opening means
+					 *          to be late — the prefix of the name has been chosen by that time.
+					 *
 					 * @details This method is needed by everyone who writes a node having its own
-					 * declarations: without it the writing stream assigns the prefix itself, while
-					 * a declaration passed afterwards is placed into the tag as the second one, and the record comes out with
-					 * two declarations of one and the same namespace
+					 *          declarations: without it the writing stream assigns the prefix itself, while
+					 *          a declaration passed afterwards is placed into the tag as the second one, and the record comes out with
+					 *          two declarations of one and the same namespace.
+					 *
 					 * @param local    local name of the node being opened
 					 * @param uri      designation of the namespace of the node being opened
 					 * @param declares bindings of the prefixes declared by the node itself
 					 * @param prefix   desired prefix of the name of the node, an empty one — at the choice of the stream
 					 * @param oneline  flag of the writing of the content of the node in a single line without the indents
 					 * @param verbatim flag of the writing of the name of the node verbatim, together with the separator
-					 *                 of a prefix: the parsing without the namespaces puts a name into the tree
-					 *                 in full, and there is nothing to divide it by
+					 *          of a prefix: the parsing without the namespaces puts a name into the tree
+					 *          in full, and there is nothing to divide it by
+					 *
 					 * @return         result of performing the operation
 					 *
 					 * \~
@@ -672,6 +735,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of closing the last open node
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -684,11 +748,11 @@ namespace awh {
 					 *
 					 * @note При разрешении пространств имён пара «пространство, местное имя»
 					 *       должна быть уникальна даже при разных префиксах. Дословный режим
-					 *       проверяет записанное имя без разрешения пространства имён.
+					 *       проверяет записанное имя без разрешения пространства имён
 					 *
 					 * @warning Записывается только сразу после открытия узла, до его
-					 * содержимого: дописать атрибут узлу, у которого уже есть содержимое,
-					 * нельзя
+					 *          содержимого: дописать атрибут узлу, у которого уже есть содержимое,
+					 *          нельзя
 					 *
 					 * @param local местное имя атрибута
 					 * @param value значение атрибута
@@ -697,14 +761,21 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing an attribute of an open node
+					 *
+					 * @note At a resolution of the namespaces a pair "namespace, local name" must be
+					 *       unique even at different prefixes. The verbatim mode checks the name being written
+					 *       without a resolution of the namespace
+					 *
 					 * @warning Written only right after the opening of a node, before its
-					 * content: an attribute cannot be appended to a node which already has a content
+					 *          content: an attribute cannot be appended to a node which already has a content
+					 *
 					 * @param local local name of the attribute
 					 * @param value value of the attribute
 					 * @param uri   designation of the namespace of the attribute
 					 * @param verbatim flag of the writing of the name of the attribute verbatim, together with
-					 *                 the separator of a prefix: the parsing without the namespaces puts a name
-					 *                 into the tree in full, and there is nothing to divide it by
+					 *          the separator of a prefix: the parsing without the namespaces puts a name
+					 *          into the tree in full, and there is nothing to divide it by
+					 *
 					 * @return      result of performing the operation
 					 *
 					 * \~
@@ -716,7 +787,7 @@ namespace awh {
 					 *
 					 * @note Объявление не может менять пространство имён уже записанного
 					 *       элемента или атрибута. Затенение неиспользованного префикса
-					 *       и повторение прежнего связывания в дочернем узле допустимы.
+					 *       и повторение прежнего связывания в дочернем узле допустимы
 					 *
 					 * @param prefix префикс без разделителя, пустой для объявления по умолчанию
 					 * @param uri    обозначение объявляемого пространства имён
@@ -724,6 +795,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of declaring a namespace at an open node
+					 *
+					 * @note A declaration cannot change the namespace of an element or an attribute already
+					 *       written. A shading of an unused prefix and a repetition of a former binding at a
+					 *       child node are admissible
+					 *
 					 * @param prefix prefix without the separator, empty for a default declaration
 					 * @param uri    designation of the namespace being declared
 					 * @return       result of performing the operation
@@ -736,14 +812,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи текстового содержимого
 					 *
-					 * @details Знаки, имеющие в разметке особый смысл, экранируются
+					 * @details Знаки, имеющие в разметке особый смысл, экранируются.
 					 *
 					 * @param text записываемое текстовое содержимое
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a text content
-					 * @details The characters having a special meaning in a markup are escaped
+					 *
+					 * @details The characters having a special meaning in a markup are escaped.
+					 *
 					 * @param text text content being written
 					 * @return     result of performing the operation
 					 *
@@ -755,17 +833,19 @@ namespace awh {
 					 * @brief Метод записи раздела дословного текста
 					 *
 					 * @warning Содержимое записывается без экранирования, и завершающая
-					 * раздел последовательность внутри него недопустима. Такое содержимое
-					 * отвергается, а не разрезается на несколько разделов
+					 *          раздел последовательность внутри него недопустима. Такое содержимое
+					 *          отвергается, а не разрезается на несколько разделов
 					 *
 					 * @param text записываемое дословное содержимое
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a literal text section
+					 *
 					 * @warning The content is written without an escaping, and the sequence terminating
-					 * the section is inadmissible inside it. Such a content
-					 * is rejected rather than being cut into several sections
+					 *          the section is inadmissible inside it. Such a content
+					 *          is rejected rather than being cut into several sections
+					 *
 					 * @param text literal content being written
 					 * @return     result of performing the operation
 					 *
@@ -781,6 +861,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a comment
+					 *
 					 * @param text content of the comment
 					 * @return     result of performing the operation
 					 *
@@ -797,6 +878,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a processing instruction
+					 *
 					 * @param target target of the processing instruction
 					 * @param text   data of the processing instruction
 					 * @return       result of performing the operation
@@ -810,7 +892,7 @@ namespace awh {
 					 * @brief Метод записи узла с текстовым содержимым
 					 *
 					 * @details Равнозначен открытию узла, записи содержимого и закрытию:
-					 * такое сочетание в разметке встречается чаще прочих
+					 *          такое сочетание в разметке встречается чаще прочих.
 					 *
 					 * @param local местное имя записываемого узла
 					 * @param value текстовое содержимое записываемого узла
@@ -819,8 +901,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a node with a text content
+					 *
 					 * @details Equivalent to an opening of a node, a writing of the content and a closing:
-					 * such a combination is met in a markup more often than the rest
+					 *          such a combination is met in a markup more often than the rest.
+					 *
 					 * @param local local name of the node being written
 					 * @param value text content of the node being written
 					 * @param uri   designation of the namespace of the node being written
@@ -834,48 +918,53 @@ namespace awh {
 					 * @brief Метод записи дерева разметки
 					 *
 					 * @warning Описание типа документа пропускается: записывать его модуль
-					 * не умеет вовсе, и обратный переход дерево→текст его теряет вместе с
-					 * объявленными в нём сущностями и умолчаниями атрибутов. Дерево,
-					 * прочитанное с таким описанием, записанным выходит без него
+					 *          не умеет вовсе, и обратный переход дерево→текст его теряет вместе с
+					 *          объявленными в нём сущностями и умолчаниями атрибутов. Дерево,
+					 *          прочитанное с таким описанием, записанным выходит без него
 					 *
 					 * @note Связывания пространств имён из дерева не перенимаются: префиксы
-					 * назначаются заново, и записанный текст равнозначен исходному по
-					 * смыслу, но не по написанию имён
+					 *       назначаются заново, и записанный текст равнозначен исходному по
+					 *       смыслу, но не по написанию имён
 					 *
 					 * @note Обход дерева ведётся собственным стеком, а не рекурсией: глубина
-					 * записываемого дерева ничем не ограничена, и стеку задачи она не грозит.
-					 * Всякое разобранное дерево записывается обратно, с какой бы глубиной оно
-					 * ни было разобрано
+					 *       записываемого дерева ничем не ограничена, и стеку задачи она не грозит.
+					 *       Всякое разобранное дерево записывается обратно, с какой бы глубиной оно
+					 *       ни было разобрано
 					 *
 					 * @note Нарядная запись повторяема: отступы, поставленные прошлым её
-					 * заходом, дерево принимает пробельным содержимым, и переписываются они
-					 * не наравне с прочим, а расставляются заново. Содержимого запись при
-					 * этом не меняет: узлы со смешанным содержимым, узлы под отведённым
-					 * атрибутом `xml:space` и узлы с разделом дословного текста
-					 * записываются в одну строку без отступов вовсе
+					 *       заходом, дерево принимает пробельным содержимым, и переписываются они
+					 *       не наравне с прочим, а расставляются заново. Содержимого запись при
+					 *       этом не меняет: узлы со смешанным содержимым, узлы под отведённым
+					 *       атрибутом `xml:space` и узлы с разделом дословного текста
+					 *       записываются в одну строку без отступов вовсе
 					 *
 					 * @param node записываемый узел дерева разметки вместе с вложенными
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a markup tree
+					 *
 					 * @warning The document type definition is skipped: the module does not know how to write it
-					 * at all, and the reverse transition tree→text loses it together with
-					 * the entities and the default values of the attributes declared in it. A tree
-					 * read with such a definition comes out written without it
+					 *          at all, and the reverse transition tree→text loses it together with
+					 *          the entities and the default values of the attributes declared in it. A tree
+					 *          read with such a definition comes out written without it
+					 *
 					 * @note The bindings of the namespaces are not taken over from the tree: the prefixes
-					 * are assigned anew, and the written text is equivalent to the source one in
-					 * the meaning but not in the spelling of the names
+					 *       are assigned anew, and the written text is equivalent to the source one in
+					 *       the meaning but not in the spelling of the names
+					 *
 					 * @note The traversal of the tree is conducted by an own stack rather than by a recursion: the depth
-					 * of the tree being written is not limited by anything, and it does not threaten the stack of the task.
-					 * Every parsed tree is written back, with whatever depth it
-					 * may have been parsed
+					 *       of the tree being written is not limited by anything, and it does not threaten the stack of the task.
+					 *       Every parsed tree is written back, with whatever depth it
+					 *       may have been parsed
+					 *
 					 * @note The adorned writing is repeatable: the indents put by its previous
-					 * pass the tree accepts as a whitespace content, and they are rewritten
-					 * not on a par with the rest but are arranged anew. The writing does not thereby change
-					 * the content: the nodes with a mixed content, the nodes under the allotted
-					 * `xml:space` attribute and the nodes with a literal text section
-					 * are written in a single line without the indents at all
+					 *       pass the tree accepts as a whitespace content, and they are rewritten
+					 *       not on a par with the rest but are arranged anew. The writing does not thereby change
+					 *       the content: the nodes with a mixed content, the nodes under the allotted
+					 *       `xml:space` attribute and the nodes with a literal text section
+					 *       are written in a single line without the indents at all
+					 *
 					 * @param node node of the markup tree being written together with the nested ones
 					 * @return     result of performing the operation
 					 *
@@ -891,6 +980,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the writing
+					 *
 					 * @return error code of the last operation of the writing
 					 *
 					 * \~
@@ -901,14 +991,16 @@ namespace awh {
 					 * @brief Метод проверки завершённости собранного текста
 					 *
 					 * @details Текст завершён, когда записан корневой узел и все открытые
-					 * узлы закрыты. Незавершённый текст выдавать наружу нельзя
+					 *          узлы закрыты. Незавершённый текст выдавать наружу нельзя.
 					 *
 					 * @return результат проверки
 					 *
 					 * \~english
 					 * @brief Method of checking the completeness of the assembled text
+					 *
 					 * @details The text is complete when the root node has been written and all the open
-					 * nodes have been closed. An incomplete text must not be issued outside
+					 *          nodes have been closed. An incomplete text must not be issued outside.
+					 *
 					 * @return result of the check
 					 *
 					 * \~
@@ -920,16 +1012,18 @@ namespace awh {
 					 * @brief Метод получения собранного текста разметки
 					 *
 					 * @note Запись, прекращённая ошибкой, выдаёт пустой текст: собранное к
-					 * тому мигу оборвано посреди метки узла, и выдавать его наружу нельзя.
-					 * Причина отказа берётся у @c error()
+					 *       тому мигу оборвано посреди метки узла, и выдавать его наружу нельзя.
+					 *       Причина отказа берётся у @c error()
 					 *
 					 * @return собранный текст разметки в кодировке UTF-8
 					 *
 					 * \~english
 					 * @brief Method of getting the assembled markup text
+					 *
 					 * @note A writing terminated by an error issues an empty text: what has been assembled by
-					 * that moment is cut off in the middle of the tag of a node, and it must not be issued outside.
-					 * The reason of the refusal is taken from @c error()
+					 *       that moment is cut off in the middle of the tag of a node, and it must not be issued outside.
+					 *       The reason of the refusal is taken from @c error()
+					 *
 					 * @return assembled markup text in the UTF-8 encoding
 					 *
 					 * \~
@@ -940,8 +1034,8 @@ namespace awh {
 					 * @brief Метод изъятия собранного текста разметки
 					 *
 					 * @details Собранный текст переносится звучащему, а сборщик остаётся
-					 * пустым: подача разметки наружу кусками идёт без списывания текста,
-					 * тогда как @c text() отдаёт ссылку и списывания требует
+					 *          пустым: подача разметки наружу кусками идёт без списывания текста,
+					 *          тогда как @c text() отдаёт ссылку и списывания требует.
 					 *
 					 * @note Изымать текст дозволено и посреди разметки: собранное есть
 					 *       начало её, и остальное доберётся следующими кусками. Состояние
@@ -952,13 +1046,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the taking of the assembled markup text
+					 *
 					 * @details The assembled text is moved to the caller, while the assembler remains
-					 * empty: the issuance of a markup outwards by chunks goes without a copying of the text,
-					 * whereas @c text() issues a reference and requires a copying
+					 *          empty: the issuance of a markup outwards by chunks goes without a copying of the text,
+					 *          whereas @c text() issues a reference and requires a copying.
+					 *
 					 * @note It is permitted to take the text in the middle of a markup as well: what has been
-					 * assembled is the beginning of it, and the rest will arrive with the following chunks. The state
-					 * of the writing is NOT touched by the taking — the depth, the namespaces and
-					 * the flag of the root survive it
+					 *       assembled is the beginning of it, and the rest will arrive with the following chunks. The state
+					 *       of the writing is NOT touched by the taking — the depth, the namespaces and
+					 *       the flag of the root survive it
+					 *
 					 * @return the taken assembled markup text
 					 *
 					 * \~
@@ -969,42 +1066,49 @@ namespace awh {
 					 * @brief Метод отведения места под собираемый текст разметки
 					 *
 					 * @details Отводится место наперёд, чтобы рост накопителя по ходу записи
-					 * не перекладывал собранное с места на место. Размер задаётся снаружи
-					 * намеренно: ожидаемый объём известен тому, кто разметку собирает, а
-					 * догадка изнутри была бы одинаково неверна и для узла ответа SOAP, и
-					 * для описания устройства UPnP
+					 *          не перекладывал собранное с места на место. Размер задаётся снаружи
+					 *          намеренно: ожидаемый объём известен тому, кто разметку собирает, а
+					 *          догадка изнутри была бы одинаково неверна и для узла ответа SOAP, и
+					 *          для описания устройства UPnP.
 					 *
 					 * @note Вызов необязателен: без него накопитель растёт сам, удваивая
-					 * своё место, отчего перекладывание обходится в удвоенный объём итога.
-					 * Заниженный размер отказом не является - недостающее доводится ростом
+					 *       своё место, отчего перекладывание обходится в удвоенный объём итога.
+					 *       Заниженный размер отказом не является - недостающее доводится ростом
+					 *
 					 * @param size ожидаемый размер собираемого текста разметки в байтах
 					 *
 					 *  @code{.cpp}
-					 *  writer_t writer;
+					 *          writer_t writer;
 					 *
 					 *  writer.reserve(source.size() + (source.size() / 5));
 					 *  writer.declaration();
+					 *
 					 *  @endcode
 					 *
 					 * \~english
 					 * @brief Method of allotting the space for the markup text being assembled
+					 *
 					 * @details The space is allotted in advance so that the growth of the accumulator in the course of the writing
-					 * does not move what has been assembled from place to place. The size is given from the outside
-					 * deliberately: the expected volume is known to the one who assembles the markup, while
-					 * a guess from the inside would be equally wrong both for a node of a SOAP answer and
-					 * for a description of a UPnP device
+					 *          does not move what has been assembled from place to place. The size is given from the outside
+					 *          deliberately: the expected volume is known to the one who assembles the markup, while
+					 *          a guess from the inside would be equally wrong both for a node of a SOAP answer and
+					 *          for a description of a UPnP device.
+					 *
 					 * @note The call is optional: without it the accumulator grows by itself, doubling
-					 * its own space, from which the moving costs a doubled volume of the result.
-					 * An underestimated size is not a refusal — what is missing is added by a growth
+					 *       its own space, from which the moving costs a doubled volume of the result.
+					 *       An underestimated size is not a refusal — what is missing is added by a growth
+					 *
 					 * @param size expected size of the markup text being assembled in bytes
 					 *
 					 *  @code{.cpp}
-					 *  writer_t writer;
+					 *          writer_t writer;
 					 *
 					 *  writer.reserve(source.size() + (source.size() / 5));
 					 *  writer.declaration();
+					 *
 					 *  @endcode
 					 *
+					 * \~
 					 */
 					void reserve(const size_t size) noexcept;
 					/**
@@ -1037,6 +1141,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the writing of a markup text
 					 *
 					 * \~

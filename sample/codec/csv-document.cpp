@@ -117,7 +117,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим обозначение перезаписи таблицы
 	cout << endl << "== перезапись ==" << endl;
 	// Выводим перезапись таблицы
-	cout << document.text();
+	cout << document.dump();
 	// Объект дерева таблицы для потокового разбора
 	codec::csv::document_t stream(settings);
 	// Выводим обозначение потокового разбора отбором записей

@@ -88,19 +88,21 @@ namespace awh {
 			 * @brief Метод проверки знака на допустимость в тексте настроек
 			 *
 			 * @details Описание отвергает управляющие знаки области C0 сырыми, дозволяя
-			 * из них лишь горизонтальную табуляцию, перевод строки и возврат каретки, и
-			 * отвергает знак забоя. Область C1 при этом дозволена: описание её к
-			 * управляющим не относит, и отвергать её значило бы отвергать законный текст
+			 *          из них лишь горизонтальную табуляцию, перевод строки и возврат каретки, и
+			 *          отвергает знак забоя. Область C1 при этом дозволена: описание её к
+			 *          управляющим не относит, и отвергать её значило бы отвергать законный текст.
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility in the text of the settings
+			 *
 			 * @details The specification rejects the control characters of the C0 area in a raw form, permitting
-			 * of them only the horizontal tabulation, the line feed and the carriage return, and
-			 * it rejects the backspace character. The C1 area is permitted thereby: the specification does not consider it
-			 * a control one, and to reject it would mean to reject a lawful text
+			 *          of them only the horizontal tabulation, the line feed and the carriage return, and
+			 *          it rejects the backspace character. The C1 area is permitted thereby: the specification does not consider it
+			 *          a control one, and to reject it would mean to reject a lawful text.
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -118,6 +120,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 *
 			 * @param buffer buffer of the source text in the UTF-8 encoding
 			 * @param size   size of the buffer of the source text
 			 * @param length length of the read sequence in bytes
@@ -137,6 +140,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of writing a code value in the UTF-8 encoding
+			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended
 			 * @return       result of performing the operation
@@ -150,23 +154,25 @@ namespace awh {
 			 * @brief Класс приведения исходного текста настроек к кодировке UTF-8
 			 *
 			 * @details Кодировка определяется меткой порядка байтов в начале текста, а при
-			 * её отсутствии текстом считается UTF-8: описание отводит записи TOML именно
-			 * его. Приведение принимает текст кусками произвольного размера и удерживает
-			 * последовательность знака, разорванную границей куска
+			 *          её отсутствии текстом считается UTF-8: описание отводит записи TOML именно
+			 *          его. Приведение принимает текст кусками произвольного размера и удерживает
+			 *          последовательность знака, разорванную границей куска.
 			 *
 			 * @warning Выдача приведения не зависит от того, как исходный текст нарезан на
-			 * куски: отказ откладывается до исчерпания уже приведённого начала, чтобы
-			 * подача кусками теряла не больше событий, чем подача целиком
+			 *          куски: отказ откладывается до исчерпания уже приведённого начала, чтобы
+			 *          подача кусками теряла не больше событий, чем подача целиком
 			 *
 			 * \~english
 			 * @brief Class of the conversion of the source text of the settings to the UTF-8 encoding
+			 *
 			 * @details The encoding is determined by the byte order mark at the beginning of the text, and in
-			 * its absence the text is considered UTF-8: the specification allots exactly it to a TOML
-			 * record. The conversion accepts the text by chunks of an arbitrary size and holds
-			 * a character sequence torn by the boundary of a chunk
+			 *          its absence the text is considered UTF-8: the specification allots exactly it to a TOML
+			 *          record. The conversion accepts the text by chunks of an arbitrary size and holds
+			 *          a character sequence torn by the boundary of a chunk.
+			 *
 			 * @warning The output of the conversion does not depend on how the source text is cut into
-			 * chunks: a refusal is postponed until the already converted beginning is exhausted, so that
-			 * a feeding by chunks loses no more events than a feeding in full
+			 *          chunks: a refusal is postponed until the already converted beginning is exhausted, so that
+			 *          a feeding by chunks loses no more events than a feeding in full
 			 *
 			 * \~
 			 */
@@ -177,12 +183,13 @@ namespace awh {
 					 * @brief Метод вывода сообщения об отказе в лог
 					 *
 					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 * его не заменяет, а лишь оповещает о случившемся
+					 *          его не заменяет, а лишь оповещает о случившемся.
 					 *
 					 * \~english
 					 * @brief Method of the output of the message about a refusal into the log
+					 *
 					 * @details The code of the refusal remains available to the consumer through error():
-					 * the log does not replace it but merely notifies about what has happened
+					 *          the log does not replace it but merely notifies about what has happened.
 					 *
 					 * \~
 					 */
@@ -232,6 +239,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of determining the encoding by the byte order mark
+					 *
 					 * @return flag of the determination of the encoding being completed
 					 *
 					 * \~
@@ -249,6 +257,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting the held bytes to the UTF-8 encoding
+					 *
 					 * @param buffer buffer of the bytes of the source text being converted
 					 * @param size   size of the buffer of the bytes of the source text being converted
 					 * @param end    flag of the bytes being converted being the last ones
@@ -268,6 +277,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the determined encoding of the source text
+					 *
 					 * @return determined encoding of the source text
 					 *
 					 * \~
@@ -281,6 +291,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the flag of the detection of the byte order mark
+					 *
 					 * @return flag of the detection of the byte order mark
 					 *
 					 * \~
@@ -295,6 +306,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the encoding of the source text
+					 *
 					 * @param encoding encoding of the source text being set
 					 * @return         result of performing the operation
 					 *
@@ -314,6 +326,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting a chunk of the source text to the UTF-8 encoding
+					 *
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one
@@ -332,6 +345,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the conversion
+					 *
 					 * @return error code of the last operation of the conversion
 					 *
 					 * \~

@@ -859,7 +859,7 @@ TEST(CodecJsonValue, Graft) {
 	// Выполняем сборку прививаемого значения
 	value["новое"] = json::value_t(static_cast <int64_t> (7));
 	// Выполняем прививку значения на место вложенного объекта
-	ASSERT_TRUE(document.graft("/b", value));
+	ASSERT_TRUE(document.set("/b", value));
 	/**
 	 * Выполняем проверку перезаписи документа после прививки
 	 *
@@ -887,11 +887,11 @@ TEST(CodecJsonValue, GraftPlaces) {
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"list\":[1,{\"x\":0},3]}"));
 	// Выполняем прививку значения на место значения массива
-	ASSERT_TRUE(document.graft("/list/1", json::value_t("иное")));
+	ASSERT_TRUE(document.set("/list/1", json::value_t("иное")));
 	// Выполняем проверку перезаписи документа после прививки
 	ASSERT_STREQ(document.dump().c_str(), "{\"list\":[1,\"иное\",3]}");
 	// Выполняем прививку значения на место первого значения массива
-	ASSERT_TRUE(document.graft("/list/0", json::value_t(true)));
+	ASSERT_TRUE(document.set("/list/0", json::value_t(true)));
 	// Выполняем проверку перезаписи документа после второй прививки
 	ASSERT_STREQ(document.dump().c_str(), "{\"list\":[true,\"иное\",3]}");
 	// Прививаемое корнем значение
@@ -899,7 +899,7 @@ TEST(CodecJsonValue, GraftPlaces) {
 	// Выполняем разбор текста прививаемого значения
 	ASSERT_TRUE(root.parse("[1,2]"));
 	// Выполняем прививку значения корнем документа
-	ASSERT_TRUE(document.graft("", root));
+	ASSERT_TRUE(document.set("", root));
 	// Выполняем проверку перезаписи документа после прививки корня
 	ASSERT_STREQ(document.dump().c_str(), "[1,2]");
 }
@@ -914,11 +914,11 @@ TEST(CodecJsonValue, GraftFailure) {
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"a\":{\"b\":1}}"));
 	// Выполняем проверку отказа прививки по отсутствующему пути
-	ASSERT_FALSE(document.graft("/нет", json::value_t(true)));
+	ASSERT_FALSE(document.set("/нет", json::value_t(true)));
 	// Выполняем проверку отказа прививки вглубь простого значения
-	ASSERT_FALSE(document.graft("/a/b/c", json::value_t(true)));
+	ASSERT_FALSE(document.set("/a/b/c", json::value_t(true)));
 	// Выполняем проверку отказа прививки по неправильному указателю
-	ASSERT_FALSE(document.graft("a", json::value_t(true)));
+	ASSERT_FALSE(document.set("a", json::value_t(true)));
 	// Выполняем проверку того, что отказы дерева не тронули
 	ASSERT_STREQ(document.dump().c_str(), "{\"a\":{\"b\":1}}");
 }
@@ -944,7 +944,7 @@ TEST(CodecJsonValue, GraftRoundtrip) {
 	// Выполняем заведение нового поля снятого значения
 	taken.place("/пределы/связей") = json::value_t(static_cast <uint64_t> (1024));
 	// Выполняем прививку изменённого значения обратно в документ
-	ASSERT_TRUE(document.graft("/настройки", taken));
+	ASSERT_TRUE(document.set("/настройки", taken));
 	// Выполняем проверку перезаписи документа после прививки
 	ASSERT_STREQ(document.dump().c_str(),
 		"{\"настройки\":{\"порт\":8080,\"хост\":\"localhost\",\"пределы\":{\"связей\":1024}},\"прочее\":[1,2]}");
@@ -984,7 +984,7 @@ TEST(CodecJsonValue, GraftIndexed) {
 	// Выполняем обращение по имени, заводящее отображение имён полей объекта
 	ASSERT_TRUE(document["поле7"].valid());
 	// Выполняем прививку значения на место поля объекта
-	ASSERT_TRUE(document.graft("/поле7", json::value_t("привито")));
+	ASSERT_TRUE(document.set("/поле7", json::value_t("привито")));
 	// Выполняем проверку обращения по имени после прививки
 	ASSERT_EQ(document["поле7"].text(), string_view("привито"));
 	// Выполняем проверку обращения к соседнему полю после прививки
@@ -1998,7 +1998,7 @@ TEST(CodecJsonValue, GraftKinds) {
 			// Выводим признак отказа разбора текста дерева
 			return "";
 		// Выполняем приживление значения в дерево документа
-		if(!document.graft(pointer, value))
+		if(!document.set(pointer, value))
 			// Выводим признак отказа приживления значения
 			return "";
 		// Выводим запись дерева документа
@@ -2046,13 +2046,13 @@ TEST(CodecJsonValue, GraftKinds) {
 		// Объект дерева документа
 		json::document_t document;
 		// Выполняем проверку отклонения пути в дереве, ещё не заведённом
-		ASSERT_FALSE(document.graft("/a", json::value_t(true)));
+		ASSERT_FALSE(document.set("/a", json::value_t(true)));
 		// Выполняем разбор текста дерева перечня
 		ASSERT_TRUE(document.parse("[1,2]"));
 		// Выполняем проверку отклонения номера звена за пределами перечня
-		ASSERT_FALSE(document.graft("/9", json::value_t(true)));
+		ASSERT_FALSE(document.set("/9", json::value_t(true)));
 		// Выполняем проверку отклонения звена пути, числом не являющегося
-		ASSERT_FALSE(document.graft("/0x", json::value_t(true)));
+		ASSERT_FALSE(document.set("/0x", json::value_t(true)));
 		// Выполняем проверку того, что дерево осталось нетронутым
 		ASSERT_EQ(document.dump(), "[1,2]");
 	}
@@ -2336,7 +2336,7 @@ TEST(CodecJsonValue, GraftNumbersIntoDocument) {
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}")) << item.first;
 		// Выполняем прививку числа на место уже занятое
-		ASSERT_TRUE(document.graft("/a", value)) << item.first;
+		ASSERT_TRUE(document.set("/a", value)) << item.first;
 		// Извлекаемое дробное число
 		double number = 0.;
 		// Выполняем извлечение привитого числа
@@ -2356,7 +2356,7 @@ TEST(CodecJsonValue, GraftNumbersIntoDocument) {
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}"));
 		// Выполняем проверку отказа прививки на отсутствующее место
-		ASSERT_FALSE(document.graft("/b", json::value_t(static_cast <double> (0.5))));
+		ASSERT_FALSE(document.set("/b", json::value_t(static_cast <double> (0.5))));
 		// Выполняем проверку неприкосновенности дерева
 		ASSERT_EQ(document.dump(), "{\"a\":1}");
 	}

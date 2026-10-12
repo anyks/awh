@@ -118,25 +118,26 @@ namespace awh {
 			 * @brief Класс потокового чтения текста разметки
 			 *
 			 * @details Разбор ведётся по кускам исходного текста и выдаёт события по мере
-			 * их обнаружения, не удерживая текст целиком. Приостановка разбора посреди
-			 * разметки допустима: разобранное сохраняется, а недостающее дочитывается
-			 * следующим куском. Такое устройство позволяет разбирать ответ по мере его
-			 * поступления из сети, не дожидаясь его целиком
+			 *          их обнаружения, не удерживая текст целиком. Приостановка разбора посреди
+			 *          разметки допустима: разобранное сохраняется, а недостающее дочитывается
+			 *          следующим куском. Такое устройство позволяет разбирать ответ по мере его
+			 *          поступления из сети, не дожидаясь его целиком.
 			 *
-			 * Разбор не выбрасывает исключений: признаком отказа служит состояние
-			 * @c state_t::FAILED вместе с кодом ошибки и местом отказа в исходном тексте
+			 * @details Разбор не выбрасывает исключений: признаком отказа служит состояние
+			 *          `state_t::FAILED` вместе с кодом ошибки и местом отказа в исходном тексте.
 			 *
 			 * @par Порядок работы
 			 *
 			 * @warning Все выдаваемые последовательности знаков ссылаются на память,
-			 * принадлежащую разбору, и остаются пригодными **лишь до следующего обращения**
-			 * к @c next() либо @c feed(). Содержимое, нужное дольше, следует скопировать
+			 *          принадлежащую разбору, и остаются пригодными **лишь до следующего обращения**
+			 *          к @c next() либо @c feed(). Содержимое, нужное дольше, следует скопировать
+			 *
 			 * @note Для разбора текста, уже собранного целиком, есть дерево разметки:
-			 * оно устроено поверх этого же чтения и удобнее там, где обход содержимого
-			 * важнее расхода памяти
+			 *       оно устроено поверх этого же чтения и удобнее там, где обход содержимого
+			 *       важнее расхода памяти
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader;
+			 *          reader_t reader;
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -152,27 +153,34 @@ namespace awh {
 			 *    if(reader.state() == state_t::FAILED)
 			 *      break;
 			 *  }
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a markup text
-			 * @details The parsing is conducted by the chunks of the source text and issues the events as
-			 * they are detected without holding the text in full. A suspension of the parsing in the middle of a
-			 * markup is admissible: what has been parsed is preserved, while what is missing is read up by the
-			 * next chunk. Such an arrangement makes it possible to parse an answer as it
-			 * arrives from the network without waiting for it in full
-			 * The parsing does not throw exceptions: the @c state_t::FAILED state together with the error code
-			 * and the place of the refusal in the source text serves as the sign of a refusal
+			 *
+			 * @details The parsing is conducted by the chunks of the source text and issues the events
+			 *          as they are detected without holding the text in full. A suspension of the parsing
+			 *          in the middle of a markup is admissible: what has been parsed is preserved, while
+			 *          what is missing is read up by the next chunk. Such an arrangement makes it possible
+			 *          to parse an answer as it arrives from the network without waiting for it in full.
+			 *
+			 * @details The parsing does not throw exceptions: the `state_t::FAILED` state together with
+			 *          the code of the error and the place of the refusal in the source text serves as
+			 *          the sign of a refusal.
+			 *
 			 * @par Order of the work
+			 *
 			 * @warning All the issued sequences of characters refer to the memory
-			 * belonging to the parsing and remain valid **only until the next call**
-			 * to @c next() or @c feed(). The content needed for longer should be copied
+			 *          belonging to the parsing and remain valid **only until the next call**
+			 *          to @c next() or @c feed(). The content needed for longer should be copied
+			 *
 			 * @note For the parsing of a text already assembled in full there is the markup tree:
-			 * it is built on top of this same reading and is more convenient there where a traversal of the content
-			 * is more important than the expenditure of the memory
+			 *       it is built on top of this same reading and is more convenient there where a traversal of the content
+			 *       is more important than the expenditure of the memory
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader;
+			 *          reader_t reader;
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -188,8 +196,10 @@ namespace awh {
 			 *    if(reader.state() == state_t::FAILED)
 			 *      break;
 			 *  }
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
 				public:
@@ -198,12 +208,13 @@ namespace awh {
 					 * @brief Настройки разбора текста разметки
 					 *
 					 * @details Задают строгость разбора и пределы, ограничивающие расход
-					 * памяти на подставном тексте
+					 *          памяти на подставном тексте.
 					 *
 					 * \~english
 					 * @brief Settings of the parsing of a markup text
+					 *
 					 * @details They give the strictness of the parsing and the limits restricting the expenditure
-					 * of the memory on a planted text
+					 *          of the memory on a planted text.
 					 *
 					 * \~
 					 */
@@ -223,11 +234,11 @@ namespace awh {
 						 * Флаг склеивания подряд идущих кусков текстового содержимого в одно событие
 						 *
 						 * @note Склеиваются лишь куски одного и того же вида, идущие подряд.
-						 * Раздел дословного текста, примечание и указание обработчику текстовое
-						 * содержимое разрывают, даже когда выдача их отдельным событием отключена:
-						 * событие для них не выдаётся, но границей содержимого они остаются.
-						 * Разборы, не различающие раздел дословного текста и обычный, склеивают
-						 * такое содержимое целиком, и слепок разбора с ними тогда не совпадёт
+						 *       Раздел дословного текста, примечание и указание обработчику текстовое
+						 *       содержимое разрывают, даже когда выдача их отдельным событием отключена:
+						 *       событие для них не выдаётся, но границей содержимого они остаются.
+						 *       Разборы, не различающие раздел дословного текста и обычный, склеивают
+						 *       такое содержимое целиком, и слепок разбора с ними тогда не совпадёт
 						 *
 						 * @warning Граница подачи разрывает содержимое ЛИШЬ ПРИ ОПУЩЕННОЙ склейке.
 						 *          Замерено: текст `<k>WWW</k>` при опущенной склейке даёт одно
@@ -263,30 +274,40 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of the gluing of the consecutive chunks of a text content into a single event
+						 *
 						 * @note Only the chunks of one and the same kind going in a row are glued.
-						 * A literal text section, a comment and a processing instruction break a text
-						 * content apart even when their issuance as a separate event is disabled:
-						 * an event is not issued for them, but they remain a boundary of the content.
-						 * The parsers that do not distinguish a literal text section from an ordinary one glue
-						 * such a content in full, and the snapshot of the parsing will then not coincide with theirs
+						 *       A literal text section, a comment and a processing instruction break a text
+						 *       content apart even when their issuance as a separate event is disabled:
+						 *       an event is not issued for them, but they remain a boundary of the content.
+						 *       The parsers that do not distinguish a literal text section from an ordinary one glue
+						 *       such a content in full, and the snapshot of the parsing will then not coincide with theirs
+						 *
 						 * @warning The boundary of a feed breaks a content apart ONLY WITH THE GLUING LOWERED.
-						 * Measured: the text `<k>WWW</k>` with the gluing lowered gives a single event `[WWW]`
-						 * as a whole and two — "WW" and "W" — by chunks; with the gluing raised it gives a
-						 * single event `[WWW]` at any chunking, down to a feeding BYTE BY BYTE. To concatenate
-						 * the consecutive events oneself is therefore needed only by the one driving the
-						 * reading with the gluing lowered
+						 *          Measured: the text `<k>WWW</k>` with the gluing lowered gives a single event `[WWW]`
+						 *          as a whole and two — "WW" and "W" — by chunks; with the gluing raised it gives a
+						 *          single event `[WWW]` at any chunking, down to a feeding BYTE BY BYTE. To concatenate
+						 *          the consecutive events oneself is therefore needed only by the one driving the
+						 *          reading with the gluing lowered
+						 *
 						 * @warning The price of the gluing across a boundary of a feed is an accumulation of the
-						 * content in the memory: a node being glued to its end accumulates without a limit, and
-						 * only `maxEvent` fences it. The one driving a reading of an endless stream is to set
-						 * that limit, otherwise a single node is entitled to eat any amount of the memory
+						 *          content in the memory: a node being glued to its end accumulates without a limit, and
+						 *          only `maxEvent` fences it. The one driving a reading of an endless stream is to set
+						 *          that limit, otherwise a single node is entitled to eat any amount of the memory
+						 *
 						 * @note The former record here asserted the opposite — as if the gluing went within the
-						 * limits of the fed chunk ALWAYS — and ordered the consumer to write a concatenation
-						 * which the codec does itself. Uncovered by a continuous sweep of the settings
+						 *       limits of the fed chunk ALWAYS — and ordered the consumer to write a concatenation
+						 *       which the codec does itself. Uncovered by a continuous traversal of the settings: this
+						 *       one sign gave no divergences alone, and a parsing of the reason showed that it is not the
+						 *       code but the record that lies. An argument against the record was found in the very set:
+						 *       the helper `both` parses a text BYTE BY BYTE with the gluing and demands a match with the
+						 *       parsing as a whole
+						 *
 						 * @note This does NOT concern the markup tree and the owning value: their assembling
-						 * concatenates the chunks itself, and the reading of a file, going by chunks of 64 KiB,
-						 * gives a tree equal to the parsing of the same text as a whole string
+						 *       concatenates the chunks itself, and the reading of a file, going by chunks of 64 KiB,
+						 *       gives a tree equal to the parsing of the same text as a whole string
+						 *
 						 * @note The JSON and CSV codecs do NOT break a content by a boundary of a feed: a field
-						 * of a table and a value of a document are issued as a single event at any chunking
+						 *       of a table and a value of a document are issued as a single event at any chunking
 						 *
 						 * \~
 						 */
@@ -298,28 +319,37 @@ namespace awh {
 						 * @brief Флаг отказа разбора при ссылке на внешнюю сущность в содержимом
 						 *
 						 * @details Внешние сущности не загружаются никогда, и подставить такую
-						 * ссылку нечем. Договор велит разбору, их не читающему, ссылку РАСПОЗНАТЬ
-						 * и пропустить, а не отвергать текст: отказ здесь - строгость сверх
-						 * договора, и оттого он вынесен в настройку, а по умолчанию снят
+						 *          ссылку нечем. Договор велит разбору, их не читающему, ссылку РАСПОЗНАТЬ
+						 *          и пропустить, а не отвергать текст: отказ здесь - строгость сверх
+						 *          договора, и оттого он вынесен в настройку, а по умолчанию снят.
 						 *
 						 * @note В значении атрибута ссылка на внешнюю сущность запрещена самим
-						 * договором, и там отказ следует ВСЕГДА, независимо от этого флага
+						 *       договором, и там отказ следует ВСЕГДА, независимо от этого флага
 						 *
 						 * @warning Пропущенная ссылка в дерево НЕ ЛОЖИТСЯ никак: перезапись
-						 * разобранного даёт текст БЕЗ неё, и содержимое это теряется молча.
-						 * Разбору договор велит ссылку лишь распознать, а вот круговой ход
-						 * договором не описан вовсе - потому поведение это и оговорено здесь.
-						 * Держать ссылку в дереве значило бы завести ей свой вид узла и своё
-						 * событие разбора; решение это ещё не принято
+						 *          разобранного даёт текст БЕЗ неё, и содержимое это теряется молча.
+						 *          Разбору договор велит ссылку лишь распознать, а вот круговой ход
+						 *          договором не описан вовсе - потому поведение это и оговорено здесь.
+						 *          Держать ссылку в дереве значило бы завести ей свой вид узла и своё
+						 *          событие разбора; решение это ещё не принято
 						 *
 						 * \~english
 						 * @brief Flag of the refusal of the parsing upon a reference to an external entity in a content
+						 *
 						 * @details External entities are never loaded, and there is nothing to substitute such
-						 * a reference with. The standard orders a parser not reading them to RECOGNIZE the reference
-						 * and skip it rather than to reject the text: a refusal here is a strictness beyond
-						 * the standard, and therefore it is carried out into a setting, being removed by default
+						 *          a reference with. The standard orders a parser not reading them to RECOGNIZE the reference
+						 *          and skip it rather than to reject the text: a refusal here is a strictness beyond
+						 *          the standard, and therefore it is carried out into a setting, being removed by default.
+						 *
 						 * @note In an attribute value a reference to an external entity is forbidden by the standard
-						 * itself, and a refusal there follows ALWAYS, independently of this flag
+						 *       itself, and a refusal there follows ALWAYS, independently of this flag
+						 *
+						 * @warning A skipped reference is NOT PUT into the tree in any way: a rewriting of what has
+						 *          been parsed gives a text WITHOUT it, and such a content is lost silently. The
+						 *          protocol orders a parsing to recognize a reference only, while a round trip is
+						 *          not described by the protocol at all - therefore this behaviour is stipulated
+						 *          here. To keep a reference in a tree would mean to make for it an own kind of a
+						 *          node and an own event of the parsing; that decision has not been taken yet
 						 *
 						 * \~
 						 */
@@ -335,6 +365,20 @@ namespace awh {
 						 *          освободится молча, следа о том не оставив. Довод этот приложим ко всякому
 						 *          косвенному закреплению, но здесь цена ошибки наибольшая: умолчание правит
 						 *          разбором внешних ссылок
+						 *
+						 * \~english
+						 * @note This default (`false` - the external references are NOT refused, but recognized
+						 *       and skipped) is fixed indirectly: replacing it with `true` drops FOUR
+						 *       checks. Measured on 2026-08-31 by a spoiling of the default in the `Settings`
+						 *       constructor
+						 *
+						 * @warning Four is a small number, and this fixing is NAMED here deliberately: those
+						 *          checks drop because they parse the external references, and not at all because
+						 *          they guard the default. Rewrite them for another reason - and the default will
+						 *          come free silently, leaving no trace of it. This argument applies to any
+						 *          indirect fixing, but here the price of a mistake is the greatest: the default
+						 *          rules the parsing of the external references
+						 *
 						 * \~
 						 */
 						bool externals;
@@ -345,20 +389,23 @@ namespace awh {
 						 * @note Превышение предела отвергается кодом `DEPTH_EXCEEDED`
 						 *
 						 * @warning Предел этот САМИМ ЧТЕНИЕМ соблюдается как задан, а вот владеющее
-						 * значение `Value` огранивает его потолком `MAX_DEPTH`: дерево разметки
-						 * плоско, но работы ПО ГОТОВОМУ ЗНАЧЕНИЮ - снятие дерева, размножение,
-						 * сличение и запись - идут возвратом, и глубина ложится прямо на стек
-						 * вызовов. Предел, поднятый выше потолка либо снятый нулём, у владеющего
-						 * значения силы не имеет
+						 *          значение `Value` огранивает его потолком `MAX_DEPTH`: дерево разметки
+						 *          плоско, но работы ПО ГОТОВОМУ ЗНАЧЕНИЮ - снятие дерева, размножение,
+						 *          сличение и запись - идут возвратом, и глубина ложится прямо на стек
+						 *          вызовов. Предел, поднятый выше потолка либо снятый нулём, у владеющего
+						 *          значения силы не имеет
 						 *
 						 * \~english
 						 * @brief Largest admissible depth of the nesting of the nodes, zero — without a limit
+						 *
+						 * @note Going beyond the limit is refused by the `DEPTH_EXCEEDED` code
+						 *
 						 * @warning The present limit is observed as set BY THE READING ITSELF, while
-						 * the owning `Value` bounds it by the `MAX_DEPTH` ceiling: the tree of a markup
-						 * is flat, but the works ON THE READY VALUE — the taking of the tree, the copying,
-						 * the comparison and the writing — go by a recursion, and the depth falls right onto
-						 * the stack of the calls. A limit raised above the ceiling or removed by a zero has
-						 * no force at the owning value
+						 *          the owning `Value` bounds it by the `MAX_DEPTH` ceiling: the tree of a markup
+						 *          is flat, but the works ON THE READY VALUE — the taking of the tree, the copying,
+						 *          the comparison and the writing — go by a recursion, and the depth falls right onto
+						 *          the stack of the calls. A limit raised above the ceiling or removed by a zero has
+						 *          no force at the owning value
 						 *
 						 * \~
 						 */
@@ -368,12 +415,24 @@ namespace awh {
 						// Наибольшее допустимое количество атрибутов у одного узла, ноль - без предела; отказ кодом TOO_MANY_ATTRIBUTES
 						uint32_t maxAttributes;
 						/**
+						 * \~russian
 						 * Наибольшее количество ОБЪЯВЛЕННЫХ сущностей, ноль - без предела; отказ кодом ENTITY_COUNT_EXCEEDED
 						 *
 						 * @warning Считаются сущности, объявленные описанием типа документа, и
 						 *          ТОЛЬКО они. Встроенных сущностей разметки («&amp;lt;» и прочих)
 						 *          предел не видит вовсе, и текст из них одних не отвергается
 						 *          никогда, сколько бы их ни было
+						 *
+						 * \~english
+						 * Largest number of the DECLARED entities, zero - without a limit; a refusal by the
+						 * code ENTITY_COUNT_EXCEEDED
+						 *
+						 * @warning The entities declared by a document type definition are counted, and
+						 *          ONLY they. The built-in entities of the markup («&amp;lt;» and the rest)
+						 *          the limit does not see at all, and a text of them alone is never rejected,
+						 *          however many of them there were
+						 *
+						 * \~
 						 */
 						uint32_t maxEntities;
 						/**
@@ -381,13 +440,13 @@ namespace awh {
 						 * Наибольший допустимый общий объём подстановки сущностей в байтах
 						 *
 						 * @warning Поднятие этого предела выше четырёх гигабайт упирается в
-						 * разрядность отрезка хранилища: места значений записаны 32 разрядами,
-						 * и за этим пределом разбор отвечает отказом `OVERFLOW_LIMIT`. Отказ
-						 * заведён намеренно вместо расширения разрядности: без него смещение
-						 * обращалось в младшие разряды, и значение атрибута молча выдавалось
-						 * чужое - воспроизведено на 34 атрибутах по 128 мегабайт. Разметки,
-						 * где значения одного узла превосходят четыре гигабайта, не бывает,
-						 * а восьмибайтовое место удвоило бы объём перечня атрибутов у всех
+						 *          разрядность отрезка хранилища: места значений записаны 32 разрядами,
+						 *          и за этим пределом разбор отвечает отказом `OVERFLOW_LIMIT`. Отказ
+						 *          заведён намеренно вместо расширения разрядности: без него смещение
+						 *          обращалось в младшие разряды, и значение атрибута молча выдавалось
+						 *          чужое - воспроизведено на 34 атрибутах по 128 мегабайт. Разметки,
+						 *          где значения одного узла превосходят четыре гигабайта, не бывает,
+						 *          а восьмибайтовое место удвоило бы объём перечня атрибутов у всех
 						 *
 						 * @note Ноль снимает предел вовсе - так же, как у прочих пределов кодека
 						 *       и у кодеков JSON и CSV. Прежде ноль означал предел В НОЛЬ, и разбор
@@ -396,14 +455,20 @@ namespace awh {
 						 *
 						 * \~english
 						 * Largest admissible total volume of the substitution of the entities in bytes
+						 *
 						 * @warning A raising of this limit above four gigabytes runs into the
-						 * width of a segment of the storage: the places of the values are written with 32 bits,
-						 * and beyond that limit the parsing answers with an `OVERFLOW_LIMIT` refusal. The refusal
-						 * has been introduced deliberately instead of a widening of the width: without it the offset
-						 * turned into the low bits, and the value of an attribute was silently issued as
-						 * a foreign one — reproduced on 34 attributes of 128 megabytes each. There is no markup
-						 * where the values of a single node exceed four gigabytes,
-						 * while an eight-byte place would double the volume of the list of the attributes for everyone
+						 *          width of a segment of the storage: the places of the values are written with 32 bits,
+						 *          and beyond that limit the parsing answers with an `OVERFLOW_LIMIT` refusal. The refusal
+						 *          has been introduced deliberately instead of a widening of the width: without it the offset
+						 *          turned into the low bits, and the value of an attribute was silently issued as
+						 *          a foreign one — reproduced on 34 attributes of 128 megabytes each. There is no markup
+						 *          where the values of a single node exceed four gigabytes,
+						 *          while an eight-byte place would double the volume of the list of the attributes for everyone
+						 *
+						 * @note A zero removes the limit altogether - the same as at the other limits of the
+						 *       codec and at the codecs JSON and CSV. Before, a zero meant a limit OF ZERO, and the
+						 *       parsing answered with a refusal upon any text: a setting, removed by the pattern of
+						 *       the neighbouring codec, brought the whole parsing down
 						 *
 						 * \~
 						 */
@@ -413,41 +478,51 @@ namespace awh {
 						 * Наибольший допустимый объём одного события в байтах, ноль снимает предел
 						 *
 						 * @warning Предел этот - ЕДИНСТВЕННЫЙ из одиннадцати пределов разбора трёх
-						 * текстовых кодеков, у какого нет своего кода отказа: он отвечает общим
-						 * `OVERFLOW_LIMIT`, тогда как прочие десять отвечают каждый своим
-						 * (`NAME_TOO_LONG`, `DEPTH_EXCEEDED`, `TOO_MANY_ATTRIBUTES` и подобными).
-						 * Разбирающему отказ по коду надлежит помнить: `OVERFLOW_LIMIT` у разметки
-						 * означает превышение ИМЕННО этого предела и никакого иного. Замер
-						 * 01.09.2026 закреплён проверкой `LimitsRaiseTheirOwnCodes`
+						 *          текстовых кодеков, у какого нет своего кода отказа: он отвечает общим
+						 *          `OVERFLOW_LIMIT`, тогда как прочие десять отвечают каждый своим
+						 *          (`NAME_TOO_LONG`, `DEPTH_EXCEEDED`, `TOO_MANY_ATTRIBUTES` и подобными).
+						 *          Разбирающему отказ по коду надлежит помнить: `OVERFLOW_LIMIT` у разметки
+						 *          означает превышение ИМЕННО этого предела и никакого иного. Замер
+						 *          01.09.2026 закреплён проверкой `LimitsRaiseTheirOwnCodes`
 						 *
 						 * @note Предел держится одинаково, как бы исходный текст ни был нарезан.
-						 * Сличается с ним и длина разметки события - от её начала до её конца в
-						 * исходном тексте, - и объём выданного содержимого. Одного содержимого мало:
-						 * у начала узла оно пусто вовсе, у описания типа документа сводится к имени,
-						 * а разметка их произвольно длинна, и текст, пришедший целиком, проходил бы
-						 * мимо предела там, где тот же текст кусками отвергается. Одной разметки
-						 * мало тоже: подстановка сущности содержимое удлиняет. Иначе предел зависел
-						 * бы от устройства сети, а не от настроек вызывающего
+						 *       Сличается с ним и длина разметки события - от её начала до её конца в
+						 *       исходном тексте, - и объём выданного содержимого. Одного содержимого мало:
+						 *       у начала узла оно пусто вовсе, у описания типа документа сводится к имени,
+						 *       а разметка их произвольно длинна, и текст, пришедший целиком, проходил бы
+						 *       мимо предела там, где тот же текст кусками отвергается. Одной разметки
+						 *       мало тоже: подстановка сущности содержимое удлиняет. Иначе предел зависел
+						 *       бы от устройства сети, а не от настроек вызывающего
 						 *
 						 * @warning Предел ограничивает тем самым и длину открывающей метки со всеми
-						 * её атрибутами, и длину описания типа документа: узел с сотней атрибутов
-						 * под пределом в сотню байтов не пройдёт, сколько бы ни было содержимого у
-						 * самого события
+						 *          её атрибутами, и длину описания типа документа: узел с сотней атрибутов
+						 *          под пределом в сотню байтов не пройдёт, сколько бы ни было содержимого у
+						 *          самого события
 						 *
 						 * \~english
 						 * Largest admissible volume of a single event in bytes, zero removes the limit
+						 *
+						 * @warning This limit is the ONLY ONE of the eleven limits of the parsing of the three
+						 *          text codecs which has no code of its own: it answers with the common
+						 *          `OVERFLOW_LIMIT`, while the other ten each answer with their own
+						 *          (`NAME_TOO_LONG`, `DEPTH_EXCEEDED`, `TOO_MANY_ATTRIBUTES` and the like). One who
+						 *          tells a refusal by a code ought to remember: at a markup `OVERFLOW_LIMIT` means
+						 *          the going beyond THIS VERY limit and no other. A measurement of 2026-09-01 is
+						 *          fixed by the check `LimitsRaiseTheirOwnCodes`
+						 *
 						 * @note The limit is held identically however the source text may be cut.
-						 * Both the length of the markup of an event — from its beginning to its end in
-						 * the source text — and the volume of the issued content are compared against it. The content alone is not enough:
-						 * at the beginning of a node it is empty altogether, at a document type definition it comes down to a name,
-						 * while their markup is arbitrarily long, and a text that has arrived in full would pass
-						 * by the limit there where the same text by chunks is rejected. The markup alone
-						 * is not enough either: a substitution of an entity lengthens the content. Otherwise the limit would depend
-						 * on the arrangement of the network rather than on the settings of the caller
+						 *       Both the length of the markup of an event — from its beginning to its end in
+						 *       the source text — and the volume of the issued content are compared against it. The content alone is not enough:
+						 *       at the beginning of a node it is empty altogether, at a document type definition it comes down to a name,
+						 *       while their markup is arbitrarily long, and a text that has arrived in full would pass
+						 *       by the limit there where the same text by chunks is rejected. The markup alone
+						 *       is not enough either: a substitution of an entity lengthens the content. Otherwise the limit would depend
+						 *       on the arrangement of the network rather than on the settings of the caller
+						 *
 						 * @warning The limit thereby restricts also the length of an opening tag with all
-						 * its attributes and the length of a document type definition: a node with a hundred attributes
-						 * under a limit of a hundred bytes will not pass, however much content the event
-						 * itself may have
+						 *          its attributes and the length of a document type definition: a node with a hundred attributes
+						 *          under a limit of a hundred bytes will not pass, however much content the event
+						 *          itself may have
 						 *
 						 * \~
 						 */
@@ -482,11 +557,21 @@ namespace awh {
 						// Флаг того, что сущность объявлена внешней
 						bool external;
 						/**
+						 * \~russian
 						 * Признак сущности, объявленной НЕРАЗБИРАЕМОЙ (словом «NDATA»)
 						 *
 						 * @note Ссылка на такую сущность в содержимом запрещена договором прямо
-						 * и является ошибкой ВСЕГДА - в отличие от ссылки на обычную внешнюю
-						 * сущность, какую разбору, её не читающему, велено пропускать
+						 *       и является ошибкой ВСЕГДА - в отличие от ссылки на обычную внешнюю
+						 *       сущность, какую разбору, её не читающему, велено пропускать
+						 *
+						 * \~english
+						 * A sign of an entity declared UNPARSEABLE (by the word "NDATA")
+						 *
+						 * @note A reference to such an entity in a content is forbidden by the protocol
+						 *       outright and is an error ALWAYS - in distinction from a reference to an
+						 *       ordinary external entity, which a parsing not reading it is ordered to skip
+						 *
+						 * \~
 						 */
 						bool unparsed;
 						// Флаг того, что подстановка сущности выполняется в текущий миг
@@ -510,30 +595,51 @@ namespace awh {
 					 * @brief Значение атрибута, объявленное по умолчанию
 					 *
 					 * @details Объявляется перечнем атрибутов в описании типа документа и
-					 * подставляется тем узлам, где атрибут в тексте опущен
+					 *          подставляется тем узлам, где атрибут в тексте опущен.
 					 *
 					 * \~english
 					 * @brief Value of an attribute declared by default
+					 *
 					 * @details Declared by a list of the attributes in a document type definition and
-					 * substituted to those nodes where the attribute is omitted in the text
+					 *          substituted to those nodes where the attribute is omitted in the text.
 					 *
 					 * \~
 					 */
 					typedef struct Default {
 						/**
+						 * \~russian
 						 * Признак объявления атрибута видом, отличным от «CDATA»
 						 *
 						 * @details Договор велит приводить значение такого атрибута: снимать
-						 * пробельные знаки по краям и сводить всякую их вереницу к одному
-						 * пробелу. Приведение это к проверке по описанию типа документа не
-						 * относится и выполняется независимо от неё
+						 *          пробельные знаки по краям и сводить всякую их вереницу к одному
+						 *          пробелу. Приведение это к проверке по описанию типа документа не
+						 *          относится и выполняется независимо от неё.
+						 *
+						 * \~english
+						 * A sign of an attribute declared by a kind other than "CDATA"
+						 *
+						 * @details The protocol orders a value of such an attribute to be converted: the
+						 *          whitespace characters at the edges are stripped and every their run is
+						 *          reduced to a single space. This conversion does not belong to the check
+						 *          by a document type definition and is performed independently of it.
+						 *
+						 * \~
 						 */
 						bool tokenized;
 						/**
+						 * \~russian
 						 * Признак объявления атрибуту значения по умолчанию
 						 *
 						 * @note Объявление удерживается и без значения: вид атрибута нужен
-						 * для приведения значения, записанного в самом тексте
+						 *       для приведения значения, записанного в самом тексте
+						 *
+						 * \~english
+						 * A sign of a default value being declared for an attribute
+						 *
+						 * @note A declaration is kept even without a value: the kind of an attribute is
+						 *       needed for the conversion of a value written in the text itself
+						 *
+						 * \~
 						 */
 						bool defaulted;
 						// Префикс имени атрибута
@@ -559,29 +665,31 @@ namespace awh {
 					 * @brief Ход поиска конца описания типа документа
 					 *
 					 * @details Описание типа документа приходит кусками наравне с прочей разметкой,
-					 * а конец его отыскивается перебором знаков: внутри описания стоят и значения в
-					 * кавычках, и примечания, и указания обработчику, и всякий знак конца внутри них
-					 * концом описания не является. Перебор с начала при каждом куске обращал бы
-					 * разбор описания из линейного в квадратичный, и подмножество в несколько десятков
-					 * килобайтов, приходящее мелкими кусками, разбиралось бы сотни раз дольше
-					 * пришедшего целиком. Достигнутое положение потому удерживается между кусками
+					 *          а конец его отыскивается перебором знаков: внутри описания стоят и значения в
+					 *          кавычках, и примечания, и указания обработчику, и всякий знак конца внутри них
+					 *          концом описания не является. Перебор с начала при каждом куске обращал бы
+					 *          разбор описания из линейного в квадратичный, и подмножество в несколько десятков
+					 *          килобайтов, приходящее мелкими кусками, разбиралось бы сотни раз дольше
+					 *          пришедшего целиком. Достигнутое положение потому удерживается между кусками.
 					 *
 					 * @note Положения хранятся отсчётом от начала описания, а не от начала
-					 * приведённого текста: изъятие разобранного начала буфера сдвигает второе,
-					 * а первое оставляет на месте
+					 *       приведённого текста: изъятие разобранного начала буфера сдвигает второе,
+					 *       а первое оставляет на месте
 					 *
 					 * \~english
 					 * @brief Course of the search of the end of a document type definition
+					 *
 					 * @details A document type definition arrives by chunks on a par with the rest of the markup,
-					 * while its end is found by a traversal of the characters: inside a definition there stand both the values in
-					 * quotes, and the comments, and the processing instructions, and every ending character inside them
-					 * is not the end of the definition. A traversal from the beginning at every chunk would turn
-					 * the parsing of a definition from a linear one into a quadratic one, and a subset of several dozen
-					 * kilobytes arriving in small chunks would be parsed hundreds of times longer than one
-					 * that has arrived in full. The reached position is therefore held between the chunks
+					 *          while its end is found by a traversal of the characters: inside a definition there stand both the values in
+					 *          quotes, and the comments, and the processing instructions, and every ending character inside them
+					 *          is not the end of the definition. A traversal from the beginning at every chunk would turn
+					 *          the parsing of a definition from a linear one into a quadratic one, and a subset of several dozen
+					 *          kilobytes arriving in small chunks would be parsed hundreds of times longer than one
+					 *          that has arrived in full. The reached position is therefore held between the chunks.
+					 *
 					 * @note The positions are stored as a count from the beginning of the definition rather than from the beginning of the
-					 * converted text: the withdrawal of the parsed beginning of the buffer shifts the second one,
-					 * while it leaves the first one in place
+					 *       converted text: the withdrawal of the parsed beginning of the buffer shifts the second one,
+					 *       while it leaves the first one in place
 					 *
 					 * \~
 					 */
@@ -613,14 +721,15 @@ namespace awh {
 					 * @brief Запись раскладки имени атрибута по свёртке
 					 *
 					 * @details Поиск повторов среди атрибутов узла сличает имена попарно, и число
-					 * сличений растёт квадратом. Раскладка по свёртке имени сводит совпадающие имена
-					 * в соседи, после чего сличать требуется лишь их
+					 *          сличений растёт квадратом. Раскладка по свёртке имени сводит совпадающие имена
+					 *          в соседи, после чего сличать требуется лишь их.
 					 *
 					 * \~english
 					 * @brief Record of the layout of the name of an attribute by a hash
+					 *
 					 * @details The search of the repetitions among the attributes of a node compares the names pairwise, and the number
-					 * of the comparisons grows as a square. The layout by the hash of a name brings the coinciding names
-					 * into neighbours, after which only they need to be compared
+					 *          of the comparisons grows as a square. The layout by the hash of a name brings the coinciding names
+					 *          into neighbours, after which only they need to be compared.
 					 *
 					 * \~
 					 */
@@ -646,18 +755,19 @@ namespace awh {
 					 * @brief Область подставленной в текст сущности
 					 *
 					 * @details Сущность, значение которой содержит разметку, подставляется
-					 * прямо в разбираемый текст: разметка внутри неё разбирается наравне с
-					 * записанной в тексте. Область подстановки удерживается, чтобы проверить
-					 * договорное требование - узел разметки обязан начинаться и
-					 * заканчиваться в пределах одной сущности
+					 *          прямо в разбираемый текст: разметка внутри неё разбирается наравне с
+					 *          записанной в тексте. Область подстановки удерживается, чтобы проверить
+					 *          договорное требование - узел разметки обязан начинаться и
+					 *          заканчиваться в пределах одной сущности.
 					 *
 					 * \~english
 					 * @brief Region of an entity substituted into the text
+					 *
 					 * @details An entity the value of which contains a markup is substituted
-					 * right into the text being parsed: the markup inside it is parsed on a par with the one
-					 * written in the text. The region of the substitution is held in order to check
-					 * a requirement of the protocol — a markup node is obliged to begin and
-					 * to end within the limits of a single entity
+					 *          right into the text being parsed: the markup inside it is parsed on a par with the one
+					 *          written in the text. The region of the substitution is held in order to check
+					 *          a requirement of the protocol — a markup node is obliged to begin and
+					 *          to end within the limits of a single entity.
 					 *
 					 * \~
 					 */
@@ -830,18 +940,19 @@ namespace awh {
 					 * Признак того, что объявления могут приходить извне разобранного
 					 *
 					 * @note Взводится внешним подмножеством описания типа документа и ссылкой
-					 * на параметрическую сущность внутри него: ни того, ни другого разбор не
-					 * разворачивает, и объявление сущности вправе лежать там. Пока признак
-					 * взведён, недостача объявления построения текста не порочит - договор
-					 * относит её к действительности, которую разбор не проверяет
+					 *       на параметрическую сущность внутри него: ни того, ни другого разбор не
+					 *       разворачивает, и объявление сущности вправе лежать там. Пока признак
+					 *       взведён, недостача объявления построения текста не порочит - договор
+					 *       относит её к действительности, которую разбор не проверяет
 					 *
 					 * \~english
 					 * Flag of the declarations being able to come from outside what has been parsed
+					 *
 					 * @note Raised by an external subset of a document type definition and by a reference
-					 * to a parameter entity inside it: the parsing expands neither the one nor the other,
-					 * and an entity declaration has the right to lie there. While the flag is
-					 * raised, a missing declaration does not vitiate the construction of the text — the protocol
-					 * assigns it to the validity, which the parsing does not check
+					 *       to a parameter entity inside it: the parsing expands neither the one nor the other,
+					 *       and an entity declaration has the right to lie there. While the flag is
+					 *       raised, a missing declaration does not vitiate the construction of the text — the protocol
+					 *       assigns it to the validity, which the parsing does not check
 					 *
 					 * \~
 					 */
@@ -851,23 +962,25 @@ namespace awh {
 					 * Признак встреченной ссылки на непрочитанную параметрическую сущность
 					 *
 					 * @details Договор велит разбору, внешних сущностей не читающему, обрабатывать
-					 * объявления лишь ДО первой такой ссылки: объявления за нею вправе быть
-					 * отменены тем, что лежит внутри непрочитанного, и опираться на них нельзя.
-					 * Исключение одно - текст, объявленный самодостаточным
+					 *          объявления лишь ДО первой такой ссылки: объявления за нею вправе быть
+					 *          отменены тем, что лежит внутри непрочитанного, и опираться на них нельзя.
+					 *          Исключение одно - текст, объявленный самодостаточным.
 					 *
 					 * @note Признак этот отдельный от `_foreign`: тот поднимается и объявлением
-					 * внешнего подмножества, какое само по себе объявлений внутреннего
-					 * подмножества не отменяет
+					 *       внешнего подмножества, какое само по себе объявлений внутреннего
+					 *       подмножества не отменяет
 					 *
 					 * \~english
 					 * Flag of an encountered reference to an unread parameter entity
+					 *
 					 * @details The standard orders a parser not reading external entities to process
-					 * the declarations only UP TO the first such reference: the declarations after it
-					 * may be overridden by what lies inside the unread, and one may not rely upon them.
-					 * There is one exception — a text declared standalone
+					 *          the declarations only UP TO the first such reference: the declarations after it
+					 *          may be overridden by what lies inside the unread, and one may not rely upon them.
+					 *          There is one exception — a text declared standalone.
+					 *
 					 * @note This flag is separate from `_foreign`: the latter is raised by a declaration
-					 * of an external subset as well, which by itself does not override the declarations
-					 * of the internal subset
+					 *       of an external subset as well, which by itself does not override the declarations
+					 *       of the internal subset
 					 *
 					 * \~
 					 */
@@ -877,21 +990,23 @@ namespace awh {
 					 * Признак того, что разобранное имя превысило предел, заданный настройками
 					 *
 					 * @details Отказ разбора имени выходит из двух разных поводов: имя построено
-					 * ошибочно либо длина его превысила предел настроек. Поводы эти вызывающему
-					 * следует различать: первый означает испорченную разметку, а второй - лишь
-					 * то, что предел выставлен уже, чем разметка того требует
+					 *          ошибочно либо длина его превысила предел настроек. Поводы эти вызывающему
+					 *          следует различать: первый означает испорченную разметку, а второй - лишь
+					 *          то, что предел выставлен уже, чем разметка того требует.
 					 *
 					 * @note Признак сбрасывается при входе в разбор всякого имени: держится он
-					 * ровно до выдачи отказа и на следующее имя не переходит
+					 *       ровно до выдачи отказа и на следующее имя не переходит
 					 *
 					 * \~english
 					 * Flag of the parsed name having exceeded the limit given by the settings
+					 *
 					 * @details A refusal of the parsing of a name comes out of two different causes: the name is constructed
-					 * erroneously or its length has exceeded the limit of the settings. The caller should
-					 * distinguish those causes: the first means a spoiled markup, while the second — only
-					 * that the limit has been set narrower than the markup requires
+					 *          erroneously or its length has exceeded the limit of the settings. The caller should
+					 *          distinguish those causes: the first means a spoiled markup, while the second — only
+					 *          that the limit has been set narrower than the markup requires.
+					 *
 					 * @note The flag is reset at the entry into the parsing of every name: it is held
-					 * exactly until the issuance of the refusal and does not pass over to the next name
+					 *       exactly until the issuance of the refusal and does not pass over to the next name
 					 *
 					 * \~
 					 */
@@ -911,22 +1026,23 @@ namespace awh {
 					 * Признак того, что часть текущего раздела дословного текста уже выдана
 					 *
 					 * @note Раздел, разорванный границами кусков, выдаётся частями, и последняя
-					 * из них оказывается пустой всякий раз, когда граница легла прямо перед
-					 * завершением раздела. Пустое событие узлу ничего не добавляет, а дерево
-					 * получает от него пустой узел содержимого, из-за которого запись перестаёт
-					 * складываться самозакрывающейся меткой. Пустой хвост потому пропускается -
-					 * но лишь у раздела, часть которого уже выдана: раздел, пустой сам по себе,
-					 * своё единственное событие выдаёт наравне с прочими
+					 *       из них оказывается пустой всякий раз, когда граница легла прямо перед
+					 *       завершением раздела. Пустое событие узлу ничего не добавляет, а дерево
+					 *       получает от него пустой узел содержимого, из-за которого запись перестаёт
+					 *       складываться самозакрывающейся меткой. Пустой хвост потому пропускается -
+					 *       но лишь у раздела, часть которого уже выдана: раздел, пустой сам по себе,
+					 *       своё единственное событие выдаёт наравне с прочими
 					 *
 					 * \~english
 					 * Flag of a part of the current literal text section having already been issued
+					 *
 					 * @note A section broken by the boundaries of the chunks is issued by parts, and the last
-					 * of them turns out empty every time the boundary has fallen right before
-					 * the termination of the section. An empty event adds nothing to a node, while the tree
-					 * receives from it an empty content node, because of which the writing ceases
-					 * to fold into a self-closing tag. An empty tail is therefore skipped —
-					 * but only for a section a part of which has already been issued: a section empty
-					 * in itself issues its single event on a par with the rest
+					 *       of them turns out empty every time the boundary has fallen right before
+					 *       the termination of the section. An empty event adds nothing to a node, while the tree
+					 *       receives from it an empty content node, because of which the writing ceases
+					 *       to fold into a self-closing tag. An empty tail is therefore skipped —
+					 *       but only for a section a part of which has already been issued: a section empty
+					 *       in itself issues its single event on a par with the rest
 					 *
 					 * \~
 					 */
@@ -937,20 +1053,21 @@ namespace awh {
 					 * Признак того, что начало содержимого перенесено с пропущенного шага
 					 *
 					 * @note Содержимое, целиком составленное ссылками на пустые сущности,
-					 * события не выдаёт, а место разбора проходит вперёд. Начало содержимого
-					 * потому переносится на следующий шаг: иначе место события зависело бы
-					 * от того, где легла граница куска, - содержимое, пришедшее целиком,
-					 * дало бы местом начало всего содержимого, а разорванное границей -
-					 * начало своей непустой части
+					 *       события не выдаёт, а место разбора проходит вперёд. Начало содержимого
+					 *       потому переносится на следующий шаг: иначе место события зависело бы
+					 *       от того, где легла граница куска, - содержимое, пришедшее целиком,
+					 *       дало бы местом начало всего содержимого, а разорванное границей -
+					 *       начало своей непустой части
 					 *
 					 * \~english
 					 * Flag of the beginning of a content having been carried over from a skipped step
+					 *
 					 * @note A content composed entirely of the references to empty entities
-					 * issues no event, while the place of the parsing moves forward. The beginning of the content
-					 * is therefore carried over to the next step: otherwise the place of an event would depend
-					 * on where the boundary of a chunk has fallen — a content that arrived in full
-					 * would give as the place the beginning of the whole content, while one broken by a boundary —
-					 * the beginning of its non-empty part
+					 *       issues no event, while the place of the parsing moves forward. The beginning of the content
+					 *       is therefore carried over to the next step: otherwise the place of an event would depend
+					 *       on where the boundary of a chunk has fallen — a content that arrived in full
+					 *       would give as the place the beginning of the whole content, while one broken by a boundary —
+					 *       the beginning of its non-empty part
 					 *
 					 * \~
 					 */
@@ -964,16 +1081,17 @@ namespace awh {
 					 * Место начала раздела дословного текста в исходном тексте
 					 *
 					 * @note Место события считается по ходу разбора и вперёд, а начало раздела
-					 * к мигу его выдачи остаётся позади: раздел дочитывается следующими кусками.
-					 * Оттого место запоминается при входе в раздел, а не считается заново -
-					 * иначе оно зависело бы от того, где легла граница куска
+					 *       к мигу его выдачи остаётся позади: раздел дочитывается следующими кусками.
+					 *       Оттого место запоминается при входе в раздел, а не считается заново -
+					 *       иначе оно зависело бы от того, где легла граница куска
 					 *
 					 * \~english
 					 * Place of the beginning of a literal text section in the source text
+					 *
 					 * @note The place of an event is counted in the course of the parsing and forwards, while the beginning of a section
-					 * by the moment of its issuance remains behind: the section is read up by the following chunks.
-					 * Because of that the place is remembered at the entry into the section rather than being counted anew —
-					 * otherwise it would depend on where the boundary of a chunk has fallen
+					 *       by the moment of its issuance remains behind: the section is read up by the following chunks.
+					 *       Because of that the place is remembered at the entry into the section rather than being counted anew —
+					 *       otherwise it would depend on where the boundary of a chunk has fallen
 					 *
 					 * \~
 					 */
@@ -984,14 +1102,15 @@ namespace awh {
 					 * Положение начала раздела дословного текста в приведённом тексте
 					 *
 					 * @note Держится ради проверки границы подстановки: раздел, начатый внутри
-					 * подставленной сущности, обязан внутри неё и закончиться, а разбор его
-					 * растянут по кускам исходного текста - начало к концу разбора уже пройдено
+					 *       подставленной сущности, обязан внутри неё и закончиться, а разбор его
+					 *       растянут по кускам исходного текста - начало к концу разбора уже пройдено
 					 *
 					 * \~english
 					 * Position of the beginning of a literal text section in the converted text
+					 *
 					 * @note It is kept for the sake of the check of the boundary of a substitution: a section begun inside
-					 * a substituted entity is obliged to end inside it as well, while its parsing
-					 * is stretched over the chunks of the source text — the beginning by the end of the parsing has already been passed
+					 *       a substituted entity is obliged to end inside it as well, while its parsing
+					 *       is stretched over the chunks of the source text — the beginning by the end of the parsing has already been passed
 					 *
 					 * \~
 					 */
@@ -1002,18 +1121,19 @@ namespace awh {
 					 * Признак того, что текущее содержимое узла уже выдано непробельной частью
 					 *
 					 * @note Незначимым пробельным содержимое считается лишь тогда, когда пробельным
-					 * оказалось оно целиком, а выдаётся оно частями по мере поступления кусков
-					 * исходного текста. Стоит хоть одной части оказаться непробельной, как остальные
-					 * части того же содержимого незначимыми быть перестают, чем бы они ни были
-					 * записаны: иначе вид события зависел бы от того, где легла граница куска
+					 *       оказалось оно целиком, а выдаётся оно частями по мере поступления кусков
+					 *       исходного текста. Стоит хоть одной части оказаться непробельной, как остальные
+					 *       части того же содержимого незначимыми быть перестают, чем бы они ни были
+					 *       записаны: иначе вид события зависел бы от того, где легла граница куска
 					 *
 					 * \~english
 					 * Flag of the current content of a node having already been issued by a non-whitespace part
+					 *
 					 * @note A content is considered an insignificant whitespace one only when it has turned out to be
-					 * a whitespace one in full, while it is issued by parts as the chunks of the source text
-					 * arrive. It is enough for even one part to turn out non-whitespace for the remaining
-					 * parts of the same content to cease being insignificant, however they may be
-					 * written: otherwise the kind of the event would depend on where the boundary of a chunk has fallen
+					 *       a whitespace one in full, while it is issued by parts as the chunks of the source text
+					 *       arrive. It is enough for even one part to turn out non-whitespace for the remaining
+					 *       parts of the same content to cease being insignificant, however they may be
+					 *       written: otherwise the kind of the event would depend on where the boundary of a chunk has fallen
 					 *
 					 * \~
 					 */
@@ -1051,27 +1171,29 @@ namespace awh {
 					 * Буфер ключа отыскания в хранилищах объявлений описания типа документа
 					 *
 					 * @details Хранилища объявлений ведутся по имени в записи, принятой в исходном
-					 * тексте, а разбор отыскивает их по отрезку разбираемого текста. Отдельный тип
-					 * отрезка от ключа хранилища язык различать научился лишь изданием 2020 года, а
-					 * до него всякое отыскание требует ключа заданного хранилищем типа: имя
-					 * приходится переписывать. Переписывается оно в один и тот же буфер - тогда
-					 * место под него отводится единожды, а не на каждое отыскание
+					 *          тексте, а разбор отыскивает их по отрезку разбираемого текста. Отдельный тип
+					 *          отрезка от ключа хранилища язык различать научился лишь изданием 2020 года, а
+					 *          до него всякое отыскание требует ключа заданного хранилищем типа: имя
+					 *          приходится переписывать. Переписывается оно в один и тот же буфер - тогда
+					 *          место под него отводится единожды, а не на каждое отыскание.
 					 *
 					 * @note Буфер помечен изменяемым намеренно: отыскание сущности, содержащей
-					 * разметку, ведётся из неизменяющего метода, а к состоянию разбора буфер
-					 * отношения не имеет - он живёт лишь на время самого отыскания
+					 *       разметку, ведётся из неизменяющего метода, а к состоянию разбора буфер
+					 *       отношения не имеет - он живёт лишь на время самого отыскания
 					 *
 					 * \~english
 					 * Buffer of the search key in the storages of the declarations of a document type definition
+					 *
 					 * @details The storages of the declarations are kept by the name in the notation accepted in the source
-					 * text, while the parsing searches for them by a segment of the text being parsed. A separate type
-					 * of a segment from the key of a storage the language has learnt to distinguish only by the 2020 edition, while
-					 * before it every search requires a key of the type given by the storage: the name
-					 * has to be rewritten. It is rewritten into one and the same buffer — then
-					 * the place for it is allotted once rather than at every search
+					 *          text, while the parsing searches for them by a segment of the text being parsed. A separate type
+					 *          of a segment from the key of a storage the language has learnt to distinguish only by the 2020 edition, while
+					 *          before it every search requires a key of the type given by the storage: the name
+					 *          has to be rewritten. It is rewritten into one and the same buffer — then
+					 *          the place for it is allotted once rather than at every search.
+					 *
 					 * @note The buffer is marked as mutable deliberately: the search of an entity containing
-					 * a markup is conducted from a non-modifying method, while the buffer has no relation to the state of the parsing —
-					 * it lives only for the duration of the search itself
+					 *       a markup is conducted from a non-modifying method, while the buffer has no relation to the state of the parsing —
+					 *       it lives only for the duration of the search itself
 					 *
 					 * \~
 					 */
@@ -1112,16 +1234,17 @@ namespace awh {
 					 * @brief Вид значения в кавычках внутреннего подмножества
 					 *
 					 * @details Договор задаёт четыре вида значений в кавычках, и допустимое
-					 * внутри них содержимое у каждого своё: значение сущности не допускает
-					 * одиноких знаков ссылки, значение атрибута - знака начала разметки,
-					 * обозначение общедоступного источника - лишь ограниченного набора знаков
+					 *          внутри них содержимое у каждого своё: значение сущности не допускает
+					 *          одиноких знаков ссылки, значение атрибута - знака начала разметки,
+					 *          обозначение общедоступного источника - лишь ограниченного набора знаков.
 					 *
 					 * \~english
 					 * @brief Kind of a quoted value of the internal subset
+					 *
 					 * @details The protocol gives four kinds of the quoted values, and the content admissible
-					 * inside them is its own for each of them: the value of an entity does not admit
-					 * the lone characters of a reference, the value of an attribute — the character of the beginning of a markup,
-					 * the designation of a public source — only a limited set of the characters
+					 *          inside them is its own for each of them: the value of an entity does not admit
+					 *          the lone characters of a reference, the value of an attribute — the character of the beginning of a markup,
+					 *          the designation of a public source — only a limited set of the characters.
 					 *
 					 * \~
 					 */
@@ -1156,6 +1279,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of terminating the parsing with an error
+					 *
 					 * @param error  error code of the parsing
 					 * @param offset position of the error in the converted source text
 					 * @return       result of the step of the parsing, always a negative one
@@ -1168,16 +1292,22 @@ namespace awh {
 					 * @brief Метод отказа разбора с сообщением о нём в журнал
 					 *
 					 * @details Способ этот стоит ГОРЛОМ: всякий отказ, идущий не через `fail`,
-					 * обязан идти через него. Сообщение в журнал пишется в двух местах на весь
-					 * разбор - здесь и в `fail`, - а не при всяком присваивании кода отказа:
-					 * иначе места записи разошлись бы с местами отказа, и часть бед уходила бы
-					 * молча
+					 *          обязан идти через него. Сообщение в журнал пишется в двух местах на весь
+					 *          разбор - здесь и в `fail`, - а не при всяком присваивании кода отказа:
+					 *          иначе места записи разошлись бы с местами отказа, и часть бед уходила бы
+					 *          молча.
 					 *
 					 * @param error код ошибки разбора
 					 * @return      всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the parsing with a report of it to the log
+					 *
+					 * @details This step stands THROAT-OUT: every refusal which does not go through `fail`
+					 *          is bound to go through it. A message into the log is written at two places over
+					 *          the whole parsing - here and at `fail`, - and not upon every assigning of a code
+					 *          of a refusal: else the places of the writing would part from the places of the
+					 *          refusals, and part of the troubles would go off silently.
 					 *
 					 * @param error the code of the parsing error
 					 * @return      always false, for the returning by it from the place of the refusal
@@ -1206,10 +1336,10 @@ namespace awh {
 					 * @brief Метод прекращения разбора ошибкой с заданным местом
 					 *
 					 * @details Место отказа считается по ходу разбора и только вперёд, а
-					 * построение, растянутое по кускам исходного текста, к мигу отказа
-					 * начало своё уже миновало: досчитать место назад нечем. Такому отказу
-					 * место передаётся снятым при входе в построение - иначе оно зависело бы
-					 * от того, где легла граница куска
+					 *          построение, растянутое по кускам исходного текста, к мигу отказа
+					 *          начало своё уже миновало: досчитать место назад нечем. Такому отказу
+					 *          место передаётся снятым при входе в построение - иначе оно зависело бы
+					 *          от того, где легла граница куска.
 					 *
 					 * @param error    код ошибки разбора
 					 * @param location место обнаруженной ошибки в исходном тексте
@@ -1217,11 +1347,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of terminating the parsing with an error at a given place
+					 *
 					 * @details The place of a refusal is counted in the course of the parsing and only forwards, while
-					 * a construct stretched over the chunks of the source text by the moment of the refusal
-					 * has already passed its own beginning: there is nothing to count the place backwards with. To such a refusal
-					 * the place taken at the entry into the construct is passed — otherwise it would depend
-					 * on where the boundary of a chunk has fallen
+					 *          a construct stretched over the chunks of the source text by the moment of the refusal
+					 *          has already passed its own beginning: there is nothing to count the place backwards with. To such a refusal
+					 *          the place taken at the entry into the construct is passed — otherwise it would depend
+					 *          on where the boundary of a chunk has fallen.
+					 *
 					 * @param error    error code of the parsing
 					 * @param location place of the detected error in the source text
 					 * @return         result of the step of the parsing, always a negative one
@@ -1238,6 +1370,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the position in the source text
+					 *
 					 * @param offset position in the converted source text
 					 * @return       position in the source markup text
 					 *
@@ -1249,9 +1382,9 @@ namespace awh {
 					 * @brief Метод досчёта положения в исходном тексте от ранее полученного
 					 *
 					 * @details Получение места с начала разбора обходится проходом по всему
-					 * пройденному тексту, и для каждого атрибута метки такой проход
-					 * повторялся бы заново. Досчёт ведёт место от предыдущего полученного,
-					 * проходя по тексту метки единожды
+					 *          пройденному тексту, и для каждого атрибута метки такой проход
+					 *          повторялся бы заново. Досчёт ведёт место от предыдущего полученного,
+					 *          проходя по тексту метки единожды.
 					 *
 					 * @param location досчитываемое положение в исходном тексте
 					 * @param from     положение, до которого место уже досчитано
@@ -1259,10 +1392,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of counting the position in the source text up from a previously obtained one
+					 *
 					 * @details The getting of a place from the beginning of the parsing costs a pass over the whole
-					 * text that has been passed, and for every attribute of a tag such a pass
-					 * would be repeated anew. The counting-up leads the place from the previously obtained one,
-					 * passing over the text of the tag once
+					 *          text that has been passed, and for every attribute of a tag such a pass
+					 *          would be repeated anew. The counting-up leads the place from the previously obtained one,
+					 *          passing over the text of the tag once.
+					 *
 					 * @param location position in the source text being counted up
 					 * @param from     position up to which the place has already been counted
 					 * @param offset   position up to which the place is required to be counted
@@ -1275,14 +1410,16 @@ namespace awh {
 					 * @brief Метод перемещения разбора к указанному положению
 					 *
 					 * @details Попутно ведётся счёт строк и положения в строке: считать их
-					 * отдельным проходом обошлось бы дороже
+					 *          отдельным проходом обошлось бы дороже.
 					 *
 					 * @param offset положение в приведённом исходном тексте
 					 *
 					 * \~english
 					 * @brief Method of moving the parsing to the specified position
+					 *
 					 * @details Along the way the count of the lines and of the position in the line is kept: to count them
-					 * by a separate pass would come more expensive
+					 *          by a separate pass would come more expensive.
+					 *
 					 * @param offset position in the converted source text
 					 *
 					 * \~
@@ -1309,6 +1446,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking that a markup does not cross the boundary of a substitution
+					 *
 					 * @param begin position of the beginning of the markup in the converted text
 					 * @param end   position of the end of the markup in the converted text
 					 * @return      flag of the markup crossing the boundary of the substitution
@@ -1321,34 +1459,37 @@ namespace awh {
 					 * @brief Метод проверки разметки события на превышение предела объёма
 					 *
 					 * @details Предел объёма события сличается по ходу накопления с длиной
-					 * накопленной разметки, а не с содержимым события: содержимое к тому мигу
-					 * ещё неизвестно. Событиям, чьё содержимое короче своей разметки, - началу
-					 * узла, описанию типа документа, указанию обработчику - одной проверки
-					 * содержимого потому мало: разметка их произвольно длинна, и текст,
-					 * пришедший целиком, проходил бы мимо предела там, где тот же текст
-					 * кусками отвергается. Настоящая проверка сличает с пределом ту же самую
-					 * величину, что и накопление
+					 *          накопленной разметки, а не с содержимым события: содержимое к тому мигу
+					 *          ещё неизвестно. Событиям, чьё содержимое короче своей разметки, - началу
+					 *          узла, описанию типа документа, указанию обработчику - одной проверки
+					 *          содержимого потому мало: разметка их произвольно длинна, и текст,
+					 *          пришедший целиком, проходил бы мимо предела там, где тот же текст
+					 *          кусками отвергается. Настоящая проверка сличает с пределом ту же самую
+					 *          величину, что и накопление.
 					 *
 					 * @note Разметка, накопленная к мигу отказа накопления, всегда короче
-					 * разметки события целиком: накопление отказывает лишь там, где откажет
-					 * и эта проверка, и разбору всё равно, как текст нарезан на куски
+					 *       разметки события целиком: накопление отказывает лишь там, где откажет
+					 *       и эта проверка, и разбору всё равно, как текст нарезан на куски
 					 *
 					 * @param end положение конца разметки события в приведённом тексте
 					 * @return    признак превышения заданного настройками предела
 					 *
 					 * \~english
 					 * @brief Method of checking the markup of an event for an excess of the limit of the volume
+					 *
 					 * @details The limit of the volume of an event is compared in the course of the accumulation with the length of the
-					 * accumulated markup rather than with the content of the event: the content by that moment
-					 * is still unknown. For the events whose content is shorter than their markup — the beginning of a
-					 * node, a document type definition, a processing instruction — a check of the content alone is
-					 * therefore not enough: their markup is arbitrarily long, and a text
-					 * that has arrived in full would pass by the limit there where the same text
-					 * by chunks is rejected. The present check compares against the limit the same
-					 * quantity as the accumulation does
+					 *          accumulated markup rather than with the content of the event: the content by that moment
+					 *          is still unknown. For the events whose content is shorter than their markup — the beginning of a
+					 *          node, a document type definition, a processing instruction — a check of the content alone is
+					 *          therefore not enough: their markup is arbitrarily long, and a text
+					 *          that has arrived in full would pass by the limit there where the same text
+					 *          by chunks is rejected. The present check compares against the limit the same
+					 *          quantity as the accumulation does.
+					 *
 					 * @note The markup accumulated by the moment of a refusal of the accumulation is always shorter than
-					 * the markup of the event as a whole: the accumulation refuses only there where
-					 * this check will refuse as well, and it is all the same to the parsing how the text is cut into chunks
+					 *       the markup of the event as a whole: the accumulation refuses only there where
+					 *       this check will refuse as well, and it is all the same to the parsing how the text is cut into chunks
+					 *
 					 * @param end position of the end of the markup of the event in the converted text
 					 * @return    flag of an excess of the limit given by the settings
 					 *
@@ -1365,6 +1506,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting a sequence of characters by a segment of the storage
+					 *
 					 * @param span segment of the storage of the characters of the parsing
 					 * @return     sequence of characters of the specified segment
 					 *
@@ -1380,6 +1522,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of placing a sequence of characters in the storage of the parsing
+					 *
 					 * @param text sequence of characters being placed
 					 * @return     segment of the storage of the characters of the parsing
 					 *
@@ -1395,6 +1538,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of performing a single step of the parsing
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1408,6 +1552,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the text content of a node
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1421,6 +1566,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a markup beginning with an angle bracket
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1434,6 +1580,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the opening tag of a node
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1447,6 +1594,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the closing tag of a node
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1460,6 +1608,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a comment
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1473,6 +1622,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a literal text section
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1486,6 +1636,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a processing instruction and the markup declaration
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1499,6 +1650,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a document type definition
+					 *
 					 * @return result of the step of the parsing
 					 *
 					 * \~
@@ -1517,6 +1669,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a name with an optional prefix
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the markup being parsed
 					 * @param prefix prefix of the parsed name
@@ -1540,6 +1693,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of splitting a parsed name into a prefix and a local name
+					 *
 					 * @param begin  position of the beginning of the parsed name
 					 * @param end    position of the end of the parsed name
 					 * @param count  number of the characters of the parsed name
@@ -1556,7 +1710,7 @@ namespace awh {
 					 * @brief Метод разбора значения атрибута
 					 *
 					 * @details Значение приводится к окончательному виду: ссылки на сущности
-					 * подставляются, пробельные знаки заменяются пробелом
+					 *          подставляются, пробельные знаки заменяются пробелом.
 					 *
 					 * @param offset положение разбора в приведённом исходном тексте
 					 * @param end    положение конца разбираемой разметки
@@ -1565,8 +1719,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the value of an attribute
+					 *
 					 * @details The value is brought to its final form: the references to the entities
-					 * are substituted, the whitespace characters are replaced by a space
+					 *          are substituted, the whitespace characters are replaced by a space.
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the markup being parsed
 					 * @param value  segment of the storage of the converted values
@@ -1589,6 +1745,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of substituting a reference to an entity
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the markup being parsed
 					 * @param result  text to which the substituted value is appended
@@ -1605,7 +1762,7 @@ namespace awh {
 					 * @brief Метод подстановки значения сущности по её имени
 					 *
 					 * @details Подстановка ведётся по значению сущности, а не по исходному
-					 * тексту: вложенные ссылки внутри значения подставляются тем же способом
+					 *          тексту: вложенные ссылки внутри значения подставляются тем же способом.
 					 *
 					 * @param name    имя подставляемой сущности либо числовая ссылка
 					 * @param result  текст, к которому дописывается подставленное значение
@@ -1616,8 +1773,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of substituting the value of an entity by its name
+					 *
 					 * @details The substitution is conducted by the value of the entity rather than by the source
-					 * text: the nested references inside the value are substituted in the same way
+					 *          text: the nested references inside the value are substituted in the same way.
+					 *
 					 * @param name    name of the entity being substituted or a numeric reference
 					 * @param result  text to which the substituted value is appended
 					 * @param depth   current depth of the nesting of the references to the entities
@@ -1633,9 +1792,9 @@ namespace awh {
 					 * @brief Метод подстановки сущности с разметкой прямо в разбираемый текст
 					 *
 					 * @details Значение сущности замещает ссылку на неё в приведённом тексте,
-					 * после чего разбирается наравне с записанным в тексте. Иным способом
-					 * разметку внутри сущности разобрать нельзя: она обязана давать те же
-					 * узлы, что и записанная прямо
+					 *          после чего разбирается наравне с записанным в тексте. Иным способом
+					 *          разметку внутри сущности разобрать нельзя: она обязана давать те же
+					 *          узлы, что и записанная прямо.
 					 *
 					 * @param begin положение начала ссылки на сущность
 					 * @param end   положение конца ссылки на сущность
@@ -1644,10 +1803,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of substituting an entity with a markup right into the text being parsed
+					 *
 					 * @details The value of the entity replaces the reference to it in the converted text,
-					 * after which it is parsed on a par with what has been written in the text. A markup inside an entity
-					 * cannot be parsed in another way: it is obliged to give the same nodes
-					 * as one written directly
+					 *          after which it is parsed on a par with what has been written in the text. A markup inside an entity
+					 *          cannot be parsed in another way: it is obliged to give the same nodes
+					 *          as one written directly.
+					 *
 					 * @param begin position of the beginning of the reference to the entity
 					 * @param end   position of the end of the reference to the entity
 					 * @param name  name of the entity being substituted
@@ -1667,6 +1828,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of determining an entity containing a markup
+					 *
 					 * @param offset position of the beginning of the reference to the entity
 					 * @param name   name of the detected entity
 					 * @param end    position of the end of the reference to the entity
@@ -1680,16 +1842,17 @@ namespace awh {
 					 * @brief Метод переноса признака разметки по вложенным ссылкам сущностей
 					 *
 					 * @details Значение сущности вправе ссылаться на другую сущность, и
-					 * подставляется такая ссылка не при объявлении, а при обращении. Оттого
-					 * сущность, сама знака начала разметки не несущая, приносит разметку той,
-					 * на которую ссылается, и признак следует переносить по ссылкам
+					 *          подставляется такая ссылка не при объявлении, а при обращении. Оттого
+					 *          сущность, сама знака начала разметки не несущая, приносит разметку той,
+					 *          на которую ссылается, и признак следует переносить по ссылкам.
 					 *
 					 * \~english
 					 * @brief Method of transferring the flag of a markup along the nested references of the entities
+					 *
 					 * @details The value of an entity has the right to refer to another entity, and
-					 * such a reference is substituted not at the declaration but at the call. Because of that
-					 * an entity that itself carries no character of the beginning of a markup brings a markup from the one
-					 * it refers to, and the flag should be transferred along the references
+					 *          such a reference is substituted not at the declaration but at the call. Because of that
+					 *          an entity that itself carries no character of the beginning of a markup brings a markup from the one
+					 *          it refers to, and the flag should be transferred along the references.
 					 *
 					 * \~
 					 */
@@ -1704,6 +1867,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the internal subset of a document type definition
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @return       result of performing the operation
@@ -1723,6 +1887,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of skipping the whitespace characters of the internal subset
+					 *
 					 * @param offset   position of the parsing in the converted source text
 					 * @param end      position of the end of the internal subset
 					 * @param required flag of the obligatoriness of a whitespace character
@@ -1742,6 +1907,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a name of the internal subset
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @param token  flag of the parsing of a name admitting any character at the beginning
@@ -1761,6 +1927,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a word allotted by the protocol in the internal subset
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @param word   word allotted by the protocol
@@ -1782,6 +1949,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a quoted value of the internal subset
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @param kind   kind of the value being parsed
@@ -1804,6 +1972,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the designation of an external source of the internal subset
+					 *
 					 * @param offset   position of the parsing in the converted source text
 					 * @param end      position of the end of the internal subset
 					 * @param system   flag of the obligatoriness of the designation of the location of the source
@@ -1824,6 +1993,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the description of the structure of a node of the internal subset
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @param depth  current depth of the nesting of the description of the structure
@@ -1842,6 +2012,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the description of the content of a node of the internal subset
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @return       result of performing the operation
@@ -1859,6 +2030,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the kind of an attribute being declared in the internal subset
+					 *
 					 * @param offset position of the parsing in the converted source text
 					 * @param end    position of the end of the internal subset
 					 * @return       result of performing the operation
@@ -1876,6 +2048,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of splitting a name of a document type definition into a prefix and a local name
+					 *
 					 * @param qname  name in the notation accepted in the source text
 					 * @param prefix prefix of the split name
 					 * @param local  local name of the split name
@@ -1889,20 +2062,22 @@ namespace awh {
 					 * @brief Метод добавления разобранного атрибута к перечню узла
 					 *
 					 * @details Объявления пространств имён в перечне атрибутов узла не выдаются
-					 * и отводятся в отдельный перечень: они не описывают узел, а связывают
-					 * префиксы. Прочие атрибуты собираются сразу в выдаваемом виде, а значение
-					 * получают отдельным отрезком - хранилище приведённых значений ещё
-					 * перемещается по мере разбора, и указывать на него пока нельзя
+					 *          и отводятся в отдельный перечень: они не описывают узел, а связывают
+					 *          префиксы. Прочие атрибуты собираются сразу в выдаваемом виде, а значение
+					 *          получают отдельным отрезком - хранилище приведённых значений ещё
+					 *          перемещается по мере разбора, и указывать на него пока нельзя.
 					 *
 					 * @param record разобранный атрибут узла
 					 *
 					 * \~english
 					 * @brief Method of adding a parsed attribute to the list of a node
+					 *
 					 * @details The declarations of the namespaces are not issued in the list of the attributes of a node
-					 * and are assigned to a separate list: they do not describe the node but bind
-					 * the prefixes. The other attributes are assembled at once in the form to be issued, while the value
-					 * they receive as a separate segment — the storage of the converted values is still
-					 * being moved as the parsing goes on, and it cannot be pointed to yet
+					 *          and are assigned to a separate list: they do not describe the node but bind
+					 *          the prefixes. The other attributes are assembled at once in the form to be issued, while the value
+					 *          they receive as a separate segment — the storage of the converted values is still
+					 *          being moved as the parsing goes on, and it cannot be pointed to yet.
+					 *
 					 * @param record parsed attribute of the node
 					 *
 					 * \~
@@ -1917,6 +2092,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of resolving the namespaces of the current node
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -1927,12 +2103,13 @@ namespace awh {
 					 * @brief Метод завершения текущего узла разметки
 					 *
 					 * @details Снимает узел со стека вместе с объявленными им связываниями
-					 * префиксов и готовит событие конца узла
+					 *          префиксов и готовит событие конца узла.
 					 *
 					 * \~english
 					 * @brief Method of completing the current markup node
+					 *
 					 * @details Pops the node off the stack together with the bindings of the prefixes declared by it
-					 * and prepares the event of the end of the node
+					 *          and prepares the event of the end of the node.
 					 *
 					 * \~
 					 */
@@ -1946,6 +2123,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for a namespace by a prefix
+					 *
 					 * @param prefix prefix without the separator
 					 * @return       segment of the storage with the designation of the namespace
 					 *
@@ -1976,6 +2154,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Postponed error code of the conversion of the source text to the UTF-8 encoding
+					 *
 					 * @note The conversion transfers into the storage everything it has managed to check, and
 					 *       only then answers with a refusal. The refusal is issued not at once but upon
 					 *       the exhaustion of the converted beginning of the text: otherwise the parsing of one and
@@ -1990,18 +2169,19 @@ namespace awh {
 					 * Отказ разбора, отложенный до выдачи накопленного содержимого
 					 *
 					 * @details Ссылка на необъявленную сущность стоит посреди содержимого, и
-					 * содержимое, разобранное до неё, отказом не отменяется: подача кусками
-					 * успевала выдать его событием, а подача целиком выбрасывала - тот же текст
-					 * давал разный набор событий. Отказ потому запоминается, накопленное
-					 * выдаётся событием, и лишь следом за ним разбор отвечает отказом
+					 *          содержимое, разобранное до неё, отказом не отменяется: подача кусками
+					 *          успевала выдать его событием, а подача целиком выбрасывала - тот же текст
+					 *          давал разный набор событий. Отказ потому запоминается, накопленное
+					 *          выдаётся событием, и лишь следом за ним разбор отвечает отказом.
 					 *
 					 * \~english
 					 * Refusal of the parsing deferred until the issuing of the accumulated content
+					 *
 					 * @details A reference to an undeclared entity stands in the middle of a content, and the
-					 * content parsed before it is not cancelled by the refusal: the feeding by chunks
-					 * managed to issue it as an event, while the feeding in full discarded it — the same text
-					 * gave a different set of events. The refusal is therefore remembered, what has been accumulated
-					 * is issued as an event, and only after it does the parsing answer with a refusal
+					 *          content parsed before it is not cancelled by the refusal: the feeding by chunks
+					 *          managed to issue it as an event, while the feeding in full discarded it — the same text
+					 *          gave a different set of events. The refusal is therefore remembered, what has been accumulated
+					 *          is issued as an event, and only after it does the parsing answer with a refusal.
 					 *
 					 * \~
 					 */
@@ -2050,17 +2230,18 @@ namespace awh {
 					 * Признак объявления хотя бы одного атрибута видом, приведению подлежащим
 					 *
 					 * @details Приведение значений обходится в четверть скорости чтения документа
-					 * с описанием типа, а описание, объявляющее одни лишь атрибуты вида «CDATA»,
-					 * приводить нечего вовсе. Признак этот снимает с такого описания и розыск
-					 * объявлений на всякий узел, и перебор их по всякому атрибуту
+					 *          с описанием типа, а описание, объявляющее одни лишь атрибуты вида «CDATA»,
+					 *          приводить нечего вовсе. Признак этот снимает с такого описания и розыск
+					 *          объявлений на всякий узел, и перебор их по всякому атрибуту.
 					 *
 					 * \~english
 					 * Flag of a declaration of at least one attribute by a kind subject to the normalization
+					 *
 					 * @details The normalization of the values costs a quarter of the speed of the reading
-					 * of a document with a document type definition, while a definition declaring only
-					 * the attributes of the kind «CDATA» has nothing to normalize at all. This flag removes
-					 * from such a definition both the search of the declarations for every node and their
-					 * enumeration for every attribute
+					 *          of a document with a document type definition, while a definition declaring only
+					 *          the attributes of the kind «CDATA» has nothing to normalize at all. This flag removes
+					 *          from such a definition both the search of the declarations for every node and their
+					 *          enumeration for every attribute.
 					 *
 					 * \~
 					 */
@@ -2074,6 +2255,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current settings of the parsing
+					 *
 					 * @return current settings of the parsing of a markup text
 					 *
 					 * \~
@@ -2084,14 +2266,16 @@ namespace awh {
 					 * @brief Метод установки настроек разбора
 					 *
 					 * @warning Настройки применяются к разбору целиком и смены посреди
-					 * текста не допускают: устанавливать их следует до первого куска
+					 *          текста не допускают: устанавливать их следует до первого куска
 					 *
 					 * @param settings настройки разбора текста разметки
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing
+					 *
 					 * @warning The settings are applied to the parsing as a whole and do not admit a change in the middle of
-					 * a text: they should be set before the first chunk
+					 *          a text: they should be set before the first chunk
+					 *
 					 * @param settings settings of the parsing of a markup text
 					 *
 					 * \~
@@ -2103,12 +2287,13 @@ namespace awh {
 					 * @brief Метод сброса разбора в исходное состояние
 					 *
 					 * @details Освобождает накопленное и подготавливает чтение к разбору
-					 * нового текста, сохраняя установленные настройки
+					 *          нового текста, сохраняя установленные настройки.
 					 *
 					 * \~english
 					 * @brief Method of resetting the parsing into the initial state
+					 *
 					 * @details Releases what has been accumulated and prepares the reading for the parsing of
-					 * a new text, preserving the settings that have been set
+					 *          a new text, preserving the settings that have been set.
 					 *
 					 * \~
 					 */
@@ -2119,37 +2304,37 @@ namespace awh {
 					 * @brief Метод передачи очередного куска исходного текста
 					 *
 					 * @details Куски передаются в порядке их следования в тексте и делятся
-					 * произвольно: разрыв допустим в любом месте, в том числе посреди имени
-					 * либо ссылки на сущность
+					 *          произвольно: разрыв допустим в любом месте, в том числе посреди имени
+					 *          либо ссылки на сущность.
 					 *
 					 * @note Признак последнего куска обязателен: без него не отличить конец
-					 * текста от его обрыва, и незакрытые узлы останутся незамеченными
+					 *       текста от его обрыва, и незакрытые узлы останутся незамеченными
 					 *
 					 * @note ВСЯКИЙ отказ разбора выдаётся не настоящим методом, а перебором
-					 * событий: настоящий метод лишь принимает кусок в очередь, а разбирается
-					 * он зовами @c next(). Замер: текст `<r><<a></a></r>` принят подачей
-					 * успешно и с пустым кодом отказа, а код появился лишь по переборе
-					 * событий. Звучащий, смотрящий на один возврат подачи, отказа не заметит
-					 * до следующего куска - принят тот уже не будет
+					 *       событий: настоящий метод лишь принимает кусок в очередь, а разбирается
+					 *       он зовами @c next(). Замер: текст `<r><<a></a></r>` принят подачей
+					 *       успешно и с пустым кодом отказа, а код появился лишь по переборе
+					 *       событий. Звучащий, смотрящий на один возврат подачи, отказа не заметит
+					 *       до следующего куска - принят тот уже не будет
 					 *
 					 * @warning Соседние кодеки поступают ОБРАТНО: разбор JSON и таблицы CSV
-					 * идёт ПРЯМО В ПОДАЧЕ, и отказ там виден возвратом самой подачи. Замеры:
-					 * `{"a":@1}` - подача отвечает ложью и кодом сразу; `a,"b` - то же.
-					 * Единый цикл на три кодека обязан спрашивать @c error() либо состояние,
-					 * а не один лишь возврат подачи
+					 *          идёт ПРЯМО В ПОДАЧЕ, и отказ там виден возвратом самой подачи. Замеры:
+					 *          `{"a":@1}` - подача отвечает ложью и кодом сразу; `a,"b` - то же.
+					 *          Единый цикл на три кодека обязан спрашивать @c error() либо состояние,
+					 *          а не один лишь возврат подачи
 					 *
 					 * @note Отказ приведения исходного текста к кодировке UTF-8 задерживается
-					 * тем же порядком - по исчерпании уже приведённого начала текста:
-					 * события, разобранные до испорченного знака, выдаются, и подача текста
-					 * целиком выдаёт то же самое, что и подача его кусками. Настоящий метод
-					 * отвечает при этом положительно - события ещё предстоит вычитать
-					 * методом @c next(), - а следующий кусок принят уже не будет. Отказ
-					 * читается состоянием @c state_t::FAILED и кодом ошибки, как всякий
-					 * другой
+					 *       тем же порядком - по исчерпании уже приведённого начала текста:
+					 *       события, разобранные до испорченного знака, выдаются, и подача текста
+					 *       целиком выдаёт то же самое, что и подача его кусками. Настоящий метод
+					 *       отвечает при этом положительно - события ещё предстоит вычитать
+					 *       методом @c next(), - а следующий кусок принят уже не будет. Отказ
+					 *       читается состоянием @c state_t::FAILED и кодом ошибки, как всякий
+					 *       другой
 					 *
 					 * @note Пустой указатель на буфер приравнивается к пустой подаче независимо от
-					 * заданного размера: проверка стоит в приведении текста, и разыменования не
-					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
+					 *       заданного размера: проверка стоит в приведении текста, и разыменования не
+					 *       происходит. Отвечает разбор при этом по своему правилу о пустом тексте
 					 *
 					 * @param buffer буфер очередного куска исходного текста
 					 * @param size   размер буфера очередного куска исходного текста
@@ -2158,33 +2343,40 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of passing the next chunk of the source text
+					 *
 					 * @details The chunks are passed in the order of their succession in the text and are divided
-					 * arbitrarily: a break is admissible in any place, including in the middle of a name
-					 * or of a reference to an entity
+					 *          arbitrarily: a break is admissible in any place, including in the middle of a name
+					 *          or of a reference to an entity.
+					 *
 					 * @note The flag of the last chunk is obligatory: without it the end of a text cannot be distinguished
-					 * from its cut-off, and the unclosed nodes will remain unnoticed
+					 *       from its cut-off, and the unclosed nodes will remain unnoticed
+					 *
 					 * @note EVERY refusal of the parsing is issued not by the present method but by the traversal
-					 * of the events: the present method only accepts a chunk into the queue, while it is parsed
-					 * by the calls to @c next(). Measurement: the text `<r><<a></a></r>` was accepted by the feeding
-					 * successfully and with an empty code of the refusal, while the code `INVALID_MARKUP` appeared only
-					 * upon the traversal of the events. A caller looking at the return of the feeding alone will not notice
-					 * a refusal until the next chunk — and that one will no longer be accepted
+					 *       of the events: the present method only accepts a chunk into the queue, while it is parsed
+					 *       by the calls to @c next(). Measurement: the text `<r><<a></a></r>` was accepted by the feeding
+					 *       successfully and with an empty code of the refusal, while the code `INVALID_MARKUP` appeared only
+					 *       upon the traversal of the events. A caller looking at the return of the feeding alone will not notice
+					 *       a refusal until the next chunk — and that one will no longer be accepted
+					 *
 					 * @warning The neighbouring codecs act the OPPOSITE way: the parsing of JSON and of a CSV table
-					 * goes RIGHT IN THE FEEDING, and a refusal there is visible by the return of the feeding itself. Measurements:
-					 * `{"a":@1}` — the feeding answers with false and with a code at once; `a,"b` — the same.
-					 * A single loop over the three codecs is obliged to ask @c error() or the state,
-					 * rather than the return of the feeding alone
+					 *          goes RIGHT IN THE FEEDING, and a refusal there is visible by the return of the feeding itself. Measurements:
+					 *          `{"a":@1}` — the feeding answers with false and with a code at once; `a,"b` — the same.
+					 *          A single loop over the three codecs is obliged to ask @c error() or the state,
+					 *          rather than the return of the feeding alone
+					 *
 					 * @note A refusal of the conversion of the source text to the UTF-8 encoding is issued not by
-					 * the present method but upon the exhaustion of the already converted beginning of the text:
-					 * the events parsed before the spoiled character are issued, and a feeding of the text
-					 * in full issues the same as a feeding of it by chunks. The present method
-					 * thereby answers positively — the events are still to be read out
-					 * by the @c next() method — while the next chunk will no longer be accepted. The refusal
-					 * is read by the @c state_t::FAILED state and by the error code, like every
-					 * other one
+					 *       the present method but upon the exhaustion of the already converted beginning of the text:
+					 *       the events parsed before the spoiled character are issued, and a feeding of the text
+					 *       in full issues the same as a feeding of it by chunks. The present method
+					 *       thereby answers positively — the events are still to be read out
+					 *       by the @c next() method — while the next chunk will no longer be accepted. The refusal
+					 *       is read by the @c state_t::FAILED state and by the error code, like every
+					 *       other one
+					 *
 					 * @note A null pointer to the buffer is equated to an empty feeding independently of
-					 * the given size: the check stands in the conversion of the text, and no dereferencing
-					 * takes place. The parsing answers thereby by its own rule about an empty text
+					 *       the given size: the check stands in the conversion of the text, and no dereferencing
+					 *       takes place. The parsing answers thereby by its own rule about an empty text
+					 *
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one
@@ -2197,23 +2389,26 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод передачи исходного текста целиком
 					 *
-					 * @details Разбирает переданный текст как единственный и последний кусок
+					 * @details Разбирает переданный текст как единственный и последний кусок.
 					 *
 					 * @note Переданный текст переживать вызов не обязан: он приводится к
-					 * кодировке UTF-8 в собственное хранилище разборщика, и выдаваемые
-					 * последовательности знаков ссылаются на него, а не на переданное.
-					 * Держать исходный текст до конца разбора поэтому не требуется
+					 *       кодировке UTF-8 в собственное хранилище разборщика, и выдаваемые
+					 *       последовательности знаков ссылаются на него, а не на переданное.
+					 *       Держать исходный текст до конца разбора поэтому не требуется
 					 *
 					 * @param text исходный текст разметки целиком
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of passing the source text in full
-					 * @details Parses the passed text as the single and last chunk
+					 *
+					 * @details Parses the passed text as the single and last chunk.
+					 *
 					 * @note The passed text is not obliged to outlive the call: it is converted to
-					 * the UTF-8 encoding into the own storage of the parser, and the issued
-					 * sequences of characters refer to it rather than to what has been passed.
-					 * It is therefore not required to keep the source text until the end of the parsing
+					 *       the UTF-8 encoding into the own storage of the parser, and the issued
+					 *       sequences of characters refer to it rather than to what has been passed.
+					 *       It is therefore not required to keep the source text until the end of the parsing
+					 *
 					 * @param text source markup text in full
 					 * @return     result of performing the operation
 					 *
@@ -2226,18 +2421,20 @@ namespace awh {
 					 * @brief Метод перехода к следующему событию разбора
 					 *
 					 * @details Отрицательный итог означает, что событий больше нет: разбор
-					 * либо исчерпал переданное и ждёт следующего куска, либо дошёл до конца
-					 * текста, либо прекращён ошибкой. Что именно произошло, сообщает
-					 * состояние чтения
+					 *          либо исчерпал переданное и ждёт следующего куска, либо дошёл до конца
+					 *          текста, либо прекращён ошибкой. Что именно произошло, сообщает
+					 *          состояние чтения.
 					 *
 					 * @return признак наличия очередного события разбора
 					 *
 					 * \~english
 					 * @brief Method of moving to the next parsing event
+					 *
 					 * @details A negative result means that there are no more events: the parsing
-					 * has either exhausted what has been passed and is waiting for the next chunk, or has reached the end of the
-					 * text, or has been terminated by an error. What exactly has happened is reported by the
-					 * state of the reading
+					 *          has either exhausted what has been passed and is waiting for the next chunk, or has reached the end of the
+					 *          text, or has been terminated by an error. What exactly has happened is reported by the
+					 *          state of the reading.
+					 *
 					 * @return flag of the presence of the next parsing event
 					 *
 					 * \~
@@ -2252,6 +2449,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current state of the reading
+					 *
 					 * @return current state of the reading of a markup text
 					 *
 					 * \~
@@ -2266,6 +2464,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the kind of the current parsing event
+					 *
 					 * @return kind of the current parsing event
 					 *
 					 * \~
@@ -2281,6 +2480,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the parsing
+					 *
 					 * @return error code of the last operation of the parsing
 					 *
 					 * \~
@@ -2295,6 +2495,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of an error
+					 *
 					 * @return position of the detected error in the source text
 					 *
 					 * \~
@@ -2306,14 +2507,16 @@ namespace awh {
 					 * @brief Метод получения имени текущего события
 					 *
 					 * @details Для начала и конца узла - имя узла, для указания обработчику -
-					 * его цель. Для прочих событий имя пусто
+					 *          его цель. Для прочих событий имя пусто.
 					 *
 					 * @return имя узла с учётом пространства имён
 					 *
 					 * \~english
 					 * @brief Method of getting the name of the current event
+					 *
 					 * @details For the beginning and the end of a node — the name of the node, for a processing instruction —
-					 * its target. For the other events the name is empty
+					 *          its target. For the other events the name is empty.
+					 *
 					 * @return name of the node with regard to the namespace
 					 *
 					 * \~
@@ -2324,21 +2527,24 @@ namespace awh {
 					 * @brief Метод получения содержимого текущего события
 					 *
 					 * @details Для текстового содержимого, дословного раздела и примечания -
-					 * их содержимое, для указания обработчику - его данные, для описания типа
-					 * документа - его имя. Для прочих событий содержимое пусто
+					 *          их содержимое, для указания обработчику - его данные, для описания типа
+					 *          документа - его имя. Для прочих событий содержимое пусто.
 					 *
 					 * @warning Возвращаемая последовательность знаков остаётся пригодной лишь
-					 * до следующего обращения к @c next() либо @c feed()
+					 *          до следующего обращения к @c next() либо @c feed()
 					 *
 					 * @return содержимое текущего события разбора
 					 *
 					 * \~english
 					 * @brief Method of getting the content of the current event
+					 *
 					 * @details For a text content, a literal section and a comment —
-					 * their content, for a processing instruction — its data, for a document type
-					 * definition — its name. For the other events the content is empty
+					 *          their content, for a processing instruction — its data, for a document type
+					 *          definition — its name. For the other events the content is empty.
+					 *
 					 * @warning The returned sequence of characters remains valid only
-					 * until the next call to @c next() or @c feed()
+					 *          until the next call to @c next() or @c feed()
+					 *
 					 * @return content of the current parsing event
 					 *
 					 * \~
@@ -2352,6 +2558,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the current event in the source text
+					 *
 					 * @return position of the beginning of the current event in the source text
 					 *
 					 * \~
@@ -2363,19 +2570,22 @@ namespace awh {
 					 * @brief Метод получения перечня атрибутов текущего узла
 					 *
 					 * @details Перечень заполняется событием начала узла и остаётся
-					 * пригодным до перехода к следующему событию
+					 *          пригодным до перехода к следующему событию.
 					 *
 					 * @note Объявления пространств имён в перечень не входят: они доступны
-					 * отдельным перечнем связываний
+					 *       отдельным перечнем связываний
 					 *
 					 * @return перечень атрибутов текущего узла
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the attributes of the current node
+					 *
 					 * @details The list is filled in by the event of the beginning of a node and remains
-					 * valid until the transition to the next event
+					 *          valid until the transition to the next event.
+					 *
 					 * @note The declarations of the namespaces do not enter the list: they are available
-					 * as a separate list of the bindings
+					 *       as a separate list of the bindings
+					 *
 					 * @return list of the attributes of the current node
 					 *
 					 * \~
@@ -2389,6 +2599,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the declarations of the namespaces
+					 *
 					 * @return list of the bindings of the prefixes declared by the current node
 					 *
 					 * \~
@@ -2400,14 +2611,14 @@ namespace awh {
 					 * @brief Метод поиска атрибута текущего узла по имени
 					 *
 					 * @details Сличение ведётся по паре из обозначения пространства имён и
-					 * местного имени. Пустое обозначение отвечает атрибуту без префикса:
-					 * атрибуты, в отличие от узлов, объявлению пространства имён по умолчанию
-					 * не подчиняются
+					 *          местного имени. Пустое обозначение отвечает атрибуту без префикса:
+					 *          атрибуты, в отличие от узлов, объявлению пространства имён по умолчанию
+					 *          не подчиняются.
 					 *
 					 * @warning Вид этот живёт лишь до разбора следующего узла со свойствами:
-					 * хранилище свойств переиспользуется. Замер: вид, снятый у первого узла,
-					 * после двухсот узлов со свойствами читал испорченное содержимое. Нужное
-					 * дольше следует копировать
+					 *          хранилище свойств переиспользуется. Замер: вид, снятый у первого узла,
+					 *          после двухсот узлов со свойствами читал испорченное содержимое. Нужное
+					 *          дольше следует копировать
 					 *
 					 * @param local местное имя искомого атрибута
 					 * @param uri   обозначение пространства имён искомого атрибута
@@ -2415,14 +2626,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for an attribute of the current node by a name
+					 *
 					 * @details The comparison is conducted by the pair of the designation of the namespace and the
-					 * local name. An empty designation corresponds to an attribute without a prefix:
-					 * the attributes, unlike the nodes, are not subject to a default namespace
-					 * declaration
+					 *          local name. An empty designation corresponds to an attribute without a prefix:
+					 *          the attributes, unlike the nodes, are not subject to a default namespace
+					 *          declaration.
+					 *
 					 * @warning This view lives only until the parsing of the next node with attributes:
-					 * the storage of the attributes is reused. Measurement: a view taken at the first node,
-					 * after two hundred nodes with attributes read a corrupted content. What is needed
-					 * for longer should be copied
+					 *          the storage of the attributes is reused. Measurement: a view taken at the first node,
+					 *          after two hundred nodes with attributes read a corrupted content. What is needed
+					 *          for longer should be copied
+					 *
 					 * @param local local name of the attribute being sought
 					 * @param uri   designation of the namespace of the attribute being sought
 					 * @return      value of the found attribute or an empty sequence
@@ -2440,6 +2654,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of an attribute at the current node
+					 *
 					 * @param local local name of the attribute being sought
 					 * @param uri   designation of the namespace of the attribute being sought
 					 * @return      result of the check
@@ -2457,6 +2672,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the number type of the parsing result
+					 *
 					 * @tparam T number type of the parsing result
 					 *
 					 * \~
@@ -2467,22 +2683,25 @@ namespace awh {
 					 * @brief Метод получения содержимого текущего события числом
 					 *
 					 * @details Разбор ведётся по правилам местности «C» с отбрасыванием
-					 * пробельной обвязки и с проверкой выхода за пределы запрошенного типа
+					 *          пробельной обвязки и с проверкой выхода за пределы запрошенного типа.
 					 *
 					 * @warning При разборе кусками содержимое узла выдаётся несколькими
-					 * событиями, и разбирать числом следует лишь содержимое, собранное
-					 * целиком: для этого предназначено склеивание содержимого настройками
+					 *          событиями, и разбирать числом следует лишь содержимое, собранное
+					 *          целиком: для этого предназначено склеивание содержимого настройками
 					 *
 					 * @param result ссылка на результат разбора
 					 * @return       признак успешного разбора
 					 *
 					 * \~english
 					 * @brief Method of getting the content of the current event as a number
+					 *
 					 * @details The parsing is conducted by the rules of the «C» locale with the discarding of the
-					 * whitespace padding and with a check of going beyond the limits of the requested type
+					 *          whitespace padding and with a check of going beyond the limits of the requested type.
+					 *
 					 * @warning At a parsing by chunks the content of a node is issued by several
-					 * events, and only a content assembled in full should be parsed as a number:
-					 * for this the gluing of the content by the settings is intended
+					 *          events, and only a content assembled in full should be parsed as a number:
+					 *          for this the gluing of the content by the settings is intended
+					 *
 					 * @param result reference to the result of the parsing
 					 * @return       flag of a successful parsing
 					 *
@@ -2501,6 +2720,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the number type of the parsing result
+					 *
 					 * @tparam T number type of the parsing result
 					 *
 					 * \~
@@ -2517,6 +2737,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the value of an attribute of the current node as a number
+					 *
 					 * @param result reference to the result of the parsing
 					 * @param local  local name of the attribute being sought
 					 * @param uri    designation of the namespace of the attribute being sought
@@ -2534,28 +2755,31 @@ namespace awh {
 					 * @brief Метод получения обозначения пространства имён по префиксу
 					 *
 					 * @details Поиск ведётся по связываниям, действующим в текущем месте
-					 * разбора, от ближайшего узла к корню
+					 *          разбора, от ближайшего узла к корню.
 					 *
 					 * @warning Вид этот годен, пока открыт узел, связывание объявивший. По
-					 * закрытии его связывание снимается, а вид ПРОДОЛЖАЕТ читаться: хранилище
-					 * областей не освобождается, и удержанный вид отдаёт связывание, какого более
-					 * НЕТ. Замер: по закрытии узла удержанный вид читался прежним, а снятый заново
-					 * отвечал пустым - как и должно. Ответ на вопрос о связывании надлежит брать
-					 * зовом, а не удержанным видом
+					 *          закрытии его связывание снимается, а вид ПРОДОЛЖАЕТ читаться: хранилище
+					 *          областей не освобождается, и удержанный вид отдаёт связывание, какого более
+					 *          НЕТ. Замер: по закрытии узла удержанный вид читался прежним, а снятый заново
+					 *          отвечал пустым - как и должно. Ответ на вопрос о связывании надлежит брать
+					 *          зовом, а не удержанным видом
 					 *
 					 * @param prefix префикс без разделителя, пустой для объявления по умолчанию
 					 * @return       обозначение связанного пространства имён
 					 *
 					 * \~english
 					 * @brief Method of getting the designation of a namespace by a prefix
+					 *
 					 * @details The search is conducted by the bindings effective at the current place
-					 * of the parsing, from the nearest node to the root
+					 *          of the parsing, from the nearest node to the root.
+					 *
 					 * @warning This view is fit while the node that declared the binding is open. Upon
-					 * its closing the binding is removed, while the view CONTINUES to read: the storage
-					 * of the scopes is not released, and a held view gives away a binding that
-					 * NO LONGER EXISTS. Measurement: upon the closing of the node a held view read as before, while one taken anew
-					 * answered empty — as it should. The answer to a question about a binding should be taken
-					 * by a call rather than by a held view
+					 *          its closing the binding is removed, while the view CONTINUES to read: the storage
+					 *          of the scopes is not released, and a held view gives away a binding that
+					 *          NO LONGER EXISTS. Measurement: upon the closing of the node a held view read as before, while one taken anew
+					 *          answered empty — as it should. The answer to a question about a binding should be taken
+					 *          by a call rather than by a held view
+					 *
 					 * @param prefix prefix without the separator, empty for a default declaration
 					 * @return       designation of the bound namespace
 					 *
@@ -2571,6 +2795,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the depth of the nesting of the current node
+					 *
 					 * @return depth of the nesting, zero for the root node
 					 *
 					 * \~
@@ -2581,14 +2806,16 @@ namespace awh {
 					 * @brief Метод проверки узла на отсутствие содержимого
 					 *
 					 * @details Узел, записанный самозакрывающейся меткой, выдаёт события
-					 * начала и конца подряд; настоящий признак позволяет их различить
+					 *          начала и конца подряд; настоящий признак позволяет их различить.
 					 *
 					 * @return результат проверки
 					 *
 					 * \~english
 					 * @brief Method of checking a node for the absence of a content
+					 *
 					 * @details A node written by a self-closing tag issues the events of the
-					 * beginning and of the end in a row; the present flag makes it possible to distinguish them
+					 *          beginning and of the end in a row; the present flag makes it possible to distinguish them.
+					 *
 					 * @return result of the check
 					 *
 					 * \~
@@ -2599,8 +2826,8 @@ namespace awh {
 					 * @brief Метод получения принятого обращения с пробельным содержимым
 					 *
 					 * @details Обращение задаётся отведённым договором атрибутом `xml:space` и
-					 * наследуется вложенными узлами до отмены изнутри. Значение, договором не
-					 * отведённое, толкуется отменой наравне с `default`
+					 *          наследуется вложенными узлами до отмены изнутри. Значение, договором не
+					 *          отведённое, толкуется отменой наравне с `default`.
 					 *
 					 * @note Атрибут отведён самим договором о разметке, а не договором о
 					 *       пространствах имён: он учитывается и при выключенном разрешении
@@ -2610,12 +2837,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the accepted treatment of the whitespace content
+					 *
 					 * @details The treatment is given by the `xml:space` attribute allotted by the protocol and is
-					 * inherited by the nested nodes until a cancellation from within. A value not allotted by the protocol
-					 * is interpreted as a cancellation on a par with `default`
+					 *          inherited by the nested nodes until a cancellation from within. A value not allotted by the protocol
+					 *          is interpreted as a cancellation on a par with `default`.
+					 *
 					 * @note The attribute is allotted by the markup protocol itself rather than by the protocol about the
 					 *       namespaces: it is taken into account even when the resolution of the prefixes is disabled,
 					 *       where its name is not split and is recognized by the record as a whole
+					 *
 					 * @return treatment of the whitespace content in the current node
 					 *
 					 * \~
@@ -2631,6 +2861,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the determined encoding of the source text
+					 *
 					 * @return determined encoding of the source text
 					 *
 					 * \~
@@ -2649,10 +2880,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the declared edition of the markup
+					 *
 					 * @note This view survives a feeding and lives until the reset of the state of the reading:
 					 *       the prolog is parsed once and does not grow any more. The guarantee is named
 					 *       deliberately — the neighbouring bodies of the same reading guarantee the OPPOSITE, and
 					 *       a silence here would read as their lifetime. Measurement: the view survived two hundred feedings
+					 *
 					 * @return declared edition of the markup
 					 *
 					 * \~
@@ -2666,6 +2899,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the flag of the standaloneness of the text
+					 *
 					 * @return flag of the standaloneness of the markup text
 					 *
 					 * \~
@@ -2691,6 +2925,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the parsing of a markup text
 					 *
 					 * \~

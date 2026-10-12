@@ -90,20 +90,21 @@ namespace awh {
 			 * @brief Класс потокового чтения текста настроек TOML
 			 *
 			 * @details Текст принимается кусками произвольного размера, а выдача ведётся
-			 * событиями по мере разбора: удерживать текст целиком чтению не требуется
+			 *          событиями по мере разбора: удерживать текст целиком чтению не требуется.
 			 *
 			 * @par Порядок работы
 			 *
 			 * @warning Выдача разбора не зависит от того, как исходный текст нарезан на
-			 * куски: одна и та же последовательность событий с одними и теми же местами
-			 * получается при всякой нарезке. Договор этот проверяется дифференциальной
-			 * сверкой подачи и нарушается легче, чем кажется
+			 *          куски: одна и та же последовательность событий с одними и теми же местами
+			 *          получается при всякой нарезке. Договор этот проверяется дифференциальной
+			 *          сверкой подачи и нарушается легче, чем кажется
+			 *
 			 * @note Значение составное выдаётся не одним событием, а рядом их: открытие
-			 * перечня либо встроенной таблицы, содержимое, закрытие. Вложенность потому
-			 * достаётся потребителю потоком, а не собранным заранее деревом
+			 *       перечня либо встроенной таблицы, содержимое, закрытие. Вложенность потому
+			 *       достаётся потребителю потоком, а не собранным заранее деревом
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader();
+			 *          reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -114,53 +115,58 @@ namespace awh {
 			 *          case static_cast <uint8_t> (event_t::VALUE): break;
 			 *      }
 			 *  }
+			 *
 			 *  @endcode
 			 *
 			 * @warning КОПИЯ ЧТЕНИЯ УНОСИТ ВИДЫ, В ИСХОДНИК УКАЗЫВАЮЩИЕ. Свёртки событий
-			 * хранятся готовыми видами в строки самого чтения, и заводитель копии, неявный,
-			 * переносит их как есть - виды копии продолжают указывать в память ИСХОДНОГО
-			 * объекта. Покуда исходник жив, копия читается верно; переживи копия исходник -
-			 * обращение к её видам есть обращение к освобождённому. Надзор за памятью валит
-			 * это `stack-use-after-scope`, замерено щупом
+			 *          хранятся готовыми видами в строки самого чтения, и заводитель копии, неявный,
+			 *          переносит их как есть - виды копии продолжают указывать в память ИСХОДНОГО
+			 *          объекта. Покуда исходник жив, копия читается верно; переживи копия исходник -
+			 *          обращение к её видам есть обращение к освобождённому. Надзор за памятью валит
+			 *          это `stack-use-after-scope`, замерено щупом
 			 *
 			 * @note Довод принесён от кодеков JSON и XML, где виды хранятся
-			 * УКАЗАНИЯМИ в своё хранилище и копия перебазирует их сама собою. Здесь устройство
-			 * иное, и потому ручательство обратное
+			 *       УКАЗАНИЯМИ в своё хранилище и копия перебазирует их сама собою. Здесь устройство
+			 *       иное, и потому ручательство обратное
 			 *
 			 * @warning Правка возможна тремя путями - запретить копирование, завести
-			 * перебазирующий заводитель копии либо перейти на указания вместо видов, - и всякий
-			 * из них меняет договор либо устройство. Решение вынесено за пределы кодека
+			 *          перебазирующий заводитель копии либо перейти на указания вместо видов, - и всякий
+			 *          из них меняет договор либо устройство. Решение вынесено за пределы кодека
 			 *
 			 * @note Порок ПОДТВЕРЖДЁН заново 09.09.2026 и держится по-прежнему. Воспроизведение
-			 * УЗКОЕ, и знать его надобно точно: копия снимается с чтения, УЖЕ СТОЯЩЕГО на
-			 * событии, исходник сносится, а у копии читается ТЕКУЩЕЕ событие - `next()` при
-			 * этом НЕ зовётся
+			 *       УЗКОЕ, и знать его надобно точно: копия снимается с чтения, УЖЕ СТОЯЩЕГО на
+			 *       событии, исходник сносится, а у копии читается ТЕКУЩЕЕ событие - `next()` при
+			 *       этом НЕ зовётся
 			 *
 			 * @warning Три щупа из четырёх вернулись чистыми, и все три были поставлены мимо:
-			 * `next()` у копии виды ПЕРЕСЧИТЫВАЕТ, и всякий опыт, зовущий его, порока не
-			 * увидит вовсе. Опасно тут именно чтение без `next()`
+			 *          `next()` у копии виды ПЕРЕСЧИТЫВАЕТ, и всякий опыт, зовущий его, порока не
+			 *          увидит вовсе. Опасно тут именно чтение без `next()`
 			 *
 			 * @note Кодеки расходятся ИСХОДОМ, но не корнем - замерено надзором за памятью:
-			 * INI и YAML отвечают `heap-use-after-free` (освобождённое заведено в `feed`),
-			 * а TOML отказа надзора не даёт вовсе и отдаёт значение ПУСТЫМ - при живом
-			 * исходнике та же копия читает его верно. Молчание надзора здесь не значит
-			 * исправности: копия и там от исходника не независима
+			 *       INI и YAML отвечают `heap-use-after-free` (освобождённое заведено в `feed`),
+			 *       а TOML отказа надзора не даёт вовсе и отдаёт значение ПУСТЫМ - при живом
+			 *       исходнике та же копия читает его верно. Молчание надзора здесь не значит
+			 *       исправности: копия и там от исходника не независима
 			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a TOML settings text
+			 *
 			 * @details The text is accepted by chunks of an arbitrary size, while the issuance is conducted
-			 * by events as the parsing goes on: the reading is not required to hold the text in full
+			 *          by events as the parsing goes on: the reading is not required to hold the text in full.
+			 *
 			 * @par Order of the work
+			 *
 			 * @warning The output of the parsing does not depend on how the source text is cut into
-			 * chunks: one and the same sequence of the events with one and the same places
-			 * is obtained at any cutting. This contract is checked by a differential
-			 * comparison of the feeding and is violated more easily than it seems
+			 *          chunks: one and the same sequence of the events with one and the same places
+			 *          is obtained at any cutting. This contract is checked by a differential
+			 *          comparison of the feeding and is violated more easily than it seems
+			 *
 			 * @note A compound value is issued not by a single event but by a series of them: the opening
-			 * of an array or of an inline table, the content, the closing. The nesting therefore
-			 * goes to the consumer as a stream rather than as a tree assembled beforehand
+			 *       of an array or of an inline table, the content, the closing. The nesting therefore
+			 *       goes to the consumer as a stream rather than as a tree assembled beforehand
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader();
+			 *          reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -171,8 +177,45 @@ namespace awh {
 			 *          case static_cast <uint8_t> (event_t::VALUE): break;
 			 *      }
 			 *  }
+			 *
 			 *  @endcode
 			 *
+			 * @warning THE COPY OF THE READING CARRIES AWAY THE VIEWS POINTING INTO THE SOURCE.
+			 *          The aggregates of the events are stored as ready views into the strings of the
+			 *          reading itself, and the copy constructor, the implicit one, transfers them as
+			 *          they are - the views of the copy continue to point into the memory of the
+			 *          ORIGINAL object. While the original is alive, the copy reads correctly; should
+			 *          the copy outlive the original - an access to its views is an access to freed
+			 *          memory. The memory supervisor strikes this as `stack-use-after-scope`,
+			 *          measured with a probe
+			 *
+			 * @note The argument is brought from the codecs JSON and XML, where the views are
+			 *       stored as POINTERS into their own storage and the copy rebases them of its own
+			 *       accord. The arrangement here is other, and therefore the warranty is the reverse
+			 *
+			 * @warning The fix is possible by three paths - to forbid the copying, to make a copy
+			 *          constructor which rebases, or to pass to pointers instead of views - and each
+			 *          of them changes either the contract or the arrangement. The decision is
+			 *          carried beyond the bounds of the codec
+			 *
+			 * @note The flaw is CONFIRMED anew on 2026-09-09 and holds as before. The reproduction
+			 *       is NARROW, and it must be known precisely: the copy is taken from a reading
+			 *       ALREADY STANDING on an event, the original is destroyed, and at the copy the
+			 *       CURRENT event is read - `next()` is NOT called thereby
+			 *
+			 * @warning Three probes of four returned clean, and all three were set beside the mark:
+			 *          `next()` at the copy RECOMPUTES the views, and every experiment calling it
+			 *          will see no flaw at all. What is dangerous here is exactly the reading
+			 *          without `next()`
+			 *
+			 * @note The codecs diverge by the OUTCOME, but not by the root - measured by the memory
+			 *       supervisor: INI and YAML answer `heap-use-after-free` (the freed is introduced
+			 *       in `feed`), while TOML gives no supervisor refusal at all and issues the value
+			 *       EMPTY - with a living original the same copy reads it correctly. The silence of
+			 *       the supervisor here does not mean soundness: the copy is not independent of the
+			 *       original there either
+			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
 				private:
@@ -191,12 +234,13 @@ namespace awh {
 					 * @brief Настройки разбора текста настроек
 					 *
 					 * @details Настройки задают пределы разбора и объём выдачи, но не
-					 * устройство записи: описание у TOML единственное, и наречий здесь нет
+					 *          устройство записи: описание у TOML единственное, и наречий здесь нет.
 					 *
 					 * \~english
 					 * @brief Settings of the parsing of a settings text
+					 *
 					 * @details The settings give the limits of the parsing and the volume of the output, but not
-					 * the arrangement of the notation: the specification of TOML is a single one, and there are no dialects here
+					 *          the arrangement of the notation: the specification of TOML is a single one, and there are no dialects here.
 					 *
 					 * \~
 					 */
@@ -206,14 +250,15 @@ namespace awh {
 						 * Наибольшая допустимая длина логической строки в байтах, ноль - без предела
 						 *
 						 * @note Предел считается на запись целиком - вместе со всеми строками
-						 * многострочного значения, - иначе многострочная запись давала бы
-						 * обход предела
+						 *       многострочного значения, - иначе многострочная запись давала бы
+						 *       обход предела
 						 *
 						 * \~english
 						 * Largest admissible length of a logical line in bytes, zero — without a limit
+						 *
 						 * @note The limit is counted over the record as a whole — together with all the lines of
-						 * a multiline value — otherwise a multiline record would give
-						 * a bypass of the limit
+						 *       a multiline value — otherwise a multiline record would give
+						 *       a bypass of the limit
 						 *
 						 * \~
 						 */
@@ -225,7 +270,7 @@ namespace awh {
 						 * Наибольшая допустимая глубина вложенности значений
 						 *
 						 * @note Считается вложенностью перечней и встроенных таблиц друг в
-						 * друга. Ноль значит «без предела» - уклад этот один у всех кодеков рамки
+						 *       друга. Ноль значит «без предела» - уклад этот один у всех кодеков рамки
 						 *
 						 * @warning Ноль прежде ЗАПРЕЩАЛ вложенность вовсе, и уклад тот расходился с
 						 *          прочими кодеками: настройка, перенесённая с одного кодека на
@@ -238,9 +283,19 @@ namespace awh {
 						 *
 						 * \~english
 						 * Largest admissible depth of the nesting of the values
+						 *
 						 * @note Counted by the nesting of the arrays and of the inline tables into one
-						 * another. Zero means «without a limit» — this convention is one and the same for all
-						 * the codecs of the framework
+						 *       another. Zero means «without a limit» — this convention is one and the same for all
+						 *       the codecs of the framework
+						 *
+						 * @warning A zero formerly FORBADE the nesting altogether, and that convention diverged
+						 *          from the other codecs: a setting carried from one codec to another worked the
+						 *          other way round and silently. The ban found its own expression - the `nesting`
+						 *          sign - for it is impossible to express two different thoughts by one number
+						 *          without taking one of them away
+						 *
+						 * @note A zero is bounded by the ceiling of `MAX_DEPTH` before the parsing on a par with
+						 *       an inflated number: the parsing of the nesting is conducted by recursion of calls
 						 *
 						 * \~
 						 */
@@ -250,12 +305,15 @@ namespace awh {
 						 * Признак дозволения вложенных значений
 						 *
 						 * @details Снятый признак отвергает всякий перечень значений да встроенную
-						 * таблицу, оставляя значения простые. Прежде мысль эта выражалась нулём у
-						 * `maxDepth`, а ноль ныне значит «без предела» у всех кодеков рамки
+						 *          таблицу, оставляя значения простые. Прежде мысль эта выражалась нулём у
+						 *          `maxDepth`, а ноль ныне значит «без предела» у всех кодеков рамки.
 						 *
 						 * \~english
 						 * Sign of the permission of the nested values
-						 * @details A cleared sign rejects every array and inline table, leaving the simple values
+						 *
+						 * @details A cleared sign rejects every array and inline table, leaving the simple values.
+						 *          Formerly this thought was expressed by a zero at `maxDepth`, while a zero now
+						 *          means «without a limit» at all the codecs of the framework.
 						 *
 						 * \~
 						 */
@@ -267,14 +325,15 @@ namespace awh {
 						 * Признак проверки повторного объявления ключей и таблиц
 						 *
 						 * @note Описание повтор запрещает, и проверка эта по умолчанию
-						 * включена. Стоит она памяти - разбор удерживает имена уже
-						 * объявленного, - и отключают её там, где текст заведомо свой
+						 *       включена. Стоит она памяти - разбор удерживает имена уже
+						 *       объявленного, - и отключают её там, где текст заведомо свой
 						 *
 						 * \~english
 						 * Flag of the check of a repeated declaration of the keys and of the tables
+						 *
 						 * @note The specification prohibits a repetition, and this check is enabled by
-						 * default. It costs memory — the parsing holds the names of what has already been
-						 * declared — and it is disabled where the text is known to be one's own
+						 *       default. It costs memory — the parsing holds the names of what has already been
+						 *       declared — and it is disabled where the text is known to be one's own
 						 *
 						 * \~
 						 */
@@ -284,18 +343,19 @@ namespace awh {
 						 * Признак признания знаков Юникода в именах без кавычек
 						 *
 						 * @note Описание версии 1.0.0 отводит именам без кавычек лишь знаки
-						 * US-ASCII, и умолчанием берётся оно: имя «сервер» такому разбору
-						 * положено записывать в кавычках. Черновик следующей версии знаки
-						 * Юникода в именах дозволяет, и признак этот его включает - выбор
-						 * оставлен потребителю, а не зашит
+						 *       US-ASCII, и умолчанием берётся оно: имя «сервер» такому разбору
+						 *       положено записывать в кавычках. Черновик следующей версии знаки
+						 *       Юникода в именах дозволяет, и признак этот его включает - выбор
+						 *       оставлен потребителю, а не зашит
 						 *
 						 * \~english
 						 * Flag of the recognition of the Unicode characters in the names without quotes
+						 *
 						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to the names without quotes,
-						 * and it is taken by default: the name «сервер» for such a parsing
-						 * ought to be written in quotes. The draft of the next version permits the Unicode
-						 * characters in the names, and this flag enables it — the choice
-						 * is left to the consumer rather than being hardwired
+						 *       and it is taken by default: the name «сервер» for such a parsing
+						 *       ought to be written in quotes. The draft of the next version permits the Unicode
+						 *       characters in the names, and this flag enables it — the choice
+						 *       is left to the consumer rather than being hardwired
 						 *
 						 * \~
 						 */
@@ -329,6 +389,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Pointer to a sequence of characters in the storage of a record
+					 *
 					 * @note The storage grows in the course of the parsing of a record and has the right to be
 					 *       moved in the memory: the pointers into it cannot be held until the end of
 					 *       the parsing of the record, while the pointers by an offset are movable
@@ -357,16 +418,17 @@ namespace awh {
 					 * @brief Событие разбора, собранное для выдачи
 					 *
 					 * @details Запись разбирается целиком, а события её складываются в
-					 * очередь: значение составное даёт их несколько, и выдавать их по
-					 * мере разбора значило бы оставлять потребителя с событиями записи,
-					 * которая ошибочна в своей второй половине
+					 *          очередь: значение составное даёт их несколько, и выдавать их по
+					 *          мере разбора значило бы оставлять потребителя с событиями записи,
+					 *          которая ошибочна в своей второй половине.
 					 *
 					 * \~english
 					 * @brief Parsing event assembled for the issuance
+					 *
 					 * @details A record is parsed in full, while its events are put into a
-					 * queue: a compound value gives several of them, and to issue them as
-					 * the parsing goes on would mean to leave the consumer with the events of a record
-					 * which is erroneous in its second half
+					 *          queue: a compound value gives several of them, and to issue them as
+					 *          the parsing goes on would mean to leave the consumer with the events of a record
+					 *          which is erroneous in its second half.
 					 *
 					 * \~
 					 */
@@ -426,18 +488,19 @@ namespace awh {
 					 * @brief Роды имён, объявляемых текстом настроек
 					 *
 					 * @details Правила описания об объявлении имён сводятся к роду уже
-					 * объявленного: таблицу, заведённую заголовком исподволь, дозволено объявить
-					 * явно, а заведённую составным именем ключа - нет; набором таблиц дозволено
-					 * дополнить лишь набор таблиц; под парой не заводится ничего, а встроенная
-					 * таблица не дополняется вовсе
+					 *          объявленного: таблицу, заведённую заголовком исподволь, дозволено объявить
+					 *          явно, а заведённую составным именем ключа - нет; набором таблиц дозволено
+					 *          дополнить лишь набор таблиц; под парой не заводится ничего, а встроенная
+					 *          таблица не дополняется вовсе.
 					 *
 					 * \~english
 					 * @brief Kinds of the names declared by a settings text
+					 *
 					 * @details The rules of the specification about the declaration of the names come down to the kind of what has already been
-					 * declared: a table created by a header implicitly is permitted to be declared
-					 * explicitly, while one created by a compound name of a key — is not; an array of tables is permitted
-					 * to be supplemented only by an array of tables; nothing is created under a pair, while an inline
-					 * table is not supplemented at all
+					 *          declared: a table created by a header implicitly is permitted to be declared
+					 *          explicitly, while one created by a compound name of a key — is not; an array of tables is permitted
+					 *          to be supplemented only by an array of tables; nothing is created under a pair, while an inline
+					 *          table is not supplemented at all.
 					 *
 					 * \~
 					 */
@@ -469,13 +532,14 @@ namespace awh {
 						 * Признак того, что имя заведено исподволь
 						 *
 						 * @note Заведённое исподволь уже объявленного не подменяет: таблица,
-						 * объявленная заголовком, объемлющим именем ключа в заведённую исподволь
-						 * не превращается
+						 *       объявленная заголовком, объемлющим именем ключа в заведённую исподволь
+						 *       не превращается
 						 *
 						 * \~english
 						 * Flag of the name having been created implicitly
+						 *
 						 * @note What has been created implicitly does not replace what has already been declared: a table
-						 * declared by a header does not turn into one created implicitly by an enclosing name of a key
+						 *       declared by a header does not turn into one created implicitly by an enclosing name of a key
 						 *
 						 * \~
 						 */
@@ -490,6 +554,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param name    full name being declared
 						 * @param kind    kind of the name being declared
 						 * @param implied flag of the name having been created implicitly
@@ -526,16 +591,17 @@ namespace awh {
 					 * Признак того, что разбираемой записи не хватает продолжения текста
 					 *
 					 * @note Разбор записи ведётся по накопленному тексту, и исчерпание его
-					 * посреди записи означает не ошибку, а нужду в следующем куске: запись
-					 * откатывается к своему началу и разбирается заново по приходе
-					 * продолжения. Ошибкой исчерпание становится лишь на последнем куске
+					 *       посреди записи означает не ошибку, а нужду в следующем куске: запись
+					 *       откатывается к своему началу и разбирается заново по приходе
+					 *       продолжения. Ошибкой исчерпание становится лишь на последнем куске
 					 *
 					 * \~english
 					 * Flag of the record being parsed lacking a continuation of the text
+					 *
 					 * @note The parsing of a record is conducted over the accumulated text, and its exhaustion
-					 * in the middle of a record means not an error but a need for the next chunk: the record
-					 * is rolled back to its beginning and is parsed anew upon the arrival of
-					 * the continuation. The exhaustion becomes an error only on the last chunk
+					 *       in the middle of a record means not an error but a need for the next chunk: the record
+					 *       is rolled back to its beginning and is parsed anew upon the arrival of
+					 *       the continuation. The exhaustion becomes an error only on the last chunk
 					 *
 					 * \~
 					 */
@@ -545,16 +611,17 @@ namespace awh {
 					 * Признак того, что исходный текст поступил целиком
 					 *
 					 * @note Признак этот запоминается подачей и берётся выдачей событий:
-					 * разбор продолжается по мере обхода событий, и без него продолжение
-					 * это считало бы текст незавершённым - последняя запись оставалась бы
-					 * неразобранной, а состояние разбора незавершённым
+					 *       разбор продолжается по мере обхода событий, и без него продолжение
+					 *       это считало бы текст незавершённым - последняя запись оставалась бы
+					 *       неразобранной, а состояние разбора незавершённым
 					 *
 					 * \~english
 					 * Flag of the source text having arrived in full
+					 *
 					 * @note This flag is remembered by the feeding and is taken by the issuance of the events:
-					 * the parsing continues as the events are traversed, and without it that continuation
-					 * would consider the text unfinished — the last record would remain
-					 * unparsed, while the state of the parsing would remain unfinished
+					 *       the parsing continues as the events are traversed, and without it that continuation
+					 *       would consider the text unfinished — the last record would remain
+					 *       unparsed, while the state of the parsing would remain unfinished
 					 *
 					 * \~
 					 */
@@ -564,14 +631,15 @@ namespace awh {
 					 * Отложенный код ошибки приведения к кодировке UTF-8
 					 *
 					 * @note Приведение переносит в хранилище всё, что успело проверить, и
-					 * отказ его выдаётся лишь по исчерпании приведённого начала: иначе
-					 * разбор того же текста целиком и кусками расходился бы событиями
+					 *       отказ его выдаётся лишь по исчерпании приведённого начала: иначе
+					 *       разбор того же текста целиком и кусками расходился бы событиями
 					 *
 					 * \~english
 					 * Postponed error code of the conversion to the UTF-8 encoding
+					 *
 					 * @note The conversion transfers into the storage everything it has managed to check, and
-					 * its refusal is issued only upon the exhaustion of the converted beginning: otherwise
-					 * the parsing of the same text in full and by chunks would diverge in the events
+					 *       its refusal is issued only upon the exhaustion of the converted beginning: otherwise
+					 *       the parsing of the same text in full and by chunks would diverge in the events
 					 *
 					 * \~
 					 */
@@ -609,6 +677,7 @@ namespace awh {
 					 * \~english
 					 * Position from which the ending character of a record rolled back by a need for
 					 * a continuation of the text is sought
+					 *
 					 * @note It is kept for the sake of a feeding by small chunks: without it a record
 					 *       would be parsed anew at every chunk, and its parsing would cost
 					 *       the square of its own length
@@ -628,6 +697,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Count of the inline tables of a record that have no name of their own
+					 *
 					 * @note The keys of such a table are repetitions to one another on a par with
 					 *       the keys of a named one, while their accounting is conducted by a name: a name of its own is given to it
 					 *       here, living only until the end of the record. It begins with the «at» character —
@@ -654,6 +724,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Storage of the content of a string value being assembled
+					 *
 					 * @note It is kept as a member for the sake of the reuse of the occupied memory: its clearing
 					 *       preserves it behind the storage, and every next string
 					 *       value makes do without an allocation
@@ -671,6 +742,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Storage of the full name of the key of the pair being parsed
+					 *
 					 * @note It is kept as a member for the same reason as the storage of the content:
 					 *       the clearing preserves the occupied memory behind it, and every next pair
 					 *       makes do without an allocation
@@ -700,23 +772,25 @@ namespace awh {
 					 * Указатель родов уже объявленных имён
 					 *
 					 * @details Правила описания об объявлении имён сводятся к роду уже
-					 * объявленного, и держать их порознь перечнями значило бы проверять одно и
-					 * то же имя в нескольких местах: указатель этот сводит проверку к одному
-					 * обращению
+					 *          объявленного, и держать их порознь перечнями значило бы проверять одно и
+					 *          то же имя в нескольких местах: указатель этот сводит проверку к одному
+					 *          обращению.
 					 *
 					 * @note Заполняется лишь при включённой проверке повторов: в прочих случаях
-					 * удерживать имена незачем, а на большом тексте настроек указатель этот
-					 * памяти стоит
+					 *       удерживать имена незачем, а на большом тексте настроек указатель этот
+					 *       памяти стоит
 					 *
 					 * \~english
 					 * Index of the kinds of the already declared names
+					 *
 					 * @details The rules of the specification about the declaration of the names come down to the kind of what has already been
-					 * declared, and to keep them apart as lists would mean to check one and
-					 * the same name in several places: this index reduces the check to a single
-					 * call
+					 *          declared, and to keep them apart as lists would mean to check one and
+					 *          the same name in several places: this index reduces the check to a single
+					 *          call.
+					 *
 					 * @note Filled in only when the check of the repetitions is enabled: in the other cases
-					 * there is no point in holding the names, while on a large settings text this index
-					 * costs memory
+					 *       there is no point in holding the names, while on a large settings text this index
+					 *       costs memory
 					 *
 					 * \~
 					 */
@@ -726,23 +800,25 @@ namespace awh {
 					 * Хранилище имён объявленных ключей и таблиц
 					 *
 					 * @details Имена хранятся блоками, а перечень объявленного держит
-					 * ссылки на них: имя, хранимое собственной последовательностью знаков,
-					 * обходилось выделением памяти на каждый объявленный ключ - на файле
-					 * настроек в шестнадцать мегабайт их набирался миллион
+					 *          ссылки на них: имя, хранимое собственной последовательностью знаков,
+					 *          обходилось выделением памяти на каждый объявленный ключ - на файле
+					 *          настроек в шестнадцать мегабайт их набирался миллион.
 					 *
 					 * @note Хранилище взято двусторонней очередью намеренно: перечень
-					 * блоков при дописывании нового не перемещает прежние, и ссылки на их
-					 * содержимое остаются годными
+					 *       блоков при дописывании нового не перемещает прежние, и ссылки на их
+					 *       содержимое остаются годными
 					 *
 					 * \~english
 					 * Storage of the names of the declared keys and tables
+					 *
 					 * @details The names are stored in blocks, while the list of what has been declared keeps
-					 * the references to them: a name stored as a sequence of characters of its own
-					 * cost an allocation of the memory for every declared key — on a settings
-					 * file of sixteen megabytes a million of them accumulated
+					 *          the references to them: a name stored as a sequence of characters of its own
+					 *          cost an allocation of the memory for every declared key — on a settings
+					 *          file of sixteen megabytes a million of them accumulated.
+					 *
 					 * @note The storage has been taken as a deque deliberately: the list
-					 * of the blocks does not move the previous ones at the appending of a new one, and the references to their
-					 * content remain valid
+					 *       of the blocks does not move the previous ones at the appending of a new one, and the references to their
+					 *       content remain valid
 					 *
 					 * \~
 					 */
@@ -752,23 +828,25 @@ namespace awh {
 					 * Имена, объявляемые разбираемой записью
 					 *
 					 * @details Запись, которой не хватило продолжения текста, откатывается
-					 * к своему началу и разбирается заново - и всё, что она успела
-					 * объявить, объявляется вторично. Имена поэтому копятся здесь и
-					 * переносятся в перечень объявленного лишь по окончании разбора записи
+					 *          к своему началу и разбирается заново - и всё, что она успела
+					 *          объявить, объявляется вторично. Имена поэтому копятся здесь и
+					 *          переносятся в перечень объявленного лишь по окончании разбора записи.
 					 *
 					 * @note Договор независимости выдачи от нарезки текста нарушается ровно
-					 * так: разбор, оставляющий последствия прежде окончания записи, при
-					 * подаче кусками отвергает то, что при подаче целиком принимает
+					 *       так: разбор, оставляющий последствия прежде окончания записи, при
+					 *       подаче кусками отвергает то, что при подаче целиком принимает
 					 *
 					 * \~english
 					 * Names declared by the record being parsed
+					 *
 					 * @details A record that has lacked a continuation of the text is rolled back
-					 * to its beginning and is parsed anew — and everything it has managed to
-					 * declare is declared a second time. The names are therefore accumulated here and
-					 * are transferred into the list of what has been declared only upon the end of the parsing of the record
+					 *          to its beginning and is parsed anew — and everything it has managed to
+					 *          declare is declared a second time. The names are therefore accumulated here and
+					 *          are transferred into the list of what has been declared only upon the end of the parsing of the record.
+					 *
 					 * @note The contract of the independence of the output from the cutting of the text is violated exactly
-					 * that way: a parsing that leaves consequences before the end of a record, at
-					 * a feeding by chunks rejects what it accepts at a feeding in full
+					 *       that way: a parsing that leaves consequences before the end of a record, at
+					 *       a feeding by chunks rejects what it accepts at a feeding in full
 					 *
 					 * \~
 					 */
@@ -778,28 +856,31 @@ namespace awh {
 					 * Указатель имён, объявляемых разбираемой записью
 					 *
 					 * @details Всякое объявляемое имя сличается со всеми, объявленными записью
-					 * прежде, и перебор их обращал бы разбор в квадратичный: встроенная таблица из
-					 * восьми тысяч ключей разбиралась перебором семьдесят миллисекунд
+					 *          прежде, и перебор их обращал бы разбор в квадратичный: встроенная таблица из
+					 *          восьми тысяч ключей разбиралась перебором семьдесят миллисекунд.
 					 *
 					 * @note Заводится указатель лишь по превышении порога числа имён: обычная запись
-					 * объявляет их считанные единицы, и указатель стоил бы ей выделения памяти на
-					 * всякое объявленное имя - вдвое против самого учёта
+					 *       объявляет их считанные единицы, и указатель стоил бы ей выделения памяти на
+					 *       всякое объявленное имя - вдвое против самого учёта
 					 *
 					 * @note Указатель держит ссылки на имена очереди, а очередь взята двусторонней
-					 * намеренно: дописывание в неё прежних имён не перемещает, и ссылки остаются
-					 * годными
+					 *       намеренно: дописывание в неё прежних имён не перемещает, и ссылки остаются
+					 *       годными
 					 *
 					 * \~english
 					 * Index of the names declared by the record being parsed
+					 *
 					 * @details Every name being declared is compared with all the ones declared by the record
-					 * before, and a traversal of them would turn the parsing into a quadratic one: an inline table of
-					 * eight thousand keys was parsed by a traversal for seventy milliseconds
+					 *          before, and a traversal of them would turn the parsing into a quadratic one: an inline table of
+					 *          eight thousand keys was parsed by a traversal for seventy milliseconds.
+					 *
 					 * @note The index is created only upon an excess of the threshold of the number of the names: an ordinary record
-					 * declares a mere few of them, and the index would cost it an allocation of the memory for
-					 * every declared name — twice as much as the accounting itself
+					 *       declares a mere few of them, and the index would cost it an allocation of the memory for
+					 *       every declared name — twice as much as the accounting itself
+					 *
 					 * @note The index keeps the references to the names of the deque, while the deque has been taken as a double-ended one
-					 * deliberately: an appending into it does not move the previous names, and the references remain
-					 * valid
+					 *       deliberately: an appending into it does not move the previous names, and the references remain
+					 *       valid
 					 *
 					 * \~
 					 */
@@ -809,16 +890,17 @@ namespace awh {
 					 * Количество имён, объявляемых разбираемой записью
 					 *
 					 * @note Очередь имён между записями не освобождается, а лишь укорачивается
-					 * этим счётом: места её достаются следующей записи вместе с уже занятой под
-					 * имена памятью, и выделение приходится на всякое место лишь единожды.
-					 * Длина самой очереди означает число заведённых мест, а не число имён
+					 *       этим счётом: места её достаются следующей записи вместе с уже занятой под
+					 *       имена памятью, и выделение приходится на всякое место лишь единожды.
+					 *       Длина самой очереди означает число заведённых мест, а не число имён
 					 *
 					 * \~english
 					 * Number of the names declared by the record being parsed
+					 *
 					 * @note The deque of the names is not released between the records but is only shortened
-					 * by this count: its places go to the next record together with the memory already occupied
-					 * by the names, and an allocation falls on every place only once.
-					 * The length of the deque itself means the number of the created places rather than the number of the names
+					 *       by this count: its places go to the next record together with the memory already occupied
+					 *       by the names, and an allocation falls on every place only once.
+					 *       The length of the deque itself means the number of the created places rather than the number of the names
 					 *
 					 * \~
 					 */
@@ -840,6 +922,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of remembering a parsing error together with the place of its detection
+					 *
 					 * @param error  error code of the parsing
 					 * @param offset position of the detection of the error in the converted text
 					 * @return       flag of a refusal for exiting the parsing
@@ -852,14 +935,16 @@ namespace awh {
 					 * @brief Метод перемещения разбора к заданному положению текста
 					 *
 					 * @details Перемещение ведёт счёт строк: знаки конца строки считаются
-					 * при проходе через них, а не поиском назад по накопленному тексту
+					 *          при проходе через них, а не поиском назад по накопленному тексту.
 					 *
 					 * @param offset положение, к которому перемещается разбор
 					 *
 					 * \~english
 					 * @brief Method of moving the parsing to a given position of the text
+					 *
 					 * @details The move keeps the count of the lines: the line ending characters are counted
-					 * at the pass through them rather than by a search backwards over the accumulated text
+					 *          at the pass through them rather than by a search backwards over the accumulated text.
+					 *
 					 * @param offset position to which the parsing is moved
 					 *
 					 * \~
@@ -874,6 +959,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the position of a character of the converted text
+					 *
 					 * @param offset position of the character in the converted text
 					 * @return       position of the character in the source text
 					 *
@@ -889,6 +975,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of adding a sequence of characters into the storage of a record
+					 *
 					 * @param text sequence of characters being added
 					 * @return     pointer to the added sequence
 					 *
@@ -904,6 +991,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting a sequence of characters of the storage of a record
+					 *
 					 * @param span pointer to the sequence of characters
 					 * @return     sequence of characters of the storage
 					 *
@@ -916,15 +1004,17 @@ namespace awh {
 					 * @brief Метод разбора очередной записи текста настроек
 					 *
 					 * @details Запись разбирается целиком либо не разбирается вовсе:
-					 * незавершённая запись оставляется до прихода следующего куска
+					 *          незавершённая запись оставляется до прихода следующего куска.
 					 *
 					 * @param end признак того, что текст поступил целиком
 					 * @return    признак того, что запись разобрана
 					 *
 					 * \~english
 					 * @brief Method of parsing the next record of a settings text
+					 *
 					 * @details A record is parsed in full or is not parsed at all:
-					 * an unfinished record is left until the arrival of the next chunk
+					 *          an unfinished record is left until the arrival of the next chunk.
+					 *
 					 * @param end flag of the text having arrived in full
 					 * @return    flag of the record having been parsed
 					 *
@@ -940,6 +1030,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a table declaration
+					 *
 					 * @param end flag of the text having arrived in full
 					 * @return    flag of a successful parsing
 					 *
@@ -955,6 +1046,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a pair of the name of a key and a value
+					 *
 					 * @param end flag of the text having arrived in full
 					 * @return    flag of a successful parsing
 					 *
@@ -971,6 +1063,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the name of a key
+					 *
 					 * @param end   flag of the text having arrived in full
 					 * @param count number of the parsed component parts of the name
 					 * @return      flag of a successful parsing
@@ -989,6 +1082,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a value
+					 *
 					 * @param end    flag of the text having arrived in full
 					 * @param depth  current depth of the nesting of the value
 					 * @param prefix full name of the pair of the value, an empty pointer — there is no name
@@ -1007,6 +1101,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing an array of the values
+					 *
 					 * @param end   flag of the text having arrived in full
 					 * @param depth current depth of the nesting of the value
 					 * @return      flag of a successful parsing
@@ -1019,9 +1114,9 @@ namespace awh {
 					 * @brief Метод пропуска пробельной обвязки и примечаний внутри перечня
 					 *
 					 * @details Перечень описание дозволяет записывать в несколько строк вместе
-					 * с примечаниями внутри, и пропуск этот приходится вести дважды - перед
-					 * очередным значением и за ним. Тело у обоих пропусков одно: два свода
-					 * правил разошлись бы при первой же правке одного из них
+					 *          с примечаниями внутри, и пропуск этот приходится вести дважды - перед
+					 *          очередным значением и за ним. Тело у обоих пропусков одно: два свода
+					 *          правил разошлись бы при первой же правке одного из них.
 					 *
 					 * @param end     признак того, что текст поступил целиком
 					 * @param opening положение открытия перечня в накопленном тексте
@@ -1029,10 +1124,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of skipping the whitespace framing and the comments inside an array
+					 *
 					 * @details The specification allows an array to be written in several lines together
-					 * with comments inside, and this skipping has to be conducted twice — before
-					 * the next value and after it. The body of both skippings is one: two sets
-					 * of the rules would diverge at the very first edit of one of them
+					 *          with comments inside, and this skipping has to be conducted twice — before
+					 *          the next value and after it. The body of both skippings is one: two sets
+					 *          of the rules would diverge at the very first edit of one of them.
+					 *
 					 * @param end     flag of the text having arrived in full
 					 * @param opening position of the opening of the array in the accumulated text
 					 * @return        flag of a successful parsing
@@ -1051,6 +1148,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing an inline table
+					 *
 					 * @param end    flag of the text having arrived in full
 					 * @param depth  current depth of the nesting of the value
 					 * @param prefix full name of the inline table, an empty pointer — there is no name
@@ -1070,6 +1168,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a string value
+					 *
 					 * @param end     flag of the text having arrived in full
 					 * @param quoting notation of the parsed string value
 					 * @param result  pointer to the parsed content
@@ -1088,6 +1187,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a timestamp from the record of a value
+					 *
 					 * @param text record of the value being parsed
 					 * @param item event of the value being assembled
 					 * @return     flag of a successful parsing
@@ -1105,6 +1205,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a number from the record of a value
+					 *
 					 * @param text record of the value being parsed
 					 * @param item event of the value being assembled
 					 * @return     flag of a successful parsing
@@ -1122,6 +1223,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a number, a logical value or a timestamp
+					 *
 					 * @param end  flag of the text having arrived in full
 					 * @param item event of the value being assembled
 					 * @return     flag of a successful parsing
@@ -1149,6 +1251,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing the remainder of a line after a completed record
+					 *
 					 * @param end flag of the text having arrived in full
 					 * @return    flag of a successful parsing
 					 *
@@ -1160,8 +1263,8 @@ namespace awh {
 					 * @brief Метод разбора примечания, начатого текущим знаком
 					 *
 					 * @details Разбор ведётся от знака начала примечания, на который указывает
-					 * текущее положение, и до места конца содержимого его. Собранное событие
-					 * уходит в очередь выдачи, если выдача примечаний настройками разрешена
+					 *          текущее положение, и до места конца содержимого его. Собранное событие
+					 *          уходит в очередь выдачи, если выдача примечаний настройками разрешена.
 					 *
 					 * @param position положение конца содержимого примечания
 					 * @param trailing признак примечания, дописанного к готовой строке
@@ -1169,9 +1272,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a comment begun by the current character
+					 *
 					 * @details The parsing is conducted from the character of the beginning of the comment pointed at by
-					 * the current position and up to the place of the end of its content. The assembled event
-					 * goes into the queue of the issuance if the issuance of the comments is permitted by the settings
+					 *          the current position and up to the place of the end of its content. The assembled event
+					 *          goes into the queue of the issuance if the issuance of the comments is permitted by the settings.
+					 *
 					 * @param position position of the end of the content of the comment
 					 * @param trailing flag of a comment appended to a ready line
 					 * @return         flag of a successful parsing
@@ -1188,6 +1293,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the completeness of a line in the accumulated text
+					 *
 					 * @param end flag of the text having arrived in full
 					 * @return    flag of the line having been accumulated in full
 					 *
@@ -1203,6 +1309,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the limit of the length of the record being parsed
+					 *
 					 * @param offset position of the end of the record being parsed
 					 * @return       flag of the limit not having been exceeded
 					 *
@@ -1214,9 +1321,9 @@ namespace awh {
 					 * @brief Метод выдачи отложенного отказа приведения к кодировке UTF-8
 					 *
 					 * @details Отказ приведения откладывается до исчерпания уже приведённого
-					 * начала текста: приведение переносит в хранилище всё, что успело
-					 * проверить, и выдать отказ сразу значило бы отнять у разбора события,
-					 * которые подача целиком выдаёт
+					 *          начала текста: приведение переносит в хранилище всё, что успело
+					 *          проверить, и выдать отказ сразу значило бы отнять у разбора события,
+					 *          которые подача целиком выдаёт.
 					 *
 					 * @note Выдача эта нужна обоим путям разбора - и подаче куска, и
 					 *       переходу к следующему событию: приведённое начало текста
@@ -1227,14 +1334,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of issuing the postponed refusal of the conversion to the UTF-8 encoding
+					 *
 					 * @details The refusal of the conversion is postponed until the exhaustion of the already converted
-					 * beginning of the text: the conversion transfers into the storage everything it has managed
-					 * to check, and to issue the refusal at once would mean to take away from the parsing the events
-					 * which a feeding in full issues
+					 *          beginning of the text: the conversion transfers into the storage everything it has managed
+					 *          to check, and to issue the refusal at once would mean to take away from the parsing the events
+					 *          which a feeding in full issues.
+					 *
 					 * @note This issuance is needed by both paths of the parsing — both by the feeding of a chunk and by
 					 *       the transition to the next event: the converted beginning of the text
 					 *       is parsed by whichever of them it has gone to, and a refusal issued
 					 *       by only one of them would disappear altogether at another cutting
+					 *
 					 * @return flag of there being no postponed refusal
 					 *
 					 * \~
@@ -1252,8 +1362,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the kind of an already declared name
+					 *
 					 * @note The names declared by the record being parsed are taken on a par with the ones declared
 					 *       before: a record has the right to declare a name twice itself
+					 *
 					 * @param name full name of the key or of the table being sought
 					 * @return     kind of the declared name
 					 *
@@ -1269,6 +1381,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for a name among the ones declared by the record being parsed
+					 *
 					 * @param name full name of the key or of the table being sought
 					 * @return     number of the name in the deque of the ones being declared or their number
 					 *
@@ -1279,14 +1392,15 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод учёта имени, объявляемого разбираемой записью
 					 *
-					 * @param name объявляемое полное имя ключа либо таблицы
-					 * @param kind род объявляемого имени
+					 * @param name    объявляемое полное имя ключа либо таблицы
+					 * @param kind    род объявляемого имени
 					 * @param implied признак того, что имя заведено исподволь
 					 *
 					 * \~english
 					 * @brief Method of accounting a name declared by the record being parsed
-					 * @param name full name of the key or of the table being declared
-					 * @param kind kind of the name being declared
+					 *
+					 * @param name    full name of the key or of the table being declared
+					 * @param kind    kind of the name being declared
 					 * @param implied flag of the name having been created implicitly
 					 *
 					 * \~
@@ -1297,7 +1411,7 @@ namespace awh {
 					 * @brief Метод проверки занятости объемлющих имён
 					 *
 					 * @details Под парой не заводится ничего, а встроенная таблица не дополняется
-					 * вовсе: описание запрещает и то, и другое
+					 *          вовсе: описание запрещает и то, и другое.
 					 *
 					 * @param name   проверяемое полное имя ключа либо таблицы
 					 * @param offset положение объявления в приведённом тексте
@@ -1305,8 +1419,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the occupancy of the enclosing names
+					 *
 					 * @details Nothing is created under a pair, while an inline table is not supplemented
-					 * at all: the specification prohibits both the one and the other
+					 *          at all: the specification prohibits both the one and the other.
+					 *
 					 * @param name   full name of the key or of the table being checked
 					 * @param offset position of the declaration in the converted text
 					 * @return       flag of the enclosing names being free
@@ -1326,6 +1442,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking a repeated declaration of a name
+					 *
 					 * @param name   full name of the key or of the table being declared
 					 * @param kind   kind of the name being declared
 					 * @param error  error code of a repeated declaration
@@ -1344,6 +1461,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of transferring a name into the storage of the declared names
+					 *
 					 * @param name name of the key or of the table being transferred
 					 * @return     reference to the name transferred into the storage
 					 *
@@ -1360,6 +1478,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling a full name out of the component parts
+					 *
 					 * @param part   number of the first component part of the name
 					 * @param parts  number of the component parts of the name
 					 * @param result full name being assembled
@@ -1376,6 +1495,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of withdrawing the parsed beginning of the accumulated text
+					 *
 					 * @note Without the withdrawal a settings text of several megabytes is held in
 					 *       the memory in full, although the parsing has long gone forward
 					 *
@@ -1391,6 +1511,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the settings of the parsing of a settings text
+					 *
 					 * @return settings of the parsing of a settings text
 					 *
 					 * \~
@@ -1405,6 +1526,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing of a settings text
+					 *
 					 * @param settings settings of the parsing being set
 					 * @return         result of performing the operation
 					 *
@@ -1423,6 +1545,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of feeding the next chunk of the source text
+					 *
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one
@@ -1439,6 +1562,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of moving to the next parsing event
+					 *
 					 * @return flag of an event having been obtained
 					 *
 					 * \~
@@ -1454,6 +1578,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the kind of the current parsing event
+					 *
 					 * @return kind of the current parsing event
 					 *
 					 * \~
@@ -1467,6 +1592,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the state of the parsing of a settings text
+					 *
 					 * @return state of the parsing of a settings text
 					 *
 					 * \~
@@ -1478,16 +1604,18 @@ namespace awh {
 					 * @brief Метод получения имени ключа текущего события
 					 *
 					 * @details Имя выдаётся составными частями: запись «a.b.c» даёт три
-					 * части. Части ссылаются на память разбора и живут до следующего
-					 * события
+					 *          части. Части ссылаются на память разбора и живут до следующего
+					 *          события.
 					 *
 					 * @return составные части имени ключа текущего события
 					 *
 					 * \~english
 					 * @brief Method of getting the name of the key of the current event
+					 *
 					 * @details The name is issued as component parts: the record «a.b.c» gives three
-					 * parts. The parts refer to the memory of the parsing and live until the next
-					 * event
+					 *          parts. The parts refer to the memory of the parsing and live until the next
+					 *          event.
+					 *
 					 * @return component parts of the name of the key of the current event
 					 *
 					 * \~
@@ -1500,14 +1628,21 @@ namespace awh {
 					 * @return значение текущего события разбора
 					 *
 					 * @warning Вид живёт ЛИШЬ до следующего обращения к @c next() либо @c feed().
-					 * Ссылается он на буфер разбора, и подача его перевыделяет: вид, удержанный
-					 * прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит это
-					 * настоящим обращением к освобождённому - замерено щупом на трёхстах записях.
-					 * Держать надлежит копию, а не вид
+					 *          Ссылается он на буфер разбора, и подача его перевыделяет: вид, удержанный
+					 *          прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит это
+					 *          настоящим обращением к освобождённому - замерено щупом на трёхстах записях.
+					 *          Держать надлежит копию, а не вид
 					 *
 					 * \~english
 					 * @brief Method of getting the value of the current event
+					 *
 					 * @return value of the current parsing event
+					 *
+					 * @warning The view lives ONLY until the next call to @c next() or @c feed().
+					 *          It refers to the buffer of the parsing, and the feeding reallocates it: a view
+					 *          held before points to FREED memory. The memory supervisor strikes this as a
+					 *          real access to the freed - measured with a probe on three hundred records. One
+					 *          ought to keep a copy, not a view
 					 *
 					 * \~
 					 */
@@ -1519,14 +1654,21 @@ namespace awh {
 					 * @return примечание текущего события разбора
 					 *
 					 * @warning Вид живёт ЛИШЬ до следующего обращения к @c next() либо @c feed().
-					 * Ссылается он на буфер разбора, и подача его перевыделяет: вид, удержанный
-					 * прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит это
-					 * настоящим обращением к освобождённому - замерено щупом на трёхстах записях.
-					 * Держать надлежит копию, а не вид
+					 *          Ссылается он на буфер разбора, и подача его перевыделяет: вид, удержанный
+					 *          прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит это
+					 *          настоящим обращением к освобождённому - замерено щупом на трёхстах записях.
+					 *          Держать надлежит копию, а не вид
 					 *
 					 * \~english
 					 * @brief Method of getting the comment of the current event
+					 *
 					 * @return comment of the current parsing event
+					 *
+					 * @warning The view lives ONLY until the next call to @c next() or @c feed().
+					 *          It refers to the buffer of the parsing, and the feeding reallocates it: a view
+					 *          held before points to FREED memory. The memory supervisor strikes this as a
+					 *          real access to the freed - measured with a probe on three hundred records. One
+					 *          ought to keep a copy, not a view
 					 *
 					 * \~
 					 */
@@ -1539,6 +1681,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the current event in the source text
+					 *
 					 * @return position of the beginning of the current event in the source text
 					 *
 					 * \~
@@ -1554,6 +1697,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the parsing
+					 *
 					 * @return error code of the last operation of the parsing
 					 *
 					 * \~
@@ -1567,6 +1711,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of a parsing error
+					 *
 					 * @return position of the detection of the error in the source text
 					 *
 					 * \~
@@ -1581,6 +1726,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the determined encoding of the source text
+					 *
 					 * @return determined encoding of the source text
 					 *
 					 * \~
@@ -1616,6 +1762,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the parsing of a settings text
 					 *
 					 * \~
@@ -1626,19 +1773,32 @@ namespace awh {
 					 * @brief Ходы копии и переноса
 					 *
 					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
-					 * поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
-					 * по правилу языка неявный перенос у класса с деструктором объявленным не
-					 * порождается вовсе, и перенос молча обращался копией
+					 *          поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
+					 *          по правилу языка неявный перенос у класса с деструктором объявленным не
+					 *          порождается вовсе, и перенос молча обращался копией.
 					 *
 					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
-					 * освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
-					 * перенос у него работал всё это время
+					 *       освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
+					 *       перенос у него работал всё это время
 					 *
 					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 * переноса подавило бы порождение копии
+					 *          переноса подавило бы порождение копии
 					 *
 					 * \~english
 					 * @brief The calls of the copying and of the moving
+					 *
+					 * @details They are declared for the sake of the MOVING: formerly a destructor stood
+					 *          here, cleaning the fields by a call to `clear()`, and its declaration
+					 *          cancelled the generation of the moving methods - by the rule of the language
+					 *          an implicit move is not generated at all at a class with a declared
+					 *          destructor, and the moving silently turned into a copy.
+					 *
+					 * @note That destructor was REDUNDANT: it cleaned strings and lists, which are freed by
+					 *       their own destructors themselves. The neighbouring YAML has no destructor, and
+					 *       its moving worked all this time
+					 *
+					 * @warning FOUR methods are declared at once by the rule of five: the declaration of a
+					 *          move alone would have suppressed the generation of the copy
 					 *
 					 * \~
 					 */

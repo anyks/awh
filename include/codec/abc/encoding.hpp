@@ -105,16 +105,17 @@ namespace awh {
 			 * @brief Снятая единица проволочной записи
 			 *
 			 * @details Единица есть ведущий октет вместе с ведомой им записью. Значение
-			 * толкуется крупным видом: у целого оно есть само число, у строки и двоичных
-			 * данных - длина в октетах, у вместимого - количество вложенных значений, а у
-			 * одиночного значения и расширения - разновидность
+			 *          толкуется крупным видом: у целого оно есть само число, у строки и двоичных
+			 *          данных - длина в октетах, у вместимого - количество вложенных значений, а у
+			 *          одиночного значения и расширения - разновидность.
 			 *
 			 * \~english
 			 * @brief Taken unit of the wire record
+			 *
 			 * @details A unit is the leading octet together with the record led by it. The value
-			 * is interpreted by the group kind: for an integer it is the number itself, for a string and binary
-			 * data — the length in octets, for a container — the number of the nested values, and for
-			 * a singleton value and an extension — the variety
+			 *          is interpreted by the group kind: for an integer it is the number itself, for a string and binary
+			 *          data — the length in octets, for a container — the number of the nested values, and for
+			 *          a singleton value and an extension — the variety.
 			 *
 			 * \~
 			 */
@@ -145,7 +146,7 @@ namespace awh {
 			 * @brief Функция укладки целого числа установленной ширины
 			 *
 			 * @details Октеты укладываются от младшего к старшему. Порядок этот совпадает с
-			 * родным порядком у всех целевых машин, и перестановка на них не стоит ничего
+			 *          родным порядком у всех целевых машин, и перестановка на них не стоит ничего.
 			 *
 			 * @param result буфер, куда следует уложить запись
 			 * @param value  укладываемое значение
@@ -153,8 +154,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of an integer of a set width
+			 *
 			 * @details The octets are laid from the low one to the high one. This order coincides with
-			 * the native order on all the target machines, and a rearrangement on them costs nothing
+			 *          the native order on all the target machines, and a rearrangement on them costs nothing.
+			 *
 			 * @param result buffer the record should be laid into
 			 * @param value value being laid
 			 * @param width width of the record in octets
@@ -167,9 +170,9 @@ namespace awh {
 			 * @brief Функция укладки целого числа установленной ширины в готовый буфер
 			 *
 			 * @details Порода эта кладёт октеты по готовому месту, а не дописывает их в
-			 * конец вектора: заголовки кадра, оглавления и опознания отводят место наперёд
-			 * и заполняют поля по смещениям. Договор укладки у обеих пород один, и
-			 * дописывающая порода зовёт эту
+			 *          конец вектора: заголовки кадра, оглавления и опознания отводят место наперёд
+			 *          и заполняют поля по смещениям. Договор укладки у обеих пород один, и
+			 *          дописывающая порода зовёт эту.
 			 *
 			 * @param buffer буфер, куда следует уложить запись
 			 * @param value  укладываемое значение
@@ -177,6 +180,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of an integer of a set width into a ready buffer
+			 *
+			 * @details This sort lays the octets by a ready place rather than appending them to the end of a
+			 *          vector: the headers of a chunk, of an index and of an identification reserve their space
+			 *          beforehand and fill the fields by the offsets. The contract of the laying is one for
+			 *          both sorts, and the appending sort calls this one.
+			 *
 			 * @param buffer buffer the record should be laid into
 			 * @param value value being laid
 			 * @param width width of the record in octets
@@ -189,8 +198,8 @@ namespace awh {
 			 * @brief Функция укладки метки вместе с ведомым значением
 			 *
 			 * @details Значение укладывается наименьшей записью, какая его вмещает: до
-			 * `INLINE_LIMIT` оно умещается в самую метку, выше - ведёт запись установленной
-			 * ширины
+			 *          `INLINE_LIMIT` оно умещается в самую метку, выше - ведёт запись установленной
+			 *          ширины.
 			 *
 			 * @param result буфер, куда следует уложить запись
 			 * @param group  крупный вид проволочной записи
@@ -198,9 +207,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of a tag together with the led value
+			 *
 			 * @details The value is laid by the smallest record which contains it: up to
-			 * `INLINE_LIMIT` it fits into the tag itself, above it leads a record of a set
-			 * width
+			 *          `INLINE_LIMIT` it fits into the tag itself, above it leads a record of a set
+			 *          width.
+			 *
 			 * @param result buffer the record should be laid into
 			 * @param group group kind of the wire record
 			 * @param value value being laid
@@ -213,7 +224,7 @@ namespace awh {
 			 * @brief Функция укладки метки с заданной подробностью
 			 *
 			 * @details Служит укладке того, чья подробность значением не является: начала
-			 * вместимого неопределённой длины, конца его и одиночных значений
+			 *          вместимого неопределённой длины, конца его и одиночных значений.
 			 *
 			 * @param result буфер, куда следует уложить запись
 			 * @param group  крупный вид проволочной записи
@@ -221,8 +232,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of a tag with a set detail
+			 *
 			 * @details Serves the laying of that whose detail is not a value: the beginning
-			 * of a container of an indefinite length, its end and the singleton values
+			 *          of a container of an indefinite length, its end and the singleton values.
+			 *
 			 * @param result buffer the record should be laid into
 			 * @param group group kind of the wire record
 			 * @param detail detail of the leading octet
@@ -235,17 +248,19 @@ namespace awh {
 			 * @brief Функция укладки целого числа со знаком
 			 *
 			 * @details Число, меньшее нуля, укладывается крупным видом `NEGATIVE` дополнением
-			 * до −1: запись хранит `−1 − value`, отчего наименьшее по величине отрицательное
-			 * число получает наименьшую запись, а `INT64_MIN` укладывается без переполнения
+			 *          до −1: запись хранит `−1 − value`, отчего наименьшее по величине отрицательное
+			 *          число получает наименьшую запись, а `INT64_MIN` укладывается без переполнения.
 			 *
 			 * @param result буфер, куда следует уложить запись
 			 * @param value  укладываемое значение
 			 *
 			 * \~english
 			 * @brief Function of the laying of an integer with a sign
+			 *
 			 * @details A number less than zero is laid by the group kind `NEGATIVE` by a complement
-			 * to −1: the record holds `−1 − value`, whereby the smallest in magnitude negative
-			 * number receives the smallest record, and `INT64_MIN` is laid without an overflow
+			 *          to −1: the record holds `−1 − value`, whereby the smallest in magnitude negative
+			 *          number receives the smallest record, and `INT64_MIN` is laid without an overflow.
+			 *
 			 * @param result buffer the record should be laid into
 			 * @param value value being laid
 			 *
@@ -262,6 +277,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the turning of a record of a complement to −1 into a number with a sign
+			 *
 			 * @param value value taken from a record of the group kind `NEGATIVE`
 			 * @param result turned number with a sign
 			 * @return sign of the representability of the number by the kind `int64_t`
@@ -278,6 +294,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of a fractional number of a single precision
+			 *
 			 * @param result buffer the record should be laid into
 			 * @param value value being laid
 			 *
@@ -293,6 +310,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of a fractional number of a double precision
+			 *
 			 * @param result buffer the record should be laid into
 			 * @param value value being laid
 			 *
@@ -304,8 +322,8 @@ namespace awh {
 			 * @brief Функция снятия единицы проволочной записи
 			 *
 			 * @details Работа снимает ведущий октет вместе с ведомой им записью и сдвигает
-			 * смещение. При недостатке октетов смещение остаётся нетронутым: единица не
-			 * снята наполовину, и подача следующего куска продолжит разбор с того же места
+			 *          смещение. При недостатке октетов смещение остаётся нетронутым: единица не
+			 *          снята наполовину, и подача следующего куска продолжит разбор с того же места.
 			 *
 			 * @note У одиночного значения и расширения работа снимает **одну лишь метку**:
 			 *       ведомые ими данные снимает потребитель. Ширина их задана разновидностью,
@@ -327,13 +345,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the taking of a unit of the wire record
+			 *
 			 * @details The work takes the leading octet together with the record led by it and shifts
-			 * the offset. At a shortage of the octets the offset remains untouched: the unit is
-			 * not taken by half, and the submission of the next chunk will continue the parsing from the same place
+			 *          the offset. At a shortage of the octets the offset remains untouched: the unit is
+			 *          not taken by half, and the submission of the next chunk will continue the parsing from the same place.
+			 *
 			 * @note For a singleton value and an extension the work takes **the tag alone**:
 			 *       the data led by them are taken by the consumer. Their width is set by the variety,
 			 *       while for an identifier it moreover does not fit into the value of the unit at all.
 			 *       The other group kinds are taken together with the led record
+			 *
+			 * @note It is fixed widely: a shift of the offset of an extension by one extra octet turns
+			 *       twenty-one checks red - from `CodecAbcEncoding` to the assembly, the parsing and both
+			 *       views; for a singleton value the place of the shift is fixed outright
+			 *       (`CodecAbcEncoding.RealRoundtrip` compares the offset with a unit). Verified by a
+			 *       substitution on 2026-09-04
+			 *
 			 * @param buffer buffer of the submitted record
 			 * @param size size of the submitted record in octets
 			 * @param offset offset the unit should be taken from
@@ -354,6 +381,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the taking of an integer of a set width
+			 *
 			 * @param buffer buffer of the submitted record
 			 * @param width width of the record in octets
 			 * @return taken value
@@ -366,8 +394,8 @@ namespace awh {
 			 * @brief Функция проверки строки на соответствие кодировке UTF-8
 			 *
 			 * @details Негодными считаются: ведущий октет, ведущим не являющийся; недостача
-			 * продолжающих октетов; продолжающий октет вне отведённого ведущему предела;
-			 * запись кодовой точки длиннее необходимого; суррогат; кодовая точка свыше U+10FFFF
+			 *          продолжающих октетов; продолжающий октет вне отведённого ведущему предела;
+			 *          запись кодовой точки длиннее необходимого; суррогат; кодовая точка свыше U+10FFFF.
 			 *
 			 * @param buffer   буфер проверяемой строки
 			 * @param size     размер проверяемой строки в октетах
@@ -376,9 +404,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the checking of a string for the conformity to the UTF-8 encoding
+			 *
 			 * @details The following are considered malformed: a leading octet which is not a leading one; a shortage
-			 * of the continuing octets; a continuing octet outside the limit allotted to the leading one;
-			 * a record of a code point longer than necessary; a surrogate; a code point above U+10FFFF
+			 *          of the continuing octets; a continuing octet outside the limit allotted to the leading one;
+			 *          a record of a code point longer than necessary; a surrogate; a code point above U+10FFFF.
+			 *
 			 * @param buffer buffer of the string being checked
 			 * @param size size of the string being checked in octets
 			 * @param position offset of the first malformed sequence
@@ -392,9 +422,9 @@ namespace awh {
 			 * @brief Функция исправления строки, не отвечающей кодировке UTF-8
 			 *
 			 * @details Замена ведётся НАИБОЛЬШЕЙ ОСМЫСЛЕННОЙ ЧАСТЬЮ, как то предписано
-			 * Юникодом: негодная последовательность заменяется ОДНИМ знаком U+FFFD, сколько
-			 * бы октетов она ни заняла. Замена октета за октетом дала бы на усечённой
-			 * четырёхоктетной точке три знака вместо одного
+			 *          Юникодом: негодная последовательность заменяется ОДНИМ знаком U+FFFD, сколько
+			 *          бы октетов она ни заняла. Замена октета за октетом дала бы на усечённой
+			 *          четырёхоктетной точке три знака вместо одного.
 			 *
 			 * @param buffer буфер исправляемой строки
 			 * @param size   размер исправляемой строки в октетах
@@ -402,8 +432,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the repair of a string not conforming to the UTF-8 encoding
+			 *
 			 * @details The substitution is conducted by the MAXIMAL SUBPART as is prescribed by Unicode:
-			 * a malformed sequence is substituted by ONE U+FFFD character however many octets it occupied
+			 *          a malformed sequence is substituted by ONE U+FFFD character however many octets it occupied.
+			 *
 			 * @param buffer buffer of the string being repaired
 			 * @param size size of the string being repaired in octets
 			 * @param result buffer where the repaired string is placed

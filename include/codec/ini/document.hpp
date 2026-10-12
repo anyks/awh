@@ -112,8 +112,8 @@ namespace awh {
 			 * @brief Класс дерева настроек
 			 *
 			 * @details Хранит разобранный текст настроек целиком - вместе с примечаниями,
-			 * пустыми строками и порядком записей, - и позволяет читать значения по имени,
-			 * править их на месте и записывать обратно
+			 *          пустыми строками и порядком записей, - и позволяет читать значения по имени,
+			 *          править их на месте и записывать обратно.
 			 *
 			 * @par Сохранение оформления
 			 *
@@ -125,115 +125,164 @@ namespace awh {
 			 * @par Порядок работы
 			 *
 			 * @warning Выдаваемые последовательности знаков ссылаются на хранилище дерева
-			 * и остаются пригодными **до первой правки**: @c set(), @c erase() и
+			 *          и остаются пригодными **до первой правки**: @c set(), @c erase() и
+			 *
 			 * @c create() вправе перестроить хранилище. Значение, нужное после правки,
-			 * следует скопировать
+			 *                   следует скопировать
+			 *
 			 * @par Намеренные решения
+			 *
 			 * @li **Повторное свойство хранится целиком.** Все объявления попадают в
-			 * дерево, а настройка обращения с повторами решает лишь то, какое из них
-			 * выдаёт @c get(). Перечень всех значений выдаёт @c values() независимо от
-			 * этой настройки: наречия Git и systemd повтором задают перечень, и терять
-			 * его при разборе нельзя
+			 *     дерево, а настройка обращения с повторами решает лишь то, какое из них
+			 *     выдаёт @c get(). Перечень всех значений выдаёт @c values() независимо от
+			 *     этой настройки: наречия Git и systemd повтором задают перечень, и терять
+			 *     его при разборе нельзя
+			 *
 			 * @li **Подстановка обращений пересчитывается лениво.** Значение, на которое
-			 * ссылаются, вправе стоять ниже по тексту, и разрешить обращение можно лишь
-			 * тогда, когда текст разобран целиком; поэтому разбор разрешает обращения
-			 * разом, по своём завершении. Правка же дерева подстановку не пересчитывает,
-			 * а лишь помечает устаревшей: правок подряд бывает много, и пересчёт после
-			 * каждой обращает сборку дерева в квадратичную. Пересчёт выполняется перед
-			 * первым чтением значения и ведётся от значений **до** подстановки, иначе
-			 * подставленное подставлялось бы дважды
+			 *     ссылаются, вправе стоять ниже по тексту, и разрешить обращение можно лишь
+			 *     тогда, когда текст разобран целиком; поэтому разбор разрешает обращения
+			 *     разом, по своём завершении. Правка же дерева подстановку не пересчитывает,
+			 *     а лишь помечает устаревшей: правок подряд бывает много, и пересчёт после
+			 *     каждой обращает сборку дерева в квадратичную. Пересчёт выполняется перед
+			 *     первым чтением значения и ведётся от значений **до** подстановки, иначе
+			 *     подставленное подставлялось бы дважды
+			 *
 			 * @li **Обращение, ставшее неразрешимым после правки, отвергает запись, но
-			 * не правку.** Удаление значения, на которое ссылаются, проходит, и @c get()
-			 * выдаёт значение в том виде, как оно записано, вместе с самим обращением.
-			 * А вот @c text() отвечает отказом @c error_t::UNKNOWN_REFERENCE: разбор
-			 * такой текст с включённой подстановкой не примет, и выдать его значило бы
-			 * отдать потребителю заведомо негодный файл
+			 *     не правку.** Удаление значения, на которое ссылаются, проходит, и @c get()
+			 *     выдаёт значение в том виде, как оно записано, вместе с самим обращением.
+			 *     А вот @c text() отвечает отказом @c error_t::UNKNOWN_REFERENCE: разбор
+			 *     такой текст с включённой подстановкой не примет, и выдать его значило бы
+			 *     отдать потребителю заведомо негодный файл
+			 *
 			 * @li **Дерево отвергает лишь то, чего не сделает записываемым НИ ОДНА
-			 * настройка.** Критерий этот объясняет обе стороны разом: заставы имени свойства
-			 * с разделителем и имени раздела со знаком-разделителем стоят, ибо построение
-			 * такое недостижимо РАЗБОРОМ при любых настройках; застава же негодной
-			 * последовательности UTF-8 снята 08.09.2026, ибо правилом @c malformed_t
-			 * содержимое это записываемо при @c REPLACE и @c PASS. Стояла она верно, покуда
-			 * запись отвергала негодную кодировку безусловно, - основание её сняла смена
-			 * правила, а не оплошность
+			 *     настройка.** Критерий этот объясняет обе стороны разом: заставы имени свойства
+			 *     с разделителем и имени раздела со знаком-разделителем стоят, ибо построение
+			 *     такое недостижимо РАЗБОРОМ при любых настройках; застава же негодной
+			 *     последовательности UTF-8 снята 08.09.2026, ибо правилом @c malformed_t
+			 *     содержимое это записываемо при @c REPLACE и @c PASS. Стояла она верно, покуда
+			 *     запись отвергала негодную кодировку безусловно, - основание её сняла смена
+			 *     правила, а не оплошность
+			 *
 			 * @li **Годность значения к записи решает ЗАПИСЬ, а не правка.** Значение,
-			 * какое читающий прочёл бы иначе, а оградить его настройками нечем -
-			 * пробельная обвязка при отбрасывании её, знак примечания при внутристрочных
-			 * примечаниях, перевод строки без продолжений и отмен, - деревом принимается,
-			 * а отвергается выдачей текста. Дерево от того выходит незаписываемым целиком:
+			 *     какое читающий прочёл бы иначе, а оградить его настройками нечем -
+			 *     пробельная обвязка при отбрасывании её, знак примечания при внутристрочных
+			 *     примечаниях, перевод строки без продолжений и отмен, - деревом принимается,
+			 *     а отвергается выдачей текста. Дерево от того выходит незаписываемым целиком:
+			 *
 			 * @c text() отвечает пустотою, и прежнее содержимое уходит вместе с нею.
-			 * Решение это НАМЕРЕННОЕ и закреплено проверками @c WriteFailure,
+			 *                   Решение это НАМЕРЕННОЕ и закреплено проверками @c WriteFailure,
+			 *
 			 * @c UnquotableValues и @c WritingKeptQuotes. Заведение заставы на пути правки
-			 * пробовалось 07.09.2026 пробною записью - решение бралось у самой записи, не
-			 * заводя второго написания правил, - и было отвергнуто: правило это договор, а
-			 * не оплошность. Заставы правки стоят лишь там, где построение недостижимо
-			 * РАЗБОРОМ: имя свойства с разделителем, имя раздела с знаком-разделителем,
-			 * свойство вне разделов при читающем, таких свойств не признающем
+			 *                   пробовалось 07.09.2026 пробною записью - решение бралось у самой записи, не
+			 *                   заводя второго написания правил, - и было отвергнуто: правило это договор, а
+			 *                   не оплошность. Заставы правки стоят лишь там, где построение недостижимо
+			 *                   РАЗБОРОМ: имя свойства с разделителем, имя раздела с знаком-разделителем,
+			 *                   свойство вне разделов при читающем, таких свойств не признающем
+			 *
 			 * @li **Удалённая запись остаётся в хранилище надгробием.** Изъятие её из
-			 * середины сдвинуло бы порядковые номера всех записей за нею, а на них
-			 * ссылаются указатели поиска. Надгробие обходится дешевле перестроения и
-			 * при записи в выдачу не идёт
+			 *     середины сдвинуло бы порядковые номера всех записей за нею, а на них
+			 *     ссылаются указатели поиска. Надгробие обходится дешевле перестроения и
+			 *     при записи в выдачу не идёт
 			 *
 			 *  @code{.cpp}
-			 *  document_t document();
+			 *          document_t document();
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
 			 *    document.set("port", "9090", "server");
 			 *    const string result = document.text();
 			 *  }
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the settings tree
+			 *
 			 * @details Stores the parsed settings text in full — together with the comments,
-			 * the empty lines and the order of the records — and makes it possible to read the values by a name,
-			 * to edit them in place and to write them back
+			 *          the empty lines and the order of the records — and makes it possible to read the values by a name,
+			 *          to edit them in place and to write them back.
+			 *
 			 * @par Preservation of the formatting
-			 * A settings file is edited by a human, and to rewrite it, having lost the comments or
-			 * having rearranged the sections, means to take away from the owner that for the sake of which this file
-			 * has been made readable in the first place. Because of that the tree keeps **all** the records of the source text in
-			 * the order of their succession, while an editing changes only what it has been ordered to
+			 *      A settings file is edited by a human, and to rewrite it, having lost the comments or
+			 *      having rearranged the sections, means to take away from the owner that for the sake of which this file
+			 *      has been made readable in the first place. Because of that the tree keeps **all** the records of the source text in
+			 *      the order of their succession, while an editing changes only what it has been ordered to
+			 *
 			 * @par Order of the work
+			 *
 			 * @warning The issued sequences of characters refer to the storage of the tree
-			 * and remain valid **until the first editing**: @c set(), @c erase() and
+			 *          and remain valid **until the first editing**: @c set(), @c erase() and
+			 *
 			 * @c create() have the right to rebuild the storage. A value needed after an editing
-			 * should be copied
+			 *                   should be copied
+			 *
 			 * @par Deliberate decisions
+			 *
 			 * @li **A repeated property is stored in full.** All the declarations get into
-			 * the tree, while the setting of the treatment of the repetitions decides only which of them
+			 *     the tree, while the setting of the treatment of the repetitions decides only which of them
+			 *
 			 * @c get() issues. The list of all the values is issued by @c values() independently of
-			 * this setting: the Git and systemd dialects give a list by a repetition, and to lose
-			 * it at the parsing is impermissible
+			 *                   this setting: the Git and systemd dialects give a list by a repetition, and to lose
+			 *                   it at the parsing is impermissible
+			 *
 			 * @li **The substitution of the references is recomputed lazily.** A value being
-			 * referred to has the right to stand lower in the text, and a reference can be resolved only
-			 * when the text has been parsed in full; therefore the parsing resolves the references
-			 * all at once, upon its completion. An editing of the tree, however, does not recompute the substitution
-			 * but only marks it stale: there happen to be many editings in a row, and a recomputation after
-			 * each of them turns the assembly of the tree into a quadratic one. The recomputation is performed before
-			 * the first reading of a value and is conducted from the values **before** the substitution, otherwise
-			 * what has been substituted would be substituted twice
+			 *     referred to has the right to stand lower in the text, and a reference can be resolved only
+			 *     when the text has been parsed in full; therefore the parsing resolves the references
+			 *     all at once, upon its completion. An editing of the tree, however, does not recompute the substitution
+			 *     but only marks it stale: there happen to be many editings in a row, and a recomputation after
+			 *     each of them turns the assembly of the tree into a quadratic one. The recomputation is performed before
+			 *     the first reading of a value and is conducted from the values **before** the substitution, otherwise
+			 *     what has been substituted would be substituted twice
+			 *
 			 * @li **A reference that has become unresolvable after an editing rejects the writing but
-			 * not the editing.** A removal of a value being referred to goes through, and @c get()
-			 * issues the value in the form in which it has been written, together with the reference itself.
-			 * But @c text() answers with an @c error_t::UNKNOWN_REFERENCE refusal: the parsing
-			 * will not accept such a text with the substitution enabled, and to issue it would mean
-			 * to give the consumer a knowingly unfit file
+			 *     not the editing.** A removal of a value being referred to goes through, and @c get()
+			 *     issues the value in the form in which it has been written, together with the reference itself.
+			 *     But @c text() answers with an @c error_t::UNKNOWN_REFERENCE refusal: the parsing
+			 *     will not accept such a text with the substitution enabled, and to issue it would mean
+			 *     to give the consumer a knowingly unfit file
+			 *
+			 * @li **The tree rejects only that which NO setting can make writable.** This criterion
+			 *     explains both sides at once: the guards of a property name with a separator and of a
+			 *     section name with a separator character stand, because such a construction is unreachable
+			 *     by the PARSING under any settings; while the guard of a malformed UTF-8 sequence was lifted
+			 *     on 2026-09-08, because by the @c malformed_t rule this content is writable under @c REPLACE
+			 *     and @c PASS. It stood rightly as long as the writing rejected a malformed encoding
+			 *     unconditionally - it was a change of the rule, not an oversight, that removed its ground
+			 *
+			 * @li **The fitness of a value for the writing is decided by the WRITING, not by the editing.**
+			 *     A value which the reading would have read differently, and which there is no setting to
+			 *     fence off - the whitespace wrapping when it is dropped, a comment character with inline
+			 *     comments, a line ending without continuations and cancellations - is accepted by the tree,
+			 *     and rejected by the issuing of the text. The tree thereby turns unwritable as a whole:
+			 *
+			 * @c text() answers with emptiness, and the previous content goes away together with it. This
+			 *                   decision is DELIBERATE and is fixed by the checks @c WriteFailure,
+			 *
+			 * @c UnquotableValues and @c WritingKeptQuotes. The instituting of a guard on the path of the
+			 *                   editing was tried on 2026-09-07 by a trial writing - the decision was taken from the
+			 *                   writing itself, without instituting a second rendition of the rules - and was rejected:
+			 *                   this rule is a contract, and not an oversight. The guards of the editing stand only where
+			 *                   the construction is unreachable by the PARSING: a property name with a separator, a
+			 *                   section name with a separator character, a property outside the sections under a
+			 *                   reading not recognizing such properties
+			 *
 			 * @li **A removed record remains in the storage as a tombstone.** Its extraction from
-			 * the middle would shift the ordinal numbers of all the records after it, while the pointers of the search
-			 * refer to them. A tombstone comes cheaper than a rebuilding and
-			 * does not go into the output at the writing
+			 *     the middle would shift the ordinal numbers of all the records after it, while the pointers of the search
+			 *     refer to them. A tombstone comes cheaper than a rebuilding and
+			 *     does not go into the output at the writing
 			 *
 			 *  @code{.cpp}
-			 *  document_t document();
+			 *          document_t document();
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
 			 *    document.set("port", "9090", "server");
 			 *    const string result = document.text();
 			 *  }
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			/**
 			 * \~russian
@@ -254,13 +303,14 @@ namespace awh {
 					 * @details Доступ этот нужен переносу: ведётся он на копии дерева ради
 					 *          целости своей, а код отказа по неудаче обязан достаться дереву
 					 *          ИСХОДНОМУ - копия с ним пропадает, и потребитель остался бы с
-					 *          отказом без названной причины
+					 *          отказом без названной причины.
 					 *
 					 * \~english
 					 * @brief Owning value granted the access to the tree
+					 *
 					 * @details This access is needed by the grafting: it is conducted on a copy of the tree
-					 * for the sake of its own integrity, while the code of the refusal must reach the
-					 * ORIGINAL tree — the copy vanishes with it
+					 *          for the sake of its own integrity, while the code of the refusal must reach the
+					 *          ORIGINAL tree — the copy vanishes with it.
 					 *
 					 * \~
 					 */
@@ -271,12 +321,13 @@ namespace awh {
 					 * @brief Метод вывода сообщения об отказе в лог
 					 *
 					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 * его не заменяет, а лишь оповещает о случившемся
+					 *          его не заменяет, а лишь оповещает о случившемся.
 					 *
 					 * \~english
 					 * @brief Method of the output of the message about a refusal into the log
+					 *
 					 * @details The code of the refusal remains available to the consumer through error():
-					 * the log does not replace it but merely notifies about what has happened
+					 *          the log does not replace it but merely notifies about what has happened.
 					 *
 					 * \~
 					 */
@@ -287,29 +338,44 @@ namespace awh {
 					 * @brief Метод запоминания кода отказа работы над деревом
 					 *
 					 * @details Положение обнаруженной ошибки сбрасывается вместе с кодом намеренно:
-					 * положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
-					 * собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
-					 * ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
-					 * которого более нет
+					 *          положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
+					 *          собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
+					 *          ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
+					 *          которого более нет.
 					 *
 					 * @note Разбор ПОТОЧНЫЙ через это тело не идёт: он ставит положение сам, следом
-					 * за кодом
+					 *       за кодом
 					 *
 					 * @warning Прежде здесь стояло «разбор через это тело НЕ идёт» без оговорки, и
-					 * это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
-					 * у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
-					 * приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
-					 * подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
-					 * прежде начала разбора
+					 *          это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
+					 *          у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
+					 *          приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
+					 *          подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
+					 *          прежде начала разбора
 					 *
 					 * @param error запоминаемый код отказа
 					 * @return      признак отказа для выхода из работы
 					 *
 					 * \~english
 					 * @brief Method of the remembering of the error code of an operation over the tree
+					 *
 					 * @details The location of the discovered error is reset together with the code deliberately:
-					 * that location belongs to the PARSING of a text, while an operation over the tree has no
-					 * text under it at all
+					 *          that location belongs to the PARSING of a text, while an operation over the tree has no
+					 *          text under it at all. Should it survive the code, the report would come out well-formed
+					 *          but false - "section not declared at line 1, column 5", pointing into a text which no
+					 *          longer exists.
+					 *
+					 * @note The STREAMING parsing does not pass through this body: it sets the position itself,
+					 *       following the code
+					 *
+					 * @warning Formerly there stood here "the parsing does NOT pass through this body" without the
+					 *          reservation, and that is false to the letter: measured on 2026-09-09 by the count of
+					 *          the callers through the enclosing call stacks - INI has one call from `parse()` and
+					 *          TOML has one. The essence does not break because of it, however, since both fall on
+					 *          the cases where the position DOES NOT EXIST at all: for INI this is the failure of the
+					 *          substitution of the references already after the clearing of the tree, for TOML - a
+					 *          refusal by the length of the text before the parsing has begun
+					 *
 					 * @param error error code being remembered
 					 * @return sign of the refusal for the exit from the operation
 					 *
@@ -336,6 +402,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * Object of the framework
+					 *
+					 * @note The frame is needed by the works with the file system: `fs_t` turns paths into the
+					 *       wide notation by the `convert()` method, and without it a Cyrillic path under MS
+					 *       Windows would land on the disk as rubbish
 					 *
 					 * \~
 					 */
@@ -378,20 +448,21 @@ namespace awh {
 						 * Наибольшая допустимая глубина вложенности обращений
 						 *
 						 * @note Имя носит слово «обращений» неспроста: у читающего есть своя
-						 * настройка maxDepth, и та стережёт вложенность ПОДРАЗДЕЛОВ. Настройки
-						 * эти вложены одна в другую - «settings.maxDepth» рядом с
-						 * «settings.reader.maxDepth», - и общее имя выходило бы западнёю:
-						 * потребитель, правящий не ту из них, отказа не получит и подмены не
-						 * заметит
+						 *       настройка maxDepth, и та стережёт вложенность ПОДРАЗДЕЛОВ. Настройки
+						 *       эти вложены одна в другую - «settings.maxDepth» рядом с
+						 *       «settings.reader.maxDepth», - и общее имя выходило бы западнёю:
+						 *       потребитель, правящий не ту из них, отказа не получит и подмены не
+						 *       заметит
 						 *
 						 * \~english
 						 * Largest admissible depth of the nesting of the references
+						 *
 						 * @note The name carries the word «reference» for a reason: the reader has its own
-						 * maxDepth setting, and that one guards the nesting of the SUBSECTIONS. These
-						 * settings are nested one inside the other — «settings.maxDepth» beside
-						 * «settings.reader.maxDepth» — and a common name would be a trap: a consumer that
-						 * corrects the wrong one of them will not receive a refusal and will not notice
-						 * the substitution
+						 *       maxDepth setting, and that one guards the nesting of the SUBSECTIONS. These
+						 *       settings are nested one inside the other — «settings.maxDepth» beside
+						 *       «settings.reader.maxDepth» — and a common name would be a trap: a consumer that
+						 *       corrects the wrong one of them will not receive a refusal and will not notice
+						 *       the substitution
 						 *
 						 * \~
 						 */
@@ -416,14 +487,15 @@ namespace awh {
 					 * @brief Запись разобранного текста настроек
 					 *
 					 * @details Место значений хранится отрезком общего хранилища знаков:
-					 * хранилище при правке дописывается и перемещается, обесценивая
-					 * ссылки на своё содержимое
+					 *          хранилище при правке дописывается и перемещается, обесценивая
+					 *          ссылки на своё содержимое.
 					 *
 					 * \~english
 					 * @brief Record of the parsed settings text
+					 *
 					 * @details The place of the values is stored as a segment of the common storage of the characters:
-					 * the storage is appended to at an editing and is moved, invalidating
-					 * the references to its content
+					 *          the storage is appended to at an editing and is moved, invalidating
+					 *          the references to its content.
 					 *
 					 * \~
 					 */
@@ -441,14 +513,15 @@ namespace awh {
 						 * Место значения свойства до подстановки обращений
 						 *
 						 * @note Держится ради обратной записи: записать подставленное
-						 * значение значило бы разрешить обращение навсегда, а оно на то
-						 * и записано, чтобы разрешаться заново при каждом чтении файла
+						 *       значение значило бы разрешить обращение навсегда, а оно на то
+						 *       и записано, чтобы разрешаться заново при каждом чтении файла
 						 *
 						 * \~english
 						 * Place of the value of the property before the substitution of the references
+						 *
 						 * @note It is kept for the sake of the writing back: to write a substituted
-						 * value would mean to resolve a reference forever, while it is written exactly
-						 * so as to be resolved anew at every reading of the file
+						 *       value would mean to resolve a reference forever, while it is written exactly
+						 *       so as to be resolved anew at every reading of the file
 						 *
 						 * \~
 						 */
@@ -462,14 +535,15 @@ namespace awh {
 						 * Признак того, что значение было заключено в кавычки
 						 *
 						 * @note Держится ради обратной записи наравне со знаком примечания:
-						 * кавычки, поставленные человеком, при перезаписи сохраняются, даже
-						 * когда значение в них более не нуждается
+						 *       кавычки, поставленные человеком, при перезаписи сохраняются, даже
+						 *       когда значение в них более не нуждается
 						 *
 						 * \~english
 						 * Flag of the value having been enclosed in quotes
+						 *
 						 * @note It is kept for the sake of the writing back on a par with the comment character:
-						 * the quotes put by a human are preserved at a rewriting even
-						 * when the value no longer needs them
+						 *       the quotes put by a human are preserved at a rewriting even
+						 *       when the value no longer needs them
 						 *
 						 * \~
 						 */
@@ -511,14 +585,15 @@ namespace awh {
 						 * Признак того, что раздел объявлен в тексте настроек
 						 *
 						 * @note Раздел без имени заводится всегда: свойства, записанные до
-						 * первого объявления, принадлежат ему. Объявленным он при этом не
-						 * является и в перечень разделов не идёт
+						 *       первого объявления, принадлежат ему. Объявленным он при этом не
+						 *       является и в перечень разделов не идёт
 						 *
 						 * \~english
 						 * Flag of the section having been declared in the settings text
+						 *
 						 * @note A section without a name is always created: the properties written before
-						 * the first declaration belong to it. It is thereby not a declared one
-						 * and does not go into the list of the sections
+						 *       the first declaration belong to it. It is thereby not a declared one
+						 *       and does not go into the list of the sections
 						 *
 						 * \~
 						 */
@@ -541,14 +616,15 @@ namespace awh {
 					 * Код ошибки последней операции
 					 *
 					 * @note Помечен изменяемым: обратная запись дерева в текст его самого не
-					 * меняет и потому объявлена постоянной, но отказ писателя сообщить
-					 * потребителю обязана
+					 *       меняет и потому объявлена постоянной, но отказ писателя сообщить
+					 *       потребителю обязана
 					 *
 					 * \~english
 					 * Error code of the last operation
+					 *
 					 * @note Marked as mutable: the writing back of the tree into a text does not change the tree itself
-					 * and is therefore declared a constant one, but it is obliged to report a refusal of the writer
-					 * to the consumer
+					 *       and is therefore declared a constant one, but it is obliged to report a refusal of the writer
+					 *       to the consumer
 					 *
 					 * \~
 					 */
@@ -562,14 +638,15 @@ namespace awh {
 					 * Признак того, что дерево несёт обращения к значениям других свойств
 					 *
 					 * @note Держится ради цены правки: подстановка выполняется заново после
-					 * всякой правки дерева, а обходится она перебором всех записей. Дереву,
-					 * обращений не несущему, - а таких большинство, - платить за это незачем
+					 *       всякой правки дерева, а обходится она перебором всех записей. Дереву,
+					 *       обращений не несущему, - а таких большинство, - платить за это незачем
 					 *
 					 * \~english
 					 * Flag of the tree carrying the references to the values of the other properties
+					 *
 					 * @note It is kept for the sake of the price of an editing: the substitution is performed anew after
-					 * every editing of the tree, while it costs a traversal of all the records. A tree that
-					 * carries no references — and such ones are the majority — has no reason to pay for this
+					 *       every editing of the tree, while it costs a traversal of all the records. A tree that
+					 *       carries no references — and such ones are the majority — has no reason to pay for this
 					 *
 					 * \~
 					 */
@@ -579,16 +656,17 @@ namespace awh {
 					 * Признак того, что подстановка обращений устарела после правки
 					 *
 					 * @note Помечен изменяемым наравне с кодом ошибки: пересчёт откладывается
-					 * до первого чтения значения, а чтение объявлено постоянным. Смысла дерева
-					 * пересчёт не меняет - он приводит разрешённые значения в соответствие с
-					 * записанными, - и постоянности чтения тем не нарушает
+					 *       до первого чтения значения, а чтение объявлено постоянным. Смысла дерева
+					 *       пересчёт не меняет - он приводит разрешённые значения в соответствие с
+					 *       записанными, - и постоянности чтения тем не нарушает
 					 *
 					 * \~english
 					 * Flag of the substitution of the references having become stale after an editing
+					 *
 					 * @note Marked as mutable on a par with the error code: the recomputation is postponed
-					 * until the first reading of a value, while the reading is declared a constant one. The recomputation does not change
-					 * the meaning of the tree — it brings the resolved values into a correspondence with
-					 * the written ones — and thereby does not violate the constancy of the reading
+					 *       until the first reading of a value, while the reading is declared a constant one. The recomputation does not change
+					 *       the meaning of the tree — it brings the resolved values into a correspondence with
+					 *       the written ones — and thereby does not violate the constancy of the reading
 					 *
 					 * \~
 					 */
@@ -598,16 +676,17 @@ namespace awh {
 					 * Признак того, что дерево несёт неразрешимое обращение
 					 *
 					 * @note Взводится снисходительным пересчётом: правка вправе удалить
-					 * источник обращения, и чтение такое значение выдаёт в записанном виде.
-					 * Обратная же запись им отвечает отказом - текст с обращением в пустоту
-					 * разбор отвергает, и выдать его значило бы отдать заведомо негодный файл
+					 *       источник обращения, и чтение такое значение выдаёт в записанном виде.
+					 *       Обратная же запись им отвечает отказом - текст с обращением в пустоту
+					 *       разбор отвергает, и выдать его значило бы отдать заведомо негодный файл
 					 *
 					 * \~english
 					 * Flag of the tree carrying an unresolvable reference
+					 *
 					 * @note Raised by an indulgent recomputation: an editing has the right to remove
-					 * the source of a reference, and the reading issues such a value in the written form.
-					 * The writing back, however, answers it with a refusal — a text with a reference into emptiness
-					 * the parsing rejects, and to issue it would mean to give away a knowingly unfit file
+					 *       the source of a reference, and the reading issues such a value in the written form.
+					 *       The writing back, however, answers it with a refusal — a text with a reference into emptiness
+					 *       the parsing rejects, and to issue it would mean to give away a knowingly unfit file
 					 *
 					 * \~
 					 */
@@ -633,25 +712,27 @@ namespace awh {
 					 * Порядок первых объявлений свойств по каждому разделу
 					 *
 					 * @details Держит для каждого раздела перечень записей, где его
-					 * свойства объявлены впервые, в порядке их следования в тексте
+					 *          свойства объявлены впервые, в порядке их следования в тексте.
 					 *
 					 * @note Без него выдача перечня имён свойств обращалась в
-					 * квадратичную: перебор всех записей дерева ради каждого раздела на
-					 * сотне тысяч разделов давал двести раз по сотне тысяч проходов.
-					 * Обнаружено стендом сравнения `tools/benchmark/ini`, где обход
-					 * дерева со множеством разделов показал 0.25 МБ/с против 55 МБ/с
-					 * его же сборки
+					 *       квадратичную: перебор всех записей дерева ради каждого раздела на
+					 *       сотне тысяч разделов давал двести раз по сотне тысяч проходов.
+					 *       Обнаружено стендом сравнения `tools/benchmark/ini`, где обход
+					 *       дерева со множеством разделов показал 0.25 МБ/с против 55 МБ/с
+					 *       его же сборки
 					 *
 					 * \~english
 					 * Order of the first declarations of the properties for every section
+					 *
 					 * @details Keeps for every section a list of the records where its
-					 * properties are declared for the first time, in the order of their succession in the text
+					 *          properties are declared for the first time, in the order of their succession in the text.
+					 *
 					 * @note Without it the issuance of the list of the names of the properties turned into a
-					 * quadratic one: a traversal of all the records of the tree for the sake of every section on
-					 * a hundred thousand sections gave two hundred times a hundred thousand passes.
-					 * Detected by the `tools/benchmark/ini` benchmark, where a traversal
-					 * of a tree with a multitude of sections showed 0.25 MB/s against 55 MB/s
-					 * of the assembly of the same tree
+					 *       quadratic one: a traversal of all the records of the tree for the sake of every section on
+					 *       a hundred thousand sections gave two hundred times a hundred thousand passes.
+					 *       Detected by the `tools/benchmark/ini` benchmark, where a traversal
+					 *       of a tree with a multitude of sections showed 0.25 MB/s against 55 MB/s
+					 *       of the assembly of the same tree
 					 *
 					 * \~
 					 */
@@ -662,21 +743,23 @@ namespace awh {
 					 * Последняя запись каждого раздела в перечне записей
 					 *
 					 * @details Держит для каждого раздела порядковый номер последней его
-					 * записи, объявлена та в тексте или снята пометкой удаления. Место
-					 * вставки нового свойства находится по нему за одно обращение
+					 *          записи, объявлена та в тексте или снята пометкой удаления. Место
+					 *          вставки нового свойства находится по нему за одно обращение.
 					 *
 					 * @note Снятые пометкой записи учитываются наравне с прочими намеренно:
-					 * в текст они не идут, и вставка за такой записью даёт тот же текст,
-					 * что и вставка за последней оставшейся
+					 *       в текст они не идут, и вставка за такой записью даёт тот же текст,
+					 *       что и вставка за последней оставшейся
 					 *
 					 * \~english
 					 * Last record of every section in the list of the records
+					 *
 					 * @details Keeps for every section the ordinal number of its last
-					 * record, whether it is declared in the text or removed by a mark of a deletion. The place
-					 * of the insertion of a new property is found by it in a single call
+					 *          record, whether it is declared in the text or removed by a mark of a deletion. The place
+					 *          of the insertion of a new property is found by it in a single call.
+					 *
 					 * @note The records removed by a mark are taken into account on a par with the rest deliberately:
-					 * they do not go into the text, and an insertion after such a record gives the same text
-					 * as an insertion after the last remaining one
+					 *       they do not go into the text, and an insertion after such a record gives the same text
+					 *       as an insertion after the last remaining one
 					 *
 					 * \~
 					 */
@@ -694,6 +777,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the content of a segment of the storage of the characters
+					 *
 					 * @param span segment of the common storage of the characters
 					 * @return     content of the segment of the storage of the characters
 					 *
@@ -709,6 +793,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of adding a content to the storage of the characters
+					 *
 					 * @param text content being added to the storage
 					 * @return     segment of the storage with the added content
 					 *
@@ -724,6 +809,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of bringing a name to the form for the comparison
+					 *
 					 * @param name name of the section or of the property being brought
 					 * @return     name brought to the form for the comparison
 					 *
@@ -738,6 +824,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the kind of the last record going into the output
+					 *
 					 * @return kind of the last record going into the output
 					 *
 					 * \~
@@ -748,8 +835,8 @@ namespace awh {
 					 * @brief Метод проверки имени раздела или свойства
 					 *
 					 * @details Имя проверяется теми же правилами, какими его проверяет
-					 * разбор: имя, записать которое обратно нельзя, отвергается в месте
-					 * правки, а не при записи собранного дерева
+					 *          разбор: имя, записать которое обратно нельзя, отвергается в месте
+					 *          правки, а не при записи собранного дерева.
 					 *
 					 * @param name    проверяемое имя раздела или свойства
 					 * @param section признак проверки имени раздела
@@ -758,9 +845,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the name of a section or of a property
+					 *
 					 * @details The name is checked by the same rules by which the parsing checks it:
-					 * a name which cannot be written back is rejected at the place of the
-					 * editing rather than at the writing of the assembled tree
+					 *          a name which cannot be written back is rejected at the place of the
+					 *          editing rather than at the writing of the assembled tree.
+					 *
 					 * @param name    name of the section or of the property being checked
 					 * @param section flag of the checking of the name of a section
 					 * @param primary flag of the checking of the name of the section itself rather than of a subsection
@@ -779,6 +868,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the key of the index of the sections
+					 *
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
 					 * @return           key of the index of the sections
@@ -796,6 +886,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the key of the index of the properties
+					 *
 					 * @param section ordinal number of the section
 					 * @param key     name of the property
 					 * @return        key of the index of the properties
@@ -808,10 +899,10 @@ namespace awh {
 					 * @brief Метод сборки ключа указателя разделов в переданный буфер
 					 *
 					 * @details Ключ собирается в переданный буфер, а не выдаётся новой
-					 * строкой: буфер вызывающий заводит однажды и переиспользует, отчего
-					 * на обращение к дереву не приходится ни одного построения строки.
-					 * Приведение имени к нижнему регистру выполняется по ходу дозаписи, а
-					 * не отдельным проходом
+					 *          строкой: буфер вызывающий заводит однажды и переиспользует, отчего
+					 *          на обращение к дереву не приходится ни одного построения строки.
+					 *          Приведение имени к нижнему регистру выполняется по ходу дозаписи, а
+					 *          не отдельным проходом.
 					 *
 					 * @param buffer     буфер, куда собирается ключ
 					 * @param section    имя раздела
@@ -819,11 +910,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the key of the index of the sections into a passed buffer
+					 *
 					 * @details The key is assembled into the passed buffer rather than being issued as a new
-					 * string: the buffer is created by the caller once and reused, from which
-					 * not a single construction of a string falls on a call to the tree.
-					 * The bringing of the name to the lower case is performed in the course of the appending rather than
-					 * by a separate pass
+					 *          string: the buffer is created by the caller once and reused, from which
+					 *          not a single construction of a string falls on a call to the tree.
+					 *          The bringing of the name to the lower case is performed in the course of the appending rather than
+					 *          by a separate pass.
+					 *
 					 * @param buffer     buffer into which the key is assembled
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -841,6 +934,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the key of the index of the properties into a passed buffer
+					 *
 					 * @param buffer  buffer into which the key is assembled
 					 * @param section ordinal number of the section
 					 * @param key     name of the property
@@ -860,6 +954,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for a section by a name with a reusable buffer
+					 *
 					 * @param buffer     buffer of the assembly of the key of the index of the sections
 					 * @param section    name of the section being sought
 					 * @param subsection name of the subsection being sought
@@ -874,8 +969,8 @@ namespace awh {
 					 * @brief Метод поиска объявлений свойства по имени
 					 *
 					 * @details Поиск выполняется однажды на все обращения к значению
-					 * свойства: получение значения, проверка наличия и разбор числом
-					 * прежде повторяли одну и ту же работу дважды
+					 *          свойства: получение значения, проверка наличия и разбор числом
+					 *          прежде повторяли одну и ту же работу дважды.
 					 *
 					 * @param key        имя искомого свойства
 					 * @param section    имя раздела
@@ -884,9 +979,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for the declarations of a property by a name
+					 *
 					 * @details The search is performed once for all the calls to the value of a
-					 * property: the getting of a value, the check of the presence and the parsing as a number
-					 * used to repeat one and the same work twice
+					 *          property: the getting of a value, the check of the presence and the parsing as a number
+					 *          used to repeat one and the same work twice.
+					 *
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -906,6 +1003,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for a section by a name
+					 *
 					 * @param section    name of the section being sought
 					 * @param subsection name of the subsection being sought
 					 * @param result     ordinal number of the found section
@@ -919,14 +1017,15 @@ namespace awh {
 					 * @brief Метод перестроения указателей поиска
 					 *
 					 * @details Выполняется после всякой правки, меняющей состав записей:
-					 * порядковые номера записей при вставке сдвигаются, и указатели,
-					 * на них ссылающиеся, обесцениваются
+					 *          порядковые номера записей при вставке сдвигаются, и указатели,
+					 *          на них ссылающиеся, обесцениваются.
 					 *
 					 * \~english
 					 * @brief Method of rebuilding the indexes of the search
+					 *
 					 * @details Performed after every editing that changes the composition of the records:
-					 * the ordinal numbers of the records are shifted at an insertion, and the indexes
-					 * referring to them are invalidated
+					 *          the ordinal numbers of the records are shifted at an insertion, and the indexes
+					 *          referring to them are invalidated.
 					 *
 					 * \~
 					 */
@@ -941,6 +1040,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of substituting the references to the values of the other properties
+					 *
 					 * @param strict flag of the termination of the substitution by an unresolvable reference
 					 * @return result of performing the operation
 					 *
@@ -952,25 +1052,28 @@ namespace awh {
 					 * @brief Метод пересчёта подстановки обращений после правки дерева
 					 *
 					 * @details Правка меняет значения, на которые обращения ссылаются, и
-					 * прежде разрешённые значения от неё устаревают: чтение выдавало бы
-					 * подставленное до правки, расходясь с тем, что дало бы чтение
-					 * записанного дерева обратно. Пересчёт ведётся от значений до
-					 * подстановки и потому повторяем
+					 *          прежде разрешённые значения от неё устаревают: чтение выдавало бы
+					 *          подставленное до правки, расходясь с тем, что дало бы чтение
+					 *          записанного дерева обратно. Пересчёт ведётся от значений до
+					 *          подстановки и потому повторяем.
 					 *
 					 * @note Дерево, обращений не несущее, пересчёта не требует вовсе:
-					 * признак наличия обращений взводится подстановкой сама
+					 *       признак наличия обращений взводится подстановкой сама
 					 *
 					 * @return результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of recomputing the substitution of the references after an editing of the tree
+					 *
 					 * @details An editing changes the values which the references refer to, and
-					 * the previously resolved values become stale from it: the reading would issue
-					 * what has been substituted before the editing, diverging from what the reading of the written tree
-					 * back would give. The recomputation is conducted from the values before
-					 * the substitution and is therefore repeatable
+					 *          the previously resolved values become stale from it: the reading would issue
+					 *          what has been substituted before the editing, diverging from what the reading of the written tree
+					 *          back would give. The recomputation is conducted from the values before
+					 *          the substitution and is therefore repeatable.
+					 *
 					 * @note A tree that carries no references does not require a recomputation at all:
-					 * the flag of the presence of the references is raised by the substitution itself
+					 *       the flag of the presence of the references is raised by the substitution itself
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -981,8 +1084,8 @@ namespace awh {
 					 * @brief Метод заведения новой записи свойства в разделе
 					 *
 					 * @details Помощник этот общий у установки значения и у долива к перечню:
-					 * обе они заводят запись свойства одинаково, и расходятся лишь тем,
-					 * правится ли объявление, уже имеющееся в разделе
+					 *          обе они заводят запись свойства одинаково, и расходятся лишь тем,
+					 *          правится ли объявление, уже имеющееся в разделе.
 					 *
 					 * @param index порядковый номер раздела, которому запись принадлежит
 					 * @param key   имя заводимого свойства
@@ -991,9 +1094,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the establishing of a new record of a property in a section
+					 *
 					 * @details The helper is common to the setting of a value and to the appending to a list:
-					 * both of them establish a record of a property in the same way and differ only in
-					 * whether a declaration already present in the section is edited
+					 *          both of them establish a record of a property in the same way and differ only in
+					 *          whether a declaration already present in the section is edited.
+					 *
 					 * @param index ordinal number of the section whereto the record belongs
 					 * @param key   name of the property being established
 					 * @param value value of the property being established
@@ -1007,14 +1112,15 @@ namespace awh {
 					 * @brief Метод пересчёта устаревшей подстановки перед чтением значения
 					 *
 					 * @details Правка помечает подстановку устаревшей, а пересчитывается она
-					 * перед первым чтением: правок подряд бывает много, и пересчёт после
-					 * каждой обращал бы сборку дерева правками в квадратичную
+					 *          перед первым чтением: правок подряд бывает много, и пересчёт после
+					 *          каждой обращал бы сборку дерева правками в квадратичную.
 					 *
 					 * \~english
 					 * @brief Method of recomputing a stale substitution before the reading of a value
+					 *
 					 * @details An editing marks the substitution stale, while it is recomputed
-					 * before the first reading: there happen to be many editings in a row, and a recomputation after
-					 * each of them would turn the assembly of a tree by editings into a quadratic one
+					 *          before the first reading: there happen to be many editings in a row, and a recomputation after
+					 *          each of them would turn the assembly of a tree by editings into a quadratic one.
 					 *
 					 * \~
 					 */
@@ -1031,22 +1137,24 @@ namespace awh {
 					 * @return        результат выполнения операции
 					 *
 					 * @note Перечень разрешаемых свойств служит обнаружению круговой
-					 * ссылки: значение, к которому обращение вернулось, в нём уже лежит.
-					 * Глубина же его сверх того ограничена пределом настроек - на случай
-					 * связи хоть и не круговой, но неразумно длинной
+					 *       ссылки: значение, к которому обращение вернулось, в нём уже лежит.
+					 *       Глубина же его сверх того ограничена пределом настроек - на случай
+					 *       связи хоть и не круговой, но неразумно длинной
 					 *
 					 * \~english
 					 * @brief Method of resolving the references inside the value of a property
+					 *
 					 * @param value   value of the property being resolved
 					 * @param section ordinal number of the section to which the value belongs
 					 * @param stack   list of the properties being resolved at the present moment
 					 * @param budget  remainder of the admissible volume of the substitution in bytes
 					 * @param result  value with the resolved references
 					 * @return        result of performing the operation
+					 *
 					 * @note The list of the properties being resolved serves the detection of a circular
-					 * reference: a value to which a reference has returned already lies in it.
-					 * Its depth beyond that is limited by the limit of the settings — for the case of a
-					 * linkage that is not circular but unreasonably long
+					 *       reference: a value to which a reference has returned already lies in it.
+					 *       Its depth beyond that is limited by the limit of the settings — for the case of a
+					 *       linkage that is not circular but unreasonably long
 					 *
 					 * \~
 					 */
@@ -1060,6 +1168,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current settings of the tree
+					 *
 					 * @return current settings of the settings tree
 					 *
 					 * \~
@@ -1073,6 +1182,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the tree
+					 *
 					 * @param settings settings of the settings tree
 					 *
 					 * \~
@@ -1084,22 +1194,25 @@ namespace awh {
 					 * @brief Метод разбора текста настроек
 					 *
 					 * @details Разбирает текст целиком, сохраняя примечания, пустые строки
-					 * и порядок записей. Прежнее содержимое дерева при этом освобождается
+					 *          и порядок записей. Прежнее содержимое дерева при этом освобождается.
 					 *
 					 * @note Примечания и пустые строки читаются всегда, как бы ни были
-					 * выставлены соответствующие флаги настроек разбора: дерево держит
-					 * оформление текста, и отказ от них лишил бы его этой возможности
+					 *       выставлены соответствующие флаги настроек разбора: дерево держит
+					 *       оформление текста, и отказ от них лишил бы его этой возможности
 					 *
 					 * @param text разбираемый текст настроек
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of parsing a settings text
+					 *
 					 * @details Parses the text in full, preserving the comments, the empty lines
-					 * and the order of the records. The previous content of the tree is thereby released
+					 *          and the order of the records. The previous content of the tree is thereby released.
+					 *
 					 * @note The comments and the empty lines are always read, however the corresponding
-					 * flags of the settings of the parsing are set: the tree keeps
-					 * the formatting of the text, and a refusal of them would deprive it of that possibility
+					 *       flags of the settings of the parsing are set: the tree keeps
+					 *       the formatting of the text, and a refusal of them would deprive it of that possibility
+					 *
 					 * @param text settings text being parsed
 					 * @return     result of performing the operation
 					 *
@@ -1116,6 +1229,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a settings text with the given settings
+					 *
 					 * @param text     settings text being parsed
 					 * @param settings settings of the settings tree
 					 * @return         result of performing the operation
@@ -1133,6 +1247,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the parsing
+					 *
 					 * @return error code of the last operation of the parsing
 					 *
 					 * \~
@@ -1147,6 +1262,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of an error
+					 *
 					 * @return position of the detected error in the source text
 					 *
 					 * \~
@@ -1157,7 +1273,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения перечня объявленных разделов
 					 *
-					 * @details Разделы выдаются в порядке их объявления в исходном тексте
+					 * @details Разделы выдаются в порядке их объявления в исходном тексте.
 					 *
 					 * @return перечень объявленных разделов текста настроек
 					 *
@@ -1170,7 +1286,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the declared sections
-					 * @details The sections are issued in the order of their declaration in the source text
+					 *
+					 * @details The sections are issued in the order of their declaration in the source text.
+					 *
 					 * @return list of the declared sections of the settings text
 					 *
 					 * @warning The issued views live until the NEXT call to the tree. The tree
@@ -1192,6 +1310,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a section
+					 *
 					 * @param section    name of the section being sought
 					 * @param subsection name of the subsection being sought
 					 * @return           result of the check
@@ -1204,7 +1323,7 @@ namespace awh {
 					 * @brief Метод получения перечня имён свойств раздела
 					 *
 					 * @details Имена выдаются в порядке их объявления и повторов не несут:
-					 * свойство, объявленное несколько раз, выдаётся именем однажды
+					 *          свойство, объявленное несколько раз, выдаётся именем однажды.
 					 *
 					 * @param section    имя раздела
 					 * @param subsection имя подраздела
@@ -1219,8 +1338,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the names of the properties of a section
+					 *
 					 * @details The names are issued in the order of their declaration and carry no repetitions:
-					 * a property declared several times is issued by a name once
+					 *          a property declared several times is issued by a name once.
+					 *
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
 					 * @return           list of the names of the properties of the section
@@ -1239,17 +1360,18 @@ namespace awh {
 					 * @brief Метод перечисления звеньев пути к детям значения
 					 *
 					 * @details Выдаются НЕ ИМЕНА детей, а ЗВЕНЬЯ ПУТИ к ним: такие, что
-					 * `at(путь + "/" + звено)` неминуемо ведёт к тому самому ребёнку. У вместилища
-					 * пар звеном служит имя пары, у перечня одноимённых объявлений - порядковый
-					 * номер
+					 *          `at(путь + "/" + звено)` неминуемо ведёт к тому самому ребёнку. У вместилища
+					 *          пар звеном служит имя пары, у перечня одноимённых объявлений - порядковый
+					 *          номер.
+					 *
 					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ ОБХОД дерева, общий у всех
-					 * кодеков рамки. Обход ЗАМКНУТ - всякое выданное звено годно для `at()`, - и
-					 * замкнутость эта держится на отменяющих записях RFC 6901: имя, косую черту
-					 * либо тильду несущее, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не как есть
+					 *          кодеков рамки. Обход ЗАМКНУТ - всякое выданное звено годно для `at()`, - и
+					 *          замкнутость эта держится на отменяющих записях RFC 6901: имя, косую черту
+					 *          либо тильду несущее, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не как есть.
 					 *
 					 * @details Ход поставлен ПЕРЕГРУЗКОЙ рядом с прежним перечнем имён свойств
-					 * раздела, а не подменою его: обещания у них РАЗНЫЕ - прежний берёт имя
-					 * раздела с подразделом и выдаёт имена свойств, ничего не записывая
+					 *          раздела, а не подменою его: обещания у них РАЗНЫЕ - прежний берёт имя
+					 *          раздела с подразделом и выдаёт имена свойств, ничего не записывая.
 					 *
 					 * @warning Застава стоит по ТОЧНОМУ виду `string`, а НЕ по преобразуемости,
 					 *          как у `set()` того же дерева. Разница намеренная и замерена:
@@ -1280,6 +1402,46 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the enumeration of the path links to the children of a value
+					 *
+					 * @details What is issued are NOT the NAMES of the children, but the PATH LINKS to them:
+					 *          such links that `at(path + "/" + link)` inevitably leads to that very child. In the
+					 *          container of pairs the link is the name of the pair, while in the list of the
+					 *          declarations of the same name it is the ordinal number.
+					 *
+					 * @details This call together with `at()` gives the FULL TRAVERSAL of the tree, common to all
+					 *          the codecs of the framework. The traversal is CLOSED - every issued link is fit for
+					 *          `at()`, - and this closure rests on the escaping notations of RFC 6901: a name
+					 *          carrying a slash or a tilde is issued WRITTEN (`~1` and `~0`), not as it is.
+					 *
+					 * @details The call was placed as an OVERLOAD beside the former list of the names of the
+					 *          properties of a section, and not as its replacement: their promises are DIFFERENT -
+					 *          the former takes the name of a section with a subsection and issues the names of the
+					 *          properties, writing nothing.
+					 *
+					 * @warning The guard stands by the EXACT kind `string`, and not by the convertibility as in
+					 *          `set()` of the same tree. The difference is deliberate and measured: the former call
+					 *          takes `string_view`, and a literal passes into it - had the guard stood by the
+					 *          convertibility, the call `keys("srv")`, now meaning the properties of the section
+					 *          `srv`, would SILENTLY have come to mean a path and would have answered with numeric
+					 *          links. Measured by a probe: it answered `«0» «1»` instead of `«host» «port»`,
+					 *          assembling without a single remark
+					 *
+					 * @warning The price of the guard: a literal goes to the FORMER call, and the record
+					 *          `keys("/section/name")` means a section with such a name, and not a path -
+					 *          unlike YAML and TOML, where a literal means a path. The path in this tree is to be
+					 *          given ONLY by the kind `string`. Fixed by the check
+					 *          `CodecIniDocument.PathEnumerationTakesOnlyTheStringType`
+					 *
+					 * @warning A path is to be given by a literal NOT through this name, but through `children()`:
+					 *          it takes `string_view`, and the kind of the argument does not influence its call at
+					 *          all. The calls `keys(string)` and `children()` are one and the same call, but the
+					 *          second name is always unambiguous, and no rule "to pass a variable" is required with
+					 *          it. The same holds for the neighbors: `holds()` and `prune()`
+					 *
+					 * @note The enumeration NEVER answers with a refusal: a simple value, an empty container and a
+					 *       path to nowhere answer with an empty list IDENTICALLY, while they differ by the call
+					 *       `at()`
+					 *
 					 * @param path path to the value
 					 * @return     list of the path links to the children of the value
 					 *
@@ -1295,13 +1457,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод перечисления звеньев пути к детям значения
 					 *
-					 * @details Тело посредника `keys()`, шаблоном от него отделённое
+					 * @details Тело посредника `keys()`, шаблоном от него отделённое.
 					 *
 					 * @param path путь до значения
 					 * @return     перечень звеньев пути к детям значения
 					 *
 					 * \~english
 					 * @brief Method of the enumeration of the path links to the children of a value
+					 *
+					 * @details The body of the intermediary `keys()`, separated from it by a template.
+					 *
 					 * @param path path to the value
 					 * @return     list of the path links to the children of the value
 					 *
@@ -1316,7 +1481,7 @@ namespace awh {
 					 * @details Ход этот общий у всех семи кодеков рамки, и спрашивается он у
 					 *          ДОКУМЕНТА, а не у значения: общие проверки договора зовут
 					 *          `document.at(путь)`, и кодек, такого хода не несущий, в перебор
-					 *          по семерым не входит вовсе
+					 *          по семерым не входит вовсе.
 					 *
 					 * @note Выдаётся ВЛАДЕЮЩЕЕ значение, а не узел дерева: узлового вида у ini
 					 *       нет вовсе - настройки держатся записями, а не ареною узлов. Это
@@ -1327,6 +1492,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of accessing a value by a path
+					 *
+					 * @details This call is common to all the seven codecs of the framework, and it is asked of
+					 *          the DOCUMENT, and not of the value: the common checks of the contract call
+					 *          `document.at(path)`, and a codec not carrying such a call does not enter the
+					 *          enumeration of the seven at all.
+					 *
+					 * @note What is issued is the OWNING value, and not a node of the tree: ini has no node kind
+					 *       at all - the settings are held by the records, and not by an arena of nodes. This is a
+					 *       lawful divergence by the device, and not a departure from the contract
+					 *
 					 * @param path path to the value being searched for
 					 * @return     found value of the settings
 					 *
@@ -1344,6 +1519,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a property
+					 *
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -1357,10 +1533,11 @@ namespace awh {
 					 * @brief Метод проверки наличия значения по пути
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки: спрос по пути, строкою
-					 * заданному. Спрашивается значение ЛЮБОГО вида - и свойство, и раздел, и
-					 * значение перечня, - тогда как прежний ход берёт имя свойства с разделом
+					 *          заданному. Спрашивается значение ЛЮБОГО вида - и свойство, и раздел, и
+					 *          значение перечня, - тогда как прежний ход берёт имя свойства с разделом.
+					 *
 					 * @details Вместе с `keys()` и `at()` ход этот и составляет общий обход
-					 * дерева: всякое звено, перечнем выданное, спрос проходит
+					 *          дерева: всякое звено, перечнем выданное, спрос проходит.
 					 *
 					 * @warning Застава стоит по ТОЧНОМУ виду `string` по той же причине, по какой
 					 *          она стоит у общего перечня звеньев: прежний ход берёт `string_view`,
@@ -1373,6 +1550,22 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a value by a path
+					 *
+					 * @details This call is common to all the seven codecs of the framework: a query by a path
+					 *          given by a string. A value of ANY kind is queried - both a property, and a section,
+					 *          and a value of a list - while the former call takes the name of a property with a
+					 *          section.
+					 *
+					 * @details Together with `keys()` and `at()` this call is precisely what constitutes the
+					 *          common traversal of the tree: every link issued by the enumeration passes the
+					 *          query.
+					 *
+					 * @warning The guard stands by the EXACT kind `string` for the same reason for which it
+					 *          stands at the common enumeration of the links: the former call takes `string_view`,
+					 *          and a literal passes into it - had the guard stood by the convertibility, the call
+					 *          `has("port")`, meaning a property, would SILENTLY have come to mean a path.
+					 *          The price is the same: a path is to be given ONLY by the kind `string`
+					 *
 					 * @param path path to the value being sought
 					 * @return     sign of the presence of the value by the path
 					 *
@@ -1388,13 +1581,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод проверки наличия значения по пути
 					 *
-					 * @details Тело посредника `has()`, шаблоном от него отделённое
+					 * @details Тело посредника `has()`, шаблоном от него отделённое.
 					 *
 					 * @param path путь до искомого значения
 					 * @return     признак наличия значения по пути
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a value by a path
+					 *
+					 * @details The body of the intermediary `has()`, separated from it by a template.
+					 *
 					 * @param path path to the value being sought
 					 * @return     sign of the presence of the value by the path
 					 *
@@ -1406,8 +1602,8 @@ namespace awh {
 					 * @brief Метод получения значения свойства
 					 *
 					 * @details При нескольких объявлениях свойства выдаётся то из них,
-					 * которое велит выдать настройка обращения с повторами: первое, либо
-					 * последнее, либо - при собирании их в перечень - первое из перечня
+					 *          которое велит выдать настройка обращения с повторами: первое, либо
+					 *          последнее, либо - при собирании их в перечень - первое из перечня.
 					 *
 					 * @param key        имя искомого свойства
 					 * @param section    имя раздела
@@ -1423,9 +1619,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the value of a property
+					 *
 					 * @details At several declarations of a property the one of them is issued
-					 * which the setting of the treatment of the repetitions orders to issue: the first, or
-					 * the last, or — at their assembling into a list — the first of the list
+					 *          which the setting of the treatment of the repetitions orders to issue: the first, or
+					 *          the last, or — at their assembling into a list — the first of the list.
+					 *
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -1445,8 +1643,8 @@ namespace awh {
 					 * @brief Метод получения перечня значений свойства
 					 *
 					 * @details Выдаются все объявления свойства в порядке их следования.
-					 * Наречия Git и systemd повтором свойства задают перечень значений, и
-					 * читать его следует именно так
+					 *          Наречия Git и systemd повтором свойства задают перечень значений, и
+					 *          читать его следует именно так.
 					 *
 					 * @param key        имя искомого свойства
 					 * @param section    имя раздела
@@ -1462,9 +1660,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the values of a property
+					 *
 					 * @details All the declarations of the property are issued in the order of their succession.
-					 * The Git and systemd dialects give a list of the values by a repetition of a property, and
-					 * it should be read exactly that way
+					 *          The Git and systemd dialects give a list of the values by a repetition of a property, and
+					 *          it should be read exactly that way.
+					 *
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -1486,7 +1686,7 @@ namespace awh {
 					 * @details Ограда, человеком поставленная, хранится деревом ради обратной
 					 *          записи наравне со знаком примечания. Выдаётся она перечнем ровно
 					 *          той же длины и того же порядка, что и перечень значений: свойство,
-					 *          объявленное несколько раз, несёт свою ограду у всякого объявления
+					 *          объявленное несколько раз, несёт свою ограду у всякого объявления.
 					 *
 					 * @param key        имя искомого свойства
 					 * @param section    имя раздела
@@ -1495,10 +1695,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the flags of the quoting of the values of a property
+					 *
 					 * @details The quoting put by a human is kept by the tree for the sake of the writing back
-					 * on a par with the comment character. It is issued by a list of exactly the same length and
-					 * the same order as the list of the values: a property declared several times carries its
-					 * own quoting at every declaration
+					 *          on a par with the comment character. It is issued by a list of exactly the same length and
+					 *          the same order as the list of the values: a property declared several times carries its
+					 *          own quoting at every declaration.
+					 *
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -1515,7 +1717,7 @@ namespace awh {
 					 *          записать подставленное значило бы разрешить обращение навсегда, а
 					 *          оно на то и записано, чтобы разрешаться заново при каждом чтении
 					 *          файла. Выдаётся оно перечнем ровно той же длины и того же порядка,
-					 *          что и перечень значений
+					 *          что и перечень значений.
 					 *
 					 * @param key        имя искомого свойства
 					 * @param section    имя раздела
@@ -1524,10 +1726,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the values of a property before the substitution of the references
+					 *
 					 * @details The value before the substitution is kept by the tree for the sake of the writing back:
-					 * to write a substituted one would mean to resolve a reference forever, while it is written exactly
-					 * so as to be resolved anew at every reading of the file. It is issued by a list of exactly the same
-					 * length and the same order as the list of the values
+					 *          to write a substituted one would mean to resolve a reference forever, while it is written exactly
+					 *          so as to be resolved anew at every reading of the file. It is issued by a list of exactly the same
+					 *          length and the same order as the list of the values.
+					 *
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -1546,6 +1750,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the number type of the parsing result
+					 *
 					 * @tparam T number type of the parsing result
 					 *
 					 * \~
@@ -1563,6 +1768,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the value of a property as a number
+					 *
 					 * @param result     reference to the result of the parsing
 					 * @param key        name of the property being sought
 					 * @param section    name of the section
@@ -1578,7 +1784,7 @@ namespace awh {
 					 * @brief Метод объявления раздела
 					 *
 					 * @details Уже объявленный раздел повторно не объявляется: метод
-					 * отвечает успехом, оставляя дерево нетронутым
+					 *          отвечает успехом, оставляя дерево нетронутым.
 					 *
 					 * @param section    имя объявляемого раздела
 					 * @param subsection имя объявляемого подраздела
@@ -1586,8 +1792,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of declaring a section
+					 *
 					 * @details An already declared section is not declared again: the method
-					 * answers with success, leaving the tree untouched
+					 *          answers with success, leaving the tree untouched.
+					 *
 					 * @param section    name of the section being declared
 					 * @param subsection name of the subsection being declared
 					 * @return           result of performing the operation
@@ -1600,13 +1808,13 @@ namespace awh {
 					 * @brief Метод установки значения свойства
 					 *
 					 * @details Значение уже объявленного свойства заменяется на месте, и
-					 * ни порядок записей, ни примечания при этом не страдают. Отсутствующее
-					 * свойство дописывается в конец своего раздела, а отсутствующий раздел
-					 * объявляется
+					 *          ни порядок записей, ни примечания при этом не страдают. Отсутствующее
+					 *          свойство дописывается в конец своего раздела, а отсутствующий раздел
+					 *          объявляется.
 					 *
 					 * @note При нескольких объявлениях свойства заменяется значение того из
-					 * них, которое выдал бы @c get(), а прочие остаются нетронутыми: замена
-					 * их всех обеднила бы перечень значений, ради которого повтор и записан
+					 *       них, которое выдал бы @c get(), а прочие остаются нетронутыми: замена
+					 *       их всех обеднила бы перечень значений, ради которого повтор и записан
 					 *
 					 * @param key        имя устанавливаемого свойства
 					 * @param value      устанавливаемое значение свойства
@@ -1616,13 +1824,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the value of a property
+					 *
 					 * @details The value of an already declared property is replaced in place, and
-					 * neither the order of the records nor the comments suffer thereby. An absent
-					 * property is appended to the end of its section, while an absent section
-					 * is declared
+					 *          neither the order of the records nor the comments suffer thereby. An absent
+					 *          property is appended to the end of its section, while an absent section
+					 *          is declared.
+					 *
 					 * @note At several declarations of a property the value of the one of
-					 * them is replaced which @c get() would issue, while the rest remain untouched: a replacement
-					 * of all of them would impoverish the list of the values for the sake of which the repetition has been written
+					 *       them is replaced which @c get() would issue, while the rest remain untouched: a replacement
+					 *       of all of them would impoverish the list of the values for the sake of which the repetition has been written
+					 *
 					 * @param key        name of the property being set
 					 * @param value      value of the property being set
 					 * @param section    name of the section
@@ -1639,7 +1850,7 @@ namespace awh {
 					 * @details Ход этот заведён ради общего вида кодеков рамки: правка дерева
 					 *          зовётся у одних ходом значения, у других ходом документа, и
 					 *          потребитель, два кодека рядом читающий, разыскивал ход не там,
-					 *          где тот лежал. Путь берётся строкою по описанию RFC 6901
+					 *          где тот лежал. Путь берётся строкою по описанию RFC 6901.
 					 *
 					 * @note Постановка ведётся ЧЕРЕЗ КОПИЮ дерева: настройки снимаются
 					 *       владеющим значением, правятся по пути и переносятся обратно.
@@ -1652,6 +1863,18 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting an owning value by a path
+					 *
+					 * @details This call has been instituted for the sake of the common look of the codecs of
+					 *          the framework: the editing of a tree is called by some the call of a value, by
+					 *          others the call of a document, and a consumer reading two codecs side by side
+					 *          sought the call not where it lay. The path is taken by a string following the
+					 *          description of RFC 6901.
+					 *
+					 * @note The setting is conducted THROUGH A COPY of the tree: the settings are taken off by
+					 *       the owning value, edited by a path, and moved back. The edit is not a fast path, and
+					 *       its integrity weighs more than the price of the copy - a failure in the middle of a
+					 *       move would have left the tree with a part of the edit
+					 *
 					 * @param path  path of the setting of the value
 					 * @param value owning value being set
 					 * @return      sign of the successful setting of the value
@@ -1674,7 +1897,7 @@ namespace awh {
 					 *          владеющего значения - собиратель отвечал бы отказом по
 					 *          двусмысленности. Шаблон, точным видом значения огороженный,
 					 *          строковых доводов не принимает вовсе, и двусмысленность тем
-					 *          снимается, ничего у потребителя не ломая
+					 *          снимается, ничего у потребителя не ломая.
 					 *
 					 * @param path  путь постановки значения
 					 * @param value ставимое владеющее значение
@@ -1682,6 +1905,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting an owning value by a path
+					 *
+					 * @details The body of the intermediary `set()`, separated from it by a template. The
+					 *          separation is obligatory: the setting by a key takes an argument by a string, and
+					 *          the record `set("x", "1")` would have fit AT ONCE both it and the setting of an
+					 *          owning value - the compilation would have answered with a refusal for the
+					 *          ambiguity. A template fenced by the exact kind of the value does not take string
+					 *          arguments at all, and the ambiguity is thereby removed without breaking anything
+					 *          at the consumer.
+					 *
 					 * @param path  path of the setting of the value
 					 * @param value owning value being set
 					 * @return      sign of the successful setting of the value
@@ -1694,7 +1926,7 @@ namespace awh {
 					 * @brief Метод установки пустого значения по пути к нему
 					 *
 					 * @details Ход этот общий у кодеков рамки. Пустое значение от снятия свойства
-					 * отлично: свойство остаётся налицо, а значения при нём нет
+					 *          отлично: свойство остаётся налицо, а значения при нём нет.
 					 *
 					 * @note Пустое значение у настроек законно: запись «ключ =» разбирается
 					 *       свойством с пустым значением и переписывается обратно ею же. У
@@ -1707,8 +1939,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of an empty value by the path to it
-					 * @details The empty value differs from the removal of a property: the property remains
-					 * present, while there is no value at it
+					 *
+					 * @details This call is common to the codecs of the framework. The empty value differs from
+					 *          the removal of a property: the property remains present, while there is no value at
+					 *          it.
+					 *
+					 * @note An empty value is lawful for the settings: the record «key =» is parsed as a
+					 *       property with an empty value and is rewritten back as the same. The codec TOML does
+					 *       not have this call at all, and that divergence is lawful - the record «a = » is
+					 *       rejected there by the standard itself, and an empty line is a value other than its
+					 *       absence
+					 *
 					 * @param path path to the property being set
 					 * @return     sign of the successful setting of the value
 					 *
@@ -1720,13 +1961,13 @@ namespace awh {
 					 * @brief Метод долива значения к перечню значений свойства
 					 *
 					 * @details Установка значения правит объявление, уже имеющееся в
-					 * разделе, и перечня тем самым не строит. Долив же заводит новое
-					 * объявление того же имени всегда: перечень значений записи INI и есть
-					 * последовательность одноимённых свойств, и выдаёт её @c values()
+					 *          разделе, и перечня тем самым не строит. Долив же заводит новое
+					 *          объявление того же имени всегда: перечень значений записи INI и есть
+					 *          последовательность одноимённых свойств, и выдаёт её @c values().
 					 *
 					 * @note Признак записи «имя[] = значение» доливом не взводится: скобки
-					 * суть послабление разбора языка PHP, и ставить их дереву, собранному
-					 * вызовами, значило бы писать наречие там, где его не просили
+					 *       суть послабление разбора языка PHP, и ставить их дереву, собранному
+					 *       вызовами, значило бы писать наречие там, где его не просили
 					 *
 					 * @param key        имя свойства, к перечню значений которого ведётся долив
 					 * @param value      доливаемое значение свойства
@@ -1736,13 +1977,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the appending of a value to the list of the values of a property
+					 *
 					 * @details The setting of a value edits a declaration already present in the
-					 * section and thereby builds no list. The appending, however, always establishes a new
-					 * declaration of the same name: the list of the values of the INI notation is
-					 * a sequence of the properties of the same name, and @c values() issues it
+					 *          section and thereby builds no list. The appending, however, always establishes a new
+					 *          declaration of the same name: the list of the values of the INI notation is
+					 *          a sequence of the properties of the same name, and @c values() issues it.
+					 *
 					 * @note The flag of the record «name[] = value» is not raised by the appending: the brackets
-					 * are an indulgence of the parsing of the PHP language, and to put them into a tree assembled
-					 * by the calls would mean to write a dialect where it has not been asked for
+					 *       are an indulgence of the parsing of the PHP language, and to put them into a tree assembled
+					 *       by the calls would mean to write a dialect where it has not been asked for
+					 *
 					 * @param key        name of the property to whose list of the values the appending is conducted
 					 * @param value      value being appended
 					 * @param section    name of the section
@@ -1757,7 +2001,7 @@ namespace awh {
 					 * @brief Метод удаления свойства
 					 *
 					 * @details Удаляются все объявления свойства вместе с примечаниями,
-					 * записанными в конце их строк
+					 *          записанными в конце их строк.
 					 *
 					 * @param key        имя удаляемого свойства
 					 * @param section    имя раздела
@@ -1766,8 +2010,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of removing a property
+					 *
 					 * @details All the declarations of the property are removed together with the comments
-					 * written at the end of their lines
+					 *          written at the end of their lines.
+					 *
 					 * @param key        name of the property being removed
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
@@ -1781,13 +2027,13 @@ namespace awh {
 					 * @brief Метод снятия значения по пути
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки: снос по пути, строкою
-					 * заданному. Сносится значение ЛЮБОГО вида - и свойство, и раздел, и значение
-					 * перечня одноимённых объявлений, - тогда как прежний ход снимает свойство в
-					 * разделе, а `remove(раздел)` сносит раздел
+					 *          заданному. Сносится значение ЛЮБОГО вида - и свойство, и раздел, и значение
+					 *          перечня одноимённых объявлений, - тогда как прежний ход снимает свойство в
+					 *          разделе, а `remove(раздел)` сносит раздел.
 					 *
 					 * @details Пустой путь по описанию RFC 6901 означает ВЕСЬ документ, а не
-					 * отсутствующее свойство: снос его опустошает дерево целиком. Дозволен он
-					 * оттого, что пустой файл настроек INI законен вполне
+					 *          отсутствующее свойство: снос его опустошает дерево целиком. Дозволен он
+					 *          оттого, что пустой файл настроек INI законен вполне.
 					 *
 					 * @warning Застава стоит по ТОЧНОМУ виду `string` по той же причине, по какой
 					 *          она стоит у общего перечня звеньев и общего спроса: прежний ход
@@ -1805,6 +2051,28 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of removing a value by a path
+					 *
+					 * @details This call is common to all the seven codecs of the framework: a removal by a
+					 *          path given by a string. A value of ANY kind is removed - both a property, and a
+					 *          section, and a value of a list of the declarations of the same name - while the
+					 *          former call removes a property in a section, and `remove(section)` removes a
+					 *          section.
+					 *
+					 * @details An empty path by the description of RFC 6901 means the WHOLE document, and not an
+					 *          absent property: its removal empties the tree entirely. It is permitted because an
+					 *          empty INI settings file is fully lawful.
+					 *
+					 * @warning The guard stands by the EXACT kind `string` for the same reason for which it
+					 *          stands at the common enumeration of the links and at the common query: the former
+					 *          call takes `string_view`, and a literal passes into it - had the guard stood by the
+					 *          convertibility, the call `erase("port")`, meaning a property, would SILENTLY
+					 *          have come to mean a path
+					 *
+					 * @note A numeric link is accepted on a par with a name: a repetition of a property name
+					 *       lies in the tree as a list, and the enumeration of the links issues numbers there.
+					 *       Had the removal not accepted numbers - the traversal would have been closed for the
+					 *       reading and open for the editing
+					 *
 					 * @param path path to the value being removed
 					 * @return     sign of the successful removal of the value
 					 *
@@ -1820,13 +2088,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод снятия значения по пути
 					 *
-					 * @details Тело посредника `erase()`, шаблоном от него отделённое
+					 * @details Тело посредника `erase()`, шаблоном от него отделённое.
 					 *
 					 * @param path путь до снимаемого значения
 					 * @return     признак успешного снятия значения
 					 *
 					 * \~english
 					 * @brief Method of removing a value by a path
+					 *
+					 * @details The body of the intermediary `erase()`, separated from it by a template.
+					 *
 					 * @param path path to the value being removed
 					 * @return     sign of the successful removal of the value
 					 *
@@ -1837,7 +2108,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод удаления раздела
 					 *
-					 * @details Удаляется объявление раздела вместе со всеми его записями
+					 * @details Удаляется объявление раздела вместе со всеми его записями.
 					 *
 					 * @param section    имя удаляемого раздела
 					 * @param subsection имя удаляемого подраздела
@@ -1845,7 +2116,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of removing a section
-					 * @details The declaration of the section is removed together with all its records
+					 *
+					 * @details The declaration of the section is removed together with all its records.
+					 *
 					 * @param section    name of the section being removed
 					 * @param subsection name of the subsection being removed
 					 * @return           result of performing the operation
@@ -1862,6 +2135,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the number of the declared sections
+					 *
 					 * @return number of the declared sections of the settings text
 					 *
 					 * \~
@@ -1875,6 +2149,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the tree for the absence of the records
+					 *
 					 * @return result of the check
 					 *
 					 * \~
@@ -1906,24 +2181,27 @@ namespace awh {
 					 * @brief Метод записи дерева обратно в текст настроек
 					 *
 					 * @details Записи выдаются в том же порядке, в каком они прочитаны,
-					 * вместе с примечаниями и пустыми строками
+					 *          вместе с примечаниями и пустыми строками.
 					 *
 					 * @note Пустая строка перед объявлением раздела настройками записи не
-					 * ставится: расстановка их взята из исходного текста, и добавлять к
-					 * ней свою значило бы наращивать пустые строки при каждом обороте
-					 * «чтение - запись»
+					 *       ставится: расстановка их взята из исходного текста, и добавлять к
+					 *       ней свою значило бы наращивать пустые строки при каждом обороте
+					 *       «чтение - запись»
 					 *
 					 * @param settings настройки записи текста настроек
 					 * @return         собранный текст настроек
 					 *
 					 * \~english
 					 * @brief Method of writing the tree back into a settings text
+					 *
 					 * @details The records are issued in the same order in which they have been read,
-					 * together with the comments and the empty lines
+					 *          together with the comments and the empty lines.
+					 *
 					 * @note An empty line before a section declaration is not put by the settings of the writing:
-					 * their arrangement is taken from the source text, and to add one's own to
-					 * it would mean to increase the empty lines at every «reading — writing»
-					 * turn
+					 *       their arrangement is taken from the source text, and to add one's own to
+					 *       it would mean to increase the empty lines at every «reading — writing»
+					 *       turn
+					 *
 					 * @param settings settings of the writing of a settings text
 					 * @return         assembled settings text
 					 *
@@ -1934,7 +2212,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод чтения настроек из файла
 					 *
-					 * @details Ход этот общий у всех семи кодеков рамки
+					 * @details Ход этот общий у всех семи кодеков рамки.
 					 *
 					 * @note Ненайденный файл пустым текстом НЕ является: отказ называет причину
 					 *       кодом `FILE_NOT_OPENED`, тогда как пустота текста сообщила бы
@@ -1945,6 +2223,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of reading the settings from a file
+					 *
+					 * @details This call is common to all the seven codecs of the framework.
+					 *
+					 * @note A file not found is NOT an empty text: the refusal names the reason by the code
+					 *       `FILE_NOT_OPENED`, while the emptiness of the text would have reported to the
+					 *       consumer as though the file had been read and were empty
+					 *
 					 * @param filename path to the file of the settings being read
 					 * @return         sign of the successful reading of the settings
 					 *
@@ -1955,13 +2240,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи настроек в файл
 					 *
-					 * @details Ход этот общий у всех семи кодеков рамки
+					 * @details Ход этот общий у всех семи кодеков рамки.
 					 *
 					 * @param filename путь до записываемого файла настроек
 					 * @return         признак успешной записи настроек
 					 *
 					 * \~english
 					 * @brief Method of writing the settings into a file
+					 *
+					 * @details This call is common to all the seven codecs of the framework.
+					 *
 					 * @param filename path to the file of the settings being written
 					 * @return         sign of the successful writing of the settings
 					 *
@@ -1974,12 +2262,17 @@ namespace awh {
 					 *
 					 * @details Ход этот общий у кодеков рамки, текст читающих. Кодировка
 					 *          определяется чтением по метке порядка октетов либо по самому
-					 *          виду текста, а дерево лишь несёт её потребителю
+					 *          виду текста, а дерево лишь несёт её потребителю.
 					 *
 					 * @return кодировка, какою текст настроек прочитан
 					 *
 					 * \~english
 					 * @brief Method of getting the encoding of the read text
+					 *
+					 * @details This call is common to the codecs of the framework which read a text. The
+					 *          encoding is determined by the reading by the octet order mark or by the very look
+					 *          of the text, while the tree only carries it to the consumer.
+					 *
 					 * @return encoding by which the text of the settings was read
 					 *
 					 * \~
@@ -1990,37 +2283,61 @@ namespace awh {
 					 * @brief Метод записи дерева обратно в текст настроек
 					 *
 					 * @details Настройки записи выводятся из настроек разбора: наречие, каким
-					 * текст прочитан, тем же и записывается. Задать иное наречие можно,
-					 * передав настройки записи явно
+					 *          текст прочитан, тем же и записывается. Задать иное наречие можно,
+					 *          передав настройки записи явно.
 					 *
 					 * @note Значение, записать которое НАРЕЧИЕМ НЕЛЬЗЯ, отвергает сборку
-					 * ЦЕЛИКОМ: выдача пуста, а причина названа кодом `INVALID_CHARACTER`.
-					 * Частичной выдачи тут быть не может - текст настроек либо читается
-					 * обратно без потерь, либо не годен вовсе
+					 *       ЦЕЛИКОМ: выдача пуста, а причина названа кодом `INVALID_CHARACTER`.
+					 *       Частичной выдачи тут быть не может - текст настроек либо читается
+					 *       обратно без потерь, либо не годен вовсе
 					 *
 					 * @note Невыразимость эта зависит от НАРЕЧИЯ, а не от значения самого:
-					 * при `escapes` перевод строки, возврат каретки и нуль записываются
-					 * управляющими последовательностями и выдаются успешно, при выключенном
-					 * - отвергаются. Замерено щупом 15.09.2026 на всех четырёх знаках
+					 *       при `escapes` перевод строки, возврат каретки и нуль записываются
+					 *       управляющими последовательностями и выдаются успешно, при выключенном
+					 *       - отвергаются. Замерено щупом 15.09.2026 на всех четырёх знаках
 					 *
 					 * @warning Отсюда следует, что правка значения НЕ поверяется наречием, в
-					 * отличие от правки имени: `acceptable()` отвергает невыразимое имя в
-					 * месте правки, а значение проверяется лишь при сборке. Расхождение это
-					 * НАМЕРЕННО - наречие вольно смениться между правкой и сборкой, и
-					 * значение, ныне невыразимое, станет выразимым от одной настройки, тогда
-					 * как имя поверяется правилами РАЗБОРА, от наречия записи не зависящими.
-					 * Донесение об этом приходило трижды от трёх разных читателей кода, оттого
-					 * решение и записано здесь: прежде оно держалось на одном лишь коде и на
-					 * проверке `CodecIniDocument.WriteFailure`, имя которой предмета не
-					 * называет, - оттого трое подряд её и не нашли
+					 *          отличие от правки имени: `acceptable()` отвергает невыразимое имя в
+					 *          месте правки, а значение проверяется лишь при сборке. Расхождение это
+					 *          НАМЕРЕННО - наречие вольно смениться между правкой и сборкой, и
+					 *          значение, ныне невыразимое, станет выразимым от одной настройки, тогда
+					 *          как имя поверяется правилами РАЗБОРА, от наречия записи не зависящими.
+					 *          Донесение об этом приходило трижды от трёх разных читателей кода, оттого
+					 *          решение и записано здесь: прежде оно держалось на одном лишь коде и на
+					 *          проверке `CodecIniDocument.WriteFailure`, имя которой предмета не
+					 *          называет, - оттого трое подряд её и не нашли
 					 *
 					 * @return собранный текст настроек
 					 *
 					 * \~english
 					 * @brief Method of writing the tree back into a settings text
+					 *
 					 * @details The settings of the writing are inferred from the settings of the parsing: the dialect by which
-					 * the text has been read is the one it is written by as well. Another dialect can be given
-					 * by passing the settings of the writing explicitly
+					 *          the text has been read is the one it is written by as well. Another dialect can be given
+					 *          by passing the settings of the writing explicitly.
+					 *
+					 * @note A value which CANNOT be written by the DIALECT rejects the assembly AS A WHOLE: the
+					 *       issue is empty, and the reason is named by the code `INVALID_CHARACTER`. A partial
+					 *       issue here cannot be - a settings text is either read back without losses or is unfit
+					 *       altogether
+					 *
+					 * @note This unexpressibility depends on the DIALECT, and not on the value itself: with
+					 *       `escapes` a line ending, a carriage return and a zero are written by the control
+					 *       sequences and are issued successfully, while with it off - they are rejected.
+					 *       Measured by a probe on 2026-09-15 on all the four characters
+					 *
+					 * @warning It follows from this that the editing of a value is NOT checked by the dialect, in
+					 *          contrast to the editing of a name: `acceptable()` rejects an inexpressible name at
+					 *          the place of the editing, while a value is checked only at the assembly. This
+					 *          divergence is DELIBERATE - a dialect is free to change between the editing and the
+					 *          assembly, and a value now inexpressible will become expressible from a single
+					 *          setting, whereas a name is checked by the rules of the PARSING, which do not depend
+					 *          on the dialect of the writing. The report about this came three times from three
+					 *          different readers of the code, and because of that the decision is written down
+					 *          here: formerly it rested on the code alone and on the check
+					 *          `CodecIniDocument.WriteFailure`, whose name does not call the subject, - because of
+					 *          that the three in a row did not find it
+					 *
 					 * @return assembled settings text
 					 *
 					 * \~
@@ -2028,40 +2345,23 @@ namespace awh {
 					string dump() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод получения текста настроек
-					 *
-					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
-					 * написанных прежде согласования кодеков рамки между собой. Зови `dump()`:
-					 * им сборка текста зовётся у всех семи кодеков
-					 *
-					 * @return собранный текст настроек
-					 *
-					 * \~english
-					 * @brief Method of getting the text of the settings
-					 * @deprecated This name is DEPRECATED and is left as an intermediary for the sake of the consumers
-					 * written before the harmonization of the codecs of the framework with one another. Call `dump()`
-					 * @return assembled text of the settings
-					 *
-					 * \~
-					 */
-					string text() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод получения настроек записи, отвечающих настройкам разбора
 					 *
 					 * @details Выводит наречие записи из наречия разбора: построение имени
-					 * подраздела, знак-разделитель, знак примечания, признание примечания в
-					 * конце строки и запись управляющих последовательностей. Прочитанное
-					 * этими настройками записывается так, что читается обратно без потерь
+					 *          подраздела, знак-разделитель, знак примечания, признание примечания в
+					 *          конце строки и запись управляющих последовательностей. Прочитанное
+					 *          этими настройками записывается так, что читается обратно без потерь.
 					 *
 					 * @return настройки записи текста настроек
 					 *
 					 * \~english
 					 * @brief Method of getting the settings of the writing corresponding to the settings of the parsing
+					 *
 					 * @details Infers the dialect of the writing from the dialect of the parsing: the construction of the name
-					 * of a subsection, the separator character, the comment character, the recognition of a comment at
-					 * the end of a line and the writing of the escape sequences. What has been read
-					 * by those settings is written so that it is read back without losses
+					 *          of a subsection, the separator character, the comment character, the recognition of a comment at
+					 *          the end of a line and the writing of the escape sequences. What has been read
+					 *          by those settings is written so that it is read back without losses.
+					 *
 					 * @return settings of the writing of a settings text
 					 *
 					 * \~
@@ -2086,6 +2386,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the settings tree
 					 *
 					 * \~
@@ -2096,21 +2397,37 @@ namespace awh {
 					 * @brief Ходы копии и переноса дерева
 					 *
 					 * @details Объявлены они здесь ради ПЕРЕНОСА: прежде тут стоял деструктор,
-					 * освобождавший дерево зовом `clear()`, и объявление его отменяло порождение
-					 * переносящих ходов - по правилу языка неявный перенос у класса с деструктором
-					 * объявленным не порождается вовсе. Перенос при этом молча обращался копией:
-					 * замер 17.09.2026 на дереве о двадцати тысячах таблиц дал перенос 4240 мкс
-					 * против копии 4127 мкс, и источник сохранял всё содержимое
+					 *          освобождавший дерево зовом `clear()`, и объявление его отменяло порождение
+					 *          переносящих ходов - по правилу языка неявный перенос у класса с деструктором
+					 *          объявленным не порождается вовсе. Перенос при этом молча обращался копией:
+					 *          замер 17.09.2026 на дереве о двадцати тысячах таблиц дал перенос 4240 мкс
+					 *          против копии 4127 мкс, и источник сохранял всё содержимое.
 					 *
 					 * @note Деструктор тот был ИЗЛИШЕН: `clear()` сбрасывает поля, а поля эти -
-					 * перечни да строки, и освободятся они деструкторами своими сами. Сосед YAML
-					 * деструктора не имеет вовсе, и перенос у него работал всё это время
+					 *       перечни да строки, и освободятся они деструкторами своими сами. Сосед YAML
+					 *       деструктора не имеет вовсе, и перенос у него работал всё это время
 					 *
 					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 * переноса подавило бы порождение копии, и дерево перестало бы копироваться
+					 *          переноса подавило бы порождение копии, и дерево перестало бы копироваться
 					 *
 					 * \~english
 					 * @brief The calls of the copying and of the moving of a tree
+					 *
+					 * @details They are declared here for the sake of the MOVE: formerly a destructor stood here
+					 *          releasing the tree by a call of `clear()`, and its declaration cancelled the
+					 *          generation of the moving calls - by the rule of the language an implicit move at a
+					 *          class with a declared destructor is not generated at all. The move at that was
+					 *          silently turned into a copy: a measurement of 2026-09-17 on a tree of twenty
+					 *          thousand tables gave a move of 4240 microseconds against a copy of 4127
+					 *          microseconds, and the source kept all of its content.
+					 *
+					 * @note That destructor was SUPERFLUOUS: `clear()` resets the fields, and those fields are
+					 *       lists and strings, and they will be released by their own destructors themselves. The
+					 *       neighbor YAML has no destructor at all, and its move worked all this while
+					 *
+					 * @warning The FOUR calls are declared at once by the rule of five: a declaration of the move
+					 *          alone would have suppressed the generation of the copy, and the tree would have
+					 *          stopped being copied
 					 *
 					 * \~
 					 */

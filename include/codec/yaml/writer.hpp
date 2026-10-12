@@ -82,8 +82,8 @@ namespace awh {
 			 * @brief Запись текста YAML
 			 *
 			 * @details Текст собирается вызовами по мере обхода записываемого: открытие
-			 * построения, имя пары, значение, закрытие построения. Отступы, ограда значений
-			 * и разделители расставляются сборкой сами
+			 *          построения, имя пары, значение, закрытие построения. Отступы, ограда значений
+			 *          и разделители расставляются сборкой сами.
 			 *
 			 * @note Ширина отступа задаётся пробелами, и ноль ею быть не может: знак
 			 *       горизонтальной подачи описанием в отступе запрещён прямо, и записать им
@@ -114,11 +114,39 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Writing of a YAML text
+			 *
 			 * @details A text is assembled by the calls as the traversal of what is being written goes on:
-			 * the opening of a construction, the name of a pair, a value, the closing of a construction.
-			 * The indentations, the quoting of the values and the separators are placed by the assembling itself
-			 * @note The width of the indentation is set by the spaces and it does not accept a zero:
-			 *       a tabulation character is directly forbidden in an indentation by the specification
+			 *          the opening of a construction, the name of a pair, a value, the closing of a construction.
+			 *          The indentations, the quoting of the values and the separators are placed by the assembling itself.
+			 *
+			 * @note The width of the indentation is set by the spaces and it cannot be a zero: a character of a
+			 *       horizontal feeding is forbidden outright in an indentation by the description, and to write
+			 *       an indentation by it would mean to assemble a text readable by no parsing. That is where this
+			 *       writing differs from the writing of JSON — there a zero means a tabulation
+			 *
+			 * @note A zero given by the setting turns into the DEFAULT width without answering a refusal
+			 *       at that: the text comes out the same as at a two. A refusal here would be more harmful
+			 *       than a substitution — the assembled text is always true, while a caller having given a
+			 *       zero out of inattention would receive a refusal of the writing instead of a fit text
+			 *
+			 * @warning Formerly it was written down that "it does not accept a zero", and that word promised
+			 *          a refusal which does not exist: a caller having trusted the word would wait for a
+			 *          sign of a failure while receiving a silent substitution. The divergence of the word
+			 *          from the deed was measured on 2026-09-17 by a comparison of the widths 0, 1, 2 and 3
+			 *          upon one tree
+			 *
+			 * @note The neighbors INI and TOML hold a field of the same name by a SIGN (`bool`) and not by a
+			 *       width, and a zero with them means "to place no indentation" — it is not possible at all
+			 *       to compare them with this field at one value. Three hold this field by a width: YAML,
+			 *       JSON and XML
+			 *
+			 * @note The arrangement of XML is worth remembering here as a sample of another: the width
+			 *       answers for the width with it, while the CHARACTER of the indentation is moved out into
+			 *       a separate field (`separator_t`: NONE, TABS, SPACES), and a zero width there means
+			 *       literally zero characters. The device "a zero means a tabulation", by which JSON saves a
+			 *       field, is worth that the setting ceases to mean what it is named; to us, though, that
+			 *       device is closed by the specification, and whereby a zero with us carries a third sense —
+			 *       the default
 			 *
 			 * \~
 			 */
@@ -139,7 +167,8 @@ namespace awh {
 						// Построение, каким записываются вместилища по умолчанию
 						layout_t layout;
 						/**
-						 * Ограда, какою обносятся строковые значения
+						 * \~russian
+						 * @brief Ограда, какою обносятся строковые значения
 						 *
 						 * @note Значение `PLAIN` означает не запись без ограды всегда, а решение
 						 *       по содержимому: ограда ставится там, где без неё запись прочлась бы
@@ -149,16 +178,39 @@ namespace awh {
 						 *          настройка задаёт ОГРАДУ, а блок оградою не является - запись
 						 *          отходит к ограде двойной. Вид блочный назначается значению
 						 *          своему, а не записи целиком
+						 *
+						 * \~english
+						 * @brief The fence with which the string values are surrounded
+						 *
+						 * @note The value `PLAIN` means not a writing without a fence always, but a decision by the
+						 *       content: a fence is put there where, without it, a record would be read otherwise — as a
+						 *       number, as a sign or as a construction
+						 *
+						 * @warning The block kinds `LITERAL` and `FOLDED` are NOT READ by this setting: the setting
+						 *          appoints a FENCE, while a block is not a fence — the writing goes over to the double
+						 *          fence. A block kind is appointed to its own value, and not to a writing as a whole
+						 *
+						 * \~
 						 */
 						style_t quoting;
 						// Ширина отступа в пробелах, ноль не принимается
 						uint8_t indent;
 						/**
-						 * Признак отступа перечня, значением пары стоящего
+						 * \~russian
+						 * @brief Признак отступа перечня, значением пары стоящего
 						 *
 						 * @note Оба написания описанием дозволены и читаются одинаково, а
 						 *       расходятся лишь видом. Умолчанием взято написание без отступа -
 						 *       его пишет большинство и его же выдаёт большинство записывающих
+						 *
+						 * \~english
+						 * @brief A sign of the indentation of a list standing as the value of a pair
+						 *
+						 * @note Both writings are allowed by the description and are read identically, while they diverge
+						 *       only by the appearance. The default is taken by the writing without an indentation — the
+						 *       majority writes it, and the same majority of the ones writing issues it
+						 *
+						 * \~
 						 */
 						bool sequenceIndent;
 						// Признак записи черты начала документа
@@ -172,14 +224,15 @@ namespace awh {
 						 * Правило обращения с негодной последовательностью UTF-8
 						 *
 						 * @details Правило это касается лишь записи содержимого, потребителем
-						 * поданного: значения, имени поля, якоря, метки и замечания. Записи,
-						 * потоком собираемые самостоятельно, битых байтов нести не могут вовсе
+						 *          поданного: значения, имени поля, якоря, метки и замечания. Записи,
+						 *          потоком собираемые самостоятельно, битых байтов нести не могут вовсе.
 						 *
 						 * \~english
 						 * Rule of the treatment of a malformed UTF-8 sequence
+						 *
 						 * @details This rule concerns only the writing of the content supplied by the consumer:
-						 * a value, a name of a field, an anchor, a tag and a comment. The records assembled
-						 * by the stream itself cannot carry the broken bytes at all
+						 *          a value, a name of a field, an anchor, a tag and a comment. The records assembled
+						 *          by the stream itself cannot carry the broken bytes at all.
 						 *
 						 * \~
 						 */
@@ -216,11 +269,20 @@ namespace awh {
 						// Признак того, что вместилище ещё не получило ни одного значения
 						bool empty;
 						/**
-						 * Признак того, что первая запись вместилища строку продолжает
+						 * \~russian
+						 * @brief Признак того, что первая запись вместилища строку продолжает
 						 *
 						 * @note Вместилище, значением перечня стоящее, открывается сразу за
 						 *       чертой значения, и первая запись его стоит в той же строке:
 						 *       `- имя: значение` есть отображение внутри перечня
+						 *
+						 * \~english
+						 * @brief A sign that the first record of a container continues a line
+						 *
+						 * @note A container standing as the value of a list opens right behind the dash of the value, and
+						 *       the first record of it stands in the same line: `- name: value` is a mapping inside a list
+						 *
+						 * \~
 						 */
 						bool attached;
 						/**
@@ -234,6 +296,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param kind kind of the opened container
 						 * @param layout layout by which the container is written
 						 * @param indent indentation of the content of the container
@@ -263,21 +326,23 @@ namespace awh {
 					 * Признак того, что запись отвергнута негодной кодировкой
 					 *
 					 * @details Признак этот заводится ради изъятия: текст, оборванный на
-					 * половине из-за отказа, негоден **вовсе**, и выдавать его молча поток
-					 * не вправе. Изъятие такого текста отдаёт пустоту
+					 *          половине из-за отказа, негоден **вовсе**, и выдавать его молча поток
+					 *          не вправе. Изъятие такого текста отдаёт пустоту.
 					 *
 					 * @note Ставится он лишь отказом по кодировке, а не всяким отказом:
-					 * отказы прочие потребитель разбирает сам, и запись блочного значения
-					 * внутри скобок, к примеру, законно отступает к иному оформлению
+					 *       отказы прочие потребитель разбирает сам, и запись блочного значения
+					 *       внутри скобок, к примеру, законно отступает к иному оформлению
 					 *
 					 * \~english
 					 * Sign that the writing is refused because of a malformed encoding
+					 *
 					 * @details This sign is created for the sake of the withdrawal: a text cut off in the
-					 * middle because of a refusal is **entirely** unsuitable, and the stream has no right to give it away
-					 * silently. A withdrawal of such a text gives away emptiness
+					 *          middle because of a refusal is **entirely** unsuitable, and the stream has no right to give it away
+					 *          silently. A withdrawal of such a text gives away emptiness.
+					 *
 					 * @note It is set only by a refusal by the encoding rather than by every refusal:
-					 * the other refusals are handled by the consumer itself, and the writing of a block value
-					 * inside the brackets, for instance, lawfully retreats to another formatting
+					 *       the other refusals are handled by the consumer itself, and the writing of a block value
+					 *       inside the brackets, for instance, lawfully retreats to another formatting
 					 *
 					 * \~
 					 */
@@ -304,20 +369,40 @@ namespace awh {
 					// Признак того, что записанное строку не закрыло
 					bool _hanging;
 					/**
-					 * Признак того, что записывается содержимое блочного значения
+					 * \~russian
+					 * @brief Признак того, что записывается содержимое блочного значения
 					 *
 					 * @note Пробелы в конце строки снимаются закрытием её: они содержимым не
 					 *       являются, и обратное чтение их не увидит. Строки же блочного значения
 					 *       суть содержимое само, и снимать в них нечего
+					 *
+					 * \~english
+					 * @brief A sign that the content of a block value is being written
+					 *
+					 * @note The spaces at the end of a line are removed by the closing of it: they are not a content,
+					 *       and a reverse reading would not see them. The lines of a block value, however, are the
+					 *       content itself, and there is nothing to remove in them
+					 *
+					 * \~
 					 */
 					bool _verbatim;
 					/**
-					 * Признак того, что открытая строка перенесена дословно
+					 * \~russian
+					 * @brief Признак того, что открытая строка перенесена дословно
 					 *
 					 * @note Строка эта усечению не подлежит: перенесена она исходными байтами, и
 					 *       пробелы в конце её суть те же байты. Признак снимается закрытием
 					 *       строки - в отличие от признака блочного значения, живущего всю запись
 					 *       содержимого его
+					 *
+					 * \~english
+					 * @brief A sign that an open line has been transferred verbatim
+					 *
+					 * @note This line is not subject to a truncation: it is transferred by the source bytes, and the
+					 *       spaces at its end are those same bytes. The sign is removed by the closing of a line —
+					 *       unlike the sign of a block value, which lives through the whole writing of its content
+					 *
+					 * \~
 					 */
 					bool _transferred;
 					// Признак того, что документ уже открыт
@@ -340,14 +425,15 @@ namespace awh {
 					 * @brief Метод добавления разделителя записей к собранному тексту
 					 *
 					 * @details Разделитель ставится лишь там, где его ещё нет: запись, за
-					 * чертой значения стоящая, пробелом уже отделена, а запись за именем пары -
-					 * ещё нет. Сличать это в каждом месте порознь значило бы развести места
-					 * между собою
+					 *          чертой значения стоящая, пробелом уже отделена, а запись за именем пары -
+					 *          ещё нет. Сличать это в каждом месте порознь значило бы развести места
+					 *          между собою.
 					 *
 					 * \~english
 					 * @brief Method of the addition of a separator of the records to the assembled text
+					 *
 					 * @details A separator is placed only where it is not yet: a record standing after
-					 * the dash of a value is already separated by a space, while a record after the name of a pair — not yet
+					 *          the dash of a value is already separated by a space, while a record after the name of a pair — not yet.
 					 *
 					 * \~
 					 */
@@ -357,14 +443,16 @@ namespace awh {
 					 * @brief Метод постановки записи на своё место в собираемом тексте
 					 *
 					 * @details Записывается отступ вместилища и черта значения перечня - в
-					 * объёме, какого требует место записи
+					 *          объёме, какого требует место записи.
 					 *
 					 * @return признак допустимости записи в этом месте
 					 *
 					 * \~english
 					 * @brief Method of the placing of a record at its place in the text being assembled
+					 *
 					 * @details The indentation of the container and the dash of a value of a sequence are written —
-					 * in the volume required by the place of the record
+					 *          in the volume required by the place of the record.
+					 *
 					 * @return sign of the permissibility of the record at this place
 					 *
 					 * \~
@@ -375,26 +463,29 @@ namespace awh {
 					 * @brief Метод запоминания отказа записи вместе с кодом ошибки
 					 *
 					 * @details Отказ, потребителю выданный, обязан называть свою причину: голая
-					 * ложь не говорит ни места отказа, ни рода его, и потребитель, её получивший,
-					 * не знает, править ли ему свой довод или строй записи. Судится это здесь
-					 * единственным телом
+					 *          ложь не говорит ни места отказа, ни рода его, и потребитель, её получивший,
+					 *          не знает, править ли ему свой довод или строй записи. Судится это здесь
+					 *          единственным телом.
 					 *
 					 * @note Тело это отвечает лишь за отказы, потребителю выданные. Отступления
-					 * внутренние, коими запись выбирает себе оформление, кодом не метятся: они
-					 * законны и потребителю не видны
+					 *       внутренние, коими запись выбирает себе оформление, кодом не метятся: они
+					 *       законны и потребителю не видны
 					 *
 					 * @param error код ошибки записи
 					 * @return      признак отказа для выхода из записи
 					 *
 					 * \~english
 					 * @brief Method of remembering a refusal of the writing together with the error code
+					 *
 					 * @details A refusal issued to the consumer is obliged to name its cause: a bare
-					 * falsehood tells neither the place of the refusal nor its kind, and the consumer that
-					 * received it does not know whether to correct its own argument or the order of the
-					 * writing. This is judged here by a single body
+					 *          falsehood tells neither the place of the refusal nor its kind, and the consumer that
+					 *          received it does not know whether to correct its own argument or the order of the
+					 *          writing. This is judged here by a single body.
+					 *
 					 * @note This body answers only for the refusals issued to the consumer. The internal
-					 * retreats by which the writing chooses its own formatting are not marked by a code:
-					 * they are lawful and are not visible to the consumer
+					 *       retreats by which the writing chooses its own formatting are not marked by a code:
+					 *       they are lawful and are not visible to the consumer
+					 *
 					 * @param error error code of the writing
 					 * @return      flag of a refusal for the exit from the writing
 					 *
@@ -420,6 +511,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a scalar value by a chosen quoting
+					 *
 					 * @param text content of the value being written
 					 * @param style quoting by which the value is enclosed
 					 *
@@ -431,8 +523,8 @@ namespace awh {
 					 * @brief Метод приведения записи к годной кодировке UTF-8
 					 *
 					 * @details Приведение ведётся тем же телом разбора, каким его ведёт чтение:
-					 * второе такое тело разошлось бы с первым, и запись выдавала бы то, чего
-					 * чтение не принимает
+					 *          второе такое тело разошлось бы с первым, и запись выдавала бы то, чего
+					 *          чтение не принимает.
 					 *
 					 * @param text     приводимая запись
 					 * @param result   переменная, куда помещается приведённая запись
@@ -440,9 +532,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the bringing of a record to a valid UTF-8 encoding
+					 *
 					 * @details The bringing is conducted by the same parsing body by which the reading conducts it:
-					 * a second such body would diverge from the first one, and the writing would give away what
-					 * the reading does not accept
+					 *          a second such body would diverge from the first one, and the writing would give away what
+					 *          the reading does not accept.
+					 *
 					 * @param text record being brought
 					 * @param result variable where the brought record is placed
 					 * @return sign of the suitability of the record for the writing
@@ -455,7 +549,7 @@ namespace awh {
 					 * @brief Метод приведения записи к годной кодировке UTF-8 с выдачей среза
 					 *
 					 * @details Выдаётся СРЕЗ, а не строка: запись, негодных последовательностей
-					 * не несущая, изменения не требует вовсе, и переносить её куда-либо незачем
+					 *          не несущая, изменения не требует вовсе, и переносить её куда-либо незачем.
 					 *
 					 * @warning Срез живёт ровно столько, сколько живёт исходная запись либо
 					 *          накопитель: зовущий обязан держать оба до конца работы со срезом
@@ -467,6 +561,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the bringing of a record to a valid UTF-8 encoding with the issuing of a view
+					 *
+					 * @details A VIEW is issued and not a string: a record carrying no unfit sequences requires no
+					 *          change at all, and there is no need to transfer it anywhere.
+					 *
+					 * @warning The view lives exactly as long as the source record or the accumulator lives: the
+					 *          caller is obliged to hold both until the end of the work with the view
+					 *
 					 * @param text   record being brought
 					 * @param result accumulator for the brought record
 					 * @param record issued view of the brought record
@@ -480,9 +581,9 @@ namespace awh {
 					 * @brief Метод записи значения, к годной кодировке уже приведённого
 					 *
 					 * @details Заведён он ради того, чтобы приведение не выполнялось дважды:
-					 * запись значения без указания ограды приводит его сама - ограда выбирается
-					 * по приведённой записи, - и повторное приведение в записи с оградою было
-					 * бы работой над уже сделанным
+					 *          запись значения без указания ограды приводит его сама - ограда выбирается
+					 *          по приведённой записи, - и повторное приведение в записи с оградою было
+					 *          бы работой над уже сделанным.
 					 *
 					 * @note Стоило это выделения памяти на КАЖДОЕ строковое значение сверх
 					 *       необходимого: приведение заводит строку под запись, и заводилась
@@ -495,6 +596,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a value already brought to a valid encoding
+					 *
+					 * @details It was made for the conversion not to be performed twice: a writing of a value with
+					 *          no quoting indicated converts it itself — the quoting is chosen by the converted
+					 *          record — and a repeated conversion in a writing with a quoting would be a work over
+					 *          an already done one.
+					 *
+					 * @note This cost an allocation of the memory for EVERY string value beyond the need: the
+					 *       conversion makes a string under the record, and it was made twice. It stuck out as a
+					 *       count of allocations at libstdc++, where the short reserve of a string holds 15 octets
+					 *       against 22 at libc++
+					 *
 					 * @param record brought record of the value
 					 * @param style  kind of the fence of the record of the value
 					 * @return       flag of a successful writing of the value
@@ -512,6 +624,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a container of a given kind
+					 *
 					 * @param kind kind of the container being opened
 					 * @param layout layout by which the container is written
 					 * @return sign of the successful opening of the container
@@ -528,6 +641,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a mapping of the pairs
+					 *
 					 * @return sign of the successful opening of the mapping
 					 *
 					 * \~
@@ -542,6 +656,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a mapping of the pairs by a given layout
+					 *
 					 * @param layout layout by which the mapping is written
 					 * @return sign of the successful opening of the mapping
 					 *
@@ -556,6 +671,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a sequence of the values
+					 *
 					 * @return sign of the successful opening of the sequence
 					 *
 					 * \~
@@ -570,6 +686,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a sequence of the values by a given layout
+					 *
 					 * @param layout layout by which the sequence is written
 					 * @return sign of the successful opening of the sequence
 					 *
@@ -581,16 +698,18 @@ namespace awh {
 					 * @brief Метод закрытия открытого вместилища
 					 *
 					 * @details Вместилище, значений так и не получившее, записывается скобками:
-					 * блочное построение пустоту выразить не в силах, и `{}` есть единственная
-					 * запись пустого отображения
+					 *          блочное построение пустоту выразить не в силах, и `{}` есть единственная
+					 *          запись пустого отображения.
 					 *
 					 * @return признак успешного закрытия вместилища
 					 *
 					 * \~english
 					 * @brief Method of the closing of an opened container
+					 *
 					 * @details A container which has not received any values is written by the brackets:
-					 * a block layout is not able to express an emptiness, and `{}` is the only
-					 * notation of an empty mapping
+					 *          a block layout is not able to express an emptiness, and `{}` is the only
+					 *          notation of an empty mapping.
+					 *
 					 * @return sign of the successful closing of the container
 					 *
 					 * \~
@@ -606,6 +725,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the name of a pair of a mapping
+					 *
 					 * @param name name of the pair of the mapping being written
 					 * @return sign of the successful writing of the name of the pair
 					 *
@@ -617,9 +737,9 @@ namespace awh {
 					 * @brief Метод записи имени пары отображения с меткою, ему предпосланной
 					 *
 					 * @details Метка эта принадлежит ИМЕНИ пары, а не значению её: написание
-					 * `&m a: b` метит запись `a`. Метка значения ставится обычным способом -
-					 * методом @c anchor, - и путать их нельзя: ссылка на метку имени и ссылка
-					 * на метку значения ведут к разным записям
+					 *          `&m a: b` метит запись `a`. Метка значения ставится обычным способом -
+					 *          методом @c anchor, - и путать их нельзя: ссылка на метку имени и ссылка
+					 *          на метку значения ведут к разным записям.
 					 *
 					 * @param name   записываемое имя пары отображения
 					 * @param anchor метка, имени пары предпосылаемая
@@ -627,6 +747,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the name of a pair of a mapping with an anchor placed before it
+					 *
+					 * @details This anchor belongs to the NAME of a pair, and not to its value: the notation `&m a:
+					 *          b` marks the record `a`. The anchor of a value is set in the ordinary way — by the @c
+					 *          anchor method — and they must not be confused: a reference to a name anchor and a
+					 *          reference to a value anchor lead to different records.
+					 *
 					 * @param name name of the pair of the mapping being written
 					 * @param anchor anchor being placed before the name of the pair
 					 * @return sign of the successful writing of the name of the pair
@@ -639,9 +765,9 @@ namespace awh {
 					 * @brief Метод записи имени пары отображения со свойствами, ему предпосланными
 					 *
 					 * @details Свойства эти принадлежат ИМЕНИ пары, а не значению её: написание
-					 * `&m !!str a: b` метит запись `a` меткою узла и меткою типа разом. Свойства
-					 * значения ставятся обычным способом - методами @c anchor да @c tag, - и путать
-					 * их нельзя: они относятся к разным записям
+					 *          `&m !!str a: b` метит запись `a` меткою узла и меткою типа разом. Свойства
+					 *          значения ставятся обычным способом - методами @c anchor да @c tag, - и путать
+					 *          их нельзя: они относятся к разным записям.
 					 *
 					 * @param name   записываемое имя пары отображения
 					 * @param anchor метка, имени пары предпосылаемая
@@ -650,6 +776,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the name of a pair of a mapping with the properties placed before it
+					 *
+					 * @details These properties belong to the NAME of a pair, and not to its value: the notation
+					 *          `&m !!str a: b` marks the record `a` by a node anchor and a type tag at once. The
+					 *          properties of a value are set in the ordinary way — by the @c anchor and @c tag
+					 *          methods — and they must not be confused: they concern different records.
+					 *
 					 * @param name name of the pair of the mapping being written
 					 * @param anchor anchor being placed before the name of the pair
 					 * @param tag tag being placed before the name of the pair
@@ -670,6 +802,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the name of a pair with the properties and the kind of the tag
+					 *
 					 * @param name name of the pair of the mapping being written
 					 * @param anchor anchor being placed before the name of the pair
 					 * @param tag tag being placed before the name of the pair
@@ -688,6 +821,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an anchor placed before the next node
+					 *
 					 * @param name name of the anchor being written
 					 * @return sign of the successful writing of the anchor
 					 *
@@ -699,16 +833,18 @@ namespace awh {
 					 * @brief Метод записи метки типа, следующему узлу предпосылаемой
 					 *
 					 * @details Метка описания, полным видом переданная, записывается
-					 * сокращением: запись `tag:yaml.org,2002:str` выйдет как `!!str`, ибо
-					 * сокращение это описанием закреплено и понятно всякому читающему
+					 *          сокращением: запись `tag:yaml.org,2002:str` выйдет как `!!str`, ибо
+					 *          сокращение это описанием закреплено и понятно всякому читающему.
 					 *
 					 * @param name записываемая метка типа
 					 * @return     признак успешной записи метки типа
 					 *
 					 * \~english
 					 * @brief Method of the writing of a tag placed before the next node
+					 *
 					 * @details A tag of the specification passed by the full notation is written
-					 * by the shorthand: the notation `tag:yaml.org,2002:str` will come out as `!!str`
+					 *          by the shorthand: the notation `tag:yaml.org,2002:str` will come out as `!!str`
+					 *
 					 * @param name tag being written
 					 * @return sign of the successful writing of the tag
 					 *
@@ -720,11 +856,11 @@ namespace awh {
 					 * @brief Метод записи метки типа с указанием местного её вида
 					 *
 					 * @details Метка местная от сокращения описания неотличима записью своею:
-					 * чтение разворачивает сокращение `!!вид` в полный указатель, и всё, что
-					 * приходит обратно со знака `!`, есть метка МЕСТНАЯ - даже когда за первым
-					 * знаком стоит второй такой же. Написание `!%21y` есть метка местная с
-					 * указателем `!y`, и записать её сокращением `!!y` значит выдать метку
-					 * ИНУЮ - описанием закреплённую, - да ещё и молча
+					 *          чтение разворачивает сокращение `!!вид` в полный указатель, и всё, что
+					 *          приходит обратно со знака `!`, есть метка МЕСТНАЯ - даже когда за первым
+					 *          знаком стоит второй такой же. Написание `!%21y` есть метка местная с
+					 *          указателем `!y`, и записать её сокращением `!!y` значит выдать метку
+					 *          ИНУЮ - описанием закреплённую, - да ещё и молча.
 					 *
 					 * @param name  записываемая метка типа
 					 * @param local признак местного вида метки: рукоять её есть один знак `!`
@@ -732,6 +868,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a tag with the indication of its local kind
+					 *
+					 * @details A local tag is indistinguishable from a shorthand of the specification by its record:
+					 *          the reading unfolds the shorthand `!!kind` into a full pointer, and everything coming
+					 *          back from a `!` sign is a LOCAL tag — even when a second such sign stands after the
+					 *          first one. The notation `!%21y` is a local tag with the pointer `!y`, and to write it
+					 *          by the shorthand `!!y` means to issue a DIFFERENT tag — fixed by the specification —
+					 *          and silently besides.
+					 *
 					 * @param name tag being written
 					 * @param local sign of the local kind of the tag: its handle is a single `!`
 					 * @return sign of the successful writing of the tag
@@ -748,6 +892,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an alias to a declared anchor
+					 *
 					 * @param name name of the anchor to which the alias points
 					 * @return sign of the successful writing of the alias
 					 *
@@ -763,6 +908,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an empty value
+					 *
 					 * @return sign of the successful writing of the value
 					 *
 					 * \~
@@ -773,30 +919,33 @@ namespace awh {
 					 * @brief Метод записи пустого значения видом, построению доступным
 					 *
 					 * @details Пустота записывается пустотою же: строка `- ` есть запись перечня
-					 * с пустым значением. Внутри же построения поточного пустота записи не
-					 * имеет вовсе - `[a, ]` есть перечень из ОДНОГО значения, а не из двух, и
-					 * запятая там висячая. Значение, пустотою записанное в скобках, пропадало
-					 * бы из текста, и круговой ход перезаписи терял бы его молча
+					 *          с пустым значением. Внутри же построения поточного пустота записи не
+					 *          имеет вовсе - `[a, ]` есть перечень из ОДНОГО значения, а не из двух, и
+					 *          запятая там висячая. Значение, пустотою записанное в скобках, пропадало
+					 *          бы из текста, и круговой ход перезаписи терял бы его молча.
 					 *
 					 * @note Внутри скобок пустота потому записывается словом `null`, а по схеме
-					 * защитной - оградою пустою: слова `null` схема та не знает, и значение
-					 * вернулось бы строкою из четырёх букв. Ограда пустая при ней вернёт строку
-					 * пустую, что пустоте роднее всего - иного вида схема защитная не имеет
+					 *       защитной - оградою пустою: слова `null` схема та не знает, и значение
+					 *       вернулось бы строкою из четырёх букв. Ограда пустая при ней вернёт строку
+					 *       пустую, что пустоте роднее всего - иного вида схема защитная не имеет
 					 *
 					 * @return признак успешной записи значения
 					 *
 					 * \~english
 					 * @brief Method of the writing of an empty value by the form available to the construction
+					 *
 					 * @details Emptiness is written by emptiness itself: the line `- ` is a notation of a
-					 * sequence with an empty value. Inside a flow construction, however, emptiness has no
-					 * notation at all — `[a, ]` is a sequence of ONE value rather than of two, and the comma
-					 * there is a trailing one. A value written by emptiness inside the brackets would
-					 * disappear from the text, and the round trip of the rewriting would lose it silently
+					 *          sequence with an empty value. Inside a flow construction, however, emptiness has no
+					 *          notation at all — `[a, ]` is a sequence of ONE value rather than of two, and the comma
+					 *          there is a trailing one. A value written by emptiness inside the brackets would
+					 *          disappear from the text, and the round trip of the rewriting would lose it silently.
+					 *
 					 * @note Inside the brackets emptiness is therefore written by the word `null`, and by the
-					 * failsafe schema by an empty quoting: that schema does not know the word `null`, and the
-					 * value would come back as a string of four letters. An empty quoting under it will give
-					 * back an empty string, which is the closest kin to emptiness — the failsafe schema has
-					 * no other kind
+					 *       failsafe schema by an empty quoting: that schema does not know the word `null`, and the
+					 *       value would come back as a string of four letters. An empty quoting under it will give
+					 *       back an empty string, which is the closest kin to emptiness — the failsafe schema has
+					 *       no other kind
+					 *
 					 * @return sign of the successful writing of the value
 					 *
 					 * \~
@@ -811,6 +960,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a boolean value
+					 *
 					 * @param value boolean value being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -818,6 +968,7 @@ namespace awh {
 					 */
 					bool value(const bool value) noexcept;
 					/**
+					 * \~russian
 					 * @note Приём записи ЗНАКА - `value(const char)` - снят 09.09.2026. Он писал
 					 *       знак строкою из одного знака, и довод его гласил, что без него
 					 *       `value('z')` молча стало бы числом 122. Довод тот верен, но неполон:
@@ -840,14 +991,40 @@ namespace awh {
 					 *       `value(string(1, letter))`. Заведение знака ВЛАДЕЮЩИМ значением
 					 *       оставлено как есть - оно у JSON тоже имеется, и трогать его значило бы
 					 *       разойтись с образцом
+					 *
+					 * \~english
+					 * @note The accepting of the writing of a CHARACTER — `value(const char)` — is REMOVED
+					 *       2026-09-09. It wrote a character as a string of one character, and its argument said that
+					 *       without it `value('z')` would silently become the number 122. That argument is true but
+					 *       incomplete: at the systems of Sun the kind `int8_t` is declared AS `char`, and not as
+					 *       `signed char` (measured on 10.100.1.105 by `is_same`), and a writing `value(int8_t(-128))`
+					 *       went the same way — the byte `0x80` is not a UTF-8 character, and the rule
+					 *       `malformed_t::REPLACE` substituted it with the character `U+FFFD`. A number turned into a
+					 *       spoil SILENTLY, and only on two machines of eight
+					 *
+					 * @note A codec cannot distinguish an intention in principle: on those machines `int8_t` and `char`
+					 *       are ONE kind, and the overloads by it are indistinguishable. The choice is therefore not
+					 *       between «a character» and «a number», but between a surprise platform-inDEPENDENT and a
+					 *       spoil platform-DEPENDENT
+					 *
+					 * @note Taken by the pattern of the JSON codec, whose contract of the types of the language is
+					 *       taken over VERBATIM: its writer has no accepting of a character at all, and `value('z')`
+					 *       writes there 122 on all the machines at once. It was YAML diverging here, and not JSON
+					 *
+					 * @note A character can still be written by a string: `value("z")` or `value(string(1, letter))`.
+					 *       The institution of a character as an OWNING value is left as it is — JSON has it too, and to
+					 *       touch it would mean to diverge from the sample
+					 *
 					 */
 					/**
 					 * \~russian
 					 * @brief Шаблон вида записываемого целого числа
+					 *
 					 * @tparam T вид записываемого целого числа
 					 *
 					 * \~english
 					 * @brief Template of the kind of the integer being written
+					 *
 					 * @tparam T kind of the integer being written
 					 *
 					 * \~
@@ -858,11 +1035,11 @@ namespace awh {
 					 * @brief Метод записи целого числа записи любой
 					 *
 					 * @details Приём этот отвечает за написания, ширины которым отведено менее
-					 * восьми байтов, - `short`, `int`, `long`, `size_t` и прочие. Без него запись
-					 * `value(1)` расходилась бы между целым со знаком, целым без знака и дробным
-					 * видами приведением равной силы, и сборка отвечала бы двусмысленностью:
-					 * годились ЛИШЬ `int64_t`, `uint64_t` и `double`. Правило то же, каким целое
-					 * число заводится владеющим значением
+					 *          восьми байтов, - `short`, `int`, `long`, `size_t` и прочие. Без него запись
+					 *          `value(1)` расходилась бы между целым со знаком, целым без знака и дробным
+					 *          видами приведением равной силы, и сборка отвечала бы двусмысленностью:
+					 *          годились ЛИШЬ `int64_t`, `uint64_t` и `double`. Правило то же, каким целое
+					 *          число заводится владеющим значением.
 					 *
 					 * @note Знаковость выбирает вид, которому число доводится: число без знака
 					 *       уходит через `uint64_t`, а со знаком через `int64_t`. Обход через
@@ -873,6 +1050,18 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an integer of any record
+					 *
+					 * @details This device answers for the notations to which less than eight bytes are allotted —
+					 *          `short`, `int`, `long`, `size_t` and the others. Without it the notation `value(1)`
+					 *          would diverge between the signed integer, the unsigned integer and the fractional
+					 *          kinds by conversions of equal force, and the assembly would answer with an ambiguity:
+					 *          ONLY `int64_t`, `uint64_t` and `double` were fit. The rule is the same by which an
+					 *          integer is created at an owning value.
+					 *
+					 * @note The signedness chooses the kind to which the number is promoted: a number without a sign
+					 *       goes through `uint64_t`, and one with a sign through `int64_t`. A bypass through one only
+					 *       `int64_t` would turn `4294967295u` into a negative one
+					 *
 					 * @param value integer being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -888,6 +1077,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value
+					 *
 					 * @param value string value being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -904,6 +1094,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value by a given quoting
+					 *
 					 * @param value string value being written
 					 * @param style quoting by which the value is enclosed
 					 * @return sign of the successful writing of the value
@@ -920,6 +1111,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value
+					 *
 					 * @param value string value being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -935,6 +1127,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a signed integer
+					 *
 					 * @param value integer being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -950,6 +1143,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an unsigned integer
+					 *
 					 * @param value integer being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -961,16 +1155,18 @@ namespace awh {
 					 * @brief Метод записи дробного числа
 					 *
 					 * @details Бесконечность и нечисло записываются словами `.inf` и `.nan`:
-					 * описание знает их прямо, и отказывать в них незачем - тем запись эта от
-					 * записи JSON и разнится, ибо там их нет вовсе
+					 *          описание знает их прямо, и отказывать в них незачем - тем запись эта от
+					 *          записи JSON и разнится, ибо там их нет вовсе.
 					 *
 					 * @param value записываемое дробное число
 					 * @return      признак успешной записи значения
 					 *
 					 * \~english
 					 * @brief Method of the writing of a floating point number
+					 *
 					 * @details The infinity and the not-a-number are written by the words `.inf` and `.nan`:
-					 * the specification knows them directly, and there is no point in refusing them
+					 *          the specification knows them directly, and there is no point in refusing them.
+					 *
 					 * @param value floating point number being written
 					 * @return sign of the successful writing of the value
 					 *
@@ -982,13 +1178,13 @@ namespace awh {
 					 * @brief Метод записи блочного значения
 					 *
 					 * @details Блочным значением записывается многострочный текст: ограда
-					 * двойная передала бы его отменяющими последовательностями, и читающий
-					 * человек в записи той ничего бы не разобрал
+					 *          двойная передала бы его отменяющими последовательностями, и читающий
+					 *          человек в записи той ничего бы не разобрал.
 					 *
 					 * @note Отказ этого тела кодом ошибки **не** метится, и это решено намеренно:
-					 * записывающий сам зовёт его наудачу, а получив ложь, отступает к ограде
-					 * двойной и записывает значение успешно. Пометь мы отказ кодом - код тот
-					 * пережил бы удачную запись и солгал бы потребителю, её проверившему
+					 *       записывающий сам зовёт его наудачу, а получив ложь, отступает к ограде
+					 *       двойной и записывает значение успешно. Пометь мы отказ кодом - код тот
+					 *       пережил бы удачную запись и солгал бы потребителю, её проверившему
 					 *
 					 * @param text  записываемое содержимое значения
 					 * @param style вид блочного значения, дословный либо со свёрткой
@@ -997,13 +1193,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a block scalar
+					 *
 					 * @details A multiline text is written by a block scalar: a double quoting
-					 * would pass it by the escape sequences, and a reading human would make out nothing in that notation
+					 *          would pass it by the escape sequences, and a reading human would make out nothing in that notation.
+					 *
 					 * @note A refusal of this body is **not** marked by an error code, and this is decided
-					 * deliberately: the writer itself calls it on the off-chance, and having received a
-					 * falsehood, retreats to a double quoting and writes the value successfully. Were we to
-					 * mark the refusal by a code, that code would outlive the successful writing and would
-					 * lie to the consumer that checked it
+					 *       deliberately: the writer itself calls it on the off-chance, and having received a
+					 *       falsehood, retreats to a double quoting and writes the value successfully. Were we to
+					 *       mark the refusal by a code, that code would outlive the successful writing and would
+					 *       lie to the consumer that checked it
+					 *
 					 * @param text content of the value being written
 					 * @param style kind of the block scalar, literal or folded
 					 * @param chomp rule of the chomping of the line breaks at the end of the value
@@ -1017,16 +1216,18 @@ namespace awh {
 					 * @brief Метод записи значения дословно, как оно передано
 					 *
 					 * @details Записанное не проверяется ничем: способ этот отведён под
-					 * перенос кусков исходного текста, разбором уже прочитанных, и проверять
-					 * их вторично незачем
+					 *          перенос кусков исходного текста, разбором уже прочитанных, и проверять
+					 *          их вторично незачем.
 					 *
 					 * @param value записываемое содержимое
 					 * @return      признак успешной записи содержимого
 					 *
 					 * \~english
 					 * @brief Method of the writing of a value verbatim as it is passed
+					 *
 					 * @details What is written is not checked by anything: this way is reserved for
-					 * the transfer of the pieces of a source text already read by the parsing
+					 *          the transfer of the pieces of a source text already read by the parsing.
+					 *
 					 * @param value content being written
 					 * @return sign of the successful writing of the content
 					 *
@@ -1043,6 +1244,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a comment by its own line
+					 *
 					 * @param text content of the comment being written
 					 * @return sign of the successful writing of the comment
 					 *
@@ -1058,6 +1260,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a comment at the end of a written line
+					 *
 					 * @param text content of the comment being written
 					 * @return sign of the successful writing of the comment
 					 *
@@ -1069,14 +1272,16 @@ namespace awh {
 					 * @brief Метод открытия очередного документа потока
 					 *
 					 * @details Документ второй и всякий следующий открывается чертою всегда:
-					 * иначе поток слился бы в один документ
+					 *          иначе поток слился бы в один документ.
 					 *
 					 * @return признак успешного открытия документа
 					 *
 					 * \~english
 					 * @brief Method of the opening of the next document of a stream
+					 *
 					 * @details The second document and every next one is always opened by the dash:
-					 * otherwise the stream would merge into one document
+					 *          otherwise the stream would merge into one document.
+					 *
 					 * @return sign of the successful opening of the document
 					 *
 					 * \~
@@ -1090,6 +1295,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the termination of the writing of a text
+					 *
 					 * @return sign of the successful termination of the writing
 					 *
 					 * \~
@@ -1104,6 +1310,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the assembled text
+					 *
 					 * @return assembled text
 					 *
 					 * \~
@@ -1114,29 +1321,51 @@ namespace awh {
 					 * @brief Метод получения кода ошибки записи
 					 *
 					 * @details Отказ записи ЛИПКИЙ: писатель, отказом задетый, дальнейших записей
-					 * не принимает вовсе, а код отказа держит до сброса. Иначе потребитель, кода
-					 * не сверивший, получил бы текст без отвергнутой части и пропажи не заметил
+					 *          не принимает вовсе, а код отказа держит до сброса. Иначе потребитель, кода
+					 *          не сверивший, получил бы текст без отвергнутой части и пропажи не заметил.
 					 *
 					 * @note Договор этот один у INI, TOML и YAML: расхождение их сведено к одному
-					 * общим решением. Закреплён он проверкой RefusalLocksWriter, перебирающей ВСЕ
-					 * методы записи открытого договора - метод, сторожа не получивший, выпал бы
-					 * из договора молча
+					 *       общим решением. Закреплён он проверкой RefusalLocksWriter, перебирающей ВСЕ
+					 *       методы записи открытого договора - метод, сторожа не получивший, выпал бы
+					 *       из договора молча
 					 *
 					 * @note Сброс clear() код отказа отпускает: переживший его, он указывал бы на
-					 * причину, которой более нет
+					 *       причину, которой более нет
 					 *
 					 * @warning ОТСТУПЛЕНИЕ отказом не является и кода не ставит: verbatim() и
-					 * block() отвечают ложью там, где содержимое этим построением не передаётся -
-					 * блочное значение внутри скобок, дословные строки за именем пары, знак
-					 * возврата каретки в блочном значении, - и сборка берёт иное оформление тем
-					 * же содержимым. Писателя такая ложь НЕ заклинивает. Закреплено проверкой
-					 * BlockRetreatLeavesNoReason. Обратив отступление в отказ, роняешь четыре
-					 * проверки дерева и одну записи - замерено
+					 *          block() отвечают ложью там, где содержимое этим построением не передаётся -
+					 *          блочное значение внутри скобок, дословные строки за именем пары, знак
+					 *          возврата каретки в блочном значении, - и сборка берёт иное оформление тем
+					 *          же содержимым. Писателя такая ложь НЕ заклинивает. Закреплено проверкой
+					 *          BlockRetreatLeavesNoReason. Обратив отступление в отказ, роняешь четыре
+					 *          проверки дерева и одну записи - замерено
 					 *
 					 * @return код ошибки последней операции записи
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the writing
+					 *
+					 * @details A refusal of the writing is STICKY: a writer touched by a refusal takes no further
+					 *          writings at all, and holds the refusal code until a reset. Otherwise a consumer
+					 *          having not compared the code would receive a text without the rejected part and would
+					 *          not notice the loss.
+					 *
+					 * @note This contract is one for INI, TOML and YAML: their divergence is brought to one by a
+					 *       common decision. It is fixed by the check RefusalLocksWriter, going over ALL the writing
+					 *       methods of the open contract — a method left without a guard would drop out of the
+					 *       contract silently
+					 *
+					 * @note A reset clear() releases the refusal code: having outlived it, the code would point at
+					 *       a reason which is no more
+					 *
+					 * @warning A RETREAT is not a refusal and sets no code: verbatim() and block() answer with
+					 *          falsehood there where the content is not carried by this construction — a block value
+					 *          inside brackets, literal lines behind the name of a pair, a carriage return sign in a
+					 *          block value — and the assembly takes another formatting for the selfsame content. Such
+					 *          a falsehood does NOT lock the writer. Fixed by the check BlockRetreatLeavesNoReason.
+					 *          Turning a retreat into a refusal, you drop four tree checks and one of the writing —
+					 *          measured
+					 *
 					 * @return error code of the last operation of the writing
 					 *
 					 * \~
@@ -1150,6 +1379,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the taking of the assembled text out of the assembler
+					 *
 					 * @return text taken out of the assembler
 					 *
 					 * \~
@@ -1163,6 +1393,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the size of the assembled text
+					 *
 					 * @return size of the assembled text in the bytes
 					 *
 					 * \~
@@ -1176,6 +1407,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the depth of the nesting of the writing
+					 *
 					 * @return depth of the nesting of the opened containers
 					 *
 					 * \~
@@ -1189,6 +1421,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the indentation at which the next record is laid
+					 *
 					 * @return indentation of the content of the opened container in the spaces
 					 *
 					 * \~
@@ -1199,10 +1432,10 @@ namespace awh {
 					 * @brief Метод назначения отступа следующему вместилищу
 					 *
 					 * @details Отступ этот отменяет ширину, настройками заданную, для одного лишь
-					 * вместилища, открываемого следующим - ровно как метка да метка типа ждут
-					 * своего узла. Служит это перезаписи с удержанием исходного текста: вместилище,
-					 * правкой тронутое, собирается заново, а дети его нетронутые переносятся
-					 * дословно, и отступ им надобен тот же, на каком они стояли
+					 *          вместилища, открываемого следующим - ровно как метка да метка типа ждут
+					 *          своего узла. Служит это перезаписи с удержанием исходного текста: вместилище,
+					 *          правкой тронутое, собирается заново, а дети его нетронутые переносятся
+					 *          дословно, и отступ им надобен тот же, на каком они стояли.
 					 *
 					 * @note Значение нулевое отменяет назначение и возвращает ширину настроек
 					 *
@@ -1210,9 +1443,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the appointment of an indentation to the next container
+					 *
 					 * @details This indentation overrides the width set by the settings for the one container
-					 * being opened next
+					 *          being opened next — exactly as a tag and a tag of the type wait for their own node.
+					 *          This serves a rewriting with a retention of the source text: a container touched by an
+					 *          editing is assembled anew, while its untouched children are transferred verbatim, and
+					 *          the indentation they need is the same one at which they stood.
+					 *
 					 * @note A zero value cancels the appointment and returns the width of the settings
+					 *
 					 * @param indent indentation of the content of the container being appointed
 					 *
 					 * \~
@@ -1223,14 +1462,14 @@ namespace awh {
 					 * @brief Метод дословной записи готовых строк текста
 					 *
 					 * @details Строки переносятся в собираемый текст как есть, без ограды и разбора:
-					 * переносящий сам отвечает за то, что они лягут на своё место. Служит это
-					 * дословной перезаписи поддеревьев, правкой не тронутых, - и тем сохраняет
-					 * примечания, пустые строки да ограду значений, дереву неведомые
+					 *          переносящий сам отвечает за то, что они лягут на своё место. Служит это
+					 *          дословной перезаписи поддеревьев, правкой не тронутых, - и тем сохраняет
+					 *          примечания, пустые строки да ограду значений, дереву неведомые.
 					 *
 					 * @details Отступ переносится целиком, а не построчно: разность между отступом
-					 * исходным и отступом записи прибавляется ко всякой строке, и вложенность строк
-					 * между собою тем сохраняется. Разность нулевая - а таков случай перезаписи
-					 * без правки - оставляет байты нетронутыми вовсе
+					 *          исходным и отступом записи прибавляется ко всякой строке, и вложенность строк
+					 *          между собою тем сохраняется. Разность нулевая - а таков случай перезаписи
+					 *          без правки - оставляет байты нетронутыми вовсе.
 					 *
 					 * @warning Запись отвергается там, где дословные строки лечь не могут: внутри
 					 *          поточного построения, за именем пары, ожидающим значения, и первою
@@ -1242,9 +1481,22 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the verbatim writing of the ready lines of a text
-					 * @details The lines are transferred into the assembled text as they are, without the quoting, the indentation
-					 * and the parsing: the one transferring is himself responsible for them falling into their place
-					 * @warning The writing is refused where the verbatim lines cannot fall
+					 *
+					 * @details The lines are transferred into the assembled text as they are, without the quoting
+					 *          and the parsing: the one transferring is himself responsible for them falling into their
+					 *          place. This serves a verbatim rewriting of the sub-trees untouched by an editing, and
+					 *          thereby it preserves the comments, the empty lines and the fence of the values unknown
+					 *          to a tree.
+					 *
+					 * @details The indentation is transferred whole and not line by line: the difference between the
+					 *          source indentation and the indentation of the writing is added to every line, and the
+					 *          nesting of the lines among themselves is thereby preserved. A zero difference — and
+					 *          such is the case of a rewrite without an editing — leaves the bytes untouched at all.
+					 *
+					 * @warning The writing is refused where the verbatim lines cannot fall: inside a streaming
+					 *          construction, behind a name of a pair waiting for a value, and by the first record of a
+					 *          container continuing the line of the enclosing record
+					 *
 					 * @param text lines of the text being transferred
 					 * @param indent indentation at which the lines stood in the source text
 					 * @return sign of the successful transfer of the lines
@@ -1271,6 +1523,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the settings of the writing of a text
+					 *
 					 * @return settings of the writing of a text
 					 *
 					 * \~
@@ -1284,6 +1537,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the writing of a text
+					 *
 					 * @param settings settings of the writing being set
 					 *
 					 * \~
@@ -1308,6 +1562,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the writing of a text
 					 *
 					 * \~

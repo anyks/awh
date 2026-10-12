@@ -2242,16 +2242,6 @@ string awh::codec::csv::Document::dump() const noexcept {
 	return writer.text();
 }
 /**
- * @brief Метод получения текста таблицы
- *
- * @return собранный текст таблицы
- *
- */
-string awh::codec::csv::Document::text() const noexcept {
-	// Выводим собранный текст таблицы
-	return this->dump();
-}
-/**
  * @brief Метод очистки таблицы
  *
  * @details Настройки контейнера сохраняются: очищается лишь то, что накоплено разбором
@@ -2297,7 +2287,7 @@ const awh::codec::csv::Document::settings_t & awh::codec::csv::Document::setting
  */
 awh::codec::csv::Document::operator string() const noexcept {
 	// Выводим собранный текст таблицы
-	return this->text();
+	return this->dump();
 }
 /**
  * @brief Метод установки настроек контейнера

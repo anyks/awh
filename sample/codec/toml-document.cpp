@@ -151,7 +151,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим обозначение перезаписи дерева настроек
 	cout << endl << "== перезапись ==" << endl;
 	// Выводим перезапись дерева настроек
-	cout << document.text();
+	cout << document.dump();
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }

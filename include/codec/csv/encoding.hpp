@@ -113,10 +113,10 @@ namespace awh {
 			 * @brief Принудительная подстановка суждения о знаке
 			 *
 			 * @details Суждение о годности знака и чтение его кодового значения зовутся на
-			 * КАЖДЫЙ байт всякого поля - и при разборе, и при записи. Оставленные вызовами
-			 * через границу единиц трансляции, они стоят дороже самой работы: замер
-			 * 05.09.2026 показал 394 МБ/с записи против 768 при снятой проверке вовсе, а
-			 * встраивание разбора вернуло 581
+			 *          КАЖДЫЙ байт всякого поля - и при разборе, и при записи. Оставленные вызовами
+			 *          через границу единиц трансляции, они стоят дороже самой работы: замер
+			 *          05.09.2026 показал 394 МБ/с записи против 768 при снятой проверке вовсе, а
+			 *          встраивание разбора вернуло 581.
 			 *
 			 * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных
 			 *       файлах, тот же, каким пользуется кодек JSON: реализация живёт в `.cpp`,
@@ -135,7 +135,27 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Forced inlining of the judgement about a character
-			 * @note This device is an accepted exception in AWH from the rule about clean header files
+			 *
+			 * @details The judgement about the fitness of a character and the reading of its code value are
+			 *          called on EVERY byte of every field - both upon the parsing and upon the writing. Left as
+			 *          the calls across the boundary of the translation units, they cost dearer than the work
+			 *          itself: the measurement of 2026-09-05 showed 394 MB/s of the writing against 768 with
+			 *          the check removed altogether, and the inlining of the parsing returned 581.
+			 *
+			 * @note This device is an accepted exception in AWH from the rule about clean header files,
+			 *       the same one the JSON codec uses: the implementation lives in a `.cpp`, and the
+			 *       mediators with `always_inline` are introduced for the inlining
+			 *
+			 * @warning The definition of the judgement is ONE: the open `isChar()` and `decode()` are reduced
+			 *          to these same mediators and carry no bodies of their own. Two bodies would diverge in
+			 *          time, and the writing would judge differently from the parsing
+			 *
+			 * @warning The mediators are not to be called INSIDE `encoding.cpp`: there the judgement lies in
+			 *          one translation unit anyway, and the compiler inlines it itself, at its own discretion.
+			 *          The forced substitution there HURTS - the measurement of 2026-09-05 gave 131 MB/s of
+			 *          the reading of a large table against 153, and it was verified by a repeat. These
+			 *          mediators are for FOREIGN translation units, where the call otherwise goes
+			 *          across the boundary
 			 *
 			 * \~
 			 */
@@ -154,6 +174,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Inline mediator of the getting of the length of the sequence of a character
+			 *
 			 * @param letter first byte of the sequence of the character
 			 * @return       length of the sequence of the character in bytes, zero on an error
 			 *
@@ -173,6 +194,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Inline mediator of the judgement about the admissibility of a character
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -210,6 +232,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Inline mediator of the reading of a code value from a UTF-8 text
+			 *
 			 * @param buffer buffer of the source text in the UTF-8 encoding
 			 * @param size   size of the buffer of the source text
 			 * @param length length of the read sequence in bytes
@@ -234,18 +257,36 @@ namespace awh {
 					return data[0];
 				}
 				/**
+				 * \~russian
 				 * Если знак записан двумя байтами, читаем его ОТДЕЛЬНОЙ дорогой
 				 *
 				 * @details Дорога эта - та же самая, лишь развёрнутая: два байта не требуют
-				 * ни разбора длины таблицей, ни цикла по продолжающим байтам. Двумя байтами
-				 * записана вся кириллица, и на ней дорога эта решает: замер 05.09.2026 дал
-				 * 581 МБ/с записи против 508 общим путём
+				 *          ни разбора длины таблицей, ни цикла по продолжающим байтам. Двумя байтами
+				 *          записана вся кириллица, и на ней дорога эта решает: замер 05.09.2026 дал
+				 *          581 МБ/с записи против 508 общим путём.
 				 *
 				 * @note Ведущими здесь стоят лишь `C2..DF`: байты `C0` и `C1` ведущими не
 				 *       бывают вовсе, ими записывалась бы точка, вмещающаяся в один байт.
 				 *       Порог `0x80` против избыточно длинной записи при том не нужен -
 				 *       им отсеивалось как раз то, что теперь отсеяно самим диапазоном
 				 *       ведущего, а суррогатных значений двумя байтами не записать
+				 *
+				 * \~english
+				 * If a character is written by two bytes, it is read by a SEPARATE path
+				 *
+				 * @details This path is the very same one, only unrolled: two bytes need neither
+				 *          the decoding of a length by a table nor a loop over the continuing
+				 *          bytes. The whole Cyrillic is written by two bytes, and on it this path
+				 *          pays off: the measurement of 2026-09-05 gave 581 MB/s of writing
+				 *          against 508 by the common path.
+				 *
+				 * @note Only `C2..DF` stand as leading here: the bytes `C0` and `C1` are never
+				 *       leading at all, a code point they would have written fits into a single
+				 *       byte. The threshold `0x80` against an over-long encoding is not needed
+				 *       besides - it sifted out exactly what the range of the leading byte now
+				 *       sifts out itself, and no surrogate value can be written by two bytes
+				 *
+				 * \~
 				 */
 				if((data[0] >= 0xC2) && (data[0] <= 0xDF)){
 					// Если переданного текста для чтения последовательности недостаточно
@@ -268,6 +309,7 @@ namespace awh {
 					return ((static_cast <uint32_t> (data[0] & 0x1F) << 6) | (data[1] & 0x3F));
 				}
 				/**
+				 * \~russian
 				 * Если знак записан тремя либо четырьмя байтами, читаем его общим телом
 				 *
 				 * @details Дорога сведена к одному вызову нарочно: развёрнутый перебор с
@@ -276,8 +318,23 @@ namespace awh {
 				 *          форм дороги снята на кластере рядом `2026-10-07/cluster-shapes.tsv`
 				 *
 				 * @note Ведущие `C0`, `C1` и превышающие `F4` получают от общего тела один
-				 *          байт отмеренной длины вместе с признаком ошибочного знака - тот же
-				 *          исход, что держила здешняя дорога до сведения
+				 *       байт отмеренной длины вместе с признаком ошибочного знака - тот же
+				 *       исход, что держила здешняя дорога до сведения
+				 *
+				 * \~english
+				 * If a character is written by three or four bytes, it is read by the common body
+				 *
+				 * @details The path is reduced to a single call on purpose: an unrolled walk with
+				 *          the bounds of the first continuing byte, inlined at every place of the
+				 *          call, cost the readers 8...10 % against the previous body. The measure
+				 *          of the two shapes of the path was taken on a cluster nearby,
+				 *          `2026-10-07/cluster-shapes.tsv`
+				 *
+				 * @note The leading bytes `C0`, `C1` and those above `F4` receive from the common
+				 *       body one byte of the measured length together with the marker of a wrong
+				 *       code point - the same outcome as this path held before the reduction
+				 *
+				 * \~
 				 */
 				return awh::utf8::decode(buffer, size, length);
 			}
@@ -287,26 +344,29 @@ namespace awh {
 			 * @brief Метод проверки знака на допустимость в тексте настроек
 			 *
 			 * @details Из управляющих знаков допускаются лишь горизонтальная табуляция,
-			 * перевод строки и возврат каретки: прочие в файле настроек означают либо
-			 * двоичный мусор, попавший туда по ошибке, либо попытку скрыть содержимое от
-			 * читающего глазами
+			 *          перевод строки и возврат каретки: прочие в файле настроек означают либо
+			 *          двоичный мусор, попавший туда по ошибке, либо попытку скрыть содержимое от
+			 *          читающего глазами.
 			 *
 			 * @note Знак забоя и прочие управляющие знаки отвергаются даже внутри кавычек:
-			 * записать их в значение можно управляющей последовательностью, и путь этот
-			 * оставляет запись обозримой
+			 *       записать их в значение можно управляющей последовательностью, и путь этот
+			 *       оставляет запись обозримой
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility in the text of the settings
+			 *
 			 * @details Of the control characters only the horizontal tabulation,
-			 * the line feed and the carriage return are admitted: the rest of them in a settings file mean either
-			 * binary rubbish that has got there by mistake or an attempt to hide the content from
-			 * the one reading with the eyes
+			 *          the line feed and the carriage return are admitted: the rest of them in a settings file mean either
+			 *          binary rubbish that has got there by mistake or an attempt to hide the content from
+			 *          the one reading with the eyes.
+			 *
 			 * @note The backspace character and the other control characters are rejected even inside the quotes:
-			 * they can be written into a value by an escape sequence, and that path
-			 * leaves the record surveyable
+			 *       they can be written into a value by an escape sequence, and that path
+			 *       leaves the record surveyable
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -319,8 +379,8 @@ namespace awh {
 			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @details Проверяется не только построение последовательности, но и её
-			 * кратчайшесть: избыточно длинная запись кодового значения отвергается как
-			 * ошибочная, поскольку служит обходом проверок содержимого
+			 *          кратчайшесть: избыточно длинная запись кодового значения отвергается как
+			 *          ошибочная, поскольку служит обходом проверок содержимого.
 			 *
 			 * @param buffer буфер исходного текста в кодировке UTF-8
 			 * @param size   размер буфера исходного текста
@@ -329,9 +389,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 *
 			 * @details Not only the construction of the sequence is checked but also its
-			 * shortestness: an overlong record of a code value is rejected as
-			 * an erroneous one, since it serves as a bypass of the checks of the content
+			 *          shortestness: an overlong record of a code value is rejected as
+			 *          an erroneous one, since it serves as a bypass of the checks of the content.
+			 *
 			 * @param buffer buffer of the source text in the UTF-8 encoding
 			 * @param size   size of the buffer of the source text
 			 * @param length length of the read sequence in bytes
@@ -351,6 +413,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of writing a code value in the UTF-8 encoding
+			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended
 			 * @return       result of performing the operation
@@ -364,25 +427,27 @@ namespace awh {
 			 * @brief Класс приведения исходного текста к кодировке UTF-8
 			 *
 			 * @details Определяет кодировку исходного текста по метке порядка байтов, после
-			 * чего приводит текст к кодировке UTF-8, на которой работает разбор. Приведение
-			 * ведётся по кускам: последовательность знака, разорванная границей куска,
-			 * удерживается до прихода недостающих байтов
+			 *          чего приводит текст к кодировке UTF-8, на которой работает разбор. Приведение
+			 *          ведётся по кускам: последовательность знака, разорванная границей куска,
+			 *          удерживается до прихода недостающих байтов.
 			 *
 			 * @note Текст, в отличие от разметки XML, кодировку свою не объявляет:
-			 * определить её можно лишь по метке порядка байтов, а при её отсутствии -
-			 * принять UTF-8. Кодировку, известную из внешнего источника, следует навязать
-			 * настройками разбора
+			 *       определить её можно лишь по метке порядка байтов, а при её отсутствии -
+			 *       принять UTF-8. Кодировку, известную из внешнего источника, следует навязать
+			 *       настройками разбора
 			 *
 			 * \~english
 			 * @brief Class of the conversion of the source text to the UTF-8 encoding
+			 *
 			 * @details Determines the encoding of the source text by the byte order mark, after
-			 * which it converts the text to the UTF-8 encoding on which the parsing works. The conversion
-			 * is conducted by chunks: a character sequence torn by the boundary of a chunk
-			 * is held until the missing bytes arrive
+			 *          which it converts the text to the UTF-8 encoding on which the parsing works. The conversion
+			 *          is conducted by chunks: a character sequence torn by the boundary of a chunk
+			 *          is held until the missing bytes arrive.
+			 *
 			 * @note A text, unlike an XML markup, does not announce its encoding:
-			 * it can be determined only by the byte order mark, and in its absence —
-			 * UTF-8 is assumed. An encoding known from an external source should be imposed
-			 * by the settings of the parsing
+			 *       it can be determined only by the byte order mark, and in its absence —
+			 *       UTF-8 is assumed. An encoding known from an external source should be imposed
+			 *       by the settings of the parsing
 			 *
 			 * \~
 			 */
@@ -393,12 +458,13 @@ namespace awh {
 					 * @brief Метод вывода сообщения об отказе в лог
 					 *
 					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 * его не заменяет, а лишь оповещает о случившемся
+					 *          его не заменяет, а лишь оповещает о случившемся.
 					 *
 					 * \~english
 					 * @brief Method of the output of the message about a refusal into the log
+					 *
 					 * @details The code of the refusal remains available to the consumer through error():
-					 * the log does not replace it but merely notifies about what has happened
+					 *          the log does not replace it but merely notifies about what has happened.
 					 *
 					 * \~
 					 */
@@ -439,14 +505,16 @@ namespace awh {
 					 * @brief Метод определения кодировки по метке порядка байтов
 					 *
 					 * @details Метка снимается с начала удержанных байтов, а при её отсутствии
-					 * кодировкой принимается UTF-8
+					 *          кодировкой принимается UTF-8.
 					 *
 					 * @return признак того, что определение кодировки завершено
 					 *
 					 * \~english
 					 * @brief Method of determining the encoding by the byte order mark
+					 *
 					 * @details The mark is taken from the beginning of the held bytes, and in its absence
-					 * UTF-8 is assumed as the encoding
+					 *          UTF-8 is assumed as the encoding.
+					 *
 					 * @return flag of the determination of the encoding being completed
 					 *
 					 * \~
@@ -464,6 +532,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting the held bytes to the UTF-8 encoding
+					 *
 					 * @param buffer buffer of the bytes of the source text being converted
 					 * @param size   size of the buffer of the bytes of the source text being converted
 					 * @param end    flag of the bytes being converted being the last ones
@@ -482,6 +551,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the determined encoding of the source text
+					 *
 					 * @return determined encoding of the source text
 					 *
 					 * \~
@@ -495,6 +565,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the flag of the detection of the byte order mark
+					 *
 					 * @return flag of the detection of the byte order mark
 					 *
 					 * \~
@@ -505,22 +576,25 @@ namespace awh {
 					 * @brief Метод установки кодировки исходного текста
 					 *
 					 * @details Навязывает кодировку вопреки метке порядка байтов. Применяется
-					 * там, где кодировка известна из внешнего источника - скажем, из имени
-					 * местности системы либо из поля ответа по договору HTTP
+					 *          там, где кодировка известна из внешнего источника - скажем, из имени
+					 *          местности системы либо из поля ответа по договору HTTP.
 					 *
 					 * @warning Устанавливается лишь до приведения первого куска: сменить
-					 * кодировку посреди текста нельзя, и такое указание отвергается
+					 *          кодировку посреди текста нельзя, и такое указание отвергается
 					 *
 					 * @param encoding устанавливаемая кодировка исходного текста
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of setting the encoding of the source text
+					 *
 					 * @details Imposes the encoding contrary to the byte order mark. Applied
-					 * where the encoding is known from an external source — say, from the name
-					 * of the locale of the system or from a field of an answer over the HTTP protocol
+					 *          where the encoding is known from an external source — say, from the name
+					 *          of the locale of the system or from a field of an answer over the HTTP protocol.
+					 *
 					 * @warning It is set only before the conversion of the first chunk: the encoding cannot be
-					 * changed in the middle of a text, and such an indication is rejected
+					 *          changed in the middle of a text, and such an indication is rejected
+					 *
 					 * @param encoding encoding of the source text being set
 					 * @return         result of performing the operation
 					 *
@@ -533,8 +607,8 @@ namespace awh {
 					 * @brief Метод приведения куска исходного текста к кодировке UTF-8
 					 *
 					 * @details Первый кусок определяет кодировку по метке порядка байтов,
-					 * если она не навязана извне. Приведённый текст дописывается к
-					 * переданному, а не замещает его
+					 *          если она не навязана извне. Приведённый текст дописывается к
+					 *          переданному, а не замещает его.
 					 *
 					 * @param buffer буфер очередного куска исходного текста
 					 * @param size   размер буфера очередного куска исходного текста
@@ -544,9 +618,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting a chunk of the source text to the UTF-8 encoding
+					 *
 					 * @details The first chunk determines the encoding by the byte order mark,
-					 * if it has not been imposed from the outside. The converted text is appended to
-					 * what has been passed rather than replacing it
+					 *          if it has not been imposed from the outside. The converted text is appended to
+					 *          what has been passed rather than replacing it.
+					 *
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one
@@ -565,6 +641,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the conversion
+					 *
 					 * @return error code of the last operation of the conversion
 					 *
 					 * \~

@@ -1254,7 +1254,7 @@ TEST(CodecXmlDocument, WideParentGraft) {
 	// Устанавливаем содержимое прививаемого значения разметки
 	ASSERT_TRUE(value.text("привито"));
 	// Выполняем прививку значения в дерево разметки
-	ASSERT_TRUE(doc.graft("/root/node_10", value));
+	ASSERT_TRUE(doc.set("/root/node_10", value));
 	// Получаем корневой узел разметки заново
 	const auto root = doc.root().first();
 	// Выполняем проверку содержимого привитого вложенного узла
@@ -1510,7 +1510,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
 		// Выполняем правку прививаемого значения разметки
 		item.second(value);
 		// Выполняем прививку значения в дерево разметки
-		ASSERT_TRUE(doc.graft("/root/target", value)) << item.first;
+		ASSERT_TRUE(doc.set("/root/target", value)) << item.first;
 		// Объект записи текста разметки
 		xml::writer_t writer;
 		// Выполняем запись дерева разметки в текст
@@ -1614,7 +1614,7 @@ TEST(CodecXmlDocument, NodeDoesNotSurviveRebuild){
 		// Выполняем установку содержимого прививаемого узла
 		value.text("привито");
 		// Выполняем прививку значения
-		ASSERT_TRUE(document.graft("/r/b", value));
+		ASSERT_TRUE(document.set("/r/b", value));
 		// Выполняем проверку того, что прежний узел непригоден
 		ASSERT_FALSE(node.valid());
 		// Выполняем проверку того, что узел, снятый заново, отдаёт прежнее имя
@@ -2019,15 +2019,15 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 		 */
 		for(const auto & path : unreachable)
 			// Выполняем проверку отказа прививки по пути, к узлу не ведущему
-			ASSERT_FALSE(doc.graft(path, value)) << path;
+			ASSERT_FALSE(doc.set(path, value)) << path;
 		// Выполняем проверку успешности прививки корня дерева пустым путём
-		ASSERT_TRUE(doc.graft("", xml::value_t(string("root")))) << xml::message(doc.error());
+		ASSERT_TRUE(doc.set("", xml::value_t(string("root")))) << xml::message(doc.error());
 		// Выполняем проверку замены корневого узла разметки прививкой
 		ASSERT_EQ(doc.dump(), "<root/>");
 		// Выполняем повторный разбор текста разметки для дальнейших проверок
 		ASSERT_TRUE(doc.parse("<root><a><b>первое</b><b>второе</b></a><c/></root>")) << xml::message(doc.error());
 		// Выполняем проверку успешности прививки по пути к существующему узлу
-		ASSERT_TRUE(doc.graft("/root/c", value)) << xml::message(doc.error());
+		ASSERT_TRUE(doc.set("/root/c", value)) << xml::message(doc.error());
 		// Выполняем проверку наличия привитого узла по пути
 		ASSERT_TRUE(doc.has("/root/d"));
 		// Выполняем проверку отсутствия заменённого узла по пути
@@ -2277,7 +2277,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 		// Владеющее значение, устанавливаемое правкой
 		xml::value_t value(string("d"));
 		// Выполняем правку дерева устаревшим именем
-		ASSERT_TRUE(deprecated.graft("/root/c", value));
+		ASSERT_TRUE(deprecated.set("/root/c", value));
 		// Объект дерева, правимого общим именем
 		xml::document_t renamed;
 		// Выполняем разбор текста разметки

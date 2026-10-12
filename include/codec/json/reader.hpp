@@ -102,6 +102,10 @@ namespace awh {
 			 * \~english
 			 * @brief State of the reading of a JSON text
 			 *
+			 * @note The contract is common to the seven codecs of the framework, and its members mean
+			 *       exactly the same: the interpretations must not differ, otherwise a loop written by
+			 *       the pattern of one codec will turn out right in shape and wrong in its exit condition
+			 *
 			 * \~
 			 */
 			enum class state_t : uint8_t {
@@ -116,49 +120,55 @@ namespace awh {
 			 * @brief Потоковое чтение текста JSON
 			 *
 			 * @details Текст подаётся кусками произвольного размера, а разбор выдаёт события
-			 * по мере продвижения, не удерживая документ целиком. Пригодно для чтения
-			 * ответа службы по мере его прихода и для разбора документов, в память не
-			 * помещающихся
+			 *          по мере продвижения, не удерживая документ целиком. Пригодно для чтения
+			 *          ответа службы по мере его прихода и для разбора документов, в память не
+			 *          помещающихся.
 			 *
 			 * @details **Независимость выдачи от нарезки текста.** Выдача обязана быть
-			 * одинаковой, как бы текст ни был нарезан на куски. Достигается это тем, что
-			 * разбор **не заглядывает вперёд**: знак, чьё значение зависит от следующего за
-			 * ним, переводит разбор в отдельное состояние. Таких мест у JSON много, и
-			 * каждому отведено своё состояние:
+			 *          одинаковой, как бы текст ни был нарезан на куски. Достигается это тем, что
+			 *          разбор **не заглядывает вперёд**: знак, чьё значение зависит от следующего за
+			 *          ним, переводит разбор в отдельное состояние. Таких мест у JSON много, и
+			 *          каждому отведено своё состояние:
 			 *
 			 * @li знак отмены внутри строки - `ESCAPE`;
 			 * @li запись `\\uXXXX` - четыре состояния по числу шестнадцатеричных знаков;
 			 * @li **суррогатная пара** - шесть состояний: за старшим суррогатом обязан
-			 * следовать младший, а между ними вправе пройти граница куска;
+			 *     следовать младший, а между ними вправе пройти граница куска;
+			 *
 			 * @li запись числа - состояния по частям: знак, целая часть, дробная, порядок;
 			 * @li литералы `true`, `false` и `null` - разбираются по знаку;
 			 * @li косая черта, открывающая примечание, - её значение решает следующий знак
 			 *
 			 * @note Разбор ведётся **без рекурсии**: вложенность хранится стеком видов
-			 * вместилищ. Оттого документ произвольной глубины не роняет стек вызовов, а
-			 * предел глубины стережёт лишь память
+			 *       вместилищ. Оттого документ произвольной глубины не роняет стек вызовов, а
+			 *       предел глубины стережёт лишь память
 			 *
 			 * \~english
 			 * @brief Streaming reading of a JSON text
+			 *
 			 * @details The text is fed by the chunks of an arbitrary size, while the parsing issues the events
-			 * as it advances without holding the document in full. Suitable for the reading of
-			 * a response of a service as it arrives and for the parsing of the documents not fitting
-			 * into the memory
+			 *          as it advances without holding the document in full. Suitable for the reading of
+			 *          a response of a service as it arrives and for the parsing of the documents not fitting
+			 *          into the memory.
+			 *
 			 * @details **Independence of the issuance from the cutting of the text.** The issuance must be
-			 * the same however the text has been cut into the chunks. This is achieved by the fact that
-			 * the parsing **does not look ahead**: a character whose meaning depends on the one following
-			 * it moves the parsing into a separate state. JSON has many such places, and
-			 * each one is given its own state:
+			 *          the same however the text has been cut into the chunks. This is achieved by the fact that
+			 *          the parsing **does not look ahead**: a character whose meaning depends on the one following
+			 *          it moves the parsing into a separate state. JSON has many such places, and
+			 *          each one is given its own state:
+			 *
 			 * @li the escape character inside a string — `ESCAPE`;
 			 * @li the record `\\uXXXX` — four states by the number of the hexadecimal characters;
 			 * @li a **surrogate pair** — six states: a high surrogate must be
-			 * followed by a low one, and a chunk boundary may pass between them;
+			 *     followed by a low one, and a chunk boundary may pass between them;
+			 *
 			 * @li the record of a number — the states by the parts: the sign, the integer part, the fractional one, the exponent;
 			 * @li the literals `true`, `false` and `null` — are parsed by a character;
 			 * @li a solidus opening a comment — its meaning is decided by the next character
+			 *
 			 * @note The parsing is conducted **without a recursion**: the nesting is held by a stack of the kinds
-			 * of the containers. Whereby a document of an arbitrary depth does not crash the stack of the calls, while
-			 * the limit of the depth guards only the memory
+			 *       of the containers. Whereby a document of an arbitrary depth does not crash the stack of the calls, while
+			 *       the limit of the depth guards only the memory
 			 *
 			 * \~
 			 */
@@ -181,10 +191,10 @@ namespace awh {
 						 * Признак строгого следования RFC 8259
 						 *
 						 * @details Признак этот есть общий РУБИЛЬНИК послаблений: подъём его
-						 * гасит `allowComments`, `allowTrailingCommas`, `allowSingleQuotes` и
-						 * `allowInfinityAndNan` разом, ибо всякое из них стандарту противоречит.
-						 * Гашение правит сам хранимый снимок настроек, и выдача их говорит лишь
-						 * о том, что действует
+						 *          гасит `allowComments`, `allowTrailingCommas`, `allowSingleQuotes` и
+						 *          `allowInfinityAndNan` разом, ибо всякое из них стандарту противоречит.
+						 *          Гашение правит сам хранимый снимок настроек, и выдача их говорит лишь
+						 *          о том, что действует.
 						 *
 						 * @note Знаки за окончанием документа отвергаются ВСЕГДА, а не в строгом
 						 *       разборе: текст JSON есть одно значение, и хвост при нём
@@ -204,19 +214,23 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of the strict following of RFC 8259
+						 *
 						 * @details This flag is the common SWITCH of the relaxations: raising it
-						 * extinguishes `allowComments`, `allowTrailingCommas`, `allowSingleQuotes` and
-						 * `allowInfinityAndNan` at once, for every one of them contradicts the standard.
-						 * The extinguishing edits the stored snapshot of the settings itself, and their
-						 * issuing speaks only of what takes effect
+						 *          extinguishes `allowComments`, `allowTrailingCommas`, `allowSingleQuotes` and
+						 *          `allowInfinityAndNan` at once, for every one of them contradicts the standard.
+						 *          The extinguishing edits the stored snapshot of the settings itself, and their
+						 *          issuing speaks only of what takes effect.
+						 *
 						 * @note The characters after the end of the document are refused ALWAYS rather than
 						 *       in the strict parsing: a JSON text is a single value, and a tail at it is
 						 *       inadmissible under any settings. Measured by a probe
+						 *
 						 * @note The byte order mark is accepted in the strict parsing as well, ON PURPOSE:
 						 *       §8.1 of the standard permits a parsing to ignore it and forbids ADDING it —
 						 *       and the writing of the codec never adds it, it has no such flag at all.
 						 *       Moreover this mark also identifies the encoding of the text: a refusal upon
 						 *       it would deprive the strict parsing of the recognition of UTF-16 and UTF-32
+						 *
 						 * @note Formerly this flag was NOT READ BY A SINGLE place of the codec, while the
 						 *       description promised both refusals — and both promises were false: one is
 						 *       done always, the other is not done at all. Uncovered by a continuous sweep
@@ -230,12 +244,13 @@ namespace awh {
 						 * Признак разрешения примечаний
 						 *
 						 * @note Стандарт примечаний не знает вовсе, а обиход настроек их
-						 * требует: файлы настроек с примечаниями зовут JSONC
+						 *       требует: файлы настроек с примечаниями зовут JSONC
 						 *
 						 * \~english
 						 * Flag of the permission of the comments
+						 *
 						 * @note The standard does not know the comments at all, while the custom of the settings
-						 * demands them: the files of the settings with the comments are called JSONC
+						 *       demands them: the files of the settings with the comments are called JSONC
 						 *
 						 * \~
 						 */
@@ -251,14 +266,15 @@ namespace awh {
 						 * Признак разбора потока документов NDJSON
 						 *
 						 * @note Поток этот - последовательность документов, разделённых
-						 * переводом строки. В обиходе служб он повсеместен, а стандартом
-						 * JSON не описан вовсе
+						 *       переводом строки. В обиходе служб он повсеместен, а стандартом
+						 *       JSON не описан вовсе
 						 *
 						 * \~english
 						 * Flag of the parsing of an NDJSON stream of the documents
+						 *
 						 * @note This stream is a sequence of the documents separated by
-						 * a line feed. In the practice of the services it is ubiquitous, while by the standard
-						 * of JSON it is not described at all
+						 *       a line feed. In the practice of the services it is ubiquitous, while by the standard
+						 *       of JSON it is not described at all
 						 *
 						 * \~
 						 */
@@ -276,20 +292,23 @@ namespace awh {
 						 * @note Превышение предела отвергается кодом `DEPTH_EXCEEDED`
 						 *
 						 * @warning Предел этот САМИМ ЧТЕНИЕМ соблюдается как задан, а вот
-						 * контейнер `Document` огранивает его потолком `MAX_DEPTH`: дерево
-						 * документа плоско, но работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим
-						 * значением и запись - идут возвратом, и глубина ложится прямо на стек
-						 * вызовов. Предел, поднятый выше потолка либо снятый нулём, у
-						 * контейнера силы не имеет
+						 *          контейнер `Document` огранивает его потолком `MAX_DEPTH`: дерево
+						 *          документа плоско, но работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим
+						 *          значением и запись - идут возвратом, и глубина ложится прямо на стек
+						 *          вызовов. Предел, поднятый выше потолка либо снятый нулём, у
+						 *          контейнера силы не имеет
 						 *
 						 * \~english
 						 * @brief Largest admissible depth of the nesting, zero — without a limit
+						 *
+						 * @note Exceeding the limit is refused by the code `DEPTH_EXCEEDED`
+						 *
 						 * @warning The present limit is observed as set BY THE READING ITSELF, while
-						 * the `Document` container bounds it by the `MAX_DEPTH` ceiling: the tree of a
-						 * document is flat, but the works ON THE READY TREE — the taking by an owning
-						 * value and the writing — go by a recursion, and the depth falls right onto the stack
-						 * of the calls. A limit raised above the ceiling or removed by a zero has no
-						 * force at the container
+						 *          the `Document` container bounds it by the `MAX_DEPTH` ceiling: the tree of a
+						 *          document is flat, but the works ON THE READY TREE — the taking by an owning
+						 *          value and the writing — go by a recursion, and the depth falls right onto the stack
+						 *          of the calls. A limit raised above the ceiling or removed by a zero has no
+						 *          force at the container
 						 *
 						 * \~
 						 */
@@ -311,12 +330,13 @@ namespace awh {
 					 * @brief Значение, выданное событием разбора
 					 *
 					 * @details Значение ссылается на память, принадлежащую разбору, и живёт
-					 * не дольше следующего события
+					 *          не дольше следующего события.
 					 *
 					 * \~english
 					 * @brief Value issued by an event of the parsing
+					 *
 					 * @details The value refers to the memory belonging to the parsing and lives
-					 * no longer than the next event
+					 *          no longer than the next event.
 					 *
 					 * \~
 					 */
@@ -326,14 +346,15 @@ namespace awh {
 						 * Содержимое значения
 						 *
 						 * @note У строки и у имени поля - со снятым экранированием, у
-						 * числа - записью как она есть, у логического значения - словами
-						 * `true` либо `false`
+						 *       числа - записью как она есть, у логического значения - словами
+						 *       `true` либо `false`
 						 *
 						 * \~english
 						 * Content of the value
+						 *
 						 * @note For a string and for the name of a field — with the escaping removed, for
-						 * a number — by the record as it is, for a logical value — by the words
-						 * `true` or `false`
+						 *       a number — by the record as it is, for a logical value — by the words
+						 *       `true` or `false`
 						 *
 						 * \~
 						 */
@@ -367,16 +388,23 @@ namespace awh {
 					 *       развести было нельзя, а договор общий главнее внутреннего имени
 					 *
 					 * @details Фаза хранит и то, что обыкновенно достаётся взглядом на
-					 * следующий знак: знак, чьё значение зависит от следующего за ним, лишь
-					 * переводит разбор в отдельное состояние. Иначе нарезка текста ровно
-					 * между такими знаками меняла бы выдачу
+					 *          следующий знак: знак, чьё значение зависит от следующего за ним, лишь
+					 *          переводит разбор в отдельное состояние. Иначе нарезка текста ровно
+					 *          между такими знаками меняла бы выдачу.
 					 *
 					 * \~english
 					 * @brief State of the parsing of a text
+					 *
+					 * @note It was named `state_t` until 2026-09-07 and was renamed for the agreement of the
+					 *       seven codecs: among them the name `state_t` carries the OPEN state of the streaming
+					 *       reading (`READY`, `HUNGRY`, `FINISHED`, `FAILED`), while here the type describes a
+					 *       closed per-character automaton. Two different meanings under one name inside one
+					 *       codec could not be told apart, and the common contract outranks an internal name
+					 *
 					 * @details The state stores also what is ordinarily obtained by a look at the
-					 * next character: a character whose meaning depends on the one following it merely
-					 * moves the parsing into a separate state. Otherwise a cutting of the text exactly
-					 * between such characters would change the output
+					 *          next character: a character whose meaning depends on the one following it merely
+					 *          moves the parsing into a separate state. Otherwise a cutting of the text exactly
+					 *          between such characters would change the output.
 					 *
 					 * \~
 					 */
@@ -451,23 +479,25 @@ namespace awh {
 					 * @brief Обработчик прямой выдачи событий разбора
 					 *
 					 * @details Вызывается на всяком собранном событии, минуя очередь выдачи.
-					 * Вид события, указание на содержимое его и признак изменения содержимого
-					 * передаются доводами, а не снимаются с чтения: снятие их обошлось бы
-					 * вызовами через границу единиц трансляции на всякое событие
+					 *          Вид события, указание на содержимое его и признак изменения содержимого
+					 *          передаются доводами, а не снимаются с чтения: снятие их обошлось бы
+					 *          вызовами через границу единиц трансляции на всякое событие.
 					 *
 					 * @warning Обработчик подаёт события посреди разбора куска текста: подавать
-					 * из него текст тому же чтению нельзя. Прекращение разбора требуется
-					 * запрашивать вызовом `abort()`
+					 *          из него текст тому же чтению нельзя. Прекращение разбора требуется
+					 *          запрашивать вызовом `abort()`
 					 *
 					 * \~english
 					 * @brief Handler of the direct issuance of the parsing events
+					 *
 					 * @details It is called on every assembled event, bypassing the queue of the issuance.
-					 * The kind of the event, the pointer at its content and the flag of the modification of the content
-					 * are passed as arguments rather than taken from the reader: taking them would cost
-					 * calls across the boundary of the translation units on every event
+					 *          The kind of the event, the pointer at its content and the flag of the modification of the content
+					 *          are passed as arguments rather than taken from the reader: taking them would cost
+					 *          calls across the boundary of the translation units on every event.
+					 *
 					 * @warning The handler delivers the events in the middle of the parsing of a chunk of a text: feeding
-					 * a text to the same reader from it is not allowed. The termination of the parsing is required
-					 * to be requested by a call of `abort()`
+					 *          a text to the same reader from it is not allowed. The termination of the parsing is required
+					 *          to be requested by a call of `abort()`
 					 *
 					 * \~
 					 */
@@ -497,12 +527,13 @@ namespace awh {
 					 * Хранилище знаков собираемого значения
 					 *
 					 * @note Хранилище переиспользуется между значениями: выдача события
-					 * возвращает его к началу, а память остаётся выделенной
+					 *       возвращает его к началу, а память остаётся выделенной
 					 *
 					 * \~english
 					 * Storage of the characters of the value being assembled
+					 *
 					 * @note The storage is reused between the values: the issuance of an event
-					 * returns it to the beginning, while the memory remains allocated
+					 *       returns it to the beginning, while the memory remains allocated
 					 *
 					 * \~
 					 */
@@ -513,23 +544,25 @@ namespace awh {
 					 * Количество байтов, выброшенных из хранилища знаков за всё время разбора
 					 *
 					 * @details Хранилище очищается всякий раз, когда очередь событий выдана,
-					 * и смещения в нём начинаются заново. Счёт выброшенного делает смещения
-					 * сквозными: положение содержимого события в потоке разобранных знаков
-					 * есть сумма счёта и смещения события в хранилище
+					 *          и смещения в нём начинаются заново. Счёт выброшенного делает смещения
+					 *          сквозными: положение содержимого события в потоке разобранных знаков
+					 *          есть сумма счёта и смещения события в хранилище.
 					 *
 					 * @note Счёт этот заведён ради потребителя, дерево собирающего: без
-					 * сквозного положения ему пришлось бы переносить знаки всякого значения
-					 * к себе по одному, а с ним хранилище переносится целыми кусками
+					 *       сквозного положения ему пришлось бы переносить знаки всякого значения
+					 *       к себе по одному, а с ним хранилище переносится целыми кусками
 					 *
 					 * \~english
 					 * Number of the bytes discarded from the storage of the characters over the whole time of the parsing
+					 *
 					 * @details The storage is cleared every time the queue of the events is issued,
-					 * and the offsets in it begin anew. The counting of the discarded makes the offsets
-					 * through-going: the position of the content of an event in the stream of the parsed characters
-					 * is the sum of the counting and of the offset of the event in the storage
+					 *          and the offsets in it begin anew. The counting of the discarded makes the offsets
+					 *          through-going: the position of the content of an event in the stream of the parsed characters
+					 *          is the sum of the counting and of the offset of the event in the storage.
+					 *
 					 * @note This counting is created for the sake of the consumer assembling a tree: without
-					 * a through-going position it would have to transfer the characters of every value
-					 * to itself one by one, while with it the storage is transferred by whole blocks
+					 *       a through-going position it would have to transfer the characters of every value
+					 *       to itself one by one, while with it the storage is transferred by whole blocks
 					 *
 					 * \~
 					 */
@@ -542,12 +575,13 @@ namespace awh {
 					 * Стек видов вместилищ, задающий вложенность
 					 *
 					 * @note Стек этот заменяет рекурсию: вид вместилища решает, ожидается
-					 * ли следующим имя поля либо значение
+					 *       ли следующим имя поля либо значение
 					 *
 					 * \~english
 					 * Stack of the kinds of the containers setting the nesting
+					 *
 					 * @note This stack replaces the recursion: the kind of a container decides whether
-					 * the name of a field or a value is expected next
+					 *       the name of a field or a value is expected next
 					 *
 					 * \~
 					 */
@@ -558,16 +592,17 @@ namespace awh {
 					 * Очередь собранных событий
 					 *
 					 * @note Очередь заведена перечнем с указанием на голову, а не двусторонней
-					 * очередью: та отводит по блоку памяти на каждые несколько десятков
-					 * событий и освобождает его по опустошении, отчего разбор крупного
-					 * документа стоил бы десятков тысяч выделений памяти
+					 *       очередью: та отводит по блоку памяти на каждые несколько десятков
+					 *       событий и освобождает его по опустошении, отчего разбор крупного
+					 *       документа стоил бы десятков тысяч выделений памяти
 					 *
 					 * \~english
 					 * Queue of the assembled events
+					 *
 					 * @note The queue is made as a list with a pointer to the head rather than as a deque:
-					 * the latter allocates a block of the memory per every few dozens
-					 * of the events and frees it upon the emptying, whereby the parsing of a large
-					 * document would cost tens of thousands of the allocations of the memory
+					 *       the latter allocates a block of the memory per every few dozens
+					 *       of the events and frees it upon the emptying, whereby the parsing of a large
+					 *       document would cost tens of thousands of the allocations of the memory
 					 *
 					 * \~
 					 */
@@ -578,41 +613,82 @@ namespace awh {
 					item_t _current;
 				private:
 					/**
+					 * \~russian
 					 * Обработчик прямой выдачи событий разбора
 					 *
 					 * @note Очередь выдачи стоит на пути события к потребителю и обходится
 					 *       обработчиком: событие ложится в очередь лишь тогда, когда
 					 *       обработчик не установлен
+					 *
+					 * \~english
+					 * A handler of the direct issue of the parse events
+					 *
+					 * @note The queue of the issue stands on the way of an event to the consumer and is
+					 *       bypassed by a handler: an event is laid into the queue only when no handler has
+					 *       been set
+					 *
+					 * \~
 					 */
 					handler_t _handler;
 					// Указание, передаваемое обработчику прямой выдачи событий
 					void * _context;
 					/**
+					 * \~russian
 					 * Признак прекращения разбора по требованию потребителя
 					 *
 					 * @note Признак этот отдельный от состояния разбора намеренно: событие
 					 *       выдаётся посреди разбора знака, и состояние по возвращении из
 					 *       обработчика переписывается разбором того же знака
+					 *
+					 * \~english
+					 * Flag of the parsing being stopped at the demand of a consumer
+					 *
+					 * @note This flag is kept apart from the state of the parsing on purpose: an event is
+					 *       issued in the middle of the parsing of a character, and the state, upon the
+					 *       return from the handler, is rewritten by the parsing of that very character
+					 *
+					 * \~
 					 */
 					bool _stopped;
 					/**
+					 * \~russian
 					 * Признак удержания хранилища знаков
 					 *
 					 * @note Удержание затребует тот, кто забирает знаки себе целиком: очистка
 					 *       хранилища по исчерпании событий заставляла бы его переносить знаки
 					 *       копией на всяком куске
+					 *
+					 * \~english
+					 * Flag of the retention of the storage of characters
+					 *
+					 * @note The retention is asked for by the one who takes the characters to itself in
+					 *       full: the clearing of the storage once the events are exhausted would force it
+					 *       to move the characters by a copy at every chunk
+					 *
+					 * \~
 					 */
 					bool _keeping;
 				private:
 					// Положение текущего события в исходном тексте
 					location_t _position;
 					/**
+					 * \~russian
 					 * Положение обнаруженного отказа в исходном тексте
 					 *
 					 * @note Место отказа держится ОТДЕЛЬНО от места события: события, собранные
 					 *       до отказа, снимаются потребителем уже после него, и всякое снятое
 					 *       событие место текущего события переписывает. Одним полем на двоих
 					 *       место отказа терялось обычным ходом работы
+					 *
+					 * \~english
+					 * The position of a detected failure in the source text
+					 *
+					 * @note The place of a failure is kept APART from the place of an event: the events
+					 *       gathered before a failure are withdrawn by the consumer only after it, and every
+					 *       withdrawn event rewrites the place of the current one. With a single field for
+					 *       both, the place of a failure was lost by the ordinary course of the work
+					 *
+					 * \~
 					 */
 					location_t _failure;
 					// Смещение от начала текста в байтах
@@ -650,34 +726,50 @@ namespace awh {
 					 * Разметка знаков, прерывающих быстрый проход внутри строки
 					 *
 					 * @details Знак, в разметке не отмеченный, содержимым строки и является:
-					 * такие знаки проходятся отрезком и переносятся в хранилище одним
-					 * действием. Договор о независимости выдачи от нарезки текста проход
-					 * этот не задевает: знаки, чьё значение зависит от следующего за ними,
-					 * разметкой отмечены и проходом не берутся
+					 *          такие знаки проходятся отрезком и переносятся в хранилище одним
+					 *          действием. Договор о независимости выдачи от нарезки текста проход
+					 *          этот не задевает: знаки, чьё значение зависит от следующего за ними,
+					 *          разметкой отмечены и проходом не берутся.
 					 *
 					 * \~english
 					 * Marking of the characters interrupting the fast pass inside a string
+					 *
 					 * @details A character not marked in the marking is the content of the string itself:
-					 * such characters are passed by a segment and transferred into the storage by one
-					 * action. The contract of the independence of the issuance from the cutting of the text does not
-					 * affect this pass: the characters whose meaning depends on the one following them
-					 * are marked by the marking and are not taken by the pass
+					 *          such characters are passed by a segment and transferred into the storage by one
+					 *          action. The contract of the independence of the issuance from the cutting of the text does not
+					 *          affect this pass: the characters whose meaning depends on the one following them
+					 *          are marked by the marking and are not taken by the pass.
 					 *
 					 * \~
 					 */
 					bool _breakString[256];
 				private:
 					/**
+					 * \~russian
 					 * Слова с образцами знаков, прерывающих быстрый проход по строке
 					 *
 					 * @details Быстрый проход идёт по восьми байтам разом, и знаки, его
-					 * прерывающие, разыскиваются в слове целочисленными действиями, а не
-					 * обращением к разметке на всякий байт. Во всяком байте образца лежит
-					 * один и тот же разыскиваемый знак
+					 *          прерывающие, разыскиваются в слове целочисленными действиями, а не
+					 *          обращением к разметке на всякий байт. Во всяком байте образца лежит
+					 *          один и тот же разыскиваемый знак.
 					 *
 					 * @note Второй образец занят знаком одинарных кавычек, а при запрете их
 					 *       настройками повторяет первый: повторная проверка ничего не портит,
 					 *       а ветвление внутри прохода обошлось бы дороже
+					 *
+					 * \~english
+					 * Words with the patterns of the characters that interrupt a fast walk over a string
+					 *
+					 * @details The fast walk goes over eight bytes at a time, and the characters interrupting
+					 *          it are looked up in a word by integer operations rather than by an appeal to a
+					 *          markup at every byte. Every byte of a pattern holds the very same character
+					 *          being looked for.
+					 *
+					 * @note The second pattern is occupied by the character of the single quotes, and when
+					 *       those are forbidden by the settings it repeats the first one: a repeated check
+					 *       spoils nothing, while a branch inside the walk would have cost more
+					 *
+					 * \~
 					 */
 					uint64_t _breakWord[2];
 				private:
@@ -702,6 +794,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the fast pass over the characters not changing the state
+					 *
 					 * @param buffer buffer of the text being parsed
 					 * @param size size of the buffer of the text being parsed
 					 * @return number of the passed bytes
@@ -719,6 +812,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a text brought to UTF-8
+					 *
 					 * @param text buffer of the text being parsed
 					 * @param size size of the buffer of the text being parsed
 					 * @return sign of the success of the parsing
@@ -735,6 +829,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of one character of a text
+					 *
 					 * @param letter character being parsed
 					 * @return sign of the success of the parsing
 					 *
@@ -750,6 +845,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the stopping of the parsing by a refusal
+					 *
 					 * @param error error code of the parsing
 					 * @return sign of the success of the parsing, always a falsehood
 					 *
@@ -766,6 +862,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the placing of an assembled event into the queue of the issuance
+					 *
 					 * @param event kind of the assembled event
 					 * @param offset offset of the content of the event in the storage of the characters
 					 * @param length length of the content of the event in bytes
@@ -781,6 +878,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the transition to the state after the end of a value
+					 *
 					 * @return sign of the success of the parsing
 					 *
 					 * \~
@@ -795,6 +893,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the beginning of the parsing of a value
+					 *
 					 * @param letter character beginning the value
 					 * @return sign of the success of the parsing
 					 *
@@ -810,6 +909,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a character of the record of a number
+					 *
 					 * @param letter character being parsed
 					 * @return sign of the success of the parsing
 					 *
@@ -822,12 +922,13 @@ namespace awh {
 					 * @brief Метод сброса состояния разбора
 					 *
 					 * @details Сброс возвращает разбор к началу текста, а выделенную память
-					 * удерживает: следующий разбор не платит за её заведение заново
+					 *          удерживает: следующий разбор не платит за её заведение заново.
 					 *
 					 * \~english
 					 * @brief Method of the reset of the state of the parsing
+					 *
 					 * @details The reset returns the parsing to the beginning of the text while holding
-					 * the allocated memory: the next parsing does not pay for its creation anew
+					 *          the allocated memory: the next parsing does not pay for its creation anew.
 					 *
 					 * \~
 					 */
@@ -838,17 +939,17 @@ namespace awh {
 					 * @brief Метод подачи куска разбираемого текста
 					 *
 					 * @note Пустой указатель на буфер приравнивается к пустой подаче независимо от
-					 * заданного размера: проверка стоит в приведении текста, и разыменования не
-					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
+					 *       заданного размера: проверка стоит в приведении текста, и разыменования не
+					 *       происходит. Отвечает разбор при этом по своему правилу о пустом тексте
 					 *
 					 * @note Разбор идёт ПРЯМО В ПОДАЧЕ, и отказ виден возвратом самой подачи:
 					 *       код отказа стоит уже к возврату, до всякого перебора событий. Замер:
 					 *       текст `{"a":@1}` - подача отвечает ложью и кодом сразу
 					 *
 					 * @warning Разбор разметки XML поступает ОБРАТНО: подача там лишь принимает
-					 * кусок в очередь, разбирается он перебором событий, и отказ подача выдаёт
-					 * УСПЕХОМ. Единый цикл на несколько кодеков обязан спрашивать `error()`,
-					 * а не один лишь возврат подачи
+					 *          кусок в очередь, разбирается он перебором событий, и отказ подача выдаёт
+					 *          УСПЕХОМ. Единый цикл на несколько кодеков обязан спрашивать `error()`,
+					 *          а не один лишь возврат подачи
 					 *
 					 * @param buffer буфер подаваемого текста
 					 * @param size   размер буфера подаваемого текста
@@ -857,16 +958,20 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the feeding of a chunk of a text being parsed
+					 *
 					 * @note A null pointer to the buffer is equated to an empty feeding independently of
-					 * the given size: the check stands in the conversion of the text, and no dereferencing
-					 * takes place. The parsing answers thereby by its own rule about an empty text
+					 *       the given size: the check stands in the conversion of the text, and no dereferencing
+					 *       takes place. The parsing answers thereby by its own rule about an empty text
+					 *
 					 * @note The parsing goes RIGHT IN THE FEEDING, and a refusal is visible by the return of the feeding itself:
 					 *       the code of the refusal is already set by the return, before any traversal of the events. Measurement:
 					 *       the text `{"a":@1}` — the feeding answers with false and with a code at once
+					 *
 					 * @warning The parsing of the XML markup acts the OPPOSITE way: the feeding there only accepts
-					 * a chunk into the queue, it is parsed by the traversal of the events, and the feeding issues a refusal
-					 * as a SUCCESS. A single loop over several codecs is obliged to ask `error()`,
-					 * rather than the return of the feeding alone
+					 *          a chunk into the queue, it is parsed by the traversal of the events, and the feeding issues a refusal
+					 *          as a SUCCESS. A single loop over several codecs is obliged to ask `error()`,
+					 *          rather than the return of the feeding alone
+					 *
 					 * @param buffer buffer of the text being fed
 					 * @param size size of the buffer of the text being fed
 					 * @param end  flag that the chunk is the last one
@@ -884,6 +989,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the feeding of a text as a whole
+					 *
 					 * @param text text being fed
 					 * @return sign of the success of the parsing
 					 *
@@ -899,6 +1005,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the transition to the next assembled event
+					 *
 					 * @return sign of the presence of an event
 					 *
 					 * \~
@@ -909,22 +1016,25 @@ namespace awh {
 					 * @brief Метод установки обработчика прямой выдачи событий разбора
 					 *
 					 * @details Событие подаётся обработчику прямо из разбора, минуя очередь
-					 * выдачи. Потоковое чтение событиями очередью при этом сохраняется:
-					 * обработчик - дело добровольное, и без него разбор ведёт себя по-прежнему
+					 *          выдачи. Потоковое чтение событиями очередью при этом сохраняется:
+					 *          обработчик - дело добровольное, и без него разбор ведёт себя по-прежнему.
 					 *
 					 * @note Очередь стоила трети всего времени сборки дерева: событие ложится
-					 * в неё, а потом снимается с неё же копией
+					 *       в неё, а потом снимается с неё же копией
 					 *
 					 * @param callback устанавливаемый обработчик, ноль - снятие обработчика
 					 * @param context  указание, передаваемое обработчику
 					 *
 					 * \~english
 					 * @brief Method of setting the handler of the direct issuance of the parsing events
+					 *
 					 * @details The event is delivered to the handler straight from the parsing, bypassing the queue
-					 * of the issuance. The streaming reading by the events through the queue is thereby preserved:
-					 * the handler is a voluntary matter, and without it the parsing behaves as before
+					 *          of the issuance. The streaming reading by the events through the queue is thereby preserved:
+					 *          the handler is a voluntary matter, and without it the parsing behaves as before.
+					 *
 					 * @note The queue cost a third of the whole time of the assembly of the tree: the event is put
-					 * into it, and then is taken from it by a copy
+					 *       into it, and then is taken from it by a copy
+					 *
 					 * @param callback handler being set, zero — removal of the handler
 					 * @param context  pointer passed to the handler
 					 *
@@ -936,19 +1046,21 @@ namespace awh {
 					 * @brief Метод прекращения разбора по требованию потребителя
 					 *
 					 * @details Прекращает разбор прямо посреди куска текста. Применяется
-					 * обработчиком прямой выдачи событий: вернуть отказ из него нечем, а подача
-					 * текста обязана прекратиться немедля
+					 *          обработчиком прямой выдачи событий: вернуть отказ из него нечем, а подача
+					 *          текста обязана прекратиться немедля.
 					 *
 					 * @note Кода отказа не устанавливает: причина прекращения известна тому,
-					 * кто его затребовал, и своей причины у разбора здесь нет
+					 *       кто его затребовал, и своей причины у разбора здесь нет
 					 *
 					 * \~english
 					 * @brief Method of the termination of the parsing at the demand of the consumer
+					 *
 					 * @details It terminates the parsing right in the middle of a chunk of a text. It is applied
-					 * by the handler of the direct issuance of the events: there is nothing to return a failure by from it, and the feeding
-					 * of the text must stop immediately
+					 *          by the handler of the direct issuance of the events: there is nothing to return a failure by from it, and the feeding
+					 *          of the text must stop immediately.
+					 *
 					 * @note It sets no error code: the reason of the termination is known to the one
-					 * who demanded it, and the parsing has no reason of its own here
+					 *       who demanded it, and the parsing has no reason of its own here
 					 *
 					 * \~
 					 */
@@ -961,6 +1073,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the kind of the current event
+					 *
 					 * @return kind of the current event
 					 *
 					 * \~
@@ -977,6 +1090,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the value of the current event
+					 *
 					 * @return value of the current event
 					 *
 					 * \~
@@ -987,18 +1101,20 @@ namespace awh {
 					 * @brief Метод извлечения указания на содержимое текущего события
 					 *
 					 * @details Указание отдаётся смещением и длиной в хранилище знаков разбора,
-					 * а не готовым содержимым: потребителю, собирающему дерево, оно позволяет
-					 * переносить хранилище целыми кусками вместо переноса всякого значения
-					 * по одному
+					 *          а не готовым содержимым: потребителю, собирающему дерево, оно позволяет
+					 *          переносить хранилище целыми кусками вместо переноса всякого значения
+					 *          по одному.
 					 *
 					 * @return указание на содержимое текущего события
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the pointer to the content of the current event
+					 *
 					 * @details The pointer is given away by an offset and a length in the storage of the characters of the parsing
-					 * rather than by a ready content: for the consumer assembling a tree it allows
-					 * transferring the storage by whole blocks instead of the transfer of every value
-					 * one by one
+					 *          rather than by a ready content: for the consumer assembling a tree it allows
+					 *          transferring the storage by whole blocks instead of the transfer of every value
+					 *          one by one.
+					 *
 					 * @return pointer to the content of the current event
 					 *
 					 * \~
@@ -1015,6 +1131,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the storage of the characters of the parsing
+					 *
 					 * @return storage of the characters of the parsing
 					 *
 					 * \~
@@ -1028,23 +1145,26 @@ namespace awh {
 					 * @brief Метод установки удержания хранилища знаков
 					 *
 					 * @details Хранилище знаков очищается по исчерпании выданных событий: без
-					 * того оно росло бы во весь разбираемый текст. Потребителю, забирающему
-					 * знаки себе целиком, очистка эта не нужна вовсе - она лишь заставляет его
-					 * переносить знаки копией на всяком куске
+					 *          того оно росло бы во весь разбираемый текст. Потребителю, забирающему
+					 *          знаки себе целиком, очистка эта не нужна вовсе - она лишь заставляет его
+					 *          переносить знаки копией на всяком куске.
 					 *
 					 * @warning Удержание растит хранилище во весь разбираемый текст: потоковому
-					 * разбору, разбирающему текст без конца, оно не годится
+					 *          разбору, разбирающему текст без конца, оно не годится
 					 *
 					 * @param mode устанавливаемый признак удержания хранилища знаков
 					 *
 					 * \~english
 					 * @brief Method of setting the retention of the storage of the characters
+					 *
 					 * @details The storage of the characters is cleared upon the exhaustion of the issued events: without
-					 * that it would grow to the whole text being parsed. To a consumer taking the characters
-					 * for itself as a whole that clearing is not needed at all — it merely forces it
-					 * to transfer the characters by a copy on every chunk
+					 *          that it would grow to the whole text being parsed. To a consumer taking the characters
+					 *          for itself as a whole that clearing is not needed at all — it merely forces it
+					 *          to transfer the characters by a copy on every chunk.
+					 *
 					 * @warning The retention grows the storage to the whole text being parsed: to a streaming
-					 * parsing, parsing a text without an end, it is not suitable
+					 *          parsing, parsing a text without an end, it is not suitable
+					 *
 					 * @param mode flag of the retention of the storage of the characters being set
 					 *
 					 * \~
@@ -1055,21 +1175,24 @@ namespace awh {
 					 * @brief Метод выдачи хранилища знаков наружу
 					 *
 					 * @details Хранилище переносится потребителю целиком, без копии. Применяется
-					 * по окончании разбора тем, кто удержание затребовал: копия хранилища во весь
-					 * разбираемый текст - самая дорогая из статей сборки дерева
+					 *          по окончании разбора тем, кто удержание затребовал: копия хранилища во весь
+					 *          разбираемый текст - самая дорогая из статей сборки дерева.
 					 *
 					 * @warning Хранилище разбора после выдачи пусто, а выданные события ссылаются
-					 * в него смещениями: звать его посреди разбора нельзя
+					 *          в него смещениями: звать его посреди разбора нельзя
 					 *
 					 * @param storage хранилище, куда переносятся знаки разбора
 					 *
 					 * \~english
 					 * @brief Method of the issuance of the storage of the characters outwards
+					 *
 					 * @details The storage is transferred to the consumer as a whole, without a copy. It is applied
-					 * upon the end of the parsing by the one who demanded the retention: a copy of the storage of the whole
-					 * text being parsed is the most expensive of the items of the assembly of the tree
+					 *          upon the end of the parsing by the one who demanded the retention: a copy of the storage of the whole
+					 *          text being parsed is the most expensive of the items of the assembly of the tree.
+					 *
 					 * @warning The storage of the parsing after the issuance is empty, while the issued events refer
-					 * into it by the offsets: calling it in the middle of the parsing is not allowed
+					 *          into it by the offsets: calling it in the middle of the parsing is not allowed
+					 *
 					 * @param storage storage into which the characters of the parsing are transferred
 					 *
 					 * \~
@@ -1083,6 +1206,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the number of the bytes discarded from the storage of the characters
+					 *
 					 * @return number of the bytes discarded from the storage of the characters
 					 *
 					 * \~
@@ -1099,6 +1223,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the position of the current event in the source text
+					 *
 					 * @return position of the current event in the source text
 					 *
 					 * \~
@@ -1109,8 +1234,8 @@ namespace awh {
 					 * @brief Метод получения текущего состояния чтения
 					 *
 					 * @details Состояние вычисляется по имеющемуся, а не хранится полем:
-					 * события собираются в очередь при подаче куска, и хранимое состояние
-					 * расходилось бы с нею при всякой выдаче события
+					 *          события собираются в очередь при подаче куска, и хранимое состояние
+					 *          расходилось бы с нею при всякой выдаче события.
 					 *
 					 * @note Прекращение разбора по требованию потребителя отражается членом
 					 *       `FINISHED`: событий разбор больше не даст и продолжения не ждёт,
@@ -1121,6 +1246,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current state of the reading
+					 *
+					 * @details The state is computed from what is at hand rather than stored by a field: the
+					 *          events are gathered into a queue at the feeding of a chunk, and a stored state
+					 *          would drift from it at every issuance of an event.
+					 *
+					 * @note The stopping of the parsing at the demand of a consumer is reflected by the member
+					 *       `FINISHED`: the parsing will give no more events and waits for no continuation,
+					 *       while the cause of the stopping is known to the one who demanded it — the parsing
+					 *       has no cause of its own here, and that is why `FAILED` would be wrong
+					 *
 					 * @return current state of the reading of a JSON text
 					 *
 					 * \~
@@ -1134,6 +1269,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the error code of the parsing
+					 *
 					 * @return error code of the parsing
 					 *
 					 * \~
@@ -1144,16 +1280,18 @@ namespace awh {
 					 * @brief Метод получения места обнаружения отказа
 					 *
 					 * @details Место это стоит НЕ на месте текущего события: события, собранные
-					 * до отказа, снимаются уже после него, и место текущего события ими
-					 * переписывается, а место отказа остаётся
+					 *          до отказа, снимаются уже после него, и место текущего события ими
+					 *          переписывается, а место отказа остаётся.
 					 *
 					 * @return положение обнаруженного отказа в исходном тексте
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of an error
+					 *
 					 * @details This place stands NOT at the place of the current event: the events assembled
-					 * before the error are taken already after it, and the place of the current event is
-					 * overwritten by them, while the place of the error remains
+					 *          before the error are taken already after it, and the place of the current event is
+					 *          overwritten by them, while the place of the error remains.
+					 *
 					 * @return position of the detected error in the source text
 					 *
 					 * \~
@@ -1167,6 +1305,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the encoding of the source text
+					 *
 					 * @return encoding of the source text
 					 *
 					 * \~
@@ -1180,6 +1319,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the current depth of the nesting
+					 *
 					 * @return current depth of the nesting
 					 *
 					 * \~
@@ -1194,6 +1334,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the settings of the parsing of a text
+					 *
 					 * @return settings of the parsing of a text
 					 *
 					 * \~
@@ -1207,9 +1348,9 @@ namespace awh {
 					 *       разбираемого знака: разобранное прежними настройками остаётся разобранным
 					 *
 					 * @warning Навязывание кодировки посреди разбора отвергается ОТКАЗОМ ближайшей
-					 * подачи: приведение к UTF-8 кодировку посреди текста сменить не может. Замер:
-					 * подача отвечает ложью, код `INVALID_ENCODING`, а настройки продолжают говорить
-					 * о навязанной кодировке - просьба не теряется, она стоит текста
+					 *          подачи: приведение к UTF-8 кодировку посреди текста сменить не может. Замер:
+					 *          подача отвечает ложью, код `INVALID_ENCODING`, а настройки продолжают говорить
+					 *          о навязанной кодировке - просьба не теряется, она стоит текста
 					 *
 					 * @note Соседние кодеки на ту же просьбу отвечают ИНАЧЕ, и переносить отсюда
 					 *       ничего нельзя: таблица CSV и разметка XML несбывшееся указание снимают
@@ -1219,15 +1360,19 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the parsing of a text
+					 *
 					 * @note The settings put IN THE MIDDLE of the parsing take effect from the nearest
 					 *       character being parsed: what has been parsed by the previous settings stays parsed
+					 *
 					 * @warning The forcing of an encoding in the middle of the parsing is rejected by a REFUSAL of the nearest
-					 * feeding: the bringing to UTF-8 cannot change the encoding in the middle of a text. Measurement:
-					 * the feeding answers with false, the code `INVALID_ENCODING`, while the settings continue to speak
-					 * of the forced encoding — the request is not lost, it costs the text
+					 *          feeding: the bringing to UTF-8 cannot change the encoding in the middle of a text. Measurement:
+					 *          the feeding answers with false, the code `INVALID_ENCODING`, while the settings continue to speak
+					 *          of the forced encoding — the request is not lost, it costs the text
+					 *
 					 * @note The neighbouring codecs answer the same request DIFFERENTLY, and nothing can be carried over
 					 *       from here: the CSV table and the XML markup remove the unfulfilled instruction
 					 *       from the settings themselves and continue the parsing
+					 *
 					 * @param settings settings of the parsing of a text being set
 					 *
 					 * \~

@@ -3184,18 +3184,6 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 	return 1;
 }
 /**
- * @brief Метод прививки владеющего значения в дерево документа
- *
- * @param pointer указатель на прививаемое место по RFC 6901
- * @param value   прививаемое владеющее значение
- * @return        признак успешности прививки
- *
- */
-bool awh::codec::json::Document::graft(const string & pointer, const json::Value & value) noexcept {
-	// Выводим итог правки дерева документа по указателю
-	return this->set(pointer, value);
-}
-/**
  * @brief Метод розыска узла дерева документа по звеньям указателя
  *
  * @param parts     звенья указателя на разыскиваемое место

@@ -17,7 +17,7 @@
  *        текста, записи его и таблицы, удерживаемой целиком
  *
  * @details Владеющего значения (`value_t`) у CSV нет НАМЕРЕННО, тогда как у прочих
- * шести кодеков оно есть. Причины, по каким оно там заведено, здесь не действуют:
+ *          шести кодеков оно есть. Причины, по каким оно там заведено, здесь не действуют:
  *
  * 1. Владение содержимым. У древесных кодеков дерево указывает в чужой буфер, и
  *    владеющее значение заводится ради собственной памяти. Таблица CSV владеет сама:
@@ -34,9 +34,21 @@
  * \~english
  * @brief Header file of the CSV container — the single point of the inclusion of the streaming reading
  *        of a text, of the writing of it and of the table held in full
- * @details CSV has no owning value (`value_t`) DELIBERATELY, while the other six containers have it.
- * The reasons for which it is introduced there do not apply here: the table owns its content itself,
- * it has no nesting at all, and the contract of the owning value rests upon the notions of a tree
+ *
+ * @details CSV has no owning value (`value_t`) DELIBERATELY, while the other six codecs have it.
+ *          The reasons for which it is introduced there do not apply here:
+ *
+ * 1. The ownership of the content. Among the tree codecs a tree points into a foreign buffer, and
+ *    an owning value is introduced for the sake of its own memory. The CSV table owns itself:
+ *    the fields lie in its storage of characters, the pointers to them - in the list of slices.
+ * 2. A detachable subtree. The table has no nesting at all - rows and fields, the depth is
+ *    exactly two, - and there is nothing to detach from it.
+ * 3. A single contract. The contract of an owning value rests upon the notions of a tree -
+ *    `type`, `at`, `push`, `erase`, `graft`, - and one could stretch them over a table only by
+ *    inventing a nesting that the language does not have.
+ *
+ * @note Written down as a decision, and not left as a gap: the parsing of 2026-08-21 raised this
+ *       question anew, and without the record it will be raised again
  *
  * \~
  *

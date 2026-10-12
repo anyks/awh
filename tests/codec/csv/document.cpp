@@ -462,7 +462,7 @@ TEST(CodecCsvDocument, Append) {
 	// Выполняем проверку содержимого поля по имени столбца
 	ASSERT_EQ(document.get(1, "name"), "b");
 	// Выполняем проверку собранного текста таблицы
-	ASSERT_EQ(document.text(), "name,value\r\na,1\r\nb,2\r\n");
+	ASSERT_EQ(document.dump(), "name,value\r\na,1\r\nb,2\r\n");
 	// Выполняем проверку отказа установки заголовка с повторяющимися именами
 	ASSERT_FALSE(document.header(vector <string> {"name", "name"}));
 }
@@ -532,7 +532,7 @@ TEST(CodecCsvDocument, Clear) {
 	// Выполняем проверку того, что соответствие имён столбцов очищено
 	ASSERT_FALSE(document.has("name"));
 	// Выполняем проверку того, что текст очищенной таблицы пуст
-	ASSERT_TRUE(document.text().empty());
+	ASSERT_TRUE(document.dump().empty());
 }
 
 /**
@@ -656,7 +656,7 @@ TEST(CodecCsvDocument, RoundTripSurvivesEverySettingOfTheWriting){
 				 */
 				ASSERT_TRUE(source.parse("имя,значение\n\"а\nб\",\"в,г\"\n\"д\"\"е\",\" ж \"\n", settings)) << combination;
 				// Выполняем сборку текста таблицы установленными настройками
-				const string text = source.text();
+				const string text = source.dump();
 				/**
 				 * Если запись отвечала отказом
 				 *
@@ -746,7 +746,7 @@ TEST(CodecCsvDocument, RoundTrip) {
 	// Объект контейнера полученной обратно таблицы
 	csv::document_t result;
 	// Выполняем разбор текста, собранного исходной таблицей
-	ASSERT_TRUE(result.parse(source.text(), heading()));
+	ASSERT_TRUE(result.parse(source.dump(), heading()));
 	// Выполняем проверку имён столбцов полученной обратно таблицы
 	ASSERT_EQ(result.header(), source.header());
 	// Выполняем проверку количества записей полученной обратно таблицы
@@ -1747,7 +1747,7 @@ TEST(CodecCsvDocument, UnwritableFieldStopsEveryOutput){
 		// Выполняем установку настроек контейнера
 		document.settings(writing);
 		// Выполняем проверку того, что выдача текста отказала пустою строкою
-		ASSERT_TRUE(document.text().empty()) << uint32_t(heading);
+		ASSERT_TRUE(document.dump().empty()) << uint32_t(heading);
 		// Адрес файла, в какой записывается таблица
 		// Сторож временного файла проверки
 		const Scratch scratch_output("awh_csv_unwritable.csv");
@@ -1786,7 +1786,7 @@ TEST(CodecCsvDocument, RefusedParsingLeavesNothing){
 	// Выполняем проверку сохранности положения отказа разбора
 	ASSERT_EQ(doc.errorLocation().line, static_cast <size_t> (2));
 	// Выполняем проверку пустоты записи таблицы обратно
-	ASSERT_TRUE(doc.text().empty());
+	ASSERT_TRUE(doc.dump().empty());
 	/**
 	 * Выполняем проверку того, что удавшаяся выдача канал отказа отпускает
 	 *
@@ -2011,13 +2011,13 @@ TEST(CodecCsvDocument, RefusedEmptyRecordStopsText){
 	// Выполняем установку настроек контейнера
 	doc.settings(settings);
 	// Выполняем проверку того, что сборка текста отвечает отказом, а не короткой таблицей
-	ASSERT_TRUE(doc.text().empty());
+	ASSERT_TRUE(doc.dump().empty());
 	// Возвращаем кавычки по нужде
 	settings.writer.quoting = csv::quoting_t::MINIMAL;
 	// Выполняем установку настроек контейнера
 	doc.settings(settings);
 	// Выполняем проверку того, что теми же настройками таблица собирается целиком
-	ASSERT_EQ(doc.text(), "значение\r\n\"\"\r\nдругое\r\n");
+	ASSERT_EQ(doc.dump(), "значение\r\n\"\"\r\nдругое\r\n");
 }
 /**
  * @brief Проверка наличия отказа на таблицу, в разрядность хранилища не вместимую
@@ -2107,7 +2107,7 @@ TEST(CodecCsvDocument, RefusalChannelSpeaksOnWriting){
 	// Выполняем проверку того, что запись в таблицу занесена
 	ASSERT_EQ(doc.rows(), static_cast <size_t> (1));
 	// Выполняем проверку того, что выдача текста отказала
-	ASSERT_TRUE(doc.text().empty());
+	ASSERT_TRUE(doc.dump().empty());
 	// Выполняем проверку того, что причина отказа названа
 	ASSERT_EQ(doc.error(), csv::error_t::UNWRITABLE_FIELD);
 	// Адрес файла, в который ведётся запись
@@ -2818,7 +2818,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 		// Выполняем проверку принятия текста разбором
 		ASSERT_TRUE(doc.parse(sample.first)) << csv::message(doc.error());
 		// Выполняем проверку совпадения собранного с исходным текстом
-		ASSERT_EQ(doc.text(), sample.first);
+		ASSERT_EQ(doc.dump(), sample.first);
 	}
 	/**
 	 * Выполняем проверку единственного законного приведения
@@ -2843,7 +2843,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 		// Выполняем разбор текста с обрамлённым пустым полем среди прочих
 		ASSERT_TRUE(doc.parse("\"\",a\r\n"));
 		// Выполняем проверку приведения обрамления к необходимому
-		ASSERT_EQ(doc.text(), ",a\r\n");
+		ASSERT_EQ(doc.dump(), ",a\r\n");
 		/**
 		 * Выполняем проверку сохранности смысла при приведении
 		 */
@@ -2853,7 +2853,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 			// Устанавливаем настройки контейнера
 			back.settings(settings);
 			// Выполняем разбор собранного текста
-			ASSERT_TRUE(back.parse(doc.text()));
+			ASSERT_TRUE(back.parse(doc.dump()));
 			// Выполняем проверку сохранности числа полей записи
 			ASSERT_EQ(back.size(0), static_cast <size_t> (2));
 			// Выполняем проверку пустоты первого поля записи

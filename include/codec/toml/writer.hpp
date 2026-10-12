@@ -89,39 +89,44 @@ namespace awh {
 			 * @brief Класс записи текста настроек
 			 *
 			 * @details Собирает текст настроек из объявлений таблиц, пар «ключ = значение»,
-			 * перечней, встроенных таблиц и примечаний. Порядок вызовов повторяет порядок
-			 * событий чтения: имя ключа, за ним его значение, а значение составное - парой
-			 * открытия и закрытия, - отчего перезапись прочитанного сводится к пересылке
-			 * событий
+			 *          перечней, встроенных таблиц и примечаний. Порядок вызовов повторяет порядок
+			 *          событий чтения: имя ключа, за ним его значение, а значение составное - парой
+			 *          открытия и закрытия, - отчего перезапись прочитанного сводится к пересылке
+			 *          событий.
 			 *
 			 * @par Порядок работы
 			 *
 			 * @par Намеренные решения
+			 *
 			 * @li **Запись отвечает отказом, а не молчаливой подменой.** Имя либо значение,
-			 * которое разбор прочитал бы иначе, чем оно записано, в текст не попадает: там,
-			 * где ограждение настройками не дозволено, запись выдаёт отказ. Единственное
-			 * послабление задаётся настройкой @c promote и касается лишь выбора записи
-			 * строки, содержимого её не меняя
+			 *     которое разбор прочитал бы иначе, чем оно записано, в текст не попадает: там,
+			 *     где ограждение настройками не дозволено, запись выдаёт отказ. Единственное
+			 *     послабление задаётся настройкой @c promote и касается лишь выбора записи
+			 *     строки, содержимого её не меняя
+			 *
 			 * @li **Учёт повторов имён запись не ведёт.** Реестра объявленных имён у неё
-			 * нет вовсе: повтор ловит дерево настроек, а завести реестр здесь значило бы
-			 * держать второй свод правил рядом с тем, что уже ведёт разбор. Потребитель,
-			 * зовущий запись напрямую, за неповторимость имён отвечает сам
+			 *     нет вовсе: повтор ловит дерево настроек, а завести реестр здесь значило бы
+			 *     держать второй свод правил рядом с тем, что уже ведёт разбор. Потребитель,
+			 *     зовущий запись напрямую, за неповторимость имён отвечает сам
+			 *
 			 * @li **Текст, оборванный отказом, не выдаётся вовсе.** Отказ, случившийся
-			 * после того, как операция уже дописала начало своё, оставляет строку
-			 * оборванной, и признак этот липкий: строку вправе завершить знаком конца
-			 * строки следующая удачная операция, и по одному лишь виду собранного текста
-			 * рваность после того неразличима. Снимается признак лишь сбросом записи
+			 *     после того, как операция уже дописала начало своё, оставляет строку
+			 *     оборванной, и признак этот липкий: строку вправе завершить знаком конца
+			 *     строки следующая удачная операция, и по одному лишь виду собранного текста
+			 *     рваность после того неразличима. Снимается признак лишь сбросом записи
+			 *
 			 * @li **Перечень пишется в одну строку, пока не велено иначе.** Многострочная
-			 * запись перечня заводится указанием при его открытии: собранному
-			 * потребителем перечню многострочность не нужна, а перезаписи прочитанного она
-			 * возвращает вид, выбранный человеком
+			 *     запись перечня заводится указанием при его открытии: собранному
+			 *     потребителем перечню многострочность не нужна, а перезаписи прочитанного она
+			 *     возвращает вид, выбранный человеком
+			 *
 			 * @warning Значение, записи которого выбранная потребителем ограда не несёт -
-			 * дословная строка с одинарной кавычкой, строка с управляющим знаком, - либо
-			 * записывается оградой, его несущей, либо отвергается: обрезать содержимое
-			 * запись не вправе
+			 *          дословная строка с одинарной кавычкой, строка с управляющим знаком, - либо
+			 *          записывается оградой, его несущей, либо отвергается: обрезать содержимое
+			 *          запись не вправе
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer();
+			 *          writer_t writer();
 			 *
 			 *  writer.comment("собрано автоматически");
 			 *  writer.table("server");
@@ -131,33 +136,52 @@ namespace awh {
 			 *  writer.integer(8080);
 			 *
 			 *  const string & text = writer.text();
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the writing of a settings text
+			 *
 			 * @details Assembles a settings text out of the table declarations, the pairs «key = value»,
-			 * the arrays, the inline tables and the comments. The order of the calls repeats the order
-			 * of the events of the reading: the name of a key, after it its value, while a compound value — by a pair
-			 * of an opening and a closing — from which a rewriting of what has been read comes down to a forwarding of
-			 * the events
+			 *          the arrays, the inline tables and the comments. The order of the calls repeats the order
+			 *          of the events of the reading: the name of a key, after it its value, while a compound value — by a pair
+			 *          of an opening and a closing — from which a rewriting of what has been read comes down to a forwarding of
+			 *          the events.
+			 *
 			 * @par Order of the work
+			 *
 			 * @par Deliberate decisions
+			 *
 			 * @li **The writing answers with a refusal rather than with a silent substitution.** A name or a value
-			 * which the parsing would read otherwise than it is written does not get into the text: there
-			 * where the fencing is not permitted by the settings the writing issues a refusal. The only
-			 * relaxation is given by the @c promote setting and concerns only the choice of the notation
-			 * of a string without changing its content
+			 *     which the parsing would read otherwise than it is written does not get into the text: there
+			 *     where the fencing is not permitted by the settings the writing issues a refusal. The only
+			 *     relaxation is given by the @c promote setting and concerns only the choice of the notation
+			 *     of a string without changing its content
+			 *
+			 * @li **The writing does not keep account of the repeated names.** It has no register of the
+			 *     declared names at all: the settings tree catches a repetition, and to start a register
+			 *     here would mean to keep a second code of rules next to the one the parsing already
+			 *     leads. A consumer calling the writing directly answers for the uniqueness of the
+			 *     names itself
+			 *
+			 * @li **A text cut off by a refusal is not issued at all.** A refusal occurring after the
+			 *     operation has already appended its beginning leaves a line cut off, and this sign is
+			 *     sticky: the next successful operation has the right to finish the line with the line
+			 *     ending character, and by the look of the assembled text alone the raggedness after
+			 *     that is indistinguishable. The sign is removed only by a reset of the writing
+			 *
 			 * @li **An array is written in a single line until it is ordered otherwise.** The multiline
-			 * notation of an array is established by an indication at its opening: an array assembled by
-			 * the consumer does not need the multilineness, while for a rewriting of what has been read it
-			 * returns the form chosen by the human
+			 *     notation of an array is established by an indication at its opening: an array assembled by
+			 *     the consumer does not need the multilineness, while for a rewriting of what has been read it
+			 *     returns the form chosen by the human
+			 *
 			 * @warning A value the notation of which the fence chosen by the consumer does not carry —
-			 * a literal string with a single quote, a string with a control character — is either
-			 * written by a fence that carries it or is rejected: the writing has no right to
-			 * truncate the content
+			 *          a literal string with a single quote, a string with a control character — is either
+			 *          written by a fence that carries it or is rejected: the writing has no right to
+			 *          truncate the content
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer();
+			 *          writer_t writer();
 			 *
 			 *  writer.comment("built automatically");
 			 *  writer.table("server");
@@ -167,8 +191,10 @@ namespace awh {
 			 *  writer.integer(8080);
 			 *
 			 *  const string & text = writer.text();
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
 				private:
@@ -198,13 +224,14 @@ namespace awh {
 						 * ноль - без предела
 						 *
 						 * @note Предел тот же, что и у разбора: строку длиннее записать
-						 * значило бы собрать текст, который читающий отвергнет
+						 *       значило бы собрать текст, который читающий отвергнет
 						 *
 						 * \~english
 						 * Largest admissible length of a logical line in bytes,
 						 * zero — without a limit
+						 *
 						 * @note The limit is the same as that of the parsing: to write a longer line would
-						 * mean to assemble a text which the reader will reject
+						 *       mean to assemble a text which the reader will reject
 						 *
 						 * \~
 						 */
@@ -219,18 +246,19 @@ namespace awh {
 						 * Наибольшая допустимая глубина вложенности значений
 						 *
 						 * @note Смысл тот же, что и у разбора: считается вложенностью
-						 * перечней и встроенных таблиц друг в друга, а ноль запрещает
-						 * вложенные значения вовсе, оставляя простые. Без предела здесь
-						 * не бывает - разойтись с разбором значило бы собрать текст,
-						 * который читающий отвергнет
+						 *       перечней и встроенных таблиц друг в друга, а ноль запрещает
+						 *       вложенные значения вовсе, оставляя простые. Без предела здесь
+						 *       не бывает - разойтись с разбором значило бы собрать текст,
+						 *       который читающий отвергнет
 						 *
 						 * \~english
 						 * Largest admissible depth of the nesting of the values
+						 *
 						 * @note The meaning is the same as that of the parsing: it is counted by the nesting of the
-						 * arrays and of the inline tables into one another, while zero prohibits the
-						 * nested values altogether, leaving the simple ones. There is no «without a limit» here —
-						 * to diverge from the parsing would mean to assemble a text
-						 * which the reader will reject
+						 *       arrays and of the inline tables into one another, while zero prohibits the
+						 *       nested values altogether, leaving the simple ones. There is no «without a limit» here —
+						 *       to diverge from the parsing would mean to assemble a text
+						 *       which the reader will reject
 						 *
 						 * \~
 						 */
@@ -245,16 +273,17 @@ namespace awh {
 						 * Признак того, что читающий признаёт знаки Юникода в имени без кавычек
 						 *
 						 * @note Описание версии 1.0.0 отводит имени без кавычек лишь знаки
-						 * US-ASCII, и умолчанием признак снят: имя с прочими знаками
-						 * ограждается тогда кавычками. Взводят его по читающему, а не по
-						 * желанию пишущего - иначе собранный текст читающему не прочесть
+						 *       US-ASCII, и умолчанием признак снят: имя с прочими знаками
+						 *       ограждается тогда кавычками. Взводят его по читающему, а не по
+						 *       желанию пишущего - иначе собранный текст читающему не прочесть
 						 *
 						 * \~english
 						 * Flag of the reader recognizing the Unicode characters in a name without quotes
+						 *
 						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to a name without quotes,
-						 * and by default the flag is not set: a name with the other characters
-						 * is then fenced with quotes. It is raised by the reader rather than by
-						 * the wish of the writer — otherwise the assembled text cannot be read by the reader
+						 *       and by default the flag is not set: a name with the other characters
+						 *       is then fenced with quotes. It is raised by the reader rather than by
+						 *       the wish of the writer — otherwise the assembled text cannot be read by the reader
 						 *
 						 * \~
 						 */
@@ -264,18 +293,19 @@ namespace awh {
 						 * Признак дозволения смены записи строки, содержимого не несущей
 						 *
 						 * @note Дословная строка управляющих последовательностей не
-						 * признаёт, и одинарную кавычку записать ею нечем. При взведённом
-						 * признаке запись берёт ближайшую ограду, содержимое несущую, при
-						 * снятом - отвечает отказом. Содержимое при этом не меняется ни в
-						 * том, ни в другом случае: меняется лишь выбранная человеком ограда
+						 *       признаёт, и одинарную кавычку записать ею нечем. При взведённом
+						 *       признаке запись берёт ближайшую ограду, содержимое несущую, при
+						 *       снятом - отвечает отказом. Содержимое при этом не меняется ни в
+						 *       том, ни в другом случае: меняется лишь выбранная человеком ограда
 						 *
 						 * \~english
 						 * Flag of the permission of a change of the notation of a string that does not carry the content
+						 *
 						 * @note A literal string does not recognize the escape sequences,
-						 * and there is nothing to write a single quote with it. When the flag is
-						 * raised the writing takes the nearest fence that carries the content, when it is
-						 * not — it answers with a refusal. The content is thereby not changed in
-						 * either case: only the fence chosen by the human changes
+						 *       and there is nothing to write a single quote with it. When the flag is
+						 *       raised the writing takes the nearest fence that carries the content, when it is
+						 *       not — it answers with a refusal. The content is thereby not changed in
+						 *       either case: only the fence chosen by the human changes
 						 *
 						 * \~
 						 */
@@ -287,12 +317,13 @@ namespace awh {
 						 * Флаг записи отступа перед парами объявленной таблицы
 						 *
 						 * @note Отступ этот украшающий: описание пробельную обвязку строки
-						 * отбрасывает, и на разбор он не влияет
+						 *       отбрасывает, и на разбор он не влияет
 						 *
 						 * \~english
 						 * Flag of the writing of an indent before the pairs of a declared table
+						 *
 						 * @note This indent is an adorning one: the specification discards the whitespace padding of a line,
-						 * and it does not affect the parsing
+						 *       and it does not affect the parsing
 						 *
 						 * \~
 						 */
@@ -306,12 +337,13 @@ namespace awh {
 						 * Правило обхождения с негодной последовательностью UTF-8
 						 *
 						 * @note `REPLACE` подменяет негодную последовательность знаком U+FFFD, `REFUSE`
-						 * отвергает запись целиком, а `PASS` пропускает байты как есть
+						 *       отвергает запись целиком, а `PASS` пропускает байты как есть
 						 *
 						 * \~english
 						 * Rule of the treatment of a malformed UTF-8 sequence
+						 *
 						 * @note `REPLACE` substitutes a malformed sequence by the U+FFFD character, `REFUSE`
-						 * refuses the writing entirely, while `PASS` passes the bytes through as they are
+						 *       refuses the writing entirely, while `PASS` passes the bytes through as they are
 						 *
 						 * \~
 						 */
@@ -367,6 +399,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of the multiline notation of an array
+						 *
 						 * @note For an inline table this flag is always unset: the specification does not permit
 						 *       a line break inside it
 						 *
@@ -383,6 +416,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of the separator of the next value having already been written
+						 *
 						 * @note Raised by a comment appended to a value of an array:
 						 *       the comma is put before the comment rather than after it, and
 						 *       to write it a second time would mean to assemble an empty value
@@ -400,6 +434,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of a comment having been written at the level
+						 *
 						 * @note It is kept for the sake of the closing bracket of an array: a comment lasts
 						 *       until the end of the line, and the bracket written after it would go
 						 *       to its content
@@ -416,6 +451,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param context   kind of the surrounding of the value being written
 						 * @param multiline flag of the multiline notation of an array
 						 *
@@ -435,14 +471,15 @@ namespace awh {
 					 * Признак того, что к последней записанной строке можно дописать примечание
 					 *
 					 * @details Дописывается примечание к строке пары либо объявления таблицы:
-					 * пустая строка примечанием перестала бы быть пустой, а к строке
-					 * примечания дописывать нечего - оно и так примечание
+					 *          пустая строка примечанием перестала бы быть пустой, а к строке
+					 *          примечания дописывать нечего - оно и так примечание.
 					 *
 					 * \~english
 					 * Flag of a comment being appendable to the last written line
+					 *
 					 * @details A comment is appended to the line of a pair or of a table declaration:
-					 * an empty line would cease to be an empty one from a comment, while to the line of
-					 * a comment there is nothing to append — it is a comment as it is
+					 *          an empty line would cease to be an empty one from a comment, while to the line of
+					 *          a comment there is nothing to append — it is a comment as it is.
 					 *
 					 * \~
 					 */
@@ -450,19 +487,21 @@ namespace awh {
 					/**
 					 * \~russian
 					 * Признак текста, отказом оборванного
+					 *
 					 * @details Отказ, случившийся после того, как операция уже дописала начало
-					 * своё, оставляет строку оборванной, и выдавать собранный текст после него
-					 * нельзя. Признак липкий: строку эту вправе завершить знаком конца строки
-					 * следующая удачная операция, и по одному лишь виду собранного текста
-					 * рваность после того неразличима
+					 *          своё, оставляет строку оборванной, и выдавать собранный текст после него
+					 *          нельзя. Признак липкий: строку эту вправе завершить знаком конца строки
+					 *          следующая удачная операция, и по одному лишь виду собранного текста
+					 *          рваность после того неразличима.
 					 *
 					 * \~english
 					 * Flag of a text cut off by a refusal
+					 *
 					 * @details A refusal that occurred after the operation had already appended its own
-					 * beginning leaves the line cut off, and the assembled text must not be issued after
-					 * it. The flag is sticky: that line may be terminated with an end-of-line character
-					 * by the next successful operation, and after that the tornness is indistinguishable
-					 * by the appearance of the assembled text alone
+					 *          beginning leaves the line cut off, and the assembled text must not be issued after
+					 *          it. The flag is sticky: that line may be terminated with an end-of-line character
+					 *          by the next successful operation, and after that the tornness is indistinguishable
+					 *          by the appearance of the assembled text alone.
 					 *
 					 * \~
 					 */
@@ -478,21 +517,23 @@ namespace awh {
 					 * Длина записи, знаком конца строки завершённой
 					 *
 					 * @details Примечание, дописываемое к готовой строке, снимает знак её
-					 * конца и дописывает содержимое к той же записи: длина записи ей
-					 * продолжается, а не считается заново
+					 *          конца и дописывает содержимое к той же записи: длина записи ей
+					 *          продолжается, а не считается заново.
 					 *
 					 * @note Считать её заново по собранному тексту нельзя: разбор меряет
-					 * пределом длины запись целиком - вместе со всеми строками
-					 * многострочного значения, - а по тексту видна лишь последняя из них
+					 *       пределом длины запись целиком - вместе со всеми строками
+					 *       многострочного значения, - а по тексту видна лишь последняя из них
 					 *
 					 * \~english
 					 * Length of a record completed by a line ending character
+					 *
 					 * @details A comment appended to a ready line removes the character of its
-					 * end and appends the content to the same record: the length of the record is
-					 * continued by it rather than being counted anew
+					 *          end and appends the content to the same record: the length of the record is
+					 *          continued by it rather than being counted anew.
+					 *
 					 * @note It cannot be counted anew over the assembled text: the parsing measures a record as a whole
-					 * by the limit of the length — together with all the lines of a
-					 * multiline value — while over the text only the last of them is visible
+					 *       by the limit of the length — together with all the lines of a
+					 *       multiline value — while over the text only the last of them is visible
 					 *
 					 * \~
 					 */
@@ -507,18 +548,31 @@ namespace awh {
 					 * @brief Разметка конца строки, ПОСЛЕДНЕЙ записью на деле применённая
 					 *
 					 * @details Дописка примечания снимает знак конца строки с собранного текста,
-					 * а разделитель записей спрашивает, оканчивается ли текст пустой строкой, -
-					 * и обе работы обязаны судить о ТОМ, ЧТО ЗАПИСАНО, а не о том, что велит
-					 * настройка ныне: настройка вправе смениться между записью и судом о ней
+					 *          а разделитель записей спрашивает, оканчивается ли текст пустой строкой, -
+					 *          и обе работы обязаны судить о ТОМ, ЧТО ЗАПИСАНО, а не о том, что велит
+					 *          настройка ныне: настройка вправе смениться между записью и судом о ней.
 					 *
 					 * @warning Замерено щупом: при смене разметки с CRLF на LF дописка снимала
-					 * один перевод строки из двух знаков и оставляла одинокий возврат каретки
-					 * ПОСРЕДИ строки, а разделитель не узнавал пустой строки и ставил вторую -
-					 * обе порчи молча, кодом успеха. Довод «о написанном нельзя судить по
-					 * настройке» принесён от кодека JSON
+					 *          один перевод строки из двух знаков и оставляла одинокий возврат каретки
+					 *          ПОСРЕДИ строки, а разделитель не узнавал пустой строки и ставил вторую -
+					 *          обе порчи молча, кодом успеха. Довод «о написанном нельзя судить по
+					 *          настройке» принесён от кодека JSON
 					 *
 					 * \~english
 					 * @brief Line ending actually applied by the last writing
+					 *
+					 * @details Appending a comment removes the line ending character from the assembled text,
+					 *          while the separator of records asks whether the text ends with an empty line - and
+					 *          both works are obliged to judge about THAT WHICH IS WRITTEN, and not about what
+					 *          the setting orders now: the setting has the right to change between the writing
+					 *          and the judgment about it.
+					 *
+					 * @warning Measured with a probe: at a change of the layout from CRLF to LF the appending
+					 *          removed one line break out of two characters and left a lone carriage return IN
+					 *          THE MIDDLE of a line, while the separator did not recognize the empty line and put
+					 *          a second one - both corruptions went silently, with a success code. The argument
+					 *          «about what has been written one cannot judge by the setting» is brought from the
+					 *          codec JSON
 					 *
 					 * \~
 					 */
@@ -534,6 +588,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the line ending character
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -544,16 +599,17 @@ namespace awh {
 					 * @brief Метод записи знака конца строки внутри записи
 					 *
 					 * @details Строку собираемой записи знак этот не завершает: разбор
-					 * меряет пределом длины запись целиком - вместе со всеми строками
-					 * многострочного значения и многострочного перечня, - и сбрасывать
-					 * счёт на нём значило бы собирать текст, читающим отвергаемый
+					 *          меряет пределом длины запись целиком - вместе со всеми строками
+					 *          многострочного значения и многострочного перечня, - и сбрасывать
+					 *          счёт на нём значило бы собирать текст, читающим отвергаемый.
 					 *
 					 * \~english
 					 * @brief Method of writing a line ending character inside a record
+					 *
 					 * @details This character does not complete the line of the record being assembled: the parsing
-					 * measures a record as a whole by the limit of the length — together with all the lines of
-					 * a multiline value and of a multiline array — and to reset
-					 * the count at it would mean to assemble a text rejected by the reader
+					 *          measures a record as a whole by the limit of the length — together with all the lines of
+					 *          a multiline value and of a multiline array — and to reset
+					 *          the count at it would mean to assemble a text rejected by the reader.
 					 *
 					 * \~
 					 */
@@ -566,6 +622,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of appending a sequence of characters to the text being assembled
+					 *
 					 * @param text sequence of characters being appended
 					 *
 					 * \~
@@ -579,6 +636,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the kind of the surrounding of the value being written
+					 *
 					 * @return kind of the surrounding in which the writing is conducted
 					 *
 					 * \~
@@ -589,14 +647,16 @@ namespace awh {
 					 * @brief Метод проверки готовности записи очередной строки текста
 					 *
 					 * @details Строкой текста записываются объявление таблицы, пара,
-					 * примечание и пустая строка: посреди собираемого значения им места нет
+					 *          примечание и пустая строка: посреди собираемого значения им места нет.
 					 *
 					 * @return результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of checking the readiness of the writing of the next line of the text
+					 *
 					 * @details A table declaration, a pair, a comment and an empty line are written as a line of the text:
-					 * there is no place for them in the middle of the value being assembled
+					 *          there is no place for them in the middle of the value being assembled.
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -607,21 +667,23 @@ namespace awh {
 					 * @brief Метод запоминания отказа записи вместе с кодом ошибки
 					 *
 					 * @details Отказ, случившийся после того, как операция уже дописала начало
-					 * своё, оставляет строку оборванной, и выдавать собранный текст после него
-					 * нельзя: свой же разбор целым его не признает. Судится это здесь
-					 * единственным телом - перечень мест, где отказ приходит после дописывания,
-					 * разошёлся бы с кодом при первой же правке любого из них
+					 *          своё, оставляет строку оборванной, и выдавать собранный текст после него
+					 *          нельзя: свой же разбор целым его не признает. Судится это здесь
+					 *          единственным телом - перечень мест, где отказ приходит после дописывания,
+					 *          разошёлся бы с кодом при первой же правке любого из них.
 					 *
 					 * @param error код ошибки записи
 					 * @return      признак отказа для выхода из записи
 					 *
 					 * \~english
 					 * @brief Method of remembering a refusal of the writing together with the error code
+					 *
 					 * @details A refusal that occurred after the operation had already appended its own
-					 * beginning leaves the line cut off, and the assembled text must not be issued after
-					 * it: its own parsing will not recognize it as whole. This is judged here by a single
-					 * body — a list of the places where a refusal arrives after an appending would
-					 * diverge from the code at the very first edit of any of them
+					 *          beginning leaves the line cut off, and the assembled text must not be issued after
+					 *          it: its own parsing will not recognize it as whole. This is judged here by a single
+					 *          body — a list of the places where a refusal arrives after an appending would
+					 *          diverge from the code at the very first edit of any of them.
+					 *
 					 * @param error error code of the writing
 					 * @return      flag of a refusal for the exit from the writing
 					 *
@@ -633,18 +695,20 @@ namespace awh {
 					 * @brief Метод проверки возможности открыть составное значение
 					 *
 					 * @details Проверяет и окружение записи, и глубину вложенности: перечень и
-					 * встроенная таблица открываются по одним и тем же правилам, и держать их
-					 * двумя телами значило бы развести своды правил при первой же правке
-					 * одного из них
+					 *          встроенная таблица открываются по одним и тем же правилам, и держать их
+					 *          двумя телами значило бы развести своды правил при первой же правке
+					 *          одного из них.
 					 *
 					 * @return результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of the checking of the possibility to open a compound value
+					 *
 					 * @details Checks both the context of the writing and the depth of the nesting: an array
-					 * and an inline table are opened by one and the same rules, and keeping them
-					 * as two bodies would mean parting the sets of the rules at the very first edit
-					 * of one of them
+					 *          and an inline table are opened by one and the same rules, and keeping them
+					 *          as two bodies would mean parting the sets of the rules at the very first edit
+					 *          of one of them.
+					 *
 					 * @return result of the performing of the operation
 					 *
 					 * \~
@@ -655,15 +719,17 @@ namespace awh {
 					 * @brief Метод проверки пригодности примечания внутри перечня значений
 					 *
 					 * @details Проверяет и место записи, и содержимое примечания: записывать
-					 * его дозволено лишь внутри перечня, собираемого несколькими строками
+					 *          его дозволено лишь внутри перечня, собираемого несколькими строками.
 					 *
 					 * @param text содержимое записываемого примечания
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of checking the suitability of a comment inside an array of the values
+					 *
 					 * @details Checks both the place of the writing and the content of the comment: it is permitted to write
-					 * it only inside an array assembled in several lines
+					 *          it only inside an array assembled in several lines.
+					 *
 					 * @param text content of the comment being written
 					 * @return     result of performing the operation
 					 *
@@ -685,14 +751,16 @@ namespace awh {
 					 * @brief Метод записи разделителя очередного значения перечня
 					 *
 					 * @details Ставит запятую перед очередным значением уровня и перенос
-					 * строки с отступом, когда перечень пишется многострочным
+					 *          строки с отступом, когда перечень пишется многострочным.
 					 *
 					 * @return результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing the separator of the next value of an array
+					 *
 					 * @details Puts a comma before the next value of the level and a line
-					 * break with an indent when the array is written as a multiline one
+					 *          break with an indent when the array is written as a multiline one.
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -703,14 +771,16 @@ namespace awh {
 					 * @brief Метод завершения записи значения
 					 *
 					 * @details Записывает знак конца строки, когда значение записано парой
-					 * верхнего уровня, и учитывает записанное значение уровнем вложенности
+					 *          верхнего уровня, и учитывает записанное значение уровнем вложенности.
 					 *
 					 * @return результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of completing the writing of a value
+					 *
 					 * @details Writes a line ending character when the value has been written as a pair
-					 * of the top level, and accounts the written value by the level of the nesting
+					 *          of the top level, and accounts the written value by the level of the nesting.
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -732,11 +802,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a compound name of a key
+					 *
 					 * @note The name is accepted as a pointer with a number of the parts rather than as a
 					 *       list: a name of a single part is then passed without a construction of a
 					 *       list, while that construction cost an allocation of the memory for
 					 *       every written pair — on a file of two hundred pairs as many of them
 					 *       accumulated
+					 *
 					 * @param parts pointer to the component parts of the name of the key
 					 * @param count number of the component parts of the name of the key
 					 * @return      result of performing the operation
@@ -754,6 +826,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the name of the key of a pair with the equals sign
+					 *
 					 * @param parts pointer to the component parts of the name of the key
 					 * @param count number of the component parts of the name of the key
 					 * @return      result of performing the operation
@@ -770,6 +843,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a component part of the name of a key
+					 *
 					 * @param part component part of the name of the key being written
 					 * @return     result of performing the operation
 					 *
@@ -786,6 +860,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a string value by the chosen fence
+					 *
 					 * @param text    string value being written
 					 * @param quoting notation of the string value
 					 * @return        result of performing the operation
@@ -798,8 +873,8 @@ namespace awh {
 					 * @brief Метод приведения записи к годной кодировке UTF-8
 					 *
 					 * @details Правило обхождения берётся у настроек: `REPLACE` подменяет негодную
-					 * последовательность знаком U+FFFD, `REFUSE` отвергает запись, ничего не записав,
-					 * а `PASS` пропускает байты как есть
+					 *          последовательность знаком U+FFFD, `REFUSE` отвергает запись, ничего не записав,
+					 *          а `PASS` пропускает байты как есть.
 					 *
 					 * @param text   приводимое содержимое записи
 					 * @param result накопитель приведённой записи
@@ -808,9 +883,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of bringing a record to a valid UTF-8 encoding
+					 *
 					 * @details The rule of the treatment is taken from the settings: `REPLACE` substitutes
-					 * a malformed sequence by the U+FFFD character, `REFUSE` refuses the record without writing
-					 * anything, while `PASS` passes the bytes through as they are
+					 *          a malformed sequence by the U+FFFD character, `REFUSE` refuses the record without writing
+					 *          anything, while `PASS` passes the bytes through as they are.
+					 *
 					 * @param text   content of the record being brought
 					 * @param result accumulator of the brought record
 					 * @param record slice of the record fit for the writing
@@ -829,6 +906,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the possibility of writing a string by the chosen fence
+					 *
 					 * @param text    string value being checked
 					 * @param quoting notation of the string value being checked
 					 * @return        result of the check
@@ -846,6 +924,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a timestamp
+					 *
 					 * @param stamp timestamp being written
 					 * @param type  type of the timestamp being written
 					 * @return      result of performing the operation
@@ -864,6 +943,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a table declaration
+					 *
 					 * @param parts pointer to the component parts of the name of the table
 					 * @param count number of the component parts of the name of the table
 					 * @param array flag of the declaration of the next table of an array of tables
@@ -881,6 +961,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current settings of the writing
+					 *
 					 * @return current settings of the writing of a settings text
 					 *
 					 * \~
@@ -894,6 +975,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing
+					 *
 					 * @param settings settings of the writing of a settings text
 					 *
 					 * \~
@@ -909,6 +991,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a table declaration
+					 *
 					 * @param path compound name of the table being written
 					 * @return     result of performing the operation
 					 *
@@ -924,6 +1007,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a table declaration
+					 *
 					 * @param name name of the table being written
 					 * @return     result of performing the operation
 					 *
@@ -939,6 +1023,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the declaration of the next table of an array of tables
+					 *
 					 * @param path compound name of the array of tables being written
 					 * @return     result of performing the operation
 					 *
@@ -954,6 +1039,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the declaration of the next table of an array of tables
+					 *
 					 * @param name name of the array of tables being written
 					 * @return     result of performing the operation
 					 *
@@ -966,15 +1052,17 @@ namespace awh {
 					 * @brief Метод записи имени ключа пары
 					 *
 					 * @details За именем ключа обязано следовать его значение: строкой
-					 * текста запись при незаписанном значении не продолжается
+					 *          текста запись при незаписанном значении не продолжается.
 					 *
 					 * @param path записываемое составное имя ключа
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing the name of the key of a pair
+					 *
 					 * @details The name of a key is obliged to be followed by its value: the writing is not continued
-					 * by a line of the text while the value has not been written
+					 *          by a line of the text while the value has not been written.
+					 *
 					 * @param path compound name of the key being written
 					 * @return     result of performing the operation
 					 *
@@ -990,6 +1078,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the name of the key of a pair
+					 *
 					 * @param name name of the key being written
 					 * @return     result of performing the operation
 					 *
@@ -1002,17 +1091,19 @@ namespace awh {
 					 * @brief Метод записи значения
 					 *
 					 * @details Записывает значение всякого простого типа по признакам его
-					 * записи, сохранённым при чтении: оградой строки, системой счисления
-					 * числа и видом отметки времени
+					 *          записи, сохранённым при чтении: оградой строки, системой счисления
+					 *          числа и видом отметки времени.
 					 *
 					 * @param value записываемое значение
 					 * @return      результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a value
+					 *
 					 * @details Writes a value of any simple type by the attributes of its
-					 * notation preserved at the reading: by the fence of a string, by the numeral system
-					 * of a number and by the kind of a timestamp
+					 *          notation preserved at the reading: by the fence of a string, by the numeral system
+					 *          of a number and by the kind of a timestamp.
+					 *
 					 * @param value value being written
 					 * @return      result of performing the operation
 					 *
@@ -1026,13 +1117,19 @@ namespace awh {
 					 * @details Посредник к методу boolean(), одним именем со прочими видами
 					 *          зовущийся: потребитель, вид значения по месту разбирающий,
 					 *          обязан был бы иначе знать про запись TOML то, чего знать не
-					 *          должен, - про систему счисления числа да про ограду строки
+					 *          должен, - про систему счисления числа да про ограду строки.
 					 *
 					 * @param value записываемое логическое значение
 					 * @return      результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a boolean value
+					 *
+					 * @details An intermediary to the method boolean(), called by one name with the other
+					 *          kinds: a consumer resolving the kind of the value at the place would otherwise be
+					 *          obliged to know about the TOML record what it ought not to know - the numeral
+					 *          system of a number and the fence of a string.
+					 *
 					 * @param value value being written
 					 * @return      result of performing the operation
 					 *
@@ -1048,6 +1145,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a signed integer
+					 *
 					 * @param value value being written
 					 * @return      result of performing the operation
 					 *
@@ -1060,13 +1158,18 @@ namespace awh {
 					 *
 					 * @details Число, предел знакового превысившее, записью отвергается:
 					 *          описание TOML целых без знака не несёт вовсе, и запись такого
-					 *          числа со знаком переменила бы его молча
+					 *          числа со знаком переменила бы его молча.
 					 *
 					 * @param value записываемое целое число без знака
 					 * @return      результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing an unsigned integer
+					 *
+					 * @details A number exceeding the limit of the signed one is rejected by the writing: the
+					 *          TOML description carries unsigned integers not at all, and the record of such a
+					 *          number as a signed one would have changed it silently.
+					 *
 					 * @param value value being written
 					 * @return      result of performing the operation
 					 *
@@ -1082,6 +1185,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a real number
+					 *
 					 * @param value value being written
 					 * @return      result of performing the operation
 					 *
@@ -1097,6 +1201,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a string value
+					 *
 					 * @param value value being written
 					 * @return      result of performing the operation
 					 *
@@ -1113,6 +1218,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a string value
+					 *
 					 * @param text    string value being written
 					 * @param quoting notation of the string value
 					 * @return        result of performing the operation
@@ -1129,6 +1235,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a logical value
+					 *
 					 * @param value logical value being written
 					 * @return      result of performing the operation
 					 *
@@ -1145,6 +1252,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing an integer
+					 *
 					 * @param value integer being written
 					 * @param radix numeral system of the notation of the number
 					 * @return      result of performing the operation
@@ -1157,17 +1265,19 @@ namespace awh {
 					 * @brief Метод записи числа с плавающей точкой
 					 *
 					 * @details Число записывается по правилам местности «C» и от
-					 * установленной в приложении местности не зависит: разделитель дробной
-					 * части местности сделал бы текст настроек непереносимым
+					 *          установленной в приложении местности не зависит: разделитель дробной
+					 *          части местности сделал бы текст настроек непереносимым.
 					 *
 					 * @param value записываемое число с плавающей точкой
 					 * @return      результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a floating-point number
+					 *
 					 * @details The number is written by the rules of the «C» locale and does not depend on the
-					 * locale set in the application: the decimal separator
-					 * of a locale would make the settings text non-portable
+					 *          locale set in the application: the decimal separator
+					 *          of a locale would make the settings text non-portable.
+					 *
 					 * @param value floating-point number being written
 					 * @return      result of performing the operation
 					 *
@@ -1184,6 +1294,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a timestamp
+					 *
 					 * @param stamp timestamp being written
 					 * @param type  type of the timestamp being written
 					 * @return      result of performing the operation
@@ -1201,6 +1312,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the beginning of an array of the values
+					 *
 					 * @param multiline flag of the writing of the array in several lines
 					 * @return          result of performing the operation
 					 *
@@ -1215,6 +1327,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the end of an array of the values
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -1228,6 +1341,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the beginning of an inline table
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -1241,6 +1355,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the end of an inline table
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -1252,15 +1367,17 @@ namespace awh {
 					 * @brief Метод записи примечания
 					 *
 					 * @details Примечание, занимающее несколько строк, записывается
-					 * несколькими строками примечания: знак его начала ставится к каждой
+					 *          несколькими строками примечания: знак его начала ставится к каждой.
 					 *
 					 * @param text содержимое записываемого примечания
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a comment
+					 *
 					 * @details A comment occupying several lines is written as
-					 * several comment lines: the character of its beginning is put to each of them
+					 *          several comment lines: the character of its beginning is put to each of them.
+					 *
 					 * @param text content of the comment being written
 					 * @return     result of performing the operation
 					 *
@@ -1272,17 +1389,19 @@ namespace awh {
 					 * @brief Метод дописывания примечания к последней записанной строке
 					 *
 					 * @details Примечание дописывается в конец уже записанной строки - туда,
-					 * где его оставил человек, писавший файл настроек руками. Служит
-					 * перезаписи файла без обеднения его примечаниями
+					 *          где его оставил человек, писавший файл настроек руками. Служит
+					 *          перезаписи файла без обеднения его примечаниями.
 					 *
 					 * @param text содержимое дописываемого примечания
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of appending a comment to the last written line
+					 *
 					 * @details The comment is appended to the end of an already written line — there
-					 * where it has been left by the human who wrote the settings file by hand. Serves
-					 * the rewriting of a file without impoverishing it of the comments
+					 *          where it has been left by the human who wrote the settings file by hand. Serves
+					 *          the rewriting of a file without impoverishing it of the comments.
+					 *
 					 * @param text content of the comment being appended
 					 * @return     result of performing the operation
 					 *
@@ -1294,19 +1413,21 @@ namespace awh {
 					 * @brief Метод записи примечания внутри перечня значений
 					 *
 					 * @details Примечание записывается своей строкой перечня, между
-					 * значениями его. Перечень, примечание несущий, записывается
-					 * несколькими строками по устройству: примечание оканчивается концом
-					 * строки, и в одну строку такой перечень не собрать
+					 *          значениями его. Перечень, примечание несущий, записывается
+					 *          несколькими строками по устройству: примечание оканчивается концом
+					 *          строки, и в одну строку такой перечень не собрать.
 					 *
 					 * @param text содержимое записываемого примечания
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a comment inside an array of the values
+					 *
 					 * @details The comment is written as its own line of the array, between
-					 * its values. An array that carries a comment is written
-					 * in several lines by its arrangement: a comment ends with the end of a
-					 * line, and such an array cannot be assembled into a single line
+					 *          its values. An array that carries a comment is written
+					 *          in several lines by its arrangement: a comment ends with the end of a
+					 *          line, and such an array cannot be assembled into a single line.
+					 *
 					 * @param text content of the comment being written
 					 * @return     result of performing the operation
 					 *
@@ -1318,12 +1439,12 @@ namespace awh {
 					 * @brief Метод дописывания примечания к значению перечня
 					 *
 					 * @details Примечание дописывается в конец строки последнего записанного
-					 * значения перечня - вместе с запятой, его отделяющей. Служит перезаписи
-					 * перечня без обеднения его примечаниями
+					 *          значения перечня - вместе с запятой, его отделяющей. Служит перезаписи
+					 *          перечня без обеднения его примечаниями.
 					 *
 					 * @note Запятая ставится лишь тогда, когда за примечанием следует
-					 * очередное значение перечня: описание запятую в конце перечня дозволяет,
-					 * но приписывать её перезаписью значило бы менять текст, ею не имевший
+					 *       очередное значение перечня: описание запятую в конце перечня дозволяет,
+					 *       но приписывать её перезаписью значило бы менять текст, ею не имевший
 					 *
 					 * @param text      содержимое дописываемого примечания
 					 * @param separator признак того, что за примечанием следует значение
@@ -1331,12 +1452,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of appending a comment to a value of an array
+					 *
 					 * @details The comment is appended to the end of the line of the last written
-					 * value of the array — together with the comma separating it. Serves the rewriting
-					 * of an array without impoverishing it of the comments
+					 *          value of the array — together with the comma separating it. Serves the rewriting
+					 *          of an array without impoverishing it of the comments.
+					 *
 					 * @note The comma is put only when the comment is followed by
-					 * the next value of the array: the specification permits a comma at the end of an array,
-					 * but to ascribe it by a rewriting would mean to change a text that did not have it
+					 *       the next value of the array: the specification permits a comma at the end of an array,
+					 *       but to ascribe it by a rewriting would mean to change a text that did not have it
+					 *
 					 * @param text      content of the comment being appended
 					 * @param separator flag of the comment being followed by a value
 					 * @return          result of performing the operation
@@ -1352,6 +1476,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing an empty line
+					 *
 					 * @return result of performing the operation
 					 *
 					 * \~
@@ -1366,6 +1491,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the type of the number being written
+					 *
 					 * @tparam T type of the number being written
 					 *
 					 * \~
@@ -1381,6 +1507,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a pair with a numeric value
+					 *
 					 * @param key   name of the key being written
 					 * @param value value of the pair being written
 					 * @return      result of performing the operation
@@ -1394,21 +1521,35 @@ namespace awh {
 					 * @brief Метод получения кода ошибки записи
 					 *
 					 * @details Отказ записи ЛИПКИЙ: писатель, отказом задетый, дальнейших записей
-					 * не принимает вовсе, а код отказа держит до сброса. Иначе потребитель, кода
-					 * не сверивший, получил бы текст без отвергнутой части и пропажи не заметил
+					 *          не принимает вовсе, а код отказа держит до сброса. Иначе потребитель, кода
+					 *          не сверивший, получил бы текст без отвергнутой части и пропажи не заметил.
 					 *
 					 * @note Договор этот один у INI, TOML и YAML: расхождение их сведено к одному
-					 * общим решением. Закреплён он проверкой RefusalLocksWriter, перебирающей ВСЕ
-					 * методы записи открытого договора - метод, сторожа не получивший, выпал бы
-					 * из договора молча
+					 *       общим решением. Закреплён он проверкой RefusalLocksWriter, перебирающей ВСЕ
+					 *       методы записи открытого договора - метод, сторожа не получивший, выпал бы
+					 *       из договора молча
 					 *
 					 * @note Сброс clear() код отказа отпускает: переживший его, он указывал бы на
-					 * причину, которой более нет
+					 *       причину, которой более нет
 					 *
 					 * @return код ошибки последней операции записи
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the writing
+					 *
+					 * @details The refusal of the writing is STICKY: a writer touched by a refusal accepts no
+					 *          further writings at all, and holds the failure code until a reset. Otherwise a
+					 *          consumer that had not compared the code would have received a text without the
+					 *          rejected part and would have noticed no loss.
+					 *
+					 * @note This contract is one across INI, TOML and YAML: their divergence has been reduced
+					 *       to one by a common decision. It is fixed by the check RefusalLocksWriter, which
+					 *       runs over ALL the writing methods of the open contract - a method left without a
+					 *       guard would have dropped out of the contract silently
+					 *
+					 * @note The clear() reset releases the failure code: having outlived it, the code would
+					 *       point to a cause which no longer exists
+					 *
 					 * @return error code of the last operation of the writing
 					 *
 					 * \~
@@ -1420,22 +1561,24 @@ namespace awh {
 					 * @brief Метод получения собранного текста настроек
 					 *
 					 * @details Текст выдаётся собранным лишь целиком: незакрытый перечень
-					 * либо имя ключа без значения оставляют его недописанным, и выдача
-					 * такого текста ответила бы отказом. Отказом отвечает и текст, чья
-					 * последняя строка знаком конца строки не завершена: отказ, случившийся
-					 * после того, как операция уже дописала начало своё, оставляет строку
-					 * оборванной
+					 *          либо имя ключа без значения оставляют его недописанным, и выдача
+					 *          такого текста ответила бы отказом. Отказом отвечает и текст, чья
+					 *          последняя строка знаком конца строки не завершена: отказ, случившийся
+					 *          после того, как операция уже дописала начало своё, оставляет строку
+					 *          оборванной.
 					 *
 					 * @return собранный текст настроек
 					 *
 					 * \~english
 					 * @brief Method of getting the assembled settings text
+					 *
 					 * @details The text is issued as assembled only in full: an unclosed array
-					 * or the name of a key without a value leave it unfinished, and the issuance
-					 * of such a text would answer with a refusal. A text whose last line is not
-					 * terminated by an end-of-line character answers with a refusal as well: a failure
-					 * that occurred after the operation had already appended its beginning leaves
-					 * the line cut off
+					 *          or the name of a key without a value leave it unfinished, and the issuance
+					 *          of such a text would answer with a refusal. A text whose last line is not
+					 *          terminated by an end-of-line character answers with a refusal as well: a failure
+					 *          that occurred after the operation had already appended its beginning leaves
+					 *          the line cut off.
+					 *
 					 * @return assembled settings text
 					 *
 					 * \~
@@ -1470,6 +1613,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the writing of a settings text
 					 *
 					 * \~
@@ -1480,19 +1624,32 @@ namespace awh {
 					 * @brief Ходы копии и переноса
 					 *
 					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
-					 * поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
-					 * по правилу языка неявный перенос у класса с деструктором объявленным не
-					 * порождается вовсе, и перенос молча обращался копией
+					 *          поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
+					 *          по правилу языка неявный перенос у класса с деструктором объявленным не
+					 *          порождается вовсе, и перенос молча обращался копией.
 					 *
 					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
-					 * освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
-					 * перенос у него работал всё это время
+					 *       освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
+					 *       перенос у него работал всё это время
 					 *
 					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 * переноса подавило бы порождение копии
+					 *          переноса подавило бы порождение копии
 					 *
 					 * \~english
 					 * @brief The calls of the copying and of the moving
+					 *
+					 * @details They are declared for the sake of the MOVING: formerly a destructor stood here,
+					 *          cleaning the fields by a call to `clear()`, and its declaration cancelled the
+					 *          generation of the moving methods - by the rule of the language an implicit move
+					 *          is not generated at all at a class with a declared destructor, and the moving
+					 *          silently turned into a copy.
+					 *
+					 * @note That destructor was REDUNDANT: it cleaned strings and lists, which are freed by
+					 *       their own destructors themselves. The neighbouring YAML has no destructor, and its
+					 *       moving worked all this time
+					 *
+					 * @warning FOUR methods are declared at once by the rule of five: the declaration of a
+					 *          move alone would have suppressed the generation of the copy
 					 *
 					 * \~
 					 */

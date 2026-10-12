@@ -692,7 +692,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	// Выполняем проверку сохранности значения свойства раздела
 	ASSERT_EQ(document.get("k", "a"), "v");
 	// Выполняем проверку устойчивости перезаписи дерева настроек
-	ASSERT_EQ(document.text(), writer.text());
+	ASSERT_EQ(document.dump(), writer.text());
 	/**
 	 * Выполняем проверку отсутствия роста пустых строк при перезаписи
 	 */
@@ -700,9 +700,9 @@ TEST(CodecIniWriter, CommentContinuation) {
 		// Объект дерева настроек для повторного разбора перезаписи
 		ini::document_t repeat(options);
 		// Выполняем проверку того, что повторный разбор перезаписи удался
-		ASSERT_TRUE(repeat.parse(document.text()));
+		ASSERT_TRUE(repeat.parse(document.dump()));
 		// Выполняем проверку совпадения повторной перезаписи с первой
-		ASSERT_EQ(repeat.text(), document.text());
+		ASSERT_EQ(repeat.dump(), document.dump());
 	}
 	/**
 	 * Выполняем проверку того, что ограждение не ставится в конце текста
@@ -780,7 +780,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем установку значения свойства с управляющим знаком
 		ASSERT_TRUE(document.set("ключ", value, "раздел")) << code;
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << code << " " << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
@@ -790,7 +790,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем проверку сохранности значения после кругового хода
 		ASSERT_EQ(back.get("ключ", "раздел"), value) << code;
 		// Выполняем проверку устойчивости повторной перезаписи
-		ASSERT_EQ(back.text(), text) << code;
+		ASSERT_EQ(back.dump(), text) << code;
 	}
 	/**
 	 * Выполняем проверку записи знака забоя
@@ -810,7 +810,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем установку значения свойства со знаком забоя
 		ASSERT_TRUE(document.set("ключ", value, "раздел"));
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
@@ -901,7 +901,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем установку значения свойства
 		ASSERT_TRUE(document.set("ключ", value, "раздел")) << value;
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << value << " " << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
@@ -911,7 +911,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем проверку сохранности значения после кругового хода
 		ASSERT_EQ(back.get("ключ", "раздел"), value) << text;
 		// Выполняем проверку устойчивости повторной перезаписи
-		ASSERT_EQ(back.text(), text) << value;
+		ASSERT_EQ(back.dump(), text) << value;
 	}
 	/**
 	 * Выполняем проверку отказа записи при запрете управляющих последовательностей
@@ -929,7 +929,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем установку значения свойства с пробельной обвязкой
 		ASSERT_TRUE(document.set("ключ", " с пробелами ", "раздел"));
 		// Выполняем проверку отказа перезаписи дерева настроек
-		ASSERT_TRUE(document.text().empty());
+		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку выданного кода ошибки записи
 		ASSERT_EQ(document.error(), ini::error_t::INVALID_CHARACTER);
 	}
@@ -946,7 +946,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем установку значения свойства с пробелами внутри
 		ASSERT_TRUE(document.set("ключ", "два слова ; и знак", "раздел"));
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку сохранности пробела внутри значения
 		ASSERT_NE(text.find("два слова"), string::npos) << text;
 	}
@@ -1105,7 +1105,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем проверку сохранности значения свойства
 		ASSERT_EQ(back.get("ключ", "раздел"), "значение") << writer.text();
 		// Выполняем проверку устойчивости перезаписи прочитанного дерева
-		ASSERT_EQ(back.text(), writer.text()) << writer.text();
+		ASSERT_EQ(back.dump(), writer.text()) << writer.text();
 	}
 	/**
 	 * Выполняем проверку сохранности пробелов конца значения
@@ -1123,7 +1123,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем установку значения свойства с пробелами в конце
 		ASSERT_TRUE(document.set("ключ", "значение  ", "раздел"));
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
@@ -1337,7 +1337,7 @@ TEST(CodecIniWriter, CommentMarkerInName) {
 		// Выполняем установку свойства со знаком примечания, пробелом не отделённым
 		ASSERT_TRUE(document.set("k;заметка", "значение", "раздел"));
 		// Выполняем перезапись дерева настроек
-		const string text = document.text();
+		const string text = document.dump();
 		// Объект дерева настроек, собираемого обратным разбором
 		ini::document_t again(options);
 		// Выполняем разбор перезаписанного текста настроек
@@ -1917,7 +1917,7 @@ TEST(CodecIniWriter, BracketedKeyWithoutArrays) {
 	// Выполняем проверку разбора текста настроек
 	ASSERT_TRUE(document.parse("[section]\nkey[] = first\n"));
 	// Получаем перезапись дерева настроек
-	const string written = document.text();
+	const string written = document.dump();
 	// Выполняем проверку того, что запись дерево не отвергла
 	ASSERT_FALSE(written.empty()) << "запись отвергла дерево: " << ini::message(document.error());
 	// Выполняем проверку того, что имя свойства записано вместе со скобками
@@ -1964,7 +1964,7 @@ TEST(CodecIniWriter, PaddedSectionNameUnderPreservingDialect) {
 	// Выполняем проверку разбора текста настроек
 	ASSERT_TRUE(document.parse("[ section ]\nkey = value\n"));
 	// Получаем перезапись дерева настроек
-	const string written = document.text();
+	const string written = document.dump();
 	// Выполняем проверку того, что запись дерево не отвергла
 	ASSERT_FALSE(written.empty()) << "запись отвергла дерево: " << ini::message(document.error());
 	// Выполняем проверку того, что имя раздела записано вместе с обвязкой
@@ -2174,7 +2174,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 		// Выполняем заведение свойства с именем, меткою открытым
 		ASSERT_TRUE(document.set(name, "v")) << ini::message(document.error());
 		// Выполняем проверку отказа записи дерева настроек
-		ASSERT_TRUE(document.text().empty());
+		ASSERT_TRUE(document.dump().empty());
 		// Выполняем проверку названной причины отказа
 		ASSERT_EQ(document.error(), ini::error_t::INVALID_KEY);
 	}
@@ -2189,7 +2189,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 		// Выполняем заведение свойства с именем, меткою открытым
 		ASSERT_TRUE(document.set(name, "v")) << ini::message(document.error());
 		// Получаем перезапись дерева настроек
-		const string written = document.text();
+		const string written = document.dump();
 		// Выполняем проверку того, что запись состоялась
 		ASSERT_FALSE(written.empty()) << ini::message(document.error());
 		// Объект дерева настроек, перезапись читающего обратно
@@ -2371,7 +2371,7 @@ TEST(CodecIniWriter, StrictNamesAreMirroredFromTheReader) {
 		 * @note Пустая перезапись означает отказ записи: имя наречием невыразимо, и отказ
 		 *       здесь верен, тогда как текст, чтением отвергаемый, есть порок
 		 */
-		ASSERT_TRUE(doc.text().empty());
+		ASSERT_TRUE(doc.dump().empty());
 	}
 }
 

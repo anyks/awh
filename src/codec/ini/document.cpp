@@ -2999,19 +2999,6 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
  *
  */
 /**
- * @brief Метод получения текста настроек
- *
- * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей, написанных
- *             прежде согласования кодеков рамки между собой. Зови `dump()`
- *
- * @return собранный текст настроек
- *
- */
-string awh::codec::ini::Document::text() const noexcept {
-	// Выводим результат сборки текста настроек
-	return this->dump();
-}
-/**
  * @brief Метод чтения настроек из файла
  *
  * @details Ход этот общий у всех семи кодеков рамки

@@ -7005,7 +7005,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 		// Выполняем разбор годного текста разметки
 		ASSERT_TRUE(edited.parse("<r/>"));
 		// Выполняем проверку ПРИЁМА правки с именем свыше предела разбора
-		ASSERT_TRUE(edited.graft("/r", xml::Value(oversize)));
+		ASSERT_TRUE(edited.set("/r", xml::Value(oversize)));
 		// Выполняем создание объекта документа для перечитывания записи
 		xml::document_t back;
 		// Выполняем установку тех же настроек документа разметки

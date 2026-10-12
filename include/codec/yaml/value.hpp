@@ -86,38 +86,41 @@ namespace awh {
 			 * @brief Владеющее значение YAML
 			 *
 			 * @details Тип этот стоит **над** документом, а не вместо него. Документ
-			 * разбирает текст, удерживает его оформление и правится путями, отчего
-			 * узлы его лежат плоским массивом, а ссылка на узел `Document::Value`
-			 * владельцем не является и документ пережить не может
+			 *          разбирает текст, удерживает его оформление и правится путями, отчего
+			 *          узлы его лежат плоским массивом, а ссылка на узел `Document::Value`
+			 *          владельцем не является и документ пережить не может.
 			 *
 			 * @details Владеющее значение решает ровно ту задачу, какую ссылка решать не
-			 * вправе: оно держит своё поддерево собственной памятью и потому
-			 * складывается из значений языка, копируется, передаётся вглубь и **отдаётся
-			 * наружу итогом метода**. Оформления исходного текста оно не удерживает:
-			 * удержание принадлежит документу, и правка настроек через документ остаётся
-			 * единственным путём сохранить чужой текст неприкосновенным
+			 *          вправе: оно держит своё поддерево собственной памятью и потому
+			 *          складывается из значений языка, копируется, передаётся вглубь и **отдаётся
+			 *          наружу итогом метода**. Оформления исходного текста оно не удерживает:
+			 *          удержание принадлежит документу, и правка настроек через документ остаётся
+			 *          единственным путём сохранить чужой текст неприкосновенным.
 			 *
 			 * @details Частности наречия YAML сохранены: у значения есть оформление
-			 * записи, правило усечения переводов строк, построение вместилища, метка и
-			 * якорь. Обёртка эта общий облик с прочими кодеками делит, а своеобразия
-			 * наречия не теряет
+			 *          записи, правило усечения переводов строк, построение вместилища, метка и
+			 *          якорь. Обёртка эта общий облик с прочими кодеками делит, а своеобразия
+			 *          наречия не теряет.
 			 *
 			 * \~english
 			 * @brief Owning value of YAML
+			 *
 			 * @details This type stands **above** the document rather than instead of it. The document
-			 * parses a text, retains its formatting and is edited by paths, whereby
-			 * its nodes lie in a flat array, while a reference to a node `Document::Value`
-			 * is not an owner and cannot outlive the document
+			 *          parses a text, retains its formatting and is edited by paths, whereby
+			 *          its nodes lie in a flat array, while a reference to a node `Document::Value`
+			 *          is not an owner and cannot outlive the document.
+			 *
 			 * @details The owning value solves exactly the task which a reference has no
-			 * right to solve: it holds its subtree by its own memory and therefore
-			 * is assembled from the values of the language, is copied, is passed inwards and **is given away
-			 * outwards as the result of a method**. It does not retain the formatting of the source text:
-			 * the retention belongs to the document, and the editing of the settings through the document remains
-			 * the only way to keep a foreign text intact
+			 *          right to solve: it holds its subtree by its own memory and therefore
+			 *          is assembled from the values of the language, is copied, is passed inwards and **is given away
+			 *          outwards as the result of a method**. It does not retain the formatting of the source text:
+			 *          the retention belongs to the document, and the editing of the settings through the document remains
+			 *          the only way to keep a foreign text intact.
+			 *
 			 * @details The particularities of the YAML dialect are preserved: a value has the formatting
-			 * of the record, the rule of the chomping of the line breaks, the layout of the container, a tag and
-			 * an anchor. This wrapper shares the common shape with the rest of the codecs
-			 * while not losing the peculiarities of the dialect
+			 *          of the record, the rule of the chomping of the line breaks, the layout of the container, a tag and
+			 *          an anchor. This wrapper shares the common shape with the rest of the codecs
+			 *          while not losing the peculiarities of the dialect.
 			 *
 			 * \~
 			 */
@@ -128,9 +131,9 @@ namespace awh {
 					 * Код отказа последней работы над владеющим значением
 					 *
 					 * @details Держится он ради того, чтобы отказ НАЗЫВАЛ ПРИЧИНУ: запись
-					 * отвечает текстом, и пустой текст у неё означал разом и значение пустое, и
-					 * отказ записи, - различить их потребителю было нечем вовсе. Причину
-					 * писатель знал и выбрасывал: объект записи живёт внутри одного вызова
+					 *          отвечает текстом, и пустой текст у неё означал разом и значение пустое, и
+					 *          отказ записи, - различить их потребителю было нечем вовсе. Причину
+					 *          писатель знал и выбрасывал: объект записи живёт внутри одного вызова.
 					 *
 					 * @note Немота эта найдена разбором, а не отказом: пустой текст ни к падению,
 					 *       ни к расхождению не ведёт - потребитель просто сохраняет пустой файл
@@ -138,6 +141,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * Code of the failure of the last operation over the owning value
+					 *
+					 * @details It is held for the refusal to NAME THE REASON: the writing answers with a text, and an
+					 *          empty text at it would mean at once an empty value and a refusal of the writing — and
+					 *          there was no way whatsoever to tell them apart for the consumer. The writer knew the
+					 *          reason and threw it away: the object of the writing lives within one call.
+					 *
+					 * @note This muteness was found by a parsing, and not by a refusal: an empty text leads neither to
+					 *       a fall nor to a divergence — the consumer simply saves an empty file instead of his
+					 *       document
 					 *
 					 * \~
 					 */
@@ -154,14 +166,15 @@ namespace awh {
 					 * Схема, какою опознан вид числа
 					 *
 					 * @details Схема хранится значением, а не берётся у документа: значение
-					 * владеющее документ пережить обязано, и вид числа его переопределяться
-					 * настройками чужого разбора не должен
+					 *          владеющее документ пережить обязано, и вид числа его переопределяться
+					 *          настройками чужого разбора не должен.
 					 *
 					 * \~english
 					 * Schema by which the kind of the number is recognized
+					 *
 					 * @details The schema is stored by the value rather than taken from the document: an owning
-					 * value must outlive the document, and the kind of its number must not be redefined
-					 * by the settings of a foreign parsing
+					 *          value must outlive the document, and the kind of its number must not be redefined
+					 *          by the settings of a foreign parsing.
 					 *
 					 * \~
 					 */
@@ -172,14 +185,15 @@ namespace awh {
 					 * Число, разобранное из записи значения
 					 *
 					 * @details Хранится оно рядом с записью, а не вместо неё: запись `0x1F`
-					 * обязана вернуться записью `0x1F`, а извлечение числа обязано выдать 31,
-					 * и одно другому не замена
+					 *          обязана вернуться записью `0x1F`, а извлечение числа обязано выдать 31,
+					 *          и одно другому не замена.
 					 *
 					 * \~english
 					 * Number parsed from the record of the value
+					 *
 					 * @details It is stored alongside the record rather than instead of it: the record `0x1F`
-					 * must return as the record `0x1F`, while the extraction of the number must give away 31,
-					 * and one is not a replacement for the other
+					 *          must return as the record `0x1F`, while the extraction of the number must give away 31,
+					 *          and one is not a replacement for the other.
 					 *
 					 * \~
 					 */
@@ -193,20 +207,22 @@ namespace awh {
 					 * Правило усечения переводов строк блочного значения
 					 *
 					 * @details Умолчанием взято правило сохраняющее, а не отсекающее: у
-					 * значения владеющего запись есть само содержимое, и правило это
-					 * единственное, при каком содержимое возвращается тем же, сколько бы
-					 * переводов строк ни стояло в конце
+					 *          значения владеющего запись есть само содержимое, и правило это
+					 *          единственное, при каком содержимое возвращается тем же, сколько бы
+					 *          переводов строк ни стояло в конце.
 					 *
 					 * @note Потребитель волен назначить иное, и назначает он его знаючи:
-					 * правила `CLIP` и `STRIP` переводы строк в конце содержимого теряют
+					 *       правила `CLIP` и `STRIP` переводы строк в конце содержимого теряют
 					 *
 					 * \~english
 					 * Rule of the chomping of the line breaks of a block value
+					 *
 					 * @details The keeping rather than the clipping rule is taken as the default: for an owning
-					 * value the record is the content itself, and this rule is the only one under which
-					 * the content returns the same, however many line breaks stand at the end
+					 *          value the record is the content itself, and this rule is the only one under which
+					 *          the content returns the same, however many line breaks stand at the end.
+					 *
 					 * @note The consumer is free to assign another one, and assigns it knowingly:
-					 * the `CLIP` and `STRIP` rules lose the line breaks at the end of the content
+					 *       the `CLIP` and `STRIP` rules lose the line breaks at the end of the content
 					 *
 					 * \~
 					 */
@@ -229,18 +245,27 @@ namespace awh {
 					 * Признак МЕСТНОГО вида метки значения
 					 *
 					 * @details Метка местная от сокращения описания записью неотличима: чтение
-					 * разворачивает сокращение `!!вид` в полный указатель, и всё, что приходит
-					 * от дерева со знака `!`, есть метка МЕСТНАЯ - даже когда за первым знаком
-					 * стоит второй такой же. Зовущий же метку ставит обыкновенно сокращением,
-					 * и различить их по одной записи нельзя вовсе
+					 *          разворачивает сокращение `!!вид` в полный указатель, и всё, что приходит
+					 *          от дерева со знака `!`, есть метка МЕСТНАЯ - даже когда за первым знаком
+					 *          стоит второй такой же. Зовущий же метку ставит обыкновенно сокращением,
+					 *          и различить их по одной записи нельзя вовсе.
 					 *
 					 * @note Признак ставится СНЯТИЕМ с дерева и снимается установкою вручную:
-					 * происхождение метки он и хранит. Без него запись `!%21y`, с дерева снятая,
-					 * возвращалась сокращением `!!y` - меткою ИНОЙ, описанием закреплённой
+					 *       происхождение метки он и хранит. Без него запись `!%21y`, с дерева снятая,
+					 *       возвращалась сокращением `!!y` - меткою ИНОЙ, описанием закреплённой
 					 *
 					 * \~english
 					 * Sign of the LOCAL kind of the tag of the value
-					 * @details A local tag is indistinguishable from a shorthand of the specification by its record
+					 *
+					 * @details A local tag is indistinguishable from a shorthand of the specification by its record: the
+					 *          reading unfolds a shorthand `!!kind` into a full pointer, and everything coming from a tree
+					 *          with the sign `!` is a LOCAL tag — even when a second such sign stands right behind the
+					 *          first one. The one who calls a tag, however, sets it commonly by a shorthand, and to
+					 *          distinguish them by one record is impossible at all.
+					 *
+					 * @note The sign is set by the TAKING OFF from a tree and is removed by a manual setting: it is
+					 *       the origin of the tag that it stores. Without it the record `!%21y`, taken off a tree,
+					 *       came back as the shorthand `!!y` — a tag of ANOTHER kind, fixed by the specification
 					 *
 					 * \~
 					 */
@@ -251,15 +276,24 @@ namespace awh {
 					 * Имя метки, ИМЕНИ ПАРЫ предпосланной, пустое - метки нет
 					 *
 					 * @details Свойства эти принадлежат ИМЕНИ пары, а не значению её: написание
-					 * `&m !!str a: b` метит запись `a`. Держит их значение САМОЙ ПАРЫ - то, что
-					 * стоит значением её, - ибо узла у имени пары нет ни у дерева, ни здесь
+					 *          `&m !!str a: b` метит запись `a`. Держит их значение САМОЙ ПАРЫ - то, что
+					 *          стоит значением её, - ибо узла у имени пары нет ни у дерева, ни здесь.
 					 *
 					 * @warning Прежде свойства эти отбрасывались снятием с дерева: значение,
-					 * с текста `&m !!str a: b` снятое, возвращалось записью `a: b` - и метка, и
-					 * вид имени пропадали молча
+					 *          с текста `&m !!str a: b` снятое, возвращалось записью `a: b` - и метка, и
+					 *          вид имени пропадали молча
 					 *
 					 * \~english
 					 * Name of the anchor placed before the NAME OF A PAIR, empty if there is none
+					 *
+					 * @details These properties belong to the NAME of a pair, and not to its value: the notation
+					 *          `&m !!str a: b` marks the record `a`. They are held by the value of THE PAIR ITSELF —
+					 *          that which stands as its value — for there is no node of the name of a pair neither
+					 *          at the tree nor here.
+					 *
+					 * @warning Formerly these properties were discarded by the taking off from a tree: a value taken
+					 *          off the text `&m !!str a: b` returned as the record `a: b` — and both the anchor and
+					 *          the kind of the name vanished silently
 					 *
 					 * \~
 					 */
@@ -276,12 +310,13 @@ namespace awh {
 					 * Имена полей отображения
 					 *
 					 * @details Перечень этот наполняется лишь у отображения: у перечня
-					 * значений имён нет вовсе, и хранить пустые строки ему незачем
+					 *          значений имён нет вовсе, и хранить пустые строки ему незачем.
 					 *
 					 * \~english
 					 * Names of the fields of a mapping
+					 *
 					 * @details This list is filled only for a mapping: a sequence of the values
-					 * has no names at all, and there is no point for it to store empty strings
+					 *          has no names at all, and there is no point for it to store empty strings.
 					 *
 					 * \~
 					 */
@@ -295,22 +330,31 @@ namespace awh {
 					 * Указатель поиска пары по имени
 					 *
 					 * @details Поиск ведётся перебором имён, покуда пар меньше порога, и
-					 * указателем далее. Перебор при тысячах пар обращает и сборку, и чтение в
-					 * квадратичные: замерено 21.08.2026 - около трёх микросекунд на обращение
-					 * при 2500 парах против двадцати при 20000
+					 *          указателем далее. Перебор при тысячах пар обращает и сборку, и чтение в
+					 *          квадратичные: замерено 21.08.2026 - около трёх микросекунд на обращение
+					 *          при 2500 парах против двадцати при 20000.
 					 *
 					 * @note Указатель заводится ЛЕНИВО и держится значением необязательным:
-					 * узел мелкого вместилища не платит за него ни памятью, ни выделением, а
-					 * таких узлов в дереве подавляющее большинство
+					 *       узел мелкого вместилища не платит за него ни памятью, ни выделением, а
+					 *       таких узлов в дереве подавляющее большинство
 					 *
 					 * @note Указатель ведётся приращением, а не перестроением: перестроение на
-					 * всякой правке вернуло бы ту же квадратичность, от какой он и заводится
+					 *       всякой правке вернуло бы ту же квадратичность, от какой он и заводится
 					 *
 					 * \~english
 					 * Index of the search of a pair by a name
+					 *
 					 * @details The search is conducted by the enumeration of the names while there are fewer
-					 * pairs than the threshold, and by the index further on
-					 * @note The index is created LAZILY and is maintained by an increment
+					 *          pairs than the threshold, and by the index further on. An enumeration at thousands of
+					 *          pairs turns both the assembly and the reading into quadratic ones: measured 2026-08-21 —
+					 *          about three microseconds per an access at 2500 pairs against twenty at 20000.
+					 *
+					 * @note The index is created LAZILY and is held by an optional value: a node of a small container
+					 *       pays neither the memory nor an allocation for it, and such nodes make an overwhelming
+					 *       majority in a tree
+					 *
+					 * @note The index is kept by increments and not by rebuildings: a rebuilding at every editing
+					 *       would return the same quadratic slowness, because of which the index is created at all
 					 *
 					 * \~
 					 */
@@ -325,6 +369,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the searching of a pair by a name
+					 *
 					 * @param name name of the pair being searched for
 					 * @return number of the pair, size of the container at the absence
 					 *
@@ -336,11 +381,15 @@ namespace awh {
 					 * @brief Метод сноса указателя поиска
 					 *
 					 * @details Сносится указатель при всякой перестановке пар: удаление сдвигает
-					 * номера всех пар после удалённой, и починка его обошлась бы дороже, чем
-					 * заведение заново при первом же поиске
+					 *          номера всех пар после удалённой, и починка его обошлась бы дороже, чем
+					 *          заведение заново при первом же поиске.
 					 *
 					 * \~english
 					 * @brief Method of the demolition of the index of the search
+					 *
+					 * @details The index is demolished at every rearrangement of the pairs: a removal shifts the
+					 *          numbers of all the pairs after the removed one, and mending it would cost dearer than
+					 *          a creation anew at the very first search.
 					 *
 					 * \~
 					 */
@@ -351,12 +400,13 @@ namespace awh {
 					 * @brief Метод опознания вида числа по тексту значения
 					 *
 					 * @details Опознание ведётся тем же порядком, каким его ведёт документ:
-					 * сличается само число с пределами видов, а не запись его
+					 *          сличается само число с пределами видов, а не запись его.
 					 *
 					 * \~english
 					 * @brief Method of the recognition of the kind of a number by the text of the value
+					 *
 					 * @details The recognition is conducted in the same order as the document conducts it:
-					 * the number itself is compared with the limits of the kinds rather than its record
+					 *          the number itself is compared with the limits of the kinds rather than its record.
 					 *
 					 * \~
 					 */
@@ -372,6 +422,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template method of the extraction of a number by the demanded kind
+					 *
 					 * @tparam T demanded kind of the number
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
@@ -389,6 +440,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the value into a writing stream
+					 *
 					 * @param writer writing stream where the value is placed
 					 *
 					 * \~
@@ -402,7 +454,7 @@ namespace awh {
 					 * @details Обход укладки вынесен из @c graft() ради целости переноса: тот
 					 *          ведёт укладку на копии дерева и подменяет им дерево лишь по
 					 *          успехе, а обход идёт вглубь рекурсией - копия на всяком шаге
-					 *          стоила бы квадрата
+					 *          стоила бы квадрата.
 					 *
 					 * @param document дерево документа, куда укладывается значение
 					 * @param path     путь, по какому укладывается значение
@@ -410,8 +462,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an owning value into a tree of the document
+					 *
 					 * @details The traversal of the laying is taken out of @c graft() for the sake of the
-					 * integrity of the grafting: the latter conducts the laying on a copy of the tree
+					 *          integrity of the grafting: the latter conducts the laying on a copy of the tree.
+					 *
 					 * @param document tree of the document the value is laid into
 					 * @param path     path the value is laid by
 					 * @return         sign of the success of the laying
@@ -428,6 +482,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the taking of a value from a reference to a node of a document
+					 *
 					 * @param value reference to the node of the document
 					 *
 					 * \~
@@ -442,6 +497,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the definiteness of the value
+					 *
 					 * @return sign of the definiteness of the value
 					 *
 					 * \~
@@ -452,14 +508,20 @@ namespace awh {
 					 * @brief Метод получения кода отказа последней работы
 					 *
 					 * @details Ход этот отвечает на вопрос «отчего запись пуста»: пустой текст
-					 * означает разом и значение пустое, и отказ записи, и различить их иначе
-					 * потребителю нечем. Код держится от ПОСЛЕДНЕЙ работы, а не от последней
-					 * неудачной - правило это одно у дерева и у значения
+					 *          означает разом и значение пустое, и отказ записи, и различить их иначе
+					 *          потребителю нечем. Код держится от ПОСЛЕДНЕЙ работы, а не от последней
+					 *          неудачной - правило это одно у дерева и у значения.
 					 *
 					 * @return код отказа последней работы
 					 *
 					 * \~english
 					 * @brief Method of getting the code of the failure of the last operation
+					 *
+					 * @details This course answers the question "why the writing is empty": an empty text means at
+					 *          once an empty value and a refusal of the writing, and there is no other way to tell
+					 *          them apart for the consumer. The code is held from the LAST operation, and not from
+					 *          the last failed one — the rule is one for the tree and for the value.
+					 *
 					 * @return code of the failure of the last operation
 					 *
 					 * \~
@@ -473,6 +535,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the kind of the value
+					 *
 					 * @return kind of the stored value
 					 *
 					 * \~
@@ -486,6 +549,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the kind of the storage of the value
+					 *
 					 * @return kind of the storage of the value
 					 *
 					 * \~
@@ -500,6 +564,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the kind of the storage of the value
+					 *
 					 * @param type kind of the storage being compared, allowing a union of the kinds
 					 * @return sign of the coincidence of the kind
 					 *
@@ -515,6 +580,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the number of the values of the container
+					 *
 					 * @return number of the values of the container, for a simple value — a zero
 					 *
 					 * \~
@@ -528,6 +594,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the container for the emptiness
+					 *
 					 * @return sign of the emptiness of the container
 					 *
 					 * \~
@@ -552,6 +619,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the content of the value
+					 *
 					 * @return content of the value in the same kind as it is placed into a text
 					 *
 					 * \~
@@ -566,6 +634,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the name of a field of a mapping by an index
+					 *
 					 * @param index index of the field of the mapping
 					 * @return name of the field of the mapping, an empty one — there is no field with such index
 					 *
@@ -581,6 +650,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the formatting of the record of the value
+					 *
 					 * @return formatting of the record of the value
 					 *
 					 * \~
@@ -594,6 +664,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the formatting of the record of the value
+					 *
 					 * @param style formatting of the record being set
 					 *
 					 * \~
@@ -607,6 +678,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the rule of the chomping of the line breaks
+					 *
 					 * @return rule of the chomping of the line breaks of a block value
 					 *
 					 * \~
@@ -620,6 +692,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the rule of the chomping of the line breaks
+					 *
 					 * @param chomp rule of the chomping of the line breaks being set
 					 *
 					 * \~
@@ -633,6 +706,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the layout of the container
+					 *
 					 * @return layout of the container
 					 *
 					 * \~
@@ -646,6 +720,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the layout of the container
+					 *
 					 * @param layout layout of the container being set
 					 *
 					 * \~
@@ -659,6 +734,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the anchor of the value
+					 *
 					 * @return anchor of the value, an empty one — there is no anchor
 					 *
 					 * \~
@@ -672,6 +748,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the anchor of the value
+					 *
 					 * @param anchor anchor of the value being set
 					 *
 					 * \~
@@ -685,6 +762,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the tag of the value
+					 *
 					 * @return tag of the value, an empty one — there is no tag
 					 *
 					 * \~
@@ -698,6 +776,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the tag of the value
+					 *
 					 * @param tag tag of the value being set
 					 *
 					 * \~
@@ -709,9 +788,9 @@ namespace awh {
 					 * @brief Метод извлечения значения мусорного
 					 *
 					 * @details Значение это принимает на себя запись при неудачном обращении
-					 * изменяемом: выдать ссылку метод обязан, а заводить значение по неверному
-					 * пути не вправе. Записанное в него пропадает при следующем же неудачном
-					 * обращении, и полагаться на него нельзя
+					 *          изменяемом: выдать ссылку метод обязан, а заводить значение по неверному
+					 *          пути не вправе. Записанное в него пропадает при следующем же неудачном
+					 *          обращении, и полагаться на него нельзя.
 					 *
 					 * @note Значение это своё у всякого потока: одно на приложение оно обратило
 					 *       бы отказ обращения в состязание за общую память
@@ -720,12 +799,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a scrap value
+					 *
 					 * @details This value takes upon itself a writing at an unsuccessful mutable
-					 * access: a method is obliged to give away a reference but has no right to create a value
-					 * by an incorrect path. What is written into it disappears at the very next unsuccessful
-					 * access, and one must not rely upon it
+					 *          access: a method is obliged to give away a reference but has no right to create a value
+					 *          by an incorrect path. What is written into it disappears at the very next unsuccessful
+					 *          access, and one must not rely upon it.
+					 *
 					 * @note This value is its own for every thread: one for the whole application it would turn
 					 *       a refusal of an access into a contention for a common memory
+					 *
 					 * @return scrap value
 					 *
 					 * \~
@@ -737,10 +819,10 @@ namespace awh {
 					 * @brief Метод извлечения предела роста вместилища по номеру
 					 *
 					 * @details Обращение по номеру растит вместилище значениями
-					 * неопределёнными до затребованного номера, и номер, пришедший извне -
-					 * из настроек либо из запроса, - обращается требованием памяти по нему.
-					 * Предел этот рост и стережёт: обращение за пределом заводит вместо
-					 * значения значение мусорное, а вместилище не растит вовсе
+					 *          неопределёнными до затребованного номера, и номер, пришедший извне -
+					 *          из настроек либо из запроса, - обращается требованием памяти по нему.
+					 *          Предел этот рост и стережёт: обращение за пределом заводит вместо
+					 *          значения значение мусорное, а вместилище не растит вовсе.
 					 *
 					 * @note Предел ограждает один лишь рост обращением по номеру. Вместилище,
 					 *       собранное разбором либо добавлением значений в конец, ему не
@@ -751,14 +833,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the limit of the growth of a container by an index
+					 *
 					 * @details An access by an index grows a container by undefined values up to the requested
-					 * index, and an index that came from outside — from the settings or from a request — turns
-					 * into a demand of the memory by it. This limit guards that growth: an access beyond the limit
-					 * creates a scrap value instead of a value and does not grow the container at all
+					 *          index, and an index that came from outside — from the settings or from a request — turns
+					 *          into a demand of the memory by it. This limit guards that growth: an access beyond the limit
+					 *          creates a scrap value instead of a value and does not grow the container at all.
+					 *
 					 * @note The limit guards only the growth by an access by an index. A container built by a parsing
 					 *       or by an addition of values at the end is not subject to it: the length of a text being
 					 *       parsed is set by the user of the framework, and the framework has no right to decide
 					 *       for them how many values they are allowed
+					 *
 					 * @return limit of the growth of a container, zero — there is no limit
 					 *
 					 * \~
@@ -769,14 +854,16 @@ namespace awh {
 					 * @brief Метод установки предела роста вместилища по номеру
 					 *
 					 * @details Предел этот пользователем рамки и ставится: сколько памяти есть у
-					 * приложения, ведомо ему одному. Значение по умолчанию - 65536 значений
+					 *          приложения, ведомо ему одному. Значение по умолчанию - 65536 значений.
 					 *
 					 * @param value устанавливаемый предел, нуль снимает предел вовсе
 					 *
 					 * \~english
 					 * @brief Method of the setting of the limit of the growth of a container by an index
+					 *
 					 * @details This limit is set by the user of the framework: how much memory an application has
-					 * is known to it alone. The default value is 65536 values
+					 *          is known to it alone. The default value is 65536 values.
+					 *
 					 * @param value limit being set, zero removes the limit altogether
 					 *
 					 * \~
@@ -792,6 +879,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the presence of a field of a mapping with the indicated name
+					 *
 					 * @param name name of the field of the mapping being searched for
 					 * @return sign of the presence of the field of the mapping
 					 *
@@ -803,7 +891,7 @@ namespace awh {
 					 * @brief Метод разыскания номера пары по имени её
 					 *
 					 * @details Розыск ведётся указателем имён, когда тот заведён: перебор
-					 * обратил бы сборку вместилища вызовами в квадратичную
+					 *          обратил бы сборку вместилища вызовами в квадратичную.
 					 *
 					 * @note Выдаётся размер вместилища, когда пары с таким именем нет: способ
 					 *       этот тот же, каким отвечает `npos` у строки
@@ -813,9 +901,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the searching of the number of a pair by its name
+					 *
 					 * @details The search is conducted by the index of the names when it is established: an enumeration
-					 * would turn the assembling of a container by the calls into a quadratic one
+					 *          would turn the assembling of a container by the calls into a quadratic one.
+					 *
 					 * @note The size of the container is issued when there is no pair with such a name
+					 *
 					 * @param name name of the pair being searched for
 					 * @return     number of the pair, size of the container at the absence
 					 *
@@ -827,17 +918,19 @@ namespace awh {
 					 * @brief Метод обращения к значению по пути
 					 *
 					 * @details Путь записывается частями, разделёнными косой чертой:
-					 * `/response/users/0/id`. Обращение к отсутствующему пути ничего не
-					 * заводит и отдаёт значение неопределённое
+					 *          `/response/users/0/id`. Обращение к отсутствующему пути ничего не
+					 *          заводит и отдаёт значение неопределённое.
 					 *
 					 * @param path путь к разыскиваемому значению
 					 * @return     ссылка на разысканное значение
 					 *
 					 * \~english
 					 * @brief Method of the access to a value by a path
+					 *
 					 * @details The path is written by the parts separated by a slash:
-					 * `/response/users/0/id`. An access to an absent path creates nothing
-					 * and gives away an undefined value
+					 *          `/response/users/0/id`. An access to an absent path creates nothing
+					 *          and gives away an undefined value.
+					 *
 					 * @param path path to the value being searched for
 					 * @return reference to the found value
 					 *
@@ -849,17 +942,19 @@ namespace awh {
 					 * @brief Метод обращения к значению по пути с заведением недостающего
 					 *
 					 * @details Недостающие вместилища пути заводятся отображениями, а
-					 * часть пути числовая заводит перечень значений. Значение простое,
-					 * встреченное на пути вместо вместилища, перерождается вместилищем
+					 *          часть пути числовая заводит перечень значений. Значение простое,
+					 *          встреченное на пути вместо вместилища, перерождается вместилищем.
 					 *
 					 * @param path путь к разыскиваемому значению
 					 * @return     ссылка на разысканное либо заведённое значение
 					 *
 					 * \~english
 					 * @brief Method of the access to a value by a path with the creation of the missing ones
+					 *
 					 * @details The missing containers of the path are created as mappings, while
-					 * a numeric part of the path creates a sequence of the values. A simple value
-					 * met on the path instead of a container is reborn as a container
+					 *          a numeric part of the path creates a sequence of the values. A simple value
+					 *          met on the path instead of a container is reborn as a container.
+					 *
 					 * @param path path to the value being searched for
 					 * @return reference to the found or created value
 					 *
@@ -876,6 +971,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the access to a field of a mapping by a name
+					 *
 					 * @param name name of the field of the mapping
 					 * @return reference to the value of the field of the mapping
 					 *
@@ -887,15 +983,17 @@ namespace awh {
 					 * @brief Метод обращения к полю отображения по имени с заведением недостающего
 					 *
 					 * @details Обращение к отсутствующему имени заводит поле значением
-					 * неопределённым, ровно как это делает `nlohmann::json`
+					 *          неопределённым, ровно как это делает `nlohmann::json`
 					 *
 					 * @param name имя поля отображения
 					 * @return     ссылка на значение поля отображения
 					 *
 					 * \~english
 					 * @brief Method of the access to a field of a mapping by a name with the creation of a missing one
+					 *
 					 * @details An access to an absent name creates the field with an undefined
-					 * value, exactly as `nlohmann::json` does it
+					 *          value, exactly as `nlohmann::json` does it.
+					 *
 					 * @param name name of the field of the mapping
 					 * @return reference to the value of the field of the mapping
 					 *
@@ -911,6 +1009,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the access to a value of a container by an index
+					 *
 					 * @param index index of the value in the container
 					 * @return reference to the value of the container
 					 *
@@ -922,15 +1021,17 @@ namespace awh {
 					 * @brief Метод обращения к значению вместилища по номеру с заведением недостающего
 					 *
 					 * @details Обращение за границу перечня значений растит его до
-					 * затребованного номера значениями неопределёнными
+					 *          затребованного номера значениями неопределёнными.
 					 *
 					 * @param index номер значения во вместилище
 					 * @return      ссылка на значение вместилища
 					 *
 					 * \~english
 					 * @brief Method of the access to a value of a container by an index with the creation of a missing one
+					 *
 					 * @details An access beyond the boundary of a sequence of the values grows it up to
-					 * the demanded index by the undefined values
+					 *          the demanded index by the undefined values.
+					 *
 					 * @param index index of the value in the container
 					 * @return reference to the value of the container
 					 *
@@ -940,10 +1041,12 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Шаблон вида имени, знаком записанного
+					 *
 					 * @tparam T вид имени искомой пары
 					 *
 					 * \~english
 					 * @brief Template of the kind of the name written as a character
+					 *
 					 * @tparam T kind of the name of the sought pair
 					 *
 					 * \~
@@ -954,9 +1057,9 @@ namespace awh {
 					 * @brief Оператор обращения к паре по имени из одного знака
 					 *
 					 * @details Написание знака есть ТЕКСТ, а не число: без этого оператора
-					 * обращение `value['z']` уходило бы к номеру 122 МОЛЧА - доведение знака
-					 * до числа языком дозволено, а до строки требует заводителя, - и потребитель
-					 * получал бы пустоту вместо значения, отказа не видя вовсе
+					 *          обращение `value['z']` уходило бы к номеру 122 МОЛЧА - доведение знака
+					 *          до числа языком дозволено, а до строки требует заводителя, - и потребитель
+					 *          получал бы пустоту вместо значения, отказа не видя вовсе.
 					 *
 					 * @warning Ограда `enable_if` на ТОЧНОЕ совпадение обязательна: оператор
 					 *          без неё делает двусмысленным обычное `value[0]` - доведение
@@ -968,6 +1071,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Operator of the access to a pair by a name of one character
+					 *
+					 * @details A character notation is TEXT, and not a number: without this operator the access
+					 *          `value['z']` would go to the number 122 SILENTLY — the promotion of a character to
+					 *          a number is permitted by the language, while that to a string asks for a maker — and
+					 *          the consumer would receive emptiness instead of a value, seeing no refusal at all.
+					 *
+					 * @warning The `enable_if` guard upon an EXACT coincidence is obligatory: an operator without it
+					 *          makes the ordinary `value[0]` ambiguous — the promotion of `int` to `size_t` and to
+					 *          `char` are conversions of one rank. Measured by a probe BEFORE the editing of the
+					 *          header
+					 *
 					 * @param name name of the sought pair of one character
 					 * @return     found value
 					 *
@@ -977,10 +1091,12 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Шаблон вида имени, знаком записанного
+					 *
 					 * @tparam T вид имени заводимой пары
 					 *
 					 * \~english
 					 * @brief Template of the kind of the name written as a character
+					 *
 					 * @tparam T kind of the name of the pair being created
 					 *
 					 * \~
@@ -991,14 +1107,19 @@ namespace awh {
 					 * @brief Оператор заведения пары по имени из одного знака
 					 *
 					 * @details Довод тот же, что и у обращения постоянного: написание знака
-					 * есть текст. Заведение полуверным оставлять нельзя - снятие по знаку
-					 * давало бы значение, а заведение по нему клало бы его номером
+					 *          есть текст. Заведение полуверным оставлять нельзя - снятие по знаку
+					 *          давало бы значение, а заведение по нему клало бы его номером.
 					 *
 					 * @param name имя заводимой пары из одного знака
 					 * @return     заведённое значение
 					 *
 					 * \~english
 					 * @brief Operator of the creation of a pair by a name of one character
+					 *
+					 * @details The argument is the same as that of the constant access: a character notation is text.
+					 *          The creation cannot be left half-right — a taking off by a character would give a
+					 *          value, while a creation by it would lay the value by its number.
+					 *
 					 * @param name name of the pair being created of one character
 					 * @return     created value
 					 *
@@ -1011,15 +1132,17 @@ namespace awh {
 					 * @brief Метод добавления значения в конец перечня значений
 					 *
 					 * @details Значение неопределённое перерождается перечнем, а значение
-					 * простое перерождению не подлежит и добавление отвечает отказом
+					 *          простое перерождению не подлежит и добавление отвечает отказом.
 					 *
 					 * @param value добавляемое значение
 					 * @return      признак успешности добавления
 					 *
 					 * \~english
 					 * @brief Method of the addition of a value to the end of a sequence of the values
+					 *
 					 * @details An undefined value is reborn as a sequence, while a simple value
-					 * is not subject to the rebirth and the addition responds with a refusal
+					 *          is not subject to the rebirth and the addition responds with a refusal.
+					 *
 					 * @param value value being added
 					 * @return sign of the success of the addition
 					 *
@@ -1031,7 +1154,7 @@ namespace awh {
 					 * @brief Метод установки поля отображения
 					 *
 					 * @details Поле с уже занятым именем перезаписывается на своём месте, а
-					 * порядок полей отображения при том сохраняется
+					 *          порядок полей отображения при том сохраняется.
 					 *
 					 * @param name  имя поля отображения
 					 * @param value устанавливаемое значение поля
@@ -1039,8 +1162,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of a field of a mapping
+					 *
 					 * @details A field with an already occupied name is overwritten in its place, while
-					 * the order of the fields of the mapping is thereby preserved
+					 *          the order of the fields of the mapping is thereby preserved.
+					 *
 					 * @param name name of the field of the mapping
 					 * @param value value of the field being set
 					 * @return sign of the success of the setting
@@ -1053,9 +1178,9 @@ namespace awh {
 					 * @brief Метод добавления поля отображения рядом с одноимённым
 					 *
 					 * @details Поле кладётся рядом, а не поверх: разбор с настройкой
-					 * `duplicate_t::KEEP` удерживает все вхождения повторяющегося имени, и
-					 * воспроизвести такое отображение установкой поля нельзя - она перезаписала
-					 * бы одноимённое на его месте
+					 *          `duplicate_t::KEEP` удерживает все вхождения повторяющегося имени, и
+					 *          воспроизвести такое отображение установкой поля нельзя - она перезаписала
+					 *          бы одноимённое на его месте.
 					 *
 					 * @note Розыска по имени метод не ведёт вовсе: имя кладётся сразу за
 					 *       последним полем отображения
@@ -1066,8 +1191,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the addition of a field of a mapping next to a field of the same name
+					 *
 					 * @details The field is laid next to rather than over: the parsing with the setting
-					 * `duplicate_t::KEEP` retains all the occurrences of a repeating name
+					 *          `duplicate_t::KEEP` retains all the occurrences of a repeating name.
+					 *
+					 * @note The method conducts no search by a name at all: the name is laid right after the last
+					 *       field of the mapping
+					 *
 					 * @param name name of the field of the mapping
 					 * @param value value of the field being added
 					 * @return sign of the success of the addition
@@ -1084,6 +1214,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the removal of a field of a mapping by a name
+					 *
 					 * @param name name of the field of the mapping being removed
 					 * @return sign of the success of the removal
 					 *
@@ -1099,6 +1230,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the removal of a value of a container by an index
+					 *
 					 * @param index index of the value of the container being removed
 					 * @return sign of the success of the removal
 					 *
@@ -1115,6 +1247,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a logical value
+					 *
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *
@@ -1126,26 +1259,29 @@ namespace awh {
 					 * @brief Метод извлечения числа
 					 *
 					 * @details Отказом извлечение завершается лишь тогда, когда значение
-					 * числом не является вовсе. Вид хранения извлечению не указ, а сужение
-					 * выполняется обычным приведением языка - ровно так, как это делает
-					 * ссылка на узел документа
+					 *          числом не является вовсе. Вид хранения извлечению не указ, а сужение
+					 *          выполняется обычным приведением языка - ровно так, как это делает
+					 *          ссылка на узел документа.
 					 *
 					 * @details Дробное, извлекаемое целым видом, округляется по правилам
-					 * математики с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` -
-					 * минус двойкой. Усечения к нулю здесь нет
+					 *          математики с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` -
+					 *          минус двойкой. Усечения к нулю здесь нет.
 					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a number
+					 *
 					 * @details The extraction ends with a refusal only when the value
-					 * is not a number at all. The kind of the storage is not a rule for the extraction, while the narrowing
-					 * is performed by the ordinary casting of the language — exactly as a reference
-					 * to a node of a document does it
+					 *          is not a number at all. The kind of the storage is not a rule for the extraction, while the narrowing
+					 *          is performed by the ordinary casting of the language — exactly as a reference
+					 *          to a node of a document does it.
+					 *
 					 * @details A fractional number extracted as an integer kind is rounded by the rules
-					 * of mathematics with a half taken away from zero: `1.5` is issued as a two, while `-1.5` —
-					 * as a minus two. There is no truncation towards zero here
+					 *          of mathematics with a half taken away from zero: `1.5` is issued as a two, while `-1.5` —
+					 *          as a minus two. There is no truncation towards zero here.
+					 *
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *
@@ -1196,19 +1332,22 @@ namespace awh {
 					 *          ни был разрешённый вид его: число `12` выдаётся записью `12`,
 					 *          признак истины - записью `true`, пустое значение - записью `~`
 					 *          либо тою, какою оно записано. Вместилище - отображение да
-					 *          перечень - отвечает отказом
+					 *          перечень - отвечает отказом.
 					 *
 					 * @note Правило это у пяти кодеков рамки РАЗНОЕ, и разное намеренно - оно
 					 *       следует из устройства наречия, а не выбрано наудачу:
-					 *       @li у XML и INI видов нет вовсе, всякое значение там текст, и
-					 *           отказывать по виду попросту нечему;
-					 *       @li у JSON и TOML виды суть хранение, и извлечение строкою служит
-					 *           им проверкою вида ровно так же, как извлечение числом;
-					 *       @li у YAML вид есть РАЗРЕШЕНИЕ над записанным скаляром, а не
-					 *           хранение его. Запись первична - ею держатся ограда, блочное
-					 *           построение и правило усечения переводов строк, - и выдать её
-					 *           обязано всякое скалярное значение. Отказ по разрешённому виду
-					 *           отнял бы у потребителя доступ к тому, что в файле написано.
+					 *
+					 *                @li у XML и INI видов нет вовсе, всякое значение там текст, и
+					 *     отказывать по виду попросту нечему;
+					 *
+					 *                @li у JSON и TOML виды суть хранение, и извлечение строкою служит
+					 *     им проверкою вида ровно так же, как извлечение числом;
+					 *
+					 *                @li у YAML вид есть РАЗРЕШЕНИЕ над записанным скаляром, а не
+					 *     хранение его. Запись первична - ею держатся ограда, блочное
+					 *     построение и правило усечения переводов строк, - и выдать её
+					 *     обязано всякое скалярное значение. Отказ по разрешённому виду
+					 *     отнял бы у потребителя доступ к тому, что в файле написано
 					 *
 					 * @note Общей проверки на все пять кодеков тут быть не должно: она
 					 *       закрепила бы единообразие там, где его нет по устройству
@@ -1218,13 +1357,29 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a string value
+					 *
 					 * @details The extraction issues the RECORD of any scalar value, whatever its resolved
-					 * kind: the number `12` is issued by the record `12`, the sign of truth by the record
-					 * `true`. A container — a mapping and a list — answers with a refusal
+					 *          kind: the number `12` is issued by the record `12`, the sign of truth by the record
+					 *          `true`. A container — a mapping and a list — answers with a refusal.
+					 *
 					 * @note This rule differs among the five codecs of the framework deliberately: it follows
-					 * from the arrangement of the dialect. XML and INI have no kinds at all; for JSON and TOML
-					 * the kinds are the storage; for YAML a kind is a RESOLUTION over the written scalar, and
-					 * the record is primary
+					 *       from the arrangement of the dialect:
+					 *
+					 * @li at XML and INI there are no kinds at all, every value there is a text, and there is
+					 *     simply nothing to refuse by a kind
+					 *
+					 * @li at JSON and TOML the kinds are the storage, and an extraction by a string serves them as
+					 *     a check of the kind exactly as an extraction by a number does
+					 *
+					 * @li at YAML a kind is a RESOLUTION over the written scalar, and not its storage. The record
+					 *     is primary — by it are held the quoting, the block construction and the rule of the
+					 *     chomping of the line breaks — and every scalar value is obliged to issue it. A refusal at
+					 *     a resolved kind would take away from the consumer the access to that which is written in
+					 *     the file
+					 *
+					 * @note There must be no common check for all the five codecs here: it would fix uniformity
+					 *       where there is none by the arrangement
+					 *
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *
@@ -1237,17 +1392,19 @@ namespace awh {
 					 * @brief Метод разбора текста YAML во владеющее значение
 					 *
 					 * @details Разбор ведётся тем же документом, каким он ведётся всегда:
-					 * обёртка лишь снимает с него дерево собственной памятью. Оформление
-					 * исходного текста при снятии не удерживается
+					 *          обёртка лишь снимает с него дерево собственной памятью. Оформление
+					 *          исходного текста при снятии не удерживается.
 					 *
 					 * @param text разбираемый текст YAML
 					 * @return     признак успешности разбора
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a YAML text into an owning value
+					 *
 					 * @details The parsing is conducted by the same document by which it is always conducted:
-					 * the wrapper only takes the tree off it by its own memory. The formatting
-					 * of the source text is not retained at the taking
+					 *          the wrapper only takes the tree off it by its own memory. The formatting
+					 *          of the source text is not retained at the taking.
+					 *
 					 * @param text YAML text being parsed
 					 * @return sign of the success of the parsing
 					 *
@@ -1259,11 +1416,11 @@ namespace awh {
 					 * @brief Метод разбора текста YAML указанными настройками
 					 *
 					 * @details Настройки нужны прежде всего схемою: запись `0777` наречием 1.1
-					 * читается восьмеричной, давая 511, а схемою ядровой - десятичной, давая
-					 * 777. Значение, снятое с документа одной схемы, обратно читается той же
+					 *          читается восьмеричной, давая 511, а схемою ядровой - десятичной, давая
+					 *          777. Значение, снятое с документа одной схемы, обратно читается той же.
 					 *
 					 * @note Частность эта наречию YAML своя: у кодеков, схем не имеющих,
-					 * разбор настроек не требует вовсе
+					 *       разбор настроек не требует вовсе
 					 *
 					 * @param text     разбираемый текст YAML
 					 * @param settings настройки разбора текста
@@ -1271,11 +1428,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a YAML text with the indicated settings
+					 *
 					 * @details The settings are needed first of all for the schema: the record `0777` is read
-					 * by the 1.1 dialect as an octal one, giving 511, while by the core schema — as a decimal one, giving
-					 * 777. A value taken from a document of one schema is read back by the same one
+					 *          by the 1.1 dialect as an octal one, giving 511, while by the core schema — as a decimal one, giving
+					 *          777. A value taken from a document of one schema is read back by the same one.
+					 *
 					 * @note This particularity is peculiar to the YAML dialect: for the codecs having no schemas,
-					 * the parsing does not require the settings at all
+					 *       the parsing does not require the settings at all
+					 *
 					 * @param text YAML text being parsed
 					 * @param settings settings of the parsing of the text
 					 * @return sign of the success of the parsing
@@ -1292,6 +1452,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a YAML text from a file
+					 *
 					 * @param filename address of the file being parsed
 					 * @return sign of the success of the parsing
 					 *
@@ -1308,6 +1469,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a YAML text from a file with the indicated settings
+					 *
 					 * @param filename address of the file being parsed
 					 * @param settings settings of the parsing of the text
 					 * @return sign of the success of the parsing
@@ -1323,6 +1485,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the rewriting of the value into a YAML text
+					 *
 					 * @return YAML text
 					 *
 					 * \~
@@ -1337,6 +1500,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the rewriting of the value into a YAML text with the indicated settings
+					 *
 					 * @param settings settings of the writing of the text
 					 * @return YAML text
 					 *
@@ -1352,6 +1516,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the value into a file
+					 *
 					 * @param filename address of the file being written
 					 * @return sign of the success of the writing
 					 *
@@ -1364,9 +1529,9 @@ namespace awh {
 					 * @brief Метод переноса владеющего значения в дерево документа
 					 *
 					 * @details Перенос ведётся путём: вместилище объявляется у места пустым, а
-					 * дети его переносятся по пути внутрь него. Путь ведётся от корня первого
-					 * документа, части его делятся косою чертой, а часть внутри перечня есть
-					 * номер значения
+					 *          дети его переносятся по пути внутрь него. Путь ведётся от корня первого
+					 *          документа, части его делятся косою чертой, а часть внутри перечня есть
+					 *          номер значения.
 					 *
 					 * @note Имя пары, косую черту либо тильду несущее, переносу ПОДЛЕЖИТ: путь
 					 *       строится отменяющими записями RFC 6901 (`~1` и `~0`), и звено такое
@@ -1407,19 +1572,42 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the grafting of an owning value into the tree of a document
+					 *
 					 * @details The grafting is conducted by a path: a container is declared empty at the place, while
-					 * its children are grafted by a path inside it. The path is led from the root of the first
-					 * document, its parts are divided by a slash, and a part inside a sequence is
-					 * the number of a value
-					 * @note A name of a pair carrying a slash is not subject to the grafting and answers
-					 *       with a refusal: the path is divided by it, and such a name would point at an alien node
+					 *          its children are grafted by a path inside it. The path is led from the root of the first
+					 *          document, its parts are divided by a slash, and a part inside a sequence is
+					 *          the number of a value.
+					 *
+					 * @note A name of a pair carrying a slash or a tilde IS subject to the grafting: the path is
+					 *       built by the escaping records of RFC 6901 (`~1` and `~0`), and such a link no longer
+					 *       points at an alien node. Formerly a refusal stood here with the argument "a path cannot
+					 *       express such a name" — and an escaping record takes that argument away. A refusal now
+					 *       answers only an EMPTY name
+					 *
 					 * @note The numbers, the timestamps and the binary content are grafted by their verbatim
 					 *       record: a quoting would turn them into the strings
+					 *
 					 * @note By the record they are read back as well, and what they are read as is decided by the schema
 					 *       of the tree whereinto the grafting is conducted: the record `0777` by the dialect 1.1 is an octal
 					 *       number while by the core schema — a decimal one
+					 *
 					 * @note A name of a pair met a second time answers with a refusal: a mapping is entitled
 					 *       to carry repeated names while a path cannot express the second occurrence
+					 *
+					 * @warning THE PROPERTIES OF A NODE — an anchor `&name` and a tag `!type` — ARE NOT TAKEN by
+					 *          the grafting, and a kind held by a type tag alone is lost at the grafting. The binary
+					 *          content `!!binary aGk=` lies into the tree as the string `aGk=`, while the record
+					 *          `!!binary 12:30` is read back by the 1.1 dialect as a sexagesimal number — seven
+					 *          hundred and fifty. The other kinds are whole: a string goes under a quoting, a number
+					 *          and a timestamp are held by their own record — measured by seven marks, only the
+					 *          binary content diverges
+					 *
+					 * @warning The reason lies in this, that the tree has no way of setting a property to a node at
+					 *          all: a view has `anchor()` and `tag()` for the reading, while for the writing there is
+					 *          nothing. To bypass this by the record `!<name> value` is impossible — `imprint` lays
+					 *          the record as CONTENT and does not parse it — and the flaw is cured only by making a
+					 *          way of setting the properties at the tree. A churner found this
+					 *
 					 * @param document tree of the document whereinto the value is grafted
 					 * @param path     path to the place of the grafting
 					 * @return         sign of the success of the grafting
@@ -1433,17 +1621,19 @@ namespace awh {
 					 * @brief Метод сличения значений
 					 *
 					 * @details Сличаются вид и содержимое дерева, а оформление записи,
-					 * якорь и метка сличению не подлежат: значения эти одинаковы по сути
-					 * своей и записаны лишь по-разному
+					 *          якорь и метка сличению не подлежат: значения эти одинаковы по сути
+					 *          своей и записаны лишь по-разному.
 					 *
 					 * @param value сличаемое значение
 					 * @return      признак совпадения значений
 					 *
 					 * \~english
 					 * @brief Method of the comparison of the values
+					 *
 					 * @details The kind and the content of the tree are compared, while the formatting of the record,
-					 * the anchor and the tag are not subject to the comparison: such values are identical in their essence
-					 * and are merely written differently
+					 *          the anchor and the tag are not subject to the comparison: such values are identical in their essence
+					 *          and are merely written differently.
+					 *
 					 * @param value value being compared
 					 * @return sign of the coincidence of the values
 					 *
@@ -1459,6 +1649,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the comparison of the values for a mismatch
+					 *
 					 * @param value value being compared
 					 * @return sign of the mismatch of the values
 					 *
@@ -1475,6 +1666,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Copy assignment operator
+					 *
 					 * @param value value being assigned
 					 * @return reference to the current value
 					 *
@@ -1490,6 +1682,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Move assignment operator
+					 *
 					 * @param value value being moved
 					 * @return reference to the current value
 					 *
@@ -1515,6 +1708,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a container of the indicated kind
+					 *
 					 * @param kind kind of the value being created
 					 *
 					 * \~
@@ -1528,6 +1722,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a logical value
+					 *
 					 * @param value value being created
 					 *
 					 * \~
@@ -1541,6 +1736,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a signed integer value
+					 *
 					 * @param value value being created
 					 *
 					 * \~
@@ -1554,6 +1750,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of an unsigned integer value
+					 *
 					 * @param value value being created
 					 *
 					 * \~
@@ -1567,6 +1764,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a fractional value
+					 *
 					 * @param value value being created
 					 *
 					 * \~
@@ -1575,19 +1773,30 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Шаблон вида заводимого целого числа
+					 *
 					 * @tparam T вид заводимого целого числа
 					 *
 					 * \~english
 					 * @brief Template of the kind of the integer being created
+					 *
 					 * @tparam T kind of the integer being created
 					 *
 					 * \~
 					 */
 					/**
+					 * \~russian
 					 * @note Ограда `enable_if` обязательна: без неё заводитель перехватывал бы и
 					 *       написание дробное - `Value(1.5f)` доводится до `float` точным
 					 *       совпадением, а до `double` приведением, и сборка искала бы шаблон,
 					 *       созданный лишь для целых чисел. Замерено отказом связывания
+					 *
+					 * \~english
+					 * @note The `enable_if` fence is mandatory: without it the constructor would intercept a
+					 *       fractional writing as well — `Value(1.5f)` is brought to `float` by an exact match, and to
+					 *       `double` by a conversion, and the assembly would look for a template created only for the
+					 *       integers. Measured by a refusal of the binding
+					 *
+					 * \~
 					 */
 					template <typename T, typename = typename enable_if <is_integral <T>::value>::type>
 					/**
@@ -1595,10 +1804,10 @@ namespace awh {
 					 * @brief Конструктор целого числа записи любой
 					 *
 					 * @details Заводитель этот отвечает за написания, ширины которым отведено
-					 * менее восьми байтов, - `short`, `int`, `long`, `size_t` и прочие. Без
-					 * него запись `Value(1)` расходилась бы между целым со знаком, целым без
-					 * знака и дробным видами приведением равной силы, и сборка отвечала бы
-					 * двусмысленностью: годились ЛИШЬ `long long` и `unsigned long long`
+					 *          менее восьми байтов, - `short`, `int`, `long`, `size_t` и прочие. Без
+					 *          него запись `Value(1)` расходилась бы между целым со знаком, целым без
+					 *          знака и дробным видами приведением равной силы, и сборка отвечала бы
+					 *          двусмысленностью: годились ЛИШЬ `long long` и `unsigned long long`
 					 *
 					 * @note Знаковость выбирает вид, которому число доводится: число без знака
 					 *       уходит через `uint64_t`, а со знаком через `int64_t`. Обход через
@@ -1608,6 +1817,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of an integer of any record
+					 *
+					 * @details This maker answers for the notations to which less than eight bytes are allotted —
+					 *          `short`, `int`, `long`, `size_t` and the others. Without it the notation `Value(1)`
+					 *          would diverge between the signed integer, the unsigned integer and the fractional
+					 *          kinds by conversions of equal force, and the assembly would answer with an
+					 *          ambiguity: ONLY `long long` and `unsigned long long` were fit.
+					 *
+					 * @note The signedness chooses the kind to which the number is promoted: a number without a sign
+					 *       goes through `uint64_t`, and one with a sign through `int64_t`. A bypass through one only
+					 *       `int64_t` would turn `4294967295u` into a negative one
+					 *
 					 * @param value integer being created
 					 *
 					 * \~
@@ -1618,17 +1838,19 @@ namespace awh {
 					 * @brief Конструктор знака
 					 *
 					 * @details Знак ложится строкою из одного знака, а не числом: вида знака у
-					 * наречия YAML нет вовсе, и числовое прочтение отдало бы `Value('z')`
-					 * числом 122 молча
+					 *          наречия YAML нет вовсе, и числовое прочтение отдало бы `Value('z')`
+					 *          числом 122 молча.
 					 *
 					 * @param value заводимый знак
 					 * @param style оформление записи значения
 					 *
 					 * \~english
 					 * @brief Constructor of a character
+					 *
 					 * @details The character is laid as a string of one character rather than as a number:
-					 * the YAML dialect has no kind of a character at all, and a numeric reading would
-					 * silently yield `Value('z')` as the number 122
+					 *          the YAML dialect has no kind of a character at all, and a numeric reading would
+					 *          silently yield `Value('z')` as the number 122.
+					 *
 					 * @param value character being created
 					 * @param style formatting of the record of the value
 					 *
@@ -1644,6 +1866,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a string value
+					 *
 					 * @param value value being created
 					 * @param style formatting of the record of the value
 					 *
@@ -1659,6 +1882,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor of a string value
+					 *
 					 * @param value value being created
 					 * @param style formatting of the record of the value
 					 *
@@ -1670,14 +1894,16 @@ namespace awh {
 					 * @brief Конструктор снятия значения со ссылки на узел документа
 					 *
 					 * @details Конструктор этот и есть мост от разбора к владению: ссылка
-					 * документ пережить не может, а снятое ею значение - может
+					 *          документ пережить не может, а снятое ею значение - может.
 					 *
 					 * @param value ссылка на узел документа
 					 *
 					 * \~english
 					 * @brief Constructor of the taking of a value from a reference to a node of a document
+					 *
 					 * @details This constructor is the very bridge from the parsing to the ownership: a reference
-					 * cannot outlive the document, while a value taken by it — can
+					 *          cannot outlive the document, while a value taken by it — can.
+					 *
 					 * @param value reference to the node of the document
 					 *
 					 * \~
@@ -1691,6 +1917,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Copy constructor
+					 *
 					 * @param value value being copied
 					 *
 					 * \~
@@ -1704,6 +1931,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Move constructor
+					 *
 					 * @param value value being moved
 					 *
 					 * \~
@@ -1725,25 +1953,27 @@ namespace awh {
 			 * @brief Потоковая сборка владеющего значения
 			 *
 			 * @details Сборка эта есть второй способ построить дерево, стоящий рядом с
-			 * путями, а не вместо них. Потребитель, поля подряд заносящий, вложенностей не
-			 * порождает и путями не пользуется вовсе: розыск по пути на каждое поле стоит
-			 * прохода дерева, а сборке достаточно знать, где она стоит сейчас
+			 *          путями, а не вместо них. Потребитель, поля подряд заносящий, вложенностей не
+			 *          порождает и путями не пользуется вовсе: розыск по пути на каждое поле стоит
+			 *          прохода дерева, а сборке достаточно знать, где она стоит сейчас.
 			 *
 			 * @details Договор её слово в слово повторяет договор потока записи: открыть
-			 * вместилище, назвать поле, записать значение, закрыть. Тем «пишу текстом» и
-			 * «строю дерево» отличаются одной буквой, и переход с одного на другое не
-			 * требует переучиваться
+			 *          вместилище, назвать поле, записать значение, закрыть. Тем «пишу текстом» и
+			 *          «строю дерево» отличаются одной буквой, и переход с одного на другое не
+			 *          требует переучиваться.
 			 *
 			 * \~english
 			 * @brief Streaming assembly of an owning value
+			 *
 			 * @details This assembly is the second way to build a tree, standing alongside
-			 * the paths rather than instead of them. A consumer entering the fields in a row does not
-			 * generate the nestings and does not use the paths at all: a search by a path for every field costs
-			 * a traversal of the tree, while the assembly only needs to know where it stands now
+			 *          the paths rather than instead of them. A consumer entering the fields in a row does not
+			 *          generate the nestings and does not use the paths at all: a search by a path for every field costs
+			 *          a traversal of the tree, while the assembly only needs to know where it stands now.
+			 *
 			 * @details Its contract repeats the contract of the writing stream word for word: open
-			 * a container, name a field, write a value, close. Thereby "I write a text" and
-			 * "I build a tree" differ by one letter, and the transition from one to the other does not
-			 * require relearning
+			 *          a container, name a field, write a value, close. Thereby "I write a text" and
+			 *          "I build a tree" differ by one letter, and the transition from one to the other does not
+			 *          require relearning.
 			 *
 			 * \~
 			 */
@@ -1757,14 +1987,15 @@ namespace awh {
 					 * Путь к вместилищу, сборкой открытому
 					 *
 					 * @details Путь хранится номерами, а не указателями: значения вместилища
-					 * лежат в перечне, и всякое добавление переселяет его в памяти, отчего
-					 * указатель на открытое вместилище стал бы висячим на первом же поле
+					 *          лежат в перечне, и всякое добавление переселяет его в памяти, отчего
+					 *          указатель на открытое вместилище стал бы висячим на первом же поле.
 					 *
 					 * \~english
 					 * Path to the container opened by the assembly
+					 *
 					 * @details The path is stored by the indices rather than by the pointers: the values of a container
-					 * lie in a list, and every addition relocates it in the memory, whereby
-					 * a pointer to an opened container would become dangling at the very first field
+					 *          lie in a list, and every addition relocates it in the memory, whereby
+					 *          a pointer to an opened container would become dangling at the very first field.
 					 *
 					 * \~
 					 */
@@ -1777,10 +2008,19 @@ namespace awh {
 					bool _keyed;
 				private:
 					/**
-					 * Признак того, что поле кладётся рядом с одноимённым
+					 * \~russian
+					 * @brief Признак того, что поле кладётся рядом с одноимённым
 					 *
 					 * @note Признак принадлежит имени, а не сборке: всякое назначение имени
 					 *       обычным способом его снимает
+					 *
+					 * \~english
+					 * @brief A sign that a field is laid next to one of the same name
+					 *
+					 * @note The sign belongs to a name and not to an assembly: any appointment of a name
+					 *       in the ordinary way removes it
+					 *
+					 * \~
 					 */
 					bool _appended;
 				private:
@@ -1789,14 +2029,15 @@ namespace awh {
 					 * Признак того, что сборка завершена
 					 *
 					 * @details Признак этот отличает вместилище корневое открытое от
-					 * закрытого: путь номеров у обоих пуст, и без признака закрытие корня
-					 * оставалось бы незамеченным
+					 *          закрытого: путь номеров у обоих пуст, и без признака закрытие корня
+					 *          оставалось бы незамеченным.
 					 *
 					 * \~english
 					 * Sign that the assembly is finished
+					 *
 					 * @details This sign distinguishes an opened root container from
-					 * a closed one: the path of the indices of both is empty, and without the sign the closing of the root
-					 * would remain unnoticed
+					 *          a closed one: the path of the indices of both is empty, and without the sign the closing of the root
+					 *          would remain unnoticed.
 					 *
 					 * \~
 					 */
@@ -1816,6 +2057,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the container opened by the assembly
+					 *
 					 * @return reference to the opened container
 					 *
 					 * \~
@@ -1830,6 +2072,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the entering of an assembled value into the container
+					 *
 					 * @param value value being entered
 					 * @return index of the entered value in the container
 					 *
@@ -1845,6 +2088,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a container of the indicated kind
+					 *
 					 * @param value container being opened
 					 * @return sign of the success of the opening
 					 *
@@ -1861,6 +2105,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a mapping
+					 *
 					 * @param layout layout of the mapping being opened
 					 * @return sign of the success of the opening
 					 *
@@ -1876,6 +2121,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the opening of a sequence of the values
+					 *
 					 * @param layout layout of the sequence being opened
 					 * @return sign of the success of the opening
 					 *
@@ -1890,6 +2136,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the closing of an opened container
+					 *
 					 * @return sign of the success of the closing
 					 *
 					 * \~
@@ -1901,15 +2148,17 @@ namespace awh {
 					 * @brief Метод назначения имени поля отображения
 					 *
 					 * @details Имя стоит до значения, а не при нём: тем сборка и повторяет
-					 * поток записи, где имя и значение суть два разных действия
+					 *          поток записи, где имя и значение суть два разных действия.
 					 *
 					 * @param name имя назначаемого поля отображения
 					 * @return     признак успешности назначения
 					 *
 					 * \~english
 					 * @brief Method of the assignment of the name of a field of a mapping
+					 *
 					 * @details The name stands before the value rather than with it: thereby the assembly repeats
-					 * the writing stream, where the name and the value are two different actions
+					 *          the writing stream, where the name and the value are two different actions.
+					 *
 					 * @param name name of the field of the mapping being assigned
 					 * @return sign of the success of the assignment
 					 *
@@ -1921,9 +2170,9 @@ namespace awh {
 					 * @brief Метод назначения имени поля, рядом с одноимённым кладомого
 					 *
 					 * @details Действует как назначение имени, с одной разницей: значение, следом
-					 * записанное, кладётся рядом с полем того же имени, а не поверх него. Тем
-					 * сборка повторяет отображение, разбором с настройкой `duplicate_t::KEEP`
-					 * собранное
+					 *          записанное, кладётся рядом с полем того же имени, а не поверх него. Тем
+					 *          сборка повторяет отображение, разбором с настройкой `duplicate_t::KEEP`
+					 *          собранное.
 					 *
 					 * @note Признак добавления принадлежит имени, а не сборке: всякое назначение
 					 *       имени обычным способом его снимает. Иначе одно добавление сделало бы
@@ -1934,8 +2183,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the assignment of the name of a field laid next to a field of the same name
+					 *
 					 * @details It acts as the assignment of a name, with one difference: the value written next
-					 * is laid next to a field of the same name rather than over it
+					 *          is laid next to a field of the same name rather than over it.
+					 *
+					 * @note The sign of the addition belongs to the name, and not to the assembly: every assignment
+					 *       of a name in the ordinary way removes it. Otherwise one addition would have made all the
+					 *       fields additions until the end of the assembly
+					 *
 					 * @param name name of the field of the mapping being assigned
 					 * @return sign of the success of the assignment
 					 *
@@ -1951,6 +2206,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the assignment of an anchor prefixed to a value
+					 *
 					 * @param name name of the anchor being assigned
 					 * @return sign of the success of the assignment
 					 *
@@ -1966,6 +2222,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the assignment of a tag prefixed to a value
+					 *
 					 * @param name name of the tag being assigned
 					 * @return sign of the success of the assignment
 					 *
@@ -1981,6 +2238,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of an empty value
+					 *
 					 * @return sign of the success of the writing
 					 *
 					 * \~
@@ -1995,6 +2253,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a ready value
+					 *
 					 * @param value value being written
 					 * @return sign of the success of the writing
 					 *
@@ -2010,6 +2269,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a logical value
+					 *
 					 * @param value value being written
 					 * @return sign of the success of the writing
 					 *
@@ -2021,15 +2281,17 @@ namespace awh {
 					 * @brief Метод записи целого числа со знаком
 					 *
 					 * @details Число заносится видом своим, а не подстановкою записи: сборка,
-					 * запись собирающая, заставила бы потребителя разбирать её обратно
+					 *          запись собирающая, заставила бы потребителя разбирать её обратно.
 					 *
 					 * @param value записываемое значение
 					 * @return      признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of a signed integer number
+					 *
 					 * @details The number is entered by its own kind rather than by a substitution of a record: an assembly
-					 * collecting a record would force the consumer to parse it back
+					 *          collecting a record would force the consumer to parse it back.
+					 *
 					 * @param value value being written
 					 * @return sign of the success of the writing
 					 *
@@ -2054,6 +2316,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value
+					 *
 					 * @param value value being written
 					 * @param style formatting of the record of the value
 					 * @return sign of the success of the writing
@@ -2074,6 +2337,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the depth of the opened containers
+					 *
 					 * @return number of the containers opened by the assembly and not closed
 					 *
 					 * \~
@@ -2094,16 +2358,18 @@ namespace awh {
 					 * @brief Метод изъятия собранного значения
 					 *
 					 * @details Вместилища, открытые и не закрытые, закрываются изъятием сами:
-					 * сборка, всё занёсшая, забыть о закрытии вправе, а недостроенное дерево
-					 * ей выдавать незачем
+					 *          сборка, всё занёсшая, забыть о закрытии вправе, а недостроенное дерево
+					 *          ей выдавать незачем.
 					 *
 					 * @return собранное значение
 					 *
 					 * \~english
 					 * @brief Method of the withdrawal of the assembled value
+					 *
 					 * @details The containers opened and not closed are closed by the withdrawal itself:
-					 * an assembly having entered everything has the right to forget about the closing, while there is no point
-					 * in giving away an unfinished tree to it
+					 *          an assembly having entered everything has the right to forget about the closing, while there is no point
+					 *          in giving away an unfinished tree to it.
+					 *
 					 * @return assembled value
 					 *
 					 * \~

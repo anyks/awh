@@ -290,7 +290,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&document]() noexcept {
 			// Выполняем перезапись дерева настроек
-			return static_cast <uint64_t> (document.text().size());
+			return static_cast <uint64_t> (document.dump().size());
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);

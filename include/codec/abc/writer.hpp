@@ -89,104 +89,173 @@ namespace awh {
 			 * @brief Класс сборки бинарной записи
 			 *
 			 * @details Сборка ведёт учёт вместимых сама: значение сверх объявленной длины,
-			 * незакрытое вместимое и вместимое именем поля отвергаются на месте, а не
-			 * оставляются на разбор
+			 *          незакрытое вместимое и вместимое именем поля отвергаются на месте, а не
+			 *          оставляются на разбор.
 			 *
 			 * @details **Строгий вид записи.** Настройка эта обязывает объявлять длины
-			 * вместимых и вести имена полей по возрастанию. Нужна она там, где запись
-			 * подписывается: одинаковое содержимое обязано давать одинаковые октеты, иначе
-			 * подпись при пересборке перестаёт совпадать
+			 *          вместимых и вести имена полей по возрастанию. Нужна она там, где запись
+			 *          подписывается: одинаковое содержимое обязано давать одинаковые октеты, иначе
+			 *          подпись при пересборке перестаёт совпадать.
 			 *
 			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
-			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
-			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
-			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
-			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
-			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
-			 * свободно
+			 *          лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 *          равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 *          тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 *          четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 *          ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 *          свободно
 			 *
 			 * @note **О заслонах сборщика, ни разу не сработавших.** Сплошной щуп нужности
-			 * 09.09.2026 обесточил порознь всякий заслон `writer`, сохраняя условие
-			 * вычисляемым (`if((X) && false)`). Под сторожем 68 мест, молчали 14, и молчание
-			 * сведено по существу зовомого:
-			 * - **шесть** в отсеве повторяющихся имён да уточнение сличения их по длине:
-			 *   первые стерегут ЦЕНУ, а не правильность (обесточенный порог отдаёт сличение
-			 *   указателю, и повтор находится тот же), последнее недостижимо по устройству -
-			 *   запись значения САМОРАЗМЕРНА, оттого запись одного имени строгим началом
-			 *   записи другого стоять не может. Приговоры эти в точности совпали с
-			 *   разбирательскими, писанными порознь, - две работы дали одну карту молчания;
-			 * - **два** суть пределы `uint32`: перечень имён да длина записи. Требуют
-			 *   настоящих четырёх гигабайт уложенного и проверкою не берутся;
-			 * - **два** суть скорые выходы при укладке куска (`if(chunk)`), затенённые самим
-			 *   учётом: `account` уменьшает счёт значений лишь у вместимого ОПРЕДЕЛЁННОЙ
-			 *   длины, а звено собираемого кусками заводится неопределённым. Договор же -
-			 *   «собранное кусками есть ОДНО значение вместившего» - закреплён проверками
-			 *   `SegmentedBlobInsideContainer` и `SegmentedStringInsideContainer`, и держится
-			 *   он `account`, а не выходами этими;
-			 * - **один** - пропуск звена, имени ещё не имевшего: отрезок у такого звена
-			 *   бессмыслен и переписывается целиком при первой же укладке имени;
-			 * - **один** предмета проверки НЕ ИМЕЕТ ВОВСЕ и отдан санитайзеру: укладка
-			 *   пустого содержимого стережёт вставку промежутка от нулевого указателя, то
-			 *   есть неопределённое поведение, на деле неотличимое от бездействия. Заслон
-			 *   стоит против самого неопределённого поведения, а не против видимого
-			 *   следствия его;
-			 * - **два** были настоящей слепотою и закрыты
-			 *   `TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`
+			 *       09.09.2026 обесточил порознь всякий заслон `writer`, сохраняя условие
+			 *       вычисляемым (`if((X) && false)`). Под сторожем 68 мест, молчали 14, и молчание
+			 *       сведено по существу зовомого:
+			 *       - **шесть** в отсеве повторяющихся имён да уточнение сличения их по длине:
+			 *       первые стерегут ЦЕНУ, а не правильность (обесточенный порог отдаёт сличение
+			 *       указателю, и повтор находится тот же), последнее недостижимо по устройству -
+			 *       запись значения САМОРАЗМЕРНА, оттого запись одного имени строгим началом
+			 *       записи другого стоять не может. Приговоры эти в точности совпали с
+			 *       разбирательскими, писанными порознь, - две работы дали одну карту молчания;
+			 *       - **два** суть пределы `uint32`: перечень имён да длина записи. Требуют
+			 *       настоящих четырёх гигабайт уложенного и проверкою не берутся;
+			 *       - **два** суть скорые выходы при укладке куска (`if(chunk)`), затенённые самим
+			 *       учётом: `account` уменьшает счёт значений лишь у вместимого ОПРЕДЕЛЁННОЙ
+			 *       длины, а звено собираемого кусками заводится неопределённым. Договор же -
+			 *       «собранное кусками есть ОДНО значение вместившего» - закреплён проверками
+			 *       `SegmentedBlobInsideContainer` и `SegmentedStringInsideContainer`, и держится
+			 *       он `account`, а не выходами этими;
+			 *       - **один** - пропуск звена, имени ещё не имевшего: отрезок у такого звена
+			 *       бессмыслен и переписывается целиком при первой же укладке имени;
+			 *       - **один** предмета проверки НЕ ИМЕЕТ ВОВСЕ и отдан санитайзеру: укладка
+			 *       пустого содержимого стережёт вставку промежутка от нулевого указателя, то
+			 *       есть неопределённое поведение, на деле неотличимое от бездействия. Заслон
+			 *       стоит против самого неопределённого поведения, а не против видимого
+			 *       следствия его;
+			 *       - **два** были настоящей слепотою и закрыты
+			 *       `TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`
 			 *
 			 * @warning **Врезка чужого содержимого двигает отрезки уложенных имён полей.**
-			 * Крупное значение кладётся ССЫЛКОЙ и вклеивается в запись лишь при извлечении
-			 * её целиком, а отрезки имён отсчитаны от начала буфера: сличение имён после
-			 * вклейки читало бы ЧУЖИЕ октеты, и повтор имени прошёл бы незамеченным. Мест
-			 * сдвига три, и молчали все три - содержимое ссылкой клали в наборе лишь в
-			 * ПЕРЕЧЕНЬ, где имён полей нет вовсе, а извлечения записи посреди сборки не
-			 * делал никто. Сличений же ДВА, и сдвиги у них разные: вне строгого вида имя
-			 * сличается со всеми прежними (перечень `_keys`), при строгом - с одним лишь
-			 * предыдущим (отрезок звена стека). Проверка обязана ходить ОБОИМИ путями, и
-			 * первая её половина, писанная лишь под перечень, второе место оставила молчащим
+			 *          Крупное значение кладётся ССЫЛКОЙ и вклеивается в запись лишь при извлечении
+			 *          её целиком, а отрезки имён отсчитаны от начала буфера: сличение имён после
+			 *          вклейки читало бы ЧУЖИЕ октеты, и повтор имени прошёл бы незамеченным. Мест
+			 *          сдвига три, и молчали все три - содержимое ссылкой клали в наборе лишь в
+			 *          ПЕРЕЧЕНЬ, где имён полей нет вовсе, а извлечения записи посреди сборки не
+			 *          делал никто. Сличений же ДВА, и сдвиги у них разные: вне строгого вида имя
+			 *          сличается со всеми прежними (перечень `_keys`), при строгом - с одним лишь
+			 *          предыдущим (отрезок звена стека). Проверка обязана ходить ОБОИМИ путями, и
+			 *          первая её половина, писанная лишь под перечень, второе место оставила молчащим
 			 *
 			 * \~english
 			 * @brief Class of the assembling of a binary record
+			 *
 			 * @details The assembling keeps the account of the containers itself: a value beyond the declared length,
-			 * an unclosed container and a container as the name of a field are rejected on the spot rather
-			 * than left to the parsing
+			 *          an unclosed container and a container as the name of a field are rejected on the spot rather
+			 *          than left to the parsing.
+			 *
 			 * @details **Strict kind of the record.** This setting obliges to declare the lengths
-			 * of the containers and to lead the names of the fields in the ascending order. It is needed where a record
-			 * is signed: an identical content must give identical octets, otherwise
-			 * the signature ceases to coincide at a reassembling
+			 *          of the containers and to lead the names of the fields in the ascending order. It is needed where a record
+			 *          is signed: an identical content must give identical octets, otherwise
+			 *          the signature ceases to coincide at a reassembling.
+			 *
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 *          holds a lock - it needs one for the timed fix by its own thread - and one must not judge
+			 *          the others by it. A measurement of 2026-08-25, one `Fetcher` over four threads: thirteen
+			 *          reports of TSan and nineteen records of four hundred read wrongly, silently. An own
+			 *          object per thread over a SHARED source of the reading: zero reports, zero divergences -
+			 *          the source is read, not edited, and is shared freely
+			 *
+			 * @note **Of the guards of the assembler, never once triggered.** The full audit of necessity of
+			 *       2026-09-09 de-energized every `writer` guard apart, keeping the condition computable
+			 *       (`if((X) && false)`). Under the watch 68 sites, 14 stood silent, and the silence is reduced
+			 *       by the substance of what is called:
+			 *       - **six** in the filter of repeating names and the sharpening of their comparison by length:
+			 *       the former guard the COST, not the correctness (a de-energized threshold hands the comparison
+			 *       to the index, and the same repeat is found), the last is unreachable by design - the record
+			 *       of a value is SELF-SIZED, so the record of one name cannot stand as the strict beginning of
+			 *       the record of another. These verdicts coincided exactly with the parser's ones, written apart
+			 *       - two works gave one map of silence;
+			 *       - **two** are the limits of `uint32`: the list of names and the length of a record. They
+			 *       demand a real four gigabytes of laid data and are not taken by a check;
+			 *       - **two** are the fast exits at the laying of a chunk (`if(chunk)`), shadowed by the very
+			 *       accounting: `account` reduces the count of the values only for a container of a DEFINED
+			 *       length, while a link assembled by chunks is created undefined. Yet the contract - "what is
+			 *       assembled by chunks is ONE value of the container" - is fixed by the checks
+			 *       `SegmentedBlobInsideContainer` and `SegmentedStringInsideContainer`, and it holds by `account`,
+			 *       not by these exits;
+			 *       - **one** - the skipping of a link that has not yet had a name: a segment of such a link is
+			 *       meaningless and is rewritten in full at the very first laying of a name;
+			 *       - **one** has NO subject of a check at all and is given to the sanitizer: the laying of an
+			 *       empty content guards the insertion of a gap from a null pointer, that is, an undefined
+			 *       behaviour indistinguishable in fact from inaction. The guard stands against the undefined
+			 *       behaviour itself, not against its visible consequence;
+			 *       - **two** were a genuine blindness and are closed by
+			 *       `TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`
+			 *
+			 * @warning **The insertion of a foreign content shifts the segments of the laid names of the fields.**
+			 *          A large value is laid by a REFERENCE and is spliced into the record only when it is extracted
+			 *          in full, while the name segments are counted from the beginning of the buffer: a comparison
+			 *          of the names after a splice would read FOREIGN octets, and a name repetition would pass
+			 *          unnoticed. There are three shift sites, and all three stood silent - a content by reference
+			 *          was laid in a set only into a SEQUENCE, where there are no field names at all, and no one
+			 *          extracted a record in the middle of an assembly. There are TWO comparisons, and their shifts
+			 *          differ: outside the strict kind a name is compared with all the former ones (the list
+			 *          `_keys`), under the strict kind - with the single previous one (the segment of a link of the
+			 *          stack). A check must travel BOTH roads, and its first half, written only for a sequence, left
+			 *          the second site silent
 			 *
 			 * \~
-			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
-			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
-			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
-			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
-			 * zero divergences
-			 *
 			 */
 			/**
+			 * \~russian
 			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
-			 * 83 заслона части, под сторожем 50. Молчали ТРИДЦАТЬ ТРИ, и молчание сведено
-			 * по существу:
-			 * - **тринадцать** - семья `!prepare(false)` и признак отказавшей сборки у
-			 *   закрытия вместимого и конца куска. Все закрыты двумя проверками:
-			 *   `TheFailedBuildingAcceptsNothingFurther` и
-			 *   `TheFailedBuildingDoesNotCloseASegment`;
-			 * - **пять** - пустой указатель при объявленных октетах у работ укладки
-			 *   двоичного вида (`TheAbsentBufferWithDeclaredOctetsIsRefused`); двое из них
-			 *   закреплены ПАДЕНИЕМ, привязанным отдельным щупом;
-			 * - **одно** - воронка отказа, доносящая причину журналу
-			 *   (`TheWriterFunnelReportsItsCauseToTheJournal`), пятая в своём роду;
-			 * - **прочие четырнадцать** закрытию чёрным ящиком не поддаются и СУЖДЕНЫ:
-			 *   скорые пути отсева повторяющихся имён (сличение свёртки прежде октетов,
-			 *   обход перечня прежде заведения указателя) правильности не меняют вовсе, а
-			 *   меняют лишь цену; блок сличения при перечне шире `uint32` требует четырёх
-			 *   миллиардов имён; заслон вида укладки содержимого при пустом буфере отдаёт
-			 *   пустоту и без него.
+			 *       83 заслона части, под сторожем 50. Молчали ТРИДЦАТЬ ТРИ, и молчание сведено
+			 *       по существу:
+			 *       - **тринадцать** - семья `!prepare(false)` и признак отказавшей сборки у
+			 *       закрытия вместимого и конца куска. Все закрыты двумя проверками:
+			 *       `TheFailedBuildingAcceptsNothingFurther` и
+			 *       `TheFailedBuildingDoesNotCloseASegment`;
+			 *       - **пять** - пустой указатель при объявленных октетах у работ укладки
+			 *       двоичного вида (`TheAbsentBufferWithDeclaredOctetsIsRefused`); двое из них
+			 *       закреплены ПАДЕНИЕМ, привязанным отдельным щупом;
+			 *       - **одно** - воронка отказа, доносящая причину журналу
+			 *       (`TheWriterFunnelReportsItsCauseToTheJournal`), пятая в своём роду;
+			 *       - **прочие четырнадцать** закрытию чёрным ящиком не поддаются и СУЖДЕНЫ:
+			 *       скорые пути отсева повторяющихся имён (сличение свёртки прежде октетов,
+			 *       обход перечня прежде заведения указателя) правильности не меняют вовсе, а
+			 *       меняют лишь цену; блок сличения при перечне шире `uint32` требует четырёх
+			 *       миллиардов имён; заслон вида укладки содержимого при пустом буфере отдаёт
+			 *       пустоту и без него
 			 *
 			 * @warning Заслон `frame.hashed == 0` стоит с `else`, и приговор щупа о нём
-			 * читается ИНАЧЕ: подмена условие сохраняет, а ветвь убивает, сиречь заслон не
-			 * снят, а ВЫВЕРНУТ - всегда идёт вторая ветвь. «Не ловит ничего» означает там
-			 * «указатель имён на месте обхода вреда не приносит», а вовсе не «заслон не
-			 * нужен»
+			 *          читается ИНАЧЕ: подмена условие сохраняет, а ветвь убивает, сиречь заслон не
+			 *          снят, а ВЫВЕРНУТ - всегда идёт вторая ветвь. «Не ловит ничего» означает там
+			 *          «указатель имён на месте обхода вреда не приносит», а вовсе не «заслон не
+			 *          нужен»
+			 *
+			 * \~english
+			 * @note **The NEEDNESS audit (a guard is removed), 2026-09-08.** All 83 guards of the part
+			 *       were de-energized apart, under the watch 50. THIRTY-THREE stood silent, and the silence
+			 *       is reduced by the substance:
+			 *       - **thirteen** - the family `!prepare(false)` and the sign of a failed assembly at the
+			 *       closing of a container and the end of a chunk. All are closed by two checks:
+			 *       `TheFailedBuildingAcceptsNothingFurther` and
+			 *       `TheFailedBuildingDoesNotCloseASegment`;
+			 *       - **five** - an empty pointer at declared octets for the laying works of a binary kind
+			 *       (`TheAbsentBufferWithDeclaredOctetsIsRefused`); two of them are fixed by a CRASH caught
+			 *       by a separate probe;
+			 *       - **one** - the funnel of a failure, reporting the cause to the journal
+			 *       (`TheWriterFunnelReportsItsCauseToTheJournal`), the fifth in its kind;
+			 *       - **the other fourteen** cannot be judged as a black box and are DOOMED: the fast paths of
+			 *       the filter of repeating names (the comparison of the digest before the octets, the walk of
+			 *       the list before the creation of the index) change the correctness not at all, and change
+			 *       only the cost; the comparison block for a list wider than `uint32` demands four billion
+			 *       names; the guard of the kind of the laying of a content at an empty buffer issues an emptiness
+			 *       even without it
+			 *
+			 * @warning The guard `frame.hashed == 0` stands with an `else`, and the probe's verdict about it is
+			 *          read DIFFERENTLY: a substitution by a condition keeps the condition but kills the branch,
+			 *          that is, the guard is not removed but INVERTED - the second branch always runs. "Catches
+			 *          nothing" there means "the index of names at the walk site does no harm", and by no means
+			 *          "the guard is not needed"
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
@@ -206,12 +275,13 @@ namespace awh {
 						 * Признак строгого вида записи
 						 *
 						 * @note Строгий вид отвергает неопределённую длину вместимого и
-						 * обязывает вести имена полей отображения по возрастанию их записи
+						 *       обязывает вести имена полей отображения по возрастанию их записи
 						 *
 						 * \~english
 						 * Flag of the strict kind of the record
+						 *
 						 * @note The strict kind rejects an indefinite length of a container and
-						 * obliges to lead the names of the fields of a mapping in the ascending order of their record
+						 *       obliges to lead the names of the fields of a mapping in the ascending order of their record
 						 *
 						 * \~
 						 */
@@ -227,14 +297,15 @@ namespace awh {
 						 * Порог укладки содержимого ссылкой в октетах, ноль - копировать всегда
 						 *
 						 * @note Настройка эта по умолчанию снята: содержимое, уложенное ссылкой,
-						 * обязано пережить выдачу записи, и обязанность эта ложится на потребителя.
-						 * Впрягать её всем без спроса нельзя
+						 *       обязано пережить выдачу записи, и обязанность эта ложится на потребителя.
+						 *       Впрягать её всем без спроса нельзя
 						 *
 						 * \~english
 						 * Threshold of the laying of the content by a reference in octets, zero — to copy always
+						 *
 						 * @note This setting is removed by default: the content laid by a reference
-						 * is obliged to outlive the issuance of the record, and this obligation lies upon the consumer.
-						 * It cannot be harnessed to everyone without asking
+						 *       is obliged to outlive the issuance of the record, and this obligation lies upon the consumer.
+						 *       It cannot be harnessed to everyone without asking
 						 *
 						 * \~
 						 */
@@ -244,31 +315,34 @@ namespace awh {
 						 * Порог объявления размаха вместимого в значениях, ноль - не объявлять
 						 *
 						 * @details Вместимое, несущее значений не менее порога, укладывается за
-						 * меткой размаха (`extend_t::SPANNED`): чтение вправе пропустить его
-						 * ОДНИМ сложением, вместо обхода всех его значений. Замер 21.08.2026:
-						 * обращение к полю за поддеревом из ста тысяч значений стоило ровно
-						 * столько же, сколько разбор всей записи, - 2 мс
+						 *          меткой размаха (`extend_t::SPANNED`): чтение вправе пропустить его
+						 *          ОДНИМ сложением, вместо обхода всех его значений. Замер 21.08.2026:
+						 *          обращение к полю за поддеревом из ста тысяч значений стоило ровно
+						 *          столько же, сколько разбор всей записи, - 2 мс.
 						 *
 						 * @note Настройка эта по умолчанию СНЯТА, и снята намеренно: метка
-						 * размаха есть расширение проволочной записи, и чтение, о ней не
-						 * знающее, такую запись не разберёт. Запись, собранная без настройки,
-						 * не отличается от прежней ни одним октетом
+						 *       размаха есть расширение проволочной записи, и чтение, о ней не
+						 *       знающее, такую запись не разберёт. Запись, собранная без настройки,
+						 *       не отличается от прежней ни одним октетом
 						 *
 						 * @note Порог задаётся в ЗНАЧЕНИЯХ, а не в октетах: размах в октетах
-						 * сборке при открытии вместимого ещё не известен, а количество значений
-						 * строгий вид записи объявляет наперёд
+						 *       сборке при открытии вместимого ещё не известен, а количество значений
+						 *       строгий вид записи объявляет наперёд
 						 *
 						 * \~english
 						 * Threshold of the declaration of the span of a container in values, zero — not to declare
+						 *
 						 * @details A container carrying no fewer values than the threshold is laid after a tag
-						 * of the span (`extend_t::SPANNED`): a reading is entitled to skip it by ONE addition
-						 * instead of a walk over all of its values
+						 *          of the span (`extend_t::SPANNED`): a reading is entitled to skip it by ONE addition
+						 *          instead of a walk over all of its values.
+						 *
 						 * @note This setting is REMOVED by default, and removed deliberately: the tag of the span
-						 * is an extension of the wire record, and a reading unaware of it will not parse such a record.
-						 * A record assembled without the setting does not differ from the former one by a single octet
+						 *       is an extension of the wire record, and a reading unaware of it will not parse such a record.
+						 *       A record assembled without the setting does not differ from the former one by a single octet
+						 *
 						 * @note The threshold is set in VALUES rather than in octets: the span in octets is not yet
-						 * known to the assembling upon the opening of a container, while the number of the values
-						 * is declared in advance by the strict kind of the record
+						 *       known to the assembling upon the opening of a container, while the number of the values
+						 *       is declared in advance by the strict kind of the record
 						 *
 						 * \~
 						 */
@@ -300,12 +374,17 @@ namespace awh {
 					 * @brief Отрезок записи имени поля отображения вместе со свёрткой его
 					 *
 					 * @details Свёртка держится РЯДОМ с отрезком, а не считается заново на всяком
-					 * сличении: перебор прежних имён растёт квадратом их количества, и полное
-					 * сличение октетов на всякой паре обходилось дорого. Устройство взято у
-					 * разбора (`Reader`) знак в знак
+					 *          сличении: перебор прежних имён растёт квадратом их количества, и полное
+					 *          сличение октетов на всякой паре обходилось дорого. Устройство взято у
+					 *          разбора (`Reader`) знак в знак.
 					 *
 					 * \~english
 					 * @brief Segment of the record of the name of a field of a mapping together with its digest
+					 *
+					 * @details The digest is held NEXT to the segment and is not recomputed at every comparison: an
+					 *          enumeration of the former names grows as the square of their number, and a full comparison
+					 *          of the octets at every pair cost dearly. The design is taken from the parsing (`Reader`)
+					 *          sign for sign.
 					 *
 					 * \~
 					 */
@@ -327,6 +406,10 @@ namespace awh {
 						 * \~english
 						 * @brief Constructor
 						 *
+						 * @param offset offset of the record of the name of a field
+						 * @param length length of the record of the name of a field
+						 * @param digest digest of the record of the name of a field
+						 *
 						 * \~
 						 */
 						Naming() noexcept : offset(0), length(0), digest(0) {}
@@ -340,6 +423,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
+						 * @param offset offset of the record of the name of a field
+						 * @param length length of the record of the name of a field
+						 * @param digest digest of the record of the name of a field
 						 *
 						 * \~
 						 */
@@ -365,18 +452,25 @@ namespace awh {
 						 * Отрезки записей всех имён полей вместимого
 						 *
 						 * @note Перечень ведётся ЛИШЬ при поверке повторов вне строгого вида: у
-						 * строгого вида имена идут по возрастанию, и сличения с предыдущим довольно,
-						 * а вне его повтор бывает через любое число полей
+						 *       строгого вида имена идут по возрастанию, и сличения с предыдущим довольно,
+						 *       а вне его повтор бывает через любое число полей
 						 *
 						 * @note Отрезки эти лежат НЕ в самом звене, а общим перечнем сборки
-						 * («_keys»), звено же держит лишь начало своей их части. Перечень в звене
-						 * заводил бы память на всякое вместимое: запись из ста тысяч отображений
-						 * стоила бы четырёхсот тысяч выделений против считанных единиц
+						 *       («_keys»), звено же держит лишь начало своей их части. Перечень в звене
+						 *       заводил бы память на всякое вместимое: запись из ста тысяч отображений
+						 *       стоила бы четырёхсот тысяч выделений против считанных единиц
 						 *
 						 * \~english
 						 * Beginning of the part of the shared list of the segments of the records of the names
-						 * @note The list is kept ONLY at the checking of the repeats outside the canonical kind
-						 * @note The segments lie in the shared list of the assembling rather than in the link itself
+						 *
+						 * @note The list is kept ONLY at the checking of the repeats outside the canonical kind: under the
+						 *       canonical kind the names go in the ascending order, and a comparison with the previous one is
+						 *       enough, while outside it a repeat happens through any number of fields
+						 *
+						 * @note The segments lie NOT in the link itself, but in a shared list of the assembly («_keys»),
+						 *       while the link holds only the beginning of its part of them. A list in the link would set up
+						 *       memory for every container: a record of a hundred thousand mappings would cost four hundred
+						 *       thousand allocations instead of a handful
 						 *
 						 * \~
 						 */
@@ -386,11 +480,14 @@ namespace awh {
 						 * Вместимость указателя имён полей вместимого, ноль - указатель не заведён
 						 *
 						 * @note Устройство взято у разбора (`Reader::duplicated`) знак в знак:
-						 * поверка повторов там и здесь решает один и тот же вопрос, и расходиться
-						 * им незачем
+						 *       поверка повторов там и здесь решает один и тот же вопрос, и расходиться
+						 *       им незачем
 						 *
 						 * \~english
 						 * Capacity of the index of the names of the fields of the container, zero if not created
+						 *
+						 * @note The design is taken from the parsing (`Reader::duplicated`) sign for sign: the check of the
+						 *       repeats there and here solves the very same question, and they have no reason to diverge
 						 *
 						 * \~
 						 */
@@ -400,19 +497,26 @@ namespace awh {
 						 * Смещение отведённого места записи размаха, ноль - размах не объявлен
 						 *
 						 * @note Ноль признаком отсутствия годится: перед размахом лежит хотя бы
-						 * метка расширения, и нулевым смещение его быть не может никогда
+						 *       метка расширения, и нулевым смещение его быть не может никогда
 						 *
 						 * @note Довод этот поверяется лишь у вместимого, ОТКРЫВАЮЩЕГО запись:
-						 * там метка расширения ложится на смещение ноль, а размах - на единицу,
-						 * и всякое смещение больше того довода не поверяет вовсе. Закреплено
-						 * проверкой `CodecAbcWriter.SpannedAtRecordStart` (01.09.2026); прежде
-						 * проверки размаха открывали запись отображением, и наименьшее смещение
-						 * места размаха у них было велико
+						 *       там метка расширения ложится на смещение ноль, а размах - на единицу,
+						 *       и всякое смещение больше того довода не поверяет вовсе. Закреплено
+						 *       проверкой `CodecAbcWriter.SpannedAtRecordStart` (01.09.2026); прежде
+						 *       проверки размаха открывали запись отображением, и наименьшее смещение
+						 *       места размаха у них было велико
 						 *
 						 * \~english
 						 * Offset of the set aside place of the record of the span, zero — the span is not declared
+						 *
 						 * @note Zero is fit as a sign of an absence: before the span there lies at least the tag
-						 * of the extension, and its offset can never be zero
+						 *       of the extension, and its offset can never be zero
+						 *
+						 * @note This argument is verified only for a container OPENING the record: there the tag of an
+						 *       extension lies at the offset zero, while the span - at one, and any offset greater than that
+						 *       does not verify the argument at all. Fixed by a check `CodecAbcWriter.SpannedAtRecordStart`
+						 *       (2026-09-01); before, the span checks opened a record by a mapping, and the least offset of the
+						 *       span site was large among them
 						 *
 						 * \~
 						 */
@@ -422,14 +526,15 @@ namespace awh {
 						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
 						 *
 						 * @note Значение, собираемое кусками, ведётся тем же стеком, что и
-						 * вместимые: закрывается оно тем же концом, а куски его не суть
-						 * значения вместившего
+						 *       вместимые: закрывается оно тем же концом, а куски его не суть
+						 *       значения вместившего
 						 *
 						 * \~english
 						 * Kind of the value assembled by the chunks, or UNDEFINED at a container
+						 *
 						 * @note A value assembled by the chunks is led by the same stack as the
-						 * containers: it is closed by the same end, while its chunks are not
-						 * the values of the container
+						 *       containers: it is closed by the same end, while its chunks are not
+						 *       the values of the container
 						 *
 						 * \~
 						 */
@@ -453,14 +558,15 @@ namespace awh {
 					 * @brief Врезка чужого содержимого в собираемую запись
 					 *
 					 * @details Врезка хранит место в буфере собираемой записи, куда содержимое
-					 * это встаёт, но октетов его не держит: они остаются у потребителя, и
-					 * запись выдаётся кусками, не склеиваясь в один буфер
+					 *          это встаёт, но октетов его не держит: они остаются у потребителя, и
+					 *          запись выдаётся кусками, не склеиваясь в один буфер.
 					 *
 					 * \~english
 					 * @brief Insertion of a foreign content into an assembled record
+					 *
 					 * @details The insertion holds the place in the buffer of the assembled record where
-					 * this content stands, but does not hold its octets: they remain at the consumer, and
-					 * the record is issued by the pieces without being glued into one buffer
+					 *          this content stands, but does not hold its octets: they remain at the consumer, and
+					 *          the record is issued by the pieces without being glued into one buffer.
 					 *
 					 * \~
 					 */
@@ -481,6 +587,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Constructor
+						 *
 						 * @param offset offset of the insertion in the buffer of the assembled record
 						 * @param buffer buffer of the octets of the insertion
 						 * @param size size of the octets of the insertion
@@ -503,14 +610,15 @@ namespace awh {
 					 * Буфер собираемой записи
 					 *
 					 * @note Буфер переменен у постоянного вида: выдача цельной записи вправе
-					 * вклеить в него содержимое, уложенное ссылкой, и потребителю от того
-					 * ничего не меняется
+					 *       вклеить в него содержимое, уложенное ссылкой, и потребителю от того
+					 *       ничего не меняется
 					 *
 					 * \~english
 					 * Buffer of the assembled record
+					 *
 					 * @note The buffer is mutable at a constant kind: the issuance of a whole record
-					 * has the right to glue into it the content laid by a reference, and for the consumer
-					 * nothing changes from that
+					 *       has the right to glue into it the content laid by a reference, and for the consumer
+					 *       nothing changes from that
 					 *
 					 * \~
 					 */
@@ -524,12 +632,13 @@ namespace awh {
 					 * Стек вместимых сборки
 					 *
 					 * @note Стек переменен у постоянного вида: вклейка содержимого, уложенного
-					 * ссылкой, сдвигает отрезки имён полей, отсчитанные от начала буфера
+					 *       ссылкой, сдвигает отрезки имён полей, отсчитанные от начала буфера
 					 *
 					 * \~english
 					 * Stack of the containers of the assembling
+					 *
 					 * @note The stack is mutable at a constant kind: the gluing of the content laid
-					 * by a reference shifts the segments of the names of the fields counted from the beginning of the buffer
+					 *       by a reference shifts the segments of the names of the fields counted from the beginning of the buffer
 					 *
 					 * \~
 					 */
@@ -539,20 +648,28 @@ namespace awh {
 					 * Отрезки записей имён полей всех вместимых стека
 					 *
 					 * @details Перечень общий: часть его, принадлежащая звену, начинается со
-					 * смещения «frame_t::base» и тянется до конца, ибо учёт имени ведётся лишь у
-					 * верхнего звена, а снятие звена усекает перечень до его начала
+					 *          смещения «frame_t::base» и тянется до конца, ибо учёт имени ведётся лишь у
+					 *          верхнего звена, а снятие звена усекает перечень до его начала.
 					 *
 					 * @note Перечень общий заведён ради памяти: он держит вместимость между
-					 * вместимыми, тогда как перечень в самом звене заводился бы заново на всякое
-					 * отображение записи
+					 *       вместимыми, тогда как перечень в самом звене заводился бы заново на всякое
+					 *       отображение записи
 					 *
 					 * @note Перечень переменен по той же причине, что и стек: вклейка содержимого,
-					 * уложенного ссылкой, сдвигает отрезки, отсчитанные от начала буфера
+					 *       уложенного ссылкой, сдвигает отрезки, отсчитанные от начала буфера
 					 *
 					 * \~english
 					 * Segments of the records of the names of the fields of all the containers of the stack
+					 *
 					 * @details The list is shared: the part belonging to a link begins at the offset «frame_t::base»
-					 * @note The shared list is set up for the sake of the memory: it keeps its capacity between the containers
+					 *          and stretches to the end, for the account of a name is kept only at the top link, and the
+					 *          removal of a link truncates the list to its beginning.
+					 *
+					 * @note The shared list is set up for the sake of the memory: it keeps its capacity between the
+					 *       containers, whereas a list in the link itself would be created anew for every mapping of a record
+					 *
+					 * @note The list is mutable for the same reason as the stack: the splice of a content laid by a
+					 *       reference shifts the segments counted from the beginning of the buffer
 					 *
 					 * \~
 					 */
@@ -563,12 +680,17 @@ namespace awh {
 					 * Указатели имён полей, свои у всякой глубины вложенности
 					 *
 					 * @details Держатся они СБОРКОЙ, а не звеном стека: звено заводится и
-					 * снимается на всякое вместимое, и указатель при нём стоил бы выделения
-					 * памяти на каждое из них. Держась глубиною, вместилище это переживает
-					 * закрытие вместимого и достаётся следующему той же глубины
+					 *          снимается на всякое вместимое, и указатель при нём стоил бы выделения
+					 *          памяти на каждое из них. Держась глубиною, вместилище это переживает
+					 *          закрытие вместимого и достаётся следующему той же глубины.
 					 *
 					 * \~english
 					 * @brief Indexes of the names of the fields, own for every depth of the nesting
+					 *
+					 * @details They are held by the ASSEMBLY, not by a link of the stack: a link is created and removed
+					 *          for every container, and an index beside it would cost a memory allocation for each of them.
+					 *          Held by the depth, this container outlives the closing of a container and is handed to the
+					 *          next one of the same depth.
 					 *
 					 * \~
 					 */
@@ -589,6 +711,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a refusal of the assembling
+					 *
 					 * @param error error code of the assembling
 					 * @return sign of the success of the assembling, always false
 					 *
@@ -604,6 +727,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the checking of the place a value is laid into
+					 *
 					 * @param container sign that a container is being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -619,6 +743,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the account of a laid value
+					 *
 					 * @param start offset of the beginning of the record of the laid value
 					 * @return sign of the success of the assembling
 					 *
@@ -634,6 +759,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the rebuilding of the index of the names of the fields of a container
+					 *
+					 * @param depth the depth of a link whose index is rebuilt
+					 * @param frame a link of the stack of the containers
+					 * @param needed the number of names the index must hold
 					 *
 					 * \~
 					 */
@@ -651,6 +780,12 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the checking of the name of a field of a mapping for a repeat
 					 *
+					 * @param frame a link of the stack of the containers whose field name is checked
+					 * @param offset an offset of the record of a field name from the beginning of the record being assembled
+					 * @param length the length of the record of the name of a field of a mapping
+					 * @param digest the digest of the record of the name of a field of a mapping
+					 * @return a sign that the field name has already been in this container
+					 *
 					 * \~
 					 */
 					[[nodiscard]] bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
@@ -666,6 +801,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the beginning of a container
+					 *
 					 * @param mapping sign that the container is a mapping
 					 * @param count number of the values of the container
 					 * @param indefinite sign of an indefinite length of the container
@@ -683,6 +819,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the end of a container
+					 *
 					 * @param mapping sign that the container is a mapping
 					 * @return sign of the success of the assembling
 					 *
@@ -698,6 +835,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the beginning of a value assembled by the chunks
+					 *
 					 * @param string sign that a string is being assembled rather than binary data
 					 * @return sign of the success of the laying
 					 *
@@ -713,6 +851,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the end of a value assembled by the chunks
+					 *
 					 * @param string sign that a string is being assembled rather than binary data
 					 * @return sign of the success of the laying
 					 *
@@ -724,14 +863,15 @@ namespace awh {
 					 * @brief Метод вклейки содержимого, уложенного ссылкой
 					 *
 					 * @details Врезки вклеиваются в буфер собираемой записи, а отрезки имён
-					 * полей, уложенных ранее, сдвигаются на вклеенное: смещения их отсчитаны от
-					 * начала буфера, и вклейка сдвинула бы их молча
+					 *          полей, уложенных ранее, сдвигаются на вклеенное: смещения их отсчитаны от
+					 *          начала буфера, и вклейка сдвинула бы их молча.
 					 *
 					 * \~english
 					 * @brief Method of the gluing of the content laid by a reference
+					 *
 					 * @details The insertions are glued into the buffer of the assembled record, while the segments of the names
-					 * of the fields laid earlier are shifted by the glued: their offsets are counted from
-					 * the beginning of the buffer, and the gluing would shift them silently
+					 *          of the fields laid earlier are shifted by the glued: their offsets are counted from
+					 *          the beginning of the buffer, and the gluing would shift them silently.
 					 *
 					 * \~
 					 */
@@ -741,7 +881,7 @@ namespace awh {
 					 * @brief Метод укладки октетов содержимого значения
 					 *
 					 * @details Содержимое, чей размер порог укладки ссылкой превысил, ложится
-					 * врезкой, а прочее копируется в буфер собираемой записи
+					 *          врезкой, а прочее копируется в буфер собираемой записи.
 					 *
 					 * @param buffer буфер укладываемых октетов
 					 * @param size   размер укладываемых октетов
@@ -749,8 +889,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the octets of the content of a value
+					 *
 					 * @details The content whose size has exceeded the threshold of the laying by a reference is laid
-					 * by an insertion, while the rest is copied into the buffer of the assembled record
+					 *          by an insertion, while the rest is copied into the buffer of the assembled record.
+					 *
 					 * @param buffer buffer of the octets being laid
 					 * @param size size of the octets being laid
 					 * @param copy sign that the copying of the content is obligatory
@@ -767,6 +909,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an empty value
+					 *
 					 * @return sign of the success of the assembling
 					 *
 					 * \~
@@ -781,6 +924,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of a logical value
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -796,6 +940,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an integer with a sign
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -811,6 +956,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an integer without a sign
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -826,6 +972,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of a fractional number of a double precision
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -841,6 +988,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of a fractional number of a single precision
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -856,6 +1004,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of a string
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -872,6 +1021,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of binary data
+					 *
 					 * @param buffer buffer of the data being laid
 					 * @param size size of the data being laid in octets
 					 * @return sign of the success of the assembling
@@ -888,6 +1038,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of a time stamp
+					 *
 					 * @param value value being laid
 					 * @return sign of the success of the assembling
 					 *
@@ -904,6 +1055,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an identifier
+					 *
 					 * @param buffer buffer of the identifier being laid
 					 * @param size size of the identifier being laid in octets
 					 * @return sign of the success of the assembling
@@ -916,8 +1068,8 @@ namespace awh {
 					 * @brief Метод укладки целого числа неограниченной ширины
 					 *
 					 * @details Октеты величины укладываются от младшего к старшему, и старший
-					 * октет нулевым быть не вправе: иначе одно и то же число получило бы
-					 * несколько записей, и строгий вид стал бы невозможен
+					 *          октет нулевым быть не вправе: иначе одно и то же число получило бы
+					 *          несколько записей, и строгий вид стал бы невозможен.
 					 *
 					 * @param buffer   буфер октетов величины
 					 * @param size     размер октетов величины
@@ -926,9 +1078,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an integer of an unlimited width
+					 *
 					 * @details The octets of the magnitude are laid from the low one to the high one, and the high
-					 * octet has no right to be a zero one: otherwise one and the same number would receive
-					 * several records, and the strict kind would become impossible
+					 *          octet has no right to be a zero one: otherwise one and the same number would receive
+					 *          several records, and the strict kind would become impossible.
+					 *
 					 * @param buffer buffer of the octets of the magnitude
 					 * @param size size of the octets of the magnitude
 					 * @param negative sign that the number is less than zero
@@ -944,6 +1098,7 @@ namespace awh {
 					 * @note Порядок, равный нулю, укладывается целым неограниченной ширины, а
 					 *       не десятичным числом: значение у них одно и то же, а строгий вид
 					 *       записи обязывает одному значению отвечать одной записи
+					 *
 					 * @note Закреплено проверками `CodecAbcWriter.ExtensionRoundtrip`,
 					 *       `CodecAbcDocument.Extensions` и `CodecAbcValue.AbsorbFromDocument`:
 					 *       подмена условия (порядок всегда дробным) краснит все три (04.09.2026)
@@ -956,9 +1111,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of a decimal number
+					 *
 					 * @note An exponent equal to zero is laid by an integer of an unlimited width rather
 					 *       than by a decimal number: their value is one and the same, while the strict kind
 					 *       of the record obliges one record to correspond to one value
+					 *
+					 * @note Fixed by the checks `CodecAbcWriter.ExtensionRoundtrip`, `CodecAbcDocument.Extensions` and
+					 *       `CodecAbcValue.AbsorbFromDocument`: a substitution of the condition (an exponent always by a
+					 *       fractional) turns all three red (2026-09-04)
+					 *
 					 * @param buffer buffer of the octets of the magnitude
 					 * @param size size of the octets of the magnitude
 					 * @param negative sign that the number is less than zero
@@ -973,12 +1134,12 @@ namespace awh {
 					 * @brief Метод укладки открытого расширения
 					 *
 					 * @details Расширение это заводится потребителем, а не модулем: номер подвида
-					 * толкует он сам, а запись несёт его вместе с октетами. Так к записи прибавляется
-					 * свой вид значения, и разбору чужой записи он не мешает ничем - разбиратель
-					 * выдаёт расширение отдельным событием, не пытаясь его толковать
+					 *          толкует он сам, а запись несёт его вместе с октетами. Так к записи прибавляется
+					 *          свой вид значения, и разбору чужой записи он не мешает ничем - разбиратель
+					 *          выдаёт расширение отдельным событием, не пытаясь его толковать.
 					 *
 					 * @note Номера подвидов модулем не заняты вовсе и потребителю принадлежат
-					 * целиком: соглашение о них есть дело того, кто запись пишет и читает
+					 *       целиком: соглашение о них есть дело того, кто запись пишет и читает
 					 *
 					 * @param subtype номер подвида расширения, заведённый потребителем
 					 * @param buffer  буфер октетов расширения
@@ -987,12 +1148,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of an open extension
+					 *
 					 * @details This extension is instituted by the consumer rather than by the module: the number of the subtype
-					 * is interpreted by it itself, while the record carries it together with the octets. Thus its own kind
-					 * of a value is added to the record, and it does not hinder the parsing of a foreign record in any way — the parser
-					 * issues the extension by a separate event without attempting to interpret it
+					 *          is interpreted by it itself, while the record carries it together with the octets. Thus its own kind
+					 *          of a value is added to the record, and it does not hinder the parsing of a foreign record in any way — the parser
+					 *          issues the extension by a separate event without attempting to interpret it.
+					 *
 					 * @note The numbers of the subtypes are not occupied by the module at all and belong to the consumer
-					 * entirely: the agreement about them is the affair of the one who writes and reads the record
+					 *       entirely: the agreement about them is the affair of the one who writes and reads the record
+					 *
 					 * @param subtype number of the subtype of the extension instituted by the consumer
 					 * @param buffer buffer of the octets of the extension
 					 * @param size size of the octets of the extension
@@ -1011,6 +1175,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the beginning of an array of a declared length
+					 *
 					 * @param count number of the values of the array
 					 * @return sign of the success of the assembling
 					 *
@@ -1021,26 +1186,32 @@ namespace awh {
 					 * @brief Метод начала строки, собираемой кусками
 					 *
 					 * @details Строка эта кладётся, когда длина её наперёд неизвестна: куски
-					 * её ложатся один за другим обыкновенными строками, а концом объявляется
-					 * их завершение. Так большой текст уходит в запись потоком, не собираясь
-					 * в памяти целиком
+					 *          её ложатся один за другим обыкновенными строками, а концом объявляется
+					 *          их завершение. Так большой текст уходит в запись потоком, не собираясь
+					 *          в памяти целиком.
 					 *
 					 * @note Строгий вид записи неопределённую длину отвергает: длина обязана
-					 * быть объявлена, иначе запись одного и того же значения выйдет разной
+					 *       быть объявлена, иначе запись одного и того же значения выйдет разной
 					 *
 					 * @note Закреплено проверкой `CodecAbcWriter.Canonical`: снятие заслона
-					 * краснит её (04.09.2026)
+					 *       краснит её (04.09.2026)
 					 *
 					 * @return признак успешности укладки
 					 *
 					 * \~english
 					 * @brief Method of the beginning of a string assembled by the chunks
+					 *
 					 * @details This string is laid when its length is not known beforehand: its chunks
-					 * lie one after another as ordinary strings, while their completion is declared by the end.
-					 * Thus a large text goes into the record by a stream without being assembled
-					 * in the memory as a whole
+					 *          lie one after another as ordinary strings, while their completion is declared by the end.
+					 *          Thus a large text goes into the record by a stream without being assembled
+					 *          in the memory as a whole.
+					 *
 					 * @note The strict kind of the record rejects an indefinite length: the length is obliged
-					 * to be declared, otherwise the record of one and the same value will come out different
+					 *       to be declared, otherwise the record of one and the same value will come out different
+					 *
+					 * @note Fixed by a check `CodecAbcWriter.Canonical`: the removal of the guard turns it red
+					 *       (2026-09-04)
+					 *
 					 * @return sign of the success of the laying
 					 *
 					 * \~
@@ -1054,6 +1225,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the end of a string assembled by the chunks
+					 *
 					 * @return sign of the success of the laying
 					 *
 					 * \~
@@ -1067,6 +1239,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the beginning of binary data assembled by the chunks
+					 *
 					 * @return sign of the success of the laying
 					 *
 					 * \~
@@ -1080,6 +1253,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the end of binary data assembled by the chunks
+					 *
 					 * @return sign of the success of the laying
 					 *
 					 * \~
@@ -1094,6 +1268,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the beginning of an array of an indefinite length
+					 *
 					 * @return sign of the success of the assembling
 					 *
 					 * \~
@@ -1107,6 +1282,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the end of an array
+					 *
 					 * @return sign of the success of the assembling
 					 *
 					 * \~
@@ -1121,6 +1297,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the beginning of a mapping of a declared length
+					 *
 					 * @param count number of the pairs of the mapping
 					 * @return sign of the success of the assembling
 					 *
@@ -1135,6 +1312,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the beginning of a mapping of an indefinite length
+					 *
 					 * @return sign of the success of the assembling
 					 *
 					 * \~
@@ -1148,6 +1326,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the laying of the end of a mapping
+					 *
 					 * @return sign of the success of the assembling
 					 *
 					 * \~
@@ -1159,22 +1338,24 @@ namespace awh {
 					 * @brief Метод сброса состояния сборки
 					 *
 					 * @details Сброс опустошает вместилища сборки, СОХРАНЯЯ их запас, и тем
-					 * снимает выдачу памяти со всякой последующей записи. Собирающему
-					 * многие записи подряд надлежит держать одну сборку и звать сброс, а не
-					 * заводить сборку на всякую запись
+					 *          снимает выдачу памяти со всякой последующей записи. Собирающему
+					 *          многие записи подряд надлежит держать одну сборку и звать сброс, а не
+					 *          заводить сборку на всякую запись.
 					 *
 					 * @note Замер 23.08.2026, малая запись, 200 000 кругов: своя сборка на
-					 * всякую запись идёт 0.17 мкс, одна сборка со сбросом - 0.04 мкс, то
-					 * есть в ЧЕТЫРЕ раза быстрее. Плата эта приходится на заведение трёх
-					 * вместилищ и на возврат их системе, а не на саму укладку
+					 *       всякую запись идёт 0.17 мкс, одна сборка со сбросом - 0.04 мкс, то
+					 *       есть в ЧЕТЫРЕ раза быстрее. Плата эта приходится на заведение трёх
+					 *       вместилищ и на возврат их системе, а не на саму укладку
 					 *
 					 * \~english
 					 * @brief Method of the reset of the state of the assembling
+					 *
 					 * @details The reset empties the containers of the assembling KEEPING their reserve,
-					 * and thereby removes the allocation of memory from every subsequent record
+					 *          and thereby removes the allocation of memory from every subsequent record.
+					 *
 					 * @note Measurement of 23.08.2026, a small record, 200 000 rounds: an own assembling
-					 * per every record runs at 0.17 us, a single assembling with a reset — at 0.04 us,
-					 * that is FOUR times faster
+					 *       per every record runs at 0.17 us, a single assembling with a reset — at 0.04 us,
+					 *       that is FOUR times faster
 					 *
 					 * \~
 					 */
@@ -1184,14 +1365,16 @@ namespace awh {
 					 * @brief Метод проверки завершённости собранной записи
 					 *
 					 * @details Запись завершена, когда все вместимые закрыты и уложен хотя бы
-					 * один документ
+					 *          один документ.
 					 *
 					 * @return признак завершённости собранной записи
 					 *
 					 * \~english
 					 * @brief Method of the checking of the completeness of an assembled record
+					 *
 					 * @details A record is completed when all the containers are closed and at least
-					 * one document is laid
+					 *          one document is laid.
+					 *
 					 * @return sign of the completeness of the assembled record
 					 *
 					 * \~
@@ -1205,6 +1388,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an assembled record
+					 *
 					 * @return assembled record
 					 *
 					 * \~
@@ -1215,21 +1399,24 @@ namespace awh {
 					 * @brief Метод извлечения собранной записи кусками
 					 *
 					 * @details Куски эти подаются средству записи россыпью - скажем, вызовом
-					 * writev: содержимое, уложенное ссылкой, в буфер записи не копируется вовсе,
-					 * и крупные значения уходят наружу, не быв удвоены в памяти
+					 *          writev: содержимое, уложенное ссылкой, в буфер записи не копируется вовсе,
+					 *          и крупные значения уходят наружу, не быв удвоены в памяти.
 					 *
 					 * @note Куски ссылаются на память сборки и на память потребителя: живут они
-					 * не дольше и той, и другой
+					 *       не дольше и той, и другой
 					 *
 					 * @return куски собранной записи по порядку
 					 *
 					 * \~english
 					 * @brief Method of the extraction of an assembled record by the pieces
+					 *
 					 * @details These pieces are submitted to the means of the writing scattered — say, by the call of
-					 * writev: the content laid by a reference is not copied into the buffer of the record at all,
-					 * and the large values go outside without having been doubled in the memory
+					 *          writev: the content laid by a reference is not copied into the buffer of the record at all,
+					 *          and the large values go outside without having been doubled in the memory.
+					 *
 					 * @note The pieces refer to the memory of the assembling and to the memory of the consumer: they live
-					 * no longer than both the one and the other
+					 *       no longer than both the one and the other
+					 *
 					 * @return pieces of the assembled record in order
 					 *
 					 * \~
@@ -1240,14 +1427,16 @@ namespace awh {
 					 * @brief Метод извлечения длины собранной записи
 					 *
 					 * @note Длина эта считает и содержимое, уложенное ссылкой, оттого размеру
-					 * буфера собираемой записи она равна не всегда
+					 *       буфера собираемой записи она равна не всегда
 					 *
 					 * @return длина собранной записи в октетах
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the length of an assembled record
+					 *
 					 * @note This length counts the content laid by a reference as well, whereby it is not always
-					 * equal to the size of the buffer of the assembled record
+					 *       equal to the size of the buffer of the assembled record
+					 *
 					 * @return length of the assembled record in octets
 					 *
 					 * \~
@@ -1261,6 +1450,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the error code of the assembling
+					 *
 					 * @return error code of the assembling
 					 *
 					 * \~
@@ -1274,6 +1464,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the depth of the nesting of the assembling
+					 *
 					 * @return depth of the nesting of the assembling
 					 *
 					 * \~
@@ -1288,6 +1479,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the settings of the assembling of a record
+					 *
 					 * @return settings of the assembling of a record
 					 *
 					 * \~
@@ -1301,6 +1493,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the assembling of a record
+					 *
 					 * @param settings settings of the assembling of a record being set
 					 *
 					 * \~

@@ -307,7 +307,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(service().size(), SMALL_ROUNDS, [&document]() noexcept {
 			// Выполняем обратную запись дерева в текст настроек
-			return static_cast <uint64_t> (document.text().size());
+			return static_cast <uint64_t> (document.dump().size());
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);

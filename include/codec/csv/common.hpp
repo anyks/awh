@@ -83,8 +83,8 @@ namespace awh {
 		 * @brief Пространство имён контейнера CSV
 		 *
 		 * @details Разбор и запись значений, разделённых знаком-разделителем: записей из
-		 * полей, где поле вправе быть заключено в кавычки и содержать внутри себя и
-		 * разделитель, и перевод строки, и сами кавычки
+		 *          полей, где поле вправе быть заключено в кавычки и содержать внутри себя и
+		 *          разделитель, и перевод строки, и сами кавычки.
 		 *
 		 * @par Намеренные решения
 		 *
@@ -101,70 +101,70 @@ namespace awh {
 		 *          законных прочтения
 		 *
 		 * @li **Договор RFC 4180 описывает не всё, что встречается на деле.** Документ
-		 * этот носит звание информационного, а не обязательного, и сам себя объявляет
-		 * описанием сложившегося обихода. Оттого разбор ведётся строго по нему лишь в
-		 * согласии с настройками: сверх описанного признаются разделители помимо запятой,
-		 * перевод строки одиночным знаком, поля с обвязкой вокруг кавычек и записи с
-		 * разным числом полей. Каждое послабление - отдельная настройка, а не общий
-		 * признак «нестрого»: без этого нельзя ни сказать, что именно разбирается, ни
-		 * закрепить это испытанием
+		 *     этот носит звание информационного, а не обязательного, и сам себя объявляет
+		 *     описанием сложившегося обихода. Оттого разбор ведётся строго по нему лишь в
+		 *     согласии с настройками: сверх описанного признаются разделители помимо запятой,
+		 *     перевод строки одиночным знаком, поля с обвязкой вокруг кавычек и записи с
+		 *     разным числом полей. Каждое послабление - отдельная настройка, а не общий
+		 *     признак «нестрого»: без этого нельзя ни сказать, что именно разбирается, ни
+		 *     закрепить это испытанием
 		 *
 		 * @li **Тип поля не выводится.** Поле всегда выдаётся последовательностью знаков,
-		 * а приведение к числу либо к логическому значению делается по явному запросу.
-		 * Угадывание типа порождает разночтения: запись «1.10» числом теряет разряд,
-		 * «007» разбирается то восьмеричным, то десятичным, а «2026-08-12» отметкой
-		 * времени - в зависимости от разбирающего. Отдельно неприятен случай, когда
-		 * угаданный тип меняется от строки к строке в пределах одного столбца
+		 *     а приведение к числу либо к логическому значению делается по явному запросу.
+		 *     Угадывание типа порождает разночтения: запись «1.10» числом теряет разряд,
+		 *     «007» разбирается то восьмеричным, то десятичным, а «2026-08-12» отметкой
+		 *     времени - в зависимости от разбирающего. Отдельно неприятен случай, когда
+		 *     угаданный тип меняется от строки к строке в пределах одного столбца
 		 *
 		 * @li **Кавычки внутри поля без кавычек разбором признаются.** Запись вида
-		 * «a"b» договором не описана вовсе. Отвечать на неё отказом значило бы отвергать
-		 * файлы, которые пишут и читают все прочие; кавычка признаётся здесь
-		 * обыкновенным знаком. Строгое прочтение включается настройкой
+		 *     «a"b» договором не описана вовсе. Отвечать на неё отказом значило бы отвергать
+		 *     файлы, которые пишут и читают все прочие; кавычка признаётся здесь
+		 *     обыкновенным знаком. Строгое прочтение включается настройкой
 		 *
 		 * @li **Признак заголовка задаётся, а не угадывается.** Договор относит наличие
-		 * заголовка к сведениям о содержимом, передаваемым отдельно от самого текста, и
-		 * это не случайность: угадать заголовок нельзя - файл из одних лишь строковых
-		 * значений неотличим от файла с заголовком. Настройка признака поэтому имеет
-		 * ровно два положения, и «самостоятельного» среди них нет
+		 *     заголовка к сведениям о содержимом, передаваемым отдельно от самого текста, и
+		 *     это не случайность: угадать заголовок нельзя - файл из одних лишь строковых
+		 *     значений неотличим от файла с заголовком. Настройка признака поэтому имеет
+		 *     ровно два положения, и «самостоятельного» среди них нет
 		 *
 		 * @li **Разделитель определяется по содержимому, но лишь по запросу.** Умолчанием
-		 * берётся запятая, названная договором. Самостоятельное определение включается
-		 * настройкой и опирается на постоянство числа полей в записях, а не на частоту
-		 * знака: частота обманывается текстом, где запятых в значениях больше, чем
-		 * разделителей
+		 *     берётся запятая, названная договором. Самостоятельное определение включается
+		 *     настройкой и опирается на постоянство числа полей в записях, а не на частоту
+		 *     знака: частота обманывается текстом, где запятых в значениях больше, чем
+		 *     разделителей
 		 *
 		 * @li **Приведение окончаний строк к единому виду не производится.** Перевод
-		 * строки внутри поля в кавычках выдаётся ровно тем, каким записан: договор велит
-		 * хранить содержимое поля неизменным, а приведение испортило бы значения, где
-		 * знаки эти значащие
+		 *     строки внутри поля в кавычках выдаётся ровно тем, каким записан: договор велит
+		 *     хранить содержимое поля неизменным, а приведение испортило бы значения, где
+		 *     знаки эти значащие
 		 *
 		 * @li **Поле в кавычках, не закрытое до конца текста, признаётся отказом.**
-		 * Прочие разбирающие - и модуль csv языка Python в их числе - выдают накопленное
-		 * содержимое как есть, и потому сличение с ними на такой записи расходится
-		 * намеренно. Молчаливая выдача здесь неотличима от целого поля, а причина у
-		 * такого текста ровно одна: он оборван - будь то передача, прерванная на
-		 * середине, обрезанный по размеру файл либо запись, не доведённая до конца.
-		 * Выдать оборванное за целое значило бы потерять данные молча, тогда как отказ
-		 * доводит обрыв до потребителя. Накопленное при этом не пропадает: разбор выдал
-		 * все записи, предшествующие обрыву
+		 *     Прочие разбирающие - и модуль csv языка Python в их числе - выдают накопленное
+		 *     содержимое как есть, и потому сличение с ними на такой записи расходится
+		 *     намеренно. Молчаливая выдача здесь неотличима от целого поля, а причина у
+		 *     такого текста ровно одна: он оборван - будь то передача, прерванная на
+		 *     середине, обрезанный по размеру файл либо запись, не доведённая до конца.
+		 *     Выдать оборванное за целое значило бы потерять данные молча, тогда как отказ
+		 *     доводит обрыв до потребителя. Накопленное при этом не пропадает: разбор выдал
+		 *     все записи, предшествующие обрыву
 		 *
 		 * @li **Внешние файлы не подключаются и содержимое полей не исполняется.**
-		 * Значение, начинающееся со знака равенства либо плюса, выдаётся
-		 * последовательностью знаков как есть: подстановка его в вычисляемое выражение -
-		 * дело потребителя, и защита от неё тоже
+		 *     Значение, начинающееся со знака равенства либо плюса, выдаётся
+		 *     последовательностью знаков как есть: подстановка его в вычисляемое выражение -
+		 *     дело потребителя, и защита от неё тоже
 		 *
 		 *
 		 * @li **Знак кавычек, равный нулю, разбору безвреден, а записи противоречив.**
-		 * Разбор при нём просто перестаёт признавать ограду, и знаки кавычек переносятся
-		 * в содержимое дословно: настройка эта вреда не творит, и сторожа при ней не
-		 * заведено НАМЕРЕННО — закреплено проверкою
-		 * `CodecCsvReader.ContradictorySettingsAreHandledDeliberately`. Запись же при нём
-		 * оградить поле НЕЧЕМ, и отказ отвечает кодом `SEPARATOR_CONFLICT`: до 07.09.2026
-		 * поле оборачивалось нулевыми байтами, обе стороны отвечали успехом, а текст не
-		 * читался ничем — круговой ход рвался молча. Кто ограды не желает вовсе, задаёт
-		 * способ записи `quoting_t::NONE`, для того и заведённый; снятие ограды нулевым
-		 * знаком есть промах потребителя, а не способ записи. Закреплено проверкою
-		 * `CodecCsvWriter.MissingQuoteCharacterRefusesInsteadOfWritingNulBytes`
+		 *     Разбор при нём просто перестаёт признавать ограду, и знаки кавычек переносятся
+		 *     в содержимое дословно: настройка эта вреда не творит, и сторожа при ней не
+		 *     заведено НАМЕРЕННО — закреплено проверкою
+		 *     `CodecCsvReader.ContradictorySettingsAreHandledDeliberately`. Запись же при нём
+		 *     оградить поле НЕЧЕМ, и отказ отвечает кодом `SEPARATOR_CONFLICT`: до 07.09.2026
+		 *     поле оборачивалось нулевыми байтами, обе стороны отвечали успехом, а текст не
+		 *     читался ничем — круговой ход рвался молча. Кто ограды не желает вовсе, задаёт
+		 *     способ записи `quoting_t::NONE`, для того и заведённый; снятие ограды нулевым
+		 *     знаком есть промах потребителя, а не способ записи. Закреплено проверкою
+		 *     `CodecCsvWriter.MissingQuoteCharacterRefusesInsteadOfWritingNulBytes`
 		 *
 		 * @note Решение это записано здесь по доводу 07.09.2026: прежде оно жило ЛИШЬ
 		 *       в пояснении при проверке, и чтением самого кодека его найти было нельзя.
@@ -173,12 +173,12 @@ namespace awh {
 		 *
 		 *
 		 * @li **Обращение к полю по имени есть только ПОСТОЯННОЕ — и это ВОПРОС, а не решение.**
-		 * У кодеков JSON, XML и YAML видов два: постоянный разыскивает, неконстантный заводит
-		 * недостающее звено. У таблицы неконстантного вида нет вовсе, и поле её заводится
-		 * записью, а не обращением. Довод в пользу такого устройства есть — таблица
-		 * прямоугольна, и заведение поля у одной записи разошлось бы с прочими, — но решения
-		 * по нему не было: расхождение вынесено 07.09.2026 вместе с `type()`, `graft()`,
-		 * `separator` и способом отступа, и ответа пока нет
+		 *     У кодеков JSON, XML и YAML видов два: постоянный разыскивает, неконстантный заводит
+		 *     недостающее звено. У таблицы неконстантного вида нет вовсе, и поле её заводится
+		 *     записью, а не обращением. Довод в пользу такого устройства есть — таблица
+		 *     прямоугольна, и заведение поля у одной записи разошлось бы с прочими, — но решения
+		 *     по нему не было: расхождение вынесено 07.09.2026 вместе с `type()`, `graft()`,
+		 *     `separator` и способом отступа, и ответа пока нет
 		 *
 		 * @warning Запись эта стоит здесь НЕ как оправдание устройства, а как отметка о
 		 *          нерешённом: следующий, кто увидит расхождение, должен узнать, что оно
@@ -188,57 +188,111 @@ namespace awh {
 
 		 * \~english
 		 * @brief CSV container namespace
+		 *
 		 * @details The parsing and the writing of the values separated by a separator character: of the records made of
-		 * the fields, where a field has the right to be enclosed in quotes and to contain inside itself both
-		 * the separator, and a line feed, and the quotes themselves
+		 *          the fields, where a field has the right to be enclosed in quotes and to contain inside itself both
+		 *          the separator, and a line feed, and the quotes themselves.
+		 *
 		 * @par Deliberate decisions
-		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
-		 * task, and each of the decisions is fixed by a verifying test
+		 *      What is listed below is not a gap of the implementation: these are the outlined
+		 *      boundaries of the task, and each of the decisions ON THE BEHAVIOUR is fixed by a
+		 *      verifying test
+		 *
+		 * @warning The reservation "on the behaviour" stands by a measurement of 2026-09-01: the
+		 *          decision "the external files are not included and the content of the fields is
+		 *          not executed" speaks of an ABSENCE of a work, and it cannot be fixed by a test -
+		 *          it is fixed by the absence of such a work in the sources. The very same
+		 *          measurement laid bare that the argument of the decision about a header ("it
+		 *          cannot be guessed") had no fixing, although the behaviour of the setting itself
+		 *          has long been fixed: `HeaderCannotBeGuessedFromTheText` is made, where one and
+		 *          the same text gives two lawful readings
+		 *
 		 * @li **The RFC 4180 protocol describes not everything that is met in practice.** That document
-		 * bears the rank of an informational rather than an obligatory one, and it declares itself
-		 * a description of an established custom. Because of that the parsing is conducted strictly by it only in
-		 * accordance with the settings: beyond what is described, separators other than the comma are recognized,
-		 * a line feed by a single character, fields with a padding around the quotes and records with
-		 * a differing number of fields. Every relaxation is a separate setting rather than a common
-		 * «non-strict» flag: without this one can neither say what exactly is being parsed nor
-		 * fix it by a test
+		 *     bears the rank of an informational rather than an obligatory one, and it declares itself
+		 *     a description of an established custom. Because of that the parsing is conducted strictly by it only in
+		 *     accordance with the settings: beyond what is described, separators other than the comma are recognized,
+		 *     a line feed by a single character, fields with a padding around the quotes and records with
+		 *     a differing number of fields. Every relaxation is a separate setting rather than a common
+		 *     «non-strict» flag: without this one can neither say what exactly is being parsed nor
+		 *     fix it by a test
+		 *
 		 * @li **The type of a field is not inferred.** A field is always issued as a sequence of characters,
-		 * while a conversion to a number or to a logical value is done upon an explicit request.
-		 * A guessing of the type gives birth to discrepancies: the record «1.10» as a number loses a digit,
-		 * «007» is parsed now as an octal, now as a decimal one, while «2026-08-12» as a timestamp —
-		 * depending on the one parsing. Especially unpleasant is the case when
-		 * a guessed type changes from row to row within a single column
+		 *     while a conversion to a number or to a logical value is done upon an explicit request.
+		 *     A guessing of the type gives birth to discrepancies: the record «1.10» as a number loses a digit,
+		 *     «007» is parsed now as an octal, now as a decimal one, while «2026-08-12» as a timestamp —
+		 *     depending on the one parsing. Especially unpleasant is the case when
+		 *     a guessed type changes from row to row within a single column
+		 *
 		 * @li **Quotes inside a field without quotes are recognized by the parsing.** A record of the form
-		 * «a"b» is not described by the protocol at all. To answer it with a refusal would mean to reject
-		 * the files which all the others write and read; a quote is recognized here as
-		 * an ordinary character. A strict reading is enabled by a setting
+		 *     «a"b» is not described by the protocol at all. To answer it with a refusal would mean to reject
+		 *     the files which all the others write and read; a quote is recognized here as
+		 *     an ordinary character. A strict reading is enabled by a setting
+		 *
 		 * @li **The flag of a header is given rather than guessed.** The protocol assigns the presence
-		 * of a header to the information about the content transmitted separately from the text itself, and
-		 * this is not by chance: a header cannot be guessed — a file made of string values alone
-		 * is indistinguishable from a file with a header. The setting of the flag therefore has
-		 * exactly two positions, and there is no «automatic» one among them
+		 *     of a header to the information about the content transmitted separately from the text itself, and
+		 *     this is not by chance: a header cannot be guessed — a file made of string values alone
+		 *     is indistinguishable from a file with a header. The setting of the flag therefore has
+		 *     exactly two positions, and there is no «automatic» one among them
+		 *
 		 * @li **The separator is determined by the content, but only upon a request.** By default
-		 * the comma named by the protocol is taken. An automatic determination is enabled by a
-		 * setting and relies on the constancy of the number of the fields in the records rather than on the frequency of a
-		 * character: the frequency is deceived by a text where there are more commas in the values than
-		 * separators
+		 *     the comma named by the protocol is taken. An automatic determination is enabled by a
+		 *     setting and relies on the constancy of the number of the fields in the records rather than on the frequency of a
+		 *     character: the frequency is deceived by a text where there are more commas in the values than
+		 *     separators
+		 *
 		 * @li **A conversion of the line endings to a single form is not performed.** A line
-		 * feed inside a field in quotes is issued exactly as it has been written: the protocol orders
-		 * to keep the content of a field unchanged, while a conversion would spoil the values where
-		 * those characters are significant
+		 *     feed inside a field in quotes is issued exactly as it has been written: the protocol orders
+		 *     to keep the content of a field unchanged, while a conversion would spoil the values where
+		 *     those characters are significant
+		 *
 		 * @li **A field in quotes not closed by the end of the text is recognized as a refusal.**
-		 * The other parsers — and the csv module of the Python language among them — issue the accumulated
-		 * content as it is, and therefore a comparison with them on such a record diverges
-		 * deliberately. A silent issuance here is indistinguishable from a whole field, while the reason for
-		 * such a text is exactly one: it has been cut off — be it a transmission interrupted in the
-		 * middle, a file truncated by size or a record not brought to the end.
-		 * To pass off what has been cut off as a whole thing would mean to lose the data silently, whereas a refusal
-		 * brings the cut-off to the consumer. What has been accumulated is not lost thereby: the parsing has issued
-		 * all the records preceding the cut-off
+		 *     The other parsers — and the csv module of the Python language among them — issue the accumulated
+		 *     content as it is, and therefore a comparison with them on such a record diverges
+		 *     deliberately. A silent issuance here is indistinguishable from a whole field, while the reason for
+		 *     such a text is exactly one: it has been cut off — be it a transmission interrupted in the
+		 *     middle, a file truncated by size or a record not brought to the end.
+		 *     To pass off what has been cut off as a whole thing would mean to lose the data silently, whereas a refusal
+		 *     brings the cut-off to the consumer. What has been accumulated is not lost thereby: the parsing has issued
+		 *     all the records preceding the cut-off
+		 *
 		 * @li **External files are not included and the content of the fields is not executed.**
-		 * A value beginning with an equals sign or a plus is issued as
-		 * a sequence of characters as it is: its substitution into a computed expression is
-		 * the business of the consumer, and the protection from it as well
+		 *     A value beginning with an equals sign or a plus is issued as
+		 *     a sequence of characters as it is: its substitution into a computed expression is
+		 *     the business of the consumer, and the protection from it as well
+		 *
+		 * @li **A quote character equal to zero is harmless to the parsing and contradictory to
+		 *     the writing.** At it the parsing simply ceases to recognize an enclosure, and the quote
+		 *     characters are carried into the content verbatim: this setting works no harm, and no
+		 *     guard is made at it DELIBERATELY - it is fixed by the check
+		 *     `CodecCsvReader.ContradictorySettingsAreHandledDeliberately`. The writing, on the
+		 *     contrary, has NOTHING to enclose a field with, and answers a refusal by the code
+		 *     `SEPARATOR_CONFLICT`: before 2026-09-07 a field was wrapped in zero bytes, both sides
+		 *     answered with a success, while the text was readable by nothing - a round trip broke
+		 *     silently. Who wants no enclosure at all sets the writing form `quoting_t::NONE`, and
+		 *     for that it was made; a removal of an enclosure by a zero character is a slip of the
+		 *     consumer, and not a form of the writing. Fixed by the check
+		 *     `CodecCsvWriter.MissingQuoteCharacterRefusesInsteadOfWritingNulBytes`
+		 *
+		 * @note This decision is written here by an argument of 2026-09-07: before it lived ONLY in
+		 *       an explanation at a check, and by a reading of the codec itself it could not be
+		 *       found. Two in a row went to repair a "defect" and ran into a red line of the set -
+		 *       an argument at the place of the code saves a road walked twice
+		 *
+		 * @li **An addressing to a field by a name exists as CONSTANT ONLY - and that is a
+		 *     QUESTION, not a decision.** At the codecs JSON, XML and YAML there are two forms: a
+		 *     constant one searches, while a non-constant one creates a missing link. A table has no
+		 *     non-constant form at all, and its field is created by a writing, and not by an
+		 *     addressing. An argument in favor of such an arrangement exists - a table is
+		 *     rectangular, and a creating of a field at one record would part from the rest, - but
+		 *     no decision upon it was taken: the divergence was brought out on 2026-09-07 together
+		 *     with `type()`, `graft()`, `separator` and the form of an indent, and there is no
+		 *     answer yet
+		 *
+		 * @warning This writing stands here NOT as a justification of the arrangement, but as a
+		 *          mark of an unresolved: the next who sees a discrepancy ought to learn that it has
+		 *          been noticed and brought out, - and not to open the question anew. Should it be
+		 *          resolved in favor of a creating, this writing is to be removed together with the
+		 *          edit, and not after it
 		 *
 		 * \~
 		 */
@@ -248,14 +302,15 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина поля в байтах
 			 *
 			 * @details Предел считается на поле целиком - вместе со всеми строками поля,
-			 * заключённого в кавычки, - иначе перевод строки внутри поля давал бы обход
-			 * предела
+			 *          заключённого в кавычки, - иначе перевод строки внутри поля давал бы обход
+			 *          предела.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of a field in bytes
+			 *
 			 * @details The limit is counted over the field as a whole — together with all the lines of a field
-			 * enclosed in quotes — otherwise a line feed inside a field would give a bypass
-			 * of the limit
+			 *          enclosed in quotes — otherwise a line feed inside a field would give a bypass
+			 *          of the limit.
 			 *
 			 * \~
 			 */
@@ -266,12 +321,13 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина записи в байтах
 			 *
 			 * @details Записью считается строка целиком со всеми своими полями. Предел
-			 * этот ограничивает объём, удерживаемый разбором в памяти на одну запись
+			 *          этот ограничивает объём, удерживаемый разбором в памяти на одну запись.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of a record in bytes
+			 *
 			 * @details A record is the whole line with all its fields. This limit
-			 * limits the volume held by the parsing in the memory per record
+			 *          limits the volume held by the parsing in the memory per record.
 			 *
 			 * \~
 			 */
@@ -293,14 +349,15 @@ namespace awh {
 			 * @brief Количество первых записей, по которым определяется разделитель
 			 *
 			 * @details Просмотр ведётся до этого числа записей либо до конца текста -
-			 * смотря что раньше. Числа этого довольно, чтобы постоянство количества полей
-			 * проявилось, и мало настолько, чтобы удержать просмотренное в памяти
+			 *          смотря что раньше. Числа этого довольно, чтобы постоянство количества полей
+			 *          проявилось, и мало настолько, чтобы удержать просмотренное в памяти.
 			 *
 			 * \~english
 			 * @brief Number of the first records by which the separator is determined
+			 *
 			 * @details The survey is conducted up to this number of records or to the end of the text —
-			 * whichever comes first. This number is enough for the constancy of the number of the fields
-			 * to manifest itself, and small enough to hold what has been surveyed in the memory
+			 *          whichever comes first. This number is enough for the constancy of the number of the fields
+			 *          to manifest itself, and small enough to hold what has been surveyed in the memory.
 			 *
 			 * \~
 			 */
@@ -333,12 +390,13 @@ namespace awh {
 			 * @brief Коды ошибок разбора текста
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
-			 * вместе с положением в исходном тексте, где отказ произошёл
+			 *          вместе с положением в исходном тексте, где отказ произошёл.
 			 *
 			 * \~english
 			 * @brief Error codes of the parsing of a text
+			 *
 			 * @details The parsing does not throw exceptions: the error code together with the position
-			 * in the source text where the refusal has occurred serves as the sign of a refusal
+			 *          in the source text where the refusal has occurred serves as the sign of a refusal.
 			 *
 			 * \~
 			 */
@@ -383,6 +441,17 @@ namespace awh {
 				 * \~english
 				 * The encoding of the source text has been changed in the middle of the feed
 				 *
+				 * @note The code was introduced on 2026-09-08 for the sake of the agreement of three codecs: a
+				 *       change of the encoding in the middle of a feed is impossible, and not one of them had a
+				 *       code of its own for such a case. The JSON codec answered `UNSUPPORTED_ENCODING` - a
+				 *       foreign sense, for the kind asked is supported in full, and the trouble lies in the
+				 *       moment of the change, - while the XML and CSV codecs dropped the unfulfilled directive
+				 *       in silence
+				 *
+				 * @note The silence was the first kind of the trouble for a consumer: the request is accepted,
+				 *       and it cannot be carried out. Now all three answer with a REFUSAL upon the nearest feed,
+				 *       and the request does not get lost
+				 *
 				 * \~
 				 */
 				ENCODING_ALREADY_CHOSEN = 0x17, // Кодировка сменена посреди подачи текста
@@ -393,7 +462,7 @@ namespace awh {
 				 * @details Таблица есть перечень записей, а запись - перечень полей. Простое
 				 *          же значение - строка, число, истинностное - таблицею не бывает ни
 				 *          при каких настройках: это ячейка без записи, а ячейка сама по себе
-				 *          текстом таблицы не выражается
+				 *          текстом таблицы не выражается.
 				 *
 				 * @note Прежде на это отвечал `INTERNAL` - «внутренний сбой разбора», - и
 				 *       суждение то было ЛОЖНЫМ: ни разбора, ни сбоя тут нет вовсе, а
@@ -412,6 +481,24 @@ namespace awh {
 				 * \~english
 				 * The value is not a table
 				 *
+				 * @details A table is a list of records, and a record is a list of fields. A simple value -
+				 *          a string, a number, a logical one - is never a table at any settings: it is a cell
+				 *          without a record, and a cell by itself is not expressed by the text of a table.
+				 *
+				 * @note Upon this, `INTERNAL` used to answer - "an internal failure of the parsing", - and
+				 *       that judgement was FALSE: there is neither a parsing nor a failure here at all, while
+				 *       the value is sound. Worse still, it accused THE CODEC ITSELF, and a consumer, having
+				 *       read such a thing, would go to send a report of the damage or to look for it in
+				 *       person. Introduced on 2026-09-15 upon the comparison of six codecs of the framework at one
+				 *       and the same spelling of a simple value; found upon the comparison with the INI, TOML
+				 *       and YAML codecs, where the time was lost on that same kind as well
+				 *
+				 * @note The name taken is COMMON with the INI, TOML, CEF and syslog codecs: there the same case
+				 *       and the same sense - a format never expresses such a thing. The numbers of the codecs
+				 *       diverge, and the codes across the codecs are to be compared by name, not by value. Do
+				 *       not confound it with `UNWRITABLE_FIELD`: that one is about the SETTINGS, at other
+				 *       settings a field is written soundly
+				 *
 				 * \~
 				 */
 				UNREPRESENTABLE_VALUE   = 0x18, // Значение таблицею не является
@@ -421,7 +508,7 @@ namespace awh {
 				 *
 				 * @details Разбор с выдачей записей обработчику и чтение файла им же требуют
 				 *          обработчика обязательно: без него работа смысла не имеет вовсе -
-				 *          разобранному некуда деваться. Отказ этот о ДОВОДЕ ЗОВУЩЕГО
+				 *          разобранному некуда деваться. Отказ этот о ДОВОДЕ ЗОВУЩЕГО.
 				 *
 				 * @note Прежде на это отвечал `INTERNAL` - «внутренний сбой разбора», - и
 				 *       суждение то было ложным: изъян не внутри кодека, а в доводе, и
@@ -435,6 +522,20 @@ namespace awh {
 				 * \~english
 				 * The handler of the records has not been given
 				 *
+				 * @details The parsing with the issuing of the records to a handler, and the reading of a file
+				 *          by it alike, require a handler necessarily: without it the work has no sense at all -
+				 *          there is nowhere for the parsed to go. This refusal is about the ARGUMENT OF THE
+				 *          CALLER.
+				 *
+				 * @note Upon this, `INTERNAL` used to answer - "an internal failure of the parsing", - and that
+				 *       judgement was false: the flaw is not inside the codec but in the argument, and a
+				 *       consumer, having read an accusation against the codec, would go looking for the damage
+				 *       instead of giving a handler. Found on 2026-09-15 upon the argument of the comparison of
+				 *       the INI, TOML and YAML codecs: what one must guard is not a word in the description, but
+				 *       the REACHABILITY of the code `INTERNAL` by an ordinary course. The other places of
+				 *       `INTERNAL` at the three codecs were tried by the same argument and turned out truthful -
+				 *       those are the bars upon a state unreachable by an ordinary course
+				 *
 				 * \~
 				 */
 				MISSING_CALLBACK        = 0x19 // Обработчик записей не передан
@@ -444,18 +545,20 @@ namespace awh {
 			 * \~russian
 			 * @brief Виды событий чтения текста
 			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
 			 *
 			 * @note Поле выдаётся своим событием, а не в составе записи: запись из тысячи
-			 * полей иначе удерживалась бы в памяти целиком прежде первой выдачи. Конец
-			 * записи отмечается отдельным событием, и оно приходит и у записи пустой
+			 *       полей иначе удерживалась бы в памяти целиком прежде первой выдачи. Конец
+			 *       записи отмечается отдельным событием, и оно приходит и у записи пустой
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a text
-			 * @details The reading issues the events as the text is parsed without holding it in full
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 *
 			 * @note A field is issued by its own event rather than as a part of a record: a record of a thousand
-			 * fields would otherwise be held in the memory in full before the first issuance. The end
-			 * of a record is marked by a separate event, and it comes for an empty record as well
+			 *       fields would otherwise be held in the memory in full before the first issuance. The end
+			 *       of a record is marked by a separate event, and it comes for an empty record as well
 			 *
 			 * \~
 			 */
@@ -474,23 +577,25 @@ namespace awh {
 			 * @brief Кодировки исходного текста
 			 *
 			 * @details Текст кодировку не объявляет, и определяется она по метке порядка
-			 * байтов в начале текста; при её отсутствии текст считается записанным в UTF-8
+			 *          байтов в начале текста; при её отсутствии текст считается записанным в UTF-8.
 			 *
 			 * @note Кодировка UTF-32 не поддерживается, но опознаётся: метка её
-			 * начинается теми же байтами, что и метка UTF-16 с обратным порядком, и без
-			 * такого опознания текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками
-			 * между настоящими. Опознав её, разбор отвечает отказом, а не молчаливой
-			 * бессмыслицей
+			 *       начинается теми же байтами, что и метка UTF-16 с обратным порядком, и без
+			 *       такого опознания текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками
+			 *       между настоящими. Опознав её, разбор отвечает отказом, а не молчаливой
+			 *       бессмыслицей
 			 *
 			 * \~english
 			 * @brief Encodings of the source text
+			 *
 			 * @details A text does not announce its encoding, and it is determined by the byte order
-			 * mark at the beginning of the text; in its absence the text is considered written in UTF-8
+			 *          mark at the beginning of the text; in its absence the text is considered written in UTF-8.
+			 *
 			 * @note The UTF-32 encoding is not supported but is recognized: its mark
-			 * begins with the same bytes as the mark of UTF-16 with the reverse order, and without
-			 * such a recognition a text in UTF-32 would be parsed as UTF-16 with empty characters
-			 * between the real ones. Having recognized it, the parsing answers with a refusal rather than with a silent
-			 * nonsense
+			 *       begins with the same bytes as the mark of UTF-16 with the reverse order, and without
+			 *       such a recognition a text in UTF-32 would be parsed as UTF-16 with empty characters
+			 *       between the real ones. Having recognized it, the parsing answers with a refusal rather than with a silent
+			 *       nonsense
 			 *
 			 * \~
 			 */
@@ -509,14 +614,15 @@ namespace awh {
 			 * @brief Признак наличия заголовка в тексте
 			 *
 			 * @details Положений ровно два, и «самостоятельного» среди них нет намеренно:
-			 * файл из одних лишь строковых значений неотличим от файла с заголовком, и
-			 * всякое угадывание здесь ошибается молча
+			 *          файл из одних лишь строковых значений неотличим от файла с заголовком, и
+			 *          всякое угадывание здесь ошибается молча.
 			 *
 			 * \~english
 			 * @brief Flag of the presence of a header in the text
+			 *
 			 * @details There are exactly two positions, and there is no «automatic» one among them deliberately:
-			 * a file made of string values alone is indistinguishable from a file with a header, and
-			 * every guessing here errs silently
+			 *          a file made of string values alone is indistinguishable from a file with a header, and
+			 *          every guessing here errs silently.
 			 *
 			 * \~
 			 */
@@ -545,26 +651,27 @@ namespace awh {
 			 * @brief Правило заключения поля в кавычки при записи
 			 *
 			 * @warning Записанное без кавычек (`NONE`) читается ТОЛЬКО при способе отмены
-			 * `escape_t::BACKSLASH` либо `escape_t::BOTH`: кавычек нет, и единственным
-			 * способом уберечь разделитель и знаки конца строки внутри поля остаётся знак
-			 * отмены. Запись ставит его независимо от собственной настройки `escape` -
-			 * настройка эта описывает отмену кавычки ВНУТРИ кавычек, а их тут нет вовсе.
-			 * Чтение же снимало отмены лишь внутри кавычек, и записанное прочитывалось не
-			 * тем, чем записано, причём молча: поле `a,b` уходило текстом `a\,b`, а читалось
-			 * двумя полями `a\` и `b`. Так же поступает и обиход - `escapechar` модуля `csv`
-			 * языка Python при чтении снимает особое значение со следующего знака
+			 *          `escape_t::BACKSLASH` либо `escape_t::BOTH`: кавычек нет, и единственным
+			 *          способом уберечь разделитель и знаки конца строки внутри поля остаётся знак
+			 *          отмены. Запись ставит его независимо от собственной настройки `escape` -
+			 *          настройка эта описывает отмену кавычки ВНУТРИ кавычек, а их тут нет вовсе.
+			 *          Чтение же снимало отмены лишь внутри кавычек, и записанное прочитывалось не
+			 *          тем, чем записано, причём молча: поле `a,b` уходило текстом `a\,b`, а читалось
+			 *          двумя полями `a\` и `b`. Так же поступает и обиход - `escapechar` модуля `csv`
+			 *          языка Python при чтении снимает особое значение со следующего знака
 			 *
 			 * \~english
 			 * @brief Rule of enclosing a field in quotes at the writing
+			 *
 			 * @warning What has been written without quotes (`NONE`) is read ONLY with the escaping method
-			 * `escape_t::BACKSLASH` or `escape_t::BOTH`: there are no quotes, and the only way to protect
-			 * the separator and the end-of-line characters inside a field is the escape character.
-			 * The writing puts it independently of its own `escape` setting — that setting describes the escaping
-			 * of a quote INSIDE quotes, and there are none here at all. The reading, however, removed the escapes
-			 * only inside quotes, and what had been written was read back as something other than what was written,
-			 * and silently at that: the field `a,b` went out as the text `a\,b` and was read as two fields `a\` and `b`.
-			 * The custom does the same — the `escapechar` of the `csv` module of the Python language removes
-			 * the special meaning from the following character at the reading
+			 *          `escape_t::BACKSLASH` or `escape_t::BOTH`: there are no quotes, and the only way to protect
+			 *          the separator and the end-of-line characters inside a field is the escape character.
+			 *          The writing puts it independently of its own `escape` setting — that setting describes the escaping
+			 *          of a quote INSIDE quotes, and there are none here at all. The reading, however, removed the escapes
+			 *          only inside quotes, and what had been written was read back as something other than what was written,
+			 *          and silently at that: the field `a,b` went out as the text `a\,b` and was read as two fields `a\` and `b`.
+			 *          The custom does the same — the `escapechar` of the `csv` module of the Python language removes
+			 *          the special meaning from the following character at the reading
 			 *
 			 * \~
 			 */
@@ -574,20 +681,20 @@ namespace awh {
 				 * В кавычки берутся лишь поля, обойтись без них не могущие
 				 *
 				 * @details Причин тому ШЕСТЬ, и все они здесь названы, ибо снаружи
-				 * вывести их неоткуда. Четыре причины даёт само содержимое поля:
-				 * знак-разделитель, знак кавычек, перевод строки и возврат каретки.
-				 * Пятая - обвязка ПРОБЕЛЬНЫМ знаком по краям поля: пробел, табуляция
-				 * и прочие, ибо читающие, снимающие обвязку сами, теряют её без кавычек.
-				 * Пробельный знак ПОСРЕДИ поля причиною не является
+				 *          вывести их неоткуда. Четыре причины даёт само содержимое поля:
+				 *          знак-разделитель, знак кавычек, перевод строки и возврат каретки.
+				 *          Пятая - обвязка ПРОБЕЛЬНЫМ знаком по краям поля: пробел, табуляция
+				 *          и прочие, ибо читающие, снимающие обвязку сами, теряют её без кавычек.
+				 *          Пробельный знак ПОСРЕДИ поля причиною не является.
 				 *
 				 * @details Две последние причины зависят от МЕСТА поля, а не от его
-				 * содержимого. Поле, первым в записи начатое знаком примечания,
-				 * обрамляется, иначе разбор унёс бы всю запись примечанием, - и лишь
-				 * тогда, когда знак примечания настройкою задан. Поле, начинающее весь
-				 * текст меткою порядка байтов, обрамляется тогда, когда запись метки
-				 * ВЫКЛЮЧЕНА: включённой метка принадлежит самому тексту, а выключенной
-				 * она пришла бы из содержимого и была бы снята чтением как признак
-				 * кодировки. Уклад этот обратен ожиданию, и оттого назван здесь прямо
+				 *          содержимого. Поле, первым в записи начатое знаком примечания,
+				 *          обрамляется, иначе разбор унёс бы всю запись примечанием, - и лишь
+				 *          тогда, когда знак примечания настройкою задан. Поле, начинающее весь
+				 *          текст меткою порядка байтов, обрамляется тогда, когда запись метки
+				 *          ВЫКЛЮЧЕНА: включённой метка принадлежит самому тексту, а выключенной
+				 *          она пришла бы из содержимого и была бы снята чтением как признак
+				 *          кодировки. Уклад этот обратен ожиданию, и оттого назван здесь прямо.
 				 *
 				 * @note Все шесть замерены 01.09.2026 и закреплены проверкой
 				 *       `CodecCsvWriter.MinimalQuotingHasSixCauses`
@@ -599,11 +706,32 @@ namespace awh {
 				 *
 				 * \~english
 				 * Only the fields that cannot do without them are enclosed in quotes
-				 * @details There are SIX causes: the separator character, the quote character, the line feed,
-				 * the carriage return, a whitespace padding at the EDGES of the field, and two causes
-				 * depending on the PLACE of the field — the comment character starting the first field of
-				 * a record, and the byte order mark starting the whole text when the writing of the mark
-				 * is switched OFF
+				 *
+				 * @details There are SIX causes of them, and all of them are named here, for outside there is
+				 *          nowhere to derive them from. Four causes are given by the content of the field
+				 *          itself: the separator character, the quote character, the line feed and the carriage
+				 *          return. The fifth is a padding by a WHITESPACE character at the EDGES of the field: a
+				 *          space, a tabulation and the others, for the readers that strip the padding themselves
+				 *          lose it without quotes. A whitespace character IN THE MIDDLE of a field is not a
+				 *          cause.
+				 *
+				 * @details The two last causes depend on the PLACE of the field, and not on its content. A
+				 *          field begun by the comment character as the first in a record is enclosed, otherwise
+				 *          the parsing would carry the whole record away as a comment, - and only when the
+				 *          comment character is set by the settings. A field starting the whole text with the
+				 *          byte order mark is enclosed when the writing of the mark is switched OFF: when
+				 *          switched on the mark belongs to the text itself, while when switched off it would
+				 *          have come from the content and would be stripped by the reading as a sign of the
+				 *          encoding. The order is contrary to what is expected, and that is why it is named
+				 *          outright here.
+				 *
+				 * @note All six were measured on 2026-09-01 and are fixed by the check
+				 *       `CodecCsvWriter.MinimalQuotingHasSixCauses`
+				 *
+				 * @warning The open mediator `quotable` knows only the FOUR first causes and the fifth: the
+				 *          place of the field is not given to it at all, and the two last causes it cannot
+				 *          derive. Predicting the writing of a record by it is impossible - see the reservation
+				 *          at the mediator itself
 				 *
 				 * \~
 				 */
@@ -618,12 +746,13 @@ namespace awh {
 			 * @brief Обращение с обвязкой вокруг поля
 			 *
 			 * @details Договор велит хранить содержимое поля неизменным, потому умолчанием
-			 * обвязка сохраняется
+			 *          обвязка сохраняется.
 			 *
 			 * \~english
 			 * @brief Treatment of the padding around a field
+			 *
 			 * @details The protocol orders to keep the content of a field unchanged, therefore by default
-			 * the padding is preserved
+			 *          the padding is preserved.
 			 *
 			 * \~
 			 */
@@ -653,16 +782,20 @@ namespace awh {
 			 * @brief Знак конца строки собираемого текста
 			 *
 			 * @warning Записанное всяким видом, кроме `CRLF`, читается ТОЛЬКО разбором
-			 * нестрогим: договор знает концом записи одну лишь пару возврата каретки с
-			 * переводом строки, и строгое чтение отвечает на одинокий знак отказом.
-			 * Оговорка эта здесь потому, что виды эти заведены ради обихода, а не ради
-			 * договора: собранное ими законно, но законно оно лишь за пределами договора
+			 *          нестрогим: договор знает концом записи одну лишь пару возврата каретки с
+			 *          переводом строки, и строгое чтение отвечает на одинокий знак отказом.
+			 *          Оговорка эта здесь потому, что виды эти заведены ради обихода, а не ради
+			 *          договора: собранное ими законно, но законно оно лишь за пределами договора
 			 *
 			 * \~english
 			 * @brief Line ending character of the text being assembled
+			 *
 			 * @warning What has been written by any kind other than `CRLF` is read ONLY by the non-strict
-			 * parsing: the contract knows as the end of a record only the pair of the carriage return with
-			 * the line feed, and the strict reading answers a lone character with a refusal.
+			 *          parsing: the contract knows as the end of a record only the pair of the carriage return with
+			 *          the line feed, and the strict reading answers a lone character with a refusal.
+			 *          The reservation is here because these kinds are introduced for the sake of the custom,
+			 *          and not for the sake of the contract: what is assembled by them is lawful, but it is
+			 *          lawful only beyond the bounds of the contract
 			 *
 			 * \~
 			 */
@@ -677,16 +810,17 @@ namespace awh {
 			 * @brief Отрезок общего хранилища знаков
 			 *
 			 * @details Хранилища знаков дописываются по мере разбора и при росте
-			 * перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
-			 * отрезка вместо ссылки на него - единственный способ пережить такое
-			 * перемещение
+			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
+			 *          отрезка вместо ссылки на него - единственный способ пережить такое
+			 *          перемещение.
 			 *
 			 * \~english
 			 * @brief Segment of the common storage of the characters
+			 *
 			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
-			 * are moved, invalidating the references to their content. To keep the position of a
-			 * segment instead of a reference to it is the only way to survive such a
-			 * move
+			 *          are moved, invalidating the references to their content. To keep the position of a
+			 *          segment instead of a reference to it is the only way to survive such a
+			 *          move.
 			 *
 			 * \~
 			 */
@@ -715,6 +849,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param offset offset of the beginning of the segment in the storage of the characters
 				 * @param length length of the segment in bytes
 				 *
@@ -728,21 +863,23 @@ namespace awh {
 			 * @brief Положение в исходном тексте
 			 *
 			 * @details Служит для указания места ошибки и для привязки полей к исходному
-			 * тексту
+			 *          тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 * смещение - в байтах исходного текста до перекодирования. Строки при этом
-			 * считаются настоящие, а не записи: поле в кавычках вправе занимать несколько
-			 * строк, и номер строки внутри такого поля растёт
+			 *       смещение - в байтах исходного текста до перекодирования. Строки при этом
+			 *       считаются настоящие, а не записи: поле в кавычках вправе занимать несколько
+			 *       строк, и номер строки внутри такого поля растёт
 			 *
 			 * \~english
 			 * @brief Position in the source text
+			 *
 			 * @details Serves for indicating the place of an error and for binding the fields to the source
-			 * text
+			 *          text.
+			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 * the offset — in the bytes of the source text before the transcoding. The lines are counted
-			 * as the real ones rather than as the records: a field in quotes has the right to occupy several
-			 * lines, and the line number inside such a field grows
+			 *       the offset — in the bytes of the source text before the transcoding. The lines are counted
+			 *       as the real ones rather than as the records: a field in quotes has the right to occupy several
+			 *       lines, and the line number inside such a field grows
 			 *
 			 * \~
 			 */
@@ -800,15 +937,15 @@ namespace awh {
 			 * @brief Поле записи
 			 *
 			 * @details Значение выдаётся уже приведённым к окончательному виду: кавычки
-			 * сняты, удвоенные кавычки внутри поля сведены к одной, обвязка снята в объёме,
-			 * разрешённом настройками
+			 *          сняты, удвоенные кавычки внутри поля сведены к одной, обвязка снята в объёме,
+			 *          разрешённом настройками.
 			 *
 			 * @warning Сроки жизни двух видов свёртки РАЗНЫЕ, и мерить их надлежит порознь.
-			 * Значение живёт не дольше следующего события: оно ссылается в буфер записи, а
-			 * тот переиспользуется, - замер дал обращение к освобождённой памяти после
-			 * двухсот поданных записей. Имя же живёт до сброса состояния чтения: оно
-			 * ссылается в хранилище заголовка, отдельное от буфера записей и по разборе
-			 * заголовка более не растущее, - те же двести подач оно пережило
+			 *          Значение живёт не дольше следующего события: оно ссылается в буфер записи, а
+			 *          тот переиспользуется, - замер дал обращение к освобождённой памяти после
+			 *          двухсот поданных записей. Имя же живёт до сброса состояния чтения: оно
+			 *          ссылается в хранилище заголовка, отдельное от буфера записей и по разборе
+			 *          заголовка более не растущее, - те же двести подач оно пережило
 			 *
 			 * @note Прежде свёртка ручалась за оба вида одним, КОРОТКИМ сроком. Ручательство
 			 *       это было безопасным, но неверным: звучащий копировал имя без нужды, а
@@ -816,15 +953,18 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Field of a record
+			 *
 			 * @details The value is issued already brought to its final form: the quotes are
-			 * removed, the doubled quotes inside the field are reduced to one, the padding is removed in the volume
-			 * permitted by the settings
+			 *          removed, the doubled quotes inside the field are reduced to one, the padding is removed in the volume
+			 *          permitted by the settings.
+			 *
 			 * @warning The lifetimes of the two views of the structure are DIFFERENT, and they should be measured separately.
-			 * The value lives no longer than the next event: it refers into the buffer of a record, and
-			 * that one is reused — the measurement gave an access to a freed memory after
-			 * two hundred fed records. The name, however, lives until the reset of the state of the reading: it
-			 * refers into the storage of the header, separate from the buffer of the records and, once the header
-			 * is parsed, no longer growing — it survived those same two hundred feedings
+			 *          The value lives no longer than the next event: it refers into the buffer of a record, and
+			 *          that one is reused — the measurement gave an access to a freed memory after
+			 *          two hundred fed records. The name, however, lives until the reset of the state of the reading: it
+			 *          refers into the storage of the header, separate from the buffer of the records and, once the header
+			 *          is parsed, no longer growing — it survived those same two hundred feedings
+			 *
 			 * @note Formerly the structure guaranteed one, SHORT lifetime for both views. That guarantee
 			 *       was safe but untrue: the caller copied the name without need, and
 			 *       above all — one and the same record for different lifetimes concealed that the lifetimes differ
@@ -843,6 +983,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Name of the field taken from the header
+				 *
 				 * @note Empty when the flag of the header is disabled, and likewise for the fields whose
 				 *       number goes beyond the limits of the header
 				 *
@@ -863,6 +1004,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of the content of the field having been changed by the parsing
+				 *
 				 * @note Set by the removal of the quotes, by the reduction of the doubled quotes and by the removal of the
 				 *       padding. Serves the one who wishes to issue the field back exactly as
 				 *       it has been written: when the flag is not set, the value is the source one
@@ -892,6 +1034,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the message of a parsing error
+			 *
 			 * @param error error code of the parsing
 			 * @return      error message
 			 *
@@ -908,6 +1051,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of an encoding
+			 *
 			 * @param encoding encoding of the source text
 			 * @return         name of the encoding
 			 *
@@ -924,6 +1068,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining the encoding by the byte order mark
+			 *
 			 * @param text beginning of the source text
 			 * @return     determined encoding or UTF-8 in the absence of the mark
 			 *
@@ -940,6 +1085,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the line ending character
+			 *
 			 * @param newline kind of the line ending character
 			 * @return        sequence of the line ending characters
 			 *
@@ -952,8 +1098,8 @@ namespace awh {
 			 * @brief Метод проверки пригодности знака в разделители полей
 			 *
 			 * @details Разделителем не бывают ни кавычка, ни знаки конца строки, ни знак
-			 * отмены: всякий из них уже занят разбором, и совпадение с ним делает текст
-			 * неразбираемым
+			 *          отмены: всякий из них уже занят разбором, и совпадение с ним делает текст
+			 *          неразбираемым.
 			 *
 			 * @warning Судится СТОЛКНОВЕНИЕ настроек, и только оно: годен ли знак по
 			 *          ГРАММАТИКЕ текста, посредник не спрашивает вовсе. Разбор же следует
@@ -989,9 +1135,39 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the suitability of a character as a separator of the fields
+			 *
 			 * @details Neither a quote, nor the line ending characters, nor the escape
-			 * character are ever a separator: every one of them is already occupied by the parsing, and a coincidence with it makes the text
-			 * unparseable
+			 *          character are ever a separator: every one of them is already occupied by the parsing, and a coincidence with it makes the text
+			 *          unparseable.
+			 *
+			 * @warning It is a COLLISION of the settings that is judged, and nothing else: whether a
+			 *          character is fit by the GRAMMAR of the text, the mediator does not ask at all. The
+			 *          parsing, however, follows RFC 4180, where only the printable US-ASCII characters are
+			 *          allowed as the content of a field, and every control character is refused by the code
+			 *          `INVALID_CHARACTER` - be it standing as a separator or in the content. The
+			 *          measurement of 2026-09-01 over all 256 values: the mediator accepts 252, while the
+			 *          parsing works with 95, and the verdicts diverge on ONE HUNDRED AND FIFTY SEVEN -
+			 *          these are 28 control characters, the escape character `0x7F` and all 128 characters
+			 *          with the senior bit (a lone senior octet is never a fit sequence of UTF-8)
+			 *
+			 * @note The tabulation character `0x09` is NOT in the number of the divergences: the parsing
+			 *       accepts it on a par with the printable ones, for it is named a separator in the method
+			 *       itself and stands in the four characters by which the separator is determined
+			 *
+			 * @note Predicting the success of the parsing by this mediator is IMPOSSIBLE. For that one must
+			 *       ask the parsing itself: the truth here means only "the settings do not contradict each
+			 *       other", and not "the text will be parsed by such a separator"
+			 *
+			 * @warning It is the SEPARATOR that is judged, and the quote is taken only for a comparison with
+			 *          it. The argument above says that the line ending characters are already occupied by
+			 *          the parsing - but it refers to the separator ONLY: a quote equal to the carriage
+			 *          return or to the line feed is accepted by the mediator. The measurement of
+			 *          2026-09-01 removed the consequence as well: an ordinary text with such a quote is
+			 *          parsed CORRECTLY, for the end of the line is recognised before the quote, and the
+			 *          quote simply stops working. There is no refusal here, and there is nothing to
+			 *          introduce it for, - but the mediator gives no promise of the fitness of a quote
+			 *          either
+			 *
 			 * @param separator separator character of the fields
 			 * @param quote     quote character
 			 * @return          result of the check
@@ -1005,8 +1181,8 @@ namespace awh {
 			 * @brief Метод проверки необходимости заключить поле в кавычки
 			 *
 			 * @details Судится одно лишь СОДЕРЖИМОЕ поля: знак-разделитель, знак кавычек,
-			 * знаки конца строки и пробельная обвязка по краям. Правила `ALL`, `NONE` и
-			 * `NONNUMERIC` разбираются целиком, ибо содержимого им и довольно
+			 *          знаки конца строки и пробельная обвязка по краям. Правила `ALL`, `NONE` и
+			 *          `NONNUMERIC` разбираются целиком, ибо содержимого им и довольно.
 			 *
 			 * @warning Предсказывать выдачу записи этим посредником НЕЛЬЗЯ. Правило
 			 *          `MINIMAL` знает ещё две причины обрамления, зависящие от МЕСТА
@@ -1029,6 +1205,24 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the necessity of enclosing a field in quotes
+			 *
+			 * @details Only the CONTENT of a field is judged: the separator character, the quote character,
+			 *          the line ending characters and the whitespace padding at the edges. The rules `ALL`,
+			 *          `NONE` and `NONNUMERIC` are decided in full, for the content is all they need.
+			 *
+			 * @warning Predicting the writing of a record by this mediator is IMPOSSIBLE. The rule `MINIMAL`
+			 *          knows two further causes of the enclosure, depending on the PLACE of the field - the
+			 *          comment character at the beginning of a record and the byte order mark at the
+			 *          beginning of the text, - while the place of the field is not given to the mediator at
+			 *          all. The measurement of 2026-09-01: the field «#a» with the comment character set the
+			 *          mediator declares as needing no enclosure, while the record does enclose it. A field
+			 *          written bare by the verdict of the mediator would be read back as a comment, carrying
+			 *          the whole record away with itself
+			 *
+			 * @note This divergence is NOT a defect: the mediator receives the text of a field and nothing
+			 *       more, and there is nowhere to derive the place of the field from it. It is named here
+			 *       because a silence about the scope looks like a promise of completeness
+			 *
 			 * @param text      content of the field
 			 * @param separator separator character of the fields
 			 * @param quote     quote character
@@ -1044,8 +1238,8 @@ namespace awh {
 			 * @brief Метод приведения содержимого поля к целому числу со знаком
 			 *
 			 * @details Судится НАПИСАНИЕ: годной признаётся запись целого числа и только
-			 * она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
-			 * с показателем степени «1e3», хотя оба означают число целое
+			 *          она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
+			 *          с показателем степени «1e3», хотя оба означают число целое.
 			 *
 			 * @warning Предсказывать этим посредником извлечение `document_t::numeric`
 			 *          НЕЛЬЗЯ. Извлечение следует решению от 30.08.2026: два
@@ -1065,6 +1259,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting the content of a field to a signed integer
+			 *
+			 * @details The SPELLING is judged: only the writing of an integer is found fit, and only
+			 *          it. The fractional writing of an integer - «300.0» - is refused, as is the writing with
+			 *          an exponent, «1e3», though both denote an integer number.
+			 *
+			 * @warning Predicting the extraction of `document_t::numeric` by this mediator is IMPOSSIBLE.
+			 *          The extraction follows the decision of 2026-08-30: two spellings of one number are
+			 *          extracted alike, and «300.0» by the kind `int64_t` gives 300 where the mediator
+			 *          answers with a refusal. The measurement of 2026-09-01: of six spellings the verdicts
+			 *          diverged on two - «300.0» and «1e3»
+			 *
+			 * @note This divergence is NOT a defect: the mediator and the extraction ask different
+			 *       questions. The mediator asks "is it written as an integer", the extraction - "is it
+			 *       representable as an integer". It is named here because a silence about the scope looks
+			 *       like a promise of completeness
+			 *
 			 * @param text   content of the field
 			 * @param result obtained value
 			 * @return       result of the conversion
@@ -1078,8 +1288,8 @@ namespace awh {
 			 * @brief Метод приведения содержимого поля к целому числу без знака
 			 *
 			 * @details Судится НАПИСАНИЕ: годной признаётся запись целого числа и только
-			 * она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
-			 * с показателем степени «1e3», хотя оба означают число целое
+			 *          она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
+			 *          с показателем степени «1e3», хотя оба означают число целое.
 			 *
 			 * @warning Предсказывать этим посредником извлечение `document_t::numeric`
 			 *          НЕЛЬЗЯ. Извлечение следует решению от 30.08.2026: два
@@ -1099,6 +1309,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting the content of a field to an unsigned integer
+			 *
+			 * @details The SPELLING is judged: only the writing of an integer is found fit, and only
+			 *          it. The fractional writing of an integer - «300.0» - is refused, as is the writing with
+			 *          an exponent, «1e3», though both denote an integer number.
+			 *
+			 * @warning Predicting the extraction of `document_t::numeric` by this mediator is IMPOSSIBLE.
+			 *          The extraction follows the decision of 2026-08-30: two spellings of one number are
+			 *          extracted alike, and «300.0» by the kind `int64_t` gives 300 where the mediator
+			 *          answers with a refusal. The measurement of 2026-09-01: of six spellings the verdicts
+			 *          diverged on two - «300.0» and «1e3»
+			 *
+			 * @note This divergence is NOT a defect: the mediator and the extraction ask different
+			 *       questions. The mediator asks "is it written as an integer", the extraction - "is it
+			 *       representable as an integer". It is named here because a silence about the scope looks
+			 *       like a promise of completeness
+			 *
 			 * @param text   content of the field
 			 * @param result obtained value
 			 * @return       result of the conversion
@@ -1117,6 +1343,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting the content of a field to a floating-point number
+			 *
 			 * @param text   content of the field
 			 * @param result obtained value
 			 * @return       result of the conversion
@@ -1130,13 +1357,13 @@ namespace awh {
 			 * @brief Метод приведения содержимого поля к логическому значению
 			 *
 			 * @details Истиною читаются `true`, `yes`, `on` и `1`, ложью - `false`, `no`,
-			 * `off` и `0`, причём РЕГИСТР НЕ ЗНАЧИМ: `TRUE` и `True` читаются наравне с
-			 * `true`. Вольность эта намеренная и взята из обихода таблиц, где столбец
-			 * признака заполняют как придётся
+			 *          `off` и `0`, причём РЕГИСТР НЕ ЗНАЧИМ: `TRUE` и `True` читаются наравне с
+			 *          `true`. Вольность эта намеренная и взята из обихода таблиц, где столбец
+			 *          признака заполняют как придётся.
 			 *
 			 * @note Кодек XML держится здесь строже - договор XSD знает ровно четыре
-			 * записи строчными, - и расхождение это описано нарочно: договора о видах у
-			 * таблиц нет вовсе, а число и дробное у обоих кодеков читаются одинаково
+			 *       записи строчными, - и расхождение это описано нарочно: договора о видах у
+			 *       таблиц нет вовсе, а число и дробное у обоих кодеков читаются одинаково
 			 *
 			 * @param text   содержимое поля
 			 * @param result полученное значение
@@ -1144,6 +1371,17 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of converting the content of a field to a logical value
+			 *
+			 * @details Read as true are `true`, `yes`, `on` and `1`, as false - `false`, `no`, `off` and
+			 *          `0`, and THE CASE IS NOT SIGNIFICANT: `TRUE` and `True` are read on a par with `true`.
+			 *          This licence is deliberate and is taken from the usage of tables, where a column of a
+			 *          flag is filled as it comes.
+			 *
+			 * @note The XML codec holds itself stricter here - the XSD contract knows exactly four writings
+			 *       in lower case, - and this divergence is described on purpose: the tables have no contract
+			 *       about the kinds at all, while an integer and a fractional number are read alike by both
+			 *       codecs
+			 *
 			 * @param text   content of the field
 			 * @param result obtained value
 			 * @return       result of the conversion

@@ -88,11 +88,14 @@ namespace awh {
 			 * @brief Запись словаря источников сообщений и степеней их важности
 			 *
 			 * @details Запись связывает числовой код, приоритетом объявляемый, с
-			 * кратким именем, службами журналов употребляемым, и с человеческим
-			 * названием
+			 *          кратким именем, службами журналов употребляемым, и с человеческим
+			 *          названием.
 			 *
 			 * \~english
 			 * @brief Record of the dictionary of the sources of the messages and of the degrees of their importance
+			 *
+			 * @details The record links a numeric code declared by a priority with a short name used by the
+			 *          journal services and with a human-readable name.
 			 *
 			 * \~
 			 */
@@ -110,10 +113,13 @@ namespace awh {
 			 * @brief Пространство имён словаря источников сообщений
 			 *
 			 * @details Словарь неизменен и общ у всех потребителей: сведений о состоянии
-			 * он не держит, и обращение к нему безопасно из любого потока
+			 *          он не держит, и обращение к нему безопасно из любого потока.
 			 *
 			 * \~english
 			 * @brief Namespace of the dictionary of the sources of the messages
+			 *
+			 * @details The dictionary is immutable and common to all the consumers: it keeps no information
+			 *          about a state, and an access to it is safe from any thread.
 			 *
 			 * \~
 			 */
@@ -127,6 +133,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the search for a source of a message by a numeric code
+				 *
 				 * @param code numeric code of the source of the message
 				 * @return     record of the dictionary or nullptr if the code is not in the dictionary
 				 *
@@ -138,13 +145,17 @@ namespace awh {
 				 * @brief Метод розыска источника сообщения по краткому имени
 				 *
 				 * @details Розыск ведётся без разбора величины букв: службы журналов
-				 * пишут имена и строчными, и прописными
+				 *          пишут имена и строчными, и прописными.
 				 *
 				 * @param name краткое имя источника сообщения
 				 * @return     запись словаря либо nullptr, если имени в словаре нет
 				 *
 				 * \~english
 				 * @brief Method of the search for a source of a message by a short name
+				 *
+				 * @details The search is conducted regardless of the case of the letters: the journal services
+				 *          write the names both in lower and in upper case.
+				 *
 				 * @param name short name of the source of the message
 				 * @return     record of the dictionary or nullptr if the name is not in the dictionary
 				 *
@@ -159,6 +170,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the records of the dictionary
+				 *
 				 * @return number of the records of the dictionary
 				 *
 				 * \~
@@ -171,10 +183,13 @@ namespace awh {
 			 * @brief Пространство имён словаря степеней важности сообщений
 			 *
 			 * @details Словарь неизменен и общ у всех потребителей: сведений о состоянии
-			 * он не держит, и обращение к нему безопасно из любого потока
+			 *          он не держит, и обращение к нему безопасно из любого потока.
 			 *
 			 * \~english
 			 * @brief Namespace of the dictionary of the degrees of the importance of the messages
+			 *
+			 * @details The dictionary is immutable and common to all the consumers: it keeps no information
+			 *          about a state, and an access to it is safe from any thread.
 			 *
 			 * \~
 			 */
@@ -188,6 +203,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the search for a degree of the importance of a message by a numeric code
+				 *
 				 * @param code numeric code of the degree of the importance of the message
 				 * @return     record of the dictionary or nullptr if the code is not in the dictionary
 				 *
@@ -199,14 +215,19 @@ namespace awh {
 				 * @brief Метод розыска степени важности сообщения по краткому имени
 				 *
 				 * @details Розыск ведётся без разбора величины букв и принимает имена,
-				 * службами журналов принятые наравне с основными: `error` наравне с
-				 * `err`, `warn` наравне с `warning`, `panic` наравне с `emerg`
+				 *          службами журналов принятые наравне с основными: `error` наравне с
+				 *          `err`, `warn` наравне с `warning`, `panic` наравне с `emerg`
 				 *
 				 * @param name краткое имя степени важности сообщения
 				 * @return     запись словаря либо nullptr, если имени в словаре нет
 				 *
 				 * \~english
 				 * @brief Method of the search for a degree of the importance of a message by a short name
+				 *
+				 * @details The search is conducted regardless of the case of the letters and accepts the names
+				 *          adopted by the journal services on a par with the main ones: `error` on a par with
+				 *          `err`, `warn` on a par with `warning`, `panic` on a par with `emerg`
+				 *
 				 * @param name short name of the degree of the importance of the message
 				 * @return     record of the dictionary or nullptr if the name is not in the dictionary
 				 *
@@ -221,6 +242,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of the records of the dictionary
+				 *
 				 * @return number of the records of the dictionary
 				 *
 				 * \~

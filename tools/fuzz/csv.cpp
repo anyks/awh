@@ -661,7 +661,7 @@ namespace {
 			}
 		}
 		// Выполняем перезапись собранной таблицы
-		const string rewritten = document.text();
+		const string rewritten = document.dump();
 		/**
 		 * Если перезапись отказала
 		 *

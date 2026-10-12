@@ -116,176 +116,221 @@ namespace awh {
 			 * @brief Класс дерева настроек
 			 *
 			 * @details Хранит разобранный текст настроек целиком - вместе с примечаниями,
-			 * пустыми строками и порядком записей, - и позволяет читать значения по
-			 * составному имени, править их на месте и записывать обратно
+			 *          пустыми строками и порядком записей, - и позволяет читать значения по
+			 *          составному имени, править их на месте и записывать обратно.
 			 *
 			 * @par Сохранение оформления
-			 *
-			 * Файл настроек правит человек, и переписать его, потеряв примечания либо
-			 * переставив таблицы, значит отнять у хозяина то, ради чего файл этот читаемым
-			 * и заведён. Оттого дерево держит **все** записи исходного текста в порядке их
-			 * следования вместе с оградой строк, системой счисления чисел и видом отметок
-			 * времени, а правка меняет лишь то, что ей велено
+			 *      Файл настроек правит человек, и переписать его, потеряв примечания либо
+			 *      переставив таблицы, значит отнять у хозяина то, ради чего файл этот читаемым
+			 *      и заведён. Оттого дерево держит **все** записи исходного текста в порядке их
+			 *      следования вместе с оградой строк, системой счисления чисел и видом отметок
+			 *      времени, а правка меняет лишь то, что ей велено
 			 *
 			 * @par Порядок работы
 			 *
 			 * @warning Выдаваемые последовательности знаков ссылаются на хранилище дерева и
-			 * остаются пригодными **до первой правки**: @c set(), @c erase() и @c create()
-			 * вправе перестроить хранилище. Значение, нужное после правки, следует
-			 * скопировать
+			 *          остаются пригодными **до первой правки**: @c set(), @c erase() и @c create()
+			 *          вправе перестроить хранилище. Значение, нужное после правки, следует
+			 *          скопировать
+			 *
 			 * @par Намеренные решения
+			 *
 			 * @li **Составное имя задаётся частями, а не строкой с точками.** Точка внутри
-			 * имени, огражденного кавычками, частей не разделяет, и разбирать составное имя
-			 * из строки значило бы вводить второй разбор со своими правилами ограждения.
-			 * Части передаются перечнем, и всякая из них - имя целиком
+			 *     имени, огражденного кавычками, частей не разделяет, и разбирать составное имя
+			 *     из строки значило бы вводить второй разбор со своими правилами ограждения.
+			 *     Части передаются перечнем, и всякая из них - имя целиком
+			 *
 			 * @li **Таблица набора таблиц адресуется порядковым номером частью имени.**
-			 * Запись «[[products]]» заводит не таблицу, а их набор, и обратиться к его
-			 * второй таблице можно лишь номером: имя у них общее. Номер записывается
-			 * десятичной частью имени - «products», «1», «name», - и разночтения с
-			 * настоящим ключом «1» не даёт: набор таблиц дерево знает по своему устройству,
-			 * а не по записи имени
-			 * @li **Годность записи пределу длины строки решает ВЫДАЧА, а не правка.**
-			 * Значение, строку записи удлиняющее свыше предела, деревом принимается, а
-			 * отвергается выдачей текста, и дерево от того выходит незаписываемым целиком:
-			 * @c dump() отвечает пустотою. Пределы же ЧИСЛА ЗВЕНЬЕВ имени и ДЛИНЫ ЗВЕНА
-			 * стерегут именно правку - они отвергают путь, потребителем поданный, до того,
-			 * как он ляжет в дерево. Разница намеренная: имя есть построение дерева, а
-			 * длина строки - свойство одной лишь записи, и судить её иначе как записью
-			 * нечем. Правило то же, каким живёт кодек INI, и закреплено оно проверками
-			 * @c PathLimitsAreObeyedByTheEditing и @c WritingSettingsReachTheWriter
+			 *     Запись «[[products]]» заводит не таблицу, а их набор, и обратиться к его
+			 *     второй таблице можно лишь номером: имя у них общее. Номер записывается
+			 *     десятичной частью имени - «products», «1», «name», - и разночтения с
+			 *     настоящим ключом «1» не даёт: набор таблиц дерево знает по своему устройству,
+			 *     а не по записи имени
+			 *
+			 * @li **Годность записи пределу длины строки решает ВЫДАЧА, а не правка.** Значение,
+			 *     строку записи удлиняющее свыше предела, деревом принимается, а отвергается
+			 *     выдачей текста, и дерево от того выходит незаписываемым целиком: @c dump()
+			 *     отвечает пустотою. Пределы же ЧИСЛА ЗВЕНЬЕВ имени и ДЛИНЫ ЗВЕНА стерегут
+			 *     именно правку - они отвергают путь, потребителем поданный, до того, как он
+			 *     ляжет в дерево. Разница намеренная: имя есть построение дерева, а длина
+			 *     строки - свойство одной лишь записи, и судить её иначе как записью нечем.
+			 *     Правило то же, каким живёт кодек INI, и закреплено оно проверками @c PathLimitsAreObeyedByTheEditing
+			 *     и @c WritingSettingsReachTheWriter
+			 *
 			 * @li **Правка меняет запись на месте, а не переписывает файл.** Значение уже
-			 * объявленной пары заменяется в её собственной записи, отчего ни порядок, ни
-			 * примечания, ни пустые строки не страдают. Отсутствующая пара дописывается в
-			 * конец своей таблицы, а отсутствующая таблица объявляется в конце текста
+			 *     объявленной пары заменяется в её собственной записи, отчего ни порядок, ни
+			 *     примечания, ни пустые строки не страдают. Отсутствующая пара дописывается в
+			 *     конец своей таблицы, а отсутствующая таблица объявляется в конце текста
+			 *
 			 * @li **Удалённая запись остаётся в хранилище надгробием.** Изъятие её из
-			 * середины сдвинуло бы порядковые номера всех записей за нею, а на них
-			 * ссылаются указатели поиска. Надгробие обходится дешевле перестроения и при
-			 * записи в выдачу не идёт
+			 *     середины сдвинуло бы порядковые номера всех записей за нею, а на них
+			 *     ссылаются указатели поиска. Надгробие обходится дешевле перестроения и при
+			 *     записи в выдачу не идёт
+			 *
 			 * @li **Примечание в конце строки удаляется вместе со своей записью.**
-			 * Примечание это писано к паре, и оставить его при удалении пары значило бы
-			 * оставить пояснение к тому, чего в файле более нет
+			 *     Примечание это писано к паре, и оставить его при удалении пары значило бы
+			 *     оставить пояснение к тому, чего в файле более нет
+			 *
 			 * @li **Пустая строка перед объявлением таблицы записью не ставится.**
-			 * Расстановка их взята из исходного текста, и добавлять к ней свою значило бы
-			 * наращивать пустые строки при каждом обороте «чтение - запись»
+			 *     Расстановка их взята из исходного текста, и добавлять к ней свою значило бы
+			 *     наращивать пустые строки при каждом обороте «чтение - запись»
+			 *
 			 * @li **Оформление записи числа перезаписью не хранится.** Держится система
-			 * счисления, но не разделители разрядов, не знак «плюс» перед положительным числом
-			 * и не разряд букв: «1_000_000» перезаписывается как «1000000», «+42» как «42»,
-			 * «0xdead» как «0xDEAD», «1E10» как «1e+10». Значение при этом то же самое, а
-			 * хранить исходную запись числа значило бы держать её текст рядом со значением ради
-			 * одного лишь вида
-			 * @li **Удаление таблицы вложенных её таблиц не трогает.** Вызов
-			 * @c remove({"server"}) снимает объявление «[server]» и пары его, а «[server.limits]»
-			 * остаётся: таблица эта объявлена своей записью и вложена в «server» лишь именем.
-			 * Удаляют её отдельным вызовом по её имени
+			 *     счисления, но не разделители разрядов, не знак «плюс» перед положительным числом
+			 *     и не разряд букв: «1_000_000» перезаписывается как «1000000», «+42» как «42»,
+			 *     «0xdead» как «0xDEAD», «1E10» как «1e+10». Значение при этом то же самое, а
+			 *     хранить исходную запись числа значило бы держать её текст рядом со значением ради
+			 *     одного лишь вида
+			 *
+			 * @li **Удаление таблицы вложенных её таблиц не трогает.** Вызов @c remove({"server"}) снимает
+			 *     объявление «[server]» и пары его, а «[server.limits]» остаётся: таблица эта
+			 *     объявлена своей записью и вложена в «server» лишь именем. Удаляют её
+			 *     отдельным вызовом по её имени
+			 *
 			 * @li **Остаток составного имени ведёт внутрь значения.** Имя ищется от самого
-			 * длинного начала к самому короткому, а остаток его спускается в значение найденной
-			 * пары: порядковым номером в перечень, именем ключа во встроенную таблицу. Записи
-			 * «a = [[1, 2], [3, 4]]» отвечает имя «a», «1», «0», а записи «c = {d = {e = 5}}» -
-			 * имя «c», «d», «e». Спуск этот назначен чтению: правкою составные значения не
-			 * задаются
+			 *     длинного начала к самому короткому, а остаток его спускается в значение найденной
+			 *     пары: порядковым номером в перечень, именем ключа во встроенную таблицу. Записи
+			 *     «a = [[1, 2], [3, 4]]» отвечает имя «a», «1», «0», а записи «c = {d = {e = 5}}» -
+			 *     имя «c», «d», «e». Спуск этот назначен чтению: правкою составные значения не
+			 *     задаются
+			 *
 			 * @li **Правка задаёт простые значения, но не составные.** Перечень либо встроенную
-			 * таблицу правка целиком не собирает: назначение дерева - править готовый файл
-			 * настроек, а не строить его с нуля, и составное значение, собранное правкой,
-			 * потребовало бы своего построителя со своими правилами
+			 *     таблицу правка целиком не собирает: назначение дерева - править готовый файл
+			 *     настроек, а не строить его с нуля, и составное значение, собранное правкой,
+			 *     потребовало бы своего построителя со своими правилами
+			 *
 			 * @li **Длина исходного текста ограничена четырьмя гигабайтами.** Отрезок хранилища
-			 * знаков задан смещением и длиной в четыре октета, и текст длиннее отвергается
-			 * отказом: смещение в восемь октетов стоило бы пятой части памяти дерева на всяком
-			 * имени и всяком значении ради размера, которого файл настроек не достигает
+			 *     знаков задан смещением и длиной в четыре октета, и текст длиннее отвергается
+			 *     отказом: смещение в восемь октетов стоило бы пятой части памяти дерева на всяком
+			 *     имени и всяком значении ради размера, которого файл настроек не достигает
+			 *
 			 * @li **Мусор правки дерево уплотняет само.** Замещённый узел значения, снятая
-			 * запись и содержимое, никем не читаемое, остаются в хранилищах до уплотнения, а
-			 * уплотнение приходит по накоплении их вровень с живым. Оттого объём дерева гуляет,
-			 * но неограниченным не бывает: узнают его вызовом @c footprint()
+			 *     запись и содержимое, никем не читаемое, остаются в хранилищах до уплотнения, а
+			 *     уплотнение приходит по накоплении их вровень с живым. Оттого объём дерева гуляет,
+			 *     но неограниченным не бывает: узнают его вызовом @c footprint()
 			 *
 			 *  @code{.cpp}
-			 *  document_t document();
+			 *          document_t document();
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.text({"server", "host"});
 			 *    document.set({"server", "port"}, static_cast <int64_t> (9090));
 			 *    const string result = document.text();
 			 *  }
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the settings tree
+			 *
 			 * @details Stores the parsed settings text in full — together with the comments,
-			 * the empty lines and the order of the records — and makes it possible to read the values by a
-			 * compound name, to edit them in place and to write them back
+			 *          the empty lines and the order of the records — and makes it possible to read the values by a
+			 *          compound name, to edit them in place and to write them back.
+			 *
 			 * @par Preservation of the formatting
-			 * A settings file is edited by a human, and to rewrite it, having lost the comments or
-			 * having rearranged the tables, means to take away from the owner that for the sake of which this file
-			 * has been made readable in the first place. Because of that the tree keeps **all** the records of the source text in the order of their
-			 * succession together with the fence of the strings, the numeral system of the numbers and the kind of the timestamps,
-			 * while an editing changes only what it has been ordered to
+			 *      A settings file is edited by a human, and to rewrite it, having lost the comments or
+			 *      having rearranged the tables, means to take away from the owner that for the sake of which this file
+			 *      has been made readable in the first place. Because of that the tree keeps **all** the records of the source text in the order of their
+			 *      succession together with the fence of the strings, the numeral system of the numbers and the kind of the timestamps,
+			 *      while an editing changes only what it has been ordered to
+			 *
 			 * @par Order of the work
+			 *
 			 * @warning The issued sequences of characters refer to the storage of the tree and
-			 * remain valid **until the first editing**: @c set(), @c erase() and @c create()
-			 * have the right to rebuild the storage. A value needed after an editing should be
-			 * copied
+			 *          remain valid **until the first editing**: @c set(), @c erase() and @c create()
+			 *          have the right to rebuild the storage. A value needed after an editing should be
+			 *          copied
+			 *
 			 * @par Deliberate decisions
+			 *
 			 * @li **A compound name is given by parts rather than as a string with dots.** A dot inside
-			 * a name fenced with quotes does not separate the parts, and to parse a compound name
-			 * out of a string would mean to introduce a second parsing with its own rules of the fencing.
-			 * The parts are passed as a list, and every one of them is a name in full
+			 *     a name fenced with quotes does not separate the parts, and to parse a compound name
+			 *     out of a string would mean to introduce a second parsing with its own rules of the fencing.
+			 *     The parts are passed as a list, and every one of them is a name in full
+			 *
 			 * @li **A table of an array of tables is addressed by an ordinal number as a part of the name.**
-			 * The record «[[products]]» creates not a table but an array of them, and its second
-			 * table can be addressed only by a number: their name is a common one. The number is written
-			 * as a decimal part of the name — «products», «1», «name» — and it gives no discrepancy with
-			 * an actual key «1»: the tree knows an array of tables by its own arrangement
-			 * rather than by the notation of the name
+			 *     The record «[[products]]» creates not a table but an array of them, and its second
+			 *     table can be addressed only by a number: their name is a common one. The number is written
+			 *     as a decimal part of the name — «products», «1», «name» — and it gives no discrepancy with
+			 *     an actual key «1»: the tree knows an array of tables by its own arrangement
+			 *     rather than by the notation of the name
+			 *
+			 * @li **The validity of a record against the limit of the line length is decided by
+			 *     the ISSUING, and not by an editing.** A value lengthening the record of a line
+			 *     beyond the limit is accepted by the tree and rejected by the issuing of the text,
+			 *     and the tree thereby turns out un-writable in full: @c dump() answers with
+			 *     emptiness. The limits of the NUMBER OF LINKS of a name and of the LENGTH OF A
+			 *     LINK guard exactly the editing - they reject a path fed by the consumer before
+			 *     it lies down into the tree. The difference is deliberate: a name is a
+			 *     construction of the tree, while the length of a line is a property of the
+			 *     writing alone, and there is nothing to judge it by other than by the writing.
+			 *     The rule is the same by which the INI codec lives, and it is fixed by the
+			 *     checks @c PathLimitsAreObeyedByTheEditing and @c WritingSettingsReachTheWriter
+			 *
 			 * @li **An editing changes a record in place rather than rewriting the file.** The value of an already
-			 * declared pair is replaced in its own record, from which neither the order, nor the
-			 * comments, nor the empty lines suffer. An absent pair is appended to the
-			 * end of its table, while an absent table is declared at the end of the text
+			 *     declared pair is replaced in its own record, from which neither the order, nor the
+			 *     comments, nor the empty lines suffer. An absent pair is appended to the
+			 *     end of its table, while an absent table is declared at the end of the text
+			 *
 			 * @li **A removed record remains in the storage as a tombstone.** Its extraction from
-			 * the middle would shift the ordinal numbers of all the records after it, while the pointers of the search
-			 * refer to them. A tombstone comes cheaper than a rebuilding and at
-			 * the writing does not go into the output
+			 *     the middle would shift the ordinal numbers of all the records after it, while the pointers of the search
+			 *     refer to them. A tombstone comes cheaper than a rebuilding and at
+			 *     the writing does not go into the output
+			 *
 			 * @li **A comment at the end of a line is removed together with its record.**
-			 * That comment has been written to a pair, and to leave it at the removal of the pair would mean
-			 * to leave an explanation of what is no longer in the file
+			 *     That comment has been written to a pair, and to leave it at the removal of the pair would mean
+			 *     to leave an explanation of what is no longer in the file
+			 *
 			 * @li **An empty line before a table declaration is not put by the writing.**
-			 * Their arrangement is taken from the source text, and to add one's own to it would mean
-			 * to increase the empty lines at every «reading — writing» turn
+			 *     Their arrangement is taken from the source text, and to add one's own to it would mean
+			 *     to increase the empty lines at every «reading — writing» turn
+			 *
 			 * @li **The formatting of the notation of a number is not preserved by a rewriting.** The numeral
-			 * system is kept, but not the digit separators, not the «plus» sign before a positive number
-			 * and not the case of the letters: «1_000_000» is rewritten as «1000000», «+42» as «42»,
-			 * «0xdead» as «0xDEAD», «1E10» as «1e+10». The value is thereby the same, while
-			 * to keep the source notation of a number would mean to keep its text next to the value for the sake of
-			 * the form alone
-			 * @li **A removal of a table does not touch the tables nested in it.** The call
-			 * @c remove({"server"}) removes the declaration «[server]» and its pairs, while «[server.limits]»
-			 * remains: that table is declared by its own record and is nested into «server» only by the name.
-			 * It is removed by a separate call by its name
+			 *     system is kept, but not the digit separators, not the «plus» sign before a positive number
+			 *     and not the case of the letters: «1_000_000» is rewritten as «1000000», «+42» as «42»,
+			 *     «0xdead» as «0xDEAD», «1E10» as «1e+10». The value is thereby the same, while
+			 *     to keep the source notation of a number would mean to keep its text next to the value for the sake of
+			 *     the form alone
+			 *
+			 * @li **A removal of a table does not touch the tables nested in it.** The call @c remove({"server"})
+			 *     removes the declaration «[server]» and its pairs, while «[server.limits]»
+			 *     remains: that table is declared by its own record and is nested into «server»
+			 *     only by the name. It is removed by a separate call by its name
+			 *
 			 * @li **The remainder of a compound name leads inside a value.** The name is sought from the
-			 * longest beginning to the shortest one, while its remainder descends into the value of the found
-			 * pair: by an ordinal number into an array, by the name of a key into an inline table. To the record
-			 * «a = [[1, 2], [3, 4]]» corresponds the name «a», «1», «0», while to the record «c = {d = {e = 5}}» —
-			 * the name «c», «d», «e». This descent is intended for the reading: the compound values are not
-			 * given by an editing
+			 *     longest beginning to the shortest one, while its remainder descends into the value of the found
+			 *     pair: by an ordinal number into an array, by the name of a key into an inline table. To the record
+			 *     «a = [[1, 2], [3, 4]]» corresponds the name «a», «1», «0», while to the record «c = {d = {e = 5}}» —
+			 *     the name «c», «d», «e». This descent is intended for the reading: the compound values are not
+			 *     given by an editing
+			 *
 			 * @li **An editing gives the simple values but not the compound ones.** An array or an inline
-			 * table an editing does not assemble in full: the purpose of the tree is to edit a ready settings
-			 * file rather than to build it from scratch, and a compound value assembled by an editing
-			 * would require its own builder with its own rules
+			 *     table an editing does not assemble in full: the purpose of the tree is to edit a ready settings
+			 *     file rather than to build it from scratch, and a compound value assembled by an editing
+			 *     would require its own builder with its own rules
+			 *
 			 * @li **The length of the source text is limited by four gigabytes.** A segment of the storage
-			 * of the characters is given by an offset and a length of four octets, and a longer text is rejected
-			 * with a refusal: an offset of eight octets would cost a fifth of the memory of the tree on every
-			 * name and every value for the sake of a size which a settings file does not reach
+			 *     of the characters is given by an offset and a length of four octets, and a longer text is rejected
+			 *     with a refusal: an offset of eight octets would cost a fifth of the memory of the tree on every
+			 *     name and every value for the sake of a size which a settings file does not reach
+			 *
 			 * @li **The tree compacts the garbage of the editing itself.** A replaced node of a value, a removed
-			 * record and a content read by nobody remain in the storages until a compaction, while
-			 * the compaction comes upon their accumulation on a par with the live one. Because of that the volume of the tree fluctuates
-			 * but is never unlimited: it is learnt by a call to @c footprint()
+			 *     record and a content read by nobody remain in the storages until a compaction, while
+			 *     the compaction comes upon their accumulation on a par with the live one. Because of that the volume of the tree fluctuates
+			 *     but is never unlimited: it is learnt by a call to @c footprint()
 			 *
 			 *  @code{.cpp}
-			 *  document_t document();
+			 *          document_t document();
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.text({"server", "host"});
 			 *    document.set({"server", "port"}, static_cast <int64_t> (9090));
 			 *    const string result = document.text();
 			 *  }
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			/**
 			 * \~russian
@@ -306,13 +351,14 @@ namespace awh {
 					 * @details Доступ этот нужен переносу: ведётся он на копии дерева ради
 					 *          целости своей, а код отказа по неудаче обязан достаться дереву
 					 *          ИСХОДНОМУ - копия с ним пропадает, и потребитель остался бы с
-					 *          отказом без названной причины
+					 *          отказом без названной причины.
 					 *
 					 * \~english
 					 * @brief Owning value granted the access to the tree
+					 *
 					 * @details This access is needed by the grafting: it is conducted on a copy of the tree
-					 * for the sake of its own integrity, while the code of the refusal must reach the
-					 * ORIGINAL tree — the copy vanishes with it
+					 *          for the sake of its own integrity, while the code of the refusal must reach the
+					 *          ORIGINAL tree — the copy vanishes with it.
 					 *
 					 * \~
 					 */
@@ -323,12 +369,13 @@ namespace awh {
 					 * @brief Метод вывода сообщения об отказе в лог
 					 *
 					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 * его не заменяет, а лишь оповещает о случившемся
+					 *          его не заменяет, а лишь оповещает о случившемся.
 					 *
 					 * \~english
 					 * @brief Method of the output of the message about a refusal into the log
+					 *
 					 * @details The code of the refusal remains available to the consumer through error():
-					 * the log does not replace it but merely notifies about what has happened
+					 *          the log does not replace it but merely notifies about what has happened.
 					 *
 					 * \~
 					 */
@@ -339,31 +386,47 @@ namespace awh {
 					 * @brief Метод запоминания кода отказа работы над деревом
 					 *
 					 * @details Положение обнаруженной ошибки сбрасывается вместе с кодом намеренно:
-					 * положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
-					 * собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
-					 * ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
-					 * которого более нет
+					 *          положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
+					 *          собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
+					 *          ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
+					 *          которого более нет.
 					 *
 					 * @note Разбор ПОТОЧНЫЙ через это тело не идёт: он ставит положение сам, следом
-					 * за кодом
+					 *       за кодом
 					 *
 					 * @warning Прежде здесь стояло «разбор через это тело НЕ идёт» без оговорки, и
-					 * это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
-					 * у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
-					 * приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
-					 * подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
-					 * прежде начала разбора
+					 *          это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
+					 *          у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
+					 *          приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
+					 *          подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
+					 *          прежде начала разбора
 					 *
 					 * @param error запоминаемый код отказа
 					 * @return      признак отказа для выхода из работы
 					 *
 					 * \~english
 					 * @brief Method of the remembering of the error code of an operation over the tree
+					 *
 					 * @details The location of the discovered error is reset together with the code deliberately:
-					 * that location belongs to the PARSING of a text, while an operation over the tree has no
-					 * text under it at all
+					 *          that location belongs to the PARSING of a text, while an operation over the tree has no
+					 *          text under it at all. Were it to outlive the code, the report would come out
+					 *          tidy but false — «the section is not declared at line 1, column 5» —
+					 *          pointing into a text which no longer exists.
+					 *
+					 * @note The STREAMING parsing does not go through this body: it sets the position
+					 *       itself, following the code
+					 *
+					 * @warning Formerly there stood here «the parsing does not go through this body» without
+					 *          a reservation, and that is false to the letter: measured on 2026-09-09 by a
+					 *          count of the callers through the enclosing braces - there is one call from
+					 *          `parse()` at INI and one at TOML. The essence stands nevertheless, for both
+					 *          fall on the cases where a position DOES NOT EXIST at all: at INI this is the
+					 *          collapse of the substitution of references already after the clearing of the
+					 *          tree, at TOML - a refusal by the length of the text before the parsing has
+					 *          begun
+					 *
 					 * @param error error code being remembered
-					 * @return sign of the refusal for the exit from the operation
+					 * @return      sign of the refusal for the exit from the operation
 					 *
 					 * \~
 					 */
@@ -388,6 +451,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * Object of the framework
+					 *
+					 * @note The framework is needed by the works with the file system: `fs_t` turns a path
+					 *       into a wide record by the `convert()` step, and without it a Cyrillic path
+					 *       under MS Windows would lie down on the disk as garbage
 					 *
 					 * \~
 					 */
@@ -493,14 +560,15 @@ namespace awh {
 					 * @brief Примечание, стоящее внутри перечня значений
 					 *
 					 * @details Примечание внутри перечня держится не записью, а самим узлом
-					 * перечня: строкой текста настроек оно не является и живёт вместе со
-					 * значением, которому писано
+					 *          перечня: строкой текста настроек оно не является и живёт вместе со
+					 *          значением, которому писано.
 					 *
 					 * \~english
 					 * @brief Comment standing inside an array of the values
+					 *
 					 * @details A comment inside an array is kept not by a record but by the node of the array
-					 * itself: it is not a line of the settings text and lives together with
-					 * the value to which it has been written
+					 *          itself: it is not a line of the settings text and lives together with
+					 *          the value to which it has been written.
 					 *
 					 * \~
 					 */
@@ -515,6 +583,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Number of the values of the array written before the comment
+						 *
 						 * @note The place of a comment is given by a count of the values rather than by a reference to a
 						 *       value: a comment stands both before the first value and after
 						 *       the last one, where there is nothing to refer to
@@ -534,6 +603,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of a comment appended to the line of a value
+						 *
 						 * @note A comment of an array stands either as its own line or after
 						 *       a value on its line: the writing back preserves that
 						 *       arrangement
@@ -558,16 +628,17 @@ namespace awh {
 					 * @brief Узел значения текста настроек
 					 *
 					 * @details Значение составное хранится деревом узлов: у перечня узлы
-					 * значений его, у встроенной таблицы - узлы её пар. Узлы держатся общим
-					 * перечнем и ссылаются друг на друга порядковыми номерами: ссылки на
-					 * память хранилище при дописывании обесценивает
+					 *          значений его, у встроенной таблицы - узлы её пар. Узлы держатся общим
+					 *          перечнем и ссылаются друг на друга порядковыми номерами: ссылки на
+					 *          память хранилище при дописывании обесценивает.
 					 *
 					 * \~english
 					 * @brief Node of a value of a settings text
+					 *
 					 * @details A compound value is stored as a tree of the nodes: an array has the nodes
-					 * of its values, an inline table — the nodes of its pairs. The nodes are kept as a common
-					 * list and refer to one another by the ordinal numbers: the references to
-					 * the memory are invalidated by the storage at an appending
+					 *          of its values, an inline table — the nodes of its pairs. The nodes are kept as a common
+					 *          list and refer to one another by the ordinal numbers: the references to
+					 *          the memory are invalidated by the storage at an appending.
 					 *
 					 * \~
 					 */
@@ -589,6 +660,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of the writing of an array in several lines
+						 *
 						 * @note It is kept for the sake of the writing back: the arrangement of the lines has been chosen
 						 *       by the human, and a rewriting is obliged to preserve it
 						 *
@@ -614,6 +686,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Compound names of the keys of the pairs of an inline table
+						 *
 						 * @note This list goes next to the list of the nodes: the name of every pair
 						 *       of an inline table is given by a segment of the list of the parts of the names
 						 *
@@ -629,6 +702,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Comments standing inside an array of the values
+						 *
 						 * @note They are kept for the sake of the writing back: a comment has been written by a human,
 						 *       and a rewriting that loses it impoverishes the settings file
 						 *
@@ -670,6 +744,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Place of the compound name of the record in the list of the parts of the names
+						 *
 						 * @note The segment is given by an offset and a number of the parts rather than by a length in
 						 *       bytes: the parts of a name are stored in their own list
 						 *
@@ -691,6 +766,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Flag of a comment appended to a ready line
+						 *
 						 * @note That comment has been written to its record and is removed together with
 						 *       it: an explanation of what is not in the file carries no sense
 						 *
@@ -737,15 +813,17 @@ namespace awh {
 					 * Порядок объявления дочерних имён по каждому составному имени
 					 *
 					 * @details Держит для каждой таблицы перечень записей её дочерних имён в
-					 * порядке следования их в тексте
+					 *          порядке следования их в тексте.
 					 *
 					 * @note Без него выдача перечня имён обращалась бы в квадратичную:
 					 *       перебор всех записей дерева ради каждой таблицы
 					 *
 					 * \~english
 					 * Order of the declaration of the child names for every compound name
+					 *
 					 * @details Keeps for every table a list of the records of its child names in
-					 * the order of their succession in the text
+					 *          the order of their succession in the text.
+					 *
 					 * @note Without it the issuance of the list of the names would turn into a quadratic one:
 					 *       a traversal of all the records of the tree for the sake of every table
 					 *
@@ -758,18 +836,19 @@ namespace awh {
 					 * Имена таблиц, заведённых составным именем ключа
 					 *
 					 * @details Составное имя ключа «a.b = 1» заводит таблицу «a», собственного
-					 * объявления не имеющую, и описание запрещает объявлять её заголовком:
-					 * правка, такой заголовок заводящая, собрала бы текст, который разбор
-					 * отверг бы повтором. Таблица, заведённая исподволь заголовком «[a.b]»,
-					 * тем же заголовком «[a]» объявляется законно, и в перечень этот не идёт
+					 *          объявления не имеющую, и описание запрещает объявлять её заголовком:
+					 *          правка, такой заголовок заводящая, собрала бы текст, который разбор
+					 *          отверг бы повтором. Таблица, заведённая исподволь заголовком «[a.b]»,
+					 *          тем же заголовком «[a]» объявляется законно, и в перечень этот не идёт.
 					 *
 					 * \~english
 					 * Names of the tables created by a compound name of a key
+					 *
 					 * @details The compound name of a key «a.b = 1» creates the table «a», which has no declaration
-					 * of its own, and the specification prohibits declaring it by a header:
-					 * an editing that creates such a header would assemble a text which the parsing
-					 * would reject as a repetition. A table created implicitly by the header «[a.b]»
-					 * is declared lawfully by the same header «[a]», and it does not go into this list
+					 *          of its own, and the specification prohibits declaring it by a header:
+					 *          an editing that creates such a header would assemble a text which the parsing
+					 *          would reject as a repetition. A table created implicitly by the header «[a.b]»
+					 *          is declared lawfully by the same header «[a]», and it does not go into this list.
 					 *
 					 * \~
 					 */
@@ -780,27 +859,29 @@ namespace awh {
 					 * Состояние обхода записей, удерживаемое между перестроениями указателей
 					 *
 					 * @details Перестроение обходит всё дерево, и правка, зовущая его на всякую
-					 * заводимую запись, обращает сборку дерева правками в квадратичную: восемь
-					 * тысяч правок стоили три секунды, и цена одной правки удваивалась с каждым
-					 * удвоением их числа. Запись, встающая в конец перечня, порядковых номеров
-					 * прежних записей не сдвигает, и указатели ей достаточно нарастить - для
-					 * чего и держится состояние, с каким обход дошёл до конца дерева
+					 *          заводимую запись, обращает сборку дерева правками в квадратичную: восемь
+					 *          тысяч правок стоили три секунды, и цена одной правки удваивалась с каждым
+					 *          удвоением их числа. Запись, встающая в конец перечня, порядковых номеров
+					 *          прежних записей не сдвигает, и указатели ей достаточно нарастить - для
+					 *          чего и держится состояние, с каким обход дошёл до конца дерева.
 					 *
 					 * @note Разбор записи ведётся одним и тем же телом и при полном перестроении,
-					 * и при доборном наращивании: два списка правил разошлись бы при первой же
-					 * правке одного из них
+					 *       и при доборном наращивании: два списка правил разошлись бы при первой же
+					 *       правке одного из них
 					 *
 					 * \~english
 					 * State of the traversal of the records kept between the rebuildings of the indexes
+					 *
 					 * @details A rebuilding traverses the whole tree, and an editing calling it for every
-					 * created record turns the assembly of a tree by the editings into a quadratic one: eight
-					 * thousand editings used to cost three seconds, and the price of one editing doubled with
-					 * every doubling of their number. A record placed at the end of the list does not shift the
-					 * ordinal numbers of the previous records, and it is enough to grow the indexes for it —
-					 * which is what the state the traversal reached the end of the tree with is kept for
+					 *          created record turns the assembly of a tree by the editings into a quadratic one: eight
+					 *          thousand editings used to cost three seconds, and the price of one editing doubled with
+					 *          every doubling of their number. A record placed at the end of the list does not shift the
+					 *          ordinal numbers of the previous records, and it is enough to grow the indexes for it —
+					 *          which is what the state the traversal reached the end of the tree with is kept for.
+					 *
 					 * @note The parsing of a record is conducted by one and the same body both at a full
-					 * rebuilding and at an incremental growing: two lists of the rules would diverge at the
-					 * first editing of one of them
+					 *       rebuilding and at an incremental growing: two lists of the rules would diverge at the
+					 *       first editing of one of them
 					 *
 					 * \~
 					 */
@@ -808,8 +889,10 @@ namespace awh {
 						/**
 						 * \~russian
 						 * Ключ указателя таблицы, которой принадлежат разбираемые записи
+						 *
 						 * \~english
 						 * Key of the index of the table the records being parsed belong to
+						 *
 						 * \~
 						 */
 						string table;
@@ -818,14 +901,15 @@ namespace awh {
 						 * Имя таблицы, которой принадлежат разбираемые записи, без номеров
 						 *
 						 * @details Ключ указателя несёт номера таблиц набора, а имя - одни лишь
-						 * составные части. Хранятся оба: по имени сличается, продолжает ли
-						 * объявляемая таблица нынешнюю, а ключ служит ей основанием
+						 *          составные части. Хранятся оба: по имени сличается, продолжает ли
+						 *          объявляемая таблица нынешнюю, а ключ служит ей основанием.
 						 *
 						 * \~english
 						 * Name of the table the records being parsed belong to, without the ordinals
+						 *
 						 * @details The key of the index carries the ordinals of the tables of an array while the name —
-						 * only the compound parts. Both are stored: by the name it is compared whether
-						 * the table being declared continues the current one, while the key serves as its base
+						 *          only the compound parts. Both are stored: by the name it is compared whether
+						 *          the table being declared continues the current one, while the key serves as its base.
 						 *
 						 * \~
 						 */
@@ -835,16 +919,17 @@ namespace awh {
 						 * Ключи указателя объявленных таблиц по именам их без номеров
 						 *
 						 * @details Служит розыску объемлющей таблицы: объявление «[[a.b]]» лежит
-						 * внутри последней таблицы набора «a», и ключ его строится на её ключе.
-						 * Сличения с одною лишь нынешнею таблицею мало - между ними встают
-						 * объявления глубже вложенные, как «[a.b.c]» перед вторым «[[a.b]]»
+						 *          внутри последней таблицы набора «a», и ключ его строится на её ключе.
+						 *          Сличения с одною лишь нынешнею таблицею мало - между ними встают
+						 *          объявления глубже вложенные, как «[a.b.c]» перед вторым «[[a.b]]».
 						 *
 						 * \~english
 						 * Keys of the index of the declared tables by their names without the ordinals
+						 *
 						 * @details Serves the search for the enclosing table: the declaration «[[a.b]]» lies
-						 * inside the last table of the array «a», and its key is built upon her key.
-						 * A comparison with the current table alone is not enough — between them stand
-						 * the declarations nested deeper, like «[a.b.c]» before the second «[[a.b]]»
+						 *          inside the last table of the array «a», and its key is built upon her key.
+						 *          A comparison with the current table alone is not enough — between them stand
+						 *          the declarations nested deeper, like «[a.b.c]» before the second «[[a.b]]».
 						 *
 						 * \~
 						 */
@@ -852,8 +937,10 @@ namespace awh {
 						/**
 						 * \~russian
 						 * Количество таблиц, объявленных каждым набором таблиц
+						 *
 						 * \~english
 						 * Number of the tables declared by every array of tables
+						 *
 						 * \~
 						 */
 						unordered_map <string, uint32_t> ordinals;
@@ -862,16 +949,17 @@ namespace awh {
 						 * Объявленные дочерние имена по каждому объемлющему имени
 						 *
 						 * @note Перечень дочерних имён держится порядком объявления, и сличать
-						 * добавляемое имя перебором его значило бы обращать перестроение в
-						 * квадратичное: текст из одних объявлений таблиц собирался вдевятеро
-						 * медленнее текста с парами, и замер это показал сразу
+						 *       добавляемое имя перебором его значило бы обращать перестроение в
+						 *       квадратичное: текст из одних объявлений таблиц собирался вдевятеро
+						 *       медленнее текста с парами, и замер это показал сразу
 						 *
 						 * \~english
 						 * Declared child names for every enclosing name
+						 *
 						 * @note The list of the child names is kept in the order of the declaration, and
-						 * comparing an added name by a traversal of it would turn the rebuilding into a
-						 * quadratic one: a text made of the declarations of the tables alone used to be
-						 * assembled nine times slower than a text with the pairs, and a measurement showed it at once
+						 *       comparing an added name by a traversal of it would turn the rebuilding into a
+						 *       quadratic one: a text made of the declarations of the tables alone used to be
+						 *       assembled nine times slower than a text with the pairs, and a measurement showed it at once
 						 *
 						 * \~
 						 */
@@ -881,28 +969,30 @@ namespace awh {
 						 * Подсказки места вставки записи по порядковому номеру таблицы
 						 *
 						 * @details Заведение пары ищет место за последней парой её таблицы обходом
-						 * области таблицы, а область эта растёт с каждой заведённой парой: обход
-						 * выходил квадратичным - шестнадцать тысяч правок стоили сто двадцать
-						 * восемь миллионов шагов. Подсказка хранит место, найденное прошлым
-						 * заведением, и обход продолжается от него, проходя лишь записи, с тех
-						 * пор добавленные
+						 *          области таблицы, а область эта растёт с каждой заведённой парой: обход
+						 *          выходил квадратичным - шестнадцать тысяч правок стоили сто двадцать
+						 *          восемь миллионов шагов. Подсказка хранит место, найденное прошлым
+						 *          заведением, и обход продолжается от него, проходя лишь записи, с тех
+						 *          пор добавленные.
 						 *
 						 * @note Подсказка есть подсказка, а не истина: правило поиска места
-						 * остаётся одно и то же, и обход от подсказки даёт тот же итог, что и
-						 * обход с начала области. Всякая правка, сдвигающая порядковые номера
-						 * записей, подсказки отменяет вместе с перестроением указателей
+						 *       остаётся одно и то же, и обход от подсказки даёт тот же итог, что и
+						 *       обход с начала области. Всякая правка, сдвигающая порядковые номера
+						 *       записей, подсказки отменяет вместе с перестроением указателей
 						 *
 						 * \~english
 						 * Hints of the place of the insertion of a record by the ordinal number of a table
+						 *
 						 * @details The creation of a pair looks for a place after the last pair of its table by a
-						 * traversal of the area of the table, and that area grows with every created pair: the
-						 * traversal used to be quadratic — sixteen thousand editings cost one hundred twenty eight
-						 * million steps. A hint keeps the place found by the previous creation, and the traversal
-						 * continues from it, passing only the records added since then
+						 *          traversal of the area of the table, and that area grows with every created pair: the
+						 *          traversal used to be quadratic — sixteen thousand editings cost one hundred twenty eight
+						 *          million steps. A hint keeps the place found by the previous creation, and the traversal
+						 *          continues from it, passing only the records added since then.
+						 *
 						 * @note A hint is a hint rather than a truth: the rule of the search for a place remains one
-						 * and the same, and a traversal from a hint gives the same result as a traversal from the
-						 * beginning of the area. Every editing that shifts the ordinal numbers of the records
-						 * cancels the hints together with the rebuilding of the indexes
+						 *       and the same, and a traversal from a hint gives the same result as a traversal from the
+						 *       beginning of the area. Every editing that shifts the ordinal numbers of the records
+						 *       cancels the hints together with the rebuilding of the indexes
 						 *
 						 * \~
 						 */
@@ -910,8 +1000,10 @@ namespace awh {
 						/**
 						 * \~russian
 						 * @brief Метод сброса состояния обхода записей
+						 *
 						 * \~english
 						 * @brief Method of the reset of the state of the traversal of the records
+						 *
 						 * \~
 						 */
 						void reset() noexcept {
@@ -933,8 +1025,10 @@ namespace awh {
 					/**
 					 * \~russian
 					 * Состояние обхода, с каким перестроение дошло до конца дерева
+					 *
 					 * \~english
 					 * State of the traversal the rebuilding reached the end of the tree with
+					 *
 					 * \~
 					 */
 					traversal_t _traversal;
@@ -949,6 +1043,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of the records and the nodes turned into garbage by an editing
+					 *
 					 * @note Counted approximately: the node of a replaced value goes as one,
 					 *       however many nested ones it may carry. An underestimation only postpones
 					 *       the compaction, while the growth all the same remains limited
@@ -966,6 +1061,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Length of the storage of the characters taken at the last compaction
+					 *
 					 * @note It is kept for the sake of the editing of the string values: the content is appended
 					 *       to the storage every time, while the previous one remains in it as garbage, and
 					 *       by the count of the records that growth is not visible
@@ -986,6 +1082,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the content of a segment of the storage of the characters
+					 *
 					 * @param span segment of the common storage of the characters
 					 * @return     content of the segment of the storage of the characters
 					 *
@@ -1001,6 +1098,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of adding a content to the storage of the characters
+					 *
 					 * @param text content being added to the storage
 					 * @return     segment of the storage with the added content
 					 *
@@ -1016,6 +1114,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of adding a compound name to the list of the parts of the names
+					 *
 					 * @param path compound name being added
 					 * @return     segment of the list of the parts with the added name
 					 *
@@ -1031,6 +1130,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of adding a compound name to the list of the parts of the names
+					 *
 					 * @param path compound name being added
 					 * @return     segment of the list of the parts with the added name
 					 *
@@ -1042,7 +1142,7 @@ namespace awh {
 					 * @brief Метод сборки ключа указателя записей
 					 *
 					 * @details Части имени соединяются знаком, в имени встретиться не
-					 * могущим: соединение точкой давало бы разночтение имён «a.b» и «"a.b"»
+					 *          могущим: соединение точкой давало бы разночтение имён «a.b» и «"a.b"».
 					 *
 					 * @param buffer буфер, куда собирается ключ указателя
 					 * @param path   отрезок перечня частей собираемого имени
@@ -1050,8 +1150,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the key of the index of the records
+					 *
 					 * @details The parts of the name are joined by a character that cannot be met in a
-					 * name: a joining by a dot would give a discrepancy of the names «a.b» and «"a.b"»
+					 *          name: a joining by a dot would give a discrepancy of the names «a.b» and «"a.b"».
+					 *
 					 * @param buffer buffer into which the key of the index is assembled
 					 * @param path   segment of the list of the parts of the name being assembled
 					 * @param parent key of the index of the enclosing table
@@ -1068,6 +1170,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of assembling the key of the index of the records
+					 *
 					 * @param buffer buffer into which the key of the index is assembled
 					 * @param path   compound name of the record
 					 *
@@ -1084,6 +1187,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of searching for a record by a compound name
+					 *
 					 * @param path compound name of the record being sought
 					 * @param kind kind of the record being sought
 					 * @return     ordinal number of the found record or the number of the records
@@ -1096,14 +1200,15 @@ namespace awh {
 					 * @brief Метод перестроения указателей поиска
 					 *
 					 * @details Выполняется после всякой правки, меняющей состав записей:
-					 * порядковые номера записей при вставке сдвигаются, и указатели, на них
-					 * ссылающиеся, обесцениваются
+					 *          порядковые номера записей при вставке сдвигаются, и указатели, на них
+					 *          ссылающиеся, обесцениваются.
 					 *
 					 * \~english
 					 * @brief Method of rebuilding the indexes of the search
+					 *
 					 * @details Performed after every editing that changes the composition of the records:
-					 * the ordinal numbers of the records are shifted at an insertion, and the indexes referring to
-					 * them are invalidated
+					 *          the ordinal numbers of the records are shifted at an insertion, and the indexes referring to
+					 *          them are invalidated.
 					 *
 					 * \~
 					 */
@@ -1113,14 +1218,16 @@ namespace awh {
 					 * @brief Метод внесения записи дерева в указатели поиска
 					 *
 					 * @note Тело это общее у полного перестроения и у доборного наращивания:
-					 * порядок разбора записи задаётся в одном месте
+					 *       порядок разбора записи задаётся в одном месте
 					 *
 					 * @param index порядковый номер вносимой записи дерева настроек
 					 *
 					 * \~english
 					 * @brief Method of entering a record of the tree into the indexes of the search
+					 *
 					 * @note This body is common to the full rebuilding and to the incremental growing:
-					 * the order of the parsing of a record is set in one place
+					 *       the order of the parsing of a record is set in one place
+					 *
 					 * @param index ordinal number of the record of the tree of the settings being entered
 					 *
 					 * \~
@@ -1131,19 +1238,21 @@ namespace awh {
 					 * @brief Метод наращивания указателей записью, вставшей в конец перечня
 					 *
 					 * @details Запись, встающая в конец, порядковых номеров прежних записей не
-					 * сдвигает: перестраивать указатели целиком незачем
+					 *          сдвигает: перестраивать указатели целиком незачем.
 					 *
 					 * @note Уплотнение дерева при этом не исполняется: оно сдвигает номера всех
-					 * записей и требует полного перестроения, а зовётся оно по накоплении мусора,
-					 * которого заведение записи не создаёт
+					 *       записей и требует полного перестроения, а зовётся оно по накоплении мусора,
+					 *       которого заведение записи не создаёт
 					 *
 					 * \~english
 					 * @brief Method of growing the indexes by a record placed at the end of the list
+					 *
 					 * @details A record placed at the end does not shift the ordinal numbers of the previous
-					 * records: there is no point in rebuilding the indexes entirely
+					 *          records: there is no point in rebuilding the indexes entirely.
+					 *
 					 * @note The compaction of the tree is not performed at that: it shifts the numbers of all
-					 * the records and requires a full rebuilding, while it is called upon the accumulation of
-					 * the garbage, which the creation of a record does not produce
+					 *       the records and requires a full rebuilding, while it is called upon the accumulation of
+					 *       the garbage, which the creation of a record does not produce
 					 *
 					 * \~
 					 */
@@ -1153,27 +1262,29 @@ namespace awh {
 					 * @brief Метод уплотнения дерева настроек
 					 *
 					 * @details Собирает записи, узлы, части имён и хранилище знаков заново,
-					 * оставляя одно лишь живое: снятые пометкой удаления записи, узлы
-					 * замещённых значений и содержимое, на которое никто не ссылается,
-					 * выбрасываются
+					 *          оставляя одно лишь живое: снятые пометкой удаления записи, узлы
+					 *          замещённых значений и содержимое, на которое никто не ссылается,
+					 *          выбрасываются.
 					 *
 					 * @note Правка дерева мусор оставляет по устройству: запись снимается
-					 * пометкой, а не изъятием, - иначе сдвинулись бы все, кто за нею, - и
-					 * значение замещается новым узлом, ибо прежнее вправе нести вложенные.
-					 * Без уплотнения дерево неограниченно росло бы при долгой правке:
-					 * четыреста тысяч правок двух ключей отнимали сто тринадцать мегабайт
+					 *       пометкой, а не изъятием, - иначе сдвинулись бы все, кто за нею, - и
+					 *       значение замещается новым узлом, ибо прежнее вправе нести вложенные.
+					 *       Без уплотнения дерево неограниченно росло бы при долгой правке:
+					 *       четыреста тысяч правок двух ключей отнимали сто тринадцать мегабайт
 					 *
 					 * \~english
 					 * @brief Method of compacting the settings tree
+					 *
 					 * @details Assembles the records, the nodes, the parts of the names and the storage of the characters anew,
-					 * leaving only the live: the records removed by a mark of a deletion, the nodes
-					 * of the replaced values and the content which nobody refers to
-					 * are thrown out
+					 *          leaving only the live: the records removed by a mark of a deletion, the nodes
+					 *          of the replaced values and the content which nobody refers to
+					 *          are thrown out.
+					 *
 					 * @note An editing of the tree leaves the garbage by its arrangement: a record is removed by
-					 * a mark rather than by an extraction — otherwise all the ones after it would be shifted — while
-					 * a value is replaced by a new node, for the previous one has the right to carry the nested ones.
-					 * Without a compaction the tree would grow without limit at a long editing:
-					 * four hundred thousand editings of two keys took away a hundred and thirteen megabytes
+					 *       a mark rather than by an extraction — otherwise all the ones after it would be shifted — while
+					 *       a value is replaced by a new node, for the previous one has the right to carry the nested ones.
+					 *       Without a compaction the tree would grow without limit at a long editing:
+					 *       four hundred thousand editings of two keys took away a hundred and thirteen megabytes
 					 *
 					 * \~
 					 */
@@ -1186,6 +1297,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the tree for a littering with the garbage of the editing
+					 *
 					 * @return result of the check
 					 *
 					 * \~
@@ -1201,6 +1313,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of transferring a content into the storage of the characters being compacted
+					 *
 					 * @param span  segment of the storage of the characters being transferred
 					 * @param store storage of the characters being compacted
 					 * @return      segment of the compacted storage of the characters
@@ -1213,17 +1326,19 @@ namespace awh {
 					 * @brief Метод проверки хранилища знаков на вместимость содержимого
 					 *
 					 * @details Отрезок хранилища задан смещением и длиной в четыре октета:
-					 * содержимое, за них выходящее, обрезало бы смещение молча, и дерево
-					 * выдавало бы взятое не оттуда
+					 *          содержимое, за них выходящее, обрезало бы смещение молча, и дерево
+					 *          выдавало бы взятое не оттуда.
 					 *
 					 * @param length длина добавляемого содержимого в октетах
 					 * @return       результат проверки
 					 *
 					 * \~english
 					 * @brief Method of checking the storage of the characters for the capacity of a content
+					 *
 					 * @details A segment of the storage is given by an offset and a length of four octets:
-					 * a content going beyond them would truncate the offset silently, and the tree
-					 * would issue what has been taken from elsewhere
+					 *          a content going beyond them would truncate the offset silently, and the tree
+					 *          would issue what has been taken from elsewhere.
+					 *
 					 * @param length length of the content being added in octets
 					 * @return       result of the check
 					 *
@@ -1241,6 +1356,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of transferring a compound name into the list of the parts being compacted
+					 *
 					 * @param span  segment of the list of the parts of the names being transferred
 					 * @param store storage of the characters being compacted
 					 * @param keys  list of the component parts of the names being compacted
@@ -1261,6 +1377,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of transferring a node of a value into the list of the nodes being compacted
+					 *
 					 * @param node  ordinal number of the node of the value being transferred
 					 * @param store storage of the characters being compacted
 					 * @param keys  list of the component parts of the names being compacted
@@ -1278,6 +1395,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of creating a node of a value
+					 *
 					 * @return ordinal number of the created node of the value
 					 *
 					 * \~
@@ -1292,6 +1410,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of transferring a value of the parsing into a node of the tree
+					 *
 					 * @param node  ordinal number of the node of the value being filled
 					 * @param value value of the parsing being transferred
 					 *
@@ -1308,6 +1427,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a node of a value into the text being assembled
+					 *
 					 * @param writer writing of the settings text being assembled
 					 * @param node   ordinal number of the node of the value being written
 					 * @return       result of performing the operation
@@ -1320,8 +1440,8 @@ namespace awh {
 					 * @brief Метод проверки составного имени на пригодность к записи
 					 *
 					 * @details Имя проверяется теми же правилами, какими его проверяет
-					 * разбор: имя, записать которое обратно нельзя, отвергается в месте
-					 * правки, а не при записи собранного дерева
+					 *          разбор: имя, записать которое обратно нельзя, отвергается в месте
+					 *          правки, а не при записи собранного дерева.
 					 *
 					 * @note Проверяется и занятость имени: объявить таблицу поверх пары
 					 *       либо завести пару поверх таблицы значило бы собрать текст,
@@ -1334,13 +1454,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking a compound name for the suitability for the writing
+					 *
 					 * @details The name is checked by the same rules by which the parsing checks it:
-					 * a name which cannot be written back is rejected at the place of the
-					 * editing rather than at the writing of the assembled tree
+					 *          a name which cannot be written back is rejected at the place of the
+					 *          editing rather than at the writing of the assembled tree.
+					 *
 					 * @note The occupancy of the name is checked as well: to declare a table on top of a pair
 					 *       or to create a pair on top of a table would mean to assemble a text
 					 *       which the parsing will reject as a redefinition. This is rejected at
 					 *       the place of the editing rather than at the writing of the assembled tree
+					 *
 					 * @param path  compound name being checked
 					 * @param table flag of the checking of the name of a table being declared
 					 * @return      result of performing the operation
@@ -1357,6 +1480,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the node of a value by a compound name
+					 *
 					 * @param path compound name of the pair being sought
 					 * @return     node of the value of the found pair or an empty pointer
 					 *
@@ -1368,15 +1492,17 @@ namespace awh {
 					 * @brief Метод получения узла значения для правки
 					 *
 					 * @details Отыскивает пару по составному имени, а при её отсутствии
-					 * заводит её в конце своей таблицы, объявляя недостающую таблицу
+					 *          заводит её в конце своей таблицы, объявляя недостающую таблицу.
 					 *
 					 * @param path составное имя правимой пары
 					 * @return     узел значения правимой пары либо пустой указатель
 					 *
 					 * \~english
 					 * @brief Method of getting the node of a value for an editing
+					 *
 					 * @details Finds a pair by a compound name, and in its absence
-					 * creates it at the end of its table, declaring the missing table
+					 *          creates it at the end of its table, declaring the missing table.
+					 *
 					 * @param path compound name of the pair being edited
 					 * @return     node of the value of the pair being edited or an empty pointer
 					 *
@@ -1391,6 +1517,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the accounting of a node of a value and of everything nested in it as a garbage of an editing
+					 *
 					 * @param node ordinal number of the node of the value being turned into a garbage
 					 *
 					 * \~
@@ -1408,8 +1535,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the ordinal number of a node of a value by a compound name
+					 *
 					 * @note An ordinal number rather than a pointer is issued: an editing of the list of the nodes
 					 *       grows it, and a pointer issued before that would dangle
+					 *
 					 * @param path compound name of the place being sought
 					 * @return     ordinal number of the found node of the value or the sign of the absence
 					 *
@@ -1425,6 +1554,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the current settings of the tree
+					 *
 					 * @return current settings of the settings tree
 					 *
 					 * \~
@@ -1438,6 +1568,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the tree
+					 *
 					 * @param settings settings of the settings tree
 					 *
 					 * \~
@@ -1449,22 +1580,25 @@ namespace awh {
 					 * @brief Метод разбора текста настроек
 					 *
 					 * @details Разбирает текст целиком, сохраняя примечания, пустые строки и
-					 * порядок записей. Прежнее содержимое дерева при этом освобождается
+					 *          порядок записей. Прежнее содержимое дерева при этом освобождается.
 					 *
 					 * @note Примечания и пустые строки читаются всегда, как бы ни были
-					 * выставлены соответствующие флаги настроек разбора: дерево держит
-					 * оформление текста, и отказ от них лишил бы его этой возможности
+					 *       выставлены соответствующие флаги настроек разбора: дерево держит
+					 *       оформление текста, и отказ от них лишил бы его этой возможности
 					 *
 					 * @param text разбираемый текст настроек
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of parsing a settings text
+					 *
 					 * @details Parses the text in full, preserving the comments, the empty lines and
-					 * the order of the records. The previous content of the tree is thereby released
+					 *          the order of the records. The previous content of the tree is thereby released.
+					 *
 					 * @note The comments and the empty lines are always read, however the corresponding
-					 * flags of the settings of the parsing are set: the tree keeps
-					 * the formatting of the text, and a refusal of them would deprive it of that possibility
+					 *       flags of the settings of the parsing are set: the tree keeps
+					 *       the formatting of the text, and a refusal of them would deprive it of that possibility
+					 *
 					 * @param text settings text being parsed
 					 * @return     result of performing the operation
 					 *
@@ -1481,6 +1615,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of parsing a settings text with the given settings
+					 *
 					 * @param text     settings text being parsed
 					 * @param settings settings of the settings tree
 					 * @return         result of performing the operation
@@ -1497,6 +1632,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the last operation
+					 *
 					 * @return error code of the last operation
 					 *
 					 * \~
@@ -1511,6 +1647,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of an error
+					 *
 					 * @return position of the detected error in the source text
 					 *
 					 * \~
@@ -1522,23 +1659,26 @@ namespace awh {
 					 * @brief Метод получения перечня объявленных таблиц
 					 *
 					 * @details Таблицы выдаются в порядке их объявления в исходном тексте, а
-					 * составное имя каждой - перечнем частей
+					 *          составное имя каждой - перечнем частей.
 					 *
 					 * @note Таблицы набора выдаются каждая своей записью, а имя у них одно на
-					 * всех: порядкового номера имя таблицы набора не несёт по описанию.
-					 * Обращаются к ним номером составной частью имени - «a», «0» - а сколько
-					 * их, узнают счётом одинаковых имён в этом перечне
+					 *       всех: порядкового номера имя таблицы набора не несёт по описанию.
+					 *       Обращаются к ним номером составной частью имени - «a», «0» - а сколько
+					 *       их, узнают счётом одинаковых имён в этом перечне
 					 *
 					 * @return перечень объявленных таблиц текста настроек
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the declared tables
+					 *
 					 * @details The tables are issued in the order of their declaration in the source text, while
-					 * the compound name of each of them — as a list of the parts
+					 *          the compound name of each of them — as a list of the parts.
+					 *
 					 * @note The tables of an array are issued each by its own record, while their name is one for
-					 * all of them: the name of a table of an array does not carry an ordinal number by the specification.
-					 * They are addressed by a number as a component part of the name — «a», «0» — while how many
-					 * of them there are is learnt by a count of the identical names in this list
+					 *       all of them: the name of a table of an array does not carry an ordinal number by the specification.
+					 *       They are addressed by a number as a component part of the name — «a», «0» — while how many
+					 *       of them there are is learnt by a count of the identical names in this list
+					 *
 					 * @return list of the declared tables of the settings text
 					 *
 					 * \~
@@ -1553,6 +1693,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a table
+					 *
 					 * @param path compound name of the table being sought
 					 * @return     result of the check
 					 *
@@ -1566,16 +1707,18 @@ namespace awh {
 					 * @details Признак этот хранится деревом ради обратной записи: перечень,
 					 *          человеком растянутый на несколько строк, обязан остаться
 					 *          растянутым и после перезаписи, а сведённый в одну строку -
-					 *          сведённым
+					 *          сведённым.
 					 *
 					 * @param path составное имя искомого перечня
 					 * @return     признак записи перечня несколькими строками
 					 *
 					 * \~english
 					 * @brief Method of getting the flag of the writing of a list by several lines
+					 *
 					 * @details This flag is kept by the tree for the sake of the writing back: a list
-					 * stretched by a human over several lines must remain stretched after a rewriting as
-					 * well, and one brought into a single line — brought into it
+					 *          stretched by a human over several lines must remain stretched after a rewriting as
+					 *          well, and one brought into a single line — brought into it.
+					 *
 					 * @param path composite name of the list being sought
 					 * @return     flag of the writing of a list by several lines
 					 *
@@ -1591,6 +1734,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the number of the tables of an array of tables
+					 *
 					 * @param path compound name of the array of tables being sought
 					 * @return     number of the tables of the array of tables
 					 *
@@ -1602,15 +1746,17 @@ namespace awh {
 					 * @brief Метод получения перечня дочерних имён таблицы
 					 *
 					 * @details Имена выдаются в порядке их объявления. Пустое составное имя
-					 * означает верхний уровень текста настроек
+					 *          означает верхний уровень текста настроек.
 					 *
 					 * @param path составное имя таблицы
 					 * @return     перечень дочерних имён таблицы
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the child names of a table
+					 *
 					 * @details The names are issued in the order of their declaration. An empty compound name
-					 * means the top level of the settings text
+					 *          means the top level of the settings text.
+					 *
 					 * @param path compound name of the table
 					 * @return     list of the child names of the table
 					 *
@@ -1622,21 +1768,22 @@ namespace awh {
 					 * @brief Метод перечисления звеньев пути к детям значения
 					 *
 					 * @details Выдаются НЕ ИМЕНА детей, а ЗВЕНЬЯ ПУТИ к ним: такие, что
-					 * `at(путь + "/" + звено)` неминуемо ведёт к тому самому ребёнку. У таблицы
-					 * звеном служит имя пары, у перечня значений и у набора одноимённых
-					 * таблиц - порядковый номер
+					 *          `at(путь + "/" + звено)` неминуемо ведёт к тому самому ребёнку. У таблицы
+					 *          звеном служит имя пары, у перечня значений и у набора одноимённых
+					 *          таблиц - порядковый номер.
+					 *
 					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ ОБХОД документа, общий у
-					 * всех кодеков рамки. Обход ЗАМКНУТ - всякое выданное звено годно для
-					 * `at()`, - и замкнутость эта держится на отменяющих записях RFC 6901: имя,
-					 * косую черту либо тильду несущее, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не
-					 * как есть
+					 *          всех кодеков рамки. Обход ЗАМКНУТ - всякое выданное звено годно для
+					 *          `at()`, - и замкнутость эта держится на отменяющих записях RFC 6901: имя,
+					 *          косую черту либо тильду несущее, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не
+					 *          как есть.
 					 *
 					 * @details Ход этот поставлен ПЕРЕГРУЗКОЙ рядом с прежним перечнем дочерних
-					 * имён таблицы, а не подменою его: прежний берёт составное имя перечнем
-					 * кусков и выдаёт одни лишь имена, ничего не записывая, и потребитель его
-					 * ломать незачем. Обещания у них РАЗНЫЕ - прежний на наборе одноимённых
-					 * таблиц законно молчит, ибо набор таблицею не является, а этот выдаёт там
-					 * звенья числовые
+					 *          имён таблицы, а не подменою его: прежний берёт составное имя перечнем
+					 *          кусков и выдаёт одни лишь имена, ничего не записывая, и потребитель его
+					 *          ломать незачем. Обещания у них РАЗНЫЕ - прежний на наборе одноимённых
+					 *          таблиц законно молчит, ибо набор таблицею не является, а этот выдаёт там
+					 *          звенья числовые.
 					 *
 					 * @note Отделение шаблоном обязательно ровно по той же причине, по какой
 					 *       оно стоит у `set()`: перечень кусков принимается в фигурных скобках,
@@ -1653,6 +1800,35 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the enumeration of the path links to the children of a value
+					 *
+					 * @details NOT the names of the children are issued, but the PATH LINKS to them:
+					 *          such links that `at(path + "/" + link)` inevitably leads to that very
+					 *          child. At a table the name of a pair serves as a link; at an array of
+					 *          values and at an array of tables of one name - an ordinal number.
+					 *
+					 * @details This method together with `at()` gives the FULL TRAVERSAL of a document,
+					 *          common to all the codecs of the framework. The traversal is CLOSED - every
+					 *          issued link is fit for `at()` - and this closure rests on the escaping
+					 *          records of RFC 6901: a name carrying a slash or a tilde is issued WRITTEN
+					 *          (`~1` and `~0`), and not as it is.
+					 *
+					 * @details This method was placed as an OVERLOAD next to the former list of the child
+					 *          names of a table, and not as its replacement: the former takes the compound
+					 *          name as a list of pieces and issues only the names, writing nothing, and
+					 *          there is no reason to break its consumers. Their promises are DIFFERENT -
+					 *          the former is lawfully silent at an array of tables of one name, for such
+					 *          an array is not a table, while this one issues numeric links there.
+					 *
+					 * @note The separation by a template is obligatory for exactly the same reason for
+					 *       which it stands at `set()`: a list of pieces is accepted in curly braces, and
+					 *       the record `keys({name})` would fit both methods AT ONCE. A list in curly
+					 *       braces is not deduced to a template argument at all, and the ambiguity is
+					 *       thereby removed without breaking anything at the consumer
+					 *
+					 * @note The enumeration NEVER answers with a refusal: a simple value, an empty table
+					 *       and a path into nowhere answer with an empty list ALIKE, and they are
+					 *       distinguished by the `has()` method
+					 *
 					 * @param path path to the value
 					 * @return     list of the path links to the children of the value
 					 *
@@ -1668,13 +1844,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод перечисления звеньев пути к детям значения
 					 *
-					 * @details Тело посредника `keys()`, шаблоном от него отделённое
+					 * @details Тело посредника `keys()`, шаблоном от него отделённое.
 					 *
 					 * @param path путь до значения
 					 * @return     перечень звеньев пути к детям значения
 					 *
 					 * \~english
 					 * @brief Method of the enumeration of the path links to the children of a value
+					 *
+					 * @details The body of the intermediary `keys()`, separated from it by a template.
+					 *
 					 * @param path path to the value
 					 * @return     list of the path links to the children of the value
 					 *
@@ -1689,7 +1868,7 @@ namespace awh {
 					 * @details Ход этот общий у всех семи кодеков рамки, и спрашивается он у
 					 *          ДОКУМЕНТА, а не у значения: общие проверки договора зовут
 					 *          `document.at(путь)`, и кодек, такого хода не несущий, в перебор
-					 *          по семерым не входит вовсе
+					 *          по семерым не входит вовсе.
 					 *
 					 * @note Выдаётся ВЛАДЕЮЩЕЕ значение, а не узел дерева: узлового вида у toml
 					 *       нет вовсе - настройки держатся записями, а не ареною узлов. Это
@@ -1700,6 +1879,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of accessing a value by a path
+					 *
+					 * @details This method is common to all the seven codecs of the framework, and it is
+					 *          asked of the DOCUMENT, and not of the value: the common contract checks call
+					 *          `document.at(path)`, and a codec not carrying such a method does not enter
+					 *          the round of the seven at all.
+					 *
+					 * @note An OWNING value is issued, and not a node of the tree: toml has no node kind
+					 *       at all - the settings are kept by records, and not by an arena of nodes. This
+					 *       is a lawful divergence by the arrangement, and not a departure from the
+					 *       contract
+					 *
 					 * @param path path to the value being searched for
 					 * @return     found value of the settings
 					 *
@@ -1712,13 +1902,19 @@ namespace awh {
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки. Прежняя проверка наличия
 					 *          берёт имя со разделом, а не путь, и оставлена рядом: снос задел бы
-					 *          потребителей, а согласование того не требует
+					 *          потребителей, а согласование того не требует.
 					 *
 					 * @param path путь до проверяемого значения
 					 * @return     признак наличия значения по пути
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a value by a path
+					 *
+					 * @details This method is common to all the seven codecs of the framework. The former
+					 *          presence check takes a name with a separator, and not a path, and it has
+					 *          been left next to it: a removal would touch the consumers, while the
+					 *          agreement does not require that.
+					 *
 					 * @param path path to the value being checked
 					 * @return     sign of the presence of the value by the path
 					 *
@@ -1737,13 +1933,19 @@ namespace awh {
 					 * @details Тело посредника `has()`, шаблоном от него отделённое: прежняя
 					 *          проверка наличия берёт путь ПЕРЕЧНЕМ кусков, и запись
 					 *          `has({раздел, имя})` подошла бы разом к обеим - собиратель
-					 *          отвечал бы отказом по двусмысленности
+					 *          отвечал бы отказом по двусмысленности.
 					 *
 					 * @param path путь до проверяемого значения
 					 * @return     признак наличия значения по пути
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a value by a path
+					 *
+					 * @details The body of the intermediary `has()`, separated from it by a template: the
+					 *          former presence check takes the path AS A LIST of pieces, and the record
+					 *          `has({separator, name})` would fit both at once - the overload would answer
+					 *          with a refusal by the ambiguity.
+					 *
 					 * @param path path to the value being checked
 					 * @return     sign of the presence of the value by the path
 					 *
@@ -1759,6 +1961,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a pair
+					 *
 					 * @param path compound name of the pair being sought
 					 * @return     result of the check
 					 *
@@ -1774,6 +1977,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the type of the value of a pair
+					 *
 					 * @param path compound name of the pair being sought
 					 * @return     type of the value of the found pair
 					 *
@@ -1800,8 +2004,8 @@ namespace awh {
 					 * @brief Метод получения значения пары
 					 *
 					 * @details Значение составное - перечень либо встроенная таблица -
-					 * выдаётся типом своим, а содержимое его читается перечнем дочерних
-					 * имён и обращением к ним по отдельности
+					 *          выдаётся типом своим, а содержимое его читается перечнем дочерних
+					 *          имён и обращением к ним по отдельности.
 					 *
 					 * @param path   составное имя искомой пары
 					 * @param result значение найденной пары
@@ -1815,9 +2019,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the value of a pair
+					 *
 					 * @details A compound value — an array or an inline table —
-					 * is issued by its type, while its content is read by a list of the child
-					 * names and by addressing them separately
+					 *          is issued by its type, while its content is read by a list of the child
+					 *          names and by addressing them separately.
+					 *
 					 * @param path   compound name of the pair being sought
 					 * @param result value of the found pair
 					 * @return       result of performing the operation
@@ -1845,6 +2051,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the string value of a pair
+					 *
 					 * @param path compound name of the pair being sought
 					 * @return     string value of the found pair or an empty sequence
 					 *
@@ -1865,6 +2072,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the number of the values of an array
+					 *
 					 * @param path compound name of the array being sought
 					 * @return     number of the values of the array
 					 *
@@ -1888,6 +2096,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting a value of an array by an ordinal number
+					 *
 					 * @param path   compound name of the array being sought
 					 * @param index  ordinal number of the value of the array
 					 * @param result value of the array
@@ -1911,6 +2120,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Template of the number type of the parsing result
+					 *
 					 * @tparam T number type of the parsing result
 					 *
 					 * \~
@@ -1921,15 +2131,15 @@ namespace awh {
 					 * @brief Метод получения значения пары числом
 					 *
 					 * @details Отказом получение завершается лишь тогда, когда значение
-					 * числом не является вовсе. Вид хранения извлечению не указ: целое
-					 * выдаётся и дробным видом, а дробное - и целым
+					 *          числом не является вовсе. Вид хранения извлечению не указ: целое
+					 *          выдаётся и дробным видом, а дробное - и целым.
 					 *
 					 * @details Дробное, извлекаемое целым видом, округляется по правилам
-					 * математики с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` -
-					 * минус двойкой. Целое, за отрезок затребованного вида выходящее,
-					 * переносится младшими разрядами, а дробное вне его пределов выдаётся
-					 * пределом: приведение такое стандарт зовёт неопределённым поведением,
-					 * а неопределённого поведения в кодеке не будет
+					 *          математики с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` -
+					 *          минус двойкой. Целое, за отрезок затребованного вида выходящее,
+					 *          переносится младшими разрядами, а дробное вне его пределов выдаётся
+					 *          пределом: приведение такое стандарт зовёт неопределённым поведением,
+					 *          а неопределённого поведения в кодеке не будет.
 					 *
 					 * @note Прежде вид значения соблюдался, и приведение одного к другому
 					 *       выполнялось лишь тогда, когда оно значения не искажало. Отменено
@@ -1942,15 +2152,23 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the value of a pair as a number
+					 *
 					 * @details The receipt ends with a refusal only when the value is not a number
-					 * at all. The kind of the storage is not a directive to the extraction: an integer is issued
-					 * also as a fractional kind, and a fractional one — also as an integer
+					 *          at all. The kind of the storage is not a directive to the extraction: an integer is issued
+					 *          also as a fractional kind, and a fractional one — also as an integer.
+					 *
 					 * @details A fractional number extracted as an integer kind is rounded by the rules
-					 * of mathematics with a half taken away from zero: `1.5` is issued as a two, while `-1.5` —
-					 * as a minus two. An integer going beyond the range of the requested kind is carried over
-					 * by the lower bits, while a fractional one beyond its limits is issued as the limit: such a
-					 * conversion is called an undefined behaviour by the standard, and there will be no
-					 * undefined behaviour in the codec
+					 *          of mathematics with a half taken away from zero: `1.5` is issued as a two, while `-1.5` —
+					 *          as a minus two. An integer going beyond the range of the requested kind is carried over
+					 *          by the lower bits, while a fractional one beyond its limits is issued as the limit: such a
+					 *          conversion is called an undefined behaviour by the standard, and there will be no
+					 *          undefined behaviour in the codec.
+					 *
+					 * @note Formerly the kind of the value was observed, and a conversion of one kind to
+					 *       another was performed only when it did not distort the value. Cancelled by the
+					 *       decision of 2026-08-20: the contract of extraction is common to all the codecs
+					 *       of the framework, and a conversion of the language refuses nowhere
+					 *
 					 * @param result reference to the result of the parsing
 					 * @param path   compound name of the pair being sought
 					 * @return       flag of a successful parsing
@@ -1964,15 +2182,17 @@ namespace awh {
 					 * @brief Метод объявления таблицы
 					 *
 					 * @details Уже объявленная таблица повторно не объявляется: метод
-					 * отвечает успехом, оставляя дерево нетронутым
+					 *          отвечает успехом, оставляя дерево нетронутым.
 					 *
 					 * @param path составное имя объявляемой таблицы
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of declaring a table
+					 *
 					 * @details An already declared table is not declared again: the method
-					 * answers with success, leaving the tree untouched
+					 *          answers with success, leaving the tree untouched.
+					 *
 					 * @param path compound name of the table being declared
 					 * @return     result of performing the operation
 					 *
@@ -1990,6 +2210,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the string value of a pair
+					 *
 					 * @param path    compound name of the pair being set
 					 * @param value   value of the pair being set
 					 * @param quoting notation of the string value
@@ -2006,7 +2227,7 @@ namespace awh {
 					 *          зовётся он вторым концом: у дерева, а не у значения. Заведены
 					 *          ОБА конца намеренно - у одних кодеков рамки правка стояла ходом
 					 *          значения, у других ходом документа, и потребитель, два кодека
-					 *          рядом читающий, разыскивал ход не там, где тот лежал
+					 *          рядом читающий, разыскивал ход не там, где тот лежал.
 					 *
 					 * @note Путь берётся СТРОКОЮ по описанию RFC 6901, а не перечнем кусков:
 					 *       строковый вид един у всех кодеков рамки, и им же зовётся `at()`
@@ -2017,6 +2238,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting an owning value by a path
+					 *
+					 * @details This method is the very transfer which `Value::graft()` conducts, and it is
+					 *          called by the second end: at the tree, and not at the value. BOTH ends were
+					 *          made deliberately - at some codecs of the framework the editing stood as a
+					 *          method of the value, at others as a method of the document, and a consumer
+					 *          reading two codecs side by side sought the method not where it lay.
+					 *
+					 * @note The path is taken AS A STRING by the description of RFC 6901, and not as a
+					 *       list of pieces: the string form is one across all the codecs of the framework,
+					 *       and `at()` is called by it as well
+					 *
 					 * @param path  path of the setting of the value
 					 * @param value owning value being set
 					 * @return      sign of the successful setting of the value
@@ -2039,7 +2271,7 @@ namespace awh {
 					 *          перечню и к постановке по пути - собиратель отвечал бы отказом по
 					 *          двусмысленности. Список в фигурных скобках к шаблонному доводу
 					 *          не выводится вовсе, и двусмысленность тем снимается, ничего у
-					 *          потребителя не ломая
+					 *          потребителя не ломая.
 					 *
 					 * @param path  путь постановки значения
 					 * @param value ставимое владеющее значение
@@ -2047,6 +2279,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting an owning value by a path
+					 *
+					 * @details The body of the intermediary `set()`, separated from it by a template. The
+					 *          separation is obligatory: a list of the pieces of a path is accepted in
+					 *          curly braces, and the record `set({name}, value)` would fit AT ONCE both
+					 *          the setting by a list and the setting by a path - the overload would answer
+					 *          with a refusal by the ambiguity. A list in curly braces is not deduced to a
+					 *          template argument at all, and the ambiguity is thereby removed without
+					 *          breaking anything at the consumer.
+					 *
 					 * @param path  path of the setting of the value
 					 * @param value owning value being set
 					 * @return      sign of the successful setting of the value
@@ -2059,9 +2300,9 @@ namespace awh {
 					 * @brief Метод установки строкового значения пары
 					 *
 					 * @details Вид этот заведён ради последовательности знаков, записанной
-					 * прямо в месте вызова: без него «set(path, "текст")» ушло бы установкой
-					 * логического значения - язык предпочитает приведение указателя к
-					 * логическому типу построению последовательности знаков
+					 *          прямо в месте вызова: без него «set(path, "текст")» ушло бы установкой
+					 *          логического значения - язык предпочитает приведение указателя к
+					 *          логическому типу построению последовательности знаков.
 					 *
 					 * @param path    составное имя устанавливаемой пары
 					 * @param value   устанавливаемое значение пары
@@ -2070,10 +2311,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the string value of a pair
+					 *
 					 * @details This overload has been introduced for the sake of a sequence of characters written
-					 * right at the place of the call: without it «set(path, "text")» would go as a setting
-					 * of a logical value — the language prefers a conversion of a pointer to
-					 * the logical type over a construction of a sequence of characters
+					 *          right at the place of the call: without it «set(path, "text")» would go as a setting
+					 *          of a logical value — the language prefers a conversion of a pointer to
+					 *          the logical type over a construction of a sequence of characters.
+					 *
 					 * @param path    compound name of the pair being set
 					 * @param value   value of the pair being set
 					 * @param quoting notation of the string value
@@ -2092,6 +2335,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the logical value of a pair
+					 *
 					 * @param path  compound name of the pair being set
 					 * @param value value of the pair being set
 					 * @return      result of performing the operation
@@ -2110,6 +2354,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting an integer as the value of a pair
+					 *
 					 * @param path  compound name of the pair being set
 					 * @param value value of the pair being set
 					 * @param radix numeral system of the notation of the number
@@ -2128,6 +2373,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting a floating-point number as the value of a pair
+					 *
 					 * @param path  compound name of the pair being set
 					 * @param value value of the pair being set
 					 * @return      result of performing the operation
@@ -2146,6 +2392,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting a timestamp as the value of a pair
+					 *
 					 * @param path  compound name of the pair being set
 					 * @param value timestamp being set
 					 * @param type  type of the timestamp being set
@@ -2159,10 +2406,10 @@ namespace awh {
 					 * @brief Метод объявления составного значения пары
 					 *
 					 * @details Место объявления задаётся тем же построением, каким задаёт его
-					 * поиск значения: начало имени именует пару, а остаток ведёт внутрь
-					 * составного значения - порядковым номером в перечень, именем ключа во
-					 * встроенную таблицу. Объявленное значение пусто, а наполняется оно
-					 * вызовами @c push() и @c put()
+					 *          поиск значения: начало имени именует пару, а остаток ведёт внутрь
+					 *          составного значения - порядковым номером в перечень, именем ключа во
+					 *          встроенную таблицу. Объявленное значение пусто, а наполняется оно
+					 *          вызовами @c push() и @c put().
 					 *
 					 * @note Прежнее содержимое места объявлением снимается: объявить перечень
 					 *       поверх перечня значит завести его заново, а не дописать к нему
@@ -2173,13 +2420,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the declaring of a compound value of a pair
+					 *
 					 * @details The place of the declaring is given by the same construction by which the search
-					 * of a value gives it: the beginning of the name names a pair, while the remainder leads inside
-					 * a compound value — by an ordinal number into an array, by a name of a key into
-					 * an inline table. The declared value is empty and is filled by
-					 * the calls @c push() and @c put()
+					 *          of a value gives it: the beginning of the name names a pair, while the remainder leads inside
+					 *          a compound value — by an ordinal number into an array, by a name of a key into
+					 *          an inline table. The declared value is empty and is filled by
+					 *          the calls @c push() and @c put().
+					 *
 					 * @note The previous content of the place is removed by the declaring: to declare an array
 					 *       on top of an array means to establish it anew rather than to append to it
+					 *
 					 * @param path  compound name of the place being declared
 					 * @param table flag of the declaring of an inline table instead of an array
 					 * @return      result of performing the operation
@@ -2192,9 +2442,9 @@ namespace awh {
 					 * @brief Метод добавления значения к перечню
 					 *
 					 * @details Значение задаётся тем же построением, каким выдаёт его чтение
-					 * значения перечня: тип его задан полем @c type, а вложенному перечню и
-					 * встроенной таблице отвечает значение пустое, наполняемое вызовами по
-					 * составному имени с порядковым номером его на конце
+					 *          значения перечня: тип его задан полем @c type, а вложенному перечню и
+					 *          встроенной таблице отвечает значение пустое, наполняемое вызовами по
+					 *          составному имени с порядковым номером его на конце.
 					 *
 					 * @param path  составное имя перечня
 					 * @param value добавляемое значение перечня
@@ -2202,10 +2452,12 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the appending of a value to an array
+					 *
 					 * @details The value is given by the same construction by which the reading of a value
-					 * of an array issues it: its type is given by the field @c type, while an empty value
-					 * corresponds to a nested array and to an inline table, filled by the calls by
-					 * a compound name with its ordinal number at the end
+					 *          of an array issues it: its type is given by the field @c type, while an empty value
+					 *          corresponds to a nested array and to an inline table, filled by the calls by
+					 *          a compound name with its ordinal number at the end.
+					 *
 					 * @param path  compound name of the array
 					 * @param value value being appended to the array
 					 * @return      result of performing the operation
@@ -2227,8 +2479,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the appending of a pair to an inline table
+					 *
 					 * @note The name of a pair is compound: the record «{a.b = 1}» is allowed by the specification, and the name
 					 *       of such a pair is a list of its parts
+					 *
 					 * @param path  compound name of the inline table
 					 * @param name  compound name of the pair being appended
 					 * @param value value of the pair being appended
@@ -2241,14 +2495,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод удаления пары
 					 *
-					 * @details Пара удаляется вместе с примечанием, дописанным к её строке
+					 * @details Пара удаляется вместе с примечанием, дописанным к её строке.
 					 *
 					 * @param path составное имя удаляемой пары
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of removing a pair
-					 * @details The pair is removed together with the comment appended to its line
+					 *
+					 * @details The pair is removed together with the comment appended to its line.
+					 *
 					 * @param path compound name of the pair being removed
 					 * @return     result of performing the operation
 					 *
@@ -2263,7 +2519,7 @@ namespace awh {
 					 *          заданному. Сносится значение ЛЮБОГО вида - и пара, и таблица, -
 					 *          тогда как `erase(перечень)` снимает пару, а `remove(перечень)`
 					 *          таблицу. Имена эти в языке суть синонимы, и потребитель угадать
-					 *          по ним, который что делает, не может вовсе
+					 *          по ним, который что делает, не может вовсе.
 					 *
 					 * @note Отделено шаблоном от `erase(перечень)`: список в фигурных скобках к
 					 *       шаблонному доводу не выводится, и двусмысленности не возникает
@@ -2273,6 +2529,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of removing a value by a path
+					 *
+					 * @details This method is common to all the seven codecs of the framework: a removal
+					 *          by a path given by a string. A value of ANY kind is removed - both a pair
+					 *          and a table - while `erase(list)` removes a pair and `remove(list)` a
+					 *          table. These names in the language are synonyms, and a consumer cannot
+					 *          guess by them which one does what at all.
+					 *
+					 * @note Separated by a template from `erase(list)`: a list in curly braces is not
+					 *       deduced to a template argument, and no ambiguity arises
+					 *
 					 * @param path path to the value being removed
 					 * @return     sign of the successful removal of the value
 					 *
@@ -2288,13 +2554,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод снятия значения по пути
 					 *
-					 * @details Тело посредника `erase()`, шаблоном от него отделённое
+					 * @details Тело посредника `erase()`, шаблоном от него отделённое.
 					 *
 					 * @param path путь до снимаемого значения
 					 * @return     признак успешного снятия значения
 					 *
 					 * \~english
 					 * @brief Method of removing a value by a path
+					 *
+					 * @details The body of the intermediary `erase()`, separated from it by a template.
+					 *
 					 * @param path path to the value being removed
 					 * @return     sign of the successful removal of the value
 					 *
@@ -2306,7 +2575,7 @@ namespace awh {
 					 * @brief Метод установки пустого значения по пути к нему
 					 *
 					 * @details Ход этот общий у кодеков рамки: пустое значение от снятия узла
-					 * отлично - пара остаётся налицо, а значения при ней нет
+					 *          отлично - пара остаётся налицо, а значения при ней нет.
 					 *
 					 * @note Пустотою наречию служит пустая СТРОКА: своего вида пустоты описание
 					 *       TOML не знает вовсе - ни `null`, ни `~`, - и всякая пара обязана
@@ -2319,6 +2588,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of an empty value by the path to it
+					 *
+					 * @details This method is common to the codecs of the framework: an empty value is
+					 *          distinct from the removal of a node - a pair remains in sight, while there
+					 *          is no value at it.
+					 *
+					 * @note An empty STRING serves the dialect as emptiness: the TOML description knows no
+					 *       kind of emptiness of its own - neither `null` nor `~` - and every pair is
+					 *       obliged to carry a value. The record `name = ""` is therefore the only way to
+					 *       express a pair without content, and back it will be read as an empty string,
+					 *       and not as an absent value
+					 *
 					 * @param path path to the node being set
 					 * @return     sign of the successful setting of the value
 					 *
@@ -2329,14 +2609,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод удаления таблицы
 					 *
-					 * @details Удаляется объявление таблицы вместе со всеми её парами
+					 * @details Удаляется объявление таблицы вместе со всеми её парами.
 					 *
 					 * @param path составное имя удаляемой таблицы
 					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of removing a table
-					 * @details The declaration of the table is removed together with all its pairs
+					 *
+					 * @details The declaration of the table is removed together with all its pairs.
+					 *
 					 * @param path compound name of the table being removed
 					 * @return     result of performing the operation
 					 *
@@ -2352,6 +2634,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the number of the declared tables
+					 *
 					 * @return number of the declared tables of the settings text
 					 *
 					 * \~
@@ -2365,6 +2648,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the tree for the absence of the records
+					 *
 					 * @return result of the check
 					 *
 					 * \~
@@ -2375,23 +2659,26 @@ namespace awh {
 					 * @brief Метод получения объёма памяти, деревом занимаемого
 					 *
 					 * @details Считается вместе с памятью, взятой хранилищами про запас:
-					 * показатель этот назначен потребителю, который дерево долго правит, и
-					 * судить о занятом по одному лишь живому содержимому ему мало
+					 *          показатель этот назначен потребителю, который дерево долго правит, и
+					 *          судить о занятом по одному лишь живому содержимому ему мало.
 					 *
 					 * @note Мусор, правкою накопленный, дерево уплотняет само по накоплении
-					 * его вровень с живым: объём этот растёт до уплотнения и опадает после,
-					 * но неограниченным не бывает
+					 *       его вровень с живым: объём этот растёт до уплотнения и опадает после,
+					 *       но неограниченным не бывает
 					 *
 					 * @return объём памяти в октетах
 					 *
 					 * \~english
 					 * @brief Method of getting the volume of the memory occupied by the tree
+					 *
 					 * @details Counted together with the memory taken by the storages in reserve: this
-					 * indicator is intended for a consumer who edits the tree for a long time, and
-					 * to judge the occupied by the live content alone is not enough for him
+					 *          indicator is intended for a consumer who edits the tree for a long time, and
+					 *          to judge the occupied by the live content alone is not enough for him.
+					 *
 					 * @note The garbage accumulated by the editing the tree compacts itself upon its accumulation
-					 * on a par with the live one: this volume grows before a compaction and falls after it,
-					 * but is never unlimited
+					 *       on a par with the live one: this volume grows before a compaction and falls after it,
+					 *       but is never unlimited
+					 *
 					 * @return volume of the memory in octets
 					 *
 					 * \~
@@ -2413,15 +2700,17 @@ namespace awh {
 					 * @brief Метод записи дерева обратно в текст настроек
 					 *
 					 * @details Записи выдаются в том же порядке, в каком они прочитаны,
-					 * вместе с примечаниями и пустыми строками
+					 *          вместе с примечаниями и пустыми строками.
 					 *
 					 * @param settings настройки записи текста настроек
 					 * @return         собранный текст настроек
 					 *
 					 * \~english
 					 * @brief Method of writing the tree back into a settings text
+					 *
 					 * @details The records are issued in the same order in which they have been read,
-					 * together with the comments and the empty lines
+					 *          together with the comments and the empty lines.
+					 *
 					 * @param settings settings of the writing of a settings text
 					 * @return         assembled settings text
 					 *
@@ -2432,7 +2721,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод чтения настроек из файла
 					 *
-					 * @details Ход этот общий у всех семи кодеков рамки
+					 * @details Ход этот общий у всех семи кодеков рамки.
 					 *
 					 * @note Ненайденный файл пустым текстом НЕ является: отказ называет причину
 					 *       кодом `FILE_NOT_OPENED`, тогда как пустота текста сообщила бы
@@ -2443,6 +2732,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of reading the settings from a file
+					 *
+					 * @details This method is common to all the seven codecs of the framework.
+					 *
+					 * @note A file which was not found is NOT an empty text: the refusal names the cause
+					 *       by the code `FILE_NOT_OPENED`, while the emptiness of the text would report to
+					 *       the consumer as though the file had been read and were empty
+					 *
 					 * @param filename path to the file of the settings being read
 					 * @return         sign of the successful reading of the settings
 					 *
@@ -2453,13 +2749,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи настроек в файл
 					 *
-					 * @details Ход этот общий у всех семи кодеков рамки
+					 * @details Ход этот общий у всех семи кодеков рамки.
 					 *
 					 * @param filename путь до записываемого файла настроек
 					 * @return         признак успешной записи настроек
 					 *
 					 * \~english
 					 * @brief Method of writing the settings into a file
+					 *
+					 * @details This method is common to all the seven codecs of the framework.
+					 *
 					 * @param filename path to the file of the settings being written
 					 * @return         sign of the successful writing of the settings
 					 *
@@ -2472,12 +2771,17 @@ namespace awh {
 					 *
 					 * @details Ход этот общий у кодеков рамки, текст читающих. Кодировка
 					 *          определяется чтением по метке порядка октетов либо по самому
-					 *          виду текста, а дерево лишь несёт её потребителю
+					 *          виду текста, а дерево лишь несёт её потребителю.
 					 *
 					 * @return кодировка, какою текст настроек прочитан
 					 *
 					 * \~english
 					 * @brief Method of getting the encoding of the read text
+					 *
+					 * @details This method is common to the codecs of the framework which read a text. The
+					 *          encoding is determined by the reading either by the byte order mark or by
+					 *          the very look of the text, while the tree only carries it to the consumer.
+					 *
 					 * @return encoding by which the text of the settings was read
 					 *
 					 * \~
@@ -2488,14 +2792,16 @@ namespace awh {
 					 * @brief Метод записи дерева обратно в текст настроек
 					 *
 					 * @details Настройки записи выводятся из настроек разбора: пределы, каким
-					 * текст прочитан, теми же и записывается
+					 *          текст прочитан, теми же и записывается.
 					 *
 					 * @return собранный текст настроек
 					 *
 					 * \~english
 					 * @brief Method of writing the tree back into a settings text
+					 *
 					 * @details The settings of the writing are inferred from the settings of the parsing: the limits by which
-					 * the text has been read are the ones it is written by as well
+					 *          the text has been read are the ones it is written by as well.
+					 *
 					 * @return assembled settings text
 					 *
 					 * \~
@@ -2503,38 +2809,21 @@ namespace awh {
 					string dump() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод получения текста настроек
-					 *
-					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
-					 * написанных прежде согласования кодеков рамки между собой. Зови `dump()`:
-					 * им сборка текста зовётся у всех семи кодеков
-					 *
-					 * @return собранный текст настроек
-					 *
-					 * \~english
-					 * @brief Method of getting the text of the settings
-					 * @deprecated This name is DEPRECATED and is left as an intermediary for the sake of the consumers
-					 * written before the harmonization of the codecs of the framework with one another. Call `dump()`
-					 * @return assembled text of the settings
-					 *
-					 * \~
-					 */
-					string text() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод получения настроек записи, отвечающих настройкам разбора
 					 *
 					 * @details Выводит пределы записи из пределов разбора и признание знаков
-					 * Юникода в имени без кавычек. Прочитанное этими настройками записывается
-					 * так, что читается обратно без потерь
+					 *          Юникода в имени без кавычек. Прочитанное этими настройками записывается
+					 *          так, что читается обратно без потерь.
 					 *
 					 * @return настройки записи текста настроек
 					 *
 					 * \~english
 					 * @brief Method of getting the settings of the writing corresponding to the settings of the parsing
+					 *
 					 * @details Infers the limits of the writing from the limits of the parsing and the recognition of the Unicode
-					 * characters in a name without quotes. What has been read by those settings is written
-					 * so that it is read back without losses
+					 *          characters in a name without quotes. What has been read by those settings is written
+					 *          so that it is read back without losses.
+					 *
 					 * @return settings of the writing of a settings text
 					 *
 					 * \~
@@ -2559,6 +2848,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the settings tree
 					 *
 					 * \~
@@ -2569,21 +2859,39 @@ namespace awh {
 					 * @brief Ходы копии и переноса дерева
 					 *
 					 * @details Объявлены они здесь ради ПЕРЕНОСА: прежде тут стоял деструктор,
-					 * освобождавший дерево зовом `clear()`, и объявление его отменяло порождение
-					 * переносящих ходов - по правилу языка неявный перенос у класса с деструктором
-					 * объявленным не порождается вовсе. Перенос при этом молча обращался копией:
-					 * замер 17.09.2026 на дереве о двадцати тысячах таблиц дал перенос 4240 мкс
-					 * против копии 4127 мкс, и источник сохранял всё содержимое
+					 *          освобождавший дерево зовом `clear()`, и объявление его отменяло порождение
+					 *          переносящих ходов - по правилу языка неявный перенос у класса с деструктором
+					 *          объявленным не порождается вовсе. Перенос при этом молча обращался копией:
+					 *          замер 17.09.2026 на дереве о двадцати тысячах таблиц дал перенос 4240 мкс
+					 *          против копии 4127 мкс, и источник сохранял всё содержимое.
 					 *
 					 * @note Деструктор тот был ИЗЛИШЕН: `clear()` сбрасывает поля, а поля эти -
-					 * перечни да строки, и освободятся они деструкторами своими сами. Сосед YAML
-					 * деструктора не имеет вовсе, и перенос у него работал всё это время
+					 *       перечни да строки, и освободятся они деструкторами своими сами. Сосед YAML
+					 *       деструктора не имеет вовсе, и перенос у него работал всё это время
 					 *
 					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 * переноса подавило бы порождение копии, и дерево перестало бы копироваться
+					 *          переноса подавило бы порождение копии, и дерево перестало бы копироваться
 					 *
 					 * \~english
 					 * @brief The calls of the copying and of the moving of a tree
+					 *
+					 * @details They are declared here for the sake of the MOVING: formerly a destructor
+					 *          stood here, freeing the tree by a call to `clear()`, and its declaration
+					 *          cancelled the generation of the moving methods - by the rule of the
+					 *          language an implicit move is not generated at all at a class with a
+					 *          declared destructor. The moving thereby silently turned into a copy: a
+					 *          measurement of 2026-09-17 on a tree of twenty thousand tables gave a move
+					 *          of 4240 µs against a copy of 4127 µs, and the source kept all of its
+					 *          content.
+					 *
+					 * @note That destructor was REDUNDANT: `clear()` resets the fields, and those fields
+					 *       are lists and strings, and they are freed by their own destructors themselves.
+					 *       The neighbouring YAML has no destructor at all, and its moving worked all this
+					 *       time
+					 *
+					 * @warning FOUR methods are declared at once by the rule of five: the declaration of a
+					 *          move alone would have suppressed the generation of the copy, and the tree
+					 *          would have ceased to be copied
 					 *
 					 * \~
 					 */

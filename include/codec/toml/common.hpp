@@ -83,8 +83,8 @@ namespace awh {
 		 * @brief Пространство имён контейнера TOML
 		 *
 		 * @details Разбор и запись текста настроек в записи TOML версии 1.0.0 - таблиц в
-		 * квадратных скобках, наборов таблиц в двойных скобках, пар «ключ = значение» с
-		 * выведенным типом значения, перечней, встроенных таблиц и примечаний
+		 *          квадратных скобках, наборов таблиц в двойных скобках, пар «ключ = значение» с
+		 *          выведенным типом значения, перечней, встроенных таблиц и примечаний.
 		 *
 		 * @par Намеренные решения
 		 *
@@ -92,94 +92,105 @@ namespace awh {
 		 * задачи, и каждое из решений закреплено проверочным испытанием
 		 *
 		 * @li **Описание у записи единственное, и наречий здесь нет.** В отличие от INI,
-		 * у TOML есть описание (toml.io, версия 1.0.0), и разбор ведётся по нему, а не по
-		 * настройкам наречия. Настройки задают пределы разбора, вид собираемого текста и
-		 * дозволенные послабления - но не устройство записи
+		 *     у TOML есть описание (toml.io, версия 1.0.0), и разбор ведётся по нему, а не по
+		 *     настройкам наречия. Настройки задают пределы разбора, вид собираемого текста и
+		 *     дозволенные послабления - но не устройство записи
 		 *
 		 * @li **Тип значения выводится разбором, а не запросом потребителя.** Это
-		 * противоположность решению, принятому у INI, и различие это заложено самими
-		 * записями: у INI значение всегда последовательность знаков и угадывание типа
-		 * породило бы разночтения, а у TOML тип задан описанием - «1.10» там число, «011»
-		 * ошибочная запись, а «true» логическое значение, и выдавать их строками значило
-		 * бы разбирать запись неверно
+		 *     противоположность решению, принятому у INI, и различие это заложено самими
+		 *     записями: у INI значение всегда последовательность знаков и угадывание типа
+		 *     породило бы разночтения, а у TOML тип задан описанием - «1.10» там число, «011»
+		 *     ошибочная запись, а «true» логическое значение, и выдавать их строками значило
+		 *     бы разбирать запись неверно
 		 *
 		 * @li **Числа с плавающей точкой хранятся двоичным представлением двойной
-		 * точности.** Описание задаёт им именно его, и разрядность сверх неё запись не
-		 * переживает. Записанное число выдаётся кратчайшей записью, обратно дающей то же
-		 * самое значение: иначе «0.1» уходило бы в файл как «0.10000000000000001»
+		 *     точности.** Описание задаёт им именно его, и разрядность сверх неё запись не
+		 *     переживает. Записанное число выдаётся кратчайшей записью, обратно дающей то же
+		 *     самое значение: иначе «0.1» уходило бы в файл как «0.10000000000000001»
 		 *
 		 * @li **Целые числа хранятся знаковым числом в шестьдесят четыре разряда.**
-		 * Описание требует принимать весь этот отрезок значений и допускает отвергать
-		 * выходящее за него; выход за отрезок отвергается отказом, а не молчаливым
-		 * приведением по кругу
+		 *     Описание требует принимать весь этот отрезок значений и допускает отвергать
+		 *     выходящее за него; выход за отрезок отвергается отказом, а не молчаливым
+		 *     приведением по кругу
 		 *
 		 * @li **Отметки времени хранятся разобранными по полям, а не строкой.** Описание
-		 * отводит им четыре вида - со смещением, местную отметку, местную дату и местное
-		 * время, - и различить их можно лишь разбором. Приведение к единому виду отняло
-		 * бы у местной отметки её местность
+		 *     отводит им четыре вида - со смещением, местную отметку, местную дату и местное
+		 *     время, - и различить их можно лишь разбором. Приведение к единому виду отняло
+		 *     бы у местной отметки её местность
 		 *
 		 * @li **Разряды доли секунды сверх девяти отбрасываются.** Описание дозволяет
-		 * обращение это прямо, и хранение доли ведётся наносекундами: принимать разрядов
-		 * больше значило бы требовать целого числа неограниченной длины ради разрядов,
-		 * которых не выдаёт ни один источник времени
+		 *     обращение это прямо, и хранение доли ведётся наносекундами: принимать разрядов
+		 *     больше значило бы требовать целого числа неограниченной длины ради разрядов,
+		 *     которых не выдаёт ни один источник времени
 		 *
 		 * @li **Порядок записей сохраняется.** Дерево настроек хранит записи в порядке
-		 * появления их в исходном тексте вместе с примечаниями и пустыми строками:
-		 * перезапись обязана возвращать файл, узнаваемый его хозяином. Описание порядка
-		 * не требует, но файл настроек пишет человек
+		 *     появления их в исходном тексте вместе с примечаниями и пустыми строками:
+		 *     перезапись обязана возвращать файл, узнаваемый его хозяином. Описание порядка
+		 *     не требует, но файл настроек пишет человек
 		 *
 		 * @li **Внешние файлы не подключаются.** Указаний подключения запись не имеет
-		 * вовсе, и вводить их собственным расширением разбор не станет: ни обращения к
-		 * файловой системе, ни к сети разбор не совершает
+		 *     вовсе, и вводить их собственным расширением разбор не станет: ни обращения к
+		 *     файловой системе, ни к сети разбор не совершает
 		 *
 		 * @li **Записи INI разбор не принимает.** Внешне записи схожи, но у TOML свои
-		 * типы, свои таблицы и свои правила ограждения: принимать записи INI значило бы
-		 * принимать неоднозначное. Разбор их выдаёт отказом, а место им в модуле INI
+		 *     типы, свои таблицы и свои правила ограждения: принимать записи INI значило бы
+		 *     принимать неоднозначное. Разбор их выдаёт отказом, а место им в модуле INI
 		 *
 		 * \~english
 		 * @brief TOML container namespace
+		 *
 		 * @details The parsing and the writing of a settings text in the TOML notation of the version 1.0.0 — of the tables in
-		 * square brackets, of the arrays of tables in double brackets, of the pairs «key = value» with
-		 * an inferred type of the value, of the arrays, of the inline tables and of the comments
+		 *          square brackets, of the arrays of tables in double brackets, of the pairs «key = value» with
+		 *          an inferred type of the value, of the arrays, of the inline tables and of the comments.
+		 *
 		 * @par Deliberate decisions
-		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
-		 * task, and each of the decisions is fixed by a verifying test
+		 *      What is listed below is not a gap of the implementation: these are the outlined boundaries of the
+		 *      task, and each of the decisions is fixed by a verifying test
+		 *
 		 * @li **The specification of the notation is a single one, and there are no dialects here.** Unlike INI,
-		 * TOML has a specification (toml.io, version 1.0.0), and the parsing is conducted by it rather than by
-		 * the settings of a dialect. The settings give the limits of the parsing, the form of the assembled text and
-		 * the permitted relaxations — but not the arrangement of the notation
+		 *     TOML has a specification (toml.io, version 1.0.0), and the parsing is conducted by it rather than by
+		 *     the settings of a dialect. The settings give the limits of the parsing, the form of the assembled text and
+		 *     the permitted relaxations — but not the arrangement of the notation
+		 *
 		 * @li **The type of a value is inferred by the parsing rather than by a request of the consumer.** This is
-		 * the opposite of the decision taken for INI, and that difference is laid down by the notations
-		 * themselves: for INI a value is always a sequence of characters and a guessing of the type would
-		 * give birth to discrepancies, while for TOML the type is given by the specification — «1.10» there is a number, «011»
-		 * is an erroneous record, and «true» is a logical value, and to issue them as strings would mean
-		 * to parse the notation incorrectly
+		 *     the opposite of the decision taken for INI, and that difference is laid down by the notations
+		 *     themselves: for INI a value is always a sequence of characters and a guessing of the type would
+		 *     give birth to discrepancies, while for TOML the type is given by the specification — «1.10» there is a number, «011»
+		 *     is an erroneous record, and «true» is a logical value, and to issue them as strings would mean
+		 *     to parse the notation incorrectly
+		 *
 		 * @li **The floating-point numbers are stored as a binary representation of a double
-		 * precision.** The specification allots exactly it to them, and a width beyond it the notation does not
-		 * survive. A written number is issued as the shortest record giving back the same
-		 * value: otherwise «0.1» would go into the file as «0.10000000000000001»
+		 *     precision.** The specification allots exactly it to them, and a width beyond it the notation does not
+		 *     survive. A written number is issued as the shortest record giving back the same
+		 *     value: otherwise «0.1» would go into the file as «0.10000000000000001»
+		 *
 		 * @li **The integers are stored as a signed number of sixty-four bits.**
-		 * The specification requires accepting that whole range of the values and permits rejecting
-		 * what goes beyond it; a going beyond the range is rejected by a refusal rather than by a silent
-		 * wrap-around conversion
+		 *     The specification requires accepting that whole range of the values and permits rejecting
+		 *     what goes beyond it; a going beyond the range is rejected by a refusal rather than by a silent
+		 *     wrap-around conversion
+		 *
 		 * @li **The timestamps are stored parsed by the fields rather than as a string.** The specification
-		 * allots four kinds to them — with an offset, a local timestamp, a local date and a local
-		 * time — and they can be distinguished only by a parsing. A bringing to a single form would take
-		 * away from a local timestamp its locality
+		 *     allots four kinds to them — with an offset, a local timestamp, a local date and a local
+		 *     time — and they can be distinguished only by a parsing. A bringing to a single form would take
+		 *     away from a local timestamp its locality
+		 *
 		 * @li **The digits of a fraction of a second beyond nine are discarded.** The specification permits this
-		 * treatment directly, while the storing of the fraction is conducted in nanoseconds: to accept more digits
-		 * would mean to require an integer of an unlimited length for the sake of the digits
-		 * which not a single source of the time issues
+		 *     treatment directly, while the storing of the fraction is conducted in nanoseconds: to accept more digits
+		 *     would mean to require an integer of an unlimited length for the sake of the digits
+		 *     which not a single source of the time issues
+		 *
 		 * @li **The order of the records is preserved.** The settings tree stores the records in the order of
-		 * their appearance in the source text together with the comments and the empty lines:
-		 * a rewriting is obliged to return a file recognizable by its owner. The specification does not require
-		 * the order, but a settings file is written by a human
+		 *     their appearance in the source text together with the comments and the empty lines:
+		 *     a rewriting is obliged to return a file recognizable by its owner. The specification does not require
+		 *     the order, but a settings file is written by a human
+		 *
 		 * @li **External files are not included.** The notation has no inclusion directives
-		 * at all, and the parsing will not introduce them by an extension of its own: the parsing performs neither calls to
-		 * the file system nor to the network
+		 *     at all, and the parsing will not introduce them by an extension of its own: the parsing performs neither calls to
+		 *     the file system nor to the network
+		 *
 		 * @li **The parsing does not accept the INI notation.** Outwardly the notations are similar, but TOML has its own
-		 * types, its own tables and its own rules of the fencing: to accept the INI notation would mean
-		 * to accept the ambiguous. The parsing issues them as a refusal, while their place is in the INI module
+		 *     types, its own tables and its own rules of the fencing: to accept the INI notation would mean
+		 *     to accept the ambiguous. The parsing issues them as a refusal, while their place is in the INI module
 		 *
 		 * \~
 		 */
@@ -189,14 +200,15 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина логической строки в байтах
 			 *
 			 * @details Предел считается на строку целиком - вместе со всеми строками
-			 * многострочного значения, - иначе многострочная запись давала бы обход
-			 * предела
+			 *          многострочного значения, - иначе многострочная запись давала бы обход
+			 *          предела.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of a logical line in bytes
+			 *
 			 * @details The limit is counted over the line as a whole — together with all the lines of
-			 * a multiline value — otherwise a multiline record would give a bypass of
-			 * the limit
+			 *          a multiline value — otherwise a multiline record would give a bypass of
+			 *          the limit.
 			 *
 			 * \~
 			 */
@@ -207,12 +219,13 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина имени ключа в байтах
 			 *
 			 * @details Предел считается на составную часть имени, а не на составное имя
-			 * целиком: у составного имени своя мера - глубина вложенности
+			 *          целиком: у составного имени своя мера - глубина вложенности.
 			 *
 			 * \~english
 			 * @brief Largest admissible length of the name of a key in bytes
+			 *
 			 * @details The limit is counted over a component part of a name rather than over a compound name
-			 * as a whole: a compound name has its own measure — the depth of the nesting
+			 *          as a whole: a compound name has its own measure — the depth of the nesting.
 			 *
 			 * \~
 			 */
@@ -223,16 +236,17 @@ namespace awh {
 			 * @brief Наибольшая допустимая глубина вложенности значений
 			 *
 			 * @details Меряется вложенностью перечней и встроенных таблиц друг в друга.
-			 * Предел этот не украшение: разбор вложенности ведётся стопой состояний, и
-			 * текст в несколько килобайт из одних открывающих скобок исчерпывает память
-			 * узла, если глубину не ограничить
+			 *          Предел этот не украшение: разбор вложенности ведётся стопой состояний, и
+			 *          текст в несколько килобайт из одних открывающих скобок исчерпывает память
+			 *          узла, если глубину не ограничить.
 			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting of the values
+			 *
 			 * @details Measured by the nesting of the arrays and of the inline tables into one another.
-			 * This limit is not an adornment: the parsing of the nesting is conducted by a stack of the states, and
-			 * a text of several kilobytes made of opening brackets alone exhausts the memory of
-			 * a node if the depth is not limited
+			 *          This limit is not an adornment: the parsing of the nesting is conducted by a stack of the states, and
+			 *          a text of several kilobytes made of opening brackets alone exhausts the memory of
+			 *          a node if the depth is not limited.
 			 *
 			 * \~
 			 */
@@ -243,20 +257,25 @@ namespace awh {
 			 * @brief Количество пар вместилища, начиная с какого заводится указатель имён
 			 *
 			 * @details Ниже порога имя разыскивается перебором, и это дешевле всякого
-			 * указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
-			 * выделения памяти и подсчёта отпечатка на всякое имя. Выше порога перебор
-			 * обращает и сборку вместилища, и чтение его по именам в квадратичные, и
-			 * указатель окупается
+			 *          указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
+			 *          выделения памяти и подсчёта отпечатка на всякое имя. Выше порога перебор
+			 *          обращает и сборку вместилища, и чтение его по именам в квадратичные, и
+			 *          указатель окупается.
 			 *
 			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
-			 * не при разборе. Вместилище, к которому по имени не обращались, не платит ничего
+			 *       не при разборе. Вместилище, к которому по имени не обращались, не платит ничего
 			 *
 			 * \~english
 			 * @brief Number of the pairs of a container starting from which the index of the names is created
+			 *
 			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
-			 * index: above the threshold an enumeration turns both the assembly of a container and the reading of it
-			 * by the names into quadratic ones, and the index pays off
-			 * @note The index is created **on demand** — at the first access by a name
+			 *          index: the comparison of the names goes over the memory laid out in a row, while the creation
+			 *          of an index costs an allocation of memory and the counting of a fingerprint for every name.
+			 *          Above the threshold an enumeration turns both the assembly of a container and the reading of it
+			 *          by the names into quadratic ones, and the index pays off.
+			 *
+			 * @note The index is created **on demand** — at the first access by a name, and not at the
+			 *       parsing. A container which has not been addressed by a name pays nothing
 			 *
 			 * \~
 			 */
@@ -283,6 +302,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Largest number of the digits of a fraction of a second accepted by the parsing
+			 *
 			 * @note The fraction of a second is stored in nanoseconds, and the storage does not accommodate
 			 *       more than nine digits. The specification permits the discarding of the superfluous digits
 			 *
@@ -312,6 +332,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Designation of an unknown offset of a local time
+			 *
 			 * @note The offset is absent in a local timestamp and in a local time:
 			 *       this value distinguishes them from a timestamp with an offset equal to zero —
 			 *       an offset of zero means the UTC time zone and is not a local timestamp
@@ -321,6 +342,7 @@ namespace awh {
 			constexpr int32_t NO_TIMEZONE = static_cast <int32_t> (0x7FFFFFFF);
 
 			/**
+			 * \~russian
 			 * @warning ОБЪЯВЛЕННЫЕ, НО НИКОГДА НЕ ВЫДАВАЕМЫЕ отказы: замерено 08.09.2026 розыском
 			 *          `error_t::<имя>` по исходникам кодека за вычетом `common.cpp`, где стоит
 			 *          лишь таблица сообщений. Таковых ОДИН из сорока двух: OVERFLOW_LIMIT
@@ -360,14 +382,58 @@ namespace awh {
 			 *          у прочих четырёх 121, суммою по кодекам 123 против 109. Довод стоял на
 			 *          числе без признака счёта и оттого лжив; находки же на нём НЕ стояли -
 			 *          они стоят на отсутствии двух имён, названных выше
+			 *
+			 * \~english
+			 * @warning THE CODES DECLARED BUT NEVER ISSUED: measured 2026-09-08 by a search of
+			 *          `error_t::<name>` over the sources of the codec, `common.cpp` excepted, where
+			 *          only the table of the messages stands. There is ONE of such among the forty-two:
+			 *          OVERFLOW_LIMIT
+			 *
+			 * @note Re-measured 2026-09-17 by the same search: since the last measurement
+			 *       CONFLICTING_SETTINGS has come alive — it is issued now by a court over a discord of
+			 *       the settings of the writing with the reading (`document.cpp`) — and two have turned
+			 *       into one. The list at that grew from thirty-seven names to forty-two
+			 *
+			 * @warning A record surviving a measurement is more dangerous here than an absence: a
+			 *          consumer would count a refusal unreachable by it and would write no workaround for it
+			 *
+			 * @note They are visible to a consumer on a par with the living ones: he has the right to
+			 *       expect them and to write by them a parsing that will never work. It is carried out as a
+			 *       separate question — to remove them, to revive them, or to mark them as placeholders;
+			 *       this is decided outside the codec, for the list of the refusals is a contract handed
+			 *       to a consumer
+			 *
+			 * @note I name the number together with the sign of the counting: the names of the list have
+			 *       been counted, while an issuing is acknowledged as any mention outside the table of the
+			 *       messages. It is recounted by the same search
+			 *
+			 * @warning TWO CROSS-CODING codes are ABSENT, which are declared by JSON, XML and CSV with all
+			 *          three, while by my three with none: `FILE_NOT_READ` (a file failed to be read) and
+			 *          `TEXT_ALREADY_ENDED` (a feeding after the end of a text). Measured 2026-09-08 by a
+			 *          comparison of the lists of nine codecs of the frame. This absence is not a named one
+			 *          but exactly a cross one: `FILE_NOT_WRITTEN` and `STORAGE_EXHAUSTED` are declared by
+			 *          ALL six, and only these two fall out
+			 *
+			 * @note Both findings, carried beyond the bounds of the codec, ran exactly into them: the
+			 *       feeding of a directory (nothing answers but a zero) and the feeding after the end of a
+			 *       text (the codec answers by a code alien in meaning or by a success). The other
+			 *       divergences of the lists are DELIBERATE — the labels of XML, the fields of CSV, the
+			 *       chunks of ABC — and are not subject to a comparison
+			 *
+			 * @warning My former argument «the lists of the refusals of my three are ALREADY 87 against
+			 *          98» IS REMOVED 2026-09-08: the number 87 is right (the distinct names of my three),
+			 *          while 98 is reproduced by no sign of the counting — the other three give 85, the
+			 *          other four 121, by a sum over the codecs 123 against 109. The argument stood on a
+			 *          number without a sign of the counting and was a lie for that reason; the findings did
+			 *          NOT stand on it — they stand on the absence of the two names called above
 			 */
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора и записи текста настроек
 			 *
 			 * @note Перечень этот общ у кодеков INI, TOML и YAML ИМЕНАМИ, а не числами, и
-			 * равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
-			 * трёх одинаково, и потребитель учит одно имя, а не три.
+			 *       равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
+			 *       трёх одинаково, и потребитель учит одно имя, а не три
 			 *
 			 * @warning ЧИСЛА при общих именах РАЗЛИЧНЫ, и прежняя запись - «потребитель,
 			 *          разбирающий отказы по КОДУ, иначе учил бы для каждого кодека свой
@@ -382,33 +448,72 @@ namespace awh {
 			 *       чисел между ними смысла не имеет вовсе
 			 *
 			 * @note Оттого часть кодов кодеком TOML не выдаётся
-			 * вовсе - условия у наречия TOML для них нет:
+			 *       вовсе - условия у наречия TOML для них нет:
 			 *
 			 * @note - `CONFLICTING_SETTINGS` отвечает противоречию настроек ограждения
-			 * значения кавычками, а у наречия TOML ограждение задано описанием, и
-			 * настройке, ему противоречащей, взяться неоткуда;
+			 *       значения кавычками, а у наречия TOML ограждение задано описанием, и
+			 *       настройке, ему противоречащей, взяться неоткуда;
 			 *
 			 * @note - `UNSUPPORTED_ENCODING` выдавался опознанием кодировки, а с
-			 * заведением UTF-32 и однобытовых кодировок опознание отказа более не даёт -
-			 * заход остался заставой на случай кодировки, впредь заведённой;
+			 *       заведением UTF-32 и однобытовых кодировок опознание отказа более не даёт -
+			 *       заход остался заставой на случай кодировки, впредь заведённой;
 			 *
 			 * @note - `UNEXPECTED_EOF` выдаётся заставой разбора записи: всякая запись
-			 * обрыв текста отвергает у себя кодом точным - незакрытым перечнем,
-			 * оборванной строкой, отсутствующим знаком равенства
+			 *       обрыв текста отвергает у себя кодом точным - незакрытым перечнем,
+			 *       оборванной строкой, отсутствующим знаком равенства
 			 *
 			 * @note - `OVERFLOW_LIMIT` мест выдачи не имеет вовсе: пределы, настройками
-			 * заданные, у разбора TOML не заведены, а переполнение хранилища знаков
-			 * отвечает своим кодом `STORAGE_EXHAUSTED`
+			 *       заданные, у разбора TOML не заведены, а переполнение хранилища знаков
+			 *       отвечает своим кодом `STORAGE_EXHAUSTED`
 			 *
 			 * @warning Молчание кода означает НЕПРОВЕРЕННОСТЬ пути, а не исправность его:
-			 * снасть молчащих кодов перебирает места выдачи по трём прогонам, и код,
-			 * ни разу не выданный, обещания своего потребителю не даёт
+			 *          снасть молчащих кодов перебирает места выдачи по трём прогонам, и код,
+			 *          ни разу не выданный, обещания своего потребителю не даёт
 			 *
 			 * \~english
 			 * @brief Error codes of the parsing and of the writing of a settings text
-			 * @note This list is COMMON to the INI, TOML and YAML codecs and is kept equal
-			 * deliberately; hence a part of the codes is never issued by the TOML codec —
-			 * the TOML dialect has no condition for them
+			 *
+			 * @note This list is common to the codecs INI, TOML and YAML by NAMES, and not by
+			 *       numbers, and it is exactly the names that are kept equal: a notion common to
+			 *       the three dialects is called alike in all three, and the consumer learns one
+			 *       name rather than three
+			 *
+			 * @warning THE NUMBERS at the common names DIFFER, and the former writing — "a
+			 *          consumer parsing refusals by the CODE would otherwise have to learn its own
+			 *          list for each codec" — promised the opposite. Measured on 2026-09-09 by a
+			 *          comparison of the lists term by term: the names across all the three — 19,
+			 *          of them with DIFFERENT numbers — 13 (among others TEXT_ALREADY_ENDED: ini 37,
+			 *          toml 38, yaml 51). And the numbers could not coincide: the lists are of a
+			 *          different length — 40, 41 and 54 members, — and each dialect has its own
+			 *          codes beyond the common ones
+			 *
+			 * @note Refusals are to be parsed BY THE NAME of one's own codec, and not by a
+			 *       number: the types `ini::error_t`, `toml::error_t` and `yaml::error_t` are
+			 *       different, and a comparison of numbers between them has no sense at all
+			 *
+			 * @note Therefore a part of the codes is never issued by the TOML codec at all —
+			 *       the TOML dialect has no condition for them:
+			 *
+			 * @note - `CONFLICTING_SETTINGS` answers a contradiction of the settings that guard a
+			 *       value with quotes, while in the TOML dialect the guarding is set by the
+			 *       description, and a setting contradicting it has nowhere to come from;
+			 *
+			 * @note - `UNSUPPORTED_ENCODING` was issued by the recognition of an encoding, but with
+			 *       the introduction of UTF-32 and the single-byte encodings the recognition gives
+			 *       no refusal anymore — the entry remained as a reserve for the case of an
+			 *       encoding introduced later;
+			 *
+			 * @note - `UNEXPECTED_EOF` is issued as a reserve by the parsing of the writing: every
+			 *       writing rejects a broken-off text at its own with an exact code — an unclosed
+			 *       array, a broken-off line, a missing equals sign
+			 *
+			 * @note - `OVERFLOW_LIMIT` has no places of issue at all: the limits given by the
+			 *       settings are not introduced at the TOML parsing, while an overflow of the
+			 *       storage of characters answers with its own code `STORAGE_EXHAUSTED`
+			 *
+			 * @warning The silence of a code means an UNVERIFIED path, and not its soundness: the
+			 *          tool of the silent codes runs over the places of issue across three passes,
+			 *          and a code never issued gives no promise of its own to the consumer
 			 *
 			 * \~
 			 */
@@ -455,7 +560,8 @@ namespace awh {
 				ENCODING_ALREADY_CHOSEN = 0x27, // Кодировка сменена посреди подачи текста
 				SETTINGS_ALREADY_APPLIED = 0x28, // Настройки сменены посреди подачи текста
 				/**
-				 * Значение такого вида корнем текста TOML быть не может
+				 * \~russian
+				 * @brief Значение такого вида корнем текста TOML быть не может
 				 *
 				 * @note Имя общее с кодеком INI намеренно: там тот же случай и тот же
 				 *       смысл. Числа же у кодеков расходятся, и сличать коды между
@@ -467,6 +573,20 @@ namespace awh {
 				 *          Потребитель шёл искать порчу там, где её нет. Замерено 15.09.2026
 				 *          сличением с кодеками рамки: JSON, YAML и XML начертание простого
 				 *          значения ОТДАЮТ, INI отказывает и причину называет верно
+				 *
+				 * \~english
+				 * @brief A value of such a kind cannot be the root of a TOML text
+				 *
+				 * @note The name is common with the INI codec on purpose: there is the same case and the same
+				 *       meaning. The numbers of the codecs, however, diverge, and the codes are to be compared
+				 *       between the codecs by the NAME, and not by the value
+				 *
+				 * @warning Formerly `INVALID_VALUE` stood here — «a value is distorted» — and that was false by the
+				 *          substance: a sound integer or a record were not distorted at all, and to make them the
+				 *          root of a text is impossible by the construction of the part of speech. A consumer would
+				 *          go looking for a spoil where there is none. Measured 2026-09-15 by a comparison with the
+				 *          codecs of the frame: JSON, YAML and XML GIVE OUT the spelling of a simple value, INI
+				 *          refuses and names the reason rightly
 				 */
 				UNREPRESENTABLE_VALUE = 0x29
 			};
@@ -476,16 +596,17 @@ namespace awh {
 			 * @brief Виды событий чтения текста настроек
 			 *
 			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его
-			 * целиком. Значение составное выдаётся не одним событием, а рядом их: открытие
-			 * перечня либо встроенной таблицы, содержимое, закрытие. Так вложенность
-			 * достаётся потребителю потоком, а не собранным заранее деревом
+			 *          целиком. Значение составное выдаётся не одним событием, а рядом их: открытие
+			 *          перечня либо встроенной таблицы, содержимое, закрытие. Так вложенность
+			 *          достаётся потребителю потоком, а не собранным заранее деревом.
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a settings text
+			 *
 			 * @details The reading issues the events as the text is parsed without holding it
-			 * in full. A compound value is issued not by a single event but by a series of them: the opening
-			 * of an array or of an inline table, the content, the closing. That way the nesting goes
-			 * to the consumer as a stream rather than as a tree assembled beforehand
+			 *          in full. A compound value is issued not by a single event but by a series of them: the opening
+			 *          of an array or of an inline table, the content, the closing. That way the nesting goes
+			 *          to the consumer as a stream rather than as a tree assembled beforehand.
 			 *
 			 * \~
 			 */
@@ -509,12 +630,13 @@ namespace awh {
 			 * @brief Типы значений текста настроек
 			 *
 			 * @details Отметка времени представлена четырьмя видами намеренно: описание
-			 * отводит каждому свой смысл, и различить их можно лишь разбором
+			 *          отводит каждому свой смысл, и различить их можно лишь разбором.
 			 *
 			 * \~english
 			 * @brief Types of the values of a settings text
+			 *
 			 * @details A timestamp is represented by four kinds deliberately: the specification
-			 * allots its own meaning to each of them, and they can be distinguished only by a parsing
+			 *          allots its own meaning to each of them, and they can be distinguished only by a parsing.
 			 *
 			 * \~
 			 */
@@ -537,16 +659,17 @@ namespace awh {
 			 * @brief Записи строковых значений
 			 *
 			 * @details Запись у строкового значения четыре, и различаются они не только
-			 * видом: основная разбирает управляющие последовательности, а дословная
-			 * выдаёт содержимое как записано. Признак этот сохраняется деревом настроек,
-			 * чтобы перезапись возвращала запись, выбранную человеком
+			 *          видом: основная разбирает управляющие последовательности, а дословная
+			 *          выдаёт содержимое как записано. Признак этот сохраняется деревом настроек,
+			 *          чтобы перезапись возвращала запись, выбранную человеком.
 			 *
 			 * \~english
 			 * @brief Notations of the string values
+			 *
 			 * @details A string value has four notations, and they differ not only in the
-			 * form: the basic one parses the escape sequences, while the literal one
-			 * issues the content as it has been written. This attribute is preserved by the settings tree
-			 * so that a rewriting returns the notation chosen by the human
+			 *          form: the basic one parses the escape sequences, while the literal one
+			 *          issues the content as it has been written. This attribute is preserved by the settings tree
+			 *          so that a rewriting returns the notation chosen by the human.
 			 *
 			 * \~
 			 */
@@ -581,6 +704,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Numeral systems of the notation of an integer
+			 *
 			 * @note The attribute is preserved by the settings tree: a number written by a human
 			 *       as a hexadecimal one is obliged to remain a hexadecimal one at a rewriting
 			 *
@@ -628,22 +752,27 @@ namespace awh {
 			 * @brief Кодировки исходного текста настроек
 			 *
 			 * @details Описание отводит тексту TOML единственную кодировку - UTF-8, - и
-			 * умолчанием берётся она. Прочие кодировки принимаются лишь навязанные извне
-			 * либо опознанные меткой порядка байтов: файл, полученный от чужой оснастки,
-			 * бывает записан иначе, и отвергать его целиком значило бы оставлять
-			 * потребителя без всякого способа его прочесть
+			 *          умолчанием берётся она. Прочие кодировки принимаются лишь навязанные извне
+			 *          либо опознанные меткой порядка байтов: файл, полученный от чужой оснастки,
+			 *          бывает записан иначе, и отвергать его целиком значило бы оставлять
+			 *          потребителя без всякого способа его прочесть.
 			 *
 			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
-			 * порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
-			 * только навязанными извне
+			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 *       только навязанными извне
 			 *
 			 * \~english
 			 * @brief Encodings of the source settings text
+			 *
 			 * @details The specification allots a single encoding to a TOML text — UTF-8 — and
-			 * it is taken by default. The other encodings are accepted only when imposed from the outside
-			 * or recognized by the byte order mark: a file received from a foreign toolchain
-			 * happens to be written otherwise, and to reject it entirely would mean to leave
-			 * the consumer without any means of reading it
+			 *          it is taken by default. The other encodings are accepted only when imposed from the outside
+			 *          or recognized by the byte order mark: a file received from a foreign toolchain
+			 *          happens to be written otherwise, and to reject it entirely would mean to leave
+			 *          the consumer without any means of reading it.
+			 *
+			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — have no
+			 *       byte order mark at all and cannot be recognized: they are accepted only when
+			 *       imposed from the outside
 			 *
 			 * \~
 			 */
@@ -686,13 +815,14 @@ namespace awh {
 			 * @brief Исход разбора последовательности UTF-8
 			 *
 			 * @details Оборванная последовательность отделена от битой намеренно: при
-			 * чтении по кускам первая означает, что знак придёт следующим куском, а
-			 * вторая - что он не придёт никогда
+			 *          чтении по кускам первая означает, что знак придёт следующим куском, а
+			 *          вторая - что он не придёт никогда.
 			 *
 			 * \~english
 			 * @brief Outcome of the parsing of a UTF-8 sequence
+			 *
 			 * @details A cut off sequence is deliberately separated from a broken one: when reading in chunks
-			 * the former means that the character will come with the next chunk, while the latter — that it will never come
+			 *          the former means that the character will come with the next chunk, while the latter — that it will never come.
 			 *
 			 * \~
 			 */
@@ -707,13 +837,14 @@ namespace awh {
 			 * @brief Правила обхождения с негодной последовательностью UTF-8 при записи
 			 *
 			 * @details Читающий байты, кодировке не отвечающие, отвергает - того требует
-			 * описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
-			 * прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
-			 * сетевых сообщений, битые байты несут делом обычным
+			 *          описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
+			 *          прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
+			 *          сетевых сообщений, битые байты несут делом обычным.
+			 *
 			 * @details Замена, а не отказ, взята правилом по умолчанию. Отказ записи режет
-			 * ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
-			 * бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
-			 * выданном тексте виден глазом, а не проглатывается молча
+			 *          ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
+			 *          бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
+			 *          выданном тексте виден глазом, а не проглатывается молча.
 			 *
 			 * @note Правило это положено одинаковым у всех кодеков
 			 *
@@ -725,15 +856,24 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
+			 *
 			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
-			 * requires that. The writing, however, passed them through, and the codec gave away a text which it itself
-			 * could not read. This case is not invented: the values taken from the logs and
-			 * the network messages carry the broken bytes as a usual matter
+			 *          requires that. The writing, however, passed them through, and the codec gave away a text which it itself
+			 *          could not read. This case is not invented: the values taken from the logs and
+			 *          the network messages carry the broken bytes as a usual matter.
+			 *
 			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
-			 * cuts off the **whole** text rather than a single value, and one broken byte in one
-			 * message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
-			 * and is visible to the eye in the given text rather than being swallowed silently
+			 *          cuts off the **whole** text rather than a single value, and one broken byte in one
+			 *          message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
+			 *          and is visible to the eye in the given text rather than being swallowed silently.
+			 *
 			 * @note This rule is decided by the owner to be identical for all the codecs
+			 *
+			 * @note The TOML description orders a document to be a text in a sound UTF-8
+			 *       encoding, and the `PASS` rule gives a text that is NOT a TOML document. This
+			 *       rule is left to the consumer on purpose — with the same composition as the
+			 *       other codecs have, — but the choice of the consumer is a step beyond the
+			 *       description, and it is not the default
 			 *
 			 * \~
 			 */
@@ -748,12 +888,13 @@ namespace awh {
 			 * @brief Положение в исходном тексте настроек
 			 *
 			 * @details Строка и знак считаются с единицы и меряются знаками приведённого
-			 * текста, а смещение - в байтах исходного текста до приведения
+			 *          текста, а смещение - в байтах исходного текста до приведения.
 			 *
 			 * \~english
 			 * @brief Position in the source settings text
+			 *
 			 * @details The line and the character are counted from one and are measured in the characters of the converted
-			 * text, while the offset — in the bytes of the source text before the conversion
+			 *          text, while the offset — in the bytes of the source text before the conversion.
 			 *
 			 * \~
 			 */
@@ -831,6 +972,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Second of the minute
+				 *
 				 * @note The value of sixty is accepted deliberately: the specification permits
 				 *       writing a leap second with it
 				 *
@@ -847,6 +989,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Number of the written digits of the fraction of a second
+				 *
 				 * @note These digits are significant at a rewriting: «01:02:03.100» and
 				 *       «01:02:03.1» give one and the same time, but the human has chosen the notation
 				 *       himself, and it should not be substituted
@@ -872,12 +1015,13 @@ namespace awh {
 			 * @brief Отметка времени
 			 *
 			 * @details Вид отметки задаётся типом значения: наличие даты, времени и
-			 * смещения часового пояса у каждого вида своё
+			 *          смещения часового пояса у каждого вида своё.
 			 *
 			 * \~english
 			 * @brief Timestamp
+			 *
 			 * @details The kind of a timestamp is given by the type of the value: the presence of a date, of a time and of an
-			 * offset of a time zone is its own for every kind
+			 *          offset of a time zone is its own for every kind.
 			 *
 			 * \~
 			 */
@@ -895,6 +1039,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Offset of the time zone in minutes
+				 *
 				 * @note The NO_TIMEZONE value means the absence of an offset. Zero is not
 				 *       it: it means the UTC time zone written with the «Z» character
 				 *
@@ -910,6 +1055,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of the writing of the UTC time zone with the «Z» character
+				 *
 				 * @note The record «Z» and the record «+00:00» give one and the same offset, but the human
 				 *       has chosen it himself
 				 *
@@ -927,6 +1073,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of the writing of a zero offset with the «minus» character
+				 *
 				 * @note The specification allots to the record «-00:00» a meaning different from «+00:00»:
 				 *       by the first an unknown offset is designated, by the second — an offset
 				 *       that is knowingly zero. They must not be mixed, and this sign is kept
@@ -943,6 +1090,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of the separation of the date and the time by a space instead of the «T» character
+				 *
 				 * @note The specification permits both separators
 				 *
 				 * \~
@@ -965,9 +1113,9 @@ namespace awh {
 			 * \~russian
 			 * @brief Составная часть имени ключа
 			 *
-			 * @warning Поле имени живёт ЛИШЬ до следующего обращения к @c next() либо
-			 *          @c feed(): ссылается оно на память разбора, и следующее событие её
-			 *          переиспользует. Замерено щупом на трёхстах записях с несхожими
+			 * @warning Поле имени живёт ЛИШЬ до следующего обращения
+			 *          к @c next() либо @c feed(): ссылается оно на память разбора, и следующее
+			 *          событие её переиспользует. Замерено щупом на трёхстах записях с несхожими
 			 *          именами - вид отдал чужое содержимое, а не своё
 			 *
 			 * @note Прежде здесь стояло «живёт не дольше их» - верно по духу, но срока не
@@ -976,8 +1124,17 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Component part of the name of a key
-			 * @note The field of the name refers to the memory belonging to the text being parsed
-			 *       or to the storage of the names, and it lives no longer than they do
+			 *
+			 * @warning The field of the name lives ONLY until the next
+			 *          call to @c next() or @c feed(): it refers to the memory of the parsing, and
+			 *          the next event reuses that memory. Measured with a probe on three hundred
+			 *          records with dissimilar names — the view gave away foreign content, not its
+			 *          own
+			 *
+			 * @note Formerly there stood here «lives no longer than they do» — true in spirit, but
+			 *       it named no term, and the consumer could not learn when exactly the view dies.
+			 *       This term is one across all the three aggregate types of the TOML codec, and
+			 *       it was measured for each of them separately
 			 *
 			 * \~
 			 */
@@ -1004,8 +1161,8 @@ namespace awh {
 			 * @brief Значение пары либо перечня
 			 *
 			 * @details Выдаётся событием VALUE и несёт разобранное значение вместе с
-			 * признаками его записи. Поле, отвечающее типу значения, значаще лишь для
-			 * своего типа: прочие поля при этом обнулены
+			 *          признаками его записи. Поле, отвечающее типу значения, значаще лишь для
+			 *          своего типа: прочие поля при этом обнулены.
 			 *
 			 * @note Зовётся тип нагрузкою события, а не значением, оттого что имя `value_t`
 			 *       отведено договором рамки владеющему значению из `value.hpp`. Имя
@@ -1014,22 +1171,32 @@ namespace awh {
 			 *       чтения и чтение не переживает - тем нагрузка от владеющего значения и
 			 *       отличается
 			 *
-			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения к @c next() либо
-			 * @c feed(): ссылаются они на память разбора, и следующее событие её
-			 * переиспользует. Замерено щупом на трёхстах записях с несхожими именами - вид
-			 * отдал чужое содержимое. Срок этот ОДИН у всех трёх свёрток кодека TOML, и
-			 * замерен он у каждой порознь. Держать надлежит копию, а не вид
+			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения
+			 *          к @c next() либо @c feed(): ссылаются они на память разбора, и следующее
+			 *          событие её переиспользует. Замерено щупом на трёхстах записях с несхожими
+			 *          именами - вид отдал чужое содержимое. Срок этот ОДИН у всех трёх свёрток
+			 *          кодека TOML, и замерен он у каждой порознь. Держать надлежит копию, а не вид
 			 *
 			 * \~english
 			 * @brief Value of a pair or of an array
+			 *
 			 * @details Issued by the VALUE event and carries the parsed value together with
-			 * the attributes of its notation. The field corresponding to the type of the value is significant only for
-			 * its own type: the other fields are thereby zeroed
+			 *          the attributes of its notation. The field corresponding to the type of the value is significant only for
+			 *          its own type: the other fields are thereby zeroed.
+			 *
 			 * @note The type is called the payload of the event rather than the value because the name `value_t`
-			 * is allotted by the contract of the framework to the owning value from `value.hpp`. The name
-			 * `content_t` for the payload of the event is taken from the YAML codec, where it stands in
-			 * the same place and in the same role. The string of the payload is a view into the buffer of the
-			 * reading and does not outlive the reading — therein the payload differs from the owning value
+			 *       is allotted by the contract of the framework to the owning value from `value.hpp`. The name
+			 *       `content_t` for the payload of the event is taken from the YAML codec, where it stands in
+			 *       the same place and in the same role. The string of the payload is a view into the buffer of the
+			 *       reading and does not outlive the reading — therein the payload differs from the owning value
+			 *
+			 * @warning The views of the aggregates live ONLY until the next
+			 *          call to @c next() or @c feed(): they refer to the memory of the parsing, and
+			 *          the next event reuses that memory. Measured with a probe on three hundred
+			 *          records with dissimilar names — the view gave away foreign content. This
+			 *          term is ONE across all the three aggregate types of the TOML codec, and it
+			 *          was measured for each of them separately. One ought to keep a copy, not a
+			 *          view
 			 *
 			 * \~
 			 */
@@ -1072,20 +1239,29 @@ namespace awh {
 			 * @brief Примечание текста настроек
 			 *
 			 * @details Примечания в тексте настроек пишет человек, и при перезаписи файла
-			 * их надлежит сохранять: файл настроек без примечаний своему хозяину
-			 * непонятен
+			 *          их надлежит сохранять: файл настроек без примечаний своему хозяину
+			 *          непонятен.
 			 *
-			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения к @c next() либо
-			 * @c feed(): ссылаются они на память разбора, и следующее событие её
-			 * переиспользует. Замерено щупом на трёхстах записях с несхожими именами - вид
-			 * отдал чужое содержимое. Срок этот ОДИН у всех трёх свёрток кодека TOML, и
-			 * замерен он у каждой порознь. Держать надлежит копию, а не вид
+			 * @warning Виды свёртки живут ЛИШЬ до следующего обращения
+			 *          к @c next() либо @c feed(): ссылаются они на память разбора, и следующее
+			 *          событие её переиспользует. Замерено щупом на трёхстах записях с несхожими
+			 *          именами - вид отдал чужое содержимое. Срок этот ОДИН у всех трёх свёрток
+			 *          кодека TOML, и замерен он у каждой порознь. Держать надлежит копию, а не вид
 			 *
 			 * \~english
 			 * @brief Comment of a settings text
+			 *
 			 * @details The comments in a settings text are written by a human, and at a rewriting of the file
-			 * they ought to be preserved: a settings file without the comments is incomprehensible to its
-			 * owner
+			 *          they ought to be preserved: a settings file without the comments is incomprehensible to its
+			 *          owner.
+			 *
+			 * @warning The views of the aggregates live ONLY until the next
+			 *          call to @c next() or @c feed(): they refer to the memory of the parsing, and
+			 *          the next event reuses that memory. Measured with a probe on three hundred
+			 *          records with dissimilar names — the view gave away foreign content. This
+			 *          term is ONE across all the three aggregate types of the TOML codec, and it
+			 *          was measured for each of them separately. One ought to keep a copy, not a
+			 *          view
 			 *
 			 * \~
 			 */
@@ -1103,6 +1279,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Content of the comment without the initial character and without the spaces before it
+				 *
 				 * @note The spaces standing after the character of the beginning of a comment are discarded, while the ones
 				 *       standing at its end remain the content. The difference is deliberate:
 				 *       the writing puts its own space between the character of the beginning and the content, and
@@ -1139,6 +1316,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the description of an error code
+			 *
 			 * @param error error code of the parsing or of the writing
 			 * @return      description of the error code
 			 *
@@ -1154,6 +1332,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of an encoding
+			 *
 			 * @param encoding encoding of the source text
 			 * @return         name of the encoding
 			 *
@@ -1166,14 +1345,20 @@ namespace awh {
 			 * @brief Метод определения кодировки по её названию
 			 *
 			 * @details Договор этот один у INI, TOML и YAML: кодек, кодировки принимающий,
-			 * обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
-			 * название из настроек, обратить его в кодировку ничем не может
+			 *          обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
+			 *          название из настроек, обратить его в кодировку ничем не может.
 			 *
 			 * @param text название кодировки в любом регистре
 			 * @return     определённая кодировка исходного текста
 			 *
 			 * \~english
 			 * @brief Method of determining an encoding by its name
+			 *
+			 * @details This contract is one across INI, TOML and YAML: a codec that accepts
+			 *          encodings is obliged to be able both to name one and to recognize it by
+			 *          name — otherwise a consumer that has taken the name from the settings has no
+			 *          means to turn it into an encoding.
+			 *
 			 * @param text name of the encoding in any case
 			 * @return     determined encoding of the source text
 			 *
@@ -1189,6 +1374,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of a type of a value
+			 *
 			 * @param type type of a value of a settings text
 			 * @return     name of the type of the value
 			 *
@@ -1204,6 +1390,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the sequence of the line ending characters
+			 *
 			 * @param newline kind of the line ending character
 			 * @return        sequence of the line ending characters
 			 *
@@ -1215,20 +1402,33 @@ namespace awh {
 			 * @brief Метод проверки знака на допустимость в имени ключа без кавычек
 			 *
 			 * @warning Приговор здесь один: допустим ли ОДИН знак набора US-ASCII. Пойдёт
-			 * ли имя целиком голым, посредник не знает: у него на входе ни длины имени,
-			 * ни настроек. Обход имени этим посредником расходится с записью по двум
-			 * поводам. Первый: имя ПУСТОЕ обходом даёт истину впустую, а записывается
-			 * оно кавычками - `"" = "v"`. Второй, и он обратный: при настройке
-			 * `unicode` голым пишется и имя из знаков письменностей мира, тогда как
-			 * посредник ложен на каждом его байте. Замер: имя «ключ» при `unicode`
-			 * записывается голым, а `bare()` ложен на всех его байтах. Знаки эти
-			 * поверяются `named()`, и по коду знака, а не по байту
+			 *          ли имя целиком голым, посредник не знает: у него на входе ни длины имени,
+			 *          ни настроек. Обход имени этим посредником расходится с записью по двум
+			 *          поводам. Первый: имя ПУСТОЕ обходом даёт истину впустую, а записывается
+			 *          оно кавычками - `"" = "v"`. Второй, и он обратный: при настройке
+			 *          `unicode` голым пишется и имя из знаков письменностей мира, тогда как
+			 *          посредник ложен на каждом его байте. Замер: имя «ключ» при `unicode`
+			 *          записывается голым, а `bare()` ложен на всех его байтах. Знаки эти
+			 *          поверяются `named()`, и по коду знака, а не по байту
 			 *
 			 * @param letter проверяемый знак имени
 			 * @return       результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility in the name of a key without quotes
+			 *
+			 * @warning The verdict here is single: whether ONE character of the US-ASCII set is
+			 *          admissible. Whether the whole name will pass bare, the intermediary does not
+			 *          know: at its input there is neither the length of the name nor the settings. A
+			 *          traversal of the name by this intermediary diverges from the writing on two
+			 *          counts. The first: a name that is EMPTY gives truth through the traversal in
+			 *          vain, while it is written with quotes — `"" = "v"`. The second, and it is the
+			 *          reverse: with the `unicode` setting a name of characters of the world's
+			 *          scripts is also written bare, whereas the intermediary is false at every byte
+			 *          of it. Measurement: the name «ключ» with `unicode` is written bare, while
+			 *          `bare()` is false at all of its bytes. These characters are verified by
+			 *          `named()`, and by the character code, and not by the byte
+			 *
 			 * @param letter character of the name being checked
 			 * @return       result of the check
 			 *
@@ -1240,17 +1440,19 @@ namespace awh {
 			 * @brief Метод проверки знака Юникода на допустимость в имени ключа без кавычек
 			 *
 			 * @details Набор знаков задан черновиком следующей версии описания: буквы,
-			 * цифры и знаки письменностей мира, но не знаки препинания и не знаки
-			 * оформления. Признаются они лишь по настройке, дозволяющей Юникод в имени
+			 *          цифры и знаки письменностей мира, но не знаки препинания и не знаки
+			 *          оформления. Признаются они лишь по настройке, дозволяющей Юникод в имени.
 			 *
 			 * @param code проверяемый знак имени
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a Unicode character for admissibility in the name of a key without quotes
+			 *
 			 * @details The set of the characters is given by the draft of the next version of the specification: the letters,
-			 * the digits and the characters of the writing systems of the world, but not the punctuation marks and not the
-			 * formatting characters. They are recognized only by the setting permitting Unicode in a name
+			 *          the digits and the characters of the writing systems of the world, but not the punctuation marks and not the
+			 *          formatting characters. They are recognized only by the setting permitting Unicode in a name.
+			 *
 			 * @param code character of the name being checked
 			 * @return     result of the check
 			 *
@@ -1262,11 +1464,11 @@ namespace awh {
 			 * @brief Метод проверки даты на существование её в календаре
 			 *
 			 * @details Проверяются и пределы полей, и длина месяца вместе с високосным
-			 * годом: «2026-02-31» записью даты не является, и принимать её значило бы
-			 * выдавать потребителю день, которого нет
+			 *          годом: «2026-02-31» записью даты не является, и принимать её значило бы
+			 *          выдавать потребителю день, которого нет.
 			 *
 			 * @note Проверка общая у разбора, записи и правки дерева: расходись они,
-			 * правка собирала бы текст, который свой же разбор отвергает
+			 *       правка собирала бы текст, который свой же разбор отвергает
 			 *
 			 * @param year  проверяемый год
 			 * @param month проверяемый месяц
@@ -1275,11 +1477,14 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking a date for its existence in the calendar
+			 *
 			 * @details Both the limits of the fields and the length of the month together with a leap
-			 * year are checked: «2026-02-31» is not a record of a date, and to accept it would mean
-			 * to issue the consumer a day that does not exist
+			 *          year are checked: «2026-02-31» is not a record of a date, and to accept it would mean
+			 *          to issue the consumer a day that does not exist.
+			 *
 			 * @note The check is common to the parsing, to the writing and to the editing of the tree: were they to diverge,
-			 * an editing would assemble a text which its own parsing rejects
+			 *       an editing would assemble a text which its own parsing rejects
+			 *
 			 * @param year  year being checked
 			 * @param month month being checked
 			 * @param day   day of the month being checked
@@ -1299,6 +1504,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the next Unicode character of a UTF-8 sequence
+			 *
 			 * @param text   sequence of characters from which the reading is conducted
 			 * @param offset position of the beginning of the character in the sequence
 			 * @param code   Unicode character being obtained
@@ -1316,6 +1522,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the length of a UTF-8 sequence by its leading byte
+			 *
 			 * @param leading leading byte of the character sequence
 			 * @return        number of the bytes of the sequence, zero — the byte is not a leading one
 			 *
@@ -1327,8 +1534,8 @@ namespace awh {
 			 * @brief Метод разбора очередной последовательности UTF-8
 			 *
 			 * @details Свод правил разбора последовательности собран здесь единственным
-			 * телом: чтение целым текстом и чтение по кускам расходятся лишь тем, как
-			 * они докладывают исход, но не тем, какую последовательность признают
+			 *          телом: чтение целым текстом и чтение по кускам расходятся лишь тем, как
+			 *          они докладывают исход, но не тем, какую последовательность признают.
 			 *
 			 * @param text   последовательность знаков, из которой ведётся чтение
 			 * @param offset положение начала знака в последовательности
@@ -1338,9 +1545,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the parsing of the next UTF-8 sequence
+			 *
 			 * @details The set of the rules of the parsing of a sequence is gathered here as a single
-			 * body: the reading by a whole text and the reading in chunks differ only in how
-			 * they report the outcome, but not in which sequence they accept
+			 *          body: the reading by a whole text and the reading in chunks differ only in how
+			 *          they report the outcome, but not in which sequence they accept.
+			 *
 			 * @param text   sequence of characters from which the reading is conducted
 			 * @param offset position of the beginning of the character in the sequence
 			 * @param code   Unicode character being obtained, is not set when the parsing fails

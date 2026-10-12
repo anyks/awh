@@ -258,7 +258,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			if(!(back == lifted)){
 				// Выводим сообщение о расхождении содержимого
 				::fprintf(stderr, "содержимое кругового хода разошлось\nдерево:\n[%s]\nзначение:\n[%s]\n",
-				 document.text().c_str(), written.c_str());
+				 document.dump().c_str(), written.c_str());
 				// Выходим из приложения с ошибкой
 				return 1;
 			}
@@ -371,7 +371,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 */
 	if(rewriting){
 		// Выполняем выдачу перезаписи дерева настроек
-		::printf("%s", document.text().c_str());
+		::printf("%s", document.dump().c_str());
 		// Выходим из приложения
 		return 0;
 	}

@@ -87,12 +87,12 @@ namespace awh {
 			 * @brief Класс записи текста CSV
 			 *
 			 * @details Текст собирается полем за полем, а отдаётся либо целиком по
-			 * окончании, либо кусками по мере накопления - смотря по тому, держит ли
-			 * потребитель собранное в памяти или отправляет его дальше
+			 *          окончании, либо кусками по мере накопления - смотря по тому, держит ли
+			 *          потребитель собранное в памяти или отправляет его дальше.
 			 *
 			 * @note Входная строка может ссылаться на результат `text()`: её содержимое
 			 *       сохраняется до изменения буфера. Срезы входных данных должны быть действительны
-			 *       в момент вызова; хранить их после изменения выходного буфера нельзя.
+			 *       в момент вызова; хранить их после изменения выходного буфера нельзя
 			 *
 			 * @note Отказ записи таблицы МЕСТЕН: отвергнутая операция откатывается,
 			 *       объект остаётся годным, и следующее поле или запись принимаются
@@ -102,39 +102,47 @@ namespace awh {
 			 * @par Порядок работы
 			 *
 			 * @par Потоковая запись
+			 *
 			 * @note Поле, непредставимое при выбранных настройках, отвергается с кодом
 			 *       `UNWRITABLE_FIELD`: отказ поля сохраняет текст и состояние до вызова.
 			 *       В начале записи кавычка и знак отмены не могут совпадать со знаком
 			 *       примечания, если они требуются для записи поля. Пустое первое поле
 			 *       при совпадении разделителя со знаком примечания требует кавычек.
-			 *       Отказ записи массива полей либо таблицы отменяет всю эту операцию.
+			 *       Отказ записи массива полей либо таблицы отменяет всю эту операцию
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer();
+			 *          writer_t writer();
 			 *
 			 *  writer.field("имя");
 			 *  writer.field("значение");
 			 *  writer.record();
 			 *
 			 *  const string & text = writer.text();
+			 *
 			 *  @endcode
 			 *
 			 *  @code{.cpp}
-			 *  while(!done){
-			 *      writer.record(fields);
+			 *          while(!done){
+			 *          writer.record(fields);
 			 *
 			 *      if(writer.size() >= 0x10000)
 			 *          send(writer.take());
 			 *  }
 			 *
 			 *  send(writer.take());
+			 *
 			 *  @endcode
 			 *
 			 * \~english
 			 * @brief Class of the writing of a CSV text
+			 *
 			 * @details The text is assembled field by field, and it is given away either in full upon
-			 * the ending or by chunks as it accumulates — depending on whether the consumer holds
-			 * what has been assembled in the memory or sends it further on
+			 *          the ending or by chunks as it accumulates — depending on whether the consumer holds
+			 *          what has been assembled in the memory or sends it further on.
+			 *
+			 * @note An input string may refer to the result of `text()`: its content is saved before the
+			 *       buffer is changed. The slices of the input data must be valid at the moment of the
+			 *       call; keeping them after a change of the output buffer is not allowed
 			 *
 			 * @note The refusal of the writing of a CSV text is LOCAL: a rejected operation is
 			 *       rolled back, the object remains usable, and the next field or record is accepted
@@ -142,35 +150,40 @@ namespace awh {
 			 *       and requires a clearing
 			 *
 			 * @par Order of the work
+			 *
 			 * @par Streaming writing
+			 *
 			 * @note A field that cannot be represented with the selected settings is rejected with
 			 *       `UNWRITABLE_FIELD`, preserving the text and state from before the call.
 			 *       At the start of a record, a required quote or escape character must not
 			 *       match the comment character. An empty first field requires quoting when
 			 *       the separator matches the comment character. A failed record or table
-			 *       operation rolls back the entire operation.
+			 *       operation rolls back the entire operation
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer();
+			 *          writer_t writer();
 			 *
 			 *  writer.field("name");
 			 *  writer.field("value");
 			 *  writer.record();
 			 *
 			 *  const string & text = writer.text();
+			 *
 			 *  @endcode
 			 *
 			 *  @code{.cpp}
-			 *  while(!done){
-			 *      writer.record(fields);
+			 *          while(!done){
+			 *          writer.record(fields);
 			 *
 			 *      if(writer.size() >= 0x10000)
 			 *          send(writer.take());
 			 *  }
 			 *
 			 *  send(writer.take());
+			 *
 			 *  @endcode
 			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
 				public:
@@ -193,16 +206,17 @@ namespace awh {
 						 * Знак начала строки примечания, признаваемый разбором
 						 *
 						 * @note Знак этот записью не ставится, а лишь учитывается: поле,
-						 * начинающее запись этим знаком, берётся в кавычки, иначе разбор
-						 * прочтёт всю запись строкой примечания и отбросит её. Умолчанием
-						 * знака нет вовсе - примечания договором не описаны
+						 *       начинающее запись этим знаком, берётся в кавычки, иначе разбор
+						 *       прочтёт всю запись строкой примечания и отбросит её. Умолчанием
+						 *       знака нет вовсе - примечания договором не описаны
 						 *
 						 * \~english
 						 * Character of the beginning of a comment line recognized by the parsing
+						 *
 						 * @note This character is not put by the writing but is only taken into account: a field
-						 * beginning a record with this character is taken into quotes, otherwise the parsing
-						 * will read the whole record as a comment line and discard it. By default
-						 * there is no character at all — the comments are not described by the protocol
+						 *       beginning a record with this character is taken into quotes, otherwise the parsing
+						 *       will read the whole record as a comment line and discard it. By default
+						 *       there is no character at all — the comments are not described by the protocol
 						 *
 						 * \~
 						 */
@@ -218,14 +232,15 @@ namespace awh {
 						 * Признак записи метки порядка байтов в начале текста
 						 *
 						 * @note Метка эта содержимым текста не является, но без неё
-						 * табличные редакторы MS Windows читают UTF-8 как местную
-						 * однобайтовую кодировку и портят всё, кроме US-ASCII
+						 *       табличные редакторы MS Windows читают UTF-8 как местную
+						 *       однобайтовую кодировку и портят всё, кроме US-ASCII
 						 *
 						 * \~english
 						 * Flag of the writing of the byte order mark at the beginning of the text
+						 *
 						 * @note This mark is not the content of the text, but without it
-						 * the spreadsheet editors of MS Windows read UTF-8 as the local
-						 * single-byte encoding and spoil everything except US-ASCII
+						 *       the spreadsheet editors of MS Windows read UTF-8 as the local
+						 *       single-byte encoding and spoil everything except US-ASCII
 						 *
 						 * \~
 						 */
@@ -254,15 +269,16 @@ namespace awh {
 					 * @brief Положение начала текущей записи в собранном тексте
 					 *
 					 * @details Служит различению записи БЕЗ полей от записи из одного ПУСТОГО
-					 * поля: обе не дают знаков, но первая по договору теряется при обратном
-					 * чтении, а вторая обязана пережить круг и пишется парою кавычек
+					 *          поля: обе не дают знаков, но первая по договору теряется при обратном
+					 *          чтении, а вторая обязана пережить круг и пишется парою кавычек.
 					 *
 					 * \~english
 					 * @brief The position of the beginning of the current record in the collected text
+					 *
 					 * @details It serves to distinguish a record WITHOUT fields from a record of a single
-					 * EMPTY field: neither gives characters, but the first one is lost upon the reverse
-					 * reading by the contract, while the second one must survive the round trip and is
-					 * written with a pair of the quotes
+					 *          EMPTY field: neither gives characters, but the first one is lost upon the reverse
+					 *          reading by the contract, while the second one must survive the round trip and is
+					 *          written with a pair of the quotes.
 					 *
 					 * \~
 					 */
@@ -279,15 +295,23 @@ namespace awh {
 					 * @brief Счётчик занесённых отказов записи
 					 *
 					 * @details Отказ, случившийся у завершения записи, прежде опознавался
-					 * СЛИЧЕНИЕМ кода отказа до и после: коды совпали - значит отказа не было.
-					 * Довод этот верен лишь единожды: второй отказ с тем же кодом от него
-					 * укрывался, и запись, представления не имеющая, отвечала УСПЕХОМ
+					 *          СЛИЧЕНИЕМ кода отказа до и после: коды совпали - значит отказа не было.
+					 *          Довод этот верен лишь единожды: второй отказ с тем же кодом от него
+					 *          укрывался, и запись, представления не имеющая, отвечала УСПЕХОМ.
 					 *
 					 * @note Счётчик, а не признак: признак пришлось бы снимать перед всяким
 					 *       завершением, и снятие это терялось бы у всякой новой дороги
 					 *
 					 * \~english
 					 * @brief Counter of the recorded refusals of the writing
+					 *
+					 * @details A failure that happened upon the ending of the writing used to be recognised by a
+					 *          COMPARISON of the failure code before and after: the codes matched, which meant that
+					 *          there had been no failure. The argument holds but once: a second failure with the
+					 *          same code hid from it, and a writing with no idea of it answered with a SUCCESS.
+					 *
+					 * @note A counter, and not a flag: a flag would have to be cleared before every ending, and
+					 *       that clearing would be lost on every new road
 					 *
 					 * \~
 					 */
@@ -298,12 +322,13 @@ namespace awh {
 					 * @brief Метод записи метки порядка байтов
 					 *
 					 * @details Метка записывается однажды и лишь перед первым полем: текст,
-					 * отданный по частям, метки посреди себя иметь не должен
+					 *          отданный по частям, метки посреди себя иметь не должен.
 					 *
 					 * \~english
 					 * @brief Method of writing the byte order mark
+					 *
 					 * @details The mark is written once and only before the first field: a text
-					 * given away in parts must not have the mark in the middle of itself
+					 *          given away in parts must not have the mark in the middle of itself.
 					 *
 					 * \~
 					 */
@@ -317,6 +342,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the writing of a text
+					 *
 					 * @param error code of the refusal of the writing
 					 * @return      flag of the refusal of the writing, always false
 					 *
@@ -328,10 +354,10 @@ namespace awh {
 					 * @brief Метод отката неудавшейся операции записи
 					 *
 					 * @details Отказ записи местный: объект остаётся годным, и записанное им
-					 * до отказа обязано быть возвращено к тому виду, какой имело до начала
-					 * операции. Иначе знак-разделитель, записанный прежде проверки поля,
-					 * обратил бы отвергнутое поле в ПУСТОЕ: таблица ушла бы той же ширины и
-					 * без всякого следа порчи
+					 *          до отказа обязано быть возвращено к тому виду, какой имело до начала
+					 *          операции. Иначе знак-разделитель, записанный прежде проверки поля,
+					 *          обратил бы отвергнутое поле в ПУСТОЕ: таблица ушла бы той же ширины и
+					 *          без всякого следа порчи.
 					 *
 					 * @param size    размер собранного текста до начала операции
 					 * @param origin  положение начала записи до начала операции
@@ -342,11 +368,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the rollback of a failed operation of the writing
+					 *
 					 * @details The refusal of the writing is local: the object remains usable, and
-					 * what has been written by it before the refusal ought to be returned to the state
-					 * it had before the beginning of the operation. Otherwise the separator character
-					 * written before the check of the field would turn the rejected field into an EMPTY
-					 * one: the table would go out with the same width and without any trace of the damage
+					 *          what has been written by it before the refusal ought to be returned to the state
+					 *          it had before the beginning of the operation. Otherwise the separator character
+					 *          written before the check of the field would turn the rejected field into an EMPTY
+					 *          one: the table would go out with the same width and without any trace of the damage.
+					 *
 					 * @param size    size of the collected text before the beginning of the operation
 					 * @param origin  position of the beginning of the record before the beginning of the operation
 					 * @param started flag of the presence of the fields at the record before the beginning of the operation
@@ -367,6 +395,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the return of the collector to the previous state
+					 *
 					 * @param size    size of the collected text before the beginning of the operation
 					 * @param origin  position of the beginning of the record before the beginning of the operation
 					 * @param started flag of the presence of the fields at the record before the beginning of the operation
@@ -384,6 +413,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the content of a field with a framing by quotes
+					 *
 					 * @param text content of the field being written
 					 *
 					 * \~
@@ -398,6 +428,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the next field of a record
+					 *
 					 * @param text content of the field being written
 					 *
 					 * \~
@@ -412,6 +443,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a numeric field of a record
+					 *
 					 * @tparam T type of the value being written
 					 * @param value value being written
 					 *
@@ -425,21 +457,23 @@ namespace awh {
 					 * @brief Метод завершения текущей записи
 					 *
 					 * @details Запись без полей даёт пустую строку, а разбор пустые строки
-					 * пропускает: круговой проход такой записи не сохраняет, и это не
-					 * упущение, а свойство самой записи CSV
+					 *          пропускает: круговой проход такой записи не сохраняет, и это не
+					 *          упущение, а свойство самой записи CSV.
 					 *
 					 * @note Единственное пустое поле требует кавычек. Если они запрещены,
 					 *       не заданы либо совпадают со знаком примечания, завершение
-					 *       устанавливает `UNWRITABLE_FIELD` и снимает текущую запись.
+					 *       устанавливает `UNWRITABLE_FIELD` и снимает текущую запись
 					 *
 					 * \~english
 					 * @brief Method of completing the current record
+					 *
 					 * @details A record without fields gives an empty line, while the parsing skips the empty
-					 * lines: a round trip does not preserve such a record, and this is not
-					 * an omission but a property of the CSV record itself
+					 *          lines: a round trip does not preserve such a record, and this is not
+					 *          an omission but a property of the CSV record itself.
+					 *
 					 * @note A single empty field requires quotes. If quoting is disabled, the quote
 					 *       character is unset or matches the comment character, completion sets
-					 *       `UNWRITABLE_FIELD` and discards the current record.
+					 *       `UNWRITABLE_FIELD` and discards the current record
 					 *
 					 * \~
 					 */
@@ -452,6 +486,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a whole record field by field
+					 *
 					 * @param fields fields of the record being written
 					 *
 					 * \~
@@ -465,6 +500,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing a whole record field by field
+					 *
 					 * @param fields fields of the record being written
 					 *
 					 * \~
@@ -476,15 +512,17 @@ namespace awh {
 					 * @brief Метод записи текста целиком
 					 *
 					 * @details Собранное прежде не отбрасывается: записи дописываются к
-					 * нему, что позволяет предпослать таблице заголовок, собранный
-					 * отдельно
+					 *          нему, что позволяет предпослать таблице заголовок, собранный
+					 *          отдельно.
 					 *
 					 * @param records записываемые записи
 					 *
 					 * \~english
 					 * @brief Method of writing a text in full
+					 *
 					 * @details What has been assembled before is not discarded: the records are appended to
-					 * it, which makes it possible to prepend a header assembled separately to a table
+					 *          it, which makes it possible to prepend a header assembled separately to a table.
+					 *
 					 * @param records records being written
 					 *
 					 * \~
@@ -499,6 +537,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the assembled text
+					 *
 					 * @return assembled text
 					 *
 					 * \~
@@ -508,14 +547,16 @@ namespace awh {
 					 * @brief Метод получения кода отказа записи
 					 *
 					 * @details Код удерживается до очистки собранного текста: у записи,
-					 * отказавшей на поле, он называет причину отказа
+					 *          отказавшей на поле, он называет причину отказа.
 					 *
 					 * @return код отказа записи
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the code of the refusal of the writing
+					 *
 					 * @details The code is held until the clearing of the collected text: for the writing
-					 * that refused on a field, it names the reason of the refusal
+					 *          that refused on a field, it names the reason of the refusal.
+					 *
 					 * @return code of the refusal of the writing
 					 *
 					 * \~
@@ -530,6 +571,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the size of the assembled text
+					 *
 					 * @return size of the assembled text in bytes
 					 *
 					 * \~
@@ -541,23 +583,26 @@ namespace awh {
 					 * @brief Метод изъятия собранного текста
 					 *
 					 * @details Собранное изымается целиком, а сборщик остаётся готовым
-					 * продолжать: тем и ведётся потоковая запись, когда держать текст в
-					 * памяти целиком незачем
+					 *          продолжать: тем и ведётся потоковая запись, когда держать текст в
+					 *          памяти целиком незачем.
 					 *
 					 * @warning Изымать текст посреди записи нельзя: изъятое окончится
-					 * полем без завершения записи, и склеенное обратно даст запись,
-					 * разорванную надвое. Изъятие посреди записи потому отдаёт пустоту
+					 *          полем без завершения записи, и склеенное обратно даст запись,
+					 *          разорванную надвое. Изъятие посреди записи потому отдаёт пустоту
 					 *
 					 * @return изъятый текст
 					 *
 					 * \~english
 					 * @brief Method of withdrawing the assembled text
+					 *
 					 * @details What has been assembled is withdrawn in full, while the assembler remains ready
-					 * to continue: that is how the streaming writing is conducted, when there is no point in holding the text in
-					 * the memory in full
+					 *          to continue: that is how the streaming writing is conducted, when there is no point in holding the text in
+					 *          the memory in full.
+					 *
 					 * @warning The text cannot be withdrawn in the middle of a record: what has been withdrawn would end
-					 * with a field without the completion of the record, and glued back it would give a record
-					 * torn in two. A withdrawal in the middle of a record therefore gives away emptiness
+					 *          with a field without the completion of the record, and glued back it would give a record
+					 *          torn in two. A withdrawal in the middle of a record therefore gives away emptiness
+					 *
 					 * @return withdrawn text
 					 *
 					 * \~
@@ -582,6 +627,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the settings of the writing of a text
+					 *
 					 * @return settings of the writing of a text
 					 *
 					 * \~
@@ -592,8 +638,8 @@ namespace awh {
 					 * @brief Метод установки настроек записи текста
 					 *
 					 * @details Настройки вступают в силу с ближайшего записываемого поля, а
-					 * записанное прежде остаётся записанным: собранного текста установка эта
-					 * не трогает
+					 *          записанное прежде остаётся записанным: собранного текста установка эта
+					 *          не трогает.
 					 *
 					 * @warning Разделитель, знак кавычек, знак примечания и способ записи
 					 *          кавычки внутри поля принадлежат ВСЕМУ ФАЙЛУ по устройству
@@ -617,8 +663,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing of a text
+					 *
 					 * @details The settings take effect from the nearest field being written, while
-					 * what has been written before remains written: this setting does not touch the assembled text
+					 *          what has been written before remains written: this setting does not touch the assembled text.
+					 *
 					 * @warning The separator, the quote character, the comment character and the way of the writing
 					 *          of a quote inside a field belong to the WHOLE FILE by the structure of the notation
 					 *          itself: a table knows one separator, and the reader determines it by the first record.
@@ -629,10 +677,12 @@ namespace awh {
 					 *          The setting does not answer with a refusal: it has no failure channel of its own,
 					 *          while a latched refusal would break off the writing of a table that is not at fault.
 					 *          The clearing of the text releases the grammar, and the object of the writing is fit anew
+					 *
 					 * @note The line ending and the rule of the enclosing in quotes do NOT belong to the whole file:
 					 *       they are decided anew on each record, and their mixing is accepted by the parsing —
 					 *       a measurement gave all the four fields of a text written with a line feed and a pair
 					 *       of characters intermixed
+					 *
 					 * @param settings settings of the writing of a text
 					 *
 					 * \~
@@ -658,6 +708,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param settings settings of the writing of a text
 					 *
 					 * \~

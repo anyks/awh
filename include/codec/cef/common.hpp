@@ -199,17 +199,31 @@ namespace awh {
 		 *
 		 * @li **A tree of an arbitrary depth does not exist in a CEF record.** The depth is limited by
 		 *     the construction of the record itself: the prefix, the header, the extension — and that is all. This is
-		 *     a boundary of the format rather than an incompleteness of the codec
+		 *     a boundary of the format rather than an incompleteness of the codec; when the tree is written back,
+		 *     a nested value is turned by the rule given by a setting, and not silently
 		 *
 		 * @li **The parsing of the pairs «key=value» is conducted by the own method of the reader
 		 *     `Reader::extensions`.** Its construction is designed for the records of the CEF kind: a value may
-		 *     carry the separator of records and ends before the separator of the key of the next pair,
-		 *     the last pair occupies the whole remainder
+		 *     carry the separator of records and ends before the separator of the key of the next record,
+		 *     the last record occupies the whole remainder, and a sign counts as escaped when an odd number
+		 *     of the backslashes precedes it
 		 *
-		 * @li **The recognition of the kind of a value is conducted by a dictionary rather than by a guessing.** The kind of a field
-		 *     is taken from the dictionary of the extensions by the key; the strictness of the matching is given by a setting
+		 * @li **The recognition of the kind of a value is conducted by a dictionary rather than by a guessing.**
+		 *     The kind of a field is taken from the dictionary of the extensions by the key, and the strictness
+		 *     of the matching is given by a setting. A guessing of the kind by the appearance of the characters
+		 *     produces misreadings: «011» is parsed now as octal, now as decimal, and «1.10» as a number loses
+		 *     a digit
 		 *
-		 * @li **The parsing performs no external calls.** Neither to the file system nor to the network
+		 * @li **The codec performs NO conversions of encodings.** The description of ArcSight requires the writing
+		 *     in UTF-8 outright and admits no other encoding, so here there is neither the recognition of an encoding
+		 *     nor a translation from it — unlike the INI, CSV and XML codecs, where the encoding of the source text
+		 *     is fixed by nothing and therefore is recognised. A setting of the encoding would be a promise to which
+		 *     nothing answers: introduced by the pattern of the neighbours, it was NOT read by a single place of the
+		 *     parsing, and it has been removed for that very reason
+		 *
+		 * @li **The parsing performs no external calls.** Neither to the file system nor to the network: the resolution
+		 *     of the device names, the search of the dictionaries and the verification of the signatures are not part
+		 *     of the task of the codec
 		 *
 		 * \~
 		 */
@@ -242,6 +256,7 @@ namespace awh {
 			 *          the header specifies the revision, and an unknown revision may
 			 *          contain a different set of fields.
 			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_VERSION = 1;
 
@@ -296,7 +311,9 @@ namespace awh {
 			 * \~english
 			 * @brief Number of the pairs of an extension starting from which the index of the names is created
 			 *
-			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any index.
+			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any index:
+			 *          the comparison of the names goes over the memory laid out in a row, while the creation of an index
+			 *          costs an allocation of memory and the counting of a fingerprint for every name.
 			 *
 			 * @note The threshold is intentionally kept equal to the codec INI threshold: both codecs share the same
 			 *       storage mechanism for these pairs, and a discrepancy between the thresholds would result
@@ -524,7 +541,7 @@ namespace awh {
 			 *       on the timestamp's appearance is verified against a validity flag;
 			 *       if the flag is absent, a second attempt is made using a different recording format.
 			 *       For the same reason, the fractional second cannot be read in isolation
-			 *       from the rest of the timestamp: it may contain part of the time zone data.
+			 *       from the rest of the timestamp: it may contain part of the time zone data
 			 *
 			 * \~
 			 */
@@ -574,6 +591,7 @@ namespace awh {
 			 *       STORAGE_EXHAUSTED is unreachable given the size bit-depth; and INTERNAL
 			 *       and CONFLICTING_SETTINGS were never raised on any execution path
 			 *
+			 * \~
 			 */
 			enum class error_t : uint8_t {
 				NONE                  = 0x00, // Ошибок не обнаружено
@@ -715,7 +733,9 @@ namespace awh {
 			 * @brief Kinds of the values of the dictionary of the extensions
 			 *
 			 * @details The kind is taken from the dictionary by the key rather than
-			 *          guessed by the appearance of the characters.
+			 *          guessed by the appearance of the characters: a guessing produces
+			 *          misreadings - «011» is parsed now as octal, now as decimal, and
+			 *          «1.10» as a number loses a digit.
 			 *
 			 * \~
 			 */

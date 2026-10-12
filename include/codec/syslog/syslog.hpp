@@ -15,12 +15,16 @@
  * \~russian
  * @brief Заголовочный файл контейнера SysLog — единой точки включения потокового чтения записей,
  *        записи событий, словаря источников сообщений и события, удерживаемого целиком
+ *
  * @details Своего владеющего значения (`value_t`) у контейнера SysLog НЕТ, и это решение, а не
- * пробел: основанием событию служит дерево контейнера ABC
+ *          пробел: основанием событию служит дерево контейнера ABC.
  *
  * \~english
  * @brief Header file of the SysLog container — the single point of the inclusion of the streaming reading
  *        of the records, of the writing of the events, of the dictionary of the sources and of an event held in full
+ *
+ * @details The SysLog container has NO owning value (`value_t`) of its own, and that is a decision
+ *          rather than a gap: a tree of the ABC container serves as the foundation of an event.
  *
  * \~
  *

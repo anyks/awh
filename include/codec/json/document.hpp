@@ -98,14 +98,15 @@ namespace awh {
 			 * @brief Предварительное объявление владеющего значения
 			 *
 			 * @details Объявление это заведено ради прививки: документ прививаемое значение
-			 * принимает, а определение его лежит в заголовке, какой сам подключает документ.
-			 * Полное объявление есть в `value.hpp`
+			 *          принимает, а определение его лежит в заголовке, какой сам подключает документ.
+			 *          Полное объявление есть в `value.hpp`
 			 *
 			 * \~english
 			 * @brief Forward declaration of the owning value
+			 *
 			 * @details This declaration is made for the sake of the grafting: a document accepts a value
-			 * being grafted, while its definition lies in a header which itself includes the document.
-			 * The full declaration is in `value.hpp`
+			 *          being grafted, while its definition lies in a header which itself includes the document.
+			 *          The full declaration is in `value.hpp`
 			 *
 			 * \~
 			 */
@@ -116,43 +117,56 @@ namespace awh {
 			 * @brief Документ JSON, удерживаемый целиком
 			 *
 			 * @details Дерево хранится **сплошным перечнем узлов**, а не россыпью объектов,
-			 * связанных указателями. Дети лежат сразу за родителем, указаний на них нет
-			 * вовсе, а узел-вместилище хранит размер всего своего поддерева: переход к
-			 * соседу и пропуск вложенного вместилища целиком стоят одного сложения.
-			 * Знаки всех строк и имён лежат в одном хранилище, оттого имя поля не выделяет
-			 * памяти вовсе
+			 *          связанных указателями. Дети лежат сразу за родителем, указаний на них нет
+			 *          вовсе, а узел-вместилище хранит размер всего своего поддерева: переход к
+			 *          соседу и пропуск вложенного вместилища целиком стоят одного сложения.
+			 *          Знаки всех строк и имён лежат в одном хранилище, оттого имя поля не выделяет
+			 *          памяти вовсе.
 			 *
 			 * @details **Обращение к значениям.** Обращение по имени и по номеру отдаёт
-			 * лёгкую ссылку на узел, а не узел с памятью. Обращение к отсутствующему имени
-			 * при чтении **ничего не заводит** и отказом не завершается: отдаётся
-			 * недействительная ссылка, у какой `valid()` ложно. Оттого цепочка обращений
-			 * вида `json["a"]["b"][3]` безопасна на всякой глубине
+			 *          лёгкую ссылку на узел, а не узел с памятью. Обращение к отсутствующему имени
+			 *          при чтении **ничего не заводит** и отказом не завершается: отдаётся
+			 *          недействительная ссылка, у какой `valid()` ложно. Оттого цепочка обращений
+			 *          вида `json["a"]["b"][3]` безопасна на всякой глубине.
 			 *
 			 * @note Ссылка на узел живёт, пока документ не изменён: правка вправе
-			 * перестроить перечень узлов, и ссылки после неё недействительны
+			 *       перестроить перечень узлов, и ссылки после неё недействительны
 			 *
 			 * @note **Разбирающему много документов подряд** надлежит держать один объект
-			 * документа, а не заводить его на всякий текст: вместилища дерева и хранилище
-			 * знаков переживают разбор и памяти своей не отдают. На мелких документах, каких
-			 * у служб большинство, переиспользование объекта даёт до полутора раз скорости -
-			 * заведение вместилищ с нуля на документ длиною в сотню байтов стоит дороже
-			 * самого разбора его
+			 *       документа, а не заводить его на всякий текст: вместилища дерева и хранилище
+			 *       знаков переживают разбор и памяти своей не отдают. На мелких документах, каких
+			 *       у служб большинство, переиспользование объекта даёт до полутора раз скорости -
+			 *       заведение вместилищ с нуля на документ длиною в сотню байтов стоит дороже
+			 *       самого разбора его
 			 *
 			 * \~english
 			 * @brief JSON document held in full
-			 * @details The tree is held by a **continuous list of the nodes** rather than by a scattering of the objects
-			 * linked by the pointers. The children lie right after the parent, there are no pointers to them
-			 * at all, while a container node holds the size of its whole subtree: the transition to
-			 * a sibling and the skipping of a nested container as a whole cost one addition.
-			 * The characters of all the strings and of the names lie in one storage, whereby the name of a field does not allocate
-			 * memory at all
+			 *
+			 * @details The tree is held by a **continuous list of the nodes** rather than by a
+			 *          scattering of the objects linked by the pointers. The children lie right
+			 *          after the parent, there are no pointers to them at all, while a container
+			 *          node holds the size of its whole subtree: the transition to a sibling and
+			 *          the skipping of a nested container as a whole cost one addition. The
+			 *          characters of all the strings and of the names lie in one storage, whereby
+			 *          the name of a field does not allocate memory at all.
+			 *
 			 * @details **Access to the values.** An access by a name and by an index gives away
-			 * a light reference to a node rather than a node with a memory. An access to an absent name
-			 * at the reading **creates nothing** and does not end with a refusal: an
-			 * invalid reference is given away for which `valid()` is false. Whereby a chain of the accesses
-			 * of the kind `json["a"]["b"][3]` is safe at any depth
-			 * @note A reference to a node lives while the document is not modified: an editing may
-			 * rebuild the list of the nodes, and the references after it are invalid
+			 *          a light reference to a node rather than a node with a memory. An access to
+			 *          an absent name at the reading **creates nothing** and does not end with a
+			 *          refusal: an invalid reference is given away for which `valid()` is false.
+			 *          Whereby a chain of the accesses of the kind `json["a"]["b"][3]` is safe at
+			 *          any depth.
+			 *
+			 * @note A reference to a node lives while the document is not modified: an editing
+			 *       may rebuild the list of the nodes, and the references after it are invalid
+			 *
+			 * @note **A consumer parsing many documents in a row** is obliged to keep one object
+			 *       of the document, rather than create one for every text: the containers of the
+			 *       tree and the storage of the characters survive the parsing and do not release
+			 *       their memory. On small documents - which make up the majority at services -
+			 *       the reuse of the object gives up to a one and a half times speedup: creating
+			 *       containers from scratch for a document of a hundred bytes costs more than the
+			 *       parsing of it itself
 			 *
 			 * \~
 			 */
@@ -174,17 +188,18 @@ namespace awh {
 						writer_t::settings_t writer;
 						/**
 						 * \~russian
-						 * Правило обращения с повторяющимся именем поля объекта
+						 * @brief Правило обращения с повторяющимся именем поля объекта
 						 *
 						 * @note Правило это принадлежит документу, а не разбору: разбор
-						 * событий имена не удерживает вовсе, а сличать их можно лишь у
-						 * собранного объекта
+						 *       событий имена не удерживает вовсе, а сличать их можно лишь у
+						 *       собранного объекта
 						 *
 						 * \~english
-						 * Rule of the handling of a repeating name of a field of an object
-						 * @note This rule belongs to the document rather than to the parsing: the parsing
-						 * of the events does not hold the names at all, while they can be compared only at
-						 * an assembled object
+						 * @brief Rule of the handling of a repeating name of a field of an object
+						 *
+						 * @note This rule belongs to the document rather than to the parsing: the
+						 *       parsing of the events does not hold the names at all, while they can
+						 *       be compared only at an assembled object
 						 *
 						 * \~
 						 */
@@ -210,21 +225,23 @@ namespace awh {
 					 * @brief Узел документа
 					 *
 					 * @details Узел занимает двадцать байтов и указаний на другие узлы не несёт
-					 * вовсе: содержимое, имя поля и дети находятся счётом. Имя поля лежит в
-					 * хранилище знаков вплотную перед содержимым, оттого одного смещения
-					 * хватает обоим
+					 *          вовсе: содержимое, имя поля и дети находятся счётом. Имя поля лежит в
+					 *          хранилище знаков вплотную перед содержимым, оттого одного смещения
+					 *          хватает обоим.
 					 *
 					 * @details Длина содержимого и количество детей делят одно поле: у
-					 * вместилища своего содержимого нет, а у прочих узлов нет детей
+					 *          вместилища своего содержимого нет, а у прочих узлов нет детей.
 					 *
 					 * \~english
 					 * @brief Node of a document
+					 *
 					 * @details A node occupies twenty bytes and does not carry any pointers to the other nodes
-					 * at all: the content, the name of a field and the children are found by a counting. The name of a field lies in
-					 * the storage of the characters right before the content, whereby one offset
-					 * suffices for both
+					 *          at all: the content, the name of a field and the children are found by a counting. The name of a field lies in
+					 *          the storage of the characters right before the content, whereby one offset
+					 *          suffices for both.
+					 *
 					 * @details The length of the content and the number of the children share one field: a
-					 * container has no content of its own, while the other nodes have no children
+					 *          container has no content of its own, while the other nodes have no children.
 					 *
 					 * \~
 					 */
@@ -238,16 +255,17 @@ namespace awh {
 						 * Признак того, что узел является полем объекта
 						 *
 						 * @note Признак этот необходим: длина имени поля обращается в ноль у
-						 * поля с пустым именем, а такое имя стандартом дозволено. Без признака
-						 * поле `""` было бы неотличимо от значения массива, и перезапись
-						 * документа теряла бы охватывающий его объект
+						 *       поля с пустым именем, а такое имя стандартом дозволено. Без признака
+						 *       поле `""` было бы неотличимо от значения массива, и перезапись
+						 *       документа теряла бы охватывающий его объект
 						 *
 						 * \~english
 						 * Flag that the node is a field of an object
+						 *
 						 * @note This flag is necessary: the length of the name of a field turns into zero for
-						 * a field with an empty name, while such a name is allowed by the standard. Without the flag
-						 * a field `""` would be indistinguishable from a value of an array, and the rewriting
-						 * of the document would lose the object enclosing it
+						 *       a field with an empty name, while such a name is allowed by the standard. Without the flag
+						 *       a field `""` would be indistinguishable from a value of an array, and the rewriting
+						 *       of the document would lose the object enclosing it
 						 *
 						 * \~
 						 */
@@ -270,25 +288,27 @@ namespace awh {
 						 * Содержимое узла шириною в восемь байтов
 						 *
 						 * @details Восемь этих байтов служат узлу по-разному, смотря по виду
-						 * значения его. У вместилища это пара чисел: количество детей и размах
-						 * поддерева. У строки - длина содержимого. У числа родного вида - само
-						 * число, готовое к выдаче. У числа вида `EXTENDED` - длина записи его
+						 *          значения его. У вместилища это пара чисел: количество детей и размах
+						 *          поддерева. У строки - длина содержимого. У числа родного вида - само
+						 *          число, готовое к выдаче. У числа вида `EXTENDED` - длина записи его.
 						 *
 						 * @note Число кладётся сюда переносом байтов, а не отдельным полем на
-						 * восемь байтов: поле такое потребовало бы выравнивания по восьми
-						 * байтам, а с ним узел вырос бы с двадцати байтов до двадцати четырёх.
-						 * На дереве в два миллиона узлов это семь мегабайтов впустую
+						 *       восемь байтов: поле такое потребовало бы выравнивания по восьми
+						 *       байтам, а с ним узел вырос бы с двадцати байтов до двадцати четырёх.
+						 *       На дереве в два миллиона узлов это семь мегабайтов впустую
 						 *
 						 * \~english
 						 * Content of the node eight bytes wide
+						 *
 						 * @details These eight bytes serve the node differently, depending on the kind
-						 * of its value. For a container it is a pair of numbers: the number of the children and the extent
-						 * of the subtree. For a string it is the length of the content. For a number of a native kind it is
-						 * the number itself ready for the issuance. For a number of the kind `EXTENDED` it is the length of its record
+						 *          of its value. For a container it is a pair of numbers: the number of the children and the extent
+						 *          of the subtree. For a string it is the length of the content. For a number of a native kind it is
+						 *          the number itself ready for the issuance. For a number of the kind `EXTENDED` it is the length of its record.
+						 *
 						 * @note A number is placed here by a transfer of the bytes rather than by a separate field of
-						 * eight bytes: such a field would demand an alignment by eight
-						 * bytes, and with it the node would grow from twenty bytes to twenty four.
-						 * On a tree of two million nodes that is seven megabytes wasted
+						 *       eight bytes: such a field would demand an alignment by eight
+						 *       bytes, and with it the node would grow from twenty bytes to twenty four.
+						 *       On a tree of two million nodes that is seven megabytes wasted
 						 *
 						 * \~
 						 */
@@ -301,6 +321,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the obtaining of the number of the children of a container or of the length of the content
+						 *
 						 * @return number of the children of a container or the length of the content in bytes
 						 *
 						 * \~
@@ -314,14 +335,16 @@ namespace awh {
 						 * @brief Метод получения количества узлов поддерева, включая сам узел
 						 *
 						 * @details Размах хранится лишь у вместилища: у всякого прочего узла он
-						 * равен единице всегда, и место под него занято самим значением
+						 *          равен единице всегда, и место под него занято самим значением.
 						 *
 						 * @return количество узлов поддерева, включая сам узел
 						 *
 						 * \~english
 						 * @brief Method of the obtaining of the number of the nodes of the subtree including the node itself
+						 *
 						 * @details The extent is stored only for a container: for every other node it is
-						 * always equal to one, and the place for it is occupied by the value itself
+						 *          always equal to one, and the place for it is occupied by the value itself.
+						 *
 						 * @return number of the nodes of the subtree including the node itself
 						 *
 						 * \~
@@ -338,6 +361,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the setting of the number of the children of a container or of the length of the content
+						 *
 						 * @param value number of the children or length of the content being set
 						 *
 						 * \~
@@ -357,8 +381,10 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the setting of the number of the nodes of the subtree including the node itself
+						 *
 						 * @note The extent is set only for a container: for the other nodes this place
 						 *       is occupied by the value, and a writing into it would ruin the value itself
+						 *
 						 * @param value number of the nodes of the subtree being set
 						 *
 						 * \~
@@ -376,16 +402,18 @@ namespace awh {
 						 * @brief Метод проверки числа на хранение самим узлом
 						 *
 						 * @details Число родного вида лежит в самом узле готовым, а число вида
-						 * `EXTENDED` - записью своей в хранилище знаков. Место в узле у них
-						 * занято разным, и путать эти два случая нельзя
+						 *          `EXTENDED` - записью своей в хранилище знаков. Место в узле у них
+						 *          занято разным, и путать эти два случая нельзя.
 						 *
 						 * @return признак того, что число хранится самим узлом
 						 *
 						 * \~english
 						 * @brief Method of the checking of a number for being stored by the node itself
+						 *
 						 * @details A number of a native kind lies in the node itself ready, while a number of the kind
-						 * `EXTENDED` lies as its record in the storage of the characters. The place in the node is
-						 * occupied by different things for them, and these two cases must not be confused
+						 *          `EXTENDED` lies as its record in the storage of the characters. The place in the node is
+						 *          occupied by different things for them, and these two cases must not be confused.
+						 *
 						 * @return flag that the number is stored by the node itself
 						 *
 						 * \~
@@ -404,6 +432,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the checking of a node for the belonging to the containers
+						 *
 						 * @return flag that the node is an array or an object
 						 *
 						 * \~
@@ -421,6 +450,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Template method of the obtaining of the number stored by the node
+						 *
 						 * @tparam T kind of the number stored by the node
 						 * @return number stored by the node
 						 *
@@ -444,6 +474,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Template method of the setting of the number stored by the node
+						 *
 						 * @tparam T kind of the number stored by the node
 						 * @param value number being set
 						 *
@@ -478,14 +509,15 @@ namespace awh {
 					 * @brief Ссылка на узел документа
 					 *
 					 * @details Ссылка легка: она хранит указатель на документ и номер узла.
-					 * Обращение по имени и по номеру отдаёт такую же ссылку, отчего цепочка
-					 * обращений памяти не выделяет вовсе
+					 *          Обращение по имени и по номеру отдаёт такую же ссылку, отчего цепочка
+					 *          обращений памяти не выделяет вовсе.
 					 *
 					 * \~english
 					 * @brief Reference to a node of a document
+					 *
 					 * @details The reference is light: it holds a pointer to the document and the index of the node.
-					 * An access by a name and by an index gives away the same reference, whereby a chain
-					 * of the accesses does not allocate any memory at all
+					 *          An access by a name and by an index gives away the same reference, whereby a chain
+					 *          of the accesses does not allocate any memory at all.
 					 *
 					 * \~
 					 */
@@ -502,14 +534,15 @@ namespace awh {
 							 * Номер узла за последним узлом вместилища, какому узел принадлежит
 							 *
 							 * @details Указаний на родителя узел не несёт, а переход к соседу
-							 * обязан останавливаться на границе своего вместилища: без границы
-							 * обход массива продолжился бы соседом его родителя
+							 *          обязан останавливаться на границе своего вместилища: без границы
+							 *          обход массива продолжился бы соседом его родителя.
 							 *
 							 * \~english
 							 * Index of the node past the last node of the container to which the node belongs
+							 *
 							 * @details A node does not carry any pointer to its parent, while the transition to a sibling
-							 * is obliged to stop at the boundary of its container: without the boundary
-							 * the traversal of an array would continue with the sibling of its parent
+							 *          is obliged to stop at the boundary of its container: without the boundary
+							 *          the traversal of an array would continue with the sibling of its parent.
 							 *
 							 * \~
 							 */
@@ -520,23 +553,25 @@ namespace awh {
 							 * Клеймо поколения дерева, при котором ссылка снята
 							 *
 							 * @details Ссылка хранит номер узла, а перестроение дерева - разбор,
-							 * чтение, очистка, прививка - нумерацию меняет. Ссылка, пережившая
-							 * перестроение, указывала бы на СОВСЕМ ДРУГОЕ значение, отвечая при этом
-							 * действительностью и отдавая правдоподобное содержимое: отличить
-							 * подмену эту потребителю было НЕЧЕМ. Замер: узел, снятый до повторного
-							 * разбора, отвечал `valid() == true` и выдавал значение нового документа
+							 *          чтение, очистка, прививка - нумерацию меняет. Ссылка, пережившая
+							 *          перестроение, указывала бы на СОВСЕМ ДРУГОЕ значение, отвечая при этом
+							 *          действительностью и отдавая правдоподобное содержимое: отличить
+							 *          подмену эту потребителю было НЕЧЕМ. Замер: узел, снятый до повторного
+							 *          разбора, отвечал `valid() == true` и выдавал значение нового документа.
 							 *
 							 * @note Клеймо снимается в самом заводителе ссылки, оттого ни одно место
 							 *       её заведения правки не потребовало
 							 *
 							 * \~english
 							 * Stamp of the generation of the tree at which the reference was taken
+							 *
 							 * @details The reference holds the index of a node, while a rebuilding of the tree — the parsing,
-							 * the reading, the clearing, the grafting — changes the numbering. A reference that has survived
-							 * a rebuilding would point at a COMPLETELY DIFFERENT value, answering at that
-							 * with validity and giving away a plausible content: there was NOTHING for the consumer
-							 * to tell that substitution by. Measurement: a node taken before a repeated
-							 * parsing answered `valid() == true` and issued the value of the new document
+							 *          the reading, the clearing, the grafting — changes the numbering. A reference that has survived
+							 *          a rebuilding would point at a COMPLETELY DIFFERENT value, answering at that
+							 *          with validity and giving away a plausible content: there was NOTHING for the consumer
+							 *          to tell that substitution by. Measurement: a node taken before a repeated
+							 *          parsing answered `valid() == true` and issued the value of the new document.
+							 *
 							 * @note The stamp is taken in the constructor of the reference itself, whereby not a single place
 							 *       of its construction has required a change
 							 *
@@ -549,8 +584,8 @@ namespace awh {
 							 * @brief Метод проверки действительности ссылки
 							 *
 							 * @details Проверяются два условия: ссылка указывает на существующий узел и клеймо
-							 * поколения её отвечает клейму дерева. Первое ловит ссылку пустую, второе - ссылку,
-							 * пережившую перестроение дерева
+							 *          поколения её отвечает клейму дерева. Первое ловит ссылку пустую, второе - ссылку,
+							 *          пережившую перестроение дерева.
 							 *
 							 * @warning Проверка эта предполагает документ ЖИВЫМ и обнаружить его уничтожение
 							 *          НЕ МОЖЕТ: клеймо дерева лежит внутри самого документа, и спросить его у
@@ -567,6 +602,21 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the check of the validity of the reference
+							 *
+							 * @details Two conditions are checked: the reference points at an existing node and the
+							 *          stamp of its generation answers the stamp of the tree. The first catches an
+							 *          empty reference, the second - a reference that has survived a rebuilding of the tree.
+							 *
+							 * @warning This check supposes the document to be ALIVE and CANNOT discover its destruction:
+							 *          the stamp of the tree lies inside the document itself, and asking a torn-down object
+							 *          for it means reading freed memory. The measurement of 2026-08-31: a reference taken
+							 *          inside the scope of visibility and queried `valid()` beyond it is rejected by the
+							 *          supervisor as `stack-use-after-scope`. The reference does not extend the life of the
+							 *          document and must not extend it - otherwise every taken handle would hold the tree in full
+							 *
+							 * @note This is said here on purpose: `valid()` ITSELF invites one to think that asking it
+							 *       is always safe, and silence about this condition is more dangerous than the absence of the method
+							 *
 							 * @return sign of the validity of the reference
 							 *
 							 * \~
@@ -583,6 +633,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the kind of the node
+							 *
 							 * @return kind of the node of the document
 							 *
 							 * \~
@@ -596,14 +647,16 @@ namespace awh {
 							 * @brief Метод извлечения вида значения
 							 *
 							 * @details Вид этот точен: число выдаёт тот самый вид, каким оно
-							 * хранится, - от `INT8` до `DOUBLE`
+							 *          хранится, - от `INT8` до `DOUBLE`
 							 *
 							 * @return вид значения документа
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the kind of the value
+							 *
 							 * @details This kind is exact: a number issues that very kind by which it
-							 * is stored — from `INT8` to `DOUBLE`
+							 *          is stored — from `INT8` to `DOUBLE`
+							 *
 							 * @return kind of the value of the document
 							 *
 							 * \~
@@ -617,35 +670,49 @@ namespace awh {
 							 * @brief Метод проверки значения на принадлежность к виду
 							 *
 							 * @details Проверка идёт наложением разрядов, оттого точный вопрос
-							 * `is(type_t::INT32)` и сборный `is(type_t::NUMBER)` стоят одинаково
+							 *          `is(type_t::INT32)` и сборный `is(type_t::NUMBER)` стоят одинаково.
 							 *
 							 * @note Вопрос о нескольких видах разом задаётся сборным видом, а не
 							 *       несколькими вызовами: `is(type_t::REAL)` истинен и у `FLOAT`,
 							 *       и у `DOUBLE`
 							 *
 							 * @param type вид либо набор видов, на принадлежность к какому
-							 *             проверяется значение
+							 *          проверяется значение
+							 *
 							 * @return     признак принадлежности значения к виду
 							 *
 							 * \~english
 							 * @brief Method of the checking of a value for the belonging to a kind
+							 *
 							 * @details The checking goes by an overlaying of the bits, whereby an exact question
-							 * `is(type_t::INT32)` and a composite one `is(type_t::NUMBER)` cost the same
+							 *          `is(type_t::INT32)` and a composite one `is(type_t::NUMBER)` cost the same.
+							 *
 							 * @note A question about several kinds at once is asked by a composite kind rather than by
 							 *       several calls: `is(type_t::REAL)` is true both for `FLOAT`
 							 *       and for `DOUBLE`
+							 *
 							 * @param type kind or set of the kinds for the belonging to which
-							 *             the value is checked
+							 *          the value is checked
+							 *
 							 * @return flag of the belonging of the value to the kind
 							 *
 							 * \~
 							 */
 							AWH_JSON_INLINE bool is(const type_t type) const noexcept {
 								/**
+								 * \~russian
 								 * Если спрошено об отсутствии значения
 								 *
 								 * @note Отсутствие значения разряда своего не имеет вовсе - оно есть
 								 *       пустота разрядов, и наложением проверено быть не может
+								 *
+								 * \~english
+								 * When the absence of a value has been asked about
+								 *
+								 * @note The absence of a value has no bit of its own at all - it is an emptiness of
+								 *       bits, and it cannot be verified by an overlay
+								 *
+								 * \~
 								 */
 								if(type == type_t::UNDEFINED)
 									// Выводим признак отсутствия значения
@@ -661,6 +728,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the number of the children of a container
+							 *
 							 * @return number of the children of the container
 							 *
 							 * \~
@@ -675,11 +743,22 @@ namespace awh {
 								// Получаем узел, на какой указывает ссылка
 								const Node & node = this->_doc->_nodes[this->_index];
 								/**
+								 * \~russian
 								 * Выводим количество детей вместилища, а у прочих узлов - отсутствие детей
 								 *
 								 * @note Поле длины у вместилища и у прочих узлов занято разным, и выдавать
 								 *       длину строки количеством детей означало бы завести обход по числу
 								 *       байтов её содержимого
+								 *
+								 * \~english
+								 * Issue the count of the children of a container, and for the other nodes - the absence
+								 * of children
+								 *
+								 * @note The length field is occupied by different things at a container and at the other
+								 *       nodes, and to issue the length of a string as the count of children would mean to
+								 *       start a walk by the number of bytes of its content
+								 *
+								 * \~
 								 */
 								return (node.nested() ? static_cast <size_t> (node.length()) : 0);
 							}
@@ -691,6 +770,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the check of a container for the emptiness
+							 *
 							 * @return sign of the absence of the children of the container
 							 *
 							 * \~
@@ -707,6 +787,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the name of a field of an object
+							 *
 							 * @return name of the field of the object, empty for the other nodes
 							 *
 							 * \~
@@ -739,6 +820,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the check of the presence of a field of an object with the indicated name
+							 *
 							 * @param name name of the field of the object being searched for
 							 * @return sign of the presence of the field of the object
 							 *
@@ -750,15 +832,17 @@ namespace awh {
 							 * @brief Метод обращения к полю объекта по имени
 							 *
 							 * @details Обращение к отсутствующему имени ничего не заводит и
-							 * отдаёт недействительную ссылку
+							 *          отдаёт недействительную ссылку.
 							 *
 							 * @param name имя поля объекта
 							 * @return     ссылка на узел поля объекта
 							 *
 							 * \~english
 							 * @brief Method of the access to a field of an object by a name
+							 *
 							 * @details An access to an absent name creates nothing and
-							 * gives away an invalid reference
+							 *          gives away an invalid reference.
+							 *
 							 * @param name name of the field of the object
 							 * @return reference to the node of the field of the object
 							 *
@@ -774,6 +858,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the access to a value of a container by an index
+							 *
 							 * @param index index of the value in the container
 							 * @return reference to the node of the value
 							 *
@@ -785,7 +870,7 @@ namespace awh {
 						 * @brief Метод обращения по написанию знака
 						 *
 						 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
-						 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек
+						 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
 						 *
 						 * @note Без этого метода `v['z']` молча обращался к элементу под номером
 						 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
@@ -798,12 +883,15 @@ namespace awh {
 						 *
 						 * \~english
 						 * @brief Method of the access by a writing of a character
+						 *
 						 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
-						 * of a single character rather than for an index. This rule is one for the whole codec
+						 *          of a single character rather than for an index. This rule is one for the whole codec.
+						 *
 						 * @note Without this method `v['z']` silently addressed the element under the index 122
 						 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
 						 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
 						 *       ambiguous, hence a template with a guard here
+						 *
 						 * @tparam T width of the access, the guard admits exactly a character
 						 * @param name name of a single character being searched for
 						 * @return value taken
@@ -824,7 +912,9 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the access to a value by a JSON Pointer
+							 *
 							 * @details The pointer is written according to RFC 6901: `/response/users/0/id`
+							 *
 							 * @param pointer pointer to the value according to RFC 6901
 							 * @return reference to the node of the value
 							 *
@@ -841,6 +931,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a logical value
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -852,7 +943,7 @@ namespace awh {
 							 * @brief Шаблонный метод извлечения числа затребованным видом
 							 *
 							 * @details Извлечение сличает само значение с пределами затребованного
-							 * вида, а не вид хранения с видом затребованным
+							 *          вида, а не вид хранения с видом затребованным.
 							 *
 							 * @tparam T      затребованный вид числа
 							 * @param  result переменная, куда помещается извлечённое значение
@@ -864,11 +955,17 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Template method of the extraction of a number by the demanded kind
+							 *
 							 * @details The extraction compares the value itself with the limits of the demanded
-							 * kind rather than the kind of the storage with the demanded kind
+							 *          kind rather than the kind of the storage with the demanded kind.
+							 *
 							 * @tparam T demanded kind of the number
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
+							 *
+							 * @note The receiver variable is not touched at all on a REFUSAL and keeps
+							 *       what it carried before the call: this layout is common to all the three codecs
+							 *       and was taken off by a measurement of 2026-09-01 along twenty refusal paths
 							 *
 							 * \~
 							 */
@@ -881,13 +978,13 @@ namespace awh {
 							 * @brief Метод извлечения числа
 							 *
 							 * @details Отказом извлечение завершается лишь тогда, когда узел
-							 * числом не является вовсе. Вид хранения извлечению не указ: узел,
-							 * хранящий `INT8`, извлекается и как `double`, и как `uint64_t`
+							 *          числом не является вовсе. Вид хранения извлечению не указ: узел,
+							 *          хранящий `INT8`, извлекается и как `double`, и как `uint64_t`
 							 *
 							 * @details Целое, не вмещающееся в затребованный вид, переносится
-							 * младшими разрядами - ровно так, как это делает `static_cast`. Дробное
-							 * же ОКРУГЛЯЕТСЯ по правилам математики с уводом половины от нуля:
-							 * `1.5` даёт `2`, `-1.5` даёт `-2`, `1.4` даёт `1`
+							 *          младшими разрядами - ровно так, как это делает `static_cast`. Дробное
+							 *          же ОКРУГЛЯЕТСЯ по правилам математики с уводом половины от нуля:
+							 *          `1.5` даёт `2`, `-1.5` даёт `-2`, `1.4` даёт `1`
 							 *
 							 * @note Единственное отступление от `static_cast` касается дробного,
 							 *       чья целая часть лежит за пределами затребованного вида, - вроде
@@ -900,18 +997,22 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number
+							 *
 							 * @details The extraction ends with a refusal only when the node
-							 * is not a number at all. The kind of the storage is not a directive to the extraction: a node
-							 * storing an `INT8` is extracted both as a `double` and as a `uint64_t`
+							 *          is not a number at all. The kind of the storage is not a directive to the extraction: a node
+							 *          storing an `INT8` is extracted both as a `double` and as a `uint64_t`
+							 *
 							 * @details An integer not fitting into the demanded kind is transferred by the lower
-							 * bits — exactly as `static_cast` does it. A fractional number, however, is ROUNDED
-							 * by the rules of mathematics with the half taken away from zero:
-							 * `1.5` gives `2`, `-1.5` gives `-2`, `1.4` gives `1`
+							 *          bits — exactly as `static_cast` does it. A fractional number, however, is ROUNDED
+							 *          by the rules of mathematics with the half taken away from zero:
+							 *          `1.5` gives `2`, `-1.5` gives `-2`, `1.4` gives `1`
+							 *
 							 * @note The only deviation from `static_cast` concerns a fractional number
 							 *       whose integer part lies beyond the limits of the demanded kind — like
 							 *       `1e300` into an `int32_t`. The standard calls this an undefined
 							 *       behaviour, while we issue the limit of the demanded kind: there will be no undefined
 							 *       behaviour in the codec
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -927,6 +1028,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `int16_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -942,6 +1044,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `int32_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -957,6 +1060,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `int64_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -972,6 +1076,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `uint8_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -987,6 +1092,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `uint16_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -1002,6 +1108,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `uint32_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -1017,6 +1124,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `uint64_t`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -1032,6 +1140,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `float`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -1047,6 +1156,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind `double`
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -1062,6 +1172,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a string value
+							 *
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -1074,8 +1185,8 @@ namespace awh {
 							 * @brief Метод извлечения записи числа
 							 *
 							 * @details Запись собирается из хранимого узлом числа кратчайшей
-							 * записью, читающейся обратно тем же самым числом. Число вида
-							 * `EXTENDED` выдаёт запись свою дословно, как она стояла в тексте
+							 *          записью, читающейся обратно тем же самым числом. Число вида
+							 *          `EXTENDED` выдаёт запись свою дословно, как она стояла в тексте.
 							 *
 							 * @note Дословного совпадения с исходным текстом запись не обещает:
 							 *       разбор хранит число, а не знаки его, и `1.50` выдаётся как
@@ -1096,12 +1207,26 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the record of a number
+							 *
 							 * @details The record is assembled from the number stored by the node by the shortest
-							 * record which is read back as the very same number. A number of the kind
-							 * `EXTENDED` issues its record verbatim, as it stood in the text
+							 *          record which is read back as the very same number. A number of the kind
+							 *          `EXTENDED` issues its record verbatim, as it stood in the text.
+							 *
 							 * @note The record does not promise a verbatim coincidence with the source text:
 							 *       the parsing stores the number rather than its characters, and `1.50` is issued as
-							 *       `1.5`, while `1e2` as `100`. The value at that is the very same
+							 *       `1.5`, while `1e2` as `100.0`. The value at that is the very same
+							 *
+							 * @note The fractional nature of the record is THEREBY KEPT: a record with an exponent is
+							 *       parsed by a fractional kind, and the shortest record, read back as the same number,
+							 *       is bound to stay fractional - otherwise `1e2` would return as an integer, a kind not
+							 *       coinciding with the original one. Previously `100` stood here, and a measurement of
+							 *       2026-09-01 disproved this
+							 *
+							 * @note This issuance does NOT listen to the settings of the writing, and it has nothing to
+							 *       listen to: neither the escaping layout, nor the formatting kind, nor the handling of
+							 *       an invalid sequence concerns a number. The measurement of the same day along four
+							 *       layouts: the issuance is unchanged
+							 *
 							 * @return record of the number, empty for the other nodes
 							 *
 							 * \~
@@ -1112,20 +1237,22 @@ namespace awh {
 							 * @brief Метод извлечения строкового значения без копирования
 							 *
 							 * @warning Вид этот живёт лишь до ближайшего перестроения дерева: он
-							 * указывает в общее хранилище знаков, а разбор, чтение, очистка и прививка
-							 * его переписывают. Сама ссылка клеймом поколения защищена и по устаревании
-							 * отвечает пустым, а вот вид, СНЯТЫЙ ПРЕЖДЕ и удержанный, защищён быть не
-							 * может: замер дал испорченное содержимое. Нужное дольше следует копировать
+							 *          указывает в общее хранилище знаков, а разбор, чтение, очистка и прививка
+							 *          его переписывают. Сама ссылка клеймом поколения защищена и по устаревании
+							 *          отвечает пустым, а вот вид, СНЯТЫЙ ПРЕЖДЕ и удержанный, защищён быть не
+							 *          может: замер дал испорченное содержимое. Нужное дольше следует копировать
 							 *
 							 * @return строковое значение, пусто у прочих узлов
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a string value without a copying
+							 *
 							 * @warning This view lives only until the nearest rebuilding of the tree: it
-							 * points into the common storage of the characters, while the parsing, the reading, the clearing and the grafting
-							 * rewrite it. The reference itself is protected by the stamp of the generation and upon becoming stale
-							 * answers with an empty result, whereas a view TAKEN BEFOREHAND and held cannot be
-							 * protected: the measurement gave a corrupted content. What is needed for longer should be copied
+							 *          points into the common storage of the characters, while the parsing, the reading, the clearing and the grafting
+							 *          rewrite it. The reference itself is protected by the stamp of the generation and upon becoming stale
+							 *          answers with an empty result, whereas a view TAKEN BEFOREHAND and held cannot be
+							 *          protected: the measurement gave a corrupted content. What is needed for longer should be copied
+							 *
 							 * @return string value, empty for the other nodes
 							 *
 							 * \~
@@ -1137,14 +1264,16 @@ namespace awh {
 							 * @brief Метод перехода к следующему значению вместилища
 							 *
 							 * @details Переход стоит одного сложения: вложенное вместилище
-							 * пропускается целиком по размеру своего поддерева
+							 *          пропускается целиком по размеру своего поддерева.
 							 *
 							 * @return ссылка на следующее значение вместилища
 							 *
 							 * \~english
 							 * @brief Method of the transition to the next value of a container
+							 *
 							 * @details The transition costs one addition: a nested container
-							 * is skipped as a whole by the size of its subtree
+							 *          is skipped as a whole by the size of its subtree.
+							 *
 							 * @return reference to the next value of the container
 							 *
 							 * \~
@@ -1169,6 +1298,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the first value of a container
+							 *
 							 * @return reference to the first value of the container
 							 *
 							 * \~
@@ -1207,6 +1337,7 @@ namespace awh {
 							 *
 							 * \~english
 							 * @brief Constructor
+							 *
 							 * @param doc document to which the node belongs
 							 * @param index index of the node in the list of the nodes of the document
 							 * @param bound index of the node past the last node of the container
@@ -1220,12 +1351,13 @@ namespace awh {
 					 * @brief Обработчик потоковой выдачи значений
 					 *
 					 * @details Вызывается на всякое разобранное значение верхнего уровня.
-					 * Возврат лжи прекращает разбор
+					 *          Возврат лжи прекращает разбор.
 					 *
 					 * \~english
 					 * @brief Handler of the streaming issuance of the values
+					 *
 					 * @details Is called for every parsed value of the top level.
-					 * A return of a falsehood stops the parsing
+					 *          A return of a falsehood stops the parsing.
 					 *
 					 * \~
 					 */
@@ -1238,27 +1370,40 @@ namespace awh {
 					 * Чтение текста документа
 					 *
 					 * @note Чтение принадлежит документу, а не разбору: заведение его на всякий
-					 * разбор стоило бы выделения памяти под очередь событий, хранилище знаков и
-					 * стек вложенности - а на малых документах, каких у служб большинство,
-					 * стоимость эта и составляет почти всё время разбора
+					 *       разбор стоило бы выделения памяти под очередь событий, хранилище знаков и
+					 *       стек вложенности - а на малых документах, каких у служб большинство,
+					 *       стоимость эта и составляет почти всё время разбора
 					 *
 					 * \~english
 					 * Reading of the text of the document
+					 *
 					 * @note The reading belongs to the document rather than to the parsing: its creation
-					 * for every parsing would cost an allocation of the memory for the queue of the events, the storage of the characters and
-					 * the stack of the nesting — and for the small documents, of which there are the majority at the services,
-					 * this cost constitutes almost all of the time of the parsing
+					 *       for every parsing would cost an allocation of the memory for the queue of the events, the storage of the characters and
+					 *       the stack of the nesting — and for the small documents, of which there are the majority at the services,
+					 *       this cost constitutes almost all of the time of the parsing
 					 *
 					 * \~
 					 */
 					reader_t _reader;
 					/**
+					 * \~russian
 					 * @brief Код отказа последней работы над документом
 					 *
 					 * @details Поле изменчиво нарочно: выдача текста документа и запись его в
-					 * файл идут работами неизменными, а сообщать отказ обязаны - иначе пустой
-					 * текст неотличим от документа пустого. Прежде код отведён был одному
-					 * лишь разбору, и отказ записи пропадал вовсе
+					 *          файл идут работами неизменными, а сообщать отказ обязаны - иначе пустой
+					 *          текст неотличим от документа пустого. Прежде код отведён был одному
+					 *          лишь разбору, и отказ записи пропадал вовсе.
+					 *
+					 * \~english
+					 * @brief Code of the failure of the last work upon the document
+					 *
+					 * @details The field is mutable on purpose: the issue of the text of a document and its
+					 *          writing to a file go as immutable methods, yet both are obliged to report a
+					 *          failure - otherwise an empty text is indistinguishable from an empty document.
+					 *          Previously the code was allotted to the parsing alone, and a failure of the
+					 *          writing vanished altogether.
+					 *
+					 * \~
 					 */
 					mutable error_t _error;
 					/**
@@ -1271,6 +1416,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * Encoding by which the source text of the document has been read
+					 *
+					 * @note It is kept by its own field rather than asked of the reading: the clearing is bound
+					 *       to reset it, and the reading cannot be reset in the middle of the parsing - the
+					 *       clearing may be called from the handler of the streaming issuance
 					 *
 					 * \~
 					 */
@@ -1286,6 +1435,10 @@ namespace awh {
 					 * \~english
 					 * Object for working with the file system
 					 *
+					 * @note Its mutability is deliberate: the saving of a document is declared NON-MUTATING
+					 *       - it does not touch the document - while the replacement of the target file by a
+					 *       temporary one is not a constant method of the file system
+					 *
 					 * \~
 					 */
 					fs_t _fs;
@@ -1294,12 +1447,13 @@ namespace awh {
 					 * Перечень узлов документа
 					 *
 					 * @details Дети лежат сразу за родителем, оттого обход идёт вперёд по
-					 * памяти
+					 *          памяти.
 					 *
 					 * \~english
 					 * List of the nodes of the document
+					 *
 					 * @details The children lie right after the parent, whereby the traversal goes forward through
-					 * the memory
+					 *          the memory.
 					 *
 					 * \~
 					 */
@@ -1308,9 +1462,9 @@ namespace awh {
 					 * Клеймо поколения дерева документа
 					 *
 					 * @details Растёт всякий раз, как нумерация узлов перестраивается: разбором,
-					 * чтением, очисткой и прививкой. Ссылки хранят клеймо своего поколения и по
-					 * несовпадению отвечают недействительностью - тем молчаливая подмена значения
-					 * и обращается в честный отказ
+					 *          чтением, очисткой и прививкой. Ссылки хранят клеймо своего поколения и по
+					 *          несовпадению отвечают недействительностью - тем молчаливая подмена значения
+					 *          и обращается в честный отказ.
 					 *
 					 * @note Плата за клеймо измерена вперемежку, десятью кругами, лучшим из
 					 *       прогонов - подряд идущие блоки на двумодальных ядрах Apple Silicon
@@ -1322,10 +1476,10 @@ namespace awh {
 					 *       строке кэша, а в лишней загрузке, какую свернуть некуда
 					 *
 					 * @warning Порядок этот НЕ переносим между кодеками. У соседнего кодека YAML,
-					 * устроенного тем же клеймом, замер дал обратное: клеймо прежде номера - 1.5 %,
-					 * после - 9.4 %. Дерево там плоское и обход идёт по одному уровню, здесь же
-					 * дерево вложенное и обход идёт вниз. Выгодный порядок есть свойство своего
-					 * кодека, и мерить его надлежит у себя
+					 *          устроенного тем же клеймом, замер дал обратное: клеймо прежде номера - 1.5 %,
+					 *          после - 9.4 %. Дерево там плоское и обход идёт по одному уровню, здесь же
+					 *          дерево вложенное и обход идёт вниз. Выгодный порядок есть свойство своего
+					 *          кодека, и мерить его надлежит у себя
 					 *
 					 * @note Переполнение разрядности беды не делает: совпадение клейм требует
 					 *       ровно четырёх миллиардов перестроений между снятием ссылки и её
@@ -1333,10 +1487,28 @@ namespace awh {
 					 *
 					 * \~english
 					 * Stamp of the generation of the tree of the document
+					 *
 					 * @details Grows every time the numbering of the nodes is rebuilt: by the parsing,
-					 * the reading, the clearing and the grafting. The references hold the stamp of their generation and
-					 * answer with invalidity upon a mismatch — whereby the silent substitution of a value
-					 * turns into an honest refusal
+					 *          the reading, the clearing and the grafting. The references hold the stamp of their generation and
+					 *          answer with invalidity upon a mismatch — whereby the silent substitution of a value
+					 *          turns into an honest refusal.
+					 *
+					 * @note The price of the stamp was measured interleaved, by ten rounds, with the best of
+					 *       the runs - consecutive blocks on the bimodal Apple Silicon cores catch different
+					 *       things and give nonsense. The traversal with the extraction of strings: 81 ms
+					 *       without the stamp, 91 with the stamp BEFORE the check of the number, 83 with the
+					 *       stamp AFTER it. The bands of the values do not overlap at all
+					 *
+					 * @note The adjacency of the stamp to the list of the nodes in the memory gave NOTHING:
+					 *       the matter is not in a cache line, but in an extra load with nowhere to hide it
+					 *
+					 * @warning This order is NOT portable between the codecs. At the neighbouring YAML codec,
+					 *          built upon the very same stamp, the measurement gave the opposite: the stamp
+					 *          before the number - 1.5 %, after it - 9.4 %. There the tree is flat and the
+					 *          traversal goes along one level, while here the tree is nested and the traversal
+					 *          goes down. The profitable order is a property of one's own codec, and one must
+					 *          measure it at home
+					 *
 					 * @note An overflow of the bit width does no harm: a coincidence of the stamps requires
 					 *       exactly four billion rebuildings between the taking of a reference and its
 					 *       reading, while the references live within the bounds of a single operation
@@ -1352,14 +1524,15 @@ namespace awh {
 					 * Отображение имён полей в номера узлов, заводимое по требованию
 					 *
 					 * @details Заводится при первом обращении по имени к объекту, число
-					 * полей какого превышает порог. Мелкие объекты, каких большинство, не
-					 * платят за него ничего
+					 *          полей какого превышает порог. Мелкие объекты, каких большинство, не
+					 *          платят за него ничего.
 					 *
 					 * \~english
 					 * Mapping of the names of the fields into the indices of the nodes created on demand
+					 *
 					 * @details Is created at the first access by a name to an object the number
-					 * of the fields of which exceeds the threshold. The small objects, of which there are the majority, do not
-					 * pay anything for it
+					 *          of the fields of which exceeds the threshold. The small objects, of which there are the majority, do not
+					 *          pay anything for it.
 					 *
 					 * \~
 					 */
@@ -1369,14 +1542,15 @@ namespace awh {
 					 * Перечень имён полей разбираемого объекта вместе с номерами их узлов
 					 *
 					 * @note Перечень принадлежит документу, а не разбору повторов: заведение
-					 * его на всяком закрываемом объекте стоило бы выделения памяти на всякий
-					 * объект документа
+					 *       его на всяком закрываемом объекте стоило бы выделения памяти на всякий
+					 *       объект документа
 					 *
 					 * \~english
 					 * List of the names of the fields of the object being analyzed together with the indices of their nodes
+					 *
 					 * @note The list belongs to the document rather than to the analysis of the repetitions: its creation
-					 * at every object being closed would cost an allocation of the memory for every
-					 * object of the document
+					 *       at every object being closed would cost an allocation of the memory for every
+					 *       object of the document
 					 *
 					 * \~
 					 */
@@ -1384,12 +1558,24 @@ namespace awh {
 					// Отображение имён полей крупного объекта в места их в перечне имён
 					unordered_map <string_view, size_t> _lookup;
 					/**
+					 * \~russian
 					 * @brief Положение отказа разбора в исходном тексте
 					 *
 					 * @details Поле изменчиво нарочно, наравне с кодом отказа: выдача текста
-					 * идёт работой неизменной, а положение сбрасывать обязана - у отказа записи
-					 * места в исходном тексте нет вовсе, и положение прежнего разбора, его
-					 * пережив, складывалось бы с новым кодом в донесение стройное, но ложное
+					 *          идёт работой неизменной, а положение сбрасывать обязана - у отказа записи
+					 *          места в исходном тексте нет вовсе, и положение прежнего разбора, его
+					 *          пережив, складывалось бы с новым кодом в донесение стройное, но ложное.
+					 *
+					 * \~english
+					 * @brief Position of a parse failure in the source text
+					 *
+					 * @details The field is mutable on purpose, on a par with the failure code: the issue of
+					 *          the text goes as an immutable method, yet it is obliged to reset the position -
+					 *          a failure of the writing has no place in the source text at all, and the
+					 *          position of a previous parse, outliving it, would join the new code into a
+					 *          tidy yet false report.
+					 *
+					 * \~
 					 */
 					mutable location_t _position;
 					/**
@@ -1397,14 +1583,15 @@ namespace awh {
 					 * Стек номеров узлов открытых вместилищ
 					 *
 					 * @note Стек этот принадлежит документу, а не сборке: текст подаётся
-					 * кусками, и сборка вызывается на всякий кусок заново. Стек, заведённый
-					 * внутри сборки, терялся бы на границе кусков вместе с деревом
+					 *       кусками, и сборка вызывается на всякий кусок заново. Стек, заведённый
+					 *       внутри сборки, терялся бы на границе кусков вместе с деревом
 					 *
 					 * \~english
 					 * Stack of the indices of the nodes of the opened containers
+					 *
 					 * @note This stack belongs to the document rather than to the assembly: the text is fed
-					 * by chunks, and the assembly is called anew for every chunk. A stack created
-					 * inside the assembly would be lost at the boundary of the chunks together with the tree
+					 *       by chunks, and the assembly is called anew for every chunk. A stack created
+					 *       inside the assembly would be lost at the boundary of the chunks together with the tree
 					 *
 					 * \~
 					 */
@@ -1418,29 +1605,43 @@ namespace awh {
 					 * Признак того, что документ уже собран целиком
 					 *
 					 * @details Поток несёт документы один за другим, а дерево вмещает один. Без
-					 * обработчика потоковой выдачи второй документ потока уходил бы в никуда
-					 * молча: узлы его ложились бы за корнем недостижимыми, а выдача текста
-					 * отдавала бы первый документ признаком успеха
+					 *          обработчика потоковой выдачи второй документ потока уходил бы в никуда
+					 *          молча: узлы его ложились бы за корнем недостижимыми, а выдача текста
+					 *          отдавала бы первый документ признаком успеха.
 					 *
 					 * \~english
 					 * Sign of the document having already been assembled as a whole
+					 *
 					 * @details A stream carries the documents one after another, while a tree holds one.
-					 * Without a handler of the streaming issuance the second document of a stream would
-					 * go nowhere silently: its nodes would lie behind the root unreachable, while the
-					 * issuance of the text would give away the first document with a sign of success
+					 *          Without a handler of the streaming issuance the second document of a stream would
+					 *          go nowhere silently: its nodes would lie behind the root unreachable, while the
+					 *          issuance of the text would give away the first document with a sign of success.
 					 *
 					 * \~
 					 */
 					bool _completed;
 					/**
+					 * \~russian
 					 * @brief Признак прекращения разбора по требованию обработчика
 					 *
 					 * @details Обработчик потоковой выдачи вправе ответить ложью, и разбор
-					 * тогда прекращается. Прекращение это ОТКАЗОМ НЕ ЯВЛЯЕТСЯ: потребитель
-					 * получил, сколько хотел. Прежде разбор отвечал на него ложью при коде
-					 * `NONE` - отличить своё же «довольно» от отказа неведомой причины было
-					 * нечем, - тогда как таблица CSV на то же действие отвечает успехом и
-					 * договором это описывает
+					 *          тогда прекращается. Прекращение это ОТКАЗОМ НЕ ЯВЛЯЕТСЯ: потребитель
+					 *          получил, сколько хотел. Прежде разбор отвечал на него ложью при коде
+					 *          `NONE` - отличить своё же «довольно» от отказа неведомой причины было
+					 *          нечем, - тогда как таблица CSV на то же действие отвечает успехом и
+					 *          договором это описывает.
+					 *
+					 * \~english
+					 * @brief Flag of the parsing being stopped at the demand of a handler
+					 *
+					 * @details A handler of the streaming issue is entitled to answer with a falsehood, and
+					 *          the parsing then stops. This stopping IS NOT A REFUSAL: the consumer has
+					 *          received as much as it wanted. Formerly the parsing answered it with a
+					 *          falsehood under the code `NONE` - there was nothing to tell one's own
+					 *          "enough" apart from a refusal of an unknown cause, - while the CSV table
+					 *          answers the very same action with success, and the contract describes it so.
+					 *
+					 * \~
 					 */
 					bool _halted;
 					/**
@@ -1448,14 +1649,15 @@ namespace awh {
 					 * Сквозное положение конца имени поля объекта, ожидающего своего значения
 					 *
 					 * @details Узел несёт одно смещение на имя и на содержимое разом: имя лежит
-					 * вплотную перед содержимым. У вместилища же своего содержимого нет, и
-					 * смещению его взяться неоткуда - оттого конец имени запоминается отдельно
+					 *          вплотную перед содержимым. У вместилища же своего содержимого нет, и
+					 *          смещению его взяться неоткуда - оттого конец имени запоминается отдельно.
 					 *
 					 * \~english
 					 * Through-going position of the end of the name of the field of an object awaiting its value
+					 *
 					 * @details A node carries one offset for the name and for the content at once: the name lies
-					 * right before the content. A container has no content of its own, and
-					 * its offset has nowhere to come from — whereby the end of the name is remembered separately
+					 *          right before the content. A container has no content of its own, and
+					 *          its offset has nowhere to come from — whereby the end of the name is remembered separately.
 					 *
 					 * \~
 					 */
@@ -1465,25 +1667,36 @@ namespace awh {
 					 * Сквозное положение первого знака хранилища документа в потоке разобранных знаков
 					 *
 					 * @details Разбор ведёт смещения сквозными по всему потоку, а хранилище
-					 * документа при потоковой выдаче значений очищается на всяком документе.
-					 * Вычитание этого положения переводит сквозное положение в смещение
-					 * внутри хранилища документа
+					 *          документа при потоковой выдаче значений очищается на всяком документе.
+					 *          Вычитание этого положения переводит сквозное положение в смещение
+					 *          внутри хранилища документа.
 					 *
 					 * \~english
 					 * Through-going position of the first character of the storage of the document in the stream of the parsed characters
+					 *
 					 * @details The parsing keeps the offsets through-going over the whole stream, while the storage
-					 * of the document at the streaming issuance of the values is cleared at every document.
-					 * The subtraction of this position converts a through-going position into an offset
-					 * inside the storage of the document
+					 *          of the document at the streaming issuance of the values is cleared at every document.
+					 *          The subtraction of this position converts a through-going position into an offset
+					 *          inside the storage of the document.
 					 *
 					 * \~
 					 */
 					uint64_t _base;
 					/**
+					 * \~russian
 					 * Обработчик потоковой выдачи значений, действующий на время разбора
 					 *
 					 * @note Обработчик хранится указанием, а не копией: событие приходит из
 					 *       чтения прямо в сборку дерева, а передать его туда доводом неоткуда
+					 *
+					 * \~english
+					 * A handler of the streaming issue of values, acting for the time of the parsing
+					 *
+					 * @note The handler is kept as a pointer, not as a copy: an event comes out of the
+					 *       reading straight into the assembly of the tree, and there is nowhere to pass it
+					 *       there by a reference
+					 *
+					 * \~
 					 */
 					const callback_t * _callback;
 					/**
@@ -1498,6 +1711,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the assembly of the tree by the next event of the parsing
+					 *
 					 * @param reader   object of the streaming reading of a text
 					 * @param event    kind of the next event of the parsing
 					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
@@ -1512,8 +1726,8 @@ namespace awh {
 					 * @brief Метод переноса знаков разбора в хранилище документа
 					 *
 					 * @details Знаки переносятся целым куском по исчерпании поданного текста, а
-					 * не по одному значению: смещения узлов сквозные, и содержимое их приходит
-					 * на своё место само
+					 *          не по одному значению: смещения узлов сквозные, и содержимое их приходит
+					 *          на своё место само.
 					 *
 					 * @note Перенос по одному значению стоил половины всего времени сборки дерева
 					 *
@@ -1521,10 +1735,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the transfer of the characters of the parsing into the storage of the document
+					 *
 					 * @details The characters are transferred as a whole piece upon the exhaustion of the fed text, and
-					 * not one value at a time: the offsets of the nodes are through-going, and their content arrives
-					 * at its place by itself
+					 *          not one value at a time: the offsets of the nodes are through-going, and their content arrives
+					 *          at its place by itself.
+					 *
 					 * @note The transfer one value at a time cost half of the whole time of the assembly of the tree
+					 *
 					 * @param reader object of the streaming reading of a text
 					 *
 					 * \~
@@ -1535,7 +1752,7 @@ namespace awh {
 					 * @brief Метод приёма события разбора, выданного прямо из чтения
 					 *
 					 * @details Стоит посредником между обработчиком чтения, какому возвращать
-					 * нечего, и сборкой дерева: отказ сборки прекращает разбор вызовом `abort()`
+					 *          нечего, и сборкой дерева: отказ сборки прекращает разбор вызовом `abort()`
 					 *
 					 * @param context  указание на документ, собирающий дерево
 					 * @param reader   объект потокового чтения текста
@@ -1545,8 +1762,10 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the reception of a parsing event issued straight from the reading
+					 *
 					 * @details It stands as an intermediary between the handler of the reading, which has nothing
-					 * to return, and the assembly of the tree: a failure of the assembly terminates the parsing by a call of `abort()`
+					 *          to return, and the assembly of the tree: a failure of the assembly terminates the parsing by a call of `abort()`
+					 *
 					 * @param context  pointer at the document assembling the tree
 					 * @param reader   object of the streaming reading of a text
 					 * @param event    kind of the next event of the parsing
@@ -1561,8 +1780,8 @@ namespace awh {
 					 * @brief Метод разбора повторяющихся имён полей объекта
 					 *
 					 * @details Вызывается при закрытии объекта, когда все поля его уже
-					 * собраны: разбор событий имена не удерживает вовсе, и сличать их
-					 * можно лишь у собранного объекта
+					 *          собраны: разбор событий имена не удерживает вовсе, и сличать их
+					 *          можно лишь у собранного объекта.
 					 *
 					 * @param parent номер узла разбираемого объекта
 					 * @param reader объект потокового чтения текста
@@ -1570,9 +1789,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the analysis of the repeating names of the fields of an object
+					 *
 					 * @details Is called at the closing of an object when all of its fields are already
-					 * assembled: the parsing of the events does not hold the names at all, and they
-					 * can be compared only at an assembled object
+					 *          assembled: the parsing of the events does not hold the names at all, and they
+					 *          can be compared only at an assembled object.
+					 *
 					 * @param parent index of the node of the object being analyzed
 					 * @param reader object of the streaming reading of a text
 					 * @return sign of the success of the analysis
@@ -1585,8 +1806,8 @@ namespace awh {
 					 * @brief Метод розыска узла дерева документа по звеньям указателя
 					 *
 					 * @details Звено обращается к значению массива по номеру, а к полю объекта -
-					 * по имени. Работа эта общая у правки, сноса и сброса: розыск по указателю
-					 * обязан идти у них по одним правилам, а прежде он жил внутри одной правки
+					 *          по имени. Работа эта общая у правки, сноса и сброса: розыск по указателю
+					 *          обязан идти у них по одним правилам, а прежде он жил внутри одной правки.
 					 *
 					 * @param parts     звенья указателя на разыскиваемое место
 					 * @param target    номер разысканного узла
@@ -1595,6 +1816,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the search of a node of the tree of the document by the parts of a pointer
+					 *
+					 * @details The link addresses an array value by number, while an object field - by name.
+					 *          This work is common to the edit, the erasure and the reset: the search by a
+					 *          pointer is bound to follow the same rules in them, while before it lived inside a single edit.
+					 *
 					 * @param parts     parts of the pointer to the place being searched for
 					 * @param target    number of the found node
 					 * @param ancestors list of the numbers of the ancestor nodes of the found place
@@ -1608,9 +1834,9 @@ namespace awh {
 					 * @brief Метод переноса владеющего значения в перечень узлов дерева
 					 *
 					 * @details Узлы ложатся тем же порядком, каким их кладёт разбор: сперва
-					 * сам узел, за ним дети его подряд. Содержимое дописывается в конец
-					 * хранилища знаков документа, а имя поля ложится вплотную перед
-					 * содержимым - одного смещения хватает обоим
+					 *          сам узел, за ним дети его подряд. Содержимое дописывается в конец
+					 *          хранилища знаков документа, а имя поля ложится вплотную перед
+					 *          содержимым - одного смещения хватает обоим.
 					 *
 					 * @note Перенос идёт возвратом: узел зовёт себя на каждого своего ребёнка,
 					 *       и глубина значения ложится прямо на стек вызовов. Пределы замерены
@@ -1623,13 +1849,16 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the transfer of an owning value into the list of the nodes of the tree
+					 *
 					 * @details The nodes are placed in the same order in which the parsing places them: first
-					 * the node itself, then its children in a row. The content is appended to the end of
-					 * the storage of the characters of the document, while the name of a field is placed right before
-					 * the content — one offset suffices for both
+					 *          the node itself, then its children in a row. The content is appended to the end of
+					 *          the storage of the characters of the document, while the name of a field is placed right before
+					 *          the content — one offset suffices for both.
+					 *
 					 * @note The transfer goes recursively: a node calls itself upon every one of its
 					 *       children, and the depth of the value falls right onto the stack of the calls.
 					 *       The limits are measured at the public `graft` method, whence this transfer is called
+					 *
 					 * @param value owning value being transferred
 					 * @param name name of the field of an object, a zero — the node is not a field of an object
 					 * @param nodes list of the nodes where the transferred value is placed
@@ -1643,8 +1872,8 @@ namespace awh {
 					 * @brief Метод определения вида числа вместе с преобразованием его
 					 *
 					 * @details Вид выбирается самый узкий из вмещающих: число `1` получает вид
-					 * `UINT8`, а `-1` - вид `INT8`. Знаковость решается знаком записи, а не
-					 * величиной: запись без минуса есть число без знака
+					 *          `UINT8`, а `-1` - вид `INT8`. Знаковость решается знаком записи, а не
+					 *          величиной: запись без минуса есть число без знака.
 					 *
 					 * @param text разбираемая запись числа
 					 * @param node узел документа, куда помещается разобранное число
@@ -1652,9 +1881,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the determination of the kind of a number together with its conversion
+					 *
 					 * @details The kind is chosen as the narrowest of the containing ones: the number `1` receives the kind
-					 * `UINT8`, while `-1` the kind `INT8`. The signedness is decided by the sign of the record rather than by
-					 * the magnitude: a record without a minus is a number without a sign
+					 *          `UINT8`, while `-1` the kind `INT8`. The signedness is decided by the sign of the record rather than by
+					 *          the magnitude: a record without a minus is a number without a sign.
+					 *
 					 * @param text record of the number being parsed
 					 * @param node node of the document where the parsed number is placed
 					 * @return flag that the number fitted into a native kind
@@ -1667,17 +1898,19 @@ namespace awh {
 					 * @brief Метод записи числа, хранимого узлом
 					 *
 					 * @details Метод этот один на перезапись документа и на выдачу записи
-					 * числа: две отдельные записи одного и того же числа неминуемо разошлись
-					 * бы видом
+					 *          числа: две отдельные записи одного и того же числа неминуемо разошлись
+					 *          бы видом.
 					 *
 					 * @param writer объект записи текста документа
 					 * @param node   узел, число какого записывается
 					 *
 					 * \~english
 					 * @brief Method of the writing of the number stored by a node
+					 *
 					 * @details This method is one for the rewriting of a document and for the issuance of the record
-					 * of a number: two separate writings of one and the same number would inevitably diverge
-					 * in their appearance
+					 *          of a number: two separate writings of one and the same number would inevitably diverge
+					 *          in their appearance.
+					 *
 					 * @param writer object of the writing of a text of a document
 					 * @param node node the number of which is being written
 					 *
@@ -1719,6 +1952,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of the text of a document
+					 *
 					 * @param text text of the document being parsed
 					 * @return sign of the success of the parsing
 					 *
@@ -1730,8 +1964,8 @@ namespace awh {
 					 * @brief Метод потоковой выдачи значений разбираемого текста
 					 *
 					 * @details Документ при этом не заполняется вовсе: обработчику выдаётся
-					 * очередное значение верхнего уровня, а память под него переиспользуется.
-					 * Пригодно для потока NDJSON и для крупных массивов
+					 *          очередное значение верхнего уровня, а память под него переиспользуется.
+					 *          Пригодно для потока NDJSON и для крупных массивов.
 					 *
 					 * @note Обработчик вправе ответить ЛОЖЬЮ, и разбор тогда прекращается.
 					 *       Прекращение это отказом НЕ является: потребитель получил, сколько
@@ -1746,12 +1980,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the streaming issuance of the values of a text being parsed
+					 *
 					 * @details The document is thereby not filled at all: the next value of the top level
-					 * is issued to the handler, while the memory for it is reused.
-					 * Suitable for an NDJSON stream and for the large arrays
+					 *          is issued to the handler, while the memory for it is reused.
+					 *          Suitable for an NDJSON stream and for the large arrays.
+					 *
 					 * @note The handler is entitled to answer with FALSE, and the parsing is then terminated.
 					 *       Such a termination is NOT a refusal: the consumer has got as much as it wanted,
 					 *       and the parsing answers with SUCCESS at the code `NONE`
+					 *
 					 * @param text text of the document being parsed
 					 * @param callback handler of the streaming issuance of the values, false terminates the parsing
 					 * @return sign of the success of the parsing
@@ -1768,6 +2005,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the parsing of the text of a document from a file
+					 *
 					 * @param filename address of the file being parsed
 					 * @return sign of the success of the parsing
 					 *
@@ -1783,6 +2021,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the rewriting of the document into a text
+					 *
 					 * @param format kind of the formatting of the text being assembled
 					 * @return assembled text of the document
 					 *
@@ -1794,8 +2033,8 @@ namespace awh {
 					 * @brief Метод получения текста документа затребованным оформлением
 					 *
 					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи:
-					 * прочие же настройки - способ экранирования и ширина отступа - берутся
-					 * из настроек контейнера
+					 *          прочие же настройки - способ экранирования и ширина отступа - берутся
+					 *          из настроек контейнера.
 					 *
 					 * @note Перегрузка эта заведена взамен довода с умолчанием: умолчание
 					 *       `COMPACT` перекрывало настройку `writer.format` ВСЕГДА, и настройка
@@ -1806,12 +2045,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the text of a document by a requested formatting
+					 *
 					 * @details The formatting requested here OVERRIDES the setting of the writing:
-					 * the rest of the settings — the manner of the escaping and the width of the indentation —
-					 * are taken from the settings of the container
+					 *          the rest of the settings — the manner of the escaping and the width of the indentation —
+					 *          are taken from the settings of the container.
+					 *
 					 * @note The present overload has been introduced instead of an argument with a default:
-					 * the `COMPACT` default overrode the `writer.format` setting ALWAYS, and that setting
-					 * had no force through the common path at all
+					 *       the `COMPACT` default overrode the `writer.format` setting ALWAYS, and that setting
+					 *       had no force through the common path at all
+					 *
 					 * @param format requested formatting of the assembled text
 					 * @return       assembled text of the document
 					 *
@@ -1828,6 +2070,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the writing of the document into a file
+					 *
 					 * @param filename address of the file being written
 					 * @param format kind of the formatting of the text being assembled
 					 * @return sign of the success of the writing
@@ -1842,7 +2085,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод сохранения текста документа в файл затребованным оформлением
 					 *
-					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи
+					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи.
 					 *
 					 * @param filename адрес файла для сохранения
 					 * @param format   затребованное оформление собираемого текста
@@ -1850,7 +2093,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the saving of the text of a document into a file by a requested formatting
-					 * @details The formatting requested here OVERRIDES the setting of the writing
+					 *
+					 * @details The formatting requested here OVERRIDES the setting of the writing.
+					 *
 					 * @param filename address of the file for the saving
 					 * @param format   requested formatting of the assembled text
 					 * @return         flag of the success of the saving
@@ -1863,15 +2108,15 @@ namespace awh {
 					 * @brief Метод прививки владеющего значения в дерево документа
 					 *
 					 * @details Метод этот - обратный мост к тому, каким владеющее значение
-					 * снимается с документа: снятое, изменённое и собранное заново значение
-					 * возвращается на своё место в дереве, а прочее дерево остаётся
-					 * нетронутым. Имя поля объекта при том сохраняется: прививается значение,
-					 * а не поле
+					 *          снимается с документа: снятое, изменённое и собранное заново значение
+					 *          возвращается на своё место в дереве, а прочее дерево остаётся
+					 *          нетронутым. Имя поля объекта при том сохраняется: прививается значение,
+					 *          а не поле.
 					 *
 					 * @details Указатель записывается по RFC 6901, ровно как у метода `at`.
-					 * Пустой указатель прививает значение корнем документа, а указатель,
-					 * ведущий к отсутствующему пути, отвечает отказом: заведение
-					 * недостающего принадлежит владеющему значению, а не документу
+					 *          Пустой указатель прививает значение корнем документа, а указатель,
+					 *          ведущий к отсутствующему пути, отвечает отказом: заведение
+					 *          недостающего принадлежит владеющему значению, а не документу.
 					 *
 					 * @note Дерево документа лежит плоским перечнем узлов, и прививка вправе
 					 *       стоить перемещения хвоста его: содержимое привитого значения
@@ -1897,21 +2142,25 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the grafting of an owning value into the tree of the document
+					 *
 					 * @details This method is the bridge reverse to the one by which an owning value
-					 * is taken off a document: a value taken, changed and assembled anew
-					 * is returned to its place in the tree, while the rest of the tree remains
-					 * untouched. The name of a field of an object is thereby preserved: a value is grafted
-					 * rather than a field
+					 *          is taken off a document: a value taken, changed and assembled anew
+					 *          is returned to its place in the tree, while the rest of the tree remains
+					 *          untouched. The name of a field of an object is thereby preserved: a value is grafted
+					 *          rather than a field.
+					 *
 					 * @details The pointer is written by RFC 6901, exactly as for the method `at`.
-					 * An empty pointer grafts the value as the root of the document, while a pointer
-					 * leading to an absent path responds with a refusal: the creation
-					 * of the missing belongs to an owning value rather than to a document
+					 *          An empty pointer grafts the value as the root of the document, while a pointer
+					 *          leading to an absent path responds with a refusal: the creation
+					 *          of the missing belongs to an owning value rather than to a document.
+					 *
 					 * @note The tree of a document lies as a flat list of the nodes, and the grafting is entitled
 					 *       to cost a relocation of its tail: the content of the grafted value
 					 *       is appended to the end of the storage of the characters, while the former content
 					 *       of the replaced subtree remains in it as a dead weight. The grafting is
 					 *       an infrequent action, and to pay for it by a compaction of the storage every
 					 *       time would be more expensive
+					 *
 					 * @note The transfer of a value into the tree goes recursively, depth by depth, and
 					 *       a tree of an unheard-of nesting would overflow the stack. A value taken from
 					 *       a parsing is bounded by the limit of the nesting of the reading (1024 by
@@ -1922,6 +2171,7 @@ namespace awh {
 					 *       place. A recalculation onto a stack of 4 MB (NetBSD, OpenBSD) gives about
 					 *       7 000 levels at the worst combination — the limit of the reading holds there
 					 *       too with a sevenfold reserve
+					 *
 					 * @param pointer pointer to the place being grafted by RFC 6901
 					 * @param value owning value being grafted
 					 * @return sign of the success of the grafting
@@ -1934,8 +2184,8 @@ namespace awh {
 					 * @brief Метод сноса значения дерева документа по указателю
 					 *
 					 * @details Узел, разысканный указателем, снимается со всем содержимым своим,
-					 * а вместилище, его державшее, о нём забывает: длина массива убывает, поле
-					 * объекта исчезает
+					 *          а вместилище, его державшее, о нём забывает: длина массива убывает, поле
+					 *          объекта исчезает.
 					 *
 					 * @note Ход этот заведён общим у всех кодеков рамки, а вид пути остаётся
 					 *       своим у каждого: у документа это указатель RFC 6901
@@ -1957,6 +2207,25 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the removal of a value of the tree of the document by a pointer
+					 *
+					 * @details The node found by the pointer is taken off together with all its content,
+					 *          and the container which held it forgets about it: the length of an array
+					 *          decreases, a field of an object disappears.
+					 *
+					 * @note This method is introduced as common to all the codecs of the framework, while the
+					 *       kind of the path stays each one's own: for a document it is a pointer according to RFC 6901
+					 *
+					 * @warning The erasure of the root is refused: a tree without a root is not a value at all,
+					 *          and it is emptied by the `clear()` method. This argument comes from the STANDARD,
+					 *          and not from uniformity: RFC 8259 §2 requires the JSON text to carry exactly one
+					 *          value, and there is no document without a root. At the codecs whose standard
+					 *          permits an empty document - YAML, INI, TOML - the erasure of the root may well be
+					 *          permitted, and there is no need to bring them to our layout: when the agreement of
+					 *          the API and the standard collide, the standard is older (the decision of 2026-09-03)
+					 *
+					 * @warning The erasure shifts the numbering of the nodes, and every reference issued outward
+					 *          before that turns into an invalid one - exactly as in the edit
+					 *
 					 * @param pointer pointer to the value being removed according to RFC 6901
 					 * @return        flag of the success of the removal
 					 *
@@ -1968,8 +2237,8 @@ namespace awh {
 					 * @brief Метод сброса значения дерева документа по указателю
 					 *
 					 * @details Узел, разысканный указателем, замещается пустым значением `null`
-					 * со всем содержимым своим. Сам узел при этом остаётся на месте: поле объекта
-					 * имя своё сохраняет, а значение массива - положение своё
+					 *          со всем содержимым своим. Сам узел при этом остаётся на месте: поле объекта
+					 *          имя своё сохраняет, а значение массива - положение своё.
 					 *
 					 * @note Сброс от сноса тем и отличается, что место сохраняется: `null` есть
 					 *       законное значение стандарта, и отсутствию поля он не равен
@@ -1979,6 +2248,14 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the resetting of a value of the tree of the document by a pointer
+					 *
+					 * @details The node found by the pointer is replaced with an empty `null` value together
+					 *          with all its content. The node itself thereby stays in place: a field of an object
+					 *          keeps its name, while a value of an array - its position.
+					 *
+					 * @note The reset differs from the erasure precisely in that the place is kept: `null` is
+					 *       a lawful value of the standard, and it is not equal to the absence of a field
+					 *
 					 * @param pointer pointer to the value being reset according to RFC 6901
 					 * @return        flag of the success of the resetting
 					 *
@@ -1987,35 +2264,13 @@ namespace awh {
 					bool reset(const string & pointer) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод прививки владеющего значения в дерево документа
-					 *
-					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
-					 * написанных прежде согласования кодеков рамки между собой. Зови `set()`:
-					 * им правка дерева по пути зовётся у всех семи кодеков, а вид пути остаётся
-					 * своим у каждого - у документа это указатель RFC 6901
-					 *
-					 * @param pointer указатель на прививаемое место
-					 * @param value   прививаемое владеющее значение
-					 * @return        признак успешности прививки
-					 *
-					 * \~english
-					 * @brief Method of the grafting of an owning value into the tree of the document
-					 * @deprecated This name is DEPRECATED and is left as an intermediary. Call `set()`
-					 * @param pointer pointer to the place being grafted
-					 * @param value   owning value being grafted
-					 * @return        flag of the success of the grafting
-					 *
-					 * \~
-					 */
-					bool graft(const string & pointer, const json::Value & value) noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод извлечения корневого значения документа
 					 *
 					 * @return ссылка на корневое значение документа
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the root value of the document
+					 *
 					 * @return reference to the root value of the document
 					 *
 					 * \~
@@ -2030,6 +2285,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the access to a field of the root object by a name
+					 *
 					 * @param name name of the field of the root object
 					 * @return reference to the node of the field of the object
 					 *
@@ -2045,6 +2301,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the access to a value of the root array by an index
+					 *
 					 * @param index index of the value in the root array
 					 * @return reference to the node of the value
 					 *
@@ -2056,7 +2313,7 @@ namespace awh {
 					 * @brief Метод обращения по написанию знака
 					 *
 					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
-					 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек
+					 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
 					 *
 					 * @note Без этого метода `v['z']` молча обращался к элементу под номером
 					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
@@ -2069,12 +2326,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the access by a writing of a character
+					 *
 					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
-					 * of a single character rather than for an index. This rule is one for the whole codec
+					 *          of a single character rather than for an index. This rule is one for the whole codec.
+					 *
 					 * @note Without this method `v['z']` silently addressed the element under the index 122
 					 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
 					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
 					 *       ambiguous, hence a template with a guard here
+					 *
 					 * @tparam T width of the access, the guard admits exactly a character
 					 * @param name name of a single character being searched for
 					 * @return value taken
@@ -2093,6 +2353,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the access to a value by a JSON Pointer
+					 *
 					 * @param pointer pointer to the value according to RFC 6901
 					 * @return reference to the node of the value
 					 *
@@ -2114,6 +2375,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of checking the presence of a value by a JSON Pointer
+					 *
+					 * @note This method is introduced as common to all the codecs of the framework, while the
+					 *       kind of the path stays each one's own: for a document it is a pointer according to RFC 6901
+					 *
+					 * @note An empty pointer leads to the root of the tree and answers with presence at any
+					 *       parsed document: the root is always there
+					 *
 					 * @param pointer pointer to the value according to RFC 6901
 					 * @return        flag of the presence of a value at the specified pointer
 					 *
@@ -2125,16 +2393,16 @@ namespace awh {
 					 * @brief Метод перечисления звеньев пути к детям значения
 					 *
 					 * @details Выдаются не ИМЕНА детей, а ЗВЕНЬЯ УКАЗАТЕЛЯ к ним: такие, что
-					 * `at(указатель + "/" + звено)` непременно ведёт к тому самому ребёнку. У
-					 * объекта звеном служит имя поля, у массива - номер по порядку, ибо иного
-					 * звена там нет вовсе
+					 *          `at(указатель + "/" + звено)` непременно ведёт к тому самому ребёнку. У
+					 *          объекта звеном служит имя поля, у массива - номер по порядку, ибо иного
+					 *          звена там нет вовсе.
 					 *
 					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ обход документа, единый у всех
-					 * кодеков: перечисляются дети по пути, затем берётся значение по пути. Обход
-					 * этот ЗАМКНУТ - всякое выданное звено годно для `at()`, - и замкнутость эта
-					 * держится на отменяющих записях RFC 6901: имя поля, содержащее косую черту
-					 * либо тильду, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не как есть. Отдай мы имя
-					 * как есть - указатель разомкнулся бы молча, уведя обход не туда
+					 *          кодеков: перечисляются дети по пути, затем берётся значение по пути. Обход
+					 *          этот ЗАМКНУТ - всякое выданное звено годно для `at()`, - и замкнутость эта
+					 *          держится на отменяющих записях RFC 6901: имя поля, содержащее косую черту
+					 *          либо тильду, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не как есть. Отдай мы имя
+					 *          как есть - указатель разомкнулся бы молча, уведя обход не туда.
 					 *
 					 * @note Скалярное значение да пустое вместилище отвечают пустым перечнем, а
 					 *       указатель, ведущий в никуда, - им же: отсутствие детей и отсутствие
@@ -2145,12 +2413,24 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the enumeration of the tokens of the pointer to the children of a value
+					 *
 					 * @details Not THE NAMES of the children are given but THE TOKENS OF THE POINTER to them:
-					 * such that `at(pointer + "/" + token)` inevitably leads to that very child. For an object
-					 * the token is the name of a field, for an array the ordinal number
+					 *          such that `at(pointer + "/" + token)` inevitably leads to that very child. For an
+					 *          object the token is the name of a field, for an array the ordinal number, for
+					 *          there is no other token there at all.
+					 *
 					 * @details This call together with `at()` gives A FULL TRAVERSAL of the document, common
-					 * among all the codecs. The traversal is CLOSED — every token given out is fit for `at()` —
-					 * and this closedness rests upon the escaping of RFC 6901
+					 *          among all the codecs: the children are enumerated by a path, and then a value is
+					 *          taken by a path. The traversal is CLOSED - every token given out is fit for
+					 *          `at()`, - and this closedness rests upon the escaping records of RFC 6901: the
+					 *          name of a field holding a slash or a tilde is given out WRITTEN DOWN (`~1` and
+					 *          `~0`), and not as it is. Had we given a name as it is, the pointer would have
+					 *          lost its closedness silently, leading the traversal astray.
+					 *
+					 * @note A scalar value and an empty container answer with an empty list, and a pointer
+					 *       leading nowhere - with the same: the absence of children and the absence of a
+					 *       place differ by the `has()` method
+					 *
 					 * @param pointer pointer to the value according to RFC 6901
 					 * @return        list of the tokens of the pointer to the children of the value
 					 *
@@ -2165,24 +2445,32 @@ namespace awh {
 					 * @brief Метод извлечения количества значений в корне документа
 					 *
 					 * @details Считаются ДЕТИ КОРНЯ, а не узлы хранилища: у объекта - число ПАР
-					 * «имя-значение», у массива - число значений, у скалярного корня - нуль.
-					 * Счёт этот и годен для обхода `for(i = 0; i < size(); i++)`
+					 *          «имя-значение», у массива - число значений, у скалярного корня - нуль.
+					 *          Счёт этот и годен для обхода `for(i = 0; i < size(); i++)`
 					 *
 					 * @details Число узлов хранилища выдаётся ходом `nodes()`. Развести их
-					 * пришлось оттого, что хранилища семи кодеков ведут себя по-разному: у одних
-					 * оно дописывается и сносом не убавляется, у других сжимается, у третьих
-					 * дерева правке не подлежит вовсе, - и одного смысла «узлы хранилища» у семи
-					 * иметь не могут, тогда как «дети корня» определимы у всех одинаково
+					 *          пришлось оттого, что хранилища семи кодеков ведут себя по-разному: у одних
+					 *          оно дописывается и сносом не убавляется, у других сжимается, у третьих
+					 *          дерева правке не подлежит вовсе, - и одного смысла «узлы хранилища» у семи
+					 *          иметь не могут, тогда как «дети корня» определимы у всех одинаково.
 					 *
 					 * @return количество значений в корне документа
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the number of the values in the root of the document
+					 *
 					 * @details THE CHILDREN OF THE ROOT are counted rather than the nodes of the storage:
-					 * for an object it is the number of the PAIRS «name-value», for an array the number
-					 * of the values, for a scalar root zero. It is this count that suits the traversal
-					 * `for(i = 0; i < size(); i++)`
-					 * @details The number of the nodes of the storage is given by the call `nodes()`
+					 *          for an object it is the number of the PAIRS «name-value», for an array the number
+					 *          of the values, for a scalar root zero. It is this count that suits the traversal
+					 *          `for(i = 0; i < size(); i++)`
+					 *
+					 * @details The number of the nodes of the storage is given by the call `nodes()`. They had
+					 *          to be told apart because the storages of seven codecs behave differently: at some
+					 *          it is only appended to and a removal does not shrink it, at others it is
+					 *          compacted, at the third kind it is not open to the edits of a tree at all, - and
+					 *          the seven cannot share a single sense of "the nodes of the storage", while "the
+					 *          children of the root" is definable in the same way at all of them.
+					 *
 					 * @return number of the values in the root of the document
 					 *
 					 * \~
@@ -2193,16 +2481,18 @@ namespace awh {
 					 * @brief Метод извлечения количества узлов хранилища документа
 					 *
 					 * @details Хранилище это лишь ДОПИСЫВАЕТСЯ: узлы снесённого поддерева остаются
-					 * в нём недостижимыми и место своё возвращают только с очисткою документа либо
-					 * с новым разбором. Судить по этому счёту о содержимом документа НЕЛЬЗЯ -
-					 * для того есть `size()` да `empty()`
+					 *          в нём недостижимыми и место своё возвращают только с очисткою документа либо
+					 *          с новым разбором. Судить по этому счёту о содержимом документа НЕЛЬЗЯ -
+					 *          для того есть `size()` да `empty()`
 					 *
 					 * @return количество узлов хранилища документа
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the number of the nodes of the storage of the document
+					 *
 					 * @details The storage is only APPENDED TO: the nodes of a removed subtree remain
-					 * in it unreachable. This count MUST NOT be used to judge the content of the document
+					 *          in it unreachable. This count MUST NOT be used to judge the content of the document.
+					 *
 					 * @return number of the nodes of the storage of the document
 					 *
 					 * \~
@@ -2219,6 +2509,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the check of the document for the emptiness
+					 *
 					 * @return sign of the absence of the nodes in the document
 					 *
 					 * \~
@@ -2229,7 +2520,7 @@ namespace awh {
 					 * @brief Метод извлечения кода отказа последней работы над документом
 					 *
 					 * @details Разбор текста, чтение файла, выдача текста и запись его в файл
-					 * ставят код этот заново каждая. Прежде отведён он был одному лишь разбору
+					 *          ставят код этот заново каждая. Прежде отведён он был одному лишь разбору.
 					 *
 					 * @note Договор этот ОБЩИЙ у кодеков: таблица CSV и владеющие значения
 					 *       разметки XML и документа JSON отвечают тем же кодом и тем же порядком
@@ -2248,15 +2539,19 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the code of the refusal of the last operation over the document
+					 *
 					 * @details The parsing of a text, the reading of a file, the issuance of a text and the writing
-					 * of it into a file each set this code anew. Formerly it was allotted to the parsing alone
+					 *          of it into a file each set this code anew. Formerly it was allotted to the parsing alone.
+					 *
 					 * @note This contract is COMMON among the codecs: a CSV table and the owning values
 					 *       of an XML markup and of a JSON document answer with the same code and in the same order
+					 *
 					 * @note An editing of the tree (`set`, `erase`) RESETS this code and sets none of its own:
 					 *       a pointer leading nowhere is announced by the return of a falsehood alone.
 					 *       A measurement of 17.09.2026: the parsing of `{"a":}` refused with a code, and the
 					 *       very first refused `set` changed it to «no error» — one who asks `error()` after
 					 *       a failed editing learns NOT the cause of it
+					 *
 					 * @return code of the refusal of the last operation
 					 *
 					 * \~
@@ -2275,7 +2570,13 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the position of the refusal of the parsing in the source text
+					 *
 					 * @return position of the refusal of the parsing in the source text
+					 *
+					 * @note The name is spelled out explicitly on purpose: at the reading `location()` means
+					 *       the place of the CURRENT event, and not of a refusal, and one name about two
+					 *       meanings would lead a consumer into a trap when passing from one level to another.
+					 *       The XML, TOML and INI codecs name it the same
 					 *
 					 * \~
 					 */
@@ -2285,9 +2586,9 @@ namespace awh {
 					 * @brief Метод извлечения кодировки исходного текста
 					 *
 					 * @details Выдаётся кодировка, какою текст ПРОЧИТАН - та, из которой шёл
-					 * перевод в UTF-8, распознанная по метке порядка байтов либо навязанная
-					 * настройками чтения. Кодека, объявляющего кодировку внутри себя, в JSON
-					 * нет, оттого иного ответа тут не бывает
+					 *          перевод в UTF-8, распознанная по метке порядка байтов либо навязанная
+					 *          настройками чтения. Кодека, объявляющего кодировку внутри себя, в JSON
+					 *          нет, оттого иного ответа тут не бывает.
 					 *
 					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, читающий
 					 *       несколько кодеков, спрашивает кодировку одинаково
@@ -2298,9 +2599,17 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the encoding of the source text
+					 *
 					 * @details The encoding by which the text has been READ is issued — the one from which
-					 * the conversion to UTF-8 went, recognized by the byte order mark or imposed
-					 * by the settings of the reading
+					 *          the conversion to UTF-8 went, recognized by the byte order mark or imposed
+					 *          by the settings of the reading. There is no codec declaring the encoding
+					 *          inside itself in JSON, whereby no other answer can be here.
+					 *
+					 * @note This method is introduced as common to all the codecs of the framework: a
+					 *       consumer reading several codecs asks for the encoding identically
+					 *
+					 * @warning Before the first parsing an undefined encoding is issued
+					 *
 					 * @return encoding of the source text
 					 *
 					 * \~
@@ -2317,6 +2626,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the settings of the document
+					 *
 					 * @return settings of the document
 					 *
 					 * \~
@@ -2330,6 +2640,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the document
+					 *
 					 * @param settings settings of the document being set
 					 *
 					 * \~

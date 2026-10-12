@@ -25,23 +25,19 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <cmath>
-#include <codec/abc/value.hpp>
-
-/**
- * Подключаем заголовочный файл общего для кодеков приведения чисел
- */
-#include <codec/numeric.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
+#include <cmath>
 #include <atomic>
-#include <cstring>
 #include <limits>
 #include <utility>
+#include <cstring>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <codec/numeric.hpp>
+#include <codec/abc/value.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -59,6 +55,7 @@ namespace {
 	 * @tparam T затребованный вид числа
 	 *
 	 */
+	template <typename T>
 	/**
 	 * @brief Функция приведения дробного числа к затребованному виду
 	 *
@@ -79,7 +76,6 @@ namespace {
 	 * @return      приведённое число
 	 *
 	 */
-	template <typename T>
 	static T convert(const double value) noexcept {
 		// Выполняем приведение числа общим для кодеков способом
 		return awh::codec::convert <T> (value);
@@ -410,14 +406,18 @@ void awh::codec::abc::Value::clear() noexcept {
 	if(!this->_items.empty() || !this->_keys.empty()){
 		// Вместилище значений, ожидающих разрушения
 		vector <Value> pending;
-		// Выполняем перенесение значений вместимого в ожидающие разрушения
+		/**
+		 * Выполняем перенесение значений вместимого в ожидающие разрушения
+		 */
 		for(Value & item : this->_items)
 			// Выполняем перенесение очередного значения вместимого
-			pending.push_back(std::move(item));
-		// Выполняем перенесение имён полей отображения в ожидающие разрушения
+			pending.push_back(::move(item));
+		/**
+		 * Выполняем перенесение имён полей отображения в ожидающие разрушения
+		 */
 		for(Value & key : this->_keys)
 			// Выполняем перенесение очередного имени поля отображения
-			pending.push_back(std::move(key));
+			pending.push_back(::move(key));
 		// Выполняем очистку значений вместимого
 		this->_items.clear();
 		// Выполняем очистку имён полей отображения
@@ -431,17 +431,21 @@ void awh::codec::abc::Value::clear() noexcept {
 		 */
 		while(!pending.empty()){
 			// Выполняем снятие очередного значения с вместилища ожидающих
-			Value node = std::move(pending.back());
+			Value node = ::move(pending.back());
 			// Выполняем удаление снятого значения из вместилища ожидающих
 			pending.pop_back();
-			// Выполняем перенесение детей снятого значения в ожидающие разрушения
+			/**
+			 * Выполняем перенесение детей снятого значения в ожидающие разрушения
+			 */
 			for(Value & item : node._items)
 				// Выполняем перенесение очередного значения вместимого
-				pending.push_back(std::move(item));
-			// Выполняем перенесение имён полей снятого значения в ожидающие разрушения
+				pending.push_back(::move(item));
+			/**
+			 * Выполняем перенесение имён полей снятого значения в ожидающие разрушения
+			 */
 			for(Value & key : node._keys)
 				// Выполняем перенесение очередного имени поля отображения
-				pending.push_back(std::move(key));
+				pending.push_back(::move(key));
 			// Выполняем очистку значений вместимого снятого значения
 			node._items.clear();
 			// Выполняем очистку имён полей снятого значения
@@ -460,6 +464,128 @@ void awh::codec::abc::Value::clear() noexcept {
 	this->_exponent = 0;
 	// Выполняем сброс признака отрицательности величины
 	this->_negative = false;
+}
+/**
+ * @brief Метод сброса значения в указанный вид с сохранением capacity
+ *
+ * @details Не освобождает capacity векторов `_items` и `_keys`: следующий
+ *          `push_back` переиспользует уже отведённую память. Задаёт вид значения,
+ *          что позволяет обойтись без присвоения нового объекта
+ *          (`_root = value_t(MAP)`) и его разрушения
+ *
+ * @note Разрушение детей идёт тем же обходом, что у `clear()`, и стоимость
+ *       разрушения НЕ экономится — экономится только разница между
+ *       «разрушить старый + построить новый» и «переиспользовать старый»
+ *
+ * @param kind устанавливаемый вид значения
+ *
+ */
+void awh::codec::abc::Value::reset(const kind_t kind) noexcept {
+	// Выполняем снос указателя поиска
+	this->unindex();
+	/**
+	 * Если детей у значения нет, разбирать нечего
+	 */
+	if(!this->_items.empty() || !this->_keys.empty()){
+		// Вместилище значений, ожидающих разрушения
+		vector <Value> pending;
+		/**
+		 * Выполняем перенесение значений вместимого в ожидающие разрушения
+		 */
+		for(Value & item : this->_items)
+			// Выполняем перенесение очередного значения вместимого
+			pending.push_back(::move(item));
+		/**
+		 * Выполняем перенесение имён полей отображения в ожидающие разрушения
+		 */
+		for(Value & key : this->_keys)
+			// Выполняем перенесение очередного имени поля отображения
+			pending.push_back(::move(key));
+		// Выполняем очистку имён полей отображения (capacity сохраняется)
+		this->_keys.clear();
+		// Выполняем очистку значений вместимого (capacity сохраняется)
+		this->_items.clear();
+		/**
+		 * Выполняем разрушение всех ожидающих значений.
+		 *
+		 * Разрушение ведётся обходом, а не возвратностью: дерево, собранное вручную,
+		 * предела глубины не имеет вовсе, и возвратное разрушение сорвало бы стек уже
+		 * на десятках тысяч уровней
+		 */
+		while(!pending.empty()){
+			// Выполняем снятие очередного значения с вместилища ожидающих
+			Value node = ::move(pending.back());
+			// Выполняем удаление снятого значения из вместилища ожидающих
+			pending.pop_back();
+			/**
+			 * Выполняем перенесение детей снятого значения в ожидающие разрушения
+			 */
+			for(Value & item : node._items)
+				// Выполняем перенесение очередного значения вместимого
+				pending.push_back(::move(item));
+			/**
+			 * Выполняем перенесение имён полей снятого значения в ожидающие разрушения
+			 */
+			for(Value & key : node._keys)
+				// Выполняем перенесение очередного имени поля отображения
+				pending.push_back(::move(key));
+			// Выполняем очистку значений снятого значения
+			node._items.clear();
+			// Выполняем очистку имён полей снятого значения
+			node._keys.clear();
+		}
+	}
+	// Выполняем установку вида узла значения
+	this->_kind = kind;
+	/**
+	 * Устанавливаем вид значения по виду узла
+	 *
+	 * @note MAP и ARRAY — два вида, у которых есть вместилище; оба требуют
+	 *       соответствующего `type_t` для последующих `place()` и `operator[]`
+	 */
+	switch(kind){
+		// Тип узла принадлежит к карте
+		case kind_t::MAP:
+			// Устанавливаем тип узла как карту
+			this->_type = type_t::MAP;
+		break;
+		// Тип узла принадлежит к массиву
+		case kind_t::ARRAY:
+			// Устанавливаем тип узла как массив
+			this->_type = type_t::ARRAY;
+		break;
+		// Остальные типы узлов
+		default:
+			// Устанавливаем тип узла как неизвестный
+			this->_type = type_t::UNDEFINED;
+	}
+	// Выполняем очистку содержимого значения
+	this->_text.clear();
+	// Выполняем сброс десятичного порядка величины
+	this->_exponent = 0;
+	// Выполняем сброс числа значения
+	this->_number.natural = 0;
+	// Выполняем сброс признака отрицательности величины
+	this->_negative = false;
+}
+/**
+ * @brief Метод отвода capacity у векторов `_items` и `_keys`
+ *
+ * @details Без `reserve` каждый `push_back` при росте может перераспределить
+ *          буфер и инвалидировать ранее заведённые указатели на добавляемые
+ *          элементы
+ *
+ * @param capacity отводимая ёмкость
+ *
+ */
+void awh::codec::abc::Value::reserve(const size_t capacity) noexcept {
+	// Если ёмкость вектора передана
+	if(capacity > 0){
+		// Отводим место под перечень имён отображения
+		this->_keys.reserve(capacity);
+		// Отводим место под перечень значений вместимого
+		this->_items.reserve(capacity);
+	}
 }
 /**
  * @brief Метод извлечения содержимого значения
@@ -2124,9 +2250,9 @@ awh::codec::abc::Value::Value(const Value & value) noexcept :
  */
 awh::codec::abc::Value::Value(Value && value) noexcept :
  _kind(value._kind), _type(value._type),
- _number(value._number), _text(std::move(value._text)), _exponent(value._exponent),
- _negative(value._negative), _keys(std::move(value._keys)),
- _items(std::move(value._items)), _index(std::move(value._index)) {
+ _number(value._number), _text(::move(value._text)), _exponent(value._exponent),
+ _negative(value._negative), _keys(::move(value._keys)),
+ _items(::move(value._items)), _index(::move(value._index)) {
 	// Выполняем сброс вида узла перенесённого значения
 	value._kind = kind_t::NONE;
 	// Выполняем сброс вида перенесённого значения
@@ -2182,17 +2308,17 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator = (Value && value) noe
 	// Выполняем установку числа значения
 	this->_number = value._number;
 	// Выполняем перенесение содержимого значения
-	this->_text = std::move(value._text);
+	this->_text = ::move(value._text);
 	// Выполняем установку десятичного порядка величины
 	this->_exponent = value._exponent;
 	// Выполняем установку признака отрицательности величины
 	this->_negative = value._negative;
 	// Выполняем перенесение имён полей отображения
-	this->_keys = std::move(value._keys);
+	this->_keys = ::move(value._keys);
 	// Выполняем перенесение значений вместимого
-	this->_items = std::move(value._items);
+	this->_items = ::move(value._items);
 	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = std::move(value._index);
+	this->_index = ::move(value._index);
 	// Выполняем сброс вида узла перенесённого значения
 	value._kind = kind_t::NONE;
 	// Выполняем сброс вида перенесённого значения
@@ -2308,7 +2434,7 @@ bool awh::codec::abc::Builder::expand(Value && value) noexcept {
 			// Выводим признак неудачного открытия
 			return false;
 		// Выполняем установку корневого вместилища
-		this->_root = ::std::move(value);
+		this->_root = ::move(value);
 		// Выводим признак успешного открытия
 		return true;
 	}
@@ -2317,7 +2443,7 @@ bool awh::codec::abc::Builder::expand(Value && value) noexcept {
 	/**
 	 * Если занесение открываемого вместилища отказало
 	 */
-	if(!this->deposit(::std::move(value), index))
+	if(!this->deposit(::move(value), index))
 		// Выводим признак неудачного открытия
 		return false;
 	// Выполняем добавление номера открытого вместилища в путь
@@ -2623,7 +2749,7 @@ void awh::codec::abc::Builder::reset() noexcept {
  */
 awh::codec::abc::Value awh::codec::abc::Builder::finish() noexcept {
 	// Выполняем изъятие собранного значения переносом
-	Value result(::std::move(this->_root));
+	Value result(::move(this->_root));
 	// Выполняем сброс сборки в исходное состояние
 	this->reset();
 	// Выводим собранное значение

@@ -1932,7 +1932,7 @@ TEST(CodecTomlReader, NegativeZeroOffset) {
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse(text)) << "«" << source << "»";
 		// Выполняем проверку того, что перезапись повторяет исходную запись
-		ASSERT_EQ(document.text(), text);
+		ASSERT_EQ(document.dump(), text);
 	}
 }
 /**

@@ -103,17 +103,19 @@ namespace awh {
 			 * @brief Метод проверки знака на допустимость в разметке
 			 *
 			 * @details Договор допускает в тексте разметки лишь горизонтальную табуляцию,
-			 * перевод строки и возврат каретки из числа управляющих знаков, а прочие
-			 * управляющие знаки, суррогатные значения и два невыделенных значения запрещает
+			 *          перевод строки и возврат каретки из числа управляющих знаков, а прочие
+			 *          управляющие знаки, суррогатные значения и два невыделенных значения запрещает.
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility in the markup
+			 *
 			 * @details The specification admits in the text of a markup only the horizontal tabulation,
-			 * the line feed and the carriage return out of the control characters, while the other
-			 * control characters, the surrogate values and two unassigned values it prohibits
+			 *          the line feed and the carriage return out of the control characters, while the other
+			 *          control characters, the surrogate values and two unassigned values it prohibits.
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -125,15 +127,17 @@ namespace awh {
 			 * @brief Метод проверки знака на пробельность
 			 *
 			 * @details Разметка считает пробельными лишь четыре знака, и правила местности
-			 * к этому перечню отношения не имеют
+			 *          к этому перечню отношения не имеют.
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for being a whitespace one
+			 *
 			 * @details A markup considers only four characters whitespace ones, and the rules of the locale
-			 * have no relation to that list
+			 *          have no relation to that list.
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -145,17 +149,19 @@ namespace awh {
 			 * @brief Метод проверки знака на допустимость в начале имени
 			 *
 			 * @details Перечень допустимых знаков задан договором явными разрядами кодовых
-			 * значений, а не разрядами Юникода: сличение ведётся по ним, и таблицы Юникода
-			 * для этого не нужны
+			 *          значений, а не разрядами Юникода: сличение ведётся по ним, и таблицы Юникода
+			 *          для этого не нужны.
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility at the beginning of a name
+			 *
 			 * @details The list of the admissible characters is given by the specification as explicit ranges of the code
-			 * values rather than as Unicode ranges: the comparison is conducted by them, and the Unicode tables
-			 * are not needed for this
+			 *          values rather than as Unicode ranges: the comparison is conducted by them, and the Unicode tables
+			 *          are not needed for this.
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -171,6 +177,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking a character for admissibility inside a name
+			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
 			 *
@@ -182,11 +189,11 @@ namespace awh {
 			 * @brief Метод проверки имени на правильность построения
 			 *
 			 * @details Записать имя, которое не удастся прочесть обратно, нельзя: такое
-			 * указание отвергается, а не записывается с надеждой на снисходительность
-			 * читающего. Судья этот ОБЩИЙ: им судит и запись разметки, и правка владеющего
-			 * значения. Прежде он стоял внутри записи двумя её собственными помощниками, и
-			 * правка значения имени не судила вовсе - негодное имя принималось молча, а
-			 * запись отдавала затем пустую строку по ВСЕМУ дереву без всякого отказа
+			 *          указание отвергается, а не записывается с надеждой на снисходительность
+			 *          читающего. Судья этот ОБЩИЙ: им судит и запись разметки, и правка владеющего
+			 *          значения. Прежде он стоял внутри записи двумя её собственными помощниками, и
+			 *          правка значения имени не судила вовсе - негодное имя принималось молча, а
+			 *          запись отдавала затем пустую строку по ВСЕМУ дереву без всякого отказа.
 			 *
 			 * @param name      проверяемое имя
 			 * @param separator признак допустимости разделителя префикса в имени
@@ -194,15 +201,18 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of the checking of a name for the correctness of its construction
+			 *
 			 * @details A name that will not be read back cannot be written: such an instruction
-			 * is rejected rather than written in the hope of the leniency of the reader. This judge
-			 * is COMMON: both the writing of a markup and the editing of an owning value judge by it.
-			 * Formerly it stood inside the writing as two of its own helpers, while the editing of a value
-			 * did not judge a name at all — an unfit name was accepted silently, and the writing then
-			 * issued an empty string over the WHOLE tree without any refusal
+			 *          is rejected rather than written in the hope of the leniency of the reader. This judge
+			 *          is COMMON: both the writing of a markup and the editing of an owning value judge by it.
+			 *          Formerly it stood inside the writing as two of its own helpers, while the editing of a value
+			 *          did not judge a name at all — an unfit name was accepted silently, and the writing then
+			 *          issued an empty string over the WHOLE tree without any refusal.
+			 *
 			 * @param name name being checked
 			 * @param separator sign of the admissibility of the separator of a prefix in the name
 			 * @return result of the check
+			 *
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool nameable(const string_view name, const bool separator = false) noexcept;
@@ -212,8 +222,8 @@ namespace awh {
 			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @details Проверяется не только построение последовательности, но и её
-			 * кратчайшесть: избыточно длинная запись кодового значения отвергается как
-			 * ошибочная, поскольку служит обходом проверок содержимого
+			 *          кратчайшесть: избыточно длинная запись кодового значения отвергается как
+			 *          ошибочная, поскольку служит обходом проверок содержимого.
 			 *
 			 * @param buffer буфер исходного текста в кодировке UTF-8
 			 * @param size   размер буфера исходного текста
@@ -222,9 +232,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 *
 			 * @details Not only the construction of the sequence is checked but also its
-			 * shortestness: an overlong record of a code value is rejected as
-			 * an erroneous one, since it serves as a bypass of the checks of the content
+			 *          shortestness: an overlong record of a code value is rejected as
+			 *          an erroneous one, since it serves as a bypass of the checks of the content.
+			 *
 			 * @param buffer buffer of the source text in the UTF-8 encoding
 			 * @param size   size of the buffer of the source text
 			 * @param length length of the read sequence in bytes
@@ -244,6 +256,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of writing a code value in the UTF-8 encoding
+			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended
 			 * @return       result of performing the operation
@@ -257,23 +270,25 @@ namespace awh {
 			 * @brief Класс приведения исходного текста к кодировке UTF-8
 			 *
 			 * @details Определяет кодировку исходного текста по метке порядка байтов и по
-			 * объявлению разметки, после чего приводит текст к кодировке UTF-8, на которой
-			 * работает разбор. Приведение ведётся по кускам: последовательность знака,
-			 * разорванная границей куска, удерживается до прихода недостающих байтов
+			 *          объявлению разметки, после чего приводит текст к кодировке UTF-8, на которой
+			 *          работает разбор. Приведение ведётся по кускам: последовательность знака,
+			 *          разорванная границей куска, удерживается до прихода недостающих байтов.
 			 *
 			 * @note Отдельный слой приведения избавляет разбор от знания о кодировках: он
-			 * работает с единственной кодировкой, что и делает его пригодным для
-			 * потокового чтения без оглядки на устройство исходного текста
+			 *       работает с единственной кодировкой, что и делает его пригодным для
+			 *       потокового чтения без оглядки на устройство исходного текста
 			 *
 			 * \~english
 			 * @brief Class of the conversion of the source text to the UTF-8 encoding
+			 *
 			 * @details Determines the encoding of the source text by the byte order mark and by
-			 * the declaration of the markup, after which it converts the text to the UTF-8 encoding on which
-			 * the parsing works. The conversion is conducted by chunks: a character sequence
-			 * torn by the boundary of a chunk is held until the missing bytes arrive
+			 *          the declaration of the markup, after which it converts the text to the UTF-8 encoding on which
+			 *          the parsing works. The conversion is conducted by chunks: a character sequence
+			 *          torn by the boundary of a chunk is held until the missing bytes arrive.
+			 *
 			 * @note A separate layer of the conversion relieves the parsing of the knowledge about the encodings: it
-			 * works with a single encoding, which is what makes it suitable for
-			 * a streaming reading without regard for the arrangement of the source text
+			 *       works with a single encoding, which is what makes it suitable for
+			 *       a streaming reading without regard for the arrangement of the source text
 			 *
 			 * \~
 			 */
@@ -290,15 +305,23 @@ namespace awh {
 					 * Таблица однобайтовой кодировки, взятая у общего модуля кодировок
 					 *
 					 * @details Указание это непусто лишь при виде кодировки `SINGLE`. Таблица
-					 * даёт соответствие байта кодовому значению Юникода, и разбор по ней
-					 * состояния НЕ ИМЕЕТ вовсе: байт приходит - знак выдаётся, и границы
-					 * кусков такому разбору безразличны по устройству
+					 *          даёт соответствие байта кодовому значению Юникода, и разбор по ней
+					 *          состояния НЕ ИМЕЕТ вовсе: байт приходит - знак выдаётся, и границы
+					 *          кусков такому разбору безразличны по устройству.
 					 *
 					 * @note Указание берётся у `awh::charset` и живёт столько же, сколько
 					 *       сама программа: таблицы там постоянные
 					 *
 					 * \~english
 					 * Table of a single-byte encoding taken from the common encodings module
+					 *
+					 * @details The pointer is non-empty only at the `SINGLE` kind of an encoding. The
+					 *          table gives a correspondence of a byte to a code value of Unicode, and a
+					 *          parsing by it has NO STATE at all: a byte comes - a character is issued, and
+					 *          the bounds of the pieces are indifferent to such a parsing by its arrangement.
+					 *
+					 * @note The pointer is taken from `awh::charset` and lives as long as the program
+					 *       itself: the tables there are constant
 					 *
 					 * \~
 					 */
@@ -354,6 +377,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the determined encoding of the source text
+					 *
 					 * @return determined encoding of the source text
 					 *
 					 * \~
@@ -364,18 +388,20 @@ namespace awh {
 					 * @brief Метод получения признака обнаружения метки порядка байтов
 					 *
 					 * @details Метка порядка байтов задаёт кодировку исходного текста
-					 * достовернее объявления разметки: объявление является частью текста и
-					 * прочитано быть не может, пока кодировка неизвестна. Расхождение метки
-					 * с объявлением означает подложное объявление, а не выбор между ними
+					 *          достовернее объявления разметки: объявление является частью текста и
+					 *          прочитано быть не может, пока кодировка неизвестна. Расхождение метки
+					 *          с объявлением означает подложное объявление, а не выбор между ними.
 					 *
 					 * @return признак обнаружения метки порядка байтов
 					 *
 					 * \~english
 					 * @brief Method of getting the flag of the detection of the byte order mark
+					 *
 					 * @details The byte order mark gives the encoding of the source text
-					 * more reliably than the declaration of the markup: the declaration is a part of the text and
-					 * cannot be read while the encoding is unknown. A divergence of the mark
-					 * from the declaration means a forged declaration rather than a choice between them
+					 *          more reliably than the declaration of the markup: the declaration is a part of the text and
+					 *          cannot be read while the encoding is unknown. A divergence of the mark
+					 *          from the declaration means a forged declaration rather than a choice between them.
+					 *
 					 * @return flag of the detection of the byte order mark
 					 *
 					 * \~
@@ -386,27 +412,31 @@ namespace awh {
 					 * @brief Метод установки кодировки исходного текста
 					 *
 					 * @details Навязывает кодировку вопреки метке порядка байтов и объявлению
-					 * разметки. Применяется там, где кодировка известна из внешнего источника
-					 * - скажем, из поля «Content-Type» ответа по договору HTTP
+					 *          разметки. Применяется там, где кодировка известна из внешнего источника
+					 *          - скажем, из поля «Content-Type» ответа по договору HTTP.
 					 *
 					 * @warning Устанавливается лишь до приведения первого куска: сменить
-					 * кодировку посреди текста нельзя, и такое указание отвергается
+					 *          кодировку посреди текста нельзя, и такое указание отвергается
 					 *
 					 * @note Кодировка неопределённая снимает навязывание, возвращая приведение
-					 * к определению кодировки по метке порядка байтов и объявлению разметки
+					 *       к определению кодировки по метке порядка байтов и объявлению разметки
 					 *
 					 * @param encoding устанавливаемая кодировка исходного текста
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of setting the encoding of the source text
+					 *
 					 * @details Imposes the encoding contrary to the byte order mark and to the declaration
-					 * of the markup. Applied where the encoding is known from an external source
-					 * — say, from the «Content-Type» field of an answer over the HTTP protocol
+					 *          of the markup. Applied where the encoding is known from an external source
+					 *          — say, from the «Content-Type» field of an answer over the HTTP protocol.
+					 *
 					 * @warning It is set only before the conversion of the first chunk: the encoding cannot be
-					 * changed in the middle of a text, and such an indication is rejected
+					 *          changed in the middle of a text, and such an indication is rejected
+					 *
 					 * @note An undefined encoding removes the imposition, returning the conversion to the
-					 * determination of the encoding by the byte order mark and by the declaration of the markup
+					 *       determination of the encoding by the byte order mark and by the declaration of the markup
+					 *
 					 * @param encoding encoding of the source text being set
 					 * @return         result of performing the operation
 					 *
@@ -419,8 +449,8 @@ namespace awh {
 					 * @brief Метод приведения куска исходного текста к кодировке UTF-8
 					 *
 					 * @details Первый кусок определяет кодировку по метке порядка байтов,
-					 * если она не навязана извне. Приведённый текст дописывается к
-					 * переданному, а не замещает его
+					 *          если она не навязана извне. Приведённый текст дописывается к
+					 *          переданному, а не замещает его.
 					 *
 					 * @param buffer буфер очередного куска исходного текста
 					 * @param size   размер буфера очередного куска исходного текста
@@ -430,9 +460,11 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of converting a chunk of the source text to the UTF-8 encoding
+					 *
 					 * @details The first chunk determines the encoding by the byte order mark,
-					 * if it has not been imposed from the outside. The converted text is appended to
-					 * what has been passed rather than replacing it
+					 *          if it has not been imposed from the outside. The converted text is appended to
+					 *          what has been passed rather than replacing it.
+					 *
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one
@@ -451,6 +483,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the error code of the conversion
+					 *
 					 * @return error code of the last operation of the conversion
 					 *
 					 * \~

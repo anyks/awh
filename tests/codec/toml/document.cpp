@@ -669,7 +669,7 @@ TEST(CodecTomlDocument, Rewrite) {
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем проверку побайтового совпадения перезаписи с исходным текстом
-	ASSERT_EQ(document.text(), SAMPLE);
+	ASSERT_EQ(document.dump(), SAMPLE);
 }
 /**
  * @brief Проверка сохранения многострочной записи перечня
@@ -693,7 +693,7 @@ TEST(CodecTomlDocument, MultilineArray) {
 	 * @note Расстановка эта выбрана человеком, и разбор о ней не сообщает: узнаётся
 	 *       она по местам событий начала и конца перечня
 	 */
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 }
 /**
  * @brief Проверка правки значения объявленной пары
@@ -716,7 +716,7 @@ TEST(CodecTomlDocument, Editing) {
 	// Выполняем проверку прочитанного значения
 	ASSERT_EQ(port, 9090);
 	// Получаем собранный текст настроек
-	const string result = document.text();
+	const string result = document.dump();
 	// Выполняем проверку записи установленного значения
 	ASSERT_NE(result.find("port = 9090\n"), string::npos);
 	// Выполняем проверку сохранения примечания в конце строки
@@ -743,7 +743,7 @@ TEST(CodecTomlDocument, Appending) {
 	// Выполняем заведение отсутствующей пары верхнего уровня
 	ASSERT_TRUE(document.set({"version"}, "1.0"));
 	// Получаем собранный текст настроек
-	const string result = document.text();
+	const string result = document.dump();
 	// Выполняем проверку записи заведённой пары таблицы
 	ASSERT_NE(result.find("point = { x = 1, y = 2 }\nbacklog = 128\n"), string::npos);
 	/**
@@ -776,7 +776,7 @@ TEST(CodecTomlDocument, Creating) {
 	// Выполняем заведение пары объявленной таблицы
 	ASSERT_TRUE(document.set({"client", "retries"}, static_cast <int64_t> (3)));
 	// Получаем собранный текст настроек
-	const string result = document.text();
+	const string result = document.dump();
 	// Выполняем проверку записи объявленной таблицы с её парой
 	ASSERT_NE(result.find("[client]\nretries = 3\n"), string::npos);
 	// Выполняем проверку разбора собранного текста настроек
@@ -802,7 +802,7 @@ TEST(CodecTomlDocument, Erasing) {
 	// Выполняем проверку отказа повторного удаления пары
 	ASSERT_FALSE(document.erase({"server", "host"}));
 	// Получаем собранный текст настроек
-	const string result = document.text();
+	const string result = document.dump();
 	// Выполняем проверку отсутствия удалённой пары в собранном тексте
 	ASSERT_EQ(result.find("host = "), string::npos);
 	/**
@@ -840,7 +840,7 @@ TEST(CodecTomlDocument, Removing) {
 	 */
 	ASSERT_TRUE(document.table({"server", "limits"}));
 	// Получаем собранный текст настроек
-	const string result = document.text();
+	const string result = document.dump();
 	// Выполняем проверку отсутствия удалённой таблицы в собранном тексте
 	ASSERT_EQ(result.find("[server]"), string::npos);
 	// Выполняем проверку сохранения вложенной таблицы в собранном тексте
@@ -875,7 +875,7 @@ TEST(CodecTomlDocument, Preserving) {
 	// Выполняем проверку сохранения системы счисления записи числа
 	ASSERT_EQ(value.radix, toml::radix_t::HEX);
 	// Выполняем проверку записи числа выбранной человеком системой счисления
-	ASSERT_NE(document.text().find("depth = 0x10\n"), string::npos);
+	ASSERT_NE(document.dump().find("depth = 0x10\n"), string::npos);
 }
 /**
  * @brief Проверка установки значений всех простых типов
@@ -908,7 +908,7 @@ TEST(CodecTomlDocument, Values) {
 	 * @note Строковое значение, записанное прямо в месте вызова, установлено
 	 *       строкою, а не логическим значением
 	 */
-	ASSERT_EQ(document.text(),
+	ASSERT_EQ(document.dump(),
 	 "text = \"значение\"\n"
 	 "flag = true\n"
 	 "count = 0x7\n"
@@ -938,7 +938,7 @@ TEST(CodecTomlDocument, Replacing) {
 	// Выполняем проверку нулевой длины перечня, перечнем более не являющегося
 	ASSERT_EQ(document.length({"server", "flags"}), 0u);
 	// Получаем собранный текст настроек
-	const string result = document.text();
+	const string result = document.dump();
 	// Выполняем проверку записи установленного значения
 	ASSERT_NE(result.find("flags = 1\n"), string::npos);
 	// Объект дерева настроек для разбора собранного текста
@@ -962,7 +962,7 @@ TEST(CodecTomlDocument, Failure) {
 	// Выполняем проверку того, что дерево настроек освобождено
 	ASSERT_TRUE(document.empty());
 	// Выполняем проверку того, что собранный текст настроек пуст
-	ASSERT_TRUE(document.text().empty());
+	ASSERT_TRUE(document.dump().empty());
 }
 /**
  * @brief Проверка отказа правки непригодным составным именем
@@ -1006,11 +1006,11 @@ TEST(CodecTomlDocument, DottedKeys) {
 	// Выполняем проверку дочернего имени таблицы
 	ASSERT_EQ(keys.at(0), "limits");
 	// Выполняем проверку побайтового совпадения перезаписи с исходным текстом
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 	// Выполняем правку значения составным именем ключа
 	ASSERT_TRUE(document.set({"server", "limits", "depth"}, static_cast <int64_t> (2)));
 	// Выполняем проверку записи установленного значения
-	ASSERT_EQ(document.text(), "[server]\nlimits.depth = 2\n");
+	ASSERT_EQ(document.dump(), "[server]\nlimits.depth = 2\n");
 }
 /**
  * @brief Проверка обращения с пустым именем ключа
@@ -1053,7 +1053,7 @@ TEST(CodecTomlDocument, EmptyKey) {
 	// Выполняем проверку отсутствия дочерних имён у пары с пустым именем ключа
 	ASSERT_TRUE(keys.empty());
 	// Выполняем проверку побайтового совпадения перезаписи с исходным текстом
-	ASSERT_EQ(document.text(), text);
+	ASSERT_EQ(document.dump(), text);
 }
 /**
  * @brief Проверка освобождения дерева настроек
@@ -1075,7 +1075,7 @@ TEST(CodecTomlDocument, Clearing) {
 	// Выполняем проверку того, что таблиц в дереве не осталось
 	ASSERT_EQ(document.size(), 0u);
 	// Выполняем проверку того, что собранный текст настроек пуст
-	ASSERT_TRUE(document.text().empty());
+	ASSERT_TRUE(document.dump().empty());
 }
 /**
  * @brief Проверка отказа правки поверх занятого имени
@@ -1120,11 +1120,11 @@ TEST(CodecTomlDocument, Redefine) {
 	// Выполняем проверку чтения установленного значения
 	ASSERT_EQ(document.text({"products", "1", "name"}), "клещи");
 	// Выполняем проверку побайтового совпадения перезаписи с ожидаемым текстом
-	ASSERT_NE(document.text().find("name = \"клещи\"\n"), string::npos);
+	ASSERT_NE(document.dump().find("name = \"клещи\"\n"), string::npos);
 	// Объект дерева настроек для разбора собранного текста
 	toml::document_t reread;
 	// Выполняем проверку разбора собранного текста настроек
-	ASSERT_TRUE(reread.parse(document.text())) << static_cast <uint32_t> (reread.error());
+	ASSERT_TRUE(reread.parse(document.dump())) << static_cast <uint32_t> (reread.error());
 }
 /**
  * @brief Проверка правил правки вровень с правилами разбора
@@ -1226,7 +1226,7 @@ TEST(CodecTomlDocument, EditReadable) {
 				// Выполняем переход к следующей правке
 				continue;
 			// Выполняем перезапись правленого дерева настроек
-			const string text = document.text();
+			const string text = document.dump();
 			// Выполняем проверку того, что перезапись собрана
 			ASSERT_FALSE(text.empty());
 			// Объект дерева настроек для обратного чтения
@@ -1263,7 +1263,7 @@ TEST(CodecTomlDocument, ArrayRemarks) {
 		// Выполняем проверку разбора исходного текста настроек
 		ASSERT_TRUE(document.parse(source)) << "«" << source << "»";
 		// Выполняем проверку того, что перезапись повторяет исходный текст
-		ASSERT_EQ(document.text(), source);
+		ASSERT_EQ(document.dump(), source);
 	}
 }
 /**
@@ -1297,7 +1297,7 @@ TEST(CodecTomlDocument, EditFootprint) {
 	// Выполняем проверку разбора исходного текста настроек
 	ASSERT_TRUE(document.parse(source));
 	// Запоминаем перезапись дерева до правок
-	const string before = document.text();
+	const string before = document.dump();
 	// Запоминаем объём памяти дерева до правок
 	const size_t footprint = document.footprint();
 	// Выполняем проверку того, что объём памяти дерева получен
@@ -1325,7 +1325,7 @@ TEST(CodecTomlDocument, EditFootprint) {
 	ASSERT_LT(document.footprint(), (footprint * 8))
 	 << "до правок " << footprint << " октетов, после восьмидесяти тысяч правок " << document.footprint();
 	// Выполняем проверку того, что перезапись дерева правками не испорчена
-	ASSERT_EQ(document.text(), before);
+	ASSERT_EQ(document.dump(), before);
 }
 /**
  * @brief Проверка заведения пары после долгой правки дерева
@@ -1361,7 +1361,7 @@ TEST(CodecTomlDocument, EditAfterCompaction) {
 	// Объект дерева настроек для обратного чтения
 	toml::document_t after;
 	// Выполняем проверку обратного чтения перезаписи правленого дерева
-	ASSERT_TRUE(after.parse(document.text()));
+	ASSERT_TRUE(after.parse(document.dump()));
 	// Читаемое значение последней заведённой пары
 	int64_t value = 0;
 	// Выполняем проверку чтения значения последней заведённой пары
@@ -1384,7 +1384,7 @@ TEST(CodecTomlDocument, EraseGarbageCount) {
 	// Выполняем проверку снятия пары дерева настроек
 	ASSERT_TRUE(document.erase(vector <string_view> {"t", "a"}));
 	// Выполняем проверку того, что снятая пара из выдачи ушла
-	ASSERT_EQ(document.text(), string("[t]\nb = 2\n"));
+	ASSERT_EQ(document.dump(), string("[t]\nb = 2\n"));
 	// Выполняем проверку того, что оставшаяся пара читается
 	int64_t value = 0;
 	// Выполняем проверку чтения значения оставшейся пары
@@ -1445,7 +1445,7 @@ TEST(CodecTomlDocument, StampCalendar) {
 			// Объект дерева настроек для обратного чтения
 			toml::document_t after;
 			// Выполняем проверку того, что записанное разбор принимает
-			ASSERT_TRUE(after.parse(document.text())) << document.text();
+			ASSERT_TRUE(after.parse(document.dump())) << document.dump();
 		}
 	}
 }
@@ -1532,7 +1532,7 @@ TEST(CodecTomlDocument, LeadingZeroOrdinal) {
 	// Выполняем проверку кода ошибки правки дерева настроек
 	ASSERT_EQ(document.error(), toml::error_t::REDEFINE_TABLE);
 	// Собранный правкой текст настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Объект дерева настроек, собранного обратным разбором
 	toml::document_t reread;
 	/**
@@ -1578,7 +1578,7 @@ TEST(CodecTomlDocument, ClearedTraversal) {
 	// Выполняем проверку правки заново собранного дерева
 	ASSERT_TRUE(document.set(vector <string_view> {"a", "x"}, static_cast <int64_t> (2)));
 	// Выполняем проверку собранного текста настроек
-	ASSERT_EQ(document.text(), "[a]\nx = 2\n");
+	ASSERT_EQ(document.dump(), "[a]\nx = 2\n");
 }
 
 /**
@@ -1635,7 +1635,7 @@ TEST(CodecTomlDocument, ArrayBuilding) {
 	// Выполняем проверку значения пары встроенной таблицы перечня
 	ASSERT_EQ(document.text({"numbers", "2", "key"}), "значение");
 	// Выполняем проверку собранного текста настроек
-	ASSERT_EQ(document.text(), "numbers = [1, 2, { key = \"значение\" }]\n");
+	ASSERT_EQ(document.dump(), "numbers = [1, 2, { key = \"значение\" }]\n");
 	/**
 	 * Выполняем повторное объявление перечня у того же места
 	 *
@@ -1806,7 +1806,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 		// Выполняем проверку того, что отказ назван причиною своею
 		ASSERT_EQ(document.error(), toml::error_t::INVALID_DATETIME);
 		// Выполняем проверку того, что дерево отказом не тронуто
-		ASSERT_EQ(document.text(), text);
+		ASSERT_EQ(document.dump(), text);
 	}
 	/**
 	 * Выполняем проверку отказа правки датой, календарю не отвечающей
@@ -1829,7 +1829,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 		// Выполняем проверку того, что отказ назван причиною своею
 		ASSERT_EQ(document.error(), toml::error_t::INVALID_DATETIME);
 		// Выполняем проверку того, что дерево отказом не тронуто
-		ASSERT_EQ(document.text(), text);
+		ASSERT_EQ(document.dump(), text);
 	}
 	/**
 	 * Выполняем проверку отказа правки временем, за пределы суток выходящим
@@ -1877,7 +1877,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 			// Выполняем проверку того, что отказ назван причиною своею
 			ASSERT_EQ(document.error(), toml::error_t::INVALID_DATETIME) << moment.at(0);
 			// Выполняем проверку того, что дерево отказом не тронуто
-			ASSERT_EQ(document.text(), text) << moment.at(0);
+			ASSERT_EQ(document.dump(), text) << moment.at(0);
 		}
 	}
 	/**
@@ -1929,7 +1929,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 			 * @warning Половина эта и есть самая суть находки: прежде запись отдавала
 			 *          НУЛЬ БАЙТОВ, и терялось всё дерево целиком, а не один узел
 			 */
-			ASSERT_EQ(document.text(), text) << offset;
+			ASSERT_EQ(document.dump(), text) << offset;
 		}
 		/**
 		 * Выполняем проверку того, что смещение крайнее правкою принято
@@ -1955,7 +1955,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 			// Выполняем проверку успешности правки смещением крайним
 			ASSERT_TRUE(document.set({"mark"}, stamp, toml::type_t::OFFSET_DATETIME)) << toml::message(document.error());
 			// Выполняем проверку того, что запись правленого дерева удалась
-			ASSERT_EQ(document.text(), "mark = 2026-08-27T12:30:00+23:59\n");
+			ASSERT_EQ(document.dump(), "mark = 2026-08-27T12:30:00+23:59\n");
 		}
 	}
 	/**
@@ -1980,7 +1980,7 @@ TEST(CodecTomlDocument, StampEditRefusesMalformed) {
 		// Выполняем проверку успешности правки отметкой годной
 		ASSERT_TRUE(document.set({"mark"}, stamp, toml::type_t::LOCAL_DATE)) << toml::message(document.error());
 		// Выполняем проверку записи правленого дерева
-		ASSERT_EQ(document.text(), "mark = 2026-08-27\n");
+		ASSERT_EQ(document.dump(), "mark = 2026-08-27\n");
 	}
 }
 /**
@@ -2133,7 +2133,7 @@ TEST(CodecTomlDocument, KeyWithNewlineSurvivesRoundtrip) {
 	// Выполняем проверку разбора имени пары с переводом строки внутри
 	ASSERT_TRUE(document.parse("\"a\\nb\" = 1\n"));
 	// Получаем записанный текст настроек
-	const string text = document.text();
+	const string text = document.dump();
 	// Выполняем проверку того, что записанный текст не пуст
 	ASSERT_FALSE(text.empty());
 	// Второе дерево настроек для круга
@@ -2141,7 +2141,7 @@ TEST(CodecTomlDocument, KeyWithNewlineSurvivesRoundtrip) {
 	// Выполняем проверку разбора записанного текста
 	ASSERT_TRUE(other.parse(text));
 	// Выполняем проверку того, что значение круг пережило
-	ASSERT_EQ(other.text(), text);
+	ASSERT_EQ(other.dump(), text);
 }
 /**
  * @brief Проверка передачи отказа записи изнутри составного значения
@@ -2267,7 +2267,7 @@ TEST(CodecTomlDocument, CompactionKeepsContent) {
 	 * @note Пробелы внутри встроенной таблицы ставит запись по настройке своей:
 	 *       снятое дерево сличается с ожиданием, а не с исходным текстом
 	 */
-	ASSERT_EQ(document.text(), string(
+	ASSERT_EQ(document.dump(), string(
 		"array = [\n\t1, # первое\n\t# своей строкой\n\t2\n]\n"
 		"inline = { first = 1, second = \"два\" }\n"
 		"[table]\n"
@@ -2385,7 +2385,7 @@ TEST(CodecTomlDocument, EditRefusalsNotCoveredBefore) {
 		// Выполняем запись значения в пустое дерево настроек
 		EXPECT_TRUE(empty.set({"first"}, static_cast <int64_t> (1)));
 		// Выполняем проверку снятого дерева настроек
-		EXPECT_EQ(empty.text(), "first = 1\n");
+		EXPECT_EQ(empty.dump(), "first = 1\n");
 	}
 }
 /**
@@ -2484,7 +2484,7 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		// Выполняем установку свойства с именем из знаков голых
 		ASSERT_TRUE(document.set(vector <string_view> {"a-b_1"}, string_view("v")));
 		// Выполняем проверку того, что имя записано голым
-		ASSERT_NE(document.text().find("a-b_1 = "), string::npos);
+		ASSERT_NE(document.dump().find("a-b_1 = "), string::npos);
 	}{
 		// Дерево настроек
 		toml::document_t document;
@@ -2493,7 +2493,7 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		// Выполняем установку свойства с именем пустым
 		ASSERT_TRUE(document.set(vector <string_view> {""}, string_view("v")));
 		// Выполняем проверку того, что пустое имя записано кавычками
-		ASSERT_NE(document.text().find("\"\" = "), string::npos);
+		ASSERT_NE(document.dump().find("\"\" = "), string::npos);
 	}{
 		// Дерево настроек
 		toml::document_t document;
@@ -2502,7 +2502,7 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		// Выполняем установку свойства с именем из знаков письменности
 		ASSERT_TRUE(document.set(vector <string_view> {"ключ"}, string_view("v")));
 		// Выполняем проверку того, что умолчанием имя записано кавычками
-		ASSERT_NE(document.text().find("\"ключ\" = "), string::npos);
+		ASSERT_NE(document.dump().find("\"ключ\" = "), string::npos);
 		/**
 		 * @note Признак дозволения поднимается У ОБОИХ - у чтения и у записи, - и это не
 		 *       придирка проверки, а договор, при самом признаке записанный: поднимается он
@@ -3070,7 +3070,7 @@ TEST(CodecTomlDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
 	 * @note Половина эта сторожит заслон с другой стороны: отвергни он при всяком правиле -
 	 *       и настройка перестала бы значить что-либо
 	 */
-	ASSERT_FALSE(document.text().empty());
+	ASSERT_FALSE(document.dump().empty());
 	// Выполняем проверку того, что запись умолчанием кода отказа не поставила
 	ASSERT_EQ(document.error(), toml::error_t::NONE) << toml::message(document.error());
 }
@@ -4141,12 +4141,12 @@ TEST(CodecTomlDocument, MissingLinksOfThePathAreCreatedAsAChain) {
 	// Выполняем проверку постановки значения по пути, звеньев не имеющему вовсе
 	ASSERT_TRUE(document.set({"а", "б", "в"}, "2")) << toml::message(document.error());
 	// Выполняем проверку того, что значение поставлено концом цепочки
-	ASSERT_NE(document.text().find("\"в\""), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("\"в\""), string::npos) << document.dump();
 	// Выполняем проверку того, что оба недостающих звена записаны именем составным
-	ASSERT_NE(document.text().find("\"а\""), string::npos) << document.text();
-	ASSERT_NE(document.text().find("\"б\""), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("\"а\""), string::npos) << document.dump();
+	ASSERT_NE(document.dump().find("\"б\""), string::npos) << document.dump();
 	// Выполняем проверку того, что прежний узел дерева не пострадал
-	ASSERT_NE(document.text().find("есть"), string::npos) << document.text();
+	ASSERT_NE(document.dump().find("есть"), string::npos) << document.dump();
 }
 
 /**

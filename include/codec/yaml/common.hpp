@@ -59,7 +59,7 @@
  * @details Обход дерева и снятие событий разбора - самые горячие пути кодека: работы
  *          в них одна арифметика, а зовутся они на всякий узел либо на всякое событие.
  *          Оставленные в переводимом наборе кодека, они обращаются в вызовы через
- *          границу единиц трансляции и стоят дороже самой работы
+ *          границу единиц трансляции и стоят дороже самой работы.
  *
  * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных файлах:
  *       реализация живёт в `.cpp`, а для встраивания заводятся посредники с
@@ -67,13 +67,15 @@
  *
  * \~english
  * @brief Forced inlining of the hot accessors of the codec
+ *
  * @details The traversal of the tree and the taking of the parsing events are the hottest paths of the codec: the work
- * in them is mere arithmetic, while they are called on every node or on every event.
- * Left in the translation unit of the codec, they turn into calls across
- * the boundary of the translation units and cost more than the work itself
+ *          in them is mere arithmetic, while they are called on every node or on every event.
+ *          Left in the translation unit of the codec, they turn into calls across
+ *          the boundary of the translation units and cost more than the work itself.
+ *
  * @note This device is an accepted exception in AWH from the rule about clean header files:
- * the implementation lives in `.cpp`, while for the inlining mediators with
- * `always_inline` are made. See `include/encoding/ascii.hpp`
+ *       the implementation lives in `.cpp`, while for the inlining mediators with
+ *       `always_inline` are made. See `include/encoding/ascii.hpp`
  *
  * \~
  */
@@ -122,100 +124,136 @@ namespace awh {
 		 * @brief Пространство имён контейнера YAML
 		 *
 		 * @details Контейнер разбирает и собирает текст по описанию YAML 1.2.2. От
-		 * соседних кодеков он отличается тем, что смысл текста несёт **отступ**, а не
-		 * знаки-скобки, и что одна и та же запись читается по-разному в зависимости от
-		 * окружения. Устройство задано четырьмя решениями:
+		 *          соседних кодеков он отличается тем, что смысл текста несёт **отступ**, а не
+		 *          знаки-скобки, и что одна и та же запись читается по-разному в зависимости от
+		 *          окружения. Устройство задано четырьмя решениями:
 		 *
 		 * @li **Уровни вложенности держит стопа отступов.** Закрытие уровня наступает не
-		 * по знаку-закрывателю, а по приходе строки с меньшим отступом, оттого решение о
-		 * закрытии откладывается до этой строки
+		 *     по знаку-закрывателю, а по приходе строки с меньшим отступом, оттого решение о
+		 *     закрытии откладывается до этой строки
+		 *
 		 * @li **Разбор не заглядывает вперёд.** Знак, чьё значение зависит от следующего
-		 * за ним, переводит разбор в отдельное состояние, а не требует следующего знака
-		 * немедленно. Оттого выдача не зависит от того, как текст нарезан на куски при
-		 * подаче
+		 *     за ним, переводит разбор в отдельное состояние, а не требует следующего знака
+		 *     немедленно. Оттого выдача не зависит от того, как текст нарезан на куски при
+		 *     подаче
+		 *
 		 * @li **Правила окончания простого значения сведены в одно тело.** Запись `a: b#c`
-		 * даёт значение `b#c`, а `a: b #c` - значение `b` с примечанием; в поточном
-		 * окружении правила иные, нежели в блочном. Два свода правил разошлись бы при
-		 * первой же правке одного из них
+		 *     даёт значение `b#c`, а `a: b #c` - значение `b` с примечанием; в поточном
+		 *     окружении правила иные, нежели в блочном. Два свода правил разошлись бы при
+		 *     первой же правке одного из них
+		 *
 		 * @li **Дерево держит отрезок исходного текста при всяком узле.** Узел, правкой не
-		 * тронутый, записывается обратно **дословными исходными байтами**, а собирается
-		 * заново лишь тронутый. Оттого согласие перезаписи с исходным текстом побайтово
-		 * по построению, а не по старанию сборщика
+		 *     тронутый, записывается обратно **дословными исходными байтами**, а собирается
+		 *     заново лишь тронутый. Оттого согласие перезаписи с исходным текстом побайтово
+		 *     по построению, а не по старанию сборщика
 		 *
 		 * @details **Намеренные решения.** Перечисленное ниже выбрано осознанно, и
-		 * возвращаться к этим вопросам при разборе кода не следует:
+		 *          возвращаться к этим вопросам при разборе кода не следует:
 		 *
 		 * @li **Договор извлечения значений взят у контейнера JSON дословно.** Вид
-		 * хранения извлечению не указ, отказ наступает лишь у не-числа, а дробное за
-		 * пределами затребованного вида выдаёт предел этого вида. Два кодека, читающие
-		 * одно и то же число по-разному, - это дефект, даже если каждый по себе прав
+		 *     хранения извлечению не указ, отказ наступает лишь у не-числа, а дробное за
+		 *     пределами затребованного вида выдаёт предел этого вида. Два кодека, читающие
+		 *     одно и то же число по-разному, - это дефект, даже если каждый по себе прав
+		 *
 		 * @li **Число, в затребованный вид не вмещающееся, отказом НЕ отвечает.** Правило
-		 * это замерено 17.09.2026 на пяти кодеках разом и у всех пяти одинаково, а
-		 * записано было лишь наполовину - о дробном. Полностью оно таково: целое усекается
-		 * по младшим разрядам (`300` в `int8_t` даёт 44, `70000` в `int16_t` даёт 4464,
-		 * `-300` в `uint8_t` даёт 212), а дробное выдаёт предел вида (`300.7` в `int8_t`
-		 * даёт 127). Признак успеха возвращается В ОБОИХ случаях
+		 *     это замерено 17.09.2026 на пяти кодеках разом и у всех пяти одинаково, а
+		 *     записано было лишь наполовину - о дробном. Полностью оно таково: целое усекается
+		 *     по младшим разрядам (`300` в `int8_t` даёт 44, `70000` в `int16_t` даёт 4464,
+		 *     `-300` в `uint8_t` даёт 212), а дробное выдаёт предел вида (`300.7` в `int8_t`
+		 *     даёт 127). Признак успеха возвращается В ОБОИХ случаях
+		 *
 		 * @li **Дробное, целым представимое, идёт путём ЦЕЛОГО.** Оттого `300.0` в
-		 * `int8_t` даёт 44, а `300.7` - 127: записи эти обе дробные, а правила у них
-		 * разные, и разность эта видна лишь замером. Потребителю, ширину вида берегущему,
-		 * надлежит спрашивать вид шире и сличать самому - признак успеха тут о вмещении
-		 * не говорит ничего
+		 *     `int8_t` даёт 44, а `300.7` - 127: записи эти обе дробные, а правила у них
+		 *     разные, и разность эта видна лишь замером. Потребителю, ширину вида берегущему,
+		 *     надлежит спрашивать вид шире и сличать самому - признак успеха тут о вмещении
+		 *     не говорит ничего
+		 *
 		 * @li **Нечисловая величина, извлекаемая целым видом, даёт нуль и признак успеха.**
-		 * Приведение `NaN` к целому есть неопределённое поведение при любом пределе, и
-		 * машины расходятся на деле: x86-64 выдаёт нижний предел, ARM64 - нуль. Правило
-		 * это взято у контейнера JSON и расхождению между ними не подлежит
+		 *     Приведение `NaN` к целому есть неопределённое поведение при любом пределе, и
+		 *     машины расходятся на деле: x86-64 выдаёт нижний предел, ARM64 - нуль. Правило
+		 *     это взято у контейнера JSON и расхождению между ними не подлежит
+		 *
 		 * @li **Наречие 1.2 задано умолчанием, наречие 1.1 - настройкой.** Иначе `no` в
-		 * стране NO читается ложью, а `12:30` - числом 750
+		 *     стране NO читается ложью, а `12:30` - числом 750
+		 *
 		 * @li **Поток ссылки не раскрывает.** Ссылка выдаётся событием, а раскрывает её
-		 * дерево: раскрытие потоком отняло бы у него постоянство памяти, ради которого он
-		 * и существует
+		 *     дерево: раскрытие потоком отняло бы у него постоянство памяти, ради которого он
+		 *     и существует
+		 *
 		 * @li **Повторяющееся имя по умолчанию объявляется отказом.** Описание его
-		 * запрещает, а реализации расходятся; прочие правила доступны настройкой
+		 *     запрещает, а реализации расходятся; прочие правила доступны настройкой
+		 *
 		 * @li **Глубина вложенности и раскрытие ссылок ограничены.** Разбор ведётся без
-		 * рекурсии, но предел нужен и без неё: десять меток по десять ссылок раскрываются
-		 * в гигабайты, и беда эта известна под именем «миллиард смешков»
+		 *     рекурсии, но предел нужен и без неё: десять меток по десять ссылок раскрываются
+		 *     в гигабайты, и беда эта известна под именем «миллиард смешков»
 		 *
 		 * \~english
 		 * @brief YAML container namespace
+		 *
 		 * @details The container parses and builds a text according to the YAML 1.2.2 specification. From
-		 * the neighbouring codecs it differs in that the meaning of the text is carried by the **indentation** rather than by
-		 * the bracket characters, and in that one and the same record is read differently depending on
-		 * the surroundings. The structure is set by four decisions:
+		 *          the neighbouring codecs it differs in that the meaning of the text is carried by the **indentation** rather than by
+		 *          the bracket characters, and in that one and the same record is read differently depending on
+		 *          the surroundings. The structure is set by four decisions:
+		 *
 		 * @li **The levels of the nesting are held by a stack of the indentations.** The closing of a level comes not
-		 * by a closing character but by the arrival of a line with a smaller indentation, whereby the decision about
-		 * the closing is postponed until that line
+		 *     by a closing character but by the arrival of a line with a smaller indentation, whereby the decision about
+		 *     the closing is postponed until that line
+		 *
 		 * @li **The parsing does not look ahead.** A character whose meaning depends on the one following
-		 * it transfers the parsing into a separate state rather than demanding the next character
-		 * immediately. Whereby the issuance does not depend on how the text is cut into the chunks at the
-		 * feeding
+		 *     it transfers the parsing into a separate state rather than demanding the next character
+		 *     immediately. Whereby the issuance does not depend on how the text is cut into the chunks at the
+		 *     feeding
+		 *
 		 * @li **The rules of the termination of a plain scalar are gathered into one body.** The record `a: b#c`
-		 * gives the value `b#c`, while `a: b #c` gives the value `b` with a comment; in the flow
-		 * surroundings the rules are other than in the block one. Two sets of the rules would diverge at
-		 * the very first editing of one of them
+		 *     gives the value `b#c`, while `a: b #c` gives the value `b` with a comment; in the flow
+		 *     surroundings the rules are other than in the block one. Two sets of the rules would diverge at
+		 *     the very first editing of one of them
+		 *
 		 * @li **The tree holds a segment of the source text at every node.** A node not touched by an editing
-		 * is written back by the **literal source bytes**, while only a touched one is assembled
-		 * anew. Whereby the agreement of the rewriting with the source text is byte-for-byte
-		 * by the construction rather than by the diligence of the assembler
+		 *     is written back by the **literal source bytes**, while only a touched one is assembled
+		 *     anew. Whereby the agreement of the rewriting with the source text is byte-for-byte
+		 *     by the construction rather than by the diligence of the assembler
+		 *
 		 * @details **Deliberate decisions.** What is enumerated below is chosen consciously, and
-		 * one should not return to these questions at the reading of the code:
+		 *          one should not return to these questions at the reading of the code:
+		 *
 		 * @li **The contract of the extraction of the values is taken from the JSON container literally.** The kind
-		 * of the storage is not a directive to the extraction, a refusal comes only at a non-number, while a fractional number beyond
-		 * the limits of the demanded kind issues the limit of that kind. Two codecs reading
-		 * one and the same number differently is a defect even if each of them is right by itself
+		 *     of the storage is not a directive to the extraction, a refusal comes only at a non-number, while a fractional number beyond
+		 *     the limits of the demanded kind issues the limit of that kind. Two codecs reading
+		 *     one and the same number differently is a defect even if each of them is right by itself
+		 *
+		 * @li **A number not fitting into the demanded kind does NOT answer with a refusal.** The rule
+		 *     is measured on 2026-09-17 across five codecs at once and is alike in all the five, while
+		 *     written down it was only by half — about the fractional one. In full it is this: an
+		 *     integer is truncated by the lower digits (`300` into `int8_t` gives 44, `70000` into
+		 *     `int16_t` gives 4464, `-300` into `uint8_t` gives 212), while a fractional one issues the
+		 *     limit of the kind (`300.7` into `int8_t` gives 127). The sign of a success is returned IN
+		 *     BOTH cases
+		 *
+		 * @li **A fractional number representable by an integer goes the INTEGER path.** Whereby
+		 *     `300.0` into `int8_t` gives 44 while `300.7` gives 127: both records are fractional
+		 *     notations, while their rules are different, and this difference is visible only by a
+		 *     measurement. A consumer guarding the width of the kind ought to ask for a wider kind and
+		 *     compare himself — the sign of a success here tells nothing of the fitting
+		 *
 		 * @li **A non-numeric value extracted by an integer kind gives a zero and the sign of a success.**
-		 * The conversion of a `NaN` to an integer is an undefined behaviour at any limit, and
-		 * the machines diverge in the deed: x86-64 issues the lower limit, ARM64 — a zero. This rule
-		 * is taken from the JSON container and is not subject to a divergence between them
+		 *     The conversion of a `NaN` to an integer is an undefined behaviour at any limit, and
+		 *     the machines diverge in the deed: x86-64 issues the lower limit, ARM64 — a zero. This rule
+		 *     is taken from the JSON container and is not subject to a divergence between them
+		 *
 		 * @li **The 1.2 dialect is set by default, the 1.1 dialect — by a setting.** Otherwise `no` in
-		 * the country NO is read as a falsehood, while `12:30` — as the number 750
+		 *     the country NO is read as a falsehood, while `12:30` — as the number 750
+		 *
 		 * @li **The stream does not expand the aliases.** An alias is issued by an event, while the tree expands it:
-		 * an expansion by the stream would take away from it the constancy of the memory for the sake of which it
-		 * exists
+		 *     an expansion by the stream would take away from it the constancy of the memory for the sake of which it
+		 *     exists
+		 *
 		 * @li **A repeating name is declared a refusal by default.** The specification forbids
-		 * it, while the implementations diverge; the other rules are available by a setting
+		 *     it, while the implementations diverge; the other rules are available by a setting
+		 *
 		 * @li **The depth of the nesting and the expansion of the aliases are limited.** The parsing is conducted without
-		 * a recursion, but a limit is needed even without it: ten anchors by ten aliases expand
-		 * into gigabytes, and this trouble is known under the name of the «billion laughs»
+		 *     a recursion, but a limit is needed even without it: ten anchors by ten aliases expand
+		 *     into gigabytes, and this trouble is known under the name of the «billion laughs»
 		 *
 		 * \~
 		 */
@@ -225,7 +263,7 @@ namespace awh {
 			 * @brief Наибольшая допустимая длина скалярного значения в байтах
 			 *
 			 * @details Предел считается по значению уже со снятой оградой и выполненной
-			 * свёрткой строк
+			 *          свёрткой строк.
 			 *
 			 * @note Записи чисел предел этот стережёт наравне с прочими: своего предела длине
 			 *       числа здесь нет намеренно. Описание YAML длину записи числа не ограничивает
@@ -237,8 +275,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Largest admissible length of a scalar value in bytes
+			 *
 			 * @details The limit is counted over the value already with the quoting removed and the folding
-			 * of the lines performed
+			 *          of the lines performed.
+			 *
 			 * @note This limit guards the records of the numbers on a par with the others: a limit of its own for
 			 *       the length of a number is absent here deliberately. The description of the YAML does not limit
 			 *       the length of the record of a number at all, and a record of a thousand digits is lawful — it is
@@ -269,7 +309,7 @@ namespace awh {
 			 * @details При чтении предел ограничивает глубину разбираемого текста и размер
 			 *          стека вложенности. Настройка «maxDepth» заменяет его положительным
 			 *          значением. При записи предел фиксирован: открыть больше вместилищ
-			 *          одновременно нельзя, настройки для его изменения нет
+			 *          одновременно нельзя, настройки для его изменения нет.
 			 *
 			 * @note Разбор текста и сборка текста по дереву документа используют явные
 			 *       стеки. Снятие дерева во владеющее значение, копирование значения и
@@ -288,7 +328,7 @@ namespace awh {
 			 * @details Reading limits the nesting of the input text and the size of its nesting
 			 *          stack. A positive «maxDepth» setting replaces this limit. Writing uses
 			 *          a fixed limit on simultaneously opened containers, with no setting
-			 *          available to change it
+			 *          available to change it.
 			 *
 			 * @note Parsing and composing text from a document tree use explicit stacks.
 			 *       Taking a tree into an owning value, copying the value and composing text
@@ -321,30 +361,45 @@ namespace awh {
 			 * @brief Наибольшее допустимое количество узлов, порождаемых раскрытием ссылок
 			 *
 			 * @details Предел этот - ответ на беду, известную под именем «миллиард смешков»:
-			 * метка, ссылающаяся на метку, раскрывается произведением, и десяти уровней по
-			 * десяти ссылок довольно, чтобы занять всю память машины. Текст при этом
-			 * умещается в несколько строк
+			 *          метка, ссылающаяся на метку, раскрывается произведением, и десяти уровней по
+			 *          десяти ссылок довольно, чтобы занять всю память машины. Текст при этом
+			 *          умещается в несколько строк.
 			 *
 			 * @note Цена предела этого замерена 17.09.2026: узел дерева стоит 119 байтов,
-			 * и предел в 16 777 216 узлов даёт 1.86 ГБ. Текст, до предела этого доходящий,
-			 * умещается в 341 байт - десять уровней ссылок по девяти упоминаний, - и
-			 * отказ приходит через 137 мс, израсходовав 1.36 ГБ
+			 *       и предел в 16 777 216 узлов даёт 1.86 ГБ. Текст, до предела этого доходящий,
+			 *       умещается в 341 байт - десять уровней ссылок по девяти упоминаний, - и
+			 *       отказ приходит через 137 мс, израсходовав 1.36 ГБ
 			 *
 			 * @note Опора для суждения о величине: настоящий документ в 178 КБ
-			 * (`CMakeConfigureLog.yaml` сборки) разбирается в 3084 узла. Запас умолчания
-			 * над таким документом пятитысячекратен
+			 *       (`CMakeConfigureLog.yaml` сборки) разбирается в 3084 узла. Запас умолчания
+			 *       над таким документом пятитысячекратен
 			 *
 			 * @warning Предел останавливает разбор ровно по счёту узлов, но память под них
-			 * УЖЕ выделена к тому мигу: замер с пределом 100 даёт 92 узла и 6.6 МБ, с
-			 * пределом 10 000 - 8304 узла. Потребителю, память берегущему, надлежит
-			 * ставить `maxExpansion` своей величиной, а не полагаться на умолчание
+			 *          УЖЕ выделена к тому мигу: замер с пределом 100 даёт 92 узла и 6.6 МБ, с
+			 *          пределом 10 000 - 8304 узла. Потребителю, память берегущему, надлежит
+			 *          ставить `maxExpansion` своей величиной, а не полагаться на умолчание
 			 *
 			 * \~english
 			 * @brief Largest admissible number of the nodes generated by the expansion of the aliases
+			 *
 			 * @details This limit is the answer to the trouble known under the name of the «billion laughs»:
-			 * an anchor referring to an anchor expands by a product, and ten levels by
-			 * ten aliases are enough to occupy all the memory of a machine. The text thereby
-			 * fits into a few lines
+			 *          an anchor referring to an anchor expands by a product, and ten levels by
+			 *          ten aliases are enough to occupy all the memory of a machine. The text thereby
+			 *          fits into a few lines.
+			 *
+			 * @note The price of this limit was measured on 2026-09-17: a node of the tree costs 119 bytes,
+			 *       and the limit of 16 777 216 nodes gives 1.86 GB. A text reaching this limit fits into
+			 *       341 bytes — ten levels of aliases by nine mentions each — and the refusal comes through
+			 *       137 ms having spent 1.36 GB
+			 *
+			 * @note A point of support for a judgement of the magnitude: a real document of 178 KB
+			 *       (`CMakeConfigureLog.yaml` of a build) is parsed into 3084 nodes. The margin of the
+			 *       default over such a document is five-thousandfold
+			 *
+			 * @warning The limit stops the parsing exactly by the count of the nodes, but the memory for
+			 *          them is ALREADY allocated by that moment: a measurement with the limit of 100 gives
+			 *          92 nodes and 6.6 MB, with the limit of 10 000 — 8304 nodes. A consumer guarding the
+			 *          memory ought to set `maxExpansion` by its own size rather than rely on the default
 			 *
 			 * \~
 			 */
@@ -355,23 +410,25 @@ namespace awh {
 			 * @brief Количество пар отображения, начиная с какого заводится указатель имён
 			 *
 			 * @details Ниже этого порога имя разыскивается перебором, и это дешевле всякого
-			 * указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
-			 * выделения памяти и подсчёта хеша на всякое имя. Выше порога перебор обращает
-			 * обход отображения по именам в квадратичный, и указатель окупается
+			 *          указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
+			 *          выделения памяти и подсчёта хеша на всякое имя. Выше порога перебор обращает
+			 *          обход отображения по именам в квадратичный, и указатель окупается.
 			 *
 			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
-			 * не при разборе. Отображение, к которому по имени не обращались, не платит
-			 * ничего
+			 *       не при разборе. Отображение, к которому по имени не обращались, не платит
+			 *       ничего
 			 *
 			 * \~english
 			 * @brief Number of the pairs of a mapping starting from which the index of the names is created
+			 *
 			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
-			 * index: the comparison of the names goes through the memory consecutively, while the creation of an index
-			 * costs an allocation of the memory and a computation of a hash for every name. Above the threshold an enumeration
-			 * turns the traversal of a mapping by the names into a quadratic one, and the index pays off
+			 *          index: the comparison of the names goes through the memory consecutively, while the creation of an index
+			 *          costs an allocation of the memory and a computation of a hash for every name. Above the threshold an enumeration
+			 *          turns the traversal of a mapping by the names into a quadratic one, and the index pays off.
+			 *
 			 * @note The index is created **on demand** — at the first access by a name rather
-			 * than at the parsing. A mapping which has not been accessed by a name pays
-			 * nothing
+			 *       than at the parsing. A mapping which has not been accessed by a name pays
+			 *       nothing
 			 *
 			 * \~
 			 */
@@ -397,6 +454,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Offset having no record in the source text
+			 *
+			 * @note It marks a node behind which no record in the text stands: the text is not held by the
+			 *       setting, or the node is taken by the expansion of an alias
 			 *
 			 * \~
 			 */
@@ -429,17 +489,19 @@ namespace awh {
 			 * @brief Виды узлов документа
 			 *
 			 * @details Виды эти отвечают описанию: узел есть либо скалярное значение, либо
-			 * перечень, либо отображение. Разделение скалярных значений по содержимому
-			 * принадлежит не узлу, а виду значения
+			 *          перечень, либо отображение. Разделение скалярных значений по содержимому
+			 *          принадлежит не узлу, а виду значения.
 			 *
 			 * @note Ссылка видом узла не является: дерево её раскрывает, и в дереве стоит
 			 *       уже тот узел, на который ссылались. Событие ссылки есть лишь у потока
 			 *
 			 * \~english
 			 * @brief Kinds of the nodes of a document
+			 *
 			 * @details These kinds correspond to the specification: a node is either a scalar value, or
-			 * a sequence, or a mapping. The division of the scalar values by their content
-			 * belongs not to the node but to the kind of the value
+			 *          a sequence, or a mapping. The division of the scalar values by their content
+			 *          belongs not to the node but to the kind of the value.
+			 *
 			 * @note An alias is not a kind of a node: the tree expands it, and in the tree there stands
 			 *       already that node which was referred to. The event of an alias exists only in the stream
 			 *
@@ -462,8 +524,8 @@ namespace awh {
 			 * @brief Виды значений документа
 			 *
 			 * @details Виды заданы разрядами, чтобы вопрос о принадлежности значения к
-			 * набору видов решался одним наложением разрядов: точный вопрос (`INT32`) и
-			 * сборный (`NUMBER`) стоят ровно одинаково
+			 *          набору видов решался одним наложением разрядов: точный вопрос (`INT32`) и
+			 *          сборный (`NUMBER`) стоят ровно одинаково.
 			 *
 			 * @note Вид хранения извлечению не указ: `INT8` извлекается и как `double`, и
 			 *       как `uint64_t`. Извлечение сличает с пределами затребованного вида само
@@ -479,15 +541,19 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Kinds of the values of a document
+			 *
 			 * @details The kinds are set by the bits so that the question of the belonging of a value to
-			 * a set of the kinds is decided by one overlaying of the bits: an exact question (`INT32`) and
-			 * a composite one (`NUMBER`) cost exactly the same
+			 *          a set of the kinds is decided by one overlaying of the bits: an exact question (`INT32`) and
+			 *          a composite one (`NUMBER`) cost exactly the same.
+			 *
 			 * @note The kind of the storage is not a directive to the extraction: an `INT8` is extracted both as a `double` and
 			 *       as a `uint64_t`. The extraction compares with the limits of the demanded kind the value
 			 *       itself rather than the kind of its storage
+			 *
 			 * @note A number not containable in any native kind — an integer above `2^64` or
 			 *       a record more precise than a `double` — receives the kind `EXTENDED` and is stored as a record.
 			 *       The precision of such a number is preserved completely, while the extraction parses the record
+			 *
 			 * @warning This list must coincide with the list of the JSON container in everything
 			 *          that both of them have: a divergence would mean that one and the same number
 			 *          is read by the two codecs differently
@@ -531,8 +597,8 @@ namespace awh {
 			 * @brief Схемы разрешения видов скалярных значений
 			 *
 			 * @details Схема решает, чем окажется запись, оградою не обнесённая: `0777` есть
-			 * число 511 по наречию 1.1 и строка по наречию 1.2, а `12:30` - число 750 по
-			 * первому и строка по второму
+			 *          число 511 по наречию 1.1 и строка по наречию 1.2, а `12:30` - число 750 по
+			 *          первому и строка по второму.
 			 *
 			 * @note Схема действует лишь при разборе: вид значения разрешается однажды, а
 			 *       извлечение его только преобразует. Смена схемы после разбора ничего не
@@ -541,9 +607,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Schemas of the resolution of the kinds of the scalar values
+			 *
 			 * @details A schema decides what a record not surrounded by a quoting turns out to be: `0777` is
-			 * the number 511 by the 1.1 dialect and a string by the 1.2 dialect, while `12:30` — the number 750 by
-			 * the first one and a string by the second one
+			 *          the number 511 by the 1.1 dialect and a string by the 1.2 dialect, while `12:30` — the number 750 by
+			 *          the first one and a string by the second one.
+			 *
 			 * @note A schema acts only at the parsing: the kind of a value is resolved once, while
 			 *       its extraction only converts it. A change of the schema after the parsing re-resolves
 			 *       nothing — otherwise one and the same tree would answer one question
@@ -559,6 +627,7 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @warning ОБЪЯВЛЕННЫЕ, НО НИКОГДА НЕ ВЫДАВАЕМЫЕ отказы: замерено 08.09.2026 розыском
 			 *          `error_t::<имя>` по исходникам кодека за вычетом `common.cpp`, где стоит
 			 *          лишь таблица сообщений. Таковых ДЕСЯТЬ из пятидесяти четырёх:
@@ -617,23 +686,85 @@ namespace awh {
 			 *
 			 * @note Потребителю они видимы наравне с живыми: он вправе ждать их и писать на них
 			 *       разбор, какой не сработает никогда
+			 *
+			 * \~english
+			 * @warning THE REFUSALS DECLARED BUT NEVER ISSUED: measured 2026-09-08 by a search of
+			 *          `error_t::<name>` over the sources of the codec, `common.cpp` excepted, where only the
+			 *          table of the messages stands. There are TEN of such among the fifty-four: UNEXPECTED_EOF,
+			 *          INVALID_NUMBER, NUMBER_OUT_OF_RANGE, EXPECTED_KEY, EXPECTED_COLON, DUPLICATE_ANCHOR,
+			 *          UNEXPECTED_DOCUMENT, NUMBER_TOO_LONG, OVERFLOW_LIMIT and CONFLICTING_SETTINGS
+			 *
+			 * @note Re-measured 2026-09-17 by the same search: since the last measurement
+			 *       SETTINGS_ALREADY_APPLIED has come alive — it is issued now by the reading at a feeding of
+			 *       the settings following a parsing already begun (`reader.cpp`) — and eleven have turned into
+			 *       ten. A record surviving a measurement is more dangerous here than an absence: a consumer
+			 *       would count a refusal unreachable by it and would write no workaround for it
+			 *
+			 * @note I name the number together with the sign of the counting: the names of the list have been
+			 *       counted, while an issuing is acknowledged as any mention outside the table of the messages.
+			 *       It is recounted by the same search. Formerly there were thirteen of the fifty; three came
+			 *       alive on that same day — INVALID_BINARY, INVALID_STAMP and STORAGE_EXHAUSTED — and the list
+			 *       grew by four codes
+			 *
+			 * @note The reasons are ESTABLISHED by an experience for five, and their ranks are DIFFERENT:
+			 *
+			 * @note DUPLICATE_ANCHOR is dead BY THE DESCRIPTION: a repetition of a label name is allowed by the
+			 *       description — `a: &x 1` and `b: &x 2` with a reference `*x` give the last value — and there
+			 *       is nothing to refuse here. Had a refusal been instituted, the codec would have diverged from
+			 *       the description
+			 *
+			 * @note UNEXPECTED_DOCUMENT is dead BY THE CONSTRUCTION: a feeding of many documents is accepted and
+			 *       is kept in full, the round holds with both dashes and with the sign of the end — measured by
+			 *       six feedings at a retention of the source text
+			 *
+			 * @note NUMBER_TOO_LONG is dead FOR THE ABSENCE OF A LIMIT: neither a setting nor a constant
+			 *       `MAX_NUMBER` is instituted in the codec at all, and the length of the writing of a number is
+			 *       fenced by the common limit of a scalar value `MAX_SCALAR` and by the code SCALAR_TOO_LONG
+			 *
+			 * @note OVERFLOW_LIMIT is dead AS REDUNDANT: every limit of the settings has ITS OWN code —
+			 *       DEPTH_EXCEEDED, SCALAR_TOO_LONG, TOO_MANY_NODES, ANCHOR_TOO_LONG — and a common one above
+			 *       them is not needed. At the codecs XML, JSON, CEF and syslog it is ALIVE, for there the
+			 *       limits have no codes of their own: this divergence is prescribed by the construction
+			 *
+			 * @note CONFLICTING_SETTINGS is dead FOR THE ABSENCE OF A PAIR tearing the round, and this IS
+			 *       MEASURED, not drawn: a divergence of the schemes of the resolution between the writing and
+			 *       the reading breaks the round at no combination — CORE against LEGACY, LEGACY against CORE,
+			 *       CORE against JSON and against FAILSAFE — the writing keeps the kind of a value. The INI
+			 *       codec has such a pair (a fence at a reading which does not lower it), in TOML it was
+			 *       instituted 2026-09-08 (Unicode in a bare name at a reading which does not acknowledge it)
+			 *
+			 * @note The other five — UNEXPECTED_EOF, INVALID_NUMBER, NUMBER_OUT_OF_RANGE, EXPECTED_KEY and
+			 *       EXPECTED_COLON — have no established reasons: they moved into the list together with the
+			 *       pattern of the JSON codec, where they are declared and alive, and were not tied to the
+			 *       places of an issuing
+			 *
+			 * @note It was established 2026-09-17 that two of the five are covered by a more general code: at a
+			 *       writing `a: b: c` and at `{a: 1: 2}` an INVALID_CHARACTER arrives — «a sign is not allowed
+			 *       in this place» — and not an EXPECTED_KEY or an EXPECTED_COLON. A refusal at that is present
+			 *       and the reason is named rightly, so I do not count it an editing: the place of an issuing
+			 *       here is not skipped but is taken by a neighbour
+			 *
+			 * @note They are visible to a consumer on a par with the living ones: he has the right to expect
+			 *       them and to write by them a parsing that will never work
+			 *
 			 */
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора текста
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
-			 * вместе с положением в исходном тексте, где отказ произошёл
+			 *          вместе с положением в исходном тексте, где отказ произошёл.
 			 *
 			 * \~english
 			 * @brief Error codes of the parsing of a text
+			 *
 			 * @details The parsing does not throw exceptions: the error code together with the position
-			 * in the source text where the refusal has occurred serves as the sign of a refusal
+			 *          in the source text where the refusal has occurred serves as the sign of a refusal.
 			 *
 			 * \~
 			 * @note Перечень этот общ у кодеков INI, TOML и YAML ИМЕНАМИ, а не числами, и
-			 * равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
-			 * трёх одинаково, и потребитель учит одно имя, а не три.
+			 *       равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
+			 *       трёх одинаково, и потребитель учит одно имя, а не три
 			 *
 			 * @warning ЧИСЛА при общих именах РАЗЛИЧНЫ, и прежняя запись - «потребитель,
 			 *          разбирающий отказы по КОДУ, иначе учил бы для каждого кодека свой
@@ -650,12 +781,12 @@ namespace awh {
 			 * @note Оттого часть кодов кодеком YAML не выдаётся:
 			 *
 			 * @note - `STORAGE_EXHAUSTED` выдаётся ДВУМЯ местами, и пробел, здесь прежде
-			 * описанный, ЗАКРЫТ. Дерево YAML держит смещения в хранилище знаков четырьмя
-			 * октетами наравне с INI, TOML, XML, CSV и JSON - сверено 09.09.2026 по члену
-			 * `span_t` всех шести, у каждого `uint32_t offset` и `uint32_t length`, - и
-			 * ширина эта ныне поверяется:
-			 * при переносе записи (`deposit`) - дабы уберечь само вычисление смещения, - и
-			 * заставою при входе разбора, где отказ выходит наружу
+			 *       описанный, ЗАКРЫТ. Дерево YAML держит смещения в хранилище знаков четырьмя
+			 *       октетами наравне с INI, TOML, XML, CSV и JSON - сверено 09.09.2026 по члену
+			 *       `span_t` всех шести, у каждого `uint32_t offset` и `uint32_t length`, - и
+			 *       ширина эта ныне поверяется:
+			 *       при переносе записи (`deposit`) - дабы уберечь само вычисление смещения, - и
+			 *       заставою при входе разбора, где отказ выходит наружу
 			 *
 			 * @warning Запись гласила «мест выдачи не имеет вовсе… вынесено за пределы кодека
 			 *          отдельным докладом» и стояла так уже ПОСЛЕ того, как поверка была
@@ -669,8 +800,8 @@ namespace awh {
 			 *          уже сделанной
 			 *
 			 * @warning Молчание кода означает НЕПРОВЕРЕННОСТЬ пути, а не исправность его:
-			 * снасть молчащих кодов перебирает места выдачи по трём прогонам, и код, ни
-			 * разу не выданный, есть либо застава с доводом, либо путь, проверкою не взятый
+			 *          снасть молчащих кодов перебирает места выдачи по трём прогонам, и код, ни
+			 *          разу не выданный, есть либо застава с доводом, либо путь, проверкою не взятый
 			 */
 			enum class error_t : uint8_t {
 				NONE                  = 0x00, // Ошибок не обнаружено
@@ -734,18 +865,20 @@ namespace awh {
 			 * @brief Виды событий чтения текста
 			 *
 			 * @details Названия событий взяты в точности из эталонного набора
-			 * `yaml-test-suite`: он печатает ожидаемый исход разбора рядом событий, и
-			 * совпадение имён обращает сличение с ним в сличение строка в строку, без
-			 * переводчика между моделями
+			 *          `yaml-test-suite`: он печатает ожидаемый исход разбора рядом событий, и
+			 *          совпадение имён обращает сличение с ним в сличение строка в строку, без
+			 *          переводчика между моделями.
 			 *
 			 * @note Ссылка выдаётся событием, а не раскрывается: раскрытие есть дело дерева
 			 *
 			 * \~english
 			 * @brief Kinds of the events of the reading of a text
+			 *
 			 * @details The names of the events are taken exactly from the reference set
-			 * `yaml-test-suite`: it prints the expected outcome of a parsing as a series of the events, and
-			 * the coincidence of the names turns the comparison with it into a comparison line by line, without
-			 * a translator between the models
+			 *          `yaml-test-suite`: it prints the expected outcome of a parsing as a series of the events, and
+			 *          the coincidence of the names turns the comparison with it into a comparison line by line, without
+			 *          a translator between the models.
+			 *
 			 * @note An alias is issued by an event rather than expanded: the expansion is the business of the tree
 			 *
 			 * \~
@@ -772,20 +905,27 @@ namespace awh {
 			 * @brief Кодировки исходного текста
 			 *
 			 * @details Описание предписывает **UTF-8**, **UTF-16** и **UTF-32** и дозволяет
-			 * метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
-			 * отсутствии - по расположению нулевых байтов в первых четырёх октетах
+			 *          метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
+			 *          отсутствии - по расположению нулевых байтов в первых четырёх октетах.
 			 *
 			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - описанием
-			 * не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
-			 * записан иначе, и отвергать его целиком значило бы оставлять потребителя без
-			 * всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
-			 * опознанию не поддаются: принимаются только навязанными извне
+			 *       не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
+			 *       записан иначе, и отвергать его целиком значило бы оставлять потребителя без
+			 *       всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
+			 *       опознанию не поддаются: принимаются только навязанными извне
 			 *
 			 * \~english
 			 * @brief Encodings of the source text
+			 *
 			 * @details The specification prescribes **UTF-8**, **UTF-16** and **UTF-32** and permits
-			 * a byte order mark at the beginning of a stream. The encoding is recognised by the mark, while at its
-			 * absence — by the arrangement of the zero bytes in the first four octets
+			 *          a byte order mark at the beginning of a stream. The encoding is recognised by the mark, while at its
+			 *          absence — by the arrangement of the zero bytes in the first four octets.
+			 *
+			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — are not prescribed
+			 *       by the specification and are made beyond it: a file received from a foreign tooling is
+			 *       sometimes written otherwise, and to refuse it wholly would mean to leave the consumer
+			 *       without any means to read it. They have no byte order marks at all and are not amenable
+			 *       to recognition: they are accepted only as imposed from outside
 			 *
 			 * \~
 			 */
@@ -806,15 +946,17 @@ namespace awh {
 			 * @brief Правила обращения с повторяющимся именем пары отображения
 			 *
 			 * @details Описание повторяющиеся имена запрещает, однако реализации расходятся:
-			 * одни берут первое значение, другие последнее, третьи отвергают текст
+			 *          одни берут первое значение, другие последнее, третьи отвергают текст.
 			 *
 			 * @warning Перечень этот и порядок его членов совпадают с перечнем контейнера
 			 *          JSON намеренно
 			 *
 			 * \~english
 			 * @brief Rules of the handling of a repeating name of a pair of a mapping
+			 *
 			 * @details The specification forbids the repeating names, however the implementations diverge:
-			 * some take the first value, others the last one, the third ones reject the text
+			 *          some take the first value, others the last one, the third ones reject the text.
+			 *
 			 * @warning This list and the order of its members coincide with the list of the JSON
 			 *          container deliberately
 			 *
@@ -832,12 +974,13 @@ namespace awh {
 			 * @brief Правила преобразования чисел при разборе
 			 *
 			 * @details Правило задаёт лишь то, как поступать с числом, не вместимым ни в один
-			 * родной вид, - целым свыше `2^64` либо записью точнее `double`
+			 *          родной вид, - целым свыше `2^64` либо записью точнее `double`
 			 *
 			 * \~english
 			 * @brief Rules of the conversion of the numbers at the parsing
+			 *
 			 * @details The rule sets only how to handle a number not containable in any
-			 * native kind — an integer above `2^64` or a record more precise than a `double`
+			 *          native kind — an integer above `2^64` or a record more precise than a `double`
 			 *
 			 * \~
 			 */
@@ -851,14 +994,15 @@ namespace awh {
 			 * @brief Виды записи скалярного значения
 			 *
 			 * @details Вид записи хранится при узле не ради красоты, а ради перезаписи:
-			 * значение, записанное человеком дословной оградой, обязано такою и остаться,
-			 * иначе правка одного ключа переписала бы весь файл
+			 *          значение, записанное человеком дословной оградой, обязано такою и остаться,
+			 *          иначе правка одного ключа переписала бы весь файл.
 			 *
 			 * \~english
 			 * @brief Kinds of the notation of a scalar value
+			 *
 			 * @details The kind of the notation is held at a node not for the sake of the beauty but for the sake of the rewriting:
-			 * a value written by a person with a literal quoting must remain such,
-			 * otherwise an editing of one key would rewrite the whole file
+			 *          a value written by a person with a literal quoting must remain such,
+			 *          otherwise an editing of one key would rewrite the whole file.
 			 *
 			 * \~
 			 */
@@ -904,32 +1048,36 @@ namespace awh {
 			 * @brief Правила обращения с негодной последовательностью UTF-8 при записи
 			 *
 			 * @details Чтение байты, кодировке не отвечающие, отвергает - того требует
-			 * описание. Запись же их пропускала, и кодек выдавал текст, какой сам же
-			 * прочитать не мог. Случай этот не выдуманный: значения, взятые из журналов и
-			 * сетевых сообщений, битые байты несут обычным делом
+			 *          описание. Запись же их пропускала, и кодек выдавал текст, какой сам же
+			 *          прочитать не мог. Случай этот не выдуманный: значения, взятые из журналов и
+			 *          сетевых сообщений, битые байты несут обычным делом.
 			 *
 			 * @details Правилом по умолчанию взята замена, а не отказ. Отказ записи
-			 * обрывает **весь** текст, а не одно значение, и один битый байт в одном
-			 * сообщении обнулил бы целый документ. Знак замены же предписан самим
-			 * Юникодом и в выданном тексте виден глазом, а не проглатывается молча
+			 *          обрывает **весь** текст, а не одно значение, и один битый байт в одном
+			 *          сообщении обнулил бы целый документ. Знак замены же предписан самим
+			 *          Юникодом и в выданном тексте виден глазом, а не проглатывается молча.
 			 *
 			 * @note Правило это положено одинаковым у всех кодеков
 			 *
 			 * \~english
 			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
+			 *
 			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
-			 * requires that. The writing, however, passed them through, and the codec gave away a text which it itself
-			 * could not read. This case is not invented: the values taken from the logs and
-			 * the network messages carry the broken bytes as a usual matter
+			 *          requires that. The writing, however, passed them through, and the codec gave away a text which it itself
+			 *          could not read. This case is not invented: the values taken from the logs and
+			 *          the network messages carry the broken bytes as a usual matter.
+			 *
 			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
-			 * cuts off the **whole** text rather than a single value, and one broken byte in one
-			 * message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
-			 * and is visible to the eye in the given text rather than being swallowed silently
+			 *          cuts off the **whole** text rather than a single value, and one broken byte in one
+			 *          message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
+			 *          and is visible to the eye in the given text rather than being swallowed silently.
+			 *
 			 * @note This rule is decided by the owner to be identical for all the codecs
 			 *
 			 * \~
 			 */
 			/**
+			 * \~russian
 			 * @note Настройка эта стояла прежде лишь у ДВУХ кодеков рамки из семи - YAML и JSON, -
 			 *       тогда как довод выше гласит, что правило положено ОДИНАКОВЫМ для
 			 *       всех. Хуже того, у TOML и INI отказ был БЕЗУСЛОВЕН и снабжён доводом,
@@ -940,6 +1088,20 @@ namespace awh {
 			 *       INI тем же составом и тем же умолчанием, а запись о расхождении снята ВМЕСТЕ
 			 *       с заведением, а не после него. У CSV, XML и CEF её по-прежнему нет - кодеки
 			 *       эти чужие, и расхождение вынесено к тем кодекам
+			 *
+			 * \~english
+			 * @note This setting stood formerly only at TWO codecs of the frame of seven — YAML and JSON —
+			 *       while the argument above says that the rule is bound to be COMMON for all of them. Worse
+			 *       still, at TOML and INI the refusal was UNCONDITIONAL and furnished with an argument
+			 *       OPPOSITE to this one: there it is written that a refusal is better than a substitution, for
+			 *       a substitution changes the data silently. Two arguments contradicting each other stood in
+			 *       one frame
+			 *
+			 * @note Divided 2026-09-08 in favour of the common argument: the setting was instituted at TOML and
+			 *       INI by the same composition and the same default, and the record about the divergence was
+			 *       removed TOGETHER with the institution, and not after it. At CSV, XML and CEF it is still
+			 *       absent — those codecs are foreign, and the divergence is carried out to those codecs
+			 *
 			 */
 			enum class malformed_t : uint8_t {
 				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
@@ -952,14 +1114,15 @@ namespace awh {
 			 * @brief Отрезок в хранилище знаков
 			 *
 			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт
-			 * дописыванием и вправе переехать в памяти, и указатель после переезда стал бы
-			 * недействителен
+			 *          дописыванием и вправе переехать в памяти, и указатель после переезда стал бы
+			 *          недействителен.
 			 *
 			 * \~english
 			 * @brief Segment in the storage of the characters
+			 *
 			 * @details A segment holds an offset and a length rather than a pointer: the storage grows
-			 * by an appending and may move in the memory, and a pointer after the move would become
-			 * invalid
+			 *          by an appending and may move in the memory, and a pointer after the move would become
+			 *          invalid.
 			 *
 			 * \~
 			 */
@@ -988,6 +1151,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
+				 *
 				 * @param offset offset of the beginning of the segment in the storage of the characters
 				 * @param length length of the segment in bytes
 				 *
@@ -1001,7 +1165,7 @@ namespace awh {
 			 * @brief Положение в исходном тексте
 			 *
 			 * @details Служит для указания места отказа и для привязки значений к исходному
-			 * тексту
+			 *          тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а смещение -
 			 *       в байтах текста, к UTF-8 приведённого и метки порядка байтов лишённого.
@@ -1011,10 +1175,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Position in the source text
+			 *
 			 * @details Serves for indicating the place of a refusal and for binding the values to the source
-			 * text
+			 *          text.
+			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while the offset —
-			 *       in the bytes of the text brought to UTF-8 and deprived of the byte order mark
+			 *       in the bytes of the text brought to UTF-8 and deprived of the byte order mark. For a UTF-8 text
+			 *       without a mark this offset is an offset in the bytes fed; a text with a mark is smaller than the
+			 *       one fed by the length of that mark, while a UTF-16 or UTF-32 text — by the whole difference of
+			 *       the two encodings
 			 *
 			 * \~
 			 */
@@ -1045,15 +1214,17 @@ namespace awh {
 			 * @brief Отметка времени
 			 *
 			 * @details Признаётся лишь схемою наречия 1.1: описание 1.2 отметок времени не
-			 * знает вовсе, и `2001-12-14` есть там обыкновенная строка
+			 *          знает вовсе, и `2001-12-14` есть там обыкновенная строка.
 			 *
 			 * @note Построение отметки повторяет отметку контейнера TOML намеренно: разбирают
 			 *       они одну и ту же запись по ISO 8601, и расходиться им незачем
 			 *
 			 * \~english
 			 * @brief Timestamp
+			 *
 			 * @details It is recognised only by the schema of the 1.1 dialect: the 1.2 specification does not know the timestamps
-			 * at all, and `2001-12-14` is an ordinary string there
+			 *          at all, and `2001-12-14` is an ordinary string there.
+			 *
 			 * @note The construction of the timestamp repeats the timestamp of the TOML container deliberately: they parse
 			 *       one and the same record by ISO 8601, and there is no reason for them to diverge
 			 *
@@ -1104,6 +1275,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the textual description of a refusal code
+			 *
 			 * @param error error code of the parsing
 			 * @return textual description of the error code
 			 *
@@ -1119,6 +1291,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the name of a kind of a node
+			 *
 			 * @param kind kind of a node of a document
 			 * @return name of the kind of the node
 			 *
@@ -1137,8 +1310,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the name of a kind of a value
+			 *
 			 * @note The name is issued for an exact kind rather than for a composite one: a composite kind cannot be
 			 *       named, for it is a set of the kinds rather than a kind
+			 *
 			 * @param type kind of a value of a document
 			 * @return name of the kind of the value
 			 *
@@ -1150,15 +1325,17 @@ namespace awh {
 			 * @brief Функция получения названия события чтения
 			 *
 			 * @details Названия совпадают с названиями эталонного набора `yaml-test-suite`, и
-			 * сличение с ним ведётся по ним же
+			 *          сличение с ним ведётся по ним же.
 			 *
 			 * @param event вид события чтения
 			 * @return      название события чтения
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the name of an event of the reading
+			 *
 			 * @details The names coincide with the names of the reference set `yaml-test-suite`, and
-			 * the comparison with it is conducted by them
+			 *          the comparison with it is conducted by them.
+			 *
 			 * @param event kind of an event of the reading
 			 * @return name of the event of the reading
 			 *
@@ -1175,6 +1352,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the name of an encoding
+			 *
 			 * @param encoding encoding of the source text
 			 * @return         commonly accepted name of the encoding
 			 *
@@ -1187,14 +1365,20 @@ namespace awh {
 			 * @brief Метод определения кодировки по её названию
 			 *
 			 * @details Договор этот один у INI, TOML и YAML: кодек, кодировки принимающий,
-			 * обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
-			 * название из настроек, обратить его в кодировку ничем не может
+			 *          обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
+			 *          название из настроек, обратить его в кодировку ничем не может.
 			 *
 			 * @param text название кодировки в любом регистре
 			 * @return     определённая кодировка исходного текста
 			 *
 			 * \~english
 			 * @brief Method of determining an encoding by its name
+			 *
+			 * @details This contract is one for INI, TOML and YAML: a codec accepting the encodings is
+			 *          obliged to be able both to name them and to recognise them by a name — otherwise a
+			 *          consumer having taken a name from the settings cannot turn it into an encoding by
+			 *          anything.
+			 *
 			 * @param text name of the encoding in any case
 			 * @return     determined encoding of the source text
 			 *
@@ -1206,15 +1390,17 @@ namespace awh {
 			 * @brief Функция получения вида узла по виду значения
 			 *
 			 * @details Вид узла есть огрубление вида значения до словаря самого описания:
-			 * всякое число, каким бы видом оно ни хранилось, есть узел вида `NUMBER`
+			 *          всякое число, каким бы видом оно ни хранилось, есть узел вида `NUMBER`
 			 *
 			 * @param type вид значения документа
 			 * @return     вид узла документа
 			 *
 			 * \~english
 			 * @brief Function of the obtaining of the kind of a node by the kind of a value
+			 *
 			 * @details The kind of a node is a coarsening of the kind of a value down to the vocabulary of the specification itself:
-			 * every number, by whichever kind it is stored, is a node of the kind `NUMBER`
+			 *          every number, by whichever kind it is stored, is a node of the kind `NUMBER`
+			 *
 			 * @param type kind of a value of a document
 			 * @return kind of a node of a document
 			 *
@@ -1226,8 +1412,8 @@ namespace awh {
 			 * @brief Функция разрешения вида скалярного значения по его записи
 			 *
 			 * @details Разрешение ведётся действующей схемой: одна и та же запись есть число
-			 * по наречию 1.1 и строка по наречию 1.2. Значение, обнесённое оградой, схеме не
-			 * подлежит вовсе - оно строка всегда
+			 *          по наречию 1.1 и строка по наречию 1.2. Значение, обнесённое оградой, схеме не
+			 *          подлежит вовсе - оно строка всегда.
 			 *
 			 * @note Число выдаётся **сборным** видом `NUMBER`: точная ширина его решается
 			 *       преобразованием записи, а не видом её, и определяется при разборе - тем
@@ -1239,9 +1425,16 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the resolution of the kind of a scalar value by its notation
+			 *
 			 * @details The resolution is conducted by the acting schema: one and the same record is a number
-			 * by the 1.1 dialect and a string by the 1.2 dialect. A value surrounded by a quoting is not subject to a schema
-			 * at all — it is always a string
+			 *          by the 1.1 dialect and a string by the 1.2 dialect. A value surrounded by a quoting is not subject to a schema
+			 *          at all — it is always a string.
+			 *
+			 * @note A number is issued by the **composite** kind `NUMBER`: its exact width is decided by
+			 *       the conversion of the record rather than by its kind, and is determined at the parsing
+			 *       — by the very same order as in the JSON container, by the narrowest of the fitting
+			 *       kinds
+			 *
 			 * @param text record of a value being resolved
 			 * @param schema acting schema of the resolution
 			 * @return kind of the value corresponding to the record
@@ -1254,13 +1447,14 @@ namespace awh {
 			 * @brief Число, разобранное из записи своей
 			 *
 			 * @details Разобранное кладётся во все три поля разом, а какое из них взято -
-			 * сказывает вид числа: целое со знаком лежит в первом, целое без знака во втором,
-			 * дробное в третьем
+			 *          сказывает вид числа: целое со знаком лежит в первом, целое без знака во втором,
+			 *          дробное в третьем.
 			 *
 			 * \~english
 			 * @brief Number parsed from its record
+			 *
 			 * @details What is parsed is placed into all the three fields at once, and which of them is taken
-			 * is told by the kind of the number
+			 *          is told by the kind of the number.
 			 *
 			 * \~
 			 */
@@ -1288,8 +1482,8 @@ namespace awh {
 			 * @brief Функция разбора записи числа к самому узкому вмещающему виду
 			 *
 			 * @details Разбор ведётся действующей схемой: `0777` есть 511 по наречию 1.1 и
-			 * строка по наречию 1.2, а `12:30` есть 750 там же. Знак подчёркивания между
-			 * разрядами наречие 1.1 дозволяет, и он снимается прежде разбора
+			 *          строка по наречию 1.2, а `12:30` есть 750 там же. Знак подчёркивания между
+			 *          разрядами наречие 1.1 дозволяет, и он снимается прежде разбора.
 			 *
 			 * @note Потоковое чтение число не разбирает вовсе и выдаёт сборный вид `NUMBER`:
 			 *       разбирать всякое число, никем не затребованное, значило бы платить за то,
@@ -1303,10 +1497,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the parsing of a record of a number to the narrowest containing kind
+			 *
 			 * @details The parsing is conducted by the acting schema: `0777` is 511 by the 1.1 dialect and
-			 * a string by the 1.2 dialect, while `12:30` is 750 there as well
+			 *          a string by the 1.2 dialect, while `12:30` is 750 there as well.
+			 *
 			 * @note The streaming reading does not parse a number at all and issues the composite kind `NUMBER`:
 			 *       to parse every number not demanded by anyone would mean to pay for what the consumer did not ask for
+			 *
 			 * @param text record of a number being parsed
 			 * @param schema acting schema of the resolution
 			 * @param result parsed number
@@ -1320,15 +1517,17 @@ namespace awh {
 			 * @brief Функция проверки записи имени метки либо ссылки
 			 *
 			 * @details Имя метки не вправе нести пробельных знаков и знаков, открывающих
-			 * поточное построение: `[`, `]`, `{`, `}` и запятой
+			 *          поточное построение: `[`, `]`, `{`, `}` и запятой.
 			 *
 			 * @param text проверяемое имя метки
 			 * @return     признак допустимости имени метки
 			 *
 			 * \~english
 			 * @brief Function of the checking of the notation of the name of an anchor or of an alias
+			 *
 			 * @details The name of an anchor may not carry the whitespace characters and the characters opening
-			 * a flow construction: `[`, `]`, `{`, `}` and the comma
+			 *          a flow construction: `[`, `]`, `{`, `}` and the comma.
+			 *
 			 * @param text name of an anchor being checked
 			 * @return sign of the admissibility of the name of the anchor
 			 *
@@ -1340,7 +1539,7 @@ namespace awh {
 			 * @brief Функция выбора вида записи скалярного значения
 			 *
 			 * @details Выбирается наименее навязчивый вид, каким значение записать возможно:
-			 * значение, читаемое обратно тем же самым без ограды, ограды и не получает
+			 *          значение, читаемое обратно тем же самым без ограды, ограды и не получает.
 			 *
 			 * @warning Проверка эта - оборотная сторона разрешения видов, и вести её обязано
 			 *          одно с ним правило: запись, которую чтение разрешит числом, обнести
@@ -1360,11 +1559,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the choice of the kind of the notation of a scalar value
+			 *
 			 * @details The least obtrusive kind by which the value can be written is chosen:
-			 * a value read back as the very same one without a quoting does not receive a quoting either
+			 *          a value read back as the very same one without a quoting does not receive a quoting either.
+			 *
 			 * @warning This check is the reverse side of the resolution of the kinds, and one and the same rule
 			 *          must conduct them both: a record which the reading will resolve as a number must **necessarily** be
 			 *          surrounded by a quoting, otherwise the string `12` will come back as a number
+			 *
+			 * @note The kind of the layout at the input is absent deliberately: the verdict is conducted
+			 *       STRICTER than both, and the characters meaning only in the flow layout — the comma,
+			 *       the round and the curly brackets — are surrounded by a quoting even in the block one. A
+			 *       measurement over six such values in both layouts: the verdict of the intermediary
+			 *       coincided with the verdict of the writing everywhere. This strictness is deliberate —
+			 *       otherwise a consumer having changed the layout would receive a record read otherwise
+			 *
 			 * @param text value being written
 			 * @param schema acting schema of the resolution
 			 * @param key sign of the fact that the value is written as the name of a pair
@@ -1378,14 +1587,14 @@ namespace awh {
 			 * @brief Функция выбора вида записи скалярного значения с указанным удержанием строкою
 			 *
 			 * @details Вид тот же, что и у собрата о трёх доводах, однако правило удержания
-			 * строкою здесь отключаемо: запись, разрешаемую числом, собрат обносит оградою
-			 * **необходимо**, дабы строка `12` числом не вернулась
+			 *          строкою здесь отключаемо: запись, разрешаемую числом, собрат обносит оградою
+			 *          **необходимо**, дабы строка `12` числом не вернулась.
 			 *
 			 * @details Отключается правило то там, где значение строкою и не является:
-			 * запись числа, исходным текстом удержанная, обязана вернуться числом же, и
-			 * ограда ей не нужна вовсе. Потребна ей лишь та часть приговора, что говорит
-			 * о записи возможной: знак неотменимый, пробел ведущий либо завершающий,
-			 * знак укладки потоковой. Оттого правило и разделено доводом, а не переписано
+			 *          запись числа, исходным текстом удержанная, обязана вернуться числом же, и
+			 *          ограда ей не нужна вовсе. Потребна ей лишь та часть приговора, что говорит
+			 *          о записи возможной: знак неотменимый, пробел ведущий либо завершающий,
+			 *          знак укладки потоковой. Оттого правило и разделено доводом, а не переписано.
 			 *
 			 * @warning Довод `stringly` ложью ставить дозволено ЛИШЬ значению, строкою не
 			 *          являющемуся: строка, приговор сей ложью получившая, вернулась бы
@@ -1399,12 +1608,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the choice of the kind of the notation of a scalar value with the specified retention as a string
+			 *
 			 * @details The kind is the same as that of the counterpart of three arguments, however the rule
-			 * of the retention as a string is switchable here: a record resolved as a number is **necessarily**
-			 * surrounded by a quoting by the counterpart, so that the string `12` would not come back as a number
+			 *          of the retention as a string is switchable here: a record resolved as a number is **necessarily**
+			 *          surrounded by a quoting by the counterpart, so that the string `12` would not come back as a number.
+			 *
 			 * @details That rule is switched off there where the value is not a string at all: a record of a number
-			 * retained by the source text must come back as a number, and a quoting is not needed by it at all
-			 * @warning The argument `stringly` is permitted to be set false ONLY for a value which is not a string
+			 *          retained by the source text must come back as a number, and a quoting is not needed by it at
+			 *          all. Only that part of the verdict which speaks of a possible record is needed by it: an
+			 *          inescapable sign, a leading or a trailing space, a sign of a streaming layout. For that
+			 *          reason the rule is divided by an argument, and is not rewritten.
+			 *
+			 * @warning The argument `stringly` is permitted to be set false ONLY for a value which is not a
+			 *          string: a string which has received this argument as false would come back as a number
+			 *          or as a logical value
+			 *
 			 * @param text value being written
 			 * @param schema acting schema of the resolution
 			 * @param key sign of the fact that the value is written as the name of a pair
