@@ -286,6 +286,72 @@ DEF_OPEN = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable)\s+|
 DECL_OPEN = re.compile(r"^(?:namespace\b|(?:extern\s+\"[^\"]*\"\s*)?(?:typedef\s+)?(?:class|struct|union|enum)\b)|\b(?:class|struct|union)\s+\w+\s*(?:final\s*)?\{$")
 STMT_OPEN = re.compile(r"^(?:if|for|while|switch|else|try|catch|do)\b|\b(?:if|for|while|switch)\s*\(")
 
+
+HEADER_TAGS = ["file", "date", "license", "author", "telegram", "phone", "email", "site", "brief", "copyright"]
+
+def check_file_header(path, lines, report):
+    """Шапка файла: обязательные теги, их порядок и формат (§2.1)."""
+    if not lines or not lines[0].strip().startswith("/**"):
+        if any(l.strip() for l in lines[:3]):
+            report(path, 1, "ERROR", "§2.1", "файл не начинается с doc-блока шапки `/** */`")
+        return
+    block = []
+    for l in lines:
+        block.append(l)
+        if "*/" in l:
+            break
+    else:
+        report(path, 1, "ERROR", "§2.1", "doc-блок шапки не закрыт `*/`")
+        return
+    is_cpp = path.endswith(".cpp")
+    tags = []
+    loose = []
+    for i, l in enumerate(block, 1):
+        s = l.strip()
+        if s in ("/**", "*/") or s in ("*", ""):
+            continue
+        m = re.match(r"^\*\s*@(\w+)", s)
+        if m:
+            tags.append((m.group(1), i, re.sub(r"^\s*\*\s*@\w+\s*", "", s).strip()))
+            continue
+        if re.match(r"^\*\s*\\~", s):
+            continue
+        if re.match(r"^\*\s\s", s):        # продолжение тега — выровненный отступ
+            continue
+        loose.append((i, s[1:].strip()[:44]))
+    names = [t for t, _, _ in tags]
+    values = {t: v for t, _, v in tags}
+    lines_of = {t: i for t, i, _ in tags}
+    if "file" not in names:
+        report(path, 1, "ERROR", "§2.1", "в шапке нет `@file` — название файла ведут тегом, а не голым текстом")
+    else:
+        base = os.path.basename(path)
+        if values["file"] != base:
+            report(path, lines_of["file"], "ERROR", "§2.1", f"`@file {values['file']}` не совпадает с именем файла `{base}`")
+    if "date" not in names:
+        report(path, 1, "ERROR", "§2.1", "в шапке нет `@date`")
+    elif not re.match(r"^\d{4}-\d{2}-\d{2}$", values["date"]):
+        report(path, lines_of["date"], "ERROR", "§2.1", f"`@date {values['date']}` не в формате ГГГГ-ММ-ДД")
+    if "copyright" not in names:
+        report(path, 1, "ERROR", "§2.1", "в шапке нет `@copyright`")
+    elif not re.match(r"^Copyright\s+©\s+\d{4}$", values["copyright"]):
+        report(path, lines_of["copyright"], "ERROR", "§2.1", f"`@copyright {values['copyright'][:32]}` — свод требует `Copyright © ГГГГ`")
+    miss = [t for t in HEADER_TAGS if t not in names]
+    if miss:
+        report(path, 1, "ERROR", "§2.1", "в шапке нет " + ", ".join("`@" + t + "`" for t in miss))
+    keep = []
+    for t in names:
+        if t in HEADER_TAGS and (not keep or keep[-1] != t):
+            keep.append(t)
+    if is_cpp and any(re.search(r"\\~(russian|english)", l) for l in block):
+        report(path, 1, "ERROR", "§2.1", "шапка файла реализации несёт `\\~`-секции — по §2.3 в .cpp только русский")
+    elif keep != [t for t in HEADER_TAGS if t in names]:
+        report(path, 1, "ERROR", "§2.1", "шапка файла: порядок " + " → ".join("`@" + t + "`" for t in keep) +
+               ", ожидание " + " → ".join("`@" + t + "`" for t in HEADER_TAGS))
+    for i, text in loose:
+        report(path, i, "ERROR", "§2.1", f"в шапке текст вне тегов — «{text}», содержание ведёт `@brief`")
+
+
 def project_root(path):
     """Корень проекта по файлу: ближайший предок с include/ или src/."""
     d = os.path.dirname(os.path.abspath(path))
@@ -686,6 +752,7 @@ def main():
         fixset = set() if do_fix else None
         check_file(f, lines, members, report, fixset)
         check_class_order(lines, report, f)
+        check_file_header(f, lines, report)
         if f.endswith((".hpp", ".h")) and re.search(r"(^|/)include/", f):
             check_header_bodies(f, lines, report, impl_index, waived)
         check_doc_parity(f, lines, report, fixset)
