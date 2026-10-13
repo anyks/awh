@@ -268,12 +268,90 @@ def check_class_order(lines, report, path):
             if broken:
                 report(path, broken[0], "ERROR", "§5.1", f"{cname}: конструкторы разорваны объявлением — конструкторы идут подряд в конце блока")
 
+def template_above(code, n):
+    """Над строкой n стоит шаблонный заголовок (одно- или многострочный)."""
+    j = n - 2
+    while j >= 0:
+        t = code[j].strip()
+        if not t:
+            j -= 1; continue
+        if re.search(r"\btemplate\b", t):
+            return True
+        if t.startswith("#") or re.search(r"[;{}]$", t) or t.startswith("public:") or t.startswith("private:"):
+            return False
+        j -= 1
+    return False
+
 DEF_OPEN = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable)\s+|&\s*|\*\s*)*\{")
 DECL_OPEN = re.compile(r"^(?:namespace\b|(?:extern\s+\"[^\"]*\"\s*)?(?:typedef\s+)?(?:class|struct|union|enum)\b)|\b(?:class|struct|union)\s+\w+\s*(?:final\s*)?\{$")
 STMT_OPEN = re.compile(r"^(?:if|for|while|switch|else|try|catch|do)\b|\b(?:if|for|while|switch)\s*\(")
 
-def check_header_bodies(path, lines, report):
-    """Тело определения в заголовке допустимо только с явной пометкой inline (§5.5)."""
+def project_root(path):
+    """Корень проекта по файлу: ближайший предок с include/ или src/."""
+    d = os.path.dirname(os.path.abspath(path))
+    while d != os.path.dirname(d):
+        if os.path.isdir(os.path.join(d, "include")) or os.path.isdir(os.path.join(d, "src")):
+            return d
+        d = os.path.dirname(d)
+    return None
+
+def build_impl_index(files):
+    """Заголовки, которым есть куда переносить тело: парная .cpp или .cpp, его подключающий."""
+    roots = []
+    for f in files:
+        r = project_root(f)
+        if r and r not in roots:
+            roots.append(r)
+    impl = {}
+    for r in roots:
+        keys = set(); tokens = set()
+        for base in ("src", "tools", "sample", "unit"):
+            d = os.path.join(r, base)
+            if not os.path.isdir(d):
+                continue
+            for rr, _, fs in os.walk(d):
+                for f in fs:
+                    if not f.endswith(".cpp"):
+                        continue
+                    full = os.path.join(rr, f)
+                    keys.add(os.path.relpath(full, d).rsplit(".", 1)[0].replace(os.sep, "/"))
+                    try:
+                        body = open(full, errors="ignore").read()
+                    except OSError:
+                        continue
+                    for m in re.finditer(r'^\s*#\s*include\s*[<"]([^">\n]+)[>"]', body, re.M):
+                        tokens.add(m.group(1).strip().replace(os.sep, "/"))
+        impl[r] = (keys, tokens)
+    return impl
+
+def has_implementation(path, impl):
+    """Есть ли у заголовка файл реализации, куда тело можно перенести."""
+    if not impl:
+        return True
+    r = project_root(path)
+    if r is None or r not in impl:
+        return True
+    keys, tokens = impl[r]
+    ap = os.path.abspath(path)
+    rel = os.path.relpath(ap, os.path.join(r, "include")).replace(os.sep, "/")
+    key = rel.rsplit(".", 1)[0]
+    if key in keys:
+        return True
+    for t in tokens:
+        if t == rel or t.endswith("/" + rel) or t == key or t.endswith("/" + key):
+            return True
+    return False
+
+def check_header_bodies(path, lines, report, impl=None, waived=None):
+    """Тело определения в заголовке допустимо только с явной пометкой inline (§5.5).
+
+    Заголовки без файла реализации правило не снимает целиком, а молчит: переносить
+    тело некуда (§5.5.1).
+    """
+    if impl is not None and not has_implementation(path, impl):
+        if waived is not None:
+            waived.append(path)
+        return
     code = []
     in_block = False
     for l in lines:
@@ -292,7 +370,7 @@ def check_header_bodies(path, lines, report):
             if t:
                 prev_sig = t; break
             j -= 1
-        tmpl_ctx = bool(re.search(r"\btemplate\b", s) or re.search(r"\btemplate\b", prev_sig))
+        tmpl_ctx = bool(re.search(r"\btemplate\b", s) or template_above(code, n))
         marked_stmt = (not marked_decl) and bool(STMT_OPEN.search(s))
         opener = None
         if not marked_decl and not marked_stmt:
@@ -323,7 +401,7 @@ def check_header_bodies(path, lines, report):
                     prev = t; break
                 k -= 1
             whole = acc + " " + prev
-            if not re.search(r"\b(?:inline|constexpr|__forceinline)\b|[A-Z][A-Z0-9_]*_INLINE\b", whole):
+            if not re.search(r"\b(?:inline|constexpr|__forceinline)\b|[A-Z][A-Z0-9_]*_INLINE\b", whole) and not template_above(code, n):
                 if not (prev.startswith("template") or re.search(r"\btemplate\b", whole)):
                     name = None
                     for cand in re.finditer(r"(?<![\w:<>~])(~?[A-Za-z_~][\w:<>]*|operator\s*(?:[^(){}\s]+|new\[\]|delete\[\]))\s*\(", s):
@@ -332,7 +410,7 @@ def check_header_bodies(path, lines, report):
                         name = cand.group(1).strip(); break
                     if name is None:
                         name = declarator[:24]
-                    report(path, n, "ERROR", "§5.5", f"определение «{name}» в заголовке без пометки inline — тело в заголовке ведут `inline`/`constexpr`/модульным `AWH_*_INLINE`, иначе определение уходит в .cpp")
+                    report(path, n, "ERROR", "§5.5", f"определение «{name}» с телом в заголовке — перенеси тело в .cpp, в заголовке оставь объявление; в заголовке тело допустимо лишь там, где пометка `inline`/`constexpr`/модульный `AWH_*_INLINE` или шаблон уже стоят")
         opens, closes = s.count("{"), s.count("}")
         kind = ("decl" if marked_decl else ("stmt" if marked_stmt else "body"))
         if marked_decl and tmpl_ctx:
@@ -531,7 +609,7 @@ def check_steps(path, lines, report):
             continue
         st = line.strip()
         exempt = (
-            re.match(r"^\}", st) or st in ("{", "};") or re.match(r"^#\s*(?:define|include|pragma|undef|endif|error|warning)\b", st) or
+            re.match(r"^\}", st) or st in ("{", "};") or re.match(r"^#\s*(?:include|pragma|undef|endif|error|warning)\b", st) or
             re.match(r"^(?:case\b|default\b)", st) or
             re.match(r"^(?:break|continue);$", st) or
             re.match(r"^\s*(?:else\b|try\b)", st) or
@@ -556,15 +634,19 @@ def check_steps(path, lines, report):
                     report(path, n, "ERROR", "§9.5", "объявление namespace со строчным комментарием — по §9.5 нужен doc-блок /** */ с @brief")
                 else:
                     report(path, n, "ERROR", "§9.5", "объявление namespace без doc-блока /** */ над ним (§9.5)")
-        elif st.startswith("#define"):
-            if prev_significant is None or prev_significant[0] != "comment":
-                report(path, n, "ERROR", "§3.3", "над #define нет комментария — по §3.3 требуется doc-блок /** */")
+        elif re.match(r"^#\s*define\b", st) or re.match(r"^#\s*(?:if|ifdef|ifndef|elif|else)\b", st):
+            j = n - 2
+            while j >= 0 and lines[j].strip() == "":
+                j -= 1
+            pl = lines[j].strip() if j >= 0 else ""
+            if pl.endswith("*/") or pl.startswith("*"):
+                pass
+            elif pl.startswith("//"):
+                rule = "§3.3" if st.startswith("#define") else "§3.4"
+                report(path, n, "ERROR", rule, f"над {st.split()[0]} одиночный // — по {rule} требуется doc-блок /** */")
             else:
-                j = n - 2
-                while j >= 0 and lines[j].strip() == "":
-                    j -= 1
-                if j >= 0 and not lines[j].strip().endswith("*/"):
-                    report(path, n, "ERROR", "§3.3", "над #define одиночный // — по §3.3 требуется doc-блок /** */")
+                rule = "§3.3" if st.startswith("#define") else "§3.4"
+                report(path, n, "ERROR", rule, f"над {st.split()[0]} нет комментария — по {rule} требуется doc-блок /** */")
         elif not exempt and not continued and prev_significant and prev_significant[0] == "code":
             report(path, n, "ERROR", "§8.5", "оператор без пошагового комментария над ним (§8.5)")
         prev_significant = ("code", n)
@@ -594,6 +676,8 @@ def main():
     results = []
     def report(path, n, level, rule, msg):
         results.append((path, n, level, rule, msg))
+    impl_index = build_impl_index(files)
+    waived = []
     for f in files:
         try:
             lines = open(f, errors="ignore").read().split("\n")
@@ -603,7 +687,7 @@ def main():
         check_file(f, lines, members, report, fixset)
         check_class_order(lines, report, f)
         if f.endswith((".hpp", ".h")) and re.search(r"(^|/)include/", f):
-            check_header_bodies(f, lines, report)
+            check_header_bodies(f, lines, report, impl_index, waived)
         check_doc_parity(f, lines, report, fixset)
         if "--no-steps" not in sys.argv:
             check_steps(f, lines, report)
@@ -631,6 +715,8 @@ def main():
         if level == "ERROR": errors += 1
         else: warns += 1
         print(f"{path}:{n}: {level} [{rule}] {msg}")
+    if waived:
+        print(f"§5.5 молчит на {len(waived)} заголовках без файла реализации: {', '.join(sorted(set(waived))[:24])}" + (" …" if len(set(waived)) > 24 else ""))
     print(f"\n{len(files)} файлов: ERROR={errors} WARN={warns}")
     if unreadable:
         return 2
