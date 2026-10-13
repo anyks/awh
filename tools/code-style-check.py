@@ -487,6 +487,90 @@ def check_header_bodies(path, lines, report, impl=None, waived=None):
             if stack:
                 stack.pop()
 
+TAG_HEAD = re.compile(r"^\s*\*\s*@(\w+)")
+PARAM_LINE = re.compile(r"^\s*\*\s*@(param|tparam|retval|arg)\s+(\S+)(\s+)(\S)")
+RETURN_LINE = re.compile(r"^\s*\*\s*@(return)(\s+)(\S)")
+CONT_LINE = re.compile(r"^\s*\*(\s{2,})(\S)")
+SKIP_TAGS = ("code", "verbatim", "dontinclude", "image")
+
+
+def flush_run(path, run, report):
+    """Описания группы @param/@return: одна колонка, на шаг за самым длинным именем."""
+    if len(run) < 2:
+        return
+    target = max(end for _, _, end, _, _ in run) + 1
+    for n, col, end, tag, name in run:
+        if col != target:
+            what = f"@{tag} {name}".strip()
+            report(path, n, "ERROR", "§7.3", f"«{what}»: описание с колонки {col}, в группе — {target}; имена и описания выравниваются по одной колонке (§7.3)")
+
+
+def walk_block(path, block, report):
+    run = []
+    skip = False
+    for n, s in block:
+        if skip:
+            if "@endcode" in s or "@endverbatim" in s or "@enddot" in s:
+                skip = False
+            continue
+        m = TAG_HEAD.match(s)
+        if m and m.group(1) in SKIP_TAGS:
+            flush_run(path, run, report)
+            run = []
+            skip = True
+            continue
+        if m and m.group(1) in ("param", "tparam", "retval", "arg"):
+            mm = PARAM_LINE.match(s)
+            if mm:
+                run.append((n, mm.start(4), mm.end(2), m.group(1), mm.group(2)))
+            continue
+        if m and m.group(1) == "return":
+            mm = RETURN_LINE.match(s)
+            if mm:
+                run.append((n, mm.start(3), mm.end(1), "return", ""))
+            continue
+        if m:
+            flush_run(path, run, report)
+            run = []
+            continue
+        if re.match(r"^\s*\*\s*$", s) or s.strip() in ("/**", "*/"):
+            flush_run(path, run, report)
+            run = []
+            continue
+        cm = CONT_LINE.match(s)
+        if cm and run:
+            if cm.start(2) != run[-1][1]:
+                report(path, n, "ERROR", "§7.3", f"перенос описания «@{run[-1][3]} {run[-1][4]}».strip() с колонки {cm.start(2)}, ожидание {run[-1][1]} (§7.3)".replace("».strip()", "»"))
+            continue
+        flush_run(path, run, report)
+        run = []
+    flush_run(path, run, report)
+
+
+def check_alignment(path, lines, report):
+    """Колонка описаний у @param/@return в публичных заголовках (§7.3).
+
+    Внутренние блоки реализаций (`src/**`) колонку не выдерживают — там `@param`
+    идёт с двумя пробелами после тега и без выравнивания по группе, поэтому
+    проверка смотрит только `include/**`.
+    """
+    if not ("/include/" in path or path.startswith("include/")):
+        return
+    in_block = False
+    block = []
+    for n, raw in enumerate(lines, 1):
+        s = raw.rstrip("\n")
+        if not in_block and re.match(r"\s*/\*\*", s):
+            in_block = True
+            block = []
+        if not in_block:
+            continue
+        block.append((n, s))
+        if "*/" in s:
+            in_block = False
+            walk_block(path, block, report)
+            block = []
+
 def check_file(path, lines, members, report, fixes=None):
     is_cpp = path.endswith(".cpp") or "/src/" in path
     is_hdr = path.endswith((".hpp", ".h")) and "/include/" in path
@@ -674,6 +758,15 @@ def check_steps(path, lines, report):
             prev_significant = ("comment", n)
             continue
         st = line.strip()
+        if re.match(r"^#\s*endif\b", st):
+            j = n - 2
+            while j >= 0 and lines[j].strip() == "":
+                j -= 1
+            pl = lines[j].strip() if j >= 0 else ""
+            if pl.endswith("*/") or pl.startswith("*") or pl.startswith("//"):
+                report(path, j + 1, "ERROR", "§1.6", f"комментарий над `#endif` (закрытие на строке {n}) — по §1.6 закрытие условия не поясняют")
+            if re.search(r"#\s*endif\b\s*(/\*|//)", st):
+                report(path, n, "ERROR", "§1.6", "комментарий-хвост у `#endif` — по §1.6 директива пишется голым `#endif`")
         exempt = (
             re.match(r"^\}", st) or st in ("{", "};") or re.match(r"^#\s*(?:include|pragma|undef|endif|error|warning)\b", st) or
             re.match(r"^(?:case\b|default\b)", st) or
@@ -753,6 +846,7 @@ def main():
         check_file(f, lines, members, report, fixset)
         check_class_order(lines, report, f)
         check_file_header(f, lines, report)
+        check_alignment(f, lines, report)
         if f.endswith((".hpp", ".h")) and re.search(r"(^|/)include/", f):
             check_header_bodies(f, lines, report, impl_index, waived)
         check_doc_parity(f, lines, report, fixset)
