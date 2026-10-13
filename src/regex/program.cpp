@@ -54,7 +54,7 @@ namespace awh {
 		 * @return      обзор класса символов программы
 		 *
 		 */
-		static classview_t Program::charclass(const uint32_t index) const noexcept {
+		classview_t Program::charclass(const uint32_t index) const noexcept {
 			// Обзор класса символов программы
 			classview_t result;
 			/**
@@ -92,7 +92,7 @@ namespace awh {
 		 *          переживает построение.
 		 *
 		 */
-		static void Program::reset() noexcept {
+		void Program::reset() noexcept {
 			// Выполняем сброс опознания программы регулярного выражения
 			this->id = 0;
 			// Выполняем сброс количества захватывающих групп
@@ -140,7 +140,7 @@ namespace awh {
 		 * @brief Метод очистки программы регулярного выражения
 		 *
 		 */
-		static void Program::clear() noexcept {
+		void Program::clear() noexcept {
 			// Выполняем сброс опознания программы регулярного выражения
 			this->id = 0;
 			// Выполняем сброс количества захватывающих групп
