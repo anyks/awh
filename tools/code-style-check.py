@@ -85,6 +85,40 @@ def parse_sections(block_lines):
 	sections[cur_lang or "?"] = groups
 	return sections
 
+def group_extent(block_lines, groups):
+	"""Мера наполнения каждой группы тега: (строки, строки таблицы, абзацы, знаки)"""
+	n = len(block_lines)
+	def bulk(s):
+		return len(re.sub(r"\s+", "", s))
+	res = []
+	for k, gg in enumerate(groups):
+		begin = gg[2]
+		lim = groups[k + 1][2] if k + 1 < len(groups) else n + 1
+		for i in range(begin, lim):
+			s = block_lines[i - 1].strip()
+			if re.match(r"^\*\s*\\~", s) or s.endswith("*/"):
+				lim = i
+				break
+		content = table = text = 0
+		paragraphs = 1
+		prev_blank = False
+		for i in range(begin + 1, lim):
+			s = block_lines[i - 1].strip()
+			if s in ("", "*"):
+				prev_blank = True
+				continue
+			if re.match(r"^\*\s*@", s) or re.match(r"^\*\s*\\~", s) or s.endswith("*/"):
+				continue
+			content += 1
+			text += bulk(s)
+			if re.match(r"^\*\s*\|", s):
+				table += 1
+			if prev_blank:
+				paragraphs += 1
+			prev_blank = False
+		res.append((content, table, paragraphs, text))
+	return res
+
 def check_doc_parity(path, lines, report, fixes=None):
 	in_block = False
 	start = 0
@@ -99,7 +133,22 @@ def check_doc_parity(path, lines, report, fixes=None):
 				in_block = False
 				if len(block) > 2:  # инлайновые /*!< ... */ не трогаем: блок из одной строки
 					sec = parse_sections(block)
+					if "/include/" in path or path.startswith("include/"):
+						if list(sec) == ["?"] and sec.get("?"):
+							report(path, start, "ERROR", "§7.6", f"заголовочный блок без языковых секций — публичный заголовок ведёт `\\~russian` и `\\~english` над `\\~` ({len(sec['?'])} тегов)")
+						elif "russian" in sec and "english" not in sec:
+							report(path, start, "ERROR", "§7.6", f"заголовочный блок: секция `\\~russian` есть, `\\~english` нет — перевод не начат")
+						elif "english" in sec and "russian" not in sec:
+							report(path, start, "ERROR", "§7.6", f"заголовочный блок: секция `\\~english` есть, `\\~russian` нет — публичный заголовок ведёт обе")
 					ru, en = sec.get("russian"), sec.get("english")
+					for lang in ("russian", "english"):
+						gg = sec.get(lang) or []
+						for gi in range(1, len(gg)):
+							tag, blank, ln = gg[gi][0], gg[gi][1], gg[gi][2]
+							prev_tag = gg[gi-1][0]
+							packed = (tag in ("param", "return") and prev_tag in ("param", "return", "par")) or tag == "endcode" or (tag == "par" and prev_tag in ("param", "return", "par")) or (tag == prev_tag and tag in ("note", "details", "warning", "tparam"))
+							if not packed and not blank:
+								report(path, start + ln - 1, "ERROR", "§7.3", f"в секции {lang}: перед @{tag} нет пустой строки ' *' (группы тегов разделяются)")
 					if ru and en:
 						tags_ru = [t[0] for t in ru]
 						tags_en = [t[0] for t in en]
@@ -116,6 +165,13 @@ def check_doc_parity(path, lines, report, fixes=None):
 									report(path, lineno, "ERROR", "§7.6", f"английская секция: лишняя пустая строка перед @{te} (в русской нет)")
 								if cr > 0 and ce == 0:
 									report(path, lineno, "ERROR", "§7.6", f"английская секция: @{te} смят в одну строку ({we} симв.) — русская группа разбита на {cr} продолжений, английская обязана быть разбита так же")
+							ext_en = group_extent(block, en)
+							ext_ru = group_extent(block, ru)
+							for (te, be, le, ce, we), er, ee in zip(en, ext_ru, ext_en):
+								if ee[1] != er[1]:
+									report(path, start + le - 1, "WARN", "§7.6", f"английская секция: @{te} строк таблицы: {ee[1]} против {er[1]} в русской — перевод неполон")
+								if max(ee[3], er[3]) >= 200 and min(ee[3], er[3]) * 2 <= max(ee[3], er[3]):
+									report(path, start + le - 1, "WARN", "§7.6", f"английская секция: @{te} объём {ee[3]} знаков против {er[3]} в русской — при двукратном расхождении вероятен не перевод а иной текст")
 				block = []
 
 SNAKE_STOP = {"operator", "no_except", "decltype", "sizeof_", "alignof_", "return_type"}
@@ -145,9 +201,10 @@ def collect_members(files):
     return names
 
 def check_class_order(lines, report, path):
-    """Конструктор должен идти после методов (typedef class {...} alias_t;)."""
+    """Конструкторы и деструктор — в конце блока class/struct/union (§5.1)."""
     src = "\n".join(lines)
-    for m in re.finditer(r"typedef\s+class\s+(?:__AWH_SHARED_EXPORT__\s+)?(\w+)\s*\{", src):
+    head = re.compile(r"(?:typedef\s+)?\b(?:class|struct|union)\s+(?:__AWH_SHARED_EXPORT__\s+)?([A-Z]\w*)\s*(?:final\s*)?\{")
+    for m in head.finditer(src):
         depth, start = 0, m.end() - 1
         end = None
         for i in range(start, len(src)):
@@ -156,25 +213,135 @@ def check_class_order(lines, report, path):
                 depth -= 1
                 if depth == 0:
                     end = i; break
-        if end is None: break
-        alias = re.match(r"\s*(?:const\s+)?(\w+)", src[end+1:])
-        body = src[start+1:end]
-        first_line = src[:start].count("\n") + 1
+        if end is None: continue
         cname = m.group(1)
+        alias = re.match(r"\s*(?:const\s+)?(\w+)", src[end + 1:])
         aname = alias.group(1) if alias else cname
-        body_lines = body.split("\n")
-        proto = ctor = None
-        for idx, l in enumerate(body_lines):
+        names = {cname, aname}
+        first_line = src[:start].count("\n") + 1
+        qual = r"(?:explicit\s+|constexpr\s+|inline\s+|virtual\s+|[A-Z][A-Z0-9_]*\s+)*"
+        names_re = "(" + "|".join(re.escape(x) for x in names) + ")"
+        seq = []          # (разряд, номер строки): METHOD | CTOR | DTOR
+        bd = 0
+        buf = ""
+        begin = 0
+        for idx, l in enumerate(src[start + 1:end].split("\n")):
             code = re.sub(r"//.*|/\*.*?\*/", "", l).strip()
-            if not code or code.startswith(("public:", "private:", "protected:", "/", "*", "#")):
+            if bd:
+                bd += code.count("{") - code.count("}")
                 continue
-            if re.match(r"~?" + re.escape(aname) + r"\s*\(", code) or re.match(r"~?" + re.escape(cname) + r"\s*\(", code):
-                if ctor is None: ctor = first_line + idx
-            elif re.search(r"\w+\s*\([^)]*\)(?:\s*const)?(?:\s*noexcept)?\s*(?:override\s*)?(?:=\s*0\s*)?;", code) or re.search(r"\w+\s*\(", code):
-                if proto is None and not re.match(r"(?:static\s+)?(?:typedef|using|union|struct|enum)", code):
-                    proto = first_line + idx
-        if ctor and proto and ctor < proto:
-            report(path, ctor, "ERROR", "§5.1", "конструктор объявлен до методов — конструктор в конце блока")
+            if code.startswith("#"):
+                buf = ""
+                continue
+            if not buf:
+                if not code or code.startswith(("public:", "private:", "protected:", "/", "*", "{", "}")):
+                    continue
+                begin = first_line + idx
+            buf = (buf + " " + code).strip()
+            opens, closes = code.count("{"), code.count("}")
+            closes_all = bd + opens - closes
+            done = closes_all > 0 or buf.endswith(";") or (opens and closes_all == 0)
+            bd = closes_all
+            if not done:
+                continue
+            stmt = buf
+            buf = ""
+            if re.match(qual + r"~\s*" + names_re + r"\s*\(", stmt):
+                seq.append(("DTOR", begin))
+            elif re.match(qual + names_re + r"\s*\(", stmt):
+                seq.append(("CTOR", begin))
+            elif re.match(qual + names_re + r"\s*(?:&\s*)?operator\s*=\s*\(\s*(?:const\s+)?" + names_re + r"\s*(?:&|\*)", stmt):
+                seq.append(("SPECIAL", begin))
+            elif ("(" in stmt) and not re.match(r"(?:template\b|(?:static\s+)?(?:typedef|using|struct|union|enum|friend\s+(?:class|struct|union)))", stmt) and ("(*" not in stmt):
+                seq.append(("METHOD", begin))
+        methods = [ln for k, ln in seq if k == "METHOD"]
+        ctors = [ln for k, ln in seq if k == "CTOR"]
+        dtors = [ln for k, ln in seq if k == "DTOR"]
+        if ctors and methods and min(ctors) < max(methods):
+            report(path, min(ctors), "ERROR", "§5.1", f"{cname}: конструктор объявлен до методов — конструктор в конце блока")
+        if dtors and methods and min(dtors) < max(methods):
+            report(path, min(dtors), "ERROR", "§5.1", f"{cname}: деструктор объявлен до методов — деструктор в конце блока")
+        if dtors and ctors and min(dtors) < max(ctors):
+            report(path, min(dtors), "ERROR", "§5.1", f"{cname}: деструктор идёт прежде конструктора — сначала конструкторы, затем деструктор")
+        if len(ctors) > 1:
+            broken = [ln for k, ln in seq if k != "CTOR" and min(ctors) < ln < max(ctors)]
+            if broken:
+                report(path, broken[0], "ERROR", "§5.1", f"{cname}: конструкторы разорваны объявлением — конструкторы идут подряд в конце блока")
+
+DEF_OPEN = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable)\s+|&\s*|\*\s*)*\{")
+DECL_OPEN = re.compile(r"^(?:namespace\b|(?:extern\s+\"[^\"]*\"\s*)?(?:typedef\s+)?(?:class|struct|union|enum)\b)|\b(?:class|struct|union)\s+\w+\s*(?:final\s*)?\{$")
+STMT_OPEN = re.compile(r"^(?:if|for|while|switch|else|try|catch|do)\b|\b(?:if|for|while|switch)\s*\(")
+
+def check_header_bodies(path, lines, report):
+    """Тело определения в заголовке допустимо только с явной пометкой inline (§5.5)."""
+    code = []
+    in_block = False
+    for l in lines:
+        c, in_block = strip_comments_strings(l, in_block)
+        code.append(c)
+    stack = []
+    for n, c in enumerate(code, 1):
+        s = c.strip()
+        if not s:
+            continue
+        marked_decl = bool(DECL_OPEN.search(s))
+        prev_sig = ""
+        j = n - 2
+        while j >= 0:
+            t = code[j].strip()
+            if t:
+                prev_sig = t; break
+            j -= 1
+        tmpl_ctx = bool(re.search(r"\btemplate\b", s) or re.search(r"\btemplate\b", prev_sig))
+        marked_stmt = (not marked_decl) and bool(STMT_OPEN.search(s))
+        opener = None
+        if not marked_decl and not marked_stmt:
+            m = DEF_OPEN.search(s)
+            if m and (not stack or stack[-1] == "decl"):
+                opener = m.start()
+        declarator = ""
+        if opener is not None:
+            declarator = s[:opener].strip()
+            if not re.match(r"^(?:template\b|(?:[\w:<>,*&\s]+)?(?:~?[A-Za-z_~][\w:<>]*|operator\s*[^\s(]+)\s*\()", declarator + "("):
+                opener = None
+            elif re.match(r"^(?:[\w:<>,*&\s]*\b(?:if|for|while|switch)\b)", declarator):
+                opener = None
+        if opener is not None and not (tmpl_ctx or any(k == "tmpl" for k in stack)):
+            acc = declarator
+            j = n - 2
+            while j >= 0:
+                t = code[j].strip()
+                if not t or re.search(r"[;{}]", t):
+                    break
+                acc = t + " " + acc
+                j -= 1
+            prev = ""
+            k = j
+            while k >= 0:
+                t = code[k].strip()
+                if t:
+                    prev = t; break
+                k -= 1
+            whole = acc + " " + prev
+            if not re.search(r"\b(?:inline|constexpr|__forceinline)\b|[A-Z][A-Z0-9_]*_INLINE\b", whole):
+                if not (prev.startswith("template") or re.search(r"\btemplate\b", whole)):
+                    name = None
+                    for cand in re.finditer(r"(?<![\w:<>~])(~?[A-Za-z_~][\w:<>]*|operator\s*(?:[^(){}\s]+|new\[\]|delete\[\]))\s*\(", s):
+                        if cand.group(1).strip() in ("if", "for", "while", "switch", "return", "catch", "sizeof", "static_cast", "dynamic_cast", "reinterpret_cast", "const_cast", "new", "delete", "throw"):
+                            continue
+                        name = cand.group(1).strip(); break
+                    if name is None:
+                        name = declarator[:24]
+                    report(path, n, "ERROR", "§5.5", f"определение «{name}» в заголовке без пометки inline — тело в заголовке ведут `inline`/`constexpr`/модульным `AWH_*_INLINE`, иначе определение уходит в .cpp")
+        opens, closes = s.count("{"), s.count("}")
+        kind = ("decl" if marked_decl else ("stmt" if marked_stmt else "body"))
+        if marked_decl and tmpl_ctx:
+            kind = "tmpl"
+        for _ in range(opens):
+            stack.append(kind)
+        for _ in range(closes):
+            if stack:
+                stack.pop()
 
 def check_file(path, lines, members, report, fixes=None):
     is_cpp = path.endswith(".cpp") or "/src/" in path
@@ -222,6 +389,22 @@ def check_file(path, lines, members, report, fixes=None):
             in_func = True
         elif in_func and func_depth == 0 and closes:
             in_func = False
+        # комментарий над циклом/switch (§6.6): непосредственно над заголовком — // или */
+        lm = re.match(r"^\s*(for|while|switch)\s*\(", line)
+        if lm and not re.match(r"^\s*}\s*while", line):
+            j = n - 2
+            while j >= 0 and lines[j].strip() == "":
+                j -= 1
+            pl = lines[j].strip() if j >= 0 else ""
+            if not (pl.endswith("*/") or pl.startswith("*")):
+                if pl.startswith("//"):
+                    report(path, n, "ERROR", "§6.6", f"над «{lm.group(1)}» строчный комментарий — по §6.6 заголовок цикла/switch требует doc-блок /** */")
+                else:
+                    report(path, n, "ERROR", "§6.6", f"над «{lm.group(1)}» нет комментария — поставьте блок /** */ непосредственно перед заголовком")
+        # закрывание блочного комментария, склеенное с кодом (§1.4)
+        gm = re.match(r"^(\s*)\*/(\s*\S.*)$", line)
+        if gm:
+            report(path, n, "ERROR", "§1.4", "закрывающая `*/` склеена с кодом — закрывание блока на своей строке")
         # if/for/while/switch с пробелом
         for m in re.finditer(r"\b(if|for|while|switch)\s+\(", code):
             report(path, n, "ERROR", "§1.2", f"{m.group(1)} с пробелом перед скобкой: '{m.group(0)}'")
@@ -308,6 +491,90 @@ def check_file(path, lines, members, report, fixes=None):
                 report(path, n-1, "WARN", "§7.5", "перед */ нет пустой строки ' *'")
         prev_code = code
 
+def check_steps(path, lines, report):
+    """§8.5: над каждым оператором — комментарий; закрывающие скобки/препроцессор/макросы/else-цепочки не требуют."""
+    in_block = False
+    in_macro = False
+    balance = 0
+    prev_code_raw = ""
+    prev_stmt_shape = None
+    prev_significant = None   # ('kind', index) kind: comment/code/blank
+    block_star = []           # (lineno, indent) строк «*» текущего doc-блока
+    for n, raw in enumerate(lines, 1):
+        line = raw.rstrip("\n")
+        code, new_block = strip_comments_strings(line, in_block)
+        block_only = (code.strip() == "" and line.strip() != "" and (new_block or in_block or line.strip().startswith(("//", "*", "/*"))))
+        in_block = new_block
+        if in_macro:
+            in_macro = line.rstrip().endswith("\\")
+            prev_significant = ("code", n)
+            continue
+        if line.rstrip().endswith("\\") and re.match(r"^\s*#\s*define", line):
+            in_macro = True
+        if line.strip() == "":
+            prev_significant = ("blank", n)
+            continue
+        if block_only or code.strip() == "":
+            if in_block or line.strip().startswith(("/**", "/*!", "*", "/*")):
+                ind = len(line) - len(line.lstrip("\t "))
+                if re.match(r"^\s*\*", line):
+                    block_star.append((n, ind))
+            if line.strip().endswith("*/"):
+                if len(block_star) > 1:
+                    from collections import Counter
+                    mode = Counter(i for _, i in block_star).most_common(1)[0][0]
+                    for ln, ind in block_star:
+                        if ind != mode:
+                            report(path, ln, "ERROR", "§1.1", f"звёздочка сместилась относительно блока (отступ {ind}, ожидание {mode}) — выровняйте табуляцией")
+                block_star = []
+            prev_significant = ("comment", n)
+            continue
+        st = line.strip()
+        exempt = (
+            re.match(r"^\}", st) or st in ("{", "};") or re.match(r"^#\s*(?:define|include|pragma|undef|endif|error|warning)\b", st) or
+            re.match(r"^(?:case\b|default\b)", st) or
+            re.match(r"^(?:break|continue);$", st) or
+            re.match(r"^\s*(?:else\b|try\b)", st) or
+            re.match(r"^(?:namespace|class|struct|union|enum)(?:\s+[\w:]+)?\s*\{?$", st) or
+            re.match(r"^(?:static\s+)?(?:struct|union)\s+\w+[{}]*(?:\[\w*\])?\s*[{;]$", st) or
+            (st.endswith(":") and re.match(r"^[A-Za-z_]\w*:$", st)) or
+            st == "public:" or st == "private:" or st == "protected:"
+        )
+        prev_ctrl = prev_code_raw.strip() in ("else", "try") or bool(re.match(r"^\s*}\s*(?:else\b|catch\b|while\b)[^)]*$", prev_code_raw) and not prev_code_raw.rstrip().endswith("{"))
+        prev_ctrl = prev_ctrl or prev_code_raw.strip().startswith("template")
+        decl_pair = bool(re.match(r"^(?:const\s+)?(?:struct\s+)?[\w:<>]+\s+\w+\{\s*\};$", st)) and bool(re.match(r"^(?:const\s+)?(?:struct\s+)?[\w:<>]+\s+\w+\{\s*\};$", prev_code_raw.strip()))
+        continued = balance > 0 or prev_ctrl or decl_pair or (prev_code_raw.rstrip().endswith((":", ",", "(", "&", "|", "?", "+", "-", "="))) or ("//" in line)
+        continued = continued or (prev_code_raw.strip() != "" and prev_stmt_shape and re.match(r"^[\w:>.-]*\s*", st).group(0) and re.match(r"^[\w:>.<-]*", st).group(0) == prev_stmt_shape)
+        balance += code.count("(") + code.count("[") - code.count(")") - code.count("]")
+        if re.match(r"^namespace(?:\s+[\w:]+)?\s*\{?$", st):
+            j = n - 2
+            while j >= 0 and lines[j].strip() == "":
+                j -= 1
+            pl = lines[j].strip() if j >= 0 else ""
+            if not (pl.endswith("*/") or pl.startswith("*")):
+                if pl.startswith("//"):
+                    report(path, n, "ERROR", "§9.5", "объявление namespace со строчным комментарием — по §9.5 нужен doc-блок /** */ с @brief")
+                else:
+                    report(path, n, "ERROR", "§9.5", "объявление namespace без doc-блока /** */ над ним (§9.5)")
+        elif st.startswith("#define"):
+            if prev_significant is None or prev_significant[0] != "comment":
+                report(path, n, "ERROR", "§3.3", "над #define нет комментария — по §3.3 требуется doc-блок /** */")
+            else:
+                j = n - 2
+                while j >= 0 and lines[j].strip() == "":
+                    j -= 1
+                if j >= 0 and not lines[j].strip().endswith("*/"):
+                    report(path, n, "ERROR", "§3.3", "над #define одиночный // — по §3.3 требуется doc-блок /** */")
+        elif not exempt and not continued and prev_significant and prev_significant[0] == "code":
+            report(path, n, "ERROR", "§8.5", "оператор без пошагового комментария над ним (§8.5)")
+        prev_significant = ("code", n)
+        if not continued:
+            prev_code_raw = line
+            m2 = re.match(r"^[\w:>.<-]*\s*\(", st)
+            prev_stmt_shape = m2.group(0)[:-1] if m2 else None
+        else:
+            prev_code_raw = line
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     strict = "--strict" in sys.argv
@@ -335,7 +602,11 @@ def main():
         fixset = set() if do_fix else None
         check_file(f, lines, members, report, fixset)
         check_class_order(lines, report, f)
+        if f.endswith((".hpp", ".h")) and re.search(r"(^|/)include/", f):
+            check_header_bodies(f, lines, report)
         check_doc_parity(f, lines, report, fixset)
+        if "--no-steps" not in sys.argv:
+            check_steps(f, lines, report)
         if fixset:
             fixes[f] = fixset
     if do_fix and fixes:
