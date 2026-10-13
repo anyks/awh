@@ -19,21 +19,29 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/probe.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <atomic>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include <regex/probe.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
  */
 using namespace std;
 
+/**
+ * @brief Пространство имён вспомогательных функций
+ */
 namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Счётчики путей исполнения сопоставления
 	 *
@@ -43,8 +51,7 @@ namespace {
 	 *          библиотеки и её заголовка.
 	 *
 	 */
-	atomic <uint64_t> COUNTERS[static_cast <size_t> (awh::regex::path_t::COUNT)];
-
+	atomic <uint64_t> COUNTERS[static_cast <size_t> (regex::path_t::COUNT)];
 	/**
 	 * @brief Набор счётчиков мер работы сопоставления
 	 *
@@ -53,8 +60,9 @@ namespace {
 	 *          шаги цикла с порождением машинного кода
 	 *
 	 */
-	atomic <uint64_t> AMOUNTS[static_cast <size_t> (awh::regex::work_t::COUNT)];
+	atomic <uint64_t> AMOUNTS[static_cast <size_t> (regex::work_t::COUNT)];
 };
+
 /**
  * @brief Метод проверки заведения учёта путей исполнения
  *

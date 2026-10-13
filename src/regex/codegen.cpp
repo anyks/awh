@@ -78,7 +78,7 @@ using namespace std;
 #endif
 
 /**
- * @brief Пространство имён вспомогательных значений кодогенерации
+ * @brief Пространство имён вспомогательных функций
  *
  */
 namespace {
@@ -86,12 +86,6 @@ namespace {
 	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
-
-	/**
-	 * @brief Размер таблицы принадлежности значений байта в байтах
-	 *
-	 */
-	constexpr size_t TABLE = 0x100;
 
 	/**
 	 * @brief Размер кадра вызова, приходящийся на один ряд повторения
@@ -102,7 +96,6 @@ namespace {
 	 *
 	 */
 	constexpr size_t SLOTS = 3;
-
 	/**
 	 * @brief Размер кадра вызова, приходящийся на одну цепочку ветвей выбора
 	 *
@@ -111,7 +104,6 @@ namespace {
 	 *
 	 */
 	constexpr size_t PICKS = 2;
-
 	/**
 	 * @brief Количество мест кадра вызова, сохраняющих регистры на время вызова
 	 *
@@ -131,7 +123,6 @@ namespace {
 	 *
 	 */
 	constexpr size_t SPILLS = 9;
-
 	/**
 	 * @brief Наибольшее количество записей кадра сопоставителя
 	 *
@@ -142,74 +133,6 @@ namespace {
 	 *
 	 */
 	constexpr size_t LEVELS = 1;
-
-	/**
-	 * @brief Наибольший размер области записей кадра в байтах
-	 *
-	 * @details Повторение над областью отводит запись на каждый проход, а число
-	 *          проходов доходит до длины текста, отчего область ограничивается
-	 *          размером. Исчерпание её отказом сопоставления не является:
-	 *          сопоставитель отвечает «не берусь», и выражение доигрывает
-	 *          исполнение программы - ровно так же, как выражение, кодогенерации
-	 *          не получившее вовсе.
-	 *
-	 */
-	constexpr size_t ARENA = 0x100000;
-
-	/**
-	 * @brief Наибольшее количество символов, заменяемых продвижением позиции
-	 *
-	 * @details Продвижение позиции размещается одной командой сложения с числом,
-	 *          а число это несёт двенадцать разрядов.
-	 *
-	 */
-	constexpr size_t MAX_ELISION = 0xFFF;
-
-	/**
-	 * @brief Номер места обстановки, несущего адрес предварительного отбора позиций
-	 *
-	 */
-	constexpr size_t SLOT_PREFILTER = 0;
-
-	/**
-	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора позиций
-	 *
-	 */
-	constexpr size_t SLOT_SEEKING = 1;
-
-	/**
-	 * @brief Номер места обстановки, несущего адрес подпрограммы проверки возможности
-	 *
-	 * @details Место это порождённым кодом НЕ зовётся: проверка возможности
-	 *          совпадения выполняется стороною C++ до передачи управления
-	 *          сопоставителю - см. «Codegen::exec». Оставлено оно намеренно,
-	 *          заделом под перенос проверки в порождённый код, и заполняется
-	 *          наравне с прочими, дабы обстановка порождения и восстановления
-	 *          не расходились. Номера мест вписаны в самый порождённый код
-	 *          смещениями, отчего изъятие места обесценило бы всякую запись,
-	 *          прежде сохранённую.
-	 *
-	 */
-	constexpr size_t SLOT_FEASIBLE = 2;
-
-	/**
-	 * @brief Номер места обстановки, несущего адрес подпрограммы проверки привязки
-	 *
-	 */
-	constexpr size_t SLOT_ASSERTING = 3;
-
-	/**
-	 * @brief Номер места обстановки, несущего адрес подпрограммы прохода ряда
-	 *
-	 */
-	constexpr size_t SLOT_SCANNING = 4;
-
-	/**
-	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора по набору
-	 *
-	 */
-	constexpr size_t SLOT_SCATTERING = 5;
-
 	/**
 	 * @brief Количество позиций окна просеивания на месте
 	 *
@@ -231,9 +154,73 @@ namespace {
 	 *
 	 */
 	constexpr size_t SIFTING = 16;
+	/**
+	 * @brief Размер таблицы принадлежности значений байта в байтах
+	 *
+	 */
+	constexpr size_t TABLE = 0x100;
+	/**
+	 * @brief Наибольший размер области записей кадра в байтах
+	 *
+	 * @details Повторение над областью отводит запись на каждый проход, а число
+	 *          проходов доходит до длины текста, отчего область ограничивается
+	 *          размером. Исчерпание её отказом сопоставления не является:
+	 *          сопоставитель отвечает «не берусь», и выражение доигрывает
+	 *          исполнение программы - ровно так же, как выражение, кодогенерации
+	 *          не получившее вовсе.
+	 *
+	 */
+	constexpr size_t ARENA = 0x100000;
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы проверки возможности
+	 *
+	 * @details Место это порождённым кодом НЕ зовётся: проверка возможности
+	 *          совпадения выполняется стороною C++ до передачи управления
+	 *          сопоставителю - см. «Codegen::exec». Оставлено оно намеренно,
+	 *          заделом под перенос проверки в порождённый код, и заполняется
+	 *          наравне с прочими, дабы обстановка порождения и восстановления
+	 *          не расходились. Номера мест вписаны в самый порождённый код
+	 *          смещениями, отчего изъятие места обесценило бы всякую запись,
+	 *          прежде сохранённую.
+	 *
+	 */
+	constexpr size_t SLOT_FEASIBLE = 2;
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы проверки привязки
+	 *
+	 */
+	constexpr size_t SLOT_ASSERTING = 3;
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора позиций
+	 *
+	 */
+	constexpr size_t SLOT_SEEKING = 1;
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы прохода ряда
+	 *
+	 */
+	constexpr size_t SLOT_SCANNING = 4;
+	/**
+	 * @brief Номер места обстановки, несущего адрес предварительного отбора позиций
+	 *
+	 */
+	constexpr size_t SLOT_PREFILTER = 0;
+	/**
+	 * @brief Наибольшее количество символов, заменяемых продвижением позиции
+	 *
+	 * @details Продвижение позиции размещается одной командой сложения с числом,
+	 *          а число это несёт двенадцать разрядов.
+	 *
+	 */
+	constexpr size_t MAX_ELISION = 0xFFF;
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора по набору
+	 *
+	 */
+	constexpr size_t SLOT_SCATTERING = 5;
 
 	/**
-	 * @brief Признак просеивания широкого набора окном с отбором подпрограммой
+	 * @brief Если процессор принадлежит к E2K
 	 *
 	 * @details У процессора e2k порождённый ход по тексту на порядок дороже
 	 *          хода, собранного LCC: команды порождения идут по одной на широкую
@@ -251,28 +238,44 @@ namespace {
 	 *
 	 */
 	#if defined(__e2k__)
+		// Заводим признак широкого поиска пары байтов
 		constexpr bool WIDE_SEEKING = true;
+	/**
+	 * Если процессор принадлежит например к ARM64 или x86_64
+	 */
 	#else
+		// Снимаем признак широкого поиска пары байтов
 		constexpr bool WIDE_SEEKING = false;
 	#endif
 
 	/**
-	 * @brief Размер окна просеивания широкого набора на месте
+	 * @brief Количество границ совпадения, отводимых на кадре вызова
 	 *
-	 * @details Окно короче отдаёт подпрограмме текст, где кандидат - почти
-	 *          всякая позиция, и вызов платится на всякую попытку: без окна
-	 *          вовсе «(?<=@)\w+» терял сорок два процента, с окном в одну
-	 *          позицию «(\w+)@(\w+)\.(\w+)» терял двадцать. Окно длиннее
-	 *          проходит порождённым ходом участок, какой подпрограмма прошла бы
-	 *          вдесятеро дешевле: «[0-9]{3,5}» по длинному тексту набора
-	 *          выигрывал с окном в одну позицию 164 процента, а в восемь - 112.
-	 *          Окно в четыре позиции отнимало у «(?:[a-z]+/)+v1» пять процентов
-	 *          во всяком круге, окно в восемь не отняло ни у одного сценария
-	 *          набора больше 0.7 процента.
+	 * @details Значение покрывает совпадение целиком и пятнадцать захватывающих
+	 *          групп, чего достаёт подавляющему большинству выражений, а занимает
+	 *          при этом двести пятьдесят шесть байтов кадра.
 	 *
 	 */
-	constexpr size_t WIDE_SIFTING = 8;
-
+	constexpr size_t BOUNDS = 32;
+	/**
+	 * @brief Наибольший размер области записей кадра, кадром вызова отводимой
+	 *
+	 * @details Величина взята замером набора: выражению без повторений над областью
+	 *          записей достаётся запись одна, и просит она от тридцати двух до ста
+	 *          двенадцати байт. Область свыше того берётся переменной потока.
+	 *
+	 */
+	constexpr size_t CELLS = 128;
+	/**
+	 * @brief Наименьшая длина обязательного литерала, отбор по какому выгоднее просеивания
+	 *
+	 * @details Величина взята замером, а не догадкой: лесенка по длине литерала
+	 *          даёт обрыв между одним байтом и двумя, а стенд отодвигает порог
+	 *          к трём - литералы двухбайтовые слишком часты в тексте настоящем.
+	 *          Подробности - при выводе признака просеивания.
+	 *
+	 */
+	constexpr size_t SELECTIVE = 3;
 	/**
 	 * @brief Наибольшее удаление литерала, при каком отбор по нему порождается
 	 *
@@ -304,46 +307,60 @@ namespace {
 	 */
 	constexpr size_t NARROWING = 16;
 	/**
-	 * @brief Наименьшая длина обязательного литерала, отбор по какому выгоднее просеивания
-	 *
-	 * @details Величина взята замером, а не догадкой: лесенка по длине литерала
-	 *          даёт обрыв между одним байтом и двумя, а стенд отодвигает порог
-	 *          к трём - литералы двухбайтовые слишком часты в тексте настоящем.
-	 *          Подробности - при выводе признака просеивания.
+	 * @brief Количество мест обстановки, отведённых прежде значений хранилища
 	 *
 	 */
-	constexpr size_t SELECTIVE = 3;
-
+	constexpr size_t SLOT_TABLES = 7;
+	/**
+	 * @brief Размер окна просеивания широкого набора на месте
+	 *
+	 * @details Окно короче отдаёт подпрограмме текст, где кандидат - почти
+	 *          всякая позиция, и вызов платится на всякую попытку: без окна
+	 *          вовсе «(?<=@)\w+» терял сорок два процента, с окном в одну
+	 *          позицию «(\w+)@(\w+)\.(\w+)» терял двадцать. Окно длиннее
+	 *          проходит порождённым ходом участок, какой подпрограмма прошла бы
+	 *          вдесятеро дешевле: «[0-9]{3,5}» по длинному тексту набора
+	 *          выигрывал с окном в одну позицию 164 процента, а в восемь - 112.
+	 *          Окно в четыре позиции отнимало у «(?:[a-z]+/)+v1» пять процентов
+	 *          во всяком круге, окно в восемь не отняло ни у одного сценария
+	 *          набора больше 0.7 процента.
+	 *
+	 */
+	constexpr size_t WIDE_SIFTING = 8;
 	/**
 	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора по литералу
 	 *
 	 */
 	constexpr size_t SLOT_BOUNDING = 6;
+	/**
+	 * @brief Наибольшее количество звеньев цепочки, проходом развёрнутым порождаемое
+	 *
+	 * @details Цепочка ограниченного повторения проходится кодом развёрнутым - по
+	 *          семи командам на копию, - а не циклом: цикл требовал бы регистра
+	 *          под предел прохода, тогда как регистр размера текста приходит
+	 *          доводом и сохраняется при заходах в подпрограммы, и опускать его
+	 *          ради предела значило бы рисковать там, где выигрыш мал. Цепочка
+	 *          длиннее порога порождается прежним путём, развилкой на звено:
+	 *          вердикт от того не меняется, меняется одно лишь время.
+	 *
+	 */
+	constexpr uint16_t CHAIN_UNROLL = 16;
 
 	/**
-	 * @brief Количество мест обстановки, отведённых прежде значений хранилища
+	 * @brief Разбор цепочки ветвей выбора одной из них
 	 *
 	 */
-	constexpr size_t SLOT_TABLES = 7;
-
-	/**
-	 * @brief Количество границ совпадения, отводимых на кадре вызова
-	 *
-	 * @details Значение покрывает совпадение целиком и пятнадцать захватывающих
-	 *          групп, чего достаёт подавляющему большинству выражений, а занимает
-	 *          при этом двести пятьдесят шесть байтов кадра.
-	 *
-	 */
-	constexpr size_t BOUNDS = 32;
-	/**
-	 * @brief Наибольший размер области записей кадра, кадром вызова отводимой
-	 *
-	 * @details Величина взята замером набора: выражению без повторений над областью
-	 *          записей достаётся запись одна, и просит она от тридцати двух до ста
-	 *          двенадцати байт. Область свыше того берётся переменной потока.
-	 *
-	 */
-	constexpr size_t CELLS = 128;
+	typedef struct Chain {
+		// Адрес инструкции, следующей за выбором одной из ветвей
+		regex::address_t join;
+		// Набор ветвей выбора, задаваемых началом и концом области инструкций
+		vector <pair <regex::address_t, regex::address_t>> branches;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Chain() noexcept : join(regex::INVALID_ADDRESS) {}
+	} chain_t;
 
 	/**
 	 * @brief Функция поиска ближайшей позиции возможного начала совпадения
@@ -359,9 +376,29 @@ namespace {
 	 * @return          позиция возможного начала совпадения
 	 *
 	 */
-	size_t seeking(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+	static size_t seeking(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Выводим позицию возможного начала совпадения
-		return reinterpret_cast <const regex::prefilter_t *> (prefilter)->search(std::string_view(text, size), pos);
+		return reinterpret_cast <const regex::prefilter_t *> (prefilter)->search(string_view(text, size), pos);
+	}
+	/**
+	 * @brief Функция отбора позиции начала попытки по набору начальных байтов
+	 *
+	 * @details Подача отвечает подаче прохода ряда: подпрограмма получает текст,
+	 *          позицию и адрес значения обстановки. Значение несёт количество
+	 *          искомых байтов первым байтом своим, а сами байты - следом за ним.
+	 *
+	 * @param text текст сопоставления
+	 * @param size размер текста сопоставления
+	 * @param pos  позиция начала отбора
+	 * @param set  адрес набора допустимых начальных байтов
+	 * @return     позиция отобранного байта либо размер текста
+	 *
+	 */
+	static size_t scattering(const char * text, const size_t size, const size_t pos, const void * set) noexcept {
+		// Получаем адрес набора допустимых начальных байтов
+		const uint8_t * bytes = reinterpret_cast <const uint8_t *> (set);
+		// Выводим позицию отобранного байта либо размер текста
+		return regex::scattered(string_view(text, size), (bytes + 1), static_cast <size_t> (bytes[0]), pos);
 	}
 	/**
 	 * @brief Функция прохода ряда повторения поиском предела его
@@ -380,28 +417,7 @@ namespace {
 	 * @return      позиция завершения прохода ряда
 	 *
 	 */
-	/**
-	 * @brief Функция отбора позиции начала попытки по набору начальных байтов
-	 *
-	 * @details Подача отвечает подаче прохода ряда: подпрограмма получает текст,
-	 *          позицию и адрес значения обстановки. Значение несёт количество
-	 *          искомых байтов первым байтом своим, а сами байты - следом за ним.
-	 *
-	 * @param text текст сопоставления
-	 * @param size размер текста сопоставления
-	 * @param pos  позиция начала отбора
-	 * @param set  адрес набора допустимых начальных байтов
-	 * @return     позиция отобранного байта либо размер текста
-	 *
-	 */
-	size_t scattering(const char * text, const size_t size, const size_t pos, const void * set) noexcept {
-		// Получаем адрес набора допустимых начальных байтов
-		const uint8_t * bytes = reinterpret_cast <const uint8_t *> (set);
-		// Выводим позицию отобранного байта либо размер текста
-		return regex::scattered(std::string_view(text, size), (bytes + 1), static_cast <size_t> (bytes[0]), pos);
-	}
-
-	size_t scanning(const char * text, const size_t size, const size_t pos, const void * limit) noexcept {
+	static size_t scanning(const char * text, const size_t size, const size_t pos, const void * limit) noexcept {
 		// Получаем значение байта, ряд ограничивающее
 		const uint8_t letter = (* reinterpret_cast <const uint8_t *> (limit));
 		/**
@@ -411,7 +427,7 @@ namespace {
 			// Выводим позицию завершения прохода ряда
 			return size;
 		// Выполняем поиск значения байта, ряд ограничивающего
-		const void * found = regex::findByte((text + pos), static_cast <int> (letter), (size - pos));
+		const void * found = regex::findByte((text + pos), static_cast <int32_t> (letter), (size - pos));
 		// Выводим позицию завершения прохода ряда
 		return ((found != nullptr) ? static_cast <size_t> (reinterpret_cast <const char *> (found) - text) : size);
 	}
@@ -425,9 +441,9 @@ namespace {
 	 * @return          результат проверки возможности совпадения
 	 *
 	 */
-	size_t feasible(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+	static size_t feasible(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Выводим результат проверки возможности совпадения
-		return (reinterpret_cast <const regex::prefilter_t *> (prefilter)->possible(std::string_view(text, size), pos) ? 1 : 0);
+		return (reinterpret_cast <const regex::prefilter_t *> (prefilter)->possible(string_view(text, size), pos) ? 1 : 0);
 	}
 	/**
 	 * @brief Функция отбора позиции начала попытки по обязательному литералу
@@ -439,9 +455,9 @@ namespace {
 	 * @return          позиция возможного начала совпадения либо размер текста
 	 *
 	 */
-	size_t bounding(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+	static size_t bounding(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Выводим позицию возможного начала совпадения
-		return reinterpret_cast <const regex::prefilter_t *> (prefilter)->bounded(std::string_view(text, size), pos);
+		return reinterpret_cast <const regex::prefilter_t *> (prefilter)->bounded(string_view(text, size), pos);
 	}
 	/**
 	 * @brief Функция проверки привязки к позиции в тексте
@@ -459,12 +475,14 @@ namespace {
 	 * @return      результат проверки привязки к позиции в тексте
 	 *
 	 */
-	size_t asserting(const char * text, const size_t size, const size_t pos, const void * guard) noexcept {
+	static size_t asserting(const char * text, const size_t size, const size_t pos, const void * guard) noexcept {
 		// Получаем примету проверяемой привязки к позиции в тексте
 		const uint64_t packed = (* reinterpret_cast <const uint64_t *> (guard));
 		// Выводим результат проверки привязки к позиции в тексте
-		return (regex::assertion(std::string_view(text, size), 0,
-		 static_cast <regex::anchor_t> (packed & 0xFF), static_cast <uint32_t> (packed >> 8), pos) ? 1 : 0);
+		return (
+			regex::assertion(string_view(text, size), 0,
+			static_cast <regex::anchor_t> (packed & 0xFF), static_cast <uint32_t> (packed >> 8), pos) ? 1 : 0
+		);
 	}
 	/**
 	 * @brief Функция порождения вызова подпрограммы обстановки исполнения
@@ -481,8 +499,10 @@ namespace {
 	 * @param argument номер места обстановки, передаваемого подпрограмме доводом
 	 *
 	 */
-	void invoke(regex::Emitter & emitter, const size_t slot, const size_t spill, const regex::Emitter::reg_t pos, const size_t argument) noexcept {
-		// Подписываемся на перечисление регистров соглашения о вызове
+	static void invoke(regex::Emitter & emitter, const size_t slot, const size_t spill, const regex::Emitter::reg_t pos, const size_t argument) noexcept {
+		/**
+		 * Подписываемся на перечисление регистров соглашения о вызове
+		 */
 		using reg_t = regex::Emitter::reg_t;
 		/**
 		 * @brief Набор регистров, вызовом подпрограммы затираемых
@@ -493,6 +513,7 @@ namespace {
 		 *
 		 */
 		static const reg_t SPILLED[] = {
+			// Заводим набор регистров обстановки исполнения
 			reg_t::TEXT, reg_t::SIZE, reg_t::BOUNDS, reg_t::CONTEXT, reg_t::LINK,
 			reg_t::KEEPER, reg_t::CURSOR, reg_t::RECORD, reg_t::SUMMIT
 		};
@@ -545,23 +566,6 @@ namespace {
 				emitter.fetch(SPILLED[i], reg_t::STACK, static_cast <uint32_t> (spill + i));
 		}
 	}
-
-	/**
-	 * @brief Разбор цепочки ветвей выбора одной из них
-	 *
-	 */
-	typedef struct Chain {
-		// Набор ветвей выбора, задаваемых началом и концом области инструкций
-		std::vector <std::pair <regex::address_t, regex::address_t>> branches;
-		// Адрес инструкции, следующей за выбором одной из ветвей
-		regex::address_t join;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Chain() noexcept : join(regex::INVALID_ADDRESS) {}
-	} chain_t;
-
 	/**
 	 * @brief Функция разбора цепочки ветвей выбора одной из них
 	 *
@@ -577,7 +581,7 @@ namespace {
 	 * @return        результат разбора цепочки ветвей выбора
 	 *
 	 */
-	bool chaining(const regex::program_t & program, const regex::address_t pc, chain_t & result) noexcept {
+	static bool chaining(const regex::program_t & program, const regex::address_t pc, chain_t & result) noexcept {
 		// Получаем адрес разбираемого перехода по двум ветвям
 		regex::address_t current = pc;
 		/**
@@ -608,8 +612,7 @@ namespace {
 			 *          и остатком цепочки.
 			 *
 			 */
-			if((instruction.split.first <= current) || (rest <= instruction.split.first) ||
-			 (static_cast <size_t> (rest) > program.instructions.size()))
+			if((instruction.split.first <= current) || (rest <= instruction.split.first) || (static_cast <size_t> (rest) > program.instructions.size()))
 				// Выводим отказ разбора цепочки ветвей выбора
 				return false;
 			// Получаем конец области очередной ветви выбора
@@ -722,7 +725,6 @@ namespace {
 		// Выводим результат разбора цепочки ветвей выбора
 		return true;
 	}
-
 	/**
 	 * @brief Функция разбора повторения над областью инструкций
 	 *
@@ -742,8 +744,7 @@ namespace {
 	 * @return        результат разбора повторения над областью
 	 *
 	 */
-	bool looping(const regex::program_t & program, const regex::address_t pc,
-	 regex::address_t & body, regex::address_t & ending, regex::address_t & exit, bool & greedy) noexcept {
+	static bool looping(const regex::program_t & program, const regex::address_t pc, regex::address_t & body, regex::address_t & ending, regex::address_t & exit, bool & greedy) noexcept {
 		// Получаем разбираемый переход по двум ветвям
 		const regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (pc));
 		/**
@@ -799,7 +800,6 @@ namespace {
 		// Выводим неприменимость разбора повторения над областью
 		return false;
 	}
-
 	/**
 	 * @brief Функция проверки отсутствия точек возврата в области инструкций
 	 *
@@ -827,7 +827,7 @@ namespace {
 	 * @return        результат проверки отсутствия точек возврата
 	 *
 	 */
-	bool plainly(const regex::program_t & program, const regex::address_t from, const regex::address_t to) noexcept {
+	static bool plainly(const regex::program_t & program, const regex::address_t from, const regex::address_t to) noexcept {
 		/**
 		 * Выполняем обход инструкций проверяемой области
 		 */
@@ -871,7 +871,7 @@ namespace {
 	 * @return        результат проверки прямоты всех ветвей цепочки
 	 *
 	 */
-	bool straight(const regex::program_t & program, const chain_t & chain) noexcept {
+	static bool straight(const regex::program_t & program, const chain_t & chain) noexcept {
 		/**
 		 * Выполняем обход областей ветвей выбора одной из них
 		 */
@@ -909,7 +909,7 @@ namespace {
 	 * @return         результат разбора цепочки по первому байту
 	 *
 	 */
-	bool deciding(const regex::program_t & program, const chain_t & chain, std::vector <uint8_t> & result) noexcept {
+	static bool deciding(const regex::program_t & program, const chain_t & chain, vector <uint8_t> & result) noexcept {
 		// Выполняем сброс набора первых байтов ветвей выбора
 		result.clear();
 		/**
@@ -979,7 +979,6 @@ namespace {
 		// Выводим применимость разбора цепочки по первому байту
 		return true;
 	}
-
 	/**
 	 * @brief Функция сбора ячеек захвата, записываемых внутри цепочки ветвей
 	 *
@@ -997,7 +996,7 @@ namespace {
 	 * @param result  набор собираемых ячеек захвата
 	 *
 	 */
-	void journal(const regex::program_t & program, const regex::address_t from, const regex::address_t to, std::vector <uint32_t> & result) noexcept {
+	static void journal(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <uint32_t> & result) noexcept {
 		// Выполняем очистку набора собираемых ячеек захвата
 		result.clear();
 		/**
@@ -1015,7 +1014,7 @@ namespace {
 			/**
 			 * Если ячейка захвата в наборе уже присутствует
 			 */
-			if(std::find(result.begin(), result.end(), instruction.save.slot) != result.end())
+			if(find(result.begin(), result.end(), instruction.save.slot) != result.end())
 				// Переходим к следующей инструкции области
 				continue;
 			// Выполняем добавление ячейки захвата в набор
@@ -1033,7 +1032,6 @@ namespace {
 		// Выводим результат проверки принадлежности инструкции
 		return ((type == regex::opcode_t::CHAR) || (type == regex::opcode_t::CLASS) || (type == regex::opcode_t::ANY));
 	}
-
 	/**
 	 * @brief Функция проверки поглощения текста телом вызываемого подвыражения
 	 *
@@ -1059,8 +1057,7 @@ namespace {
 	 * @return        результат проверки поглощения текста телом
 	 *
 	 */
-	bool consuming(const regex::program_t & program, const regex::address_t address,
-	 std::vector <regex::address_t> & visited, const size_t depth = 0) noexcept {
+	static bool consuming(const regex::program_t & program, const regex::address_t address, vector <regex::address_t> & visited, const size_t depth = 0) noexcept {
 		/**
 		 * Если глубина обхода путей тела исчерпана
 		 *
@@ -1074,14 +1071,13 @@ namespace {
 		/**
 		 * Если адрес инструкции за пределы программы выходит
 		 */
-		if((address == regex::INVALID_ADDRESS) ||
-		 (static_cast <size_t> (address) >= program.instructions.size()))
+		if((address == regex::INVALID_ADDRESS) || (static_cast <size_t> (address) >= program.instructions.size()))
 			// Выводим отсутствие поглощения текста телом
 			return false;
 		/**
 		 * Если адрес инструкции обходом уже пройден
 		 */
-		if(std::find(visited.begin(), visited.end(), address) != visited.end())
+		if(find(visited.begin(), visited.end(), address) != visited.end())
 			// Выводим отсутствие поглощения текста телом
 			return false;
 		// Выполняем запоминание пройденного адреса инструкции
@@ -1106,12 +1102,11 @@ namespace {
 			 */
 			case static_cast <uint8_t> (regex::opcode_t::SPLIT): {
 				// Набор адресов, пройденных ветвью первой
-				std::vector <regex::address_t> first = visited;
+				vector <regex::address_t> first = visited;
 				// Набор адресов, пройденных ветвью второй
-				std::vector <regex::address_t> second = visited;
+				vector <regex::address_t> second = visited;
 				// Выводим поглощение текста обеими ветвями перехода
-				return (consuming(program, instruction.split.first, first, (depth + 1)) &&
-				 consuming(program, instruction.split.second, second, (depth + 1)));
+				return (consuming(program, instruction.split.first, first, (depth + 1)) && consuming(program, instruction.split.second, second, (depth + 1)));
 			}
 			/**
 			 * Если инструкция выполняет безусловный переход
@@ -1139,7 +1134,6 @@ namespace {
 		// Выводим отсутствие поглощения текста телом
 		return false;
 	}
-
 	/**
 	 * @brief Функция определения постоянной длины тела повторения
 	 *
@@ -1163,8 +1157,7 @@ namespace {
 	 * @return        результат определения постоянной длины тела
 	 *
 	 */
-	bool stretching(const regex::program_t & program, const regex::address_t from,
-	 const regex::address_t to, size_t & length) noexcept {
+	static bool stretching(const regex::program_t & program, const regex::address_t from, const regex::address_t to, size_t & length) noexcept {
 		// Выполняем сброс длины тела повторения в байтах
 		length = 0;
 		// Получаем адрес разбираемой инструкции программы
@@ -1233,8 +1226,7 @@ namespace {
 				/**
 				 * Если длина хотя бы одной из ветвей перехода не постоянна
 				 */
-				if(!stretching(program, instruction.split.first, to, first) ||
-				 !stretching(program, instruction.split.second, to, second))
+				if(!stretching(program, instruction.split.first, to, first) || !stretching(program, instruction.split.second, to, second))
 					// Выводим неприменимость разбора постоянной длины тела
 					return false;
 				/**
@@ -1254,7 +1246,6 @@ namespace {
 		// Выводим результат разбора постоянной длины тела повторения
 		return (length > 0);
 	}
-
 	/**
 	 * @brief Функция сбора инструкций, тело повторения возглавляющих
 	 *
@@ -1277,12 +1268,11 @@ namespace {
 	 * @return        результат сбора инструкций, тело возглавляющих
 	 *
 	 */
-	bool heading(const regex::program_t & program, const regex::address_t from,
-	 const regex::address_t to, std::vector <regex::address_t> & result) noexcept {
+	static bool heading(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <regex::address_t> & result) noexcept {
 		// Создаём набор адресов инструкций, обход какие ещё не получили
-		std::vector <regex::address_t> pending(1, from);
+		vector <regex::address_t> pending(1, from);
 		// Создаём набор адресов инструкций, обход уже получивших
-		std::vector <regex::address_t> passed;
+		vector <regex::address_t> passed;
 		/**
 		 * Выполняем обход инструкций, телу начало дающих
 		 */
@@ -1300,7 +1290,7 @@ namespace {
 			/**
 			 * Если инструкция обход уже получила
 			 */
-			if(std::find(passed.begin(), passed.end(), pc) != passed.end())
+			if(find(passed.begin(), passed.end(), pc) != passed.end())
 				// Переходим к инструкции следующей
 				continue;
 			// Выполняем запоминание адреса инструкции, обход получившей
@@ -1352,7 +1342,6 @@ namespace {
 		// Выводим результат сбора инструкций, тело возглавляющих
 		return !result.empty();
 	}
-
 	/**
 	 * @brief Функция сбора инструкций, области начало дающих, с заходом в вызов
 	 *
@@ -1376,13 +1365,11 @@ namespace {
 	 * @return        результат сбора инструкций, области начало дающих
 	 *
 	 */
-	bool pioneer(const regex::program_t & program, const regex::address_t from,
-	 const regex::address_t to, std::vector <regex::address_t> & result,
-	 const size_t depth = 0) noexcept {
+	static bool pioneer(const regex::program_t & program, const regex::address_t from, const regex::address_t to, vector <regex::address_t> & result, const size_t depth = 0) noexcept {
 		// Создаём набор адресов инструкций, обход какие ещё не получили
-		std::vector <regex::address_t> pending(1, from);
+		vector <regex::address_t> pending(1, from);
 		// Создаём набор адресов инструкций, обход уже получивших
-		std::vector <regex::address_t> passed;
+		vector <regex::address_t> passed;
 		/**
 		 * Выполняем обход инструкций, области начало дающих
 		 */
@@ -1400,7 +1387,7 @@ namespace {
 			/**
 			 * Если инструкция обход уже получила
 			 */
-			if(std::find(passed.begin(), passed.end(), pc) != passed.end())
+			if(find(passed.begin(), passed.end(), pc) != passed.end())
 				// Переходим к инструкции следующей
 				continue;
 			// Выполняем запоминание адреса инструкции, обход получившей
@@ -1462,8 +1449,7 @@ namespace {
 					/**
 					 * Если адрес тела вызываемого за пределы программы выходит
 					 */
-					if((body == regex::INVALID_ADDRESS) ||
-					 (static_cast <size_t> (body) >= program.instructions.size()))
+					if((body == regex::INVALID_ADDRESS) || (static_cast <size_t> (body) >= program.instructions.size()))
 						// Выводим неприменимость сбора инструкций начала
 						return false;
 					/**
@@ -1482,7 +1468,6 @@ namespace {
 		// Выводим результат сбора инструкций, области начало дающих
 		return !result.empty();
 	}
-
 	/**
 	 * @brief Функция проверки принадлежности значения байта сопоставляемым символам
 	 *
@@ -1498,7 +1483,7 @@ namespace {
 	 * @return            результат проверки принадлежности значения байта
 	 *
 	 */
-	bool belonging(const regex::instruction_t & instruction, const regex::program_t & program, const uint32_t letter) noexcept {
+	static bool belonging(const regex::instruction_t & instruction, const regex::program_t & program, const uint32_t letter) noexcept {
 		/**
 		 * Определяем код операции сопоставляющей инструкции
 		 */
@@ -1532,7 +1517,6 @@ namespace {
 		// Выводим отсутствие принадлежности значения байта
 		return false;
 	}
-
 	/**
 	 * @brief Функция разбора цепочки ветвей с ведущей ветвью одиночного символа
 	 *
@@ -1555,7 +1539,7 @@ namespace {
 	 * @return        результат разбора цепочки с ведущей ветвью одиночного символа
 	 *
 	 */
-	bool foremost(const regex::program_t & program, const chain_t & chain, regex::address_t & head) noexcept {
+	static bool foremost(const regex::program_t & program, const chain_t & chain, regex::address_t & head) noexcept {
 		/**
 		 * Если ветвей выбора меньше двух
 		 */
@@ -1579,7 +1563,7 @@ namespace {
 			// Выводим неприменимость разбора ведущей ветви
 			return false;
 		// Создаём набор инструкций, ветвям прочим начало дающих
-		std::vector <regex::address_t> leaders;
+		vector <regex::address_t> leaders;
 		/**
 		 * Выполняем обход ветвей выбора, ведущей не являющихся
 		 */
@@ -1622,7 +1606,6 @@ namespace {
 		// Выводим применимость разбора ведущей ветви
 		return true;
 	}
-
 	/**
 	 * @brief Функция разбора повторения над выбором с ведущей ветвью одиночного символа
 	 *
@@ -1639,9 +1622,7 @@ namespace {
 	 * @return        результат разбора повторения с ведущей ветвью
 	 *
 	 */
-	bool hastening(const regex::program_t & program, const regex::address_t opening,
-	 const regex::address_t closing, const bool eager, const std::vector <uint32_t> & written,
-	 regex::address_t & head) noexcept {
+	static bool hastening(const regex::program_t & program, const regex::address_t opening, const regex::address_t closing, const bool eager, const vector <uint32_t> & written, regex::address_t & head) noexcept {
 		/**
 		 * Если повторение ленивое либо границы групп записывающее
 		 *
@@ -1671,21 +1652,6 @@ namespace {
 		// Выводим результат разбора цепочки с ведущей ветвью одиночного символа
 		return foremost(program, chain, head);
 	}
-
-	/**
-	 * @brief Наибольшее количество звеньев цепочки, проходом развёрнутым порождаемое
-	 *
-	 * @details Цепочка ограниченного повторения проходится кодом развёрнутым - по
-	 *          семи командам на копию, - а не циклом: цикл требовал бы регистра
-	 *          под предел прохода, тогда как регистр размера текста приходит
-	 *          доводом и сохраняется при заходах в подпрограммы, и опускать его
-	 *          ради предела значило бы рисковать там, где выигрыш мал. Цепочка
-	 *          длиннее порога порождается прежним путём, развилкой на звено:
-	 *          вердикт от того не меняется, меняется одно лишь время.
-	 *
-	 */
-	constexpr uint16_t CHAIN_UNROLL = 16;
-
 	/**
 	 * @brief Функция получения адреса тела ряда повторения одиночного символа
 	 *
@@ -1706,7 +1672,7 @@ namespace {
 	 * @return            адрес тела ряда либо недействительный адрес
 	 *
 	 */
-	regex::address_t repetend(const regex::program_t & program, const regex::address_t pc, const regex::instruction_t & instruction) noexcept {
+	static regex::address_t repetend(const regex::program_t & program, const regex::address_t pc, const regex::instruction_t & instruction) noexcept {
 		/**
 		 * Если переход возглавляет ряд безграничный
 		 */
@@ -1721,14 +1687,13 @@ namespace {
 		 *
 		 */
 		if((instruction.split.most == 0) || (instruction.split.most > CHAIN_UNROLL) ||
-		 (static_cast <size_t> (instruction.split.first) != (static_cast <size_t> (pc) + 1)) ||
-		 ((static_cast <size_t> (pc) + 1) >= program.instructions.size()))
+		   (static_cast <size_t> (instruction.split.first) != (static_cast <size_t> (pc) + 1)) ||
+		   ((static_cast <size_t> (pc) + 1) >= program.instructions.size()))
 			// Выводим недействительный адрес
 			return regex::INVALID_ADDRESS;
 		// Выводим адрес тела цепочки, за переходом следующего
 		return static_cast <regex::address_t> (pc + 1);
 	}
-
 	/**
 	 * @brief Функция проверки прохода ряда повторения без отдачи
 	 *
@@ -1758,7 +1723,7 @@ namespace {
 	 * @return            результат проверки прохода ряда без отдачи
 	 *
 	 */
-	bool sealing(const regex::program_t & program, const regex::instruction_t & instruction, const regex::address_t body) noexcept {
+	static bool sealing(const regex::program_t & program, const regex::instruction_t & instruction, const regex::address_t body) noexcept {
 		// Наибольшее количество переходов, разбором проходимых
 		constexpr size_t HOPS = 16;
 		// Получаем адрес продолжения сопоставления вслед за рядом
@@ -1817,7 +1782,6 @@ namespace {
 		// Выводим неприменимость прохода ряда без отдачи
 		return false;
 	}
-
 	/**
 	 * @brief Функция разбора тела повторения, отдаче обратным проходом поддающегося
 	 *
@@ -1843,9 +1807,7 @@ namespace {
 	 * @return        результат разбора тела, отдаче обратным проходом поддающегося
 	 *
 	 */
-	bool retracing(const regex::program_t & program, const regex::address_t opening,
-	 const regex::address_t closing, const bool eager, const std::vector <uint32_t> & written,
-	 regex::address_t & row, size_t & tail) noexcept {
+	static bool retracing(const regex::program_t & program, const regex::address_t opening, const regex::address_t closing, const bool eager, const vector <uint32_t> & written, regex::address_t & row, size_t & tail) noexcept {
 		/**
 		 * Если повторение ленивое либо границы групп записывающее
 		 */
@@ -1972,7 +1934,6 @@ namespace {
 		// Выводим применимость отдачи обратным проходом
 		return true;
 	}
-
 	/**
 	 * @brief Функция проверки сопоставления инструкцией одних лишь символов ASCII
 	 *
@@ -1991,7 +1952,7 @@ namespace {
 	 * @return            результат проверки сопоставления одних лишь символов ASCII
 	 *
 	 */
-	bool restricted(const regex::instruction_t & instruction, const regex::program_t & program) noexcept {
+	static bool restricted(const regex::instruction_t & instruction, const regex::program_t & program) noexcept {
 		// Получаем признак сопоставления символов без учёта регистра
 		const bool caseless = regex::hasFlag(instruction.flags, regex::flag_t::CASELESS);
 		/**
@@ -2010,7 +1971,7 @@ namespace {
 		 */
 		auto solitary = [](const uint32_t code) noexcept -> bool {
 			// Создаём набор символов, приводимых к одному значению
-			std::vector <uint32_t> members;
+			vector <uint32_t> members;
 			/**
 			 * Если символ набора приведения регистра не образует
 			 */
@@ -2142,7 +2103,7 @@ namespace {
 	 * @return        результат проверки применимости разбора цепочки
 	 *
 	 */
-	bool dispatching(const regex::program_t & program, const chain_t & chain, std::vector <uint8_t> & result) noexcept {
+	static bool dispatching(const regex::program_t & program, const chain_t & chain, vector <uint8_t> & result) noexcept {
 		// Выполняем размещение таблицы соответствия байта номеру ветви
 		result.assign(TABLE, 0);
 		/**
@@ -2263,25 +2224,25 @@ namespace {
 	 * @return        результат проверки применимости кодогенерации
 	 *
 	 */
-	bool walk(const regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds, size_t & bounded) noexcept {
+	static bool walk(const regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds, size_t & bounded) noexcept {
 		// Выполняем сброс количества рядов повторения
 		runs = 0;
-		// Выполняем сброс количества цепочек ограниченного повторения
-		bounded = 0;
-		// Выполняем сброс количества цепочек ветвей выбора
-		chains = 0;
-		// Выполняем сброс количества мест запоминания границ групп
-		recorded = 0;
-		// Выполняем сброс количества атомарных групп
-		atomics = 0;
 		// Выполняем сброс количества проверок окружения
 		looks = 0;
+		// Выполняем сброс количества мест рекурсивного вызова подвыражения
+		calls = 0;
+		// Выполняем сброс количества цепочек ветвей выбора
+		chains = 0;
+		// Выполняем сброс количества атомарных групп
+		atomics = 0;
+		// Выполняем сброс количества цепочек ограниченного повторения
+		bounded = 0;
+		// Выполняем сброс количества мест запоминания границ групп
+		recorded = 0;
 		// Выполняем сброс признака размещения ряда повторения внутри проверки
 		entangled = false;
 		// Выполняем сброс признака наличия ссылок на захваченный текст
 		referring = false;
-		// Выполняем сброс количества мест рекурсивного вызова подвыражения
-		calls = 0;
 		/**
 		 * @brief Набор адресов тел, рекурсивным вызовом вызываемых
 		 *
@@ -2290,7 +2251,7 @@ namespace {
 		 *          требует одних и тех же на всяком уровне вызова.
 		 *
 		 */
-		std::vector <regex::address_t> bodies;
+		vector <regex::address_t> bodies;
 		/**
 		 * @brief Наибольшие количества мест, уровнями записей проходов требуемые
 		 *
@@ -2328,19 +2289,6 @@ namespace {
 			return false;
 		// Создаём набор посещённых адресов инструкций программы
 		vector <bool> visited(program.instructions.size(), false);
-		// Глубина вложения атомарных групп в обходимом месте программы
-		size_t nesting = 0;
-		// Глубина вложения проверок окружения в обходимом месте программы
-		size_t watching = 0;
-		/**
-		 * Глубина вложения повторений, запись прохода ведущих
-		 *
-		 * @details Ячейка состояния и проверка продвижения по тексту берут
-		 *          положение начала прохода из записи его, отчего вне записи
-		 *          применимы не бывают.
-		 *
-		 */
-		size_t pacing = 0;
 		/**
 		 * Количество рядов повторения одиночного символа уровня записи
 		 *
@@ -2353,6 +2301,19 @@ namespace {
 		 *
 		 */
 		size_t rows = 0;
+		/**
+		 * Глубина вложения повторений, запись прохода ведущих
+		 *
+		 * @details Ячейка состояния и проверка продвижения по тексту берут
+		 *          положение начала прохода из записи его, отчего вне записи
+		 *          применимы не бывают.
+		 *
+		 */
+		size_t pacing = 0;
+		// Глубина вложения атомарных групп в обходимом месте программы
+		size_t nesting = 0;
+		// Глубина вложения проверок окружения в обходимом месте программы
+		size_t watching = 0;
 		/**
 		 * Признак повторения с записью прохода внутри атомарной группы уровня нулевого
 		 *
@@ -2375,12 +2336,12 @@ namespace {
 		 *          применимости отвечала бы за одно устройство программы,
 		 *          а порождение выполнялось бы для другого.
 		 *
-		 * @param from   начало обходимой области инструкций
-		 * @param to     конец обходимой области инструкций
-		 * @return       результат обхода области инструкций
+		 * @param from начало обходимой области инструкций
+		 * @param to   конец обходимой области инструкций
+		 * @return     результат обхода области инструкций
 		 *
 		 */
-		std::function <bool (const regex::address_t, const regex::address_t)> region;
+		function <bool (const regex::address_t, const regex::address_t)> region;
 		// Выполняем установку обхода области инструкций программы
 		region = [&](const regex::address_t from, const regex::address_t to) noexcept -> bool {
 		// Получаем адрес исполняемой инструкции программы
@@ -2388,7 +2349,7 @@ namespace {
 		/**
 		 * Выполняем обход инструкций области программы
 		 */
-		while(true){
+		for(;;){
 			/**
 			 * Если область инструкций исчерпана
 			 */
@@ -2483,13 +2444,6 @@ namespace {
 					pc++;
 				} break;
 				/**
-				 * Если инструкция проверяет привязку к позиции в тексте
-				 *
-				 * @details Сброс начала совпадения смещает границу совпадения,
-				 *          какую порождённый код ведёт сам, и потому отвергается.
-				 *
-				 */
-				/**
 				 * Если инструкция запоминает состояние возврата
 				 *
 				 * @details Отметка открывает атомарную группу, а отказ от точек
@@ -2561,8 +2515,7 @@ namespace {
 					 *          не полагается: программа приходит и записью хранилища.
 					 *
 					 */
-					if(instruction.look.backward && ((instruction.look.most == regex::UNBOUNDED) ||
-					 (instruction.look.least > instruction.look.most)))
+					if(instruction.look.backward && ((instruction.look.most == regex::UNBOUNDED) || (instruction.look.least > instruction.look.most)))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					/**
@@ -2594,8 +2547,7 @@ namespace {
 					/**
 					 * Если продолжение за проверкой окружения за пределы программы выходит
 					 */
-					if((target == regex::INVALID_ADDRESS) || (static_cast <size_t> (target) == 0) ||
-					 (static_cast <size_t> (target) > program.instructions.size()))
+					if((target == regex::INVALID_ADDRESS) || (static_cast <size_t> (target) == 0) || (static_cast <size_t> (target) > program.instructions.size()))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Получаем адрес инструкции завершения тела проверки окружения
@@ -2613,7 +2565,7 @@ namespace {
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Создаём набор ячеек захвата, телом проверки записываемых
-					std::vector <uint32_t> records;
+					vector <uint32_t> records;
 					// Выполняем сбор ячеек захвата, телом проверки записываемых
 					journal(program, instruction.look.body, ending, records);
 					/**
@@ -2629,9 +2581,6 @@ namespace {
 					if(!records.empty())
 						// Выводим неприменимость кодогенерации к программе
 						return false;
-					/**
-					 * Если обход области тела проверки окружения не выполнен
-					 */
 					// Увеличиваем глубину вложения проверок окружения
 					watching++;
 					/**
@@ -2680,6 +2629,9 @@ namespace {
 					// Переходим к следующей инструкции программы
 					pc++;
 				} break;
+				/**
+				 * Если инструкция сопоставляет якорь 
+				 */
 				case static_cast <uint8_t> (regex::opcode_t::ANCHOR): {
 					/**
 					 * Если привязка сбрасывает начало совпадения
@@ -2744,7 +2696,7 @@ namespace {
 							// Адрес инструкции ветви ведущей, ряд проходов дающей
 							regex::address_t header = regex::INVALID_ADDRESS;
 							// Создаём набор ячеек захвата, повторением записываемых
-							std::vector <uint32_t> written;
+							vector <uint32_t> written;
 							// Выполняем сбор ячеек захвата, повторением записываемых
 							journal(program, opening, closing, written);
 							// Создаём длину тела повторения в байтах
@@ -2776,8 +2728,8 @@ namespace {
 							 *
 							 */
 							const bool retraced = retracing(program, opening, closing, eager, written, backward, trailing);
-							const bool framing = (!written.empty() || (eager && !retraced &&
-							 (!stretching(program, opening, closing, length) || (length > regex::MAX_STRETCH))));
+							// Получаем признак отвода кадра записи
+							const bool framing = (!written.empty() || (eager && !retraced && (!stretching(program, opening, closing, length) || (length > regex::MAX_STRETCH))));
 							/**
 							 * Если повторение, записи кадра на проход требующее,
 							 * лежит внутри атомарной группы
@@ -2815,16 +2767,16 @@ namespace {
 							if(framing){
 								// Увеличиваем количество повторений, записи кадра требующих
 								framed++;
-								// Выполняем обнуление количества цепочек ветвей уровня
-								chains = 0;
-								// Выполняем обнуление количества мест запоминания уровня
-								recorded = 0;
-								// Выполняем обнуление количества атомарных групп уровня
-								atomics = 0;
-								// Выполняем обнуление количества проверок окружения уровня
-								looks = 0;
 								// Выполняем обнуление количества рядов повторения уровня
 								rows = 0;
+								// Выполняем обнуление количества проверок окружения уровня
+								looks = 0;
+								// Выполняем обнуление количества цепочек ветвей уровня
+								chains = 0;
+								// Выполняем обнуление количества атомарных групп уровня
+								atomics = 0;
+								// Выполняем обнуление количества мест запоминания уровня
+								recorded = 0;
 								/**
 								 * Если повторение ведётся ведущей ветвью одиночного символа
 								 *
@@ -2933,12 +2885,12 @@ namespace {
 						if((to != regex::INVALID_ADDRESS) && (branching.join > to))
 							// Выводим неприменимость кодогенерации к программе
 							return false;
-						// Создаём набор первых байтов ветвей выбора одной из них
-						std::vector <uint8_t> letters;
 						// Создаём таблицу соответствия байта номеру ветви выбора
-						std::vector <uint8_t> routes;
+						vector <uint8_t> routes;
+						// Создаём набор первых байтов ветвей выбора одной из них
+						vector <uint8_t> letters;
 						// Создаём набор ячеек захвата, цепочкой записываемых
-						std::vector <uint32_t> records;
+						vector <uint32_t> records;
 						// Выполняем сбор ячеек захвата, цепочкой записываемых
 						journal(program, pc, branching.join, records);
 						/**
@@ -2970,8 +2922,7 @@ namespace {
 						 *          ячейкой кадра.
 						 *
 						 */
-						if(!sorting || !straight(program, branching) ||
-						  (!deciding(program, branching, letters) && !dispatching(program, branching, routes))){
+						if(!sorting || !straight(program, branching) || (!deciding(program, branching, letters) && !dispatching(program, branching, routes))){
 							/**
 							 * Если допустимое количество цепочек ветвей исчерпано
 							 */
@@ -3104,8 +3055,7 @@ namespace {
 					/**
 					 * Если адрес тела вызываемого за пределы программы выходит
 					 */
-					if((body == regex::INVALID_ADDRESS) ||
-					 (static_cast <size_t> (body) >= program.instructions.size()))
+					if((body == regex::INVALID_ADDRESS) || (static_cast <size_t> (body) >= program.instructions.size()))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					/**
@@ -3120,7 +3070,7 @@ namespace {
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Набор адресов, обходом тела вызываемого пройденных
-					std::vector <regex::address_t> passed;
+					vector <regex::address_t> passed;
 					/**
 					 * Если тело вызываемое текста не поглощает
 					 */
@@ -3132,7 +3082,7 @@ namespace {
 					/**
 					 * Если тело вызываемое обходом уже пройдено
 					 */
-					if(std::find(bodies.begin(), bodies.end(), body) != bodies.end()){
+					if(find(bodies.begin(), bodies.end(), body) != bodies.end()){
 						// Переходим к следующей инструкции программы
 						pc++;
 						// Прекращаем разбор инструкции программы
@@ -3141,7 +3091,7 @@ namespace {
 					// Выполняем запоминание адреса пройденного тела вызываемого
 					bodies.push_back(body);
 					// Создаём набор ячеек захвата, телом вызываемым записываемых
-					std::vector <uint32_t> records;
+					vector <uint32_t> records;
 					// Выполняем сбор ячеек захвата, телом вызываемым записываемых
 					journal(program, body, regex::INVALID_ADDRESS, records);
 					/**
@@ -3208,6 +3158,128 @@ namespace {
 			return false;
 		// Выводим применимость кодогенерации к программе
 		return true;
+	}
+	/**
+	 * @brief Опознание набора команд порождённого машинного кода
+	 *
+	 * @details Порождённый код годен лишь набору команд, для какого порождён,
+	 *          поэтому запись несёт его опознание. Восстановление на машине
+	 *          набора иного отвечает отказом, а не исполнением чужих команд.
+	 *
+	 */
+	static uint8_t instructionSet() noexcept {
+		/**
+		 * Если сборка выполняется для процессора с набором команд ARM64
+		 */
+		#if defined(__aarch64__) || defined(_M_ARM64)
+			// Выводим опознание набора команд ARM64
+			return 0x01;
+		/**
+		 * Если сборка выполняется для процессора с набором команд x86-64
+		 */
+		#elif defined(__x86_64__) || defined(_M_X64)
+			// Выводим опознание набора команд x86-64
+			return 0x02;
+		/**
+		 * Если сборка выполняется для процессора с набором команд E2K
+		 */
+		#elif defined(__e2k__)
+			// Выводим опознание набора команд E2K
+			return 0x03;
+		/**
+		 * Если сборка выполняется для прочих наборов команд
+		 */
+		#else
+			// Выводим отсутствие опознания набора команд
+			return 0x00;
+		#endif
+	}
+	/**
+	 * @brief Функция вычисления приметы порождённого машинного кода
+	 *
+	 * @param code   адрес порождённого машинного кода
+	 * @param length размер порождённого машинного кода в байтах
+	 * @return       вычисленная примета порождённого машинного кода
+	 *
+	 * @details Примета берётся с ТЕХ САМЫХ байтов, каким предстоит исполниться:
+	 *          она снимается с записи при сохранении и с участка исполняемой
+	 *          памяти при восстановлении, уже после наполнения его и ДО
+	 *          разрешения исполнения. Проверка записи взамен участка оставляла
+	 *          бы щель между сличением и переносом.
+	 *
+	 */
+	static uint64_t imprint(const void * code, const size_t length) noexcept {
+		// Накопленная примета порождённого машинного кода
+		uint64_t result = 0xCBF29CE484222325ull;
+		// Получаем обзор порождённого машинного кода
+		const uint8_t * bytes = reinterpret_cast <const uint8_t *> (code);
+		/**
+		 * Выполняем перебор порождённого машинного кода побайтно
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Выполняем смешивание очередного байта кода
+			result ^= static_cast <uint64_t> (bytes[i]);
+			// Выполняем умножение накопленной приметы
+			result *= 0x100000001B3ull;
+		}
+		// Выводим вычисленную примету порождённого машинного кода
+		return result;
+	}
+	/**
+	 * @brief Функция записи числа переменной длины
+	 *
+	 * @param value  записываемое число
+	 * @param result запись порождённого сопоставителя
+	 *
+	 */
+	static void writeSize(uint64_t value, string & result) noexcept {
+		/**
+		 * Выполняем запись числа долями по семь разрядов
+		 */
+		while(value >= 0x80){
+			// Выполняем запись очередной доли числа с признаком продолжения
+			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
+			// Переходим к следующей доле числа
+			value >>= 7;
+		}
+		// Выполняем запись последней доли числа
+		result.push_back(static_cast <char> (value & 0x7F));
+	}
+	/**
+	 * @brief Функция чтения числа переменной длины
+	 *
+	 * @param data   запись порождённого сопоставителя
+	 * @param offset позиция чтения записи
+	 * @param value  прочитанное число
+	 * @return       результат чтения числа
+	 *
+	 */
+	static bool readSize(string_view data, size_t & offset, uint64_t & value) noexcept {
+		// Выполняем сброс прочитанного числа
+		value = 0;
+		/**
+		 * Выполняем чтение числа долями по семь разрядов
+		 */
+		for(uint8_t shift = 0; shift < 64; shift += 7){
+			/**
+			 * Если запись оборвана до завершения числа
+			 */
+			if(offset >= data.size())
+				// Выводим результат чтения числа
+				return false;
+			// Получаем очередную долю числа
+			const uint8_t part = static_cast <uint8_t> (data[offset++]);
+			// Выполняем добавление доли числа
+			value |= (static_cast <uint64_t> (part & 0x7F) << shift);
+			/**
+			 * Если признак продолжения числа не установлен
+			 */
+			if((part & 0x80) == 0)
+				// Выводим результат чтения числа
+				return true;
+		}
+		// Выводим результат чтения числа
+		return false;
 	}
 };
 
@@ -3506,22 +3578,22 @@ bool awh::regex::Codegen::applicable(const program_t & program) noexcept {
 		return false;
 	// Количество рядов повторения одиночного символа
 	size_t runs = 0;
-	// Количество цепочек ветвей выбора одной из них
-	size_t chains = 0;
-	// Количество цепочек ветвей, разбираемых по первому байту
-	size_t deciders = 0;
-	// Количество повторений над областью инструкций
-	size_t loops = 0;
-	// Количество повторений над областью, записи кадра требующих
-	size_t framed = 0;
-	// Количество мест запоминания границ групп
-	size_t recorded = 0;
-	// Количество атомарных групп
-	size_t atomics = 0;
 	// Количество проверок окружения позиции сопоставления
 	size_t looks = 0;
 	// Количество мест рекурсивного вызова подвыражения
 	size_t calls = 0;
+	// Количество повторений над областью инструкций
+	size_t loops = 0;
+	// Количество повторений над областью, записи кадра требующих
+	size_t framed = 0;
+	// Количество цепочек ветвей выбора одной из них
+	size_t chains = 0;
+	// Количество атомарных групп
+	size_t atomics = 0;
+	// Количество мест запоминания границ групп
+	size_t recorded = 0;
+	// Количество цепочек ветвей, разбираемых по первому байту
+	size_t deciders = 0;
 	/**
 	 * Наибольшие количества мест, уровнями записей проходов требуемые
 	 *
@@ -3628,9 +3700,13 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
 		// Выводим результат порождения сопоставителя
 		return false;
-	// Подписываемся на перечисление регистров соглашения о вызове
+	/**
+	 * Создаём тип данных перечисления регистров соглашения о вызове
+	 */
 	using reg_t = Emitter::reg_t;
-	// Подписываемся на перечисление условий выполнения перехода
+	/** 
+	 * Создаём тип данных перечисления условий выполнения перехода
+	 */
 	using cond_t = Emitter::cond_t;
 	// Создаём объект порождения машинного кода
 	Emitter emitter;
@@ -3648,8 +3724,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          отчего вызов подпрограммы взамен попытки был бы чистым расходом.
 	 *
 	 */
-	const bool seek = (!program.anchored && this->_prefilter.active &&
-	 (this->_prefilter.unique || (this->_prefilter.leading.size() > 1)));
+	const bool seek = (!program.anchored && this->_prefilter.active && (this->_prefilter.unique || (this->_prefilter.leading.size() > 1)));
 	/**
 	 * Получаем признак порождения проверки возможности совпадения
 	 *
@@ -3659,8 +3734,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          литерал ведущим и содержится.
 	 *
 	 */
-	const bool possible = (!program.anchored && !this->_prefilter.literal.empty() &&
-	 !(seek && (this->_prefilter.leading.find(this->_prefilter.literal) != string::npos)));
+	const bool possible = (!program.anchored && !this->_prefilter.literal.empty() && !(seek && (this->_prefilter.leading.find(this->_prefilter.literal) != string::npos)));
 	/**
 	 * Получаем признак порождения просеивания позиций начала попытки
 	 *
@@ -3684,7 +3758,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	for(size_t letter = 0; letter < TABLE; letter++)
 		// Выполняем подсчёт байтов, совпадение начинать способных
 		allowed += (this->_prefilter.bytes[letter] ? 1 : 0);
-	// Получаем признак порождения просеивания позиций начала попытки
 	/**
 	 * Получаем признак отбора позиций начала попытки по началам строк
 	 *
@@ -3723,9 +3796,11 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Переходим к инструкции следующей
 				continue;
 			// Выполняем установку признака отбора позиций по началам строк
-			lining = ((instruction.type == opcode_t::ANCHOR) &&
-			 (instruction.assertion.type == anchor_t::LINE_BEGIN) &&
-			 hasFlag(instruction.flags, flag_t::MULTILINE));
+			lining = (
+				(instruction.type == opcode_t::ANCHOR) &&
+				(instruction.assertion.type == anchor_t::LINE_BEGIN) &&
+				hasFlag(instruction.flags, flag_t::MULTILINE)
+			);
 			// Выходим из обхода инструкций начальных программы выражения
 			break;
 		}
@@ -3807,11 +3882,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          ходом.
 	 *
 	 */
-	const bool sifting = (!program.anchored && this->_prefilter.active && !seek && !lining &&
-	 (allowed > 0) && (allowed < TABLE) && (this->_prefilter.literal.size() < SELECTIVE));
-	const bool narrowing = (!program.anchored && !seek && !lining && !sifting &&
-	 !this->_prefilter.literal.empty() && (this->_prefilter.distance != string_view::npos) &&
-	 (this->_prefilter.distance <= NARROWING));
+	const bool sifting = (
+		!program.anchored && this->_prefilter.active && !seek && !lining &&
+		(allowed > 0) && (allowed < TABLE) && (this->_prefilter.literal.size() < SELECTIVE)
+	);
+	// Получаем признак сужения набора позиций отбора
+	const bool narrowing = (
+		!program.anchored && !seek && !lining && !sifting &&
+		!this->_prefilter.literal.empty() && (this->_prefilter.distance != string_view::npos) &&
+		(this->_prefilter.distance <= NARROWING)
+	);
 	/**
 	 * Выполняем установку способа отбора позиций, порождением избранного
 	 *
@@ -3821,9 +3901,10 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          такого гашения не замечает.
 	 *
 	 */
-	this->_filter = (seek ? filter_t::SEEK : (lining ? filter_t::LINING :
-	 (sifting ? filter_t::SIFTING : (narrowing ? filter_t::NARROWING : filter_t::NONE))));
-
+	this->_filter = (
+		seek ? filter_t::SEEK : (lining ? filter_t::LINING :
+		(sifting ? filter_t::SIFTING : (narrowing ? filter_t::NARROWING : filter_t::NONE)))
+	);
 	/**
 	 * Получаем признак ведения действующего отказа ячейкой кадра
 	 *
@@ -4375,9 +4456,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	const bool wide = (WIDE_SEEKING && (allowed > SPARSE));
 	/**
-	 * Если просеивание позиций начала попытки порождается
-	 */
-	/**
 	 * Если отбор позиций ведётся поиском набора начальных байтов
 	 *
 	 * @details Набор узкий пропускает почти весь текст, и просеивание по позиции
@@ -4458,7 +4536,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если доступен векторный поиск диапазона средствами SSE2
 		 */
-		#if (defined(__x86_64__) || defined(_M_X64)) && !defined(AWH_REGEX_SCALAR)
+		#if(defined(__x86_64__) || defined(_M_X64)) && !defined(AWH_REGEX_SCALAR)
 			// Получаем нижнюю границу первого участка допустимых байтов
 			size_t lower = 0;
 			/**
@@ -4735,12 +4813,12 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Выводим основание, уровнем записи выбранное
 		return ((depth > 0) ? observing : sights);
 	};
-	// Номер порождаемой атомарной группы
-	size_t atomic = 0;
-	// Номер порождаемой проверки окружения позиции сопоставления
-	size_t sight = 0;
 	// Номер порождаемого места рекурсивного вызова подвыражения
 	size_t call = 0;
+	// Номер порождаемой проверки окружения позиции сопоставления
+	size_t sight = 0;
+	// Номер порождаемой атомарной группы
+	size_t atomic = 0;
 	/**
 	 * @brief Отведение записи уровня вложенного
 	 *
@@ -4805,7 +4883,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          до конца области основной.
 	 *
 	 */
-	std::vector <std::pair <address_t, size_t>> bodies;
+	vector <pair <address_t, size_t>> bodies;
 	/**
 	 * Набор отказов сопоставления, атомарными группами отложенных
 	 *
@@ -4834,6 +4912,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *
 	 */
 	vector <size_t> guarded;
+	// Заводим набор смещений возобновления исполнения
 	vector <size_t> pacings;
 	// Заводим метку отказа сопоставления, выбором ветви отложенного
 	const size_t miss = emitter.label();
@@ -4858,7 +4937,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Выполняем обход инструкций области программы
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если область инструкций исчерпана
 		 */
@@ -4997,6 +5076,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Продолжаем порождение области инструкций
 			continue;
 		}
+		// Если инструкцией является сохранение ячейки состояния
 		if(instruction.type == opcode_t::SAVE){
 			/**
 			 * Если сохранение выполняется в ячейку состояния исполнения
@@ -5195,42 +5275,43 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *          отведён самим её смыслом.
 					 *
 					 */
-					const bool solely = (!lines && (instruction.assertion.type == anchor_t::LINE_END) &&
-					 hasFlag(instruction.flags, flag_t::DOLLAR_END));
+					const bool solely = (
+						!lines && (instruction.assertion.type == anchor_t::LINE_END) &&
+						hasFlag(instruction.flags, flag_t::DOLLAR_END)
+					);
 					// Заводим метку выполненной проверки привязки
 					const size_t passed = emitter.label();
 					// Выполняем сравнение позиции сопоставления с размером текста
 					emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 					// Выполняем переход к выполненной проверке в конце текста
 					emitter.branch(cond_t::EQUAL, passed);
-					/**
-					 * Если привязке отведён один лишь конец текста
-					 */
+					// Если привязке отведён один лишь конец текста
 					if(solely)
 						// Выполняем переход к отказу вне конца текста
 						emitter.jump(failure);
+					// Если если привязке не отведён лишь один конец текста
 					else {
-					/**
-					 * Если привязка проверяется к концу текста, а не строки
-					 *
-					 * @details Вне режима соответствия границам строк привязке
-					 *          отвечает лишь перевод строки, текст завершающий.
-					 *
-					 */
-					if(!ending){
-						// Выполняем получение положения последнего байта текста
-						emitter.sub(reg_t::SCRATCH, reg_t::SIZE, 1);
-						// Выполняем сравнение позиции сопоставления с последним байтом
-						emitter.compare(reg_t::CURSOR, reg_t::SCRATCH);
-						// Выполняем переход к отказу вне последнего байта текста
+						/**
+						 * Если привязка проверяется к концу текста, а не строки
+						 *
+						 * @details Вне режима соответствия границам строк привязке
+						 *          отвечает лишь перевод строки, текст завершающий.
+						 *
+						 */
+						if(!ending){
+							// Выполняем получение положения последнего байта текста
+							emitter.sub(reg_t::SCRATCH, reg_t::SIZE, 1);
+							// Выполняем сравнение позиции сопоставления с последним байтом
+							emitter.compare(reg_t::CURSOR, reg_t::SCRATCH);
+							// Выполняем переход к отказу вне последнего байта текста
+							emitter.branch(cond_t::NOTEQUAL, failure);
+						}
+						// Выполняем чтение байта текста в позиции сопоставления
+						emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
+						// Выполняем сравнение байта текста с переводом строки
+						emitter.compare(reg_t::LETTER, static_cast <uint32_t> (0x0A));
+						// Выполняем переход к отказу вне конца строки
 						emitter.branch(cond_t::NOTEQUAL, failure);
-					}
-					// Выполняем чтение байта текста в позиции сопоставления
-					emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
-					// Выполняем сравнение байта текста с переводом строки
-					emitter.compare(reg_t::LETTER, static_cast <uint32_t> (0x0A));
-					// Выполняем переход к отказу вне конца строки
-					emitter.branch(cond_t::NOTEQUAL, failure);
 					}
 					// Выполняем расстановку метки выполненной проверки привязки
 					emitter.place(passed);
@@ -5256,16 +5337,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 * Если сопоставление символа выполнено отбором позиции начала попытки
 		 */
 		if(replacing && (consumed < verified) && (elided < MAX_ELISION) && (instruction.type == opcode_t::CHAR) &&
-		 !hasFlag(instruction.flags, flag_t::CASELESS) &&
-		 (instruction.letter.code == static_cast <uint32_t> (static_cast <uint8_t> (this->_prefilter.leading.at(consumed))))){
-			// Увеличиваем количество символов ведущего литерала, замену получивших
-			consumed++;
+		   !hasFlag(instruction.flags, flag_t::CASELESS) &&
+		   (instruction.letter.code == static_cast <uint32_t> (static_cast <uint8_t> (this->_prefilter.leading.at(consumed))))){
+			// Переходим к следующей инструкции программы
+			pc++;
 			// Увеличиваем количество символов, продвижение на какие не размещено
 			elided++;
 			// Увеличиваем длину участка, ряду первому предшествующего
 			prefix++;
-			// Переходим к следующей инструкции программы
-			pc++;
+			// Увеличиваем количество символов ведущего литерала, замену получивших
+			consumed++;
 			// Продолжаем обход инструкций программы
 			continue;
 		}
@@ -5391,7 +5472,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					// Заводим метку тела вызываемого подвыражения
 					entry = emitter.label();
 					// Выполняем запоминание тела вызываемого и метки его
-					bodies.push_back(std::make_pair(instruction.call.body, entry));
+					bodies.push_back(make_pair(instruction.call.body, entry));
 				}
 			}
 			// Выполняем чтение действующего отказа, вызову предшествующего
@@ -5498,8 +5579,10 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          взамен единого сличения с постоянной.
 			 *
 			 */
-			const bool literal = ((instruction.type == opcode_t::CHAR) &&
-			 (instruction.letter.code < 0x80) && !hasFlag(instruction.flags, flag_t::CASELESS));
+			const bool literal = (
+				(instruction.type == opcode_t::CHAR) &&
+				(instruction.letter.code < 0x80) && !hasFlag(instruction.flags, flag_t::CASELESS)
+			);
 			// Выполняем заведение таблицы принадлежности байтов сопоставления
 			const size_t number = (literal ? 0 : this->table(instruction, program));
 			/**
@@ -6206,8 +6289,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          оба обходятся тремя местами кадра на всё повторение.
 				 *
 				 */
-				if(eager && keepers.empty() && (retraced ||
-				 (stretching(program, opening, closing, length) && (length <= MAX_STRETCH)))){
+				if(eager && keepers.empty() && (retraced || (stretching(program, opening, closing, length) && (length <= MAX_STRETCH)))){
 					// Заводим метку входа в очередной проход повторения
 					const size_t entering = emitter.label();
 					// Заводим метку исчерпания проходов повторения
@@ -6460,14 +6542,14 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				depth++;
 				// Выполняем обнуление номера порождаемой цепочки ветвей уровня
 				chain = 0;
-				// Выполняем обнуление смещения места запоминания границ уровня
-				recording = 0;
-				// Выполняем обнуление номера порождаемой атомарной группы уровня
-				atomic = 0;
 				// Выполняем обнуление номера порождаемой проверки окружения уровня
 				sight = 0;
 				// Выполняем обнуление номера ряда повторения в разметке уровня
 				rowed = 0;
+				// Выполняем обнуление номера порождаемой атомарной группы уровня
+				atomic = 0;
+				// Выполняем обнуление смещения места запоминания границ уровня
+				recording = 0;
 				// Получаем смещение мест запоминания границ групп повторения
 				const size_t keeping = (keeper() + recording);
 				// Получаем регистр, места прохода повторения несущий
@@ -7939,136 +8021,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Выводим результат порождения сопоставителя
 	return true;
 }
-namespace {
-	/**
-	 * @brief Опознание набора команд порождённого машинного кода
-	 *
-	 * @details Порождённый код годен лишь набору команд, для какого порождён,
-	 *          поэтому запись несёт его опознание. Восстановление на машине
-	 *          набора иного отвечает отказом, а не исполнением чужих команд.
-	 *
-	 */
-	uint8_t instructionSet() noexcept {
-		/**
-		 * Если сборка выполняется для процессора с набором команд ARM64
-		 */
-		#if defined(__aarch64__) || defined(_M_ARM64)
-			// Выводим опознание набора команд ARM64
-			return 0x01;
-		/**
-		 * Если сборка выполняется для процессора с набором команд x86-64
-		 */
-		#elif defined(__x86_64__) || defined(_M_X64)
-			// Выводим опознание набора команд x86-64
-			return 0x02;
-		/**
-		 * Если сборка выполняется для процессора с набором команд e2k
-		 */
-		#elif defined(__e2k__)
-			// Выводим опознание набора команд e2k
-			return 0x03;
-		/**
-		 * Если сборка выполняется для прочих наборов команд
-		 */
-		#else
-			// Выводим отсутствие опознания набора команд
-			return 0x00;
-		#endif
-	}
-};
-namespace {
-	/**
-	 * @brief Функция вычисления приметы порождённого машинного кода
-	 *
-	 * @param code   адрес порождённого машинного кода
-	 * @param length размер порождённого машинного кода в байтах
-	 * @return       вычисленная примета порождённого машинного кода
-	 *
-	 * @details Примета берётся с ТЕХ САМЫХ байтов, каким предстоит исполниться:
-	 *          она снимается с записи при сохранении и с участка исполняемой
-	 *          памяти при восстановлении, уже после наполнения его и ДО
-	 *          разрешения исполнения. Проверка записи взамен участка оставляла
-	 *          бы щель между сличением и переносом.
-	 *
-	 */
-	uint64_t imprint(const void * code, const size_t length) noexcept {
-		// Накопленная примета порождённого машинного кода
-		uint64_t result = 0xCBF29CE484222325ull;
-		// Получаем обзор порождённого машинного кода
-		const uint8_t * bytes = reinterpret_cast <const uint8_t *> (code);
-		/**
-		 * Выполняем перебор порождённого машинного кода побайтно
-		 */
-		for(size_t i = 0; i < length; i++){
-			// Выполняем смешивание очередного байта кода
-			result ^= static_cast <uint64_t> (bytes[i]);
-			// Выполняем умножение накопленной приметы
-			result *= 0x100000001B3ull;
-		}
-		// Выводим вычисленную примету порождённого машинного кода
-		return result;
-	}
-};
-namespace {
-	/**
-	 * @brief Функция записи числа переменной длины
-	 *
-	 * @param value  записываемое число
-	 * @param result запись порождённого сопоставителя
-	 *
-	 */
-	void writeSize(uint64_t value, std::string & result) noexcept {
-		/**
-		 * Выполняем запись числа долями по семь разрядов
-		 */
-		while(value >= 0x80){
-			// Выполняем запись очередной доли числа с признаком продолжения
-			result.push_back(static_cast <char> ((value & 0x7F) | 0x80));
-			// Переходим к следующей доле числа
-			value >>= 7;
-		}
-		// Выполняем запись последней доли числа
-		result.push_back(static_cast <char> (value & 0x7F));
-	}
-};
-namespace {
-	/**
-	 * @brief Функция чтения числа переменной длины
-	 *
-	 * @param data   запись порождённого сопоставителя
-	 * @param offset позиция чтения записи
-	 * @param value  прочитанное число
-	 * @return       результат чтения числа
-	 *
-	 */
-	bool readSize(std::string_view data, size_t & offset, uint64_t & value) noexcept {
-		// Выполняем сброс прочитанного числа
-		value = 0;
-		/**
-		 * Выполняем чтение числа долями по семь разрядов
-		 */
-		for(uint8_t shift = 0; shift < 64; shift += 7){
-			/**
-			 * Если запись оборвана до завершения числа
-			 */
-			if(offset >= data.size())
-				// Выводим результат чтения числа
-				return false;
-			// Получаем очередную долю числа
-			const uint8_t part = static_cast <uint8_t> (data[offset++]);
-			// Выполняем добавление доли числа
-			value |= (static_cast <uint64_t> (part & 0x7F) << shift);
-			/**
-			 * Если признак продолжения числа не установлен
-			 */
-			if((part & 0x80) == 0)
-				// Выводим результат чтения числа
-				return true;
-		}
-		// Выводим результат чтения числа
-		return false;
-	}
-};
 /**
  * @brief Метод записи порождённого сопоставителя
  *
@@ -8093,8 +8045,7 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 	 *          восстановлении нечем, оттого он и пишется.
 	 *
 	 */
-	result.push_back(static_cast <char> ((this->_feasible ? 1 : 0) | (this->_skipping ? 2 : 0) |
-	 (static_cast <uint8_t> (this->_filter) << 2)));
+	result.push_back(static_cast <char> ((this->_feasible ? 1 : 0) | (this->_skipping ? 2 : 0) | (static_cast <uint8_t> (this->_filter) << 2)));
 	// Выполняем запись размера записи кадра порождённого сопоставителя
 	writeSize(static_cast <uint64_t> (this->_frame), result);
 	// Выполняем запись наибольшего количества записей кадра
@@ -8332,7 +8283,7 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	 * Если размещение порождённого машинного кода не выполнено
 	 */
 	if(!this->_assembly.allocate(static_cast <size_t> (length)) ||
-	 !this->_assembly.fill(code, static_cast <size_t> (length))){
+	   !this->_assembly.fill(code, static_cast <size_t> (length))){
 		// Выполняем очистку порождённого сопоставителя
 		this->clear();
 		// Выводим результат восстановления сопоставителя
@@ -8443,18 +8394,6 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	if(this->_matcher == nullptr)
 		// Выводим результат поиска совпадения
 		return false;
-	/**
-	 * Если совпадение в тексте невозможно вовсе
-	 *
-	 * @details Обязательный литерал совпадения ищется в тексте целиком, и
-	 *          отсутствие его отвергает сопоставление, попыток не начиная.
-	 *          Проверка эта прежде порождалась внутри машинного кода вызовом
-	 *          подпрограммы обстановки, а обвязка такого вызова - девять
-	 *          хранений регистров в кадре и девять чтений обратно - обходилась
-	 *          вдвое дороже самой проверки там, где совпадение близко.
-	 *          Выполняемая единожды на сопоставление, она принадлежит входу.
-	 *
-	 */
 	// Позиция начала поиска, обязательным литералом отодвигаемая
 	size_t seeking = start;
 	/**
@@ -8496,18 +8435,6 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	}
 	// Получаем требуемое количество границ обнаруженного совпадения
 	const size_t count = ((static_cast <size_t> (this->_captures) + 1) * 2);
-	/**
-	 * Отводим область записей кадра порождённого сопоставителя
-	 *
-	 * @details Область отводится на поток исполнения единожды и живёт между
-	 *          вызовами: сопоставление зовётся на каждой позиции текста,
-	 *          и размещение области на каждый вызов обошлось бы дороже самого
-	 *          сопоставления - ровно так же, как это вышло с набором границ.
-	 *          На стеке машины область не отводится намеренно: проходы
-	 *          повторения над областью требуют записи своей на каждый проход,
-	 *          и число их доходит до длины текста.
-	 *
-	 */
 	// Получаем потребный размер области записей кадра
 	const size_t needed = (static_cast <size_t> (this->_frame) * static_cast <size_t> (this->_levels));
 	/**
@@ -8576,8 +8503,13 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	 *
 	 */
 	#if AWH_REGEX_REFUSAL_FIRST
+		// Заводим набор границ совпадения на границе шестнадцати байтов
 		alignas(16) size_t frame[BOUNDS];
+	/**
+	 * Если набор границ обнаруженного совпадения на кадре вызова не требуется
+	 */
 	#else
+		// Заводим набор границ совпадения
 		size_t frame[BOUNDS];
 	#endif
 	// Указание на начало набора границ обнаруженного совпадения
@@ -8665,9 +8597,6 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	#endif
 	// Получаем позицию начала поиска совпадения
 	const size_t position = ((seeking > text.size()) ? text.size() : seeking);
-	/**
-	 * Если совпадение в тексте не обнаружено
-	 */
 	// Выполняем сопоставление порождённым машинным кодом
 	const bool result = this->_matcher(text.data(), text.size(), position, bounds, this->_context.data());
 	/**

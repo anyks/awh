@@ -44,7 +44,9 @@
  * @brief Header file of the operations on the matched text — getting the code point
  *        value of a character, checking the anchors to a position in the text and checking whether
  *        a character belongs to a character class, common to all ways of executing a regular expression
+ *
  * @section text_decisions Deliberate decisions
+ *
  * @details What is listed below diverges from the behaviour of the reference PCRE2 implementation,
  *          but was chosen deliberately and is not subject to correction. The section is introduced so that
  *          reading the code does not start every time from the same conclusions.
@@ -90,7 +92,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -122,6 +123,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking whether a compilation mode is set
+		 *
 		 * @param flags set of compilation modes of the regular expression
 		 * @param value compilation mode of the regular expression to check
 		 * @return      result of checking whether the compilation mode is set
@@ -144,8 +146,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of converting the code point value of a character to lower case
+		 *
 		 * @details The conversion is performed for the characters of the ASCII set. Converting characters
 		 *          beyond the ASCII set requires the Unicode property tables.
+		 *
 		 * @param code code point value of the character to convert
 		 * @return     converted code point value of the character
 		 *
@@ -166,9 +170,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of converting the code point value of a character to lower case
+		 *
 		 * @details In the «UTF» and «UCP» modes the conversion is performed by the case
 		 *          conversion tables of the Unicode standard, otherwise it is limited to
 		 *          the characters of the ASCII set.
+		 *
 		 * @param code  code point value of the character to convert
 		 * @param flags set of compilation modes of the instruction
 		 * @return      converted code point value of the character
@@ -185,6 +191,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking whether a character belongs to the word characters
+		 *
 		 * @param code code point value of the character to check
 		 * @return     result of checking whether the character belongs to the word characters
 		 *
@@ -207,9 +214,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the code point value of the character at a position in the text
+		 *
 		 * @details In the «UTF» mode the function parses the whole UTF-8 sequence,
 		 *          otherwise it returns the code point value of a single byte. An invalid
 		 *          sequence is parsed as a single byte.
+		 *
 		 * @param text  text to match
 		 * @param pos   position of the character in the text
 		 * @param flags set of compilation modes of the instruction
@@ -238,12 +247,14 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the code point value of a character of the ASCII set
+		 *
 		 * @details The function parses a character of the ASCII set in place, and passes parsing of
 		 *          a UTF-8 sequence to the character parsing function.
 		 *          The intermediary is introduced because character parsing is performed when
 		 *          matching every character of the text, while the overwhelming
 		 *          majority of them belong to the ASCII set and is parsed by reading
 		 *          one byte: a call for its sake cost more than the reading itself.
+		 *
 		 * @param text  text to match
 		 * @param pos   position of the character in the text
 		 * @param flags set of compilation modes of the instruction
@@ -272,6 +283,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * If the byte belongs to the ASCII set
+			 *
 			 * @details A character of the ASCII set occupies one byte in any parsing mode,
 			 *          therefore its code point value matches the value of the byte.
 			 *
@@ -298,9 +310,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the length of the character preceding a position in the text
+		 *
 		 * @details In the «UTF» mode the function steps back to the beginning of the UTF-8 sequence,
 		 *          otherwise it steps back by one byte. The function is used by execution
 		 *          that advances through the text backwards.
+		 *
 		 * @param text  text to match
 		 * @param pos   position the character preceding which is measured
 		 * @param flags set of compilation modes of the instruction
@@ -313,20 +327,21 @@ namespace awh {
 		 * \~russian
 		 * @brief Функция проверки привязки к позиции в тексте
 		 *
-		 * @param text  текст для сопоставления
-		 * @param start позиция начала попытки сопоставления
-		 * @param type  тип проверяемой привязки к позиции в тексте
-		 * @param flags набор режимов компиляции инструкции
+		 * @param text       текст для сопоставления
+		 * @param start      позиция начала попытки сопоставления
+		 * @param type       тип проверяемой привязки к позиции в тексте
+		 * @param flags      набор режимов компиляции инструкции
 		 * @param pos        проверяемая позиция в тексте
 		 * @param convention соглашение о переводе строки выражения
 		 * @return           результат проверки привязки к позиции в тексте
 		 *
 		 * \~english
 		 * @brief Function of checking an anchor to a position in the text
-		 * @param text  text to match
-		 * @param start position of the beginning of the match attempt
-		 * @param type  type of the checked anchor to a position in the text
-		 * @param flags set of compilation modes of the instruction
+		 *
+		 * @param text       text to match
+		 * @param start      position of the beginning of the match attempt
+		 * @param type       type of the checked anchor to a position in the text
+		 * @param flags      set of compilation modes of the instruction
 		 * @param pos        position in the text to check
 		 * @param convention newline convention of the expression
 		 * @return           result of checking the anchor to a position in the text
@@ -345,6 +360,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking whether a character belongs to a character class
+		 *
 		 * @param value character class of the regular expression
 		 * @param code  code point value of the character to check
 		 * @param flags set of compilation modes of the instruction
@@ -367,8 +383,10 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of getting the length of the grapheme cluster at a position in the text
+		 *
 		 * @details A grapheme cluster joins the characters perceived by the reader as
 		 *          a single sign, by the text splitting rules of the Unicode standard.
+		 *
 		 * @param text  text to match
 		 * @param pos   position of the beginning of the grapheme cluster in the text
 		 * @param flags set of compilation modes of the instruction

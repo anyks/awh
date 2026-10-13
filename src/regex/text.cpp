@@ -30,16 +30,155 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
- * @brief Функция проверки установки режима компиляции
- *
- * @param flags набор режимов компиляции регулярного выражения
- * @param value проверяемый режим компиляции регулярного выражения
- * @return      результат проверки установки режима компиляции
+ * @brief Пространство имён вспомогательных функций
  *
  */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция проверки принадлежности символа символам слова
+	 *
+	 * @details Режим «UCP» заменяет набор символов слова ASCII соответствующим
+	 *          свойством Юникода, поэтому принадлежность определяется по нему.
+	 *
+	 * @param code  кодовое значение проверяемого символа
+	 * @param flags набор режимов компиляции инструкции
+	 * @return      результат проверки принадлежности символа символам слова
+	 *
+	 */
+	inline bool word(const uint32_t code, const uint32_t flags) noexcept {
+		/**
+		 * Если установлен режим соответствия сокращённых классов свойствам Юникода
+		 */
+		if(regex::hasFlag(flags, regex::flag_t::UCP))
+			// Выводим результат проверки обладания символом свойством символов слова
+			return unicode::holds(code, static_cast <uint16_t> (regex::property_id_t::UCP_WORD));
+		// Выводим результат проверки принадлежности символа символам слова
+		return regex::isWord(code);
+	}
+	/**
+	 * @brief Функция определения длины завершения строки в позиции текста
+	 *
+	 * @details Длина выводится нулевая там, где завершения строки нет вовсе.
+	 *          Пара возврата каретки с переводом строки почитается завершением
+	 *          единым: позиция между ними ни концом строки, ни началом её
+	 *          не является - правило это снято с эталонной реализации опытом.
+	 *
+	 * @param text       текст сопоставления
+	 * @param pos        проверяемая позиция в тексте
+	 * @param convention соглашение о переводе строки выражения
+	 * @return           длина завершения строки в знаках либо нуль
+	 *
+	 */
+	static size_t terminator(const string_view text, const size_t pos, const regex::newline_t convention) noexcept {
+		// Получаем размер текста сопоставления
+		const size_t size = text.size();
+		/**
+		 * Если позиция находится за пределами текста
+		 */
+		if(pos >= size)
+			// Выводим отсутствие завершения строки
+			return 0;
+		// Получаем октет текста в проверяемой позиции
+		const uint8_t letter = static_cast <uint8_t> (text.at(pos));
+		// Признак наличия перевода строки за возвратом каретки
+		const bool paired = ((letter == 0x0D) && ((pos + 1) < size) && (static_cast <uint8_t> (text.at(pos + 1)) == 0x0A));
+		/**
+		 * Определяем соглашение о переводе строки выражения
+		 */
+		switch(static_cast <uint8_t> (convention)){
+			// Выводим длину завершения строки соглашения перевода строки
+			case static_cast <uint8_t> (regex::newline_t::LF): return ((letter == 0x0A) ? 1 : 0);
+			// Выводим длину завершения строки соглашения возврата каретки
+			case static_cast <uint8_t> (regex::newline_t::CR): return ((letter == 0x0D) ? 1 : 0);
+			// Выводим длину завершения строки соглашения нулевого знака
+			case static_cast <uint8_t> (regex::newline_t::NUL): return ((letter == 0x00) ? 1 : 0);
+			// Выводим длину завершения строки соглашения пары возврата каретки
+			case static_cast <uint8_t> (regex::newline_t::CRLF): return (paired ? 2 : 0);
+			/**
+			 * Выводим длину завершения строки соглашения возврата каретки либо перевода
+			 */
+			case static_cast <uint8_t> (regex::newline_t::ANYCRLF):
+				return (paired ? 2 : (((letter == 0x0D) || (letter == 0x0A)) ? 1 : 0));
+			/**
+			 * Выводим длину завершения строки соглашения всякого перевода Юникода
+			 */
+			case static_cast <uint8_t> (regex::newline_t::ANY): {
+				/**
+				 * Если завершением строки выступает пара возврата каретки
+				 */
+				if(paired)
+					// Выводим длину пары возврата каретки с переводом строки
+					return 2;
+				/**
+				 * Если завершением строки выступает знак таблицы ASCII
+				 */
+				if((letter == 0x0A) || (letter == 0x0B) || (letter == 0x0C) || (letter == 0x0D))
+					// Выводим длину завершения строки одиночного
+					return 1;
+				/**
+				 * Если завершением строки выступает следующая строка
+				 */
+				if((letter == 0xC2) && ((pos + 1) < size) && (static_cast <uint8_t> (text.at(pos + 1)) == 0x85))
+					// Выводим длину записи следующей строки
+					return 2;
+				/**
+				 * Если завершением строки выступает разделитель строк либо абзацев
+				 */
+				if((letter == 0xE2) && ((pos + 2) < size) && (static_cast <uint8_t> (text.at(pos + 1)) == 0x80) &&
+				   ((static_cast <uint8_t> (text.at(pos + 2)) == 0xA8) || (static_cast <uint8_t> (text.at(pos + 2)) == 0xA9)))
+					// Выводим длину записи разделителя строк либо абзацев
+					return 3;
+			} break;
+		}
+		// Выводим отсутствие завершения строки
+		return 0;
+	}
+	/**
+	 * @brief Функция проверки завершения строки, оканчивающегося в позиции текста
+	 *
+	 * @param text       текст сопоставления
+	 * @param pos        проверяемая позиция в тексте
+	 * @param convention соглашение о переводе строки выражения
+	 * @return           результат проверки завершения строки
+	 *
+	 */
+	static bool terminated(const string_view text, const size_t pos, const regex::newline_t convention) noexcept {
+		/**
+		 * Если позиция находится в начале текста
+		 */
+		if(pos == 0)
+			// Выводим результат проверки завершения строки
+			return false;
+		/**
+		 * Выполняем обход длин завершения строки, в позиции оканчивающихся
+		 *
+		 * @details Завершение строки берёт от одного знака до трёх, и всякая длина
+		 *          проверяется отступом назад: длина, дающая завершение с концом
+		 *          в проверяемой позиции, его и подтверждает. Так позиция между
+		 *          возвратом каретки и переводом строки началом строки не выходит:
+		 *          завершение, в ней оканчивающееся, есть возврат каретки одиночный,
+		 *          а он при паре завершением не является.
+		 *
+		 */
+		for(size_t length = 1; (length <= 3) && (length <= pos); length++){
+			/**
+			 * Если завершение строки оканчивается в проверяемой позиции
+			 */
+			if(terminator(text, (pos - length), convention) == length)
+				// Выводим результат проверки завершения строки
+				return true;
+		}
+		// Выводим результат проверки завершения строки
+		return false;
+	}
+};
 
 /**
  * @brief Функция приведения кодового значения символа к нижнему регистру
@@ -244,165 +383,6 @@ size_t awh::regex::behind(string_view text, const size_t pos, const uint32_t fla
 	return 1;
 }
 /**
- * @brief Пространство имён вспомогательных функций операций над текстом
- *
- */
-namespace {
-	/**
-	 * @brief Функция проверки принадлежности символа символам слова
-	 *
-	 * @details Режим «UCP» заменяет набор символов слова ASCII соответствующим
-	 *          свойством Юникода, поэтому принадлежность определяется по нему.
-	 *
-	 * @param code  кодовое значение проверяемого символа
-	 * @param flags набор режимов компиляции инструкции
-	 * @return      результат проверки принадлежности символа символам слова
-	 *
-	 */
-	inline bool word(const uint32_t code, const uint32_t flags) noexcept {
-		/**
-		 * Если установлен режим соответствия сокращённых классов свойствам Юникода
-		 */
-		if(awh::regex::hasFlag(flags, awh::regex::flag_t::UCP))
-			// Выводим результат проверки обладания символом свойством символов слова
-			return awh::unicode::holds(code, static_cast <uint16_t> (awh::regex::property_id_t::UCP_WORD));
-		// Выводим результат проверки принадлежности символа символам слова
-		return awh::regex::isWord(code);
-	}
-};
-
-namespace {
-	/**
-	 * @brief Функция проверки привязки к позиции в тексте
-	 *
-	 * @param text  текст для сопоставления
-	 * @param start позиция начала попытки сопоставления
-	 * @param type  тип проверяемой привязки к позиции в тексте
-	 * @param flags набор режимов компиляции инструкции
-	 * @param pos   проверяемая позиция в тексте
-	 * @return      результат проверки привязки к позиции в тексте
-	 *
-	 */
-	/**
-	 * @brief Функция определения длины завершения строки в позиции текста
-	 *
-	 * @details Длина выводится нулевая там, где завершения строки нет вовсе.
-	 *          Пара возврата каретки с переводом строки почитается завершением
-	 *          единым: позиция между ними ни концом строки, ни началом её
-	 *          не является - правило это снято с эталонной реализации опытом.
-	 *
-	 * @param text       текст сопоставления
-	 * @param pos        проверяемая позиция в тексте
-	 * @param convention соглашение о переводе строки выражения
-	 * @return           длина завершения строки в знаках либо нуль
-	 *
-	 */
-	size_t terminator(const string_view text, const size_t pos, const awh::regex::newline_t convention) noexcept {
-		// Получаем размер текста сопоставления
-		const size_t size = text.size();
-		/**
-		 * Если позиция находится за пределами текста
-		 */
-		if(pos >= size)
-			// Выводим отсутствие завершения строки
-			return 0;
-		// Получаем октет текста в проверяемой позиции
-		const uint8_t letter = static_cast <uint8_t> (text.at(pos));
-		// Признак наличия перевода строки за возвратом каретки
-		const bool paired = ((letter == 0x0D) && ((pos + 1) < size) && (static_cast <uint8_t> (text.at(pos + 1)) == 0x0A));
-		/**
-		 * Определяем соглашение о переводе строки выражения
-		 */
-		switch(static_cast <uint8_t> (convention)){
-			// Выводим длину завершения строки соглашения перевода строки
-			case static_cast <uint8_t> (awh::regex::newline_t::LF): return ((letter == 0x0A) ? 1 : 0);
-			// Выводим длину завершения строки соглашения возврата каретки
-			case static_cast <uint8_t> (awh::regex::newline_t::CR): return ((letter == 0x0D) ? 1 : 0);
-			// Выводим длину завершения строки соглашения нулевого знака
-			case static_cast <uint8_t> (awh::regex::newline_t::NUL): return ((letter == 0x00) ? 1 : 0);
-			// Выводим длину завершения строки соглашения пары возврата каретки
-			case static_cast <uint8_t> (awh::regex::newline_t::CRLF): return (paired ? 2 : 0);
-			/**
-			 * Выводим длину завершения строки соглашения возврата каретки либо перевода
-			 */
-			case static_cast <uint8_t> (awh::regex::newline_t::ANYCRLF):
-				return (paired ? 2 : (((letter == 0x0D) || (letter == 0x0A)) ? 1 : 0));
-			/**
-			 * Выводим длину завершения строки соглашения всякого перевода Юникода
-			 */
-			case static_cast <uint8_t> (awh::regex::newline_t::ANY): {
-				/**
-				 * Если завершением строки выступает пара возврата каретки
-				 */
-				if(paired)
-					// Выводим длину пары возврата каретки с переводом строки
-					return 2;
-				/**
-				 * Если завершением строки выступает знак таблицы ASCII
-				 */
-				if((letter == 0x0A) || (letter == 0x0B) || (letter == 0x0C) || (letter == 0x0D))
-					// Выводим длину завершения строки одиночного
-					return 1;
-				/**
-				 * Если завершением строки выступает следующая строка
-				 */
-				if((letter == 0xC2) && ((pos + 1) < size) && (static_cast <uint8_t> (text.at(pos + 1)) == 0x85))
-					// Выводим длину записи следующей строки
-					return 2;
-				/**
-				 * Если завершением строки выступает разделитель строк либо абзацев
-				 */
-				if((letter == 0xE2) && ((pos + 2) < size) && (static_cast <uint8_t> (text.at(pos + 1)) == 0x80) &&
-				   ((static_cast <uint8_t> (text.at(pos + 2)) == 0xA8) || (static_cast <uint8_t> (text.at(pos + 2)) == 0xA9)))
-					// Выводим длину записи разделителя строк либо абзацев
-					return 3;
-			} break;
-		}
-		// Выводим отсутствие завершения строки
-		return 0;
-	}
-};
-namespace {
-	/**
-	 * @brief Функция проверки завершения строки, оканчивающегося в позиции текста
-	 *
-	 * @param text       текст сопоставления
-	 * @param pos        проверяемая позиция в тексте
-	 * @param convention соглашение о переводе строки выражения
-	 * @return           результат проверки завершения строки
-	 *
-	 */
-	bool terminated(const string_view text, const size_t pos, const awh::regex::newline_t convention) noexcept {
-		/**
-		 * Если позиция находится в начале текста
-		 */
-		if(pos == 0)
-			// Выводим результат проверки завершения строки
-			return false;
-		/**
-		 * Выполняем обход длин завершения строки, в позиции оканчивающихся
-		 *
-		 * @details Завершение строки берёт от одного знака до трёх, и всякая длина
-		 *          проверяется отступом назад: длина, дающая завершение с концом
-		 *          в проверяемой позиции, его и подтверждает. Так позиция между
-		 *          возвратом каретки и переводом строки началом строки не выходит:
-		 *          завершение, в ней оканчивающееся, есть возврат каретки одиночный,
-		 *          а он при паре завершением не является.
-		 *
-		 */
-		for(size_t length = 1; (length <= 3) && (length <= pos); length++){
-			/**
-			 * Если завершение строки оканчивается в проверяемой позиции
-			 */
-			if(terminator(text, (pos - length), convention) == length)
-				// Выводим результат проверки завершения строки
-				return true;
-		}
-		// Выводим результат проверки завершения строки
-		return false;
-	}
-};
-/**
  * @brief Функция проверки привязки к позиции в тексте
  *
  * @param text       текст для сопоставления
@@ -571,6 +551,8 @@ bool awh::regex::assertion(string_view text, const size_t start, const anchor_t 
  *
  */
 bool awh::regex::belongs(const classview_t & value, const uint32_t code, const uint32_t flags) noexcept {
+	// Получаем признак сопоставления без учёта регистра символов
+	const bool caseless = hasFlag(flags, flag_t::CASELESS);
 	/**
 	 * @brief Функция проверки принадлежности кодового значения классу
 	 *
@@ -585,8 +567,6 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 	 * @return      результат проверки принадлежности кодового значения
 	 *
 	 */
-	// Получаем признак сопоставления без учёта регистра символов
-	const bool caseless = hasFlag(flags, flag_t::CASELESS);
 	auto holding = [&value, caseless](const uint32_t code) noexcept -> bool {
 		/**
 		 * Выполняем поиск кодового значения в наборе диапазонов класса
@@ -617,8 +597,8 @@ bool awh::regex::belongs(const classview_t & value, const uint32_t code, const u
 			 *
 			 */
 			if(caseless && ((id == static_cast <uint16_t> (unicode::property_id_t::Lu)) ||
-			 (id == static_cast <uint16_t> (unicode::property_id_t::Ll)) ||
-			 (id == static_cast <uint16_t> (unicode::property_id_t::Lt))))
+			  (id == static_cast <uint16_t> (unicode::property_id_t::Ll)) ||
+			  (id == static_cast <uint16_t> (unicode::property_id_t::Lt))))
 				// Выполняем подмену разряда разрядом букв, регистр меняющих
 				id = static_cast <uint16_t> (unicode::property_id_t::L_AMP);
 			/**
@@ -708,10 +688,10 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		return 0;
 	// Длина разбираемого символа в байтах
 	size_t width = 0;
-	// Получаем класс разбиения первого символа кластера
-	unicode::cluster_t before = unicode::cluster(decode(text, pos, flags, width));
 	// Получаем положение первого символа в сочетании индийских письменностей
 	unicode::indic_t position = unicode::indic(decode(text, pos, flags, width));
+	// Получаем класс разбиения первого символа кластера
+	unicode::cluster_t before = unicode::cluster(decode(text, pos, flags, width));
 	// Получаем позицию за первым символом кластера
 	size_t current = (pos + width);
 	// Количество подряд идущих указателей области
@@ -746,21 +726,21 @@ size_t awh::regex::grapheme(string_view text, const size_t pos, const uint32_t f
 		 * Если один из символов является управляющим
 		 */
 		else if((before == unicode::cluster_t::CONTROL) || (before == unicode::cluster_t::CARRIAGE) || (before == unicode::cluster_t::LINEFEED) ||
-		 (after == unicode::cluster_t::CONTROL) || (after == unicode::cluster_t::CARRIAGE) || (after == unicode::cluster_t::LINEFEED))
+		        (after == unicode::cluster_t::CONTROL) || (after == unicode::cluster_t::CARRIAGE) || (after == unicode::cluster_t::LINEFEED))
 			// Выполняем установку флага разрыва графемного кластера
 			broken = true;
 		/**
 		 * Если начальная часть слога хангыля предшествует его продолжению
 		 */
 		else if((before == unicode::cluster_t::HANGUL_L) && ((after == unicode::cluster_t::HANGUL_L) || (after == unicode::cluster_t::HANGUL_V) ||
-		 (after == unicode::cluster_t::HANGUL_LV) || (after == unicode::cluster_t::HANGUL_LVT)))
+		        (after == unicode::cluster_t::HANGUL_LV) || (after == unicode::cluster_t::HANGUL_LVT)))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**
 		 * Если гласная часть слога хангыля предшествует его продолжению
 		 */
 		else if(((before == unicode::cluster_t::HANGUL_LV) || (before == unicode::cluster_t::HANGUL_V)) &&
-		 ((after == unicode::cluster_t::HANGUL_V) || (after == unicode::cluster_t::HANGUL_T)))
+		        ((after == unicode::cluster_t::HANGUL_V) || (after == unicode::cluster_t::HANGUL_T)))
 			// Выполняем сброс флага разрыва графемного кластера
 			broken = false;
 		/**

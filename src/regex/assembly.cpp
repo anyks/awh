@@ -23,16 +23,16 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cerrno>
-#include <cstring>
-#include <string>
 #include <tuple>
+#include <cerrno>
+#include <string>
+#include <cstring>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <regex/assembly.hpp>
 #include <sys/log.hpp>
+#include <regex/assembly.hpp>
 
 /**
  * Если сборка выполняется для операционной системы Windows
@@ -51,6 +51,7 @@
 	 */
 	#include <unistd.h>
 	#include <sys/mman.h>
+
 	/**
 	 * Если сборка выполняется для операционной системы семейства Apple
 	 */
@@ -67,13 +68,17 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
  * @brief Пространство имён вспомогательных значений исполняемой памяти
  *
  */
 namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Наибольший допустимый размер участка исполняемой памяти
 	 *
@@ -91,7 +96,7 @@ namespace {
 	 * @return размер страницы памяти в байтах
 	 *
 	 */
-	size_t granularity() noexcept {
+	static size_t granularity() noexcept {
 		/**
 		 * Если сборка выполняется для операционной системы Windows
 		 */
@@ -158,7 +163,7 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 		// Выводим результат размещения участка исполняемой памяти
 		return false;
 	// Получаем размер страницы памяти
-	const size_t page = granularity();
+	const size_t page = ::granularity();
 	/**
 	 * Получаем размер участка, кратный размеру страницы памяти
 	 *
@@ -216,9 +221,14 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 		 *
 		 */
 		#if defined(PROT_MPROTECT)
-			const int rights = (PROT_READ | PROT_WRITE | PROT_MPROTECT(PROT_EXEC));
+			// Заводим права памяти на чтение, запись и исполнение кода
+			const int32_t rights = (PROT_READ | PROT_WRITE | PROT_MPROTECT(PROT_EXEC));
+		/**
+		 * Если PROT_MPROTECT не доступен
+		 */
 		#else
-			const int rights = (PROT_READ | PROT_WRITE);
+			// Заводим права памяти на чтение и запись
+			const int32_t rights = (PROT_READ | PROT_WRITE);
 		#endif
 		// Выполняем размещение участка памяти, допускающего запись
 		this->_address = ::mmap(nullptr, length, rights, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -234,7 +244,7 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 	 */
 	if(this->_address == nullptr){
 		/**
-		 * Получаем причину отказа размещения участка памяти
+		 * Если сборка выполняется для операционной системы Windows
 		 *
 		 * @details Система MS Windows причину системного вызова кладёт
 		 *          не в «errno», а в собственное место, и `strerror` о ней
@@ -242,30 +252,35 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 		 *
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			const string reason = ("code " + std::to_string(::GetLastError()));
+			// Получаем описание отказа системы по номеру её ошибки
+			const string & reason = ("code " + ::to_string(::GetLastError()));
+		/**
+		 * Если сборка выполняется для операционной системы семейства UNIX
+		 */
 		#else
-			const string reason = ::strerror(errno);
+			// Получаем описание отказа системы по коду ошибки
+			const string & reason = ::strerror(errno);
 		#endif
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Executable memory of %zu bytes could not be allocated: %s", __PRETTY_FUNCTION__, {length}, awh::log::flag_t::CRITICAL, reason.c_str());
+			log::debug("Executable memory of %zu bytes could not be allocated: %s", __PRETTY_FUNCTION__, {length}, log::flag_t::CRITICAL, reason.c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Executable memory of %zu bytes could not be allocated: %s", awh::log::flag_t::CRITICAL, length, reason.c_str());
+			log::print("Executable memory of %zu bytes could not be allocated: %s", log::flag_t::CRITICAL, length, reason.c_str());
 		#endif
 		// Выводим результат размещения участка исполняемой памяти
 		return false;
 	}
-	// Выполняем установку размера размещённого участка памяти
-	this->_size = length;
 	// Выполняем сброс количества байт, занятых порождённым кодом
 	this->_length = 0;
+	// Выполняем установку размера размещённого участка памяти
+	this->_size = length;
 	// Выполняем сброс флага разрешения исполнения участка памяти
 	this->_executable = false;
 	// Выводим результат размещения участка исполняемой памяти
@@ -411,13 +426,13 @@ bool awh::regex::Assembly::commit() noexcept {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Execution of the allocated memory could not be permitted: %s", __PRETTY_FUNCTION__, {this->_size}, awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::debug("Execution of the allocated memory could not be permitted: %s", __PRETTY_FUNCTION__, {this->_size}, log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("Execution of the allocated memory could not be permitted: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
+				log::print("Execution of the allocated memory could not be permitted: %s", log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выводим результат разрешения исполнения участка памяти
 			return false;
@@ -517,7 +532,8 @@ awh::regex::Assembly & awh::regex::Assembly::operator = (Assembly && assembly) n
  *
  */
 awh::regex::Assembly::Assembly(Assembly && assembly) noexcept :
- _address(assembly._address), _size(assembly._size), _length(assembly._length), _executable(assembly._executable) {
+ _address(assembly._address), _size(assembly._size),
+ _length(assembly._length), _executable(assembly._executable) {
 	// Выполняем сброс адреса участка памяти перемещаемого объекта
 	assembly._address = nullptr;
 	// Выполняем сброс размера участка памяти перемещаемого объекта

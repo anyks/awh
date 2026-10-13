@@ -36,9 +36,9 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <new>
 #include <vector>
 #include <cstdint>
-#include <new>
 #include <cstdlib>
 #include <cstring>
 #include <utility>
@@ -52,6 +52,7 @@
 #include "../encoding/unicode/types.hpp"
 
 /**
+ * \~russian
  * Если предсказание маловероятной ветви ещё не определено
  *
  * @details Предсказание расставляется у заслонов, исполняемых на каждом
@@ -60,6 +61,16 @@
  *          нет вовсе - «__builtin_expect» ему неизвестен, - отчего
  *          предсказание там сводится к самому условию.
  *
+ * \~english
+ * If the prediction of an unlikely branch is not yet defined
+ *
+ * @details The prediction is placed at the gates that are executed for every
+ *          character: the failure branch is almost never taken there, and
+ *          pointing it out takes it off the hot path. Visual Studio does not
+ *          have such a facility at all — «__builtin_expect» is unknown to it —
+ *          so the prediction there collapses to the condition itself.
+ *
+ * \~
  */
 #if !defined(AWH_REGEX_UNLIKELY)
 	/**
@@ -82,6 +93,7 @@
 #endif
 
 /**
+ * \~russian
  * Если принудительная подстановка ещё не определена
  *
  * @details Ограждение и довод к нему - см. prefilter.hpp: определение это
@@ -89,6 +101,16 @@
  *          и prefilter.hpp, общих определений не подключающий. Прочие
  *          заголовочные файлы модуля берут определение отсюда.
  *
+ * \~english
+ * If the forced inlining is not yet defined
+ *
+ * @details The guard and the rationale behind it - see prefilter.hpp: the
+ *          definition is carried by two header files included in different
+ *          order - this one and prefilter.hpp, which does not include any
+ *          common definitions. The other header files of the module take the
+ *          definition from here.
+ *
+ * \~
  */
 #if !defined(AWH_REGEX_INLINE)
 	/**
@@ -111,6 +133,7 @@
 #endif
 
 /**
+ * \~russian
  * Если запрет подстановки метода телом вызывающего ещё не определён
  *
  * @details Запрет нужен исполнению с возвратом и медленному пути пополнения
@@ -118,6 +141,15 @@
  *          файл этот подключают все заголовочные файлы модуля, кроме
  *          prefilter.hpp, а тому запрет не нужен.
  *
+ * \~english
+ * If the prohibition of method inlining into the caller is not yet defined
+ *
+ * @details The prohibition is needed for the backtracking execution and the
+ *          slow path of replenishing the set of records below. The definition
+ *          is kept here in one place: this file is included by all header
+ *          files of the module except prefilter.hpp, which does not need it.
+ *
+ * \~
  */
 #if !defined(AWH_REGEX_NOINLINE)
 	/**
@@ -149,7 +181,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -279,6 +310,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Compilation mode flags of a regular expression
+		 *
 		 * @details The flag values admit bitwise combination. Some of the flags
 		 *          can be changed inside the expression by inline options of the «(?i)» form,
 		 *          such flags are stored in every tree node separately.
@@ -325,6 +357,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Matching is performed by generated machine code
+			 *
 			 * @details The mode makes the expression build produce a matcher in the form of
 			 *          machine code and performs matching with it. Code generation covers
 			 *          a subset of expressions rather than every expression:
@@ -333,6 +366,7 @@ namespace awh {
 			 *          The mode is enabled by the build explicitly, since its gain
 			 *          is not universal: on short texts the cost of preliminary
 			 *          position selection is comparable to matching itself.
+			 *
 			 * @warning This mode used to be called «MACHINE», and the name had to be changed:
 			 *          FreeBSD declares `MACHINE` a macro in `<machine/param.h>`,
 			 *          substituting a string with the processor name for it. The enumeration scope
@@ -344,7 +378,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			JIT        = 0x4000,
+			JIT = 0x4000,
 			/**
 			 * \~russian
 			 * Текст сопоставления на правильность записи не проверяется
@@ -364,6 +398,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * The matched text is not checked for encoding validity
+			 *
 			 * @details Under the «UTF» mode the text is parsed character by character, and an encoding
 			 *          that does not conform to UTF-8 cannot be parsed, therefore
 			 *          matching checks it on every call. That check
@@ -378,7 +413,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			UNCHECKED  = 0x8000,
+			UNCHECKED = 0x8000,
 			/**
 			 * \~russian
 			 * Оптимизации отыскания начала совпадения не применяются
@@ -393,6 +428,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * The optimizations of finding the start of a match are not applied
+			 *
 			 * @details The compilation derives the set of admissible starting bytes and the required
 			 *          literal of a match, by which the matching filters out the positions
 			 *          incapable of yielding a match. That filtering does not change the outcome,
@@ -402,7 +438,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			NOSTART    = 0x10000,
+			NOSTART = 0x10000,
 			/**
 			 * \~russian
 			 * Пустое совпадение в позиции начала попытки совпадением не считается
@@ -415,6 +451,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * An empty match at the position of the start of the attempt is not counted as a match
+			 *
 			 * @details The mode forbids an empty match at the search start position alone,
 			 *          whereas the «NOTEMPTY» mode forbids it everywhere:
 			 *          «(*NOTEMPTY_ATSTART)a*» on the text «b» yields an empty match
@@ -423,7 +460,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			ATSTART    = 0x20000
+			ATSTART = 0x20000
 		};
 
 		/**
@@ -436,6 +473,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Kind of a backtracking control verb
+		 *
 		 * @details Those verbs govern the backtracking engine: they finish the matching,
 		 *          cut off the accumulated backtracking points and move the matching
 		 *          attempt. The meaning of each is taken from the reference implementation by experiment.
@@ -463,6 +501,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Newline convention of a regular expression
+		 *
 		 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
 		 *          and governs three things: the dot, the anchors to the line boundaries
 		 *          and the anchor of the end of the text. The «\\R» sequence does not depend
@@ -610,6 +649,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Unicode property identifier
+		 *
 		 * @details The property identifiers are set by the Unicode module, which is also where
 		 *          the generated character database tables take them from. The designation is introduced
 		 *          so that regular expression parsing refers to the Unicode properties
@@ -637,13 +677,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			Range() noexcept : begin(0), end(0) {}
+			Range() noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -653,12 +692,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param begin lower bound of the range inclusive
 			 * @param end   upper bound of the range inclusive
 			 *
 			 * \~
 			 */
-			Range(const uint32_t begin, const uint32_t end) noexcept : begin(begin), end(end) {}
+			Range(const uint32_t begin, const uint32_t end) noexcept;
 		} range_t;
 
 		/**
@@ -684,6 +724,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Property negation flag, set for the «\P» sequence
+			 *
 			 * @note Stored as a byte rather than as a boolean value: the set of properties
 			 *       is restored by viewing the memory image of the storage record, and the record
 			 *       comes from the outside — a forged byte would give a value of the boolean type
@@ -696,13 +737,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			Property() noexcept : id(0), negative(false) {}
+			Property() noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -712,19 +752,32 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param id       Unicode property identifier
 			 * @param negative property negation flag
 			 *
 			 * \~
 			 */
-			Property(const uint16_t id, const bool negative) noexcept : id(id), negative(negative ? 1 : 0) {}
+			Property(const uint16_t id, const bool negative) noexcept;
 		} property_t;
 
 		/**
 		 * \~russian
-		 * @brief Обзор непрерывного участка набора
+		 * @brief Шаблон структуры обзора непрерывного участка набора
 		 *
 		 * @tparam T тип записи обозреваемого набора
+		 *
+		 * \~english
+		 * @brief Template for the structure of a continuous sequence segment review
+		 *
+		 * @tparam T record type of the viewed sequence
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Структура обзора непрерывного участка набора
 		 *
 		 * @details Обзор ведёт указание на начало участка и количество записей
 		 *          в нём, владения набором не принимая. Служит он выдаче
@@ -732,16 +785,16 @@ namespace awh {
 		 *          свойства классов символов программы.
 		 *
 		 * \~english
-		 * @brief View of a contiguous span of a sequence
-		 * @tparam T record type of the viewed sequence
-		 * @details The view is driven by a pointer to the beginning of the span and the number of records
-		 *          in it, taking no ownership of the sequence. It serves to yield
-		 *          spans of contiguous sequences that hold the ranges and
-		 *          properties of the character classes of the program.
+		 * @brief Structure of the continuous sequence segment review
+		 *
+		 * @details The view is driven by a pointer to the beginning of the span
+		 *          and the number of records in it, taking no ownership of the
+		 *          sequence. It serves to yield spans of contiguous sequences
+		 *          that hold the ranges and properties of the character
+		 *          classes of the program.
 		 *
 		 * \~
 		 */
-		template <typename T>
 		struct Span {
 			// Указание на начало обозреваемого участка
 			const T * records;
@@ -749,8 +802,79 @@ namespace awh {
 			size_t count;
 			/**
 			 * \~russian
-			 * @brief Конструктор
+			 * @brief Метод извлечения указания на первую запись участка
 			 *
+			 * @return указание на первую запись обозреваемого участка
+			 *
+			 * \~english
+			 * @brief Method of getting the pointer to the first record of the span
+			 *
+			 * @return pointer to the first record of the viewed span
+			 *
+			 * \~
+			 */
+			const T * begin() const noexcept { return this->records; }
+			/**
+			 * \~russian
+			 * @brief Метод извлечения указания за последнюю запись участка
+			 *
+			 * @return указание за последнюю запись обозреваемого участка
+			 *
+			 * \~english
+			 * @brief Method of getting the pointer past the last record of the span
+			 *
+			 * @return pointer past the last record of the viewed span
+			 *
+			 * \~
+			 */
+			const T * end() const noexcept { return (this->records + this->count); }
+			/**
+			 * \~russian
+			 * @brief Метод извлечения количества записей участка
+			 *
+			 * @return количество записей обозреваемого участка
+			 *
+			 * \~english
+			 * @brief Method of getting the number of records of the span
+			 *
+			 * @return number of records of the viewed span
+			 *
+			 * \~
+			 */
+			size_t size() const noexcept { return this->count; }
+			/**
+			 * \~russian
+			 * @brief Метод проверки отсутствия записей участка
+			 *
+			 * @return результат проверки отсутствия записей участка
+			 *
+			 * \~english
+			 * @brief Method of checking the absence of records of the span
+			 *
+			 * @return result of checking the absence of records of the viewed span
+			 *
+			 * \~
+			 */
+			bool empty() const noexcept { return (this->count == 0); }
+			/**
+			 * \~russian
+			 * @brief Оператор извлечения записи участка по номеру
+			 *
+			 * @param index номер извлекаемой записи участка
+			 * @return      извлечённая запись обозреваемого участка
+			 *
+			 * \~english
+			 * @brief Operator of getting a record of the span by number
+			 *
+			 * @param index number of the record of the span to get
+			 * @return      the obtained record of the viewed span
+			 *
+			 * \~
+			 */
+			const T & operator [] (const size_t index) const noexcept { return this->records[index]; }
+			/**
+			 * \~russian
+			 * @brief Конструктор
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -767,86 +891,32 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param records pointer to the beginning of the viewed span
 			 * @param count   number of records of the viewed span
 			 *
 			 * \~
 			 */
 			Span(const T * records, const size_t count) noexcept : records(records), count(count) {}
-			/**
-			 * \~russian
-			 * @brief Метод извлечения указания на первую запись участка
-			 *
-			 * @return указание на первую запись обозреваемого участка
-			 *
-			 * \~english
-			 * @brief Method of getting the pointer to the first record of the span
-			 * @return pointer to the first record of the viewed span
-			 *
-			 * \~
-			 */
-			const T * begin() const noexcept { return this->records; }
-			/**
-			 * \~russian
-			 * @brief Метод извлечения указания за последнюю запись участка
-			 *
-			 * @return указание за последнюю запись обозреваемого участка
-			 *
-			 * \~english
-			 * @brief Method of getting the pointer past the last record of the span
-			 * @return pointer past the last record of the viewed span
-			 *
-			 * \~
-			 */
-			const T * end() const noexcept { return (this->records + this->count); }
-			/**
-			 * \~russian
-			 * @brief Метод извлечения количества записей участка
-			 *
-			 * @return количество записей обозреваемого участка
-			 *
-			 * \~english
-			 * @brief Method of getting the number of records of the span
-			 * @return number of records of the viewed span
-			 *
-			 * \~
-			 */
-			size_t size() const noexcept { return this->count; }
-			/**
-			 * \~russian
-			 * @brief Метод проверки отсутствия записей участка
-			 *
-			 * @return результат проверки отсутствия записей участка
-			 *
-			 * \~english
-			 * @brief Method of checking the absence of records of the span
-			 * @return result of checking the absence of records of the viewed span
-			 *
-			 * \~
-			 */
-			bool empty() const noexcept { return (this->count == 0); }
-			/**
-			 * \~russian
-			 * @brief Оператор извлечения записи участка по номеру
-			 *
-			 * @param index номер извлекаемой записи участка
-			 * @return      извлечённая запись обозреваемого участка
-			 *
-			 * \~english
-			 * @brief Operator of getting a record of the span by number
-			 * @param index number of the record of the span to get
-			 * @return      the obtained record of the viewed span
-			 *
-			 * \~
-			 */
-			const T & operator [] (const size_t index) const noexcept { return this->records[index]; }
 		};
 
 		/**
 		 * \~russian
-		 * @brief Набор записей, владеющий содержимым либо обозревающий запись
+		 * @brief Шаблон класса набора записей, владеющий содержимым либо обозревающий запись
 		 *
 		 * @tparam T тип записи набора
+		 *
+		 * \~english
+		 * @brief Record set class template that owns the content or views a record.
+		 *
+		 * @tparam T record type of the sequence
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Класс набора записей, владеющий содержимым либо обозревающий запись
 		 *
 		 * @details Набор ведёт себя двояко. Собираемый компиляцией, он содержимым
 		 *          владеет и пополняется как обычный набор. Восстановленный из
@@ -858,20 +928,20 @@ namespace awh {
 		 *          подмены записи допустить не может.
 		 *
 		 * \~english
-		 * @brief Sequence of records that either owns its content or views a record
-		 * @tparam T record type of the sequence
-		 * @details The sequence behaves in two ways. Built by compilation, it owns its content
-		 *          and is filled like an ordinary sequence. Restored from
-		 *          the storage, it views a span of a record that lies in memory
-		 *          as a whole, and has no content of its own at all: restoration
-		 *          amounts to setting the pointer and the count, bypassing allocation
-		 *          and copying. Any modification of a viewing sequence turns it
-		 *          into an owning one by moving the content to itself, therefore a view
-		 *          cannot allow substitution of the record.
+		 * @brief A record set class that owns the content or views a record.
+		 *
+		 * @details The sequence behaves in two ways. Built by compilation, it
+		 *          owns its content and is filled like an ordinary sequence.
+		 *          Restored from the storage, it views a span of a record that
+		 *          lies in memory as a whole, and has no content of its own at
+		 *          all: restoration amounts to setting the pointer and the
+		 *          count, bypassing allocation and copying. Any modification of
+		 *          a viewing sequence turns it into an owning one by moving the
+		 *          content to itself, therefore a view cannot allow substitution
+		 *          of the record.
 		 *
 		 * \~
 		 */
-		template <typename T>
 		class Sequence {
 			private:
 				// Указание на начало записей набора
@@ -892,6 +962,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Number of records allocated by the sequence
+				 *
 				 * @details The value is non-zero if the sequence owns its content
 				 *          and equals zero if the sequence views a span of a
 				 *          record. A separate ownership field is not introduced
@@ -911,6 +982,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of allocating the records of the sequence
+				 *
 				 * @param capacity required number of records to allocate
 				 *
 				 * \~
@@ -967,6 +1039,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of expanding the sequence for a record appended to the end
+				 *
 				 * @details The slow path of constructing a record: a viewing sequence is turned
 				 *          into an owning one, and an owning one that lacks room allocates its
 				 *          records anew. The path is taken out of constructing a record and is
@@ -991,6 +1064,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting a view of a span of a record
+				 *
 				 * @param records pointer to the beginning of the records of the span
 				 * @param count   number of records of the span
 				 *
@@ -1012,6 +1086,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the sequence owns its content
+				 *
 				 * @return result of checking the ownership of the content
 				 *
 				 * \~
@@ -1026,6 +1101,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of records of the sequence
+				 *
 				 * @return number of records of the sequence
 				 *
 				 * \~
@@ -1039,6 +1115,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the absence of records of the sequence
+				 *
 				 * @return result of checking the absence of records of the sequence
 				 *
 				 * \~
@@ -1052,6 +1129,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the pointer to the beginning of the records of the sequence
+				 *
 				 * @return pointer to the beginning of the records of the sequence
 				 *
 				 * \~
@@ -1065,6 +1143,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the pointer to the first record of the sequence
+				 *
 				 * @return pointer to the first record of the sequence
 				 *
 				 * \~
@@ -1078,6 +1157,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the pointer past the last record of the sequence
+				 *
 				 * @return pointer past the last record of the sequence
 				 *
 				 * \~
@@ -1091,6 +1171,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the last record of the sequence
+				 *
 				 * @return last record of the sequence
 				 *
 				 * \~
@@ -1104,6 +1185,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the first record of the sequence
+				 *
 				 * @return first record of the sequence
 				 *
 				 * \~
@@ -1118,6 +1200,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting a record of the sequence by number
+				 *
 				 * @param index number of the record of the sequence to get
 				 * @return      the obtained record of the sequence
 				 *
@@ -1133,6 +1216,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a record of the sequence by number with bounds checking
+				 *
 				 * @param index number of the record of the sequence to get
 				 * @return      the obtained record of the sequence
 				 *
@@ -1158,6 +1242,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a mutable record of the sequence by number
+				 *
 				 * @param index number of the record of the sequence to get
 				 * @return      the obtained record of the sequence
 				 *
@@ -1184,6 +1269,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator of getting a mutable record of the sequence by number
+				 *
 				 * @param index number of the record of the sequence to get
 				 * @return      the obtained record of the sequence
 				 *
@@ -1211,10 +1297,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mutable records of the sequence
+				 *
 				 * @details A viewing sequence is turned into an owning one once, and a pass
 				 *          over the records by pointer carries neither a bounds check nor
 				 *          an ownership check on every record. The pointer stays valid
 				 *          as long as the sequence does not grow.
+				 *
 				 * @return the mutable records of the sequence
 				 *
 				 * \~
@@ -1233,6 +1321,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mutable last record of the sequence
+				 *
 				 * @return last record of the sequence
 				 *
 				 * \~
@@ -1287,14 +1376,29 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of appending a record to the end of the sequence
+				 *
 				 * @param record record of the sequence to append
 				 *
 				 * \~
 				 */
-				AWH_REGEX_INLINE void push_back(const T & record) {
+				AWH_REGEX_INLINE void pushBack(const T & record) {
 					// Выполняем размещение записи в конце набора
-					this->emplace_back(record);
+					this->emplaceBack(record);
 				}
+				/**
+				 * \~russian
+				 * @brief Шаблон метода размещения записи в конце набора
+				 *
+				 * @tparam Args типы параметров размещаемой записи
+				 *
+				 * \~english
+				 * @brief Template for the method of appending a record to the end of a set
+				 *
+				 * @tparam Args parameter types of the record to construct
+				 *
+				 * \~
+				 */
+				template <typename... Args>
 				/**
 				 * \~russian
 				 * @brief Метод размещения записи в конце набора
@@ -1331,14 +1435,14 @@ namespace awh {
 				 *          с полем набора, отчего чтение после неё собиратель
 				 *          обязан повторить.
 				 *
-				 * @tparam Args типы параметров размещаемой записи
-				 * @param  args параметры размещаемой записи набора
-				 * @return      указание на размещённую запись либо nullptr, если места
-				 *              под запись набор не получил; указание годно, покуда
-				 *              набор не растёт
+				 * @param args параметры размещаемой записи набора
+				 * @return     указание на размещённую запись либо nullptr, если места
+				 *             под запись набор не получил; указание годно, покуда
+				 *             набор не растёт
 				 *
 				 * \~english
 				 * @brief Method of constructing a record at the end of the sequence
+				 *
 				 * @details A record is constructed by one of two paths. The fast one - there is
 				 *          room and the sequence owns it - costs one comparison and the write
 				 *          itself and is inlined into the caller. The slow one - a viewing
@@ -1370,16 +1474,14 @@ namespace awh {
 				 *          instruction is done by bytes as well, and a byte may coincide with a field
 				 *          of the sequence, so the compiler is obliged to repeat a read made after it.
 				 *
-				 * @tparam Args parameter types of the record to construct
-				 * @param  args parameters of the record of the sequence to construct
-				 * @return      pointer to the constructed record or nullptr if the sequence did not
-				 *              obtain room for the record; the pointer stays valid as long as the
-				 *              sequence does not grow
+				 * @param args parameters of the record of the sequence to construct
+				 * @return     pointer to the constructed record or nullptr if the sequence did not
+				 *             obtain room for the record; the pointer stays valid as long as the
+				 *             sequence does not grow
 				 *
 				 * \~
 				 */
-				template <typename... Args>
-				AWH_REGEX_INLINE T * emplace_back(Args &&... args) {
+				AWH_REGEX_INLINE T * emplaceBack(Args &&... args) {
 					/**
 					 * Если места под запись нет либо набор обозревающий
 					 */
@@ -1413,6 +1515,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of appending a span of records to the end of the sequence
+				 *
 				 * @param records pointer to the beginning of the records to append
 				 * @param count   number of records to append
 				 *
@@ -1448,6 +1551,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of changing the number of records of the sequence
+				 *
 				 * @param count required number of records of the sequence
 				 *
 				 * \~
@@ -1489,6 +1593,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of pre-allocating the records of the sequence
+				 *
 				 * @param count number of records of the sequence to allocate
 				 *
 				 * \~
@@ -1508,6 +1613,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of replacing the content of the sequence with a repeated record
+				 *
 				 * @param count  number of records of the sequence
 				 * @param record replacing record
 				 *
@@ -1545,6 +1651,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resetting the sequence keeping its allocation
+				 *
 				 * @details The reset differs from clearing in that the space occupied
 				 *          by the sequence stays with it: a sequence being filled anew
 				 *          requests no allocation while the former space suffices.
@@ -1555,11 +1662,19 @@ namespace awh {
 				 */
 				void reset() noexcept {
 					/**
+					 * \~russian
 					 * Если набор содержимым не владеет
 					 *
 					 * @details Набор обозревающий места своего не имеет вовсе,
 					 *          и удержать ему нечего: сброс его равен очистке.
 					 *
+					 * \~english
+					 * If the sequence does not own its content
+					 *
+					 * @details A viewing sequence has no room of its own at all,
+					 *          and there is nothing to retain: its reset amounts to clearing.
+					 *
+					 * \~
 					 */
 					if(this->_capacity == 0){
 						// Выполняем сброс указания на начало записей набора
@@ -1600,7 +1715,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -1624,12 +1738,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Copy constructor
+				 *
 				 * @param sequence sequence of records to copy
 				 *
 				 * \~
 				 */
 				Sequence(const Sequence & sequence) noexcept : _records(sequence._records), _count(sequence._count), _capacity(0) {
 					/**
+					 * \~russian
 					 * Если копируемый набор записей не содержит
 					 *
 					 * @details Набор пустой перенимается пустым же, а не обзором
@@ -1638,6 +1754,16 @@ namespace awh {
 					 *          а обращение обзора во владение запрашивало бы место
 					 *          под ноль записей.
 					 *
+					 * \~english
+					 * If the sequence being copied has no records
+					 *
+					 * @details An empty sequence is taken over as empty rather than by
+					 *          viewing the room of the source one: such a view would
+					 *          point at foreign room, which lives only as long as the
+					 *          source sequence lives, and turning the view into owning
+					 *          would request room for no entries.
+					 *
+					 * \~
 					 */
 					if(this->_count == 0){
 						// Выполняем сброс указания на начало записей набора
@@ -1661,6 +1787,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Copy assignment operator
+				 *
 				 * @param sequence sequence of records to copy
 				 * @return         the current sequence of records
 				 *
@@ -1676,6 +1803,7 @@ namespace awh {
 					// Выполняем очистку набора записей
 					this->clear();
 					/**
+					 * \~russian
 					 * Если копируемый набор записей не содержит
 					 *
 					 * @details Набор пустой перенимается пустым же, а не обзором
@@ -1684,6 +1812,16 @@ namespace awh {
 					 *          а обращение обзора во владение запрашивало бы место
 					 *          под ноль записей.
 					 *
+					 * \~english
+					 * If the sequence being copied has no records
+					 *
+					 * @details An empty sequence is taken over as empty rather than by
+					 *          viewing the room of the source one: such a view would
+					 *          point at foreign room, which lives only as long as the
+					 *          source sequence lives, and turning the view into owning
+					 *          would request room for no entries.
+					 *
+					 * \~
 					 */
 					if(sequence._count == 0)
 						// Выводим текущий набор записей
@@ -1733,6 +1871,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Character class of a regular expression
+		 *
 		 * @details A character class is stored as a sorted sequence of non-overlapping
 		 *          ranges of code point values and a sequence of references to Unicode properties. The negation
 		 *          of the class is kept as a separate flag and is applied to the union of the ranges
@@ -1755,13 +1894,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			Class() noexcept : negative(false) {}
+			Class() noexcept;
 		} class_t;
 
 		/**
@@ -1777,6 +1915,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Reference to a character class of the program
+		 *
 		 * @details The program stores the ranges and properties of all classes as contiguous
 		 *          sequences, and defines a class by a reference to spans of those sequences.
 		 *          This arrangement was introduced in place of a sequence of classes where each one
@@ -1798,6 +1937,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Character class negation flag
+			 *
 			 * @note Stored as a byte rather than as a boolean value: the set of classes
 			 *       is restored by viewing the memory image of the storage record, and the record
 			 *       comes from the outside — a forged byte would give a value of the boolean type
@@ -1818,13 +1958,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			ClassRef() noexcept : negative(false), ranges(0), rangeCount(0), properties(0), propertyCount(0) {}
+			ClassRef() noexcept;
 		} classref_t;
 
 		/**
@@ -1836,6 +1975,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief View of a character class of the program
+		 *
 		 * @details The view is yielded by the program and takes no ownership of the sequences:
 		 *          it is valid as long as the program itself is valid.
 		 *
@@ -1852,13 +1992,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			ClassView() noexcept : negative(false) {}
+			ClassView() noexcept;
 		} classview_t;
 
 		/**
@@ -1871,6 +2010,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Node of the syntax tree of a regular expression
+		 *
 		 * @details The nodes are stored in an arena and are linked to each other by indices. The meaning
 		 *          of the individual fields is determined by the node type: the fields are combined into an anonymous
 		 *          union for the nodes that hold data incompatible with each other.
@@ -2071,7 +2211,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Constructor

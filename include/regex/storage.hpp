@@ -106,7 +106,9 @@
  * @brief Header file of the storage of built regular expressions —
  *        writing built expressions as a sequence of bytes and restoring
  *        them from the record without repeated parsing and compilation
+ *
  * @section storage_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -213,7 +215,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -224,7 +225,6 @@ namespace awh {
 	 * Используем стандартное пространство имён
 	 */
 	using namespace std;
-
 
 	/**
 	 * \~russian
@@ -258,6 +258,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Layout version of the record of the storage of built expressions
+		 *
 		 * @details The version is increased on every change of the layout of the record:
 		 *          the set of fields, the order in which they follow, the values of the operation codes
 		 *          or the layout of the structures written as a memory image. A record of a different version is not subject to restoration,
@@ -277,20 +278,20 @@ namespace awh {
 		 * \~
 		 */
 		enum class storage_error_t : uint8_t {
-			NONE          = 0x00, // Ошибок не обнаружено
-			EMPTY         = 0x01, // Запись пуста
-			TRUNCATED     = 0x02, // Запись оборвана до завершения
-			BAD_MAGIC     = 0x03, // Опознание записи не совпадает
-			BAD_VERSION   = 0x04, // Версия устройства записи не поддерживается
-			BAD_CHECKSUM  = 0x05, // Контрольная сумма записи не совпадает
-			BAD_CONTENT   = 0x06, // Содержимое записи не отвечает устройству
-			TOO_LARGE     = 0x07, // Размер записи превышает допустимый
-			BAD_PLATFORM  = 0x08, // Запись порождена машиной устройства иного
-			BAD_METHOD    = 0x09, // Обработчик метода сжатия записи не установлен
-			BAD_PACKING   = 0x0A, // Сжатие либо разжатие записи не выполнено
-			BAD_MACHINE   = 0x0B, // Запись порождена машиной иной
-			EXPIRED       = 0x0C, // Срок годности записи истёк
-			BAD_CIPHER    = 0x0D  // Зашифрование либо расшифрование записи не выполнено
+			NONE         = 0x00, // Ошибок не обнаружено
+			EMPTY        = 0x01, // Запись пуста
+			TRUNCATED    = 0x02, // Запись оборвана до завершения
+			BAD_MAGIC    = 0x03, // Опознание записи не совпадает
+			BAD_VERSION  = 0x04, // Версия устройства записи не поддерживается
+			BAD_CHECKSUM = 0x05, // Контрольная сумма записи не совпадает
+			BAD_CONTENT  = 0x06, // Содержимое записи не отвечает устройству
+			TOO_LARGE    = 0x07, // Размер записи превышает допустимый
+			BAD_PLATFORM = 0x08, // Запись порождена машиной устройства иного
+			BAD_METHOD   = 0x09, // Обработчик метода сжатия записи не установлен
+			BAD_PACKING  = 0x0A, // Сжатие либо разжатие записи не выполнено
+			BAD_MACHINE  = 0x0B, // Запись порождена машиной иной
+			EXPIRED      = 0x0C, // Срок годности записи истёк
+			BAD_CIPHER   = 0x0D  // Зашифрование либо расшифрование записи не выполнено
 		};
 
 		/**
@@ -305,6 +306,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the storage of built regular expressions
+		 *
 		 * @details The class writes built expressions as a sequence of
 		 *          bytes and restores them from the record, bypassing parsing of the text
 		 *          of the expression and compilation of the program. Restoration costs
@@ -336,6 +338,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Handler of compression or decompression of the storage record
+				 *
 				 * @details The handler receives the source content and fills in
 				 *          the output one, yielding an indication of success. Setting it
 				 *          is laid on the consumer: the storage knows the compression method
@@ -358,6 +361,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Handler of encryption or decryption of the storage record
+				 *
 				 * @details The handler receives the source content and fills in the output
 				 *          one, yielding an indication of success. Setting it is laid on
 				 *          the consumer for the same reason as the compression: the module
@@ -378,6 +382,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Lifetime of the record in seconds
+				 *
 				 * @details A zero lifetime means unlimited validity.
 				 *
 				 * \~
@@ -396,6 +401,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Indication of trust in the generated code carried by the record
+				 *
 				 * @details The generated machine code of the record is executed rather than
 				 *          parsed, which is why it is not guarded by any check at all:
 				 *          data can be checked, but not instructions. The indication is cleared
@@ -431,6 +437,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of writing the program of a regular expression
+				 *
 				 * @param program program to write
 				 * @param result  storage record
 				 *
@@ -448,6 +455,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of restoring the program of a regular expression
+				 *
 				 * @param data    storage record
 				 * @param offset  reading position in the record
 				 * @param program program to restore
@@ -466,6 +474,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of restoring built expressions from a record
+				 *
 				 * @param blob   storage record taken into ownership
 				 * @param result set of restored expressions
 				 * @return       result of restoring the built expressions
@@ -478,17 +487,23 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод восстановления собранных выражений телом своим
 				 *
-				 * @param blob   запись хранилища, взятая во владение
-				 * @param result набор восстановленных выражений
-				 * @return       результат восстановления собранных выражений
-				 *
 				 * @details Тело вынесено из метода публичного, дабы отказ его
 				 *          сообщался журналом единожды: точек выхода отказных
 				 *          у восстановления три десятка, и запись в журнал
 				 *          при каждой обратила бы сообщение в бюрократию.
 				 *
+				 * @param blob   запись хранилища, взятая во владение
+				 * @param result набор восстановленных выражений
+				 * @return       результат восстановления собранных выражений
+				 *
 				 * \~english
 				 * @brief Method of restoring built expressions by its own body
+				 *
+				 * @details The body is extracted from the public method so that its failure
+				 *          is reported in the log once: the restoration has three dozen
+				 *          exit points of failure, and writing to the log at every one
+				 *          would turn the message into bureaucracy.
+				 *
 				 * @param blob   storage record taken into ownership
 				 * @param result set of restored expressions
 				 * @return       result of restoring the built expressions
@@ -511,8 +526,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the validity of the program of a regular expression
+				 *
 				 * @param program program to check
 				 * @return        result of checking the validity of the program
+				 *
 				 * @details The check is performed over a restored record and
 				 *          certifies that the jump addresses, the references to character
 				 *          classes and the other references of the program point inside
@@ -532,6 +549,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of writing built expressions
+				 *
 				 * @param expressions set of built expressions
 				 * @param result      storage record
 				 * @return            result of writing the built expressions
@@ -553,9 +571,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of restoring built expressions
+				 *
 				 * @param data   storage record
 				 * @param result set of restored expressions
 				 * @return       result of restoring the built expressions
+				 *
 				 * @details The generated machine code is not kept in the record and on
 				 *          restoration is generated anew for the expressions
 				 *          built with the «JIT» mode.
@@ -578,9 +598,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of restoring built expressions
+				 *
 				 * @param data   storage record
 				 * @param result set of restored expressions
 				 * @return       result of restoring the built expressions
+				 *
 				 * @details The record is handed to the storage into ownership, which is why
 				 *          it is not copied at all: the sequences of the programs
 				 *          view spans of the handed record, and it lives
@@ -608,9 +630,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the compression of the storage record
+				 *
 				 * @param method compression method of the storage record
 				 * @param pack   compression handler of the storage record
 				 * @param unpack decompression handler of the storage record
+				 *
 				 * @details The compression method is written into the header of the record, therefore
 				 *          restoration decompresses it by the same method on its own.
 				 *          Setting the «NONE» method disables compression, and the record
@@ -640,8 +664,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the encryption of the storage record
+				 *
 				 * @param encrypt encryption handler of the storage record
 				 * @param decrypt decryption handler of the storage record
+				 *
 				 * @details The indication of encryption is written into the header of the
 				 *          record, therefore restoration decrypts it on its own. Empty
 				 *          handlers disable the encryption. The encryption is performed
@@ -665,7 +691,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the trust in the generated code of the record
+				 *
 				 * @param mode indication of trust in the generated code of the record
+				 *
 				 * @details The indication is cleared by default: restoration does not take the generated
 				 *          code of the record but generates it anew. Setting it
 				 *          means that the record was produced by the consumer itself
@@ -684,6 +712,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the error code of the storage
+				 *
 				 * @return error code of the storage of built expressions
 				 *
 				 * \~
@@ -705,9 +734,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the lifetime of the record
+				 *
 				 * @details The lifetime is counted from the moment of writing, and restoring
 				 *          an expired record answers with the «EXPIRED» error. A zero
-				 *          lifetime means unlimited validity and is the default.
+				 *          lifetime means unlimited validity and is removed by default:
+				 *          the expressions held in the record do not become stale on
+				 *          their own, but together with the set of patterns that produced
+				 *          them, and only the consumer knows about that.
+				 *
 				 * @param seconds lifetime of the record in seconds
 				 *
 				 * \~
@@ -718,26 +752,22 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				explicit Storage() noexcept :
-				 _error(storage_error_t::NONE), _lifetime(0), _trusted(false),
-				 _method(compressor::method_t::NONE), _ciphered(false) {}
+				explicit Storage() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~Storage() noexcept {}
+				~Storage() noexcept;
 		} storage_t;
 	}
 }

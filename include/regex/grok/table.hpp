@@ -45,7 +45,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -102,6 +101,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Built-in pattern set
+		 *
 		 * @details The set is shipped together with the module and serves as the foundation
 		 *          of the registry: parsing the user patterns rests on it
 		 *          by references of the «%{NAME}» form. The records follow in the order of declaration

@@ -51,7 +51,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -129,6 +128,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest length of a literal expressible by the mark of a single instruction
+		 *
 		 * @details The bytes of the literal lie in the gap of the operands of a single character:
 		 *          the union of the operands holds thirty-two bytes by its largest member,
 		 *          while the code value of the character and the length of the literal take five
@@ -149,23 +149,23 @@ namespace awh {
 		 * \~
 		 */
 		enum class opcode_t : uint8_t {
-			CHAR     = 0x00, // Сопоставление одиночного символа
-			CLASS    = 0x02, // Сопоставление символа из класса символов
-			ANY      = 0x03, // Сопоставление любого символа с учётом режима «DOTALL»
-			CODEUNIT = 0x04, // Сопоставление одиночной единицы кодирования
-			SPLIT    = 0x05, // Переход по двум ветвям в порядке убывания приоритета
-			JUMP     = 0x06, // Безусловный переход
-			SAVE     = 0x07, // Сохранение позиции в ячейке захвата
-			ANCHOR   = 0x08, // Проверка привязки к позиции в тексте
-			MATCH    = 0x09, // Завершение сопоставления с успехом
-			KEEP     = 0x0A, // Сброс начала совпадения в текущую позицию
-			MARK     = 0x0B, // Запоминание состояния возврата в ячейке отметки
-			CUT      = 0x0C, // Отказ от точек возврата, накопленных после отметки
-			BACKREF  = 0x0D, // Сопоставление текста, захваченного группой
-			PROGRESS = 0x0E, // Проверка продвижения по тексту в пределах повторения
-			LOOK     = 0x0F, // Проверка окружения позиции сопоставления
-			CALL     = 0x10, // Рекурсивный вызов подвыражения
-			RETURN   = 0x11, // Завершение рекурсивного вызова подвыражения
+			CHAR      = 0x00, // Сопоставление одиночного символа
+			CLASS     = 0x02, // Сопоставление символа из класса символов
+			ANY       = 0x03, // Сопоставление любого символа с учётом режима «DOTALL»
+			CODEUNIT  = 0x04, // Сопоставление одиночной единицы кодирования
+			SPLIT     = 0x05, // Переход по двум ветвям в порядке убывания приоритета
+			JUMP      = 0x06, // Безусловный переход
+			SAVE      = 0x07, // Сохранение позиции в ячейке захвата
+			ANCHOR    = 0x08, // Проверка привязки к позиции в тексте
+			MATCH     = 0x09, // Завершение сопоставления с успехом
+			KEEP      = 0x0A, // Сброс начала совпадения в текущую позицию
+			MARK      = 0x0B, // Запоминание состояния возврата в ячейке отметки
+			CUT       = 0x0C, // Отказ от точек возврата, накопленных после отметки
+			BACKREF   = 0x0D, // Сопоставление текста, захваченного группой
+			PROGRESS  = 0x0E, // Проверка продвижения по тексту в пределах повторения
+			LOOK      = 0x0F, // Проверка окружения позиции сопоставления
+			CALL      = 0x10, // Рекурсивный вызов подвыражения
+			RETURN    = 0x11, // Завершение рекурсивного вызова подвыражения
 			CONDITION = 0x12, // Переход по ветвям условного выражения
 			RESUME    = 0x13, // Возврат из рекурсивного вызова подвыражения
 			GRAPHEME  = 0x14, // Сопоставление расширенного графемного кластера
@@ -230,6 +230,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Number of identical instructions in a row starting with this one
+			 *
 			 * @details A counted repetition of a single character is unrolled into copies:
 			 *          "[0-9]{3,5}" yields three mandatory copies and two optional ones.
 			 *          The mandatory copies follow one another and do not take control
@@ -298,6 +299,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Length of the literal starting with this instruction, in characters
+					 *
 					 * @details A literal of the expression is compiled into single character
 					 *          instructions, one per character, and the backtracking execution
 					 *          walked it with a trip through the dispatch of the operation code
@@ -329,6 +331,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Bytes of the literal starting with this instruction
+					 *
 					 * @details The bytes lie in the instruction itself rather than in the storage
 					 *          of sequences of the program deliberately: the execution reads them from
 					 *          the same cache line as the operation code and does not touch the
@@ -388,6 +391,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Address of the body of a single character repetition
+					 *
 					 * @details A repetition of a single character or of a character class
 					 *          is compiled into a two-branch jump, the body of the repetition
 					 *          and a jump to its beginning, which is why walking a run of matching
@@ -425,6 +429,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of the laziness of a repetition of a single character
+					 *
 					 * @details A lazy repetition is compiled by the same two-branch jump, but
 					 *          its branches are swapped: matching continues past the repetition,
 					 *          and the body is repeated only upon a refusal of the continuation.
@@ -456,6 +461,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of the futility of backtracking into a run of the repetition
+					 *
 					 * @details A greedy run walks the matching characters to the limit, while
 					 *          backtracking into it enumerates the decreasing lengths of the run,
 					 *          repeating the continuation at every one. That enumeration is futile
@@ -496,6 +502,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of copies of a bounded repetition of a single character
+					 *
 					 * @details A bounded repetition — «\d{1,3}» — is compiled not as a jump
 					 *          with a return to the beginning but as a CHAIN of jumps:
 					 *          «SPLIT(body,exit) body SPLIT(body,exit) body», where
@@ -611,6 +618,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of the mark cell of the branch of the enclosing group
+					 *
 					 * @details The cell is allotted to the verb of moving to the next branch:
 					 *          backtracking into it cuts off the points accumulated by the branch
 					 *          down to the mark of its beginning, whereby the backtracking continues
@@ -671,6 +679,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Negation flag of the result of the lookaround check
+					 *
 					 * @note Stored as a byte rather than as a boolean value: the instruction set
 					 *       is restored by viewing the memory image of the storage record,
 					 *       and the record comes from the outside — a forged byte would give a value of
@@ -688,6 +697,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of checking the text preceding the matching position
+					 *
 					 * @note Stored as a byte for the same reason as the negation indication
 					 *
 					 * \~
@@ -704,6 +714,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Address of the branch executed when the check does not hold
+					 *
 					 * @details The address is set if the lookaround check defines the condition
 					 *          of a conditional expression: failure of the check then
 					 *          passes execution to the branch of the unsatisfied condition
@@ -725,6 +736,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of cutting off the backtracking points accumulated by the body of the check
+					 *
 					 * @details An ordinary lookaround check is atomic: the backtracking points
 					 *          accumulated by its body are cut off by the fulfilment of the check,
 					 *          whereby a failure of the following text does not rematch the body.
@@ -746,6 +758,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of the cell of the starting position of a non-atomic check
+					 *
 					 * @details The cell is allotted to a non-atomic check: its body is executed
 					 *          not as a separate run but as a continuation of the current one,
 					 *          whereby the starting position of the check must outlive the body.
@@ -795,6 +808,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of checking the text preceding the matching position
+					 *
 					 * @note Stored as a byte for the same reason as the negation indication:
 					 *       the body of a lookbehind check must end
 					 *       at the position of its beginning, whereas for the body of a lookahead
@@ -828,7 +842,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
@@ -859,6 +872,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking whether two instructions of the program are identical
+		 *
 		 * @details Identical are the instructions matching one and the same single character
 		 *          with one and the same modes: a row of such copies is traversed in one trip,
 		 *          and the length of the row marks every copy. The other instructions are
@@ -900,10 +914,16 @@ namespace awh {
 					// Выводим результат сличения номеров классов символов
 					return (first.charclass.index == second.charclass.index);
 				/**
+				 * \~russian
 				 * Сопоставление любого символа операндов не несёт вовсе
 				 *
+				 * \~english
+				 * Matching of any character carries no operands at all
+				 *
+				 * \~
+				 *
 				 * @details Режимы сличены выше, а «DOTALL» лежит именно в них:
-				 *          инструкции с режимами равными неотличимы
+				 *          инструкции с режимами равными неотличимы.
 				 *
 				 */
 				case static_cast <uint8_t> (opcode_t::ANY): return true;
@@ -933,6 +953,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Function of checking whether an instruction matches a byte of the text verbatim
+		 *
 		 * @details An ASCII single character with case sensitivity is matched verbatim: it
 		 *          corresponds to exactly one byte of the text equal to its code value in every
 		 *          mode of parsing the text. A character beyond ASCII takes several bytes in the
@@ -966,6 +987,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Program of a compiled regular expression
+		 *
 		 * @details The program represents a regular expression as a set of instructions
 		 *          of a nondeterministic finite automaton. The storages of character classes
 		 *          and of character sequences are placed in the program, thanks to which
@@ -986,6 +1008,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Identification of the program of a regular expression
+			 *
 			 * @details The identification is assigned by compilation and distinguishes the content
 			 *          of the program. The state cache of deterministic execution
 			 *          is kept between matches and tells the programs apart
@@ -1014,6 +1037,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Largest admissible number of matching steps of the expression
+			 *
 			 * @details The limit is set by the expression itself by the «(*LIMIT_MATCH=N)» option
 			 *          and lowers the limit of the calling side but never raises it.
 			 *          The absence of a limit is expressed by the largest value of the type
@@ -1035,6 +1059,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Largest admissible depth of the recursive calls of the expression
+			 *
 			 * @details The limit is set by the expression itself by the «(*LIMIT_DEPTH=N)» option
 			 *          and lowers the limit of the calling side but never raises it.
 			 *          The absence of a limit is expressed by the largest value of the type
@@ -1054,6 +1079,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Largest admissible amount of the matching memory of the expression in kibibytes
+			 *
 			 * @details The limit is set by the expression itself by the «(*LIMIT_HEAP=N)» option
 			 *          and is counted over the sets of the backtracking points, the call frames and the journal
 			 *          entries — over what the matching actually allocates. The absence
@@ -1072,6 +1098,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Newline convention of the expression
+			 *
 			 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
 			 *          and governs the dot, the anchors to the line boundaries and the anchor of the end
 			 *          of the text. The default convention is the line feed.
@@ -1091,6 +1118,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Number of the state cell that holds the last mark
+			 *
 			 * @details The cell is maintained along with the capture cells: the mark verb
 			 *          writes its own address into it, whereas backtracking undoes the write, whereby
 			 *          upon a match it holds the mark of the path that produced the match.
@@ -1115,6 +1143,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Storage of the references to character classes
+			 *
 			 * @details The ranges and properties of all the classes of the program are kept
 			 *          as contiguous sequences, and a class is defined by a reference to spans
 			 *          of those sequences. This arrangement was introduced in place of a set of
@@ -1143,6 +1172,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Storage of the names of the marks of the control verbs
+			 *
 			 * @details The names of all the marks of the program lie in a contiguous set of octets,
 			 *          whereas the instruction of a verb refers to a span of it by an offset
 			 *          and a length, along with the character classes. The name is yielded outward
@@ -1163,6 +1193,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Holder of the storage record viewed by the sequences of the program
+			 *
 			 * @details A program restored from the storage has no content of
 			 *          its own sequences: the sequences view spans of the record
 			 *          that lies in memory as a whole. The holder extends the life of that
@@ -1184,6 +1215,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Indication of an expression matched by a single literal
+			 *
 			 * @details An expression consisting of a single character sequence
 			 *          is matched by searching for that sequence in the text
 			 *          and does not require executing the program at all.
@@ -1207,6 +1239,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Indication of an expression walking the text in a single attempt
+			 *
 			 * @details The expression begins with an unbounded repetition of any character,
 			 *          which is why a match beginning further to the right also begins at the position
 			 *          where the search starts: the repetition absorbs everything before it. Backtracking
@@ -1229,6 +1262,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Indication of an expression anchored to the position where the search starts
+			 *
 			 * @details The expression begins with an anchor that can hold only at the position
 			 *          where the search starts, therefore a match beginning further to the right
 			 *          is impossible. Walking the text stops as soon as
@@ -1256,6 +1290,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Indication of an expression anchored to the beginning of a line
+			 *
 			 * @details The expression begins with an anchor that can hold only at the beginning
 			 *          of a line, therefore a matching attempt at any other position
 			 *          fails for certain. Walking the positions of the beginning of an attempt
@@ -1273,17 +1308,6 @@ namespace awh {
 			bool startline;
 			/**
 			 * \~russian
-			 * @brief Конструктор
-			 *
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			Program() noexcept : id(0), captures(0), cells(0), flags(0), steps(~0u), depth(~0u), heap(~0u), newline(newline_t::LF), marker(~0u), plain(false), sweeping(false), anchored(false), startline(false) {}
-			/**
-			 * \~russian
 			 * @brief Метод извлечения обзора класса символов программы
 			 *
 			 * @param index номер класса символов в хранилище ссылок
@@ -1291,50 +1315,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting a view of a character class of the program
+			 *
 			 * @param index number of the character class in the storage of references
 			 * @return      view of the character class of the program
 			 *
 			 * \~
 			 */
-			classview_t charclass(const uint32_t index) const noexcept {
-				// Обзор класса символов программы
-				classview_t result;
-				/**
-				 * \~russian
-				 * Если номер класса символов хранилищу не принадлежит
-				 *
-				 * @details Проверка эта - последний заслон, а не рабочий ход:
-				 *          номера классов расставляет компиляция, а запись,
-				 *          восстанавливаемая из хранилища, проверяется на
-				 *          принадлежность номеров хранилищу до употребления.
-				 *          Обращение к обзору идёт на каждом символе, поэтому
-				 *          заслон вынесен под предсказание маловероятной ветви.
-				 *
-				 * \~english
-				 * If the number of the character class does not belong to the storage
-				 * @details That check is the last barrier rather than a working move:
-				 *          the numbers of the classes are laid out by compilation, and a record
-				 *          restored from the storage is checked for the
-				 *          belonging of the numbers to the storage before use.
-				 *          The view is referred to at every character, therefore the
-				 *          barrier is placed under the prediction of an unlikely branch.
-				 *
-				 * \~
-				 */
-				if(AWH_REGEX_UNLIKELY(static_cast <size_t> (index) >= this->classes.size()))
-					// Выводим обзор класса символов программы
-					return result;
-				// Получаем ссылку на класс символов программы
-				const classref_t & value = this->classes[index];
-				// Выполняем установку признака отрицания класса символов
-				result.negative = (value.negative != 0);
-				// Выполняем установку обзора набора диапазонов класса
-				result.ranges = Span <range_t> ((this->ranges.data() + value.ranges), value.rangeCount);
-				// Выполняем установку обзора набора свойств класса
-				result.properties = Span <property_t> ((this->properties.data() + value.properties), value.propertyCount);
-				// Выводим обзор класса символов программы
-				return result;
-			}
+			classview_t charclass(const uint32_t index) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод сброса программы с сохранением размещения наборов
@@ -1347,6 +1334,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of resetting the program keeping the allocations of its sequences
+			 *
 			 * @details The reset differs from clearing in that the space occupied by the
 			 *          sequences of the program stays with them. It is introduced for the
 			 *          scratch program of the compiler: that one is filled at every
@@ -1354,103 +1342,37 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void reset() noexcept {
-				// Выполняем сброс опознания программы регулярного выражения
-				this->id = 0;
-				// Выполняем сброс количества захватывающих групп
-				this->captures = 0;
-				// Выполняем сброс количества ячеек состояния
-				this->cells = 0;
-				// Выполняем сброс набора режимов компиляции
-				this->flags = 0;
-				// Выполняем сброс предела шагов сопоставления выражения
-				this->steps = ~0u;
-				// Выполняем сброс предела глубины рекурсивных вызовов
-				this->depth = ~0u;
-				// Выполняем сброс предела объёма памяти сопоставления
-				this->heap = ~0u;
-				// Выполняем сброс соглашения о переводе строки выражения
-				this->newline = newline_t::LF;
-				// Выполняем сброс номера ячейки отметки последней
-				this->marker = ~0u;
-				// Выполняем сброс набора инструкций программы
-				this->instructions.reset();
-				// Выполняем сброс хранилища ссылок на классы символов
-				this->classes.reset();
-				// Выполняем сброс набора диапазонов кодовых значений
-				this->ranges.reset();
-				// Выполняем сброс набора ссылок на свойства Юникода
-				this->properties.reset();
-				// Выполняем сброс хранилища последовательностей символов
-				this->strings.reset();
-				// Выполняем сброс хранилища имён отметок глаголов управления
-				this->markers.reset();
-				// Выполняем освобождение держателя записи хранилища
-				this->blob.reset();
-				// Выполняем очистку предварительного отбора позиций
-				this->prefilter.clear();
-				// Выполняем сброс признака сопоставления выражения литералом
-				this->plain = false;
-				// Выполняем очистку последовательности символов выражения
-				this->text.clear();
-				// Выполняем сброс признака прохода текста единственной попыткой
-				this->sweeping = false;
-				// Выполняем сброс признака привязки к позиции начала поиска
-				this->anchored = false;
-			}
+			void reset() noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод очистки программы регулярного выражения
 			 *
+			 * @details Очистка снимает содержимое программы и освобождает
+			 *          место, наборами занятое: в отличие от сброса, строки
+			 *          программы очищаются, а не сберегают отведённое
+			 *          размещение.
+			 *
 			 * \~english
 			 * @brief Method of clearing the program of a regular expression
 			 *
+			 * @details The clearing takes the contents of the program down and releases
+			 *          the room occupied by its sets: unlike the reset, the sequences
+			 *          of the program are cleared rather than keeping the allocated
+			 *          placement.
+			 *
 			 * \~
 			 */
-			void clear() noexcept {
-				// Выполняем сброс опознания программы регулярного выражения
-				this->id = 0;
-				// Выполняем сброс количества захватывающих групп
-				this->captures = 0;
-				// Выполняем сброс количества ячеек состояния
-				this->cells = 0;
-				// Выполняем сброс набора режимов компиляции
-				this->flags = 0;
-				// Выполняем сброс предела шагов сопоставления выражения
-				this->steps = ~0u;
-				// Выполняем сброс предела глубины рекурсивных вызовов
-				this->depth = ~0u;
-				// Выполняем сброс предела объёма памяти сопоставления
-				this->heap = ~0u;
-				// Выполняем сброс соглашения о переводе строки выражения
-				this->newline = newline_t::LF;
-				// Выполняем сброс номера ячейки отметки последней
-				this->marker = ~0u;
-				// Выполняем очистку набора инструкций программы
-				this->instructions.clear();
-				// Выполняем очистку хранилища ссылок на классы символов
-				this->classes.clear();
-				// Выполняем очистку набора диапазонов кодовых значений
-				this->ranges.clear();
-				// Выполняем очистку набора ссылок на свойства Юникода
-				this->properties.clear();
-				// Выполняем очистку хранилища последовательностей символов
-				this->strings.clear();
-				// Выполняем очистку хранилища имён отметок глаголов управления
-				this->markers.clear();
-				// Выполняем освобождение держателя записи хранилища
-				this->blob.reset();
-				// Выполняем очистку предварительного отбора позиций
-				this->prefilter.clear();
-				// Выполняем сброс признака сопоставления выражения литералом
-				this->plain = false;
-				// Выполняем очистку последовательности символов выражения
-				this->text.clear();
-				// Выполняем сброс признака прохода текста единственной попыткой
-				this->sweeping = false;
-				// Выполняем сброс признака привязки к позиции начала поиска
-				this->anchored = false;
-			}
+			void clear() noexcept;
+			/**
+			 * \~russian
+			 * @brief Конструктор программы регулярного выражения
+			 *
+			 * \~english
+			 * @brief Constructor of the program of a regular expression
+			 *
+			 * \~
+			 */
+			Program() noexcept;
 		} program_t;
 	};
 };

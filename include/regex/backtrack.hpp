@@ -949,11 +949,11 @@ namespace awh {
 		 *          кадры их 224 и 416 байтов, и в запас ложатся тело, цикл и три
 		 *          вложенных исполнения. Кадры глубже запаса границу пересечь
 		 *          вправе - вложенность такая редка, а цена её та же, что была
-		 *          без отвода. Прокладка отвода той же длины: при страницах
-		 *          в четыре килобайта половина страницы даёт запас наибольший
-		 *          и на пути с прокладкой, и на пути без неё. Стек потока
-		 *          прокладка расходует сверх обычного на два килобайта с
-		 *          небольшим - на тех лишь входах, где отвод срабатывает.
+		 *          без отвода. Прокладка отвода длиной в порог сторожа, то есть
+		 *          в «STACK_RESERVE» вместе с «STACK_ENTRY»: прокладка короче
+		 *          порога клала бы верх полосы отвода у границы той же. Стек потока
+		 *          прокладка расходует сверх обычного почти на три килобайта -
+		 *          на тех лишь входах, где отвод срабатывает.
 		 *
 		 * \~english
 		 * @brief Reserve of the stack below the entry to the execution that crosses no page boundary
@@ -963,14 +963,40 @@ namespace awh {
 		 *          frames are 224 and 416 bytes, and the body, the loop and three nested executions
 		 *          fit into the reserve. Frames deeper than the reserve may cross a boundary - such
 		 *          nesting is rare, and its cost is the same as it was without the moving. The pad
-		 *          of the moving has the same length: with four kilobyte pages a half of the page
-		 *          gives the largest reserve both on the path with the pad and on the path without it.
-		 *          The pad spends a little over two kilobytes of the stack of the thread beyond the
-		 *          usual - only on the entries where the moving takes effect.
+		 *          of the moving is as long as the threshold of the guard, that is «STACK_RESERVE»
+		 *          together with «STACK_ENTRY»: a pad shorter than the threshold would lay the top
+		 *          of the moving band by the same boundary again. The pad spends nearly three
+		 *          kilobytes of the stack of the thread beyond the usual - only on the entries
+		 *          where the moving takes effect.
 		 *
 		 * \~
 		 */
 		constexpr size_t STACK_RESERVE = 2048;
+		/**
+		 * \~russian
+		 * @brief Запас стека на кадры между сторожем отвода и телом сопоставления
+		 *
+		 * @details Сторож отвода стоит во входе, кадр не заводящем, и мерит стек
+		 *          выше тела на кадры промежуточные. Запас полный требуется телу,
+		 *          и запас этот покрывает разницу: тело оттого входит, имея под
+		 *          собою «STACK_RESERVE» целиком. По замеру на Clang под ARM64
+		 *          кадры промежуточные - около 560 байт, а запас заведён с
+		 *          превышением: изменившийся кадр отводу не помеха.
+		 *
+		 * \~english
+		 * @brief Reserve of the stack for the frames between the moving guard and the body of matching
+		 *
+		 * @details The guard of the moving stands at the entry that creates no frame
+		 *          and measures the stack above the body by the intermediate frames.
+		 *          The full reserve is what the body needs, and this reserve covers
+		 *          the difference: therefore the body enters having «STACK_RESERVE»
+		 *          below itself in full. By the measurement on Clang on ARM64 the
+		 *          intermediate frames are about 560 bytes, and the reserve is taken
+		 *          with an excess: a changed frame is no obstacle to the moving.
+		 *
+		 * \~
+		 */
+		constexpr size_t STACK_ENTRY = 768;
 
 		/**
 		 * \~russian
@@ -1040,6 +1066,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of restoring a recursive call frame
+					 *
 					 * @details A backtracking point with the flag set does not continue
 					 *          the execution but restores the executed recursive
 					 *          call, after which the backtracking continues further.
@@ -1067,6 +1094,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of the remaining positions of a run of a repetition of a single character
+					 *
 					 * @details A repetition of a single character one byte wide yields
 					 *          a run of backtracking points differing only by the position, decreasing
 					 *          by one. Such a run is kept as a single point,
@@ -1088,6 +1116,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Kind of the control verb that placed the point
+					 *
 					 * @details The value is yielded increased by one, whereas zero
 					 *          means an ordinary point: the control verbs place a point
 					 *          that does not continue the execution — backtracking into it
@@ -1111,6 +1140,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of the walk over the lengths of a non-atomic lookbehind check
+					 *
 					 * @details A lookbehind check is matched at an offset backwards
 					 *          by the length of the checked sequence, and its lengths
 					 *          are walked from the largest. An ordinary check
@@ -1127,7 +1157,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1163,7 +1192,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1197,7 +1225,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1240,7 +1267,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1269,6 +1295,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Position from which the current matching attempt was started
+				 *
 				 * @details The moving verb with a name, having found a mark at a position
 				 *          no later than the beginning of the attempt, has no effect at all:
 				 *          moving backwards would loop the position traversal, while terminating
@@ -1301,6 +1328,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Counters of the measures of the work of matching, kept for the investigation
+				 *
 				 * @details The counters are kept as fields rather than in the shared "probe_t"
 				 *          accounting: incrementing a shared counter inside the check of
 				 *          membership in a character class would inflate that check's own time
@@ -1335,6 +1363,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Admissible number of matching steps
+				 *
 				 * @details The amount acts on one match and is restored to
 				 *          the limiting one on its completion.
 				 *
@@ -1351,6 +1380,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Largest admissible amount of work of the matching
+				 *
 				 * @details The ceiling truncates the amount computed by the calling side and
 				 *          is set by it as well: «MAX_STEPS» serves as the default.
 				 *
@@ -1369,6 +1399,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Largest number of matching attempts
+				 *
 				 * @details The limit acts on one subsequent match and serves
 				 *          a calling side that has a fallback way at its disposal: the search
 				 *          that has exhausted the limit is stopped, while the failure is marked specially —
@@ -1393,6 +1424,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Position of the first matching attempt
+				 *
 				 * @details The position acts on one subsequent match and serves a calling side
 				 *          that knows no match starts to the left of it: the attempts there have
 				 *          already been made and have failed conclusively. It does not change
@@ -1423,6 +1455,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Effective largest depth of the recursive calls of the matching
+				 *
 				 * @details The depth is taken as the smallest of the one set by the calling side
 				 *          and the one set by the expression itself by the «(*LIMIT_DEPTH=N)» option:
 				 *          the limit of the expression lowers the limit of the calling side
@@ -1442,6 +1475,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Effective largest amount of the matching memory in bytes
+				 *
 				 * @details The amount is set by the expression itself by the «(*LIMIT_HEAP=N)» option
 				 *          and is counted over the sets of the backtracking points, the call frames
 				 *          and the journal entries along with the other limits of their sizes.
@@ -1462,6 +1496,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Kind of the control verb that terminated the matching attempt
+				 *
 				 * @details The value is yielded increased by one along with the backtracking point,
 				 *          whereas zero means an ordinary termination. The outer walk over the starting
 				 *          positions reads it and decides whether to continue the attempts:
@@ -1488,6 +1523,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Address of the mark verb passed by the last attempt
+				 *
 				 * @details The mark cell is undone by backtracking, whereby nothing remains in it
 				 *          upon a failure of the matching. The reference implementation, however,
 				 *          yields the name of the mark upon a failure as well — the last mark
@@ -1516,6 +1552,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Numbers of the byte belonging tables by the numbers of the classes of the program
+				 *
 				 * @details The number «INVALID_ADDRESS» means that no table has been set up for
 				 *          the class yet. The set grows up to the largest number of a class
 				 *          walked by a repetition rather than to the number of classes of the
@@ -1541,6 +1578,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Byte belonging tables of the classes walked by a repetition
+				 *
 				 * @details A table is set up for EVERY class rather than one for the last encountered
 				 *          class. The compilation unrolls the repetition «(?:[a-z]+/)+» into two
 				 *          occurrences of the class, and every occurrence sets up its own record
@@ -1566,6 +1604,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Resolutions of the byte belonging tables by the numbers of the classes
+				 *
 				 * @details The set serves as a direct way from the number of a class to its table.
 				 *          It is kept next to the set of numbers rather than instead of it:
 				 *          the numbers survive a move of the set of tables, whereas the addresses
@@ -1594,6 +1633,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of the marks of the backtracking state of the atomic constructs
+				 *
 				 * @details A mark keeps the depth of the set of backtracking points at the entry
 				 *          into an atomic construct, thanks to which its completion
 				 *          gives up the backtracking points accumulated inside it.
@@ -1638,7 +1678,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1682,6 +1721,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Position of the text at which the recursive call was started
+					 *
 					 * @details The position serves to recognise a call that has entered anew
 					 *          at the same position of the text: such a call repeats what is
 					 *          already being executed and cannot complete.
@@ -1692,7 +1732,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -1724,6 +1763,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Position of the occurrence of the mandatory literal found by the calling side
+				 *
 				 * @details The position acts on one subsequent match, as the position of the
 				 *          first attempt does. The field stands last deliberately: it does not shift
 				 *          the offsets of the fields read by the execution loop.
@@ -2556,7 +2596,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -2566,7 +2605,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

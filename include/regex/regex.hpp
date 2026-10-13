@@ -119,7 +119,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -798,7 +797,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
@@ -808,7 +806,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Деструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Destructor

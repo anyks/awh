@@ -22,6 +22,8 @@
  *        showing which path the matching took and allowing the tests to certify the use
  *        of the accelerators that do not change the verdict
  *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
  */
@@ -71,6 +73,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Execution path of matching subject to accounting
+		 *
 		 * @details The paths accounted for are those that do not change the verdict: each of
 		 *          them only speeds up the search, while turning it off leaves the outcome
 		 *          correct. Comparing verdicts does not notice such a switch-off at all,
@@ -82,6 +85,7 @@ namespace awh {
 		 */
 		enum class path_t : uint8_t {
 			/**
+			 * \~russian
 			 * Сопоставление порождённым машинным кодом
 			 *
 			 * @warning Путь этот НЕЛЬЗЯ звать «MACHINE»: FreeBSD объявляет это имя
@@ -91,41 +95,56 @@ namespace awh {
 			 *          разбора, - и сборка на FreeBSD обрывалась отказом «expected
 			 *          identifier». Тот же капкан однажды уже сработал у режима сборки
 			 *          выражения, о чём сказано у `flag_t::JIT`, и повторился здесь.
-			 *          Заводя новые пути, имя следует сличать с системными макросами
+			 *          Заводя новые пути, имя следует сличать с системными макросами.
+			 *
+			 * \~english
+			 * Matching by the generated machine code
+			 *
+			 * @warning This path must NOT be named "MACHINE": FreeBSD defines this name
+			 *          as a macro in `<machine/param.h>`, substituting the handler name
+			 *          string in its place. Enumeration scope offers no protection against
+			 *          this—the preprocessor is unaware of it and modifies the text prior
+			 *          to parsing—causing the FreeBSD build to fail with an "expected
+			 *          identifier" error. This same pitfall previously affected
+			 *          the expression compilation mode (as noted regarding `flag_t::JIT`)
+			 *          and has recurred here. When introducing new paths, the name should
+			 *          be checked against system macros.
+			 *
+			 * \~
 			 */
-			JITTED    = 0x00,
-			PLAIN     = 0x01, // Поиск последовательности выражения, литералом сопоставляемого
-			SEEKING   = 0x02, // Отбор позиций у детерминированного исполнения
-			CACHING   = 0x03, // Обращение к кэшу состояний детерминированного исполнения
-			PIKING    = 0x04, // Отбор позиций у исполнения без возврата
-			TRACKING  = 0x05, // Отбор позиций у исполнения с возвратом
-			BOUNDING  = 0x06, // Отодвигание начала поиска у исполнения с возвратом
-			PRESUMING = 0x07, // Отказ по проверке возможности у исполнения без возврата
-			DENYING   = 0x08, // Отказ по проверке возможности у исполнения с возвратом
-			VERIFYING = 0x09, // Отказ по пробе детерминированным исполнением
-			SWEEPING  = 0x0A, // Проход текста единственной попыткой
-			HALTING   = 0x0B, // Остановка автомата привязкой к позиции начала поиска
-			REUSING   = 0x0C, // Переиспользование итога автомата, вызывающей стороной снятого
-			SUBSETTING = 0x0D, // Отказ построения по разбору дерева до самого построения
-			TABULATING = 0x0E, // Построение таблицы принадлежности байтов классу у исполнения с возвратом
-			PROBING   = 0x0F, // Проба исполнением с возвратом, проход автомата снявшая
-			LINING    = 0x10, // Пропуск позиций до начала строки у исполнения с возвратом
-			SOLIDING  = 0x11, // Пропуск точек возврата ряда повторения у исполнения с возвратом
-			BARRING   = 0x12, // Отказ по набору начальных байтов у выражения, к позиции поиска привязанного
-			SLIDING   = 0x13, // Продвижение ленивого ряда к ближайшему байту, продолжению пригодному
-			CHAINING  = 0x14, // Проход цепочки ограниченного повторения у исполнения с возвратом
-			YIELDING  = 0x15, // Проба исполнением с возвратом, пределом оборванная и автомату уступившая
-			RECALLING = 0x16, // Размещение класса символов номером, построением запомненным, без отсева повторов
-			WAIVING   = 0x17, // Отказ построения от обхода дерева в поисках глагола, вида которого разбор не заводил
-			SPANNING  = 0x18, // Узел, обойдённый ради наибольшей длины сопоставления при разборе обязательного литерала
-			SPELLING  = 0x19, // Узел, переведённый в строку обязательного литерала по описанию литерала узлами
+			JITTED      = 0x00,
+			PLAIN       = 0x01, // Поиск последовательности выражения, литералом сопоставляемого
+			SEEKING     = 0x02, // Отбор позиций у детерминированного исполнения
+			CACHING     = 0x03, // Обращение к кэшу состояний детерминированного исполнения
+			PIKING      = 0x04, // Отбор позиций у исполнения без возврата
+			TRACKING    = 0x05, // Отбор позиций у исполнения с возвратом
+			BOUNDING    = 0x06, // Отодвигание начала поиска у исполнения с возвратом
+			PRESUMING   = 0x07, // Отказ по проверке возможности у исполнения без возврата
+			DENYING     = 0x08, // Отказ по проверке возможности у исполнения с возвратом
+			VERIFYING   = 0x09, // Отказ по пробе детерминированным исполнением
+			SWEEPING    = 0x0A, // Проход текста единственной попыткой
+			HALTING     = 0x0B, // Остановка автомата привязкой к позиции начала поиска
+			REUSING     = 0x0C, // Переиспользование итога автомата, вызывающей стороной снятого
+			SUBSETTING  = 0x0D, // Отказ построения по разбору дерева до самого построения
+			TABULATING  = 0x0E, // Построение таблицы принадлежности байтов классу у исполнения с возвратом
+			PROBING     = 0x0F, // Проба исполнением с возвратом, проход автомата снявшая
+			LINING      = 0x10, // Пропуск позиций до начала строки у исполнения с возвратом
+			SOLIDING    = 0x11, // Пропуск точек возврата ряда повторения у исполнения с возвратом
+			BARRING     = 0x12, // Отказ по набору начальных байтов у выражения, к позиции поиска привязанного
+			SLIDING     = 0x13, // Продвижение ленивого ряда к ближайшему байту, продолжению пригодному
+			CHAINING    = 0x14, // Проход цепочки ограниченного повторения у исполнения с возвратом
+			YIELDING    = 0x15, // Проба исполнением с возвратом, пределом оборванная и автомату уступившая
+			RECALLING   = 0x16, // Размещение класса символов номером, построением запомненным, без отсева повторов
+			WAIVING     = 0x17, // Отказ построения от обхода дерева в поисках глагола, вида которого разбор не заводил
+			SPANNING    = 0x18, // Узел, обойдённый ради наибольшей длины сопоставления при разборе обязательного литерала
+			SPELLING    = 0x19, // Узел, переведённый в строку обязательного литерала по описанию литерала узлами
 			PRESCANNING = 0x1A, // Предварительный проход разбора, счёт захватывающих групп выражения
-			SPACING   = 0x1B, // Пропуск пробельных символов и комментариев разбором в режиме «EXTENDED»
+			SPACING     = 0x1B, // Пропуск пробельных символов и комментариев разбором в режиме «EXTENDED»
 			QUANTIFYING = 0x1C, // Разбор кванторов повторения за элементом выражения
-			RESOLVING = 0x1D, // Обход узлов дерева разрешением ссылок ради узлов одного вида
-			PADDING   = 0x1E, // Отвод кадров исполнения с возвратом за границу страницы прокладкой стека
-			CROWDING  = 0x1F, // Вход в тело исполнения с возвратом с запасом стека до границы страницы меньше положенного
-			COUNT     = 0x20  // Количество учитываемых путей исполнения
+			RESOLVING   = 0x1D, // Обход узлов дерева разрешением ссылок ради узлов одного вида
+			PADDING     = 0x1E, // Отвод кадров исполнения с возвратом за границу страницы прокладкой стека
+			CROWDING    = 0x1F, // Вход в тело исполнения с возвратом с запасом стека до границы страницы меньше положенного
+			COUNT       = 0x20  // Количество учитываемых путей исполнения
 		};
 		/**
 		 * \~russian
@@ -146,6 +165,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Measure of the work of matching subject to accounting
+		 *
 		 * @details A measure of work differs from an execution path in kind, not in size,
 		 *          and is therefore defined as a separate enumeration. A path is an
 		 *          accelerator that does not change the verdict: it can be switched off
@@ -170,6 +190,7 @@ namespace awh {
 			POINTS = 0x03, // Размещения точки возврата
 			FRAMES = 0x04, // Заведения кадра вызова подвыражения
 			/**
+			 * \~russian
 			 * Обходы цикла исполнения с возвратом
 			 *
 			 * @details Мера эта от «STEPS» отличается тем, что шаг считает
@@ -177,10 +198,27 @@ namespace awh {
 			 *          одинаковых инструкций подряд проходится одним заходом,
 			 *          поглощая столько байтов, какова длина ряда: работа
 			 *          остаётся прежней, а обходов становится меньше, и мера
-			 *          эта выигрыш прохода рядом единственная и показывает
+			 *          эта выигрыш прохода рядом единственная и показывает.
+			 *
+			 * \~english
+			 * Rounds of the backtracking execution loop
+			 *
+			 * @details This metric differs from "STEPS" in that a "step"
+			 *          counts the actual work performed, whereas a "pass"
+			 *          corresponds to entering the code-parsing routine
+			 *          for an operation. A sequence of identical instructions
+			 *          is processed in a single pass, consuming a number
+			 *          of bytes equal to the sequence's total length;
+			 *          the workload remains unchanged, but the number
+			 *          of passes decreases—and this metric is unique
+			 *          in that it specifically captures the efficiency
+			 *          gained by processing such sequences in a single pass.
+			 *
+			 * \~
 			 */
 			ROUNDS = 0x05,
 			/**
+			 * \~russian
 			 * Попытки сопоставления исполнением с возвратом
 			 *
 			 * @details Мера эта считает заходы в попытку: сброс ячеек захвата,
@@ -188,7 +226,20 @@ namespace awh {
 			 *          от работы попытки не зависит, и у выражения, делающего
 			 *          много попыток с малой работой каждая, она и составляет
 			 *          большую долю времени - мера эта долю ту и раскладывает
-			 *          по сценариям
+			 *          по сценариям.
+			 *
+			 * \~english
+			 * Attempts of the backtracking matching
+			 *
+			 * @details This metric counts "attempts"—specifically, the resetting
+			 *          of capture cells, the clearing of sets, and entry into the
+			 *          execution loop. The cost of an attempt is independent
+			 *          of the work performed within it; for an expression involving
+			 *          many attempts with little work per attempt, this overhead
+			 *          accounts for a significant share of the total time—and this
+			 *          metric breaks down that share by scenario.
+			 *
+			 * \~
 			 */
 			ATTEMPTS = 0x06,
 			COUNT  = 0x07  // Количество учитываемых мер работы
@@ -208,6 +259,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the accounting of the execution paths of matching
+		 *
 		 * @details The accounting is kept only by a library built with the build flag
 		 *          "AWH_REGEX_PROBING": incrementing a counter costs tens of nanoseconds
 		 *          for a match that itself fits into twenty, and it has no place in a
@@ -228,6 +280,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the accounting of the execution paths is compiled in
+				 *
 				 * @return indication that the accounting of the execution paths is compiled in
 				 *
 				 * \~
@@ -252,6 +305,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the counter of an execution path
+				 *
 				 * @param path execution path of matching being accounted for
 				 * @return     number of passes of the execution path
 				 *
@@ -266,6 +320,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of accounting for a pass of an execution path
+				 *
 				 * @param path execution path of matching that was passed
 				 *
 				 * \~
@@ -280,6 +335,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the counter of a measure of work
+				 *
 				 * @param work measure of the work of matching being accounted for
 				 * @return     number of operations of the measure being accounted for
 				 *
@@ -301,6 +357,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of accounting for the operations performed of a measure of work
+				 *
 				 * @param work  measure of the work of matching that was performed
 				 * @param count number of operations performed
 				 *

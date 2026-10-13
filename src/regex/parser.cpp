@@ -38,13 +38,17 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
  * @brief Пространство имён вспомогательных функций разбора
  *
  */
 namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Функция приведения режима компиляции к его числовому значению
 	 *
@@ -103,18 +107,112 @@ namespace {
 		// Прочие символы имени группы допускают также десятичные цифры
 		return (ascii::isAlnum(letter) || (letter == '_'));
 	}
+	/**
+	 * @brief Функция извлечения десятичного числа начального указания
+	 *
+	 * @details Число, пределом выражения выступающее, читается целиком: запись
+	 *          с посторонним знаком, пустая запись и запись, предел разрядности
+	 *          превышающая, дают отказ - указание таковое разбором отвергается
+	 *          наравне с неизвестным. Нуль записью верной является и отказом
+	 *          не выводится: «(*LIMIT_MATCH=0)» есть предел действующий.
+	 *
+	 * @param text   запись извлекаемого числа
+	 * @param result извлечённое десятичное число
+	 * @return       результат извлечения числа
+	 *
+	 */
+	static bool numbering(const string_view text, uint32_t & result) noexcept {
+		// Извлекаемое десятичное число
+		uint64_t value = 0;
+		/**
+		 * Если запись числа пуста
+		 */
+		if(text.empty())
+			// Выводим результат извлечения числа
+			return false;
+		/**
+		 * Выполняем обход записи извлекаемого числа
+		 */
+		for(auto & letter : text){
+			/**
+			 * Если очередной знак записи десятичной цифрой не является
+			 */
+			if(!ascii::isDigit(letter))
+				// Выводим результат извлечения числа
+				return false;
+			// Выполняем добавление очередной десятичной цифры
+			value = ((value * 10) + static_cast <uint64_t> (letter - '0'));
+			/**
+			 * Если извлечённое число превышает предел разрядности
+			 */
+			if(value > numeric_limits <uint32_t>::max())
+				// Выводим результат извлечения числа
+				return false;
+		}
+		// Выполняем установку извлечённого десятичного числа
+		result = static_cast <uint32_t> (value);
+		// Выводим результат извлечения числа
+		return true;
+	}
+	/**
+	 * @brief Функция проверки размещения элемента сортировки POSIX
+	 *
+	 * @details Элементы сортировки «[.a.]» и равнозначности «[=a=]» заданы
+	 *          стандартом POSIX, однако ни эталоном PCRE2, ни модулем
+	 *          не поддерживаются вовсе. Опознаются они по вводящему знаку
+	 *          и по завершению ему отвечающему: без завершения знак остаётся
+	 *          литералом класса, и «[.a]» классом обыкновенным и является.
+	 *
+	 * @param pattern текст разбираемого регулярного выражения
+	 * @param pos     позиция вводящего знака элемента сортировки
+	 * @return        результат проверки размещения элемента сортировки
+	 *
+	 */
+	static bool collating(const string_view pattern, const size_t pos) noexcept {
+		// Получаем размер текста регулярного выражения
+		const size_t size = pattern.size();
+		/**
+		 * Если позиция вводящего знака выходит за пределы выражения
+		 */
+		if(pos >= size)
+			// Выводим результат проверки размещения элемента сортировки
+			return false;
+		// Получаем вводящий знак элемента сортировки
+		const char letter = pattern.at(pos);
+		/**
+		 * Если знак вводящим элемент сортировки не является
+		 */
+		if((letter != '.') && (letter != '='))
+			// Выводим результат проверки размещения элемента сортировки
+			return false;
+		/**
+		 * Выполняем поиск завершения элемента сортировки
+		 *
+		 * @details Поиск ведётся до первой скобки закрывающей неэкранированной:
+		 *          скобка эта завершает класс символов, и знак вводящий остаётся
+		 *          литералом его. Потому «[.a.]» есть элемент сортировки,
+		 *          а «[.a]b.]» - класс из двух знаков.
+		 *
+		 */
+		for(size_t i = (pos + 1); i < size; i++){
+			/**
+			 * Если завершение элемента сортировки обнаружено
+			 */
+			if((pattern.at(i) == letter) && ((i + 1) < size) && (pattern.at(i + 1) == ']'))
+				// Выводим результат проверки размещения элемента сортировки
+				return true;
+			/**
+			 * Если класс символов завершён скобкой неэкранированной
+			 */
+			if((pattern.at(i) == ']') && (pattern.at(i - 1) != '\\'))
+				// Выводим результат проверки размещения элемента сортировки
+				return false;
+		}
+		// Выводим результат проверки размещения элемента сортировки
+		return false;
+	}
 };
 
-/**
- * @brief Конструктор
- *
- */
-awh::regex::Parser::Parser() noexcept :
- _pos(0), _root(INVALID_NODE), _depth(0), _captures(0), _total(0), _stepLimit(~0u), _depthLimit(~0u), _heapLimit(~0u), _convention(newline_t::LF), _restricted(false),
- _flags(0), _options(0), _look(0), _error(error_t::NONE), _errorPos(0), _classCount(0), _kinds(0), _barrier(false), _counted(false), _begin(0), _resolving(false), _verbs(0) {
-	// Резервируем память под арену узлов синтаксического дерева
-	this->_nodes.reserve(64);
-}
 /**
  * @brief Метод сброса результатов разбора
  *
@@ -162,7 +260,9 @@ void awh::regex::Parser::reset() noexcept {
 	this->_barrier = false;
 	// Выполняем сброс пределов, выражением заданных
 	this->_stepLimit = ~0u;
+	// Устанавливаем значение «_depthLimit»
 	this->_depthLimit = ~0u;
+	// Устанавливаем признак «_restricted» в false
 	this->_heapLimit = ~0u;
 	// Выполняем сброс соглашения о переводе строки выражения
 	this->_convention = newline_t::LF;
@@ -261,65 +361,125 @@ string awh::regex::Parser::message(const error_t error) noexcept {
 	 */
 	switch(static_cast <uint8_t> (error)){
 		// Ошибок не обнаружено
-		case static_cast <uint8_t> (error_t::NONE): return "no error";
+		case static_cast <uint8_t> (error_t::NONE):
+			// Выводим сообщение ошибки
+			return "no error";
 		// Внутренняя ошибка разбора
-		case static_cast <uint8_t> (error_t::INTERNAL): return "internal error";
+		case static_cast <uint8_t> (error_t::INTERNAL):
+			// Выводим сообщение ошибки
+			return "internal error";
 		// Обратная косая черта в конце выражения
-		case static_cast <uint8_t> (error_t::TRAILING_BACKSLASH): return "pattern ends with a backslash";
+		case static_cast <uint8_t> (error_t::TRAILING_BACKSLASH):
+			// Выводим сообщение ошибки
+			return "pattern ends with a backslash";
 		// Неизвестная экранированная последовательность
-		case static_cast <uint8_t> (error_t::UNKNOWN_ESCAPE): return "unrecognized escape sequence";
+		case static_cast <uint8_t> (error_t::UNKNOWN_ESCAPE):
+			// Выводим сообщение ошибки
+			return "unrecognized escape sequence";
 		// Непарная круглая скобка
-		case static_cast <uint8_t> (error_t::UNMATCHED_PAREN): return "unmatched parenthesis";
+		case static_cast <uint8_t> (error_t::UNMATCHED_PAREN):
+			// Выводим сообщение ошибки
+			return "unmatched parenthesis";
 		// Непарная квадратная скобка
-		case static_cast <uint8_t> (error_t::UNMATCHED_BRACKET): return "missing terminating character for character class";
+		case static_cast <uint8_t> (error_t::UNMATCHED_BRACKET):
+			// Выводим сообщение ошибки
+			return "missing terminating character for character class";
 		// Непарная фигурная скобка
-		case static_cast <uint8_t> (error_t::UNMATCHED_BRACE): return "unmatched brace";
+		case static_cast <uint8_t> (error_t::UNMATCHED_BRACE):
+			// Выводим сообщение ошибки
+			return "unmatched brace";
 		// Некорректный квантор повторения
-		case static_cast <uint8_t> (error_t::BAD_QUANTIFIER): return "invalid quantifier";
+		case static_cast <uint8_t> (error_t::BAD_QUANTIFIER):
+			// Выводим сообщение ошибки
+			return "invalid quantifier";
 		// Квантор повторения без предшествующего элемента
-		case static_cast <uint8_t> (error_t::QUANTIFIER_NO_ATOM): return "quantifier does not follow a repeatable item";
+		case static_cast <uint8_t> (error_t::QUANTIFIER_NO_ATOM):
+			// Выводим сообщение ошибки
+			return "quantifier does not follow a repeatable item";
 		// Значение кванта повторения превышает допустимое
-		case static_cast <uint8_t> (error_t::QUANTIFIER_TOO_BIG): return "number too big in quantifier";
+		case static_cast <uint8_t> (error_t::QUANTIFIER_TOO_BIG):
+			// Выводим сообщение ошибки
+			return "number too big in quantifier";
 		// Некорректный диапазон в классе символов
-		case static_cast <uint8_t> (error_t::BAD_CLASS_RANGE): return "range out of order in character class";
+		case static_cast <uint8_t> (error_t::BAD_CLASS_RANGE):
+			// Выводим сообщение ошибки
+			return "range out of order in character class";
 		// Некорректная шестнадцатеричная последовательность
-		case static_cast <uint8_t> (error_t::BAD_ESCAPE_HEX): return "invalid hexadecimal escape sequence";
+		case static_cast <uint8_t> (error_t::BAD_ESCAPE_HEX):
+			// Выводим сообщение ошибки
+			return "invalid hexadecimal escape sequence";
 		// Некорректная восьмеричная последовательность
-		case static_cast <uint8_t> (error_t::BAD_ESCAPE_OCTAL): return "invalid octal escape sequence";
+		case static_cast <uint8_t> (error_t::BAD_ESCAPE_OCTAL):
+			// Выводим сообщение ошибки
+			return "invalid octal escape sequence";
 		// Неизвестное свойство Юникода
-		case static_cast <uint8_t> (error_t::BAD_PROPERTY): return "unknown unicode property name";
+		case static_cast <uint8_t> (error_t::BAD_PROPERTY):
+			// Выводим сообщение ошибки
+			return "unknown unicode property name";
 		// Неизвестный класс символов POSIX
-		case static_cast <uint8_t> (error_t::BAD_POSIX_CLASS): return "unknown posix class name";
+		case static_cast <uint8_t> (error_t::BAD_POSIX_CLASS):
+			// Выводим сообщение ошибки
+			return "unknown posix class name";
 		// Некорректный синтаксис группы
-		case static_cast <uint8_t> (error_t::BAD_GROUP_SYNTAX): return "unrecognized character after (?";
+		case static_cast <uint8_t> (error_t::BAD_GROUP_SYNTAX):
+			// Выводим сообщение ошибки
+			return "unrecognized character after (?";
 		// Некорректное имя именованной группы
-		case static_cast <uint8_t> (error_t::BAD_GROUP_NAME): return "invalid group name";
+		case static_cast <uint8_t> (error_t::BAD_GROUP_NAME):
+			// Выводим сообщение ошибки
+			return "invalid group name";
 		// Повторное объявление имени группы
-		case static_cast <uint8_t> (error_t::DUPLICATE_NAME): return "two named groups have the same name";
+		case static_cast <uint8_t> (error_t::DUPLICATE_NAME):
+			// Выводим сообщение ошибки
+			return "two named groups have the same name";
 		// Ссылка на несуществующую группу
-		case static_cast <uint8_t> (error_t::BAD_BACKREFERENCE): return "reference to non-existent subpattern";
+		case static_cast <uint8_t> (error_t::BAD_BACKREFERENCE):
+			// Выводим сообщение ошибки
+			return "reference to non-existent subpattern";
 		// Некорректный условный шаблон
-		case static_cast <uint8_t> (error_t::BAD_CONDITION): return "malformed conditional group";
+		case static_cast <uint8_t> (error_t::BAD_CONDITION):
+			// Выводим сообщение ошибки
+			return "malformed conditional group";
 		// Некорректный рекурсивный вызов
-		case static_cast <uint8_t> (error_t::BAD_RECURSION): return "invalid recursive call";
+		case static_cast <uint8_t> (error_t::BAD_RECURSION):
+			// Выводим сообщение ошибки
+			return "invalid recursive call";
 		// Некорректные встроенные опции
-		case static_cast <uint8_t> (error_t::BAD_OPTIONS): return "invalid inline option";
+		case static_cast <uint8_t> (error_t::BAD_OPTIONS):
+			// Выводим сообщение ошибки
+			return "invalid inline option";
 		// Превышена допустимая глубина вложенности
-		case static_cast <uint8_t> (error_t::NESTING_TOO_DEEP): return "parentheses are too deeply nested";
+		case static_cast <uint8_t> (error_t::NESTING_TOO_DEEP):
+			// Выводим сообщение ошибки
+			return "parentheses are too deeply nested";
 		// Регулярное выражение превышает допустимый размер
-		case static_cast <uint8_t> (error_t::PATTERN_TOO_LARGE): return "pattern is too large";
+		case static_cast <uint8_t> (error_t::PATTERN_TOO_LARGE):
+			// Выводим сообщение ошибки
+			return "pattern is too large";
 		// Некорректная последовательность UTF-8 в выражении
-		case static_cast <uint8_t> (error_t::BAD_UTF8): return "invalid utf-8 sequence in pattern";
+		case static_cast <uint8_t> (error_t::BAD_UTF8):
+			// Выводим сообщение ошибки
+			return "invalid utf-8 sequence in pattern";
 		// Некорректная последовательность UTF-8 в тексте сопоставления
-		case static_cast <uint8_t> (error_t::BAD_UTF8_SUBJECT): return "invalid utf-8 sequence in subject";
+		case static_cast <uint8_t> (error_t::BAD_UTF8_SUBJECT):
+			// Выводим сообщение ошибки
+			return "invalid utf-8 sequence in subject";
 		// Недопустимая ретроспективная проверка
-		case static_cast <uint8_t> (error_t::LOOKBEHIND_INVALID): return "invalid lookbehind assertion";
+		case static_cast <uint8_t> (error_t::LOOKBEHIND_INVALID):
+			// Выводим сообщение ошибки
+			return "invalid lookbehind assertion";
 		// Конструкция не поддерживается модулем
-		case static_cast <uint8_t> (error_t::UNSUPPORTED): return "unsupported pattern construct";
+		case static_cast <uint8_t> (error_t::UNSUPPORTED):
+			// Выводим сообщение ошибки
+			return "unsupported pattern construct";
 		// Выводим текст ошибки превышения допустимого объёма работы сопоставления
-		case static_cast <uint8_t> (error_t::BUDGET_EXCEEDED): return "match budget exceeded";
+		case static_cast <uint8_t> (error_t::BUDGET_EXCEEDED):
+			// Выводим сообщение ошибки
+			return "match budget exceeded";
 		// Повторный рекурсивный вызов в той же позиции текста
-		case static_cast <uint8_t> (error_t::NESTED_RECURSION): return "recursive call could loop indefinitely";
+		case static_cast <uint8_t> (error_t::NESTED_RECURSION):
+			// Выводим сообщение ошибки
+			return "recursive call could loop indefinitely";
 	}
 	// Выводим текст неизвестной ошибки разбора
 	return "unknown error";
@@ -1861,12 +2021,12 @@ bool awh::regex::Parser::parseName(const char terminator, uint32_t & index) noex
  *
  */
 bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) noexcept {
-	// Получаем размер текста регулярного выражения
-	const size_t size = this->_pattern.size();
+	// Имя свойства Юникода
+	string name = "";
 	// Получаем смещение начала свойства Юникода
 	const size_t offset = this->_pos;
-	// Имя свойства Юникода
-	string name;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
 	/**
 	 * Если имя свойства заключено в фигурные скобки
 	 */
@@ -1931,6 +2091,7 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
 		// Выводим результат выполнения разбора
 		return false;
 	}
+	// Выполняем возврат
 	result.properties.emplace_back(id, inverse);
 	// Выводим результат выполнения разбора
 	return true;
@@ -1943,10 +2104,10 @@ bool awh::regex::Parser::parseProperty(const bool negative, class_t & result) no
  *
  */
 bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
-	// Получаем размер текста регулярного выражения
-	const size_t size = this->_pattern.size();
 	// Получаем смещение начала класса символов POSIX
 	const size_t offset = this->_pos;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
 	// Переходим к символу за открывающей последовательностью
 	this->_pos += 2;
 	// Флаг отрицания класса символов POSIX
@@ -2279,10 +2440,10 @@ bool awh::regex::Parser::parsePosix(class_t & result) noexcept {
  *
  */
 bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, bool & single, const bool ending) noexcept {
-	// Получаем размер текста регулярного выражения
-	const size_t size = this->_pattern.size();
 	// Получаем смещение начала экранированной последовательности
 	const size_t offset = this->_pos;
+	// Получаем размер текста регулярного выражения
+	const size_t size = this->_pattern.size();
 	// Переходим к символу за обратной косой чертой
 	this->_pos++;
 	/**
@@ -2454,128 +2615,12 @@ bool awh::regex::Parser::parseClassEscape(class_t & result, uint32_t & code, boo
 	// Выводим результат выполнения разбора
 	return true;
 }
-namespace {
-	/**
-	 * @brief Метод разбора класса символов
-	 *
-	 * @return индекс сформированного узла синтаксического дерева
-	 *
-	 */
-	/**
-	 * @brief Функция проверки размещения элемента сортировки POSIX
-	 *
-	 * @details Элементы сортировки «[.a.]» и равнозначности «[=a=]» заданы
-	 *          стандартом POSIX, однако ни эталоном PCRE2, ни модулем
-	 *          не поддерживаются вовсе. Опознаются они по вводящему знаку
-	 *          и по завершению ему отвечающему: без завершения знак остаётся
-	 *          литералом класса, и «[.a]» классом обыкновенным и является.
-	 *
-	 * @param pattern текст разбираемого регулярного выражения
-	 * @param pos     позиция вводящего знака элемента сортировки
-	 * @return        результат проверки размещения элемента сортировки
-	 *
-	 */
-	/**
-	 * @brief Функция извлечения десятичного числа начального указания
-	 *
-	 * @details Число, пределом выражения выступающее, читается целиком: запись
-	 *          с посторонним знаком, пустая запись и запись, предел разрядности
-	 *          превышающая, дают отказ - указание таковое разбором отвергается
-	 *          наравне с неизвестным. Нуль записью верной является и отказом
-	 *          не выводится: «(*LIMIT_MATCH=0)» есть предел действующий.
-	 *
-	 * @param text   запись извлекаемого числа
-	 * @param result извлечённое десятичное число
-	 * @return       результат извлечения числа
-	 *
-	 */
-	bool numbering(const string_view text, uint32_t & result) noexcept {
-		// Извлекаемое десятичное число
-		uint64_t value = 0;
-		/**
-		 * Если запись числа пуста
-		 */
-		if(text.empty())
-			// Выводим результат извлечения числа
-			return false;
-		/**
-		 * Выполняем обход записи извлекаемого числа
-		 */
-		for(auto & letter : text){
-			/**
-			 * Если очередной знак записи десятичной цифрой не является
-			 */
-			if(!ascii::isDigit(letter))
-				// Выводим результат извлечения числа
-				return false;
-			// Выполняем добавление очередной десятичной цифры
-			value = ((value * 10) + static_cast <uint64_t> (letter - '0'));
-			/**
-			 * Если извлечённое число превышает предел разрядности
-			 */
-			if(value > numeric_limits <uint32_t>::max())
-				// Выводим результат извлечения числа
-				return false;
-		}
-		// Выполняем установку извлечённого десятичного числа
-		result = static_cast <uint32_t> (value);
-		// Выводим результат извлечения числа
-		return true;
-	}
-};
-namespace {
-	/**
-	 * @brief Функция проверки размещения элемента сортировки POSIX
-	 *
-	 * @param pattern текст регулярного выражения
-	 * @param pos     позиция вводящего знака элемента сортировки
-	 * @return        результат проверки размещения элемента сортировки
-	 *
-	 */
-	bool collating(const string_view pattern, const size_t pos) noexcept {
-		// Получаем размер текста регулярного выражения
-		const size_t size = pattern.size();
-		/**
-		 * Если позиция вводящего знака выходит за пределы выражения
-		 */
-		if(pos >= size)
-			// Выводим результат проверки размещения элемента сортировки
-			return false;
-		// Получаем вводящий знак элемента сортировки
-		const char letter = pattern.at(pos);
-		/**
-		 * Если знак вводящим элемент сортировки не является
-		 */
-		if((letter != '.') && (letter != '='))
-			// Выводим результат проверки размещения элемента сортировки
-			return false;
-		/**
-		 * Выполняем поиск завершения элемента сортировки
-		 *
-		 * @details Поиск ведётся до первой скобки закрывающей неэкранированной:
-		 *          скобка эта завершает класс символов, и знак вводящий остаётся
-		 *          литералом его. Потому «[.a.]» есть элемент сортировки,
-		 *          а «[.a]b.]» - класс из двух знаков.
-		 *
-		 */
-		for(size_t i = (pos + 1); i < size; i++){
-			/**
-			 * Если завершение элемента сортировки обнаружено
-			 */
-			if((pattern.at(i) == letter) && ((i + 1) < size) && (pattern.at(i + 1) == ']'))
-				// Выводим результат проверки размещения элемента сортировки
-				return true;
-			/**
-			 * Если класс символов завершён скобкой неэкранированной
-			 */
-			if((pattern.at(i) == ']') && (pattern.at(i - 1) != '\\'))
-				// Выводим результат проверки размещения элемента сортировки
-				return false;
-		}
-		// Выводим результат проверки размещения элемента сортировки
-		return false;
-	}
-};
+/**
+ * @brief Метод разбора класса символов
+ *
+ * @return индекс сформированного узла синтаксического дерева
+ *
+ */
 awh::regex::node_id_t awh::regex::Parser::parseClass() noexcept {
 	// Получаем размер текста регулярного выражения
 	const size_t size = this->_pattern.size();
@@ -3393,10 +3438,10 @@ bool awh::regex::Parser::parseOptions(uint32_t & enable, uint32_t & disable) noe
 	 * Выполняем разбор последовательности букв опций
 	 */
 	while(this->_pos < size){
-		// Получаем очередную букву опции
-		const char letter = this->_pattern.at(this->_pos);
 		// Числовое значение режима компиляции
 		uint32_t value = 0;
+		// Получаем очередную букву опции
+		const char letter = this->_pattern.at(this->_pos);
 		/**
 		 * Определяем очередную букву опции
 		 */
@@ -4374,8 +4419,10 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 				 *          считается только при наличии десятичной цифры за знаком.
 				 *
 				 */
-				const bool signedNumber = (((letter == '+') || (letter == '-')) &&
-				 ((this->_pos + 1) < size) && ascii::isDigit(this->_pattern.at(this->_pos + 1)));
+				const bool signedNumber = (
+					((letter == '+') || (letter == '-')) &&
+					((this->_pos + 1) < size) && ascii::isDigit(this->_pattern.at(this->_pos + 1))
+				);
 				/**
 				 * Если конструкция является рекурсивным вызовом группы по номеру
 				 */
@@ -4461,9 +4508,11 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 						 *          не снималась вовсе.
 						 *
 						 */
-						this->_flags &= ~(flagOf(flag_t::CASELESS) | flagOf(flag_t::MULTILINE) |
-						                  flagOf(flag_t::DOTALL) | flagOf(flag_t::EXTENDED) |
-						                  flagOf(flag_t::NOCAPTURE));
+						this->_flags &= ~(
+							flagOf(flag_t::CASELESS) | flagOf(flag_t::MULTILINE) |
+						    flagOf(flag_t::DOTALL) | flagOf(flag_t::EXTENDED) |
+						    flagOf(flag_t::NOCAPTURE)
+						);
 					}
 					// Набор устанавливаемых режимов компиляции
 					uint32_t enable = 0;
@@ -4632,7 +4681,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 * Если длина последовательности ретроспективной проверки не ограничена
 		 */
 		if(((direction == look_t::BEHIND) || (direction == look_t::BEHIND_NEG) ||
-		 (direction == look_t::BEHIND_FREE)) && (most == UNBOUNDED)){
+		    (direction == look_t::BEHIND_FREE)) && (most == UNBOUNDED)){
 			/**
 			 * Если тело проверки несёт вызов подпрограммы
 			 *
@@ -4658,7 +4707,6 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		const uint32_t begin = this->_captures;
 		// Наибольший номер захватывающей группы среди разобранных ветвей
 		uint32_t maximum = begin;
-		// Создаём набор ветвей группы со сбросом нумерации
 		/**
 		 * Получаем отметку основания состава в сберегательном ряду
 		 *
@@ -4674,7 +4722,7 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		/**
 		 * Выполняем разбор ветвей группы со сбросом нумерации
 		 */
-		while(true){
+		for(;;){
 			// Выполняем сброс номера захватывающей группы
 			this->_captures = begin;
 			// Выполняем разбор очередной ветви группы
@@ -4882,8 +4930,11 @@ awh::regex::node_id_t awh::regex::Parser::parseQuantifier(const node_id_t node) 
 	 *          и считается ошибкой. Проверки окружения повторение допускают.
 	 *
 	 */
-	const bool repeatable = ((this->_nodes.at(node).type != node_t::ANCHOR) &&
-	 (this->_nodes.at(node).type != node_t::EMPTY) && (this->_nodes.at(node).type != node_t::REPEAT));
+	const bool repeatable = (
+		(this->_nodes.at(node).type != node_t::ANCHOR) &&
+		(this->_nodes.at(node).type != node_t::EMPTY) &&
+		(this->_nodes.at(node).type != node_t::REPEAT)
+	);
 	// Наименьшее число повторений элемента выражения
 	uint32_t min = 0;
 	// Наибольшее число повторений элемента выражения
@@ -5167,7 +5218,6 @@ awh::regex::node_id_t awh::regex::Parser::parseRepeat() noexcept {
 awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 	// Получаем размер текста регулярного выражения
 	const size_t size = this->_pattern.size();
-	// Создаём набор элементов последовательности
 	/**
 	 * Получаем отметку основания состава в сберегательном ряду
 	 *
@@ -5192,7 +5242,7 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 	/**
 	 * Выполняем разбор элементов последовательности
 	 */
-	while(true){
+	for(;;){
 		// Выполняем пропуск пробельных символов и комментариев
 		this->skipSpaces();
 		/**
@@ -5353,11 +5403,14 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 		// Выполняем добавление разобранного элемента последовательности
 		items.push_back(node);
 	}
-	// Выводим индекс сформированного узла последовательности элементов
-	// Выполняем формирование узла последовательности элементов
+	/**
+	 * Выводим индекс сформированного узла последовательности элементов
+	 * Выполняем формирование узла последовательности элементов
+	 */
 	const node_id_t outcome = this->makeList(node_t::CONCAT, items, base);
 	// Выполняем усечение сберегательного ряда до отметки основания
 	this->_items.resize(base);
+	// Возвращаем результат
 	return outcome;
 }
 /**
@@ -5383,7 +5436,6 @@ awh::regex::node_id_t awh::regex::Parser::parseAlternate() noexcept {
 	if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '|'))
 		// Выводим индекс сформированного узла первой ветви
 		return first;
-	// Создаём набор ветвей выражения
 	/**
 	 * Получаем отметку основания состава в сберегательном ряду
 	 *
@@ -5415,11 +5467,14 @@ awh::regex::node_id_t awh::regex::Parser::parseAlternate() noexcept {
 		// Выполняем добавление разобранной ветви выражения
 		items.push_back(branch);
 	}
-	// Выводим индекс сформированного узла выбора одной из ветвей
-	// Выполняем формирование узла выбора одной из ветвей
+	/**
+	 * Выводим индекс сформированного узла выбора одной из ветвей
+	 * Выполняем формирование узла выбора одной из ветвей
+	 */
 	const node_id_t outcome = this->makeList(node_t::ALTERNATE, items, base);
 	// Выполняем усечение сберегательного ряда до отметки основания
 	this->_items.resize(base);
+	// Возвращаем результат
 	return outcome;
 }
 /**
@@ -6271,7 +6326,6 @@ bool awh::regex::Parser::resolve() noexcept {
 			}
 		}
 	}
-
 	/**
 	 * Если разбор заводил узлы ссылок на захваченные группы
 	 *
@@ -6302,7 +6356,6 @@ bool awh::regex::Parser::resolve() noexcept {
 			}
 		}
 	}
-
 	/**
 	 * Если разбор заводил узлы рекурсивных вызовов
 	 *
@@ -6339,7 +6392,6 @@ bool awh::regex::Parser::resolve() noexcept {
 			}
 		}
 	}
-
 	// Выводим результат разрешения отложенных ссылок
 	return true;
 }
@@ -6420,3 +6472,30 @@ bool awh::regex::Parser::parse(string_view pattern, const uint32_t flags) noexce
 	// Выводим результат выполнения разбора
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Parser::Parser() noexcept :
+ _pos(0), _root(INVALID_NODE), _depth(0),
+ _captures(0), _total(0), _stepLimit(~0u),
+ _depthLimit(~0u), _heapLimit(~0u),
+ _convention(newline_t::LF), _restricted(false),
+ _flags(0), _options(0), _look(0),
+ _error(error_t::NONE), _errorPos(0),
+ _classCount(0), _kinds(0), _barrier(false),
+ _counted(false), _begin(0), _resolving(false), _verbs(0) {
+	// Резервируем память под арену узлов синтаксического дерева
+	this->_nodes.reserve(64);
+}
+
+/**
+ * @brief Конструктор отложенной ссылки на именованную группу
+ *
+ */
+awh::regex::Parser::Deferred::Deferred() noexcept : node(INVALID_NODE), name(0), offset(0) {}
+/**
+ * @brief Деструктор разбора регулярного выражения
+ *
+ */
+awh::regex::Parser::~Parser() noexcept {}

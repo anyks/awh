@@ -65,7 +65,9 @@
  * \~english
  * @brief Header file of the generation of ARM64 machine code — the Emitter class, which assembles
  *        a sequence of processor instructions with deferred resolution of the jumps by labels
+ *
  * @section emitter_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -114,10 +116,6 @@
 #include "common.hpp"
 
 /**
- * Подключаем заголовочные файлы модулей
- */
-
-/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
@@ -127,7 +125,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -172,6 +169,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the generation of ARM64 machine code
+		 *
 		 * @details The class assembles a sequence of processor instructions, deferring
 		 *          the resolution of the jumps until all the labels have been laid out. The generated code
 		 *          is relocatable: references beyond its bounds are performed by an offset
@@ -194,6 +192,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Register numbers of the calling convention of the generated code
+				 *
 				 * @details The generated matcher is called as a function of the form
 				 *          «bool (const char * text, size_t size, size_t start,
 				 *          size_t * bounds, const void * context)», which is why its first
@@ -204,7 +203,16 @@ namespace awh {
 				 * \~
 				 */
 				enum class reg_t : uint8_t {
-					#if (defined(__x86_64__) || defined(_M_X64)) && defined(_WIN32)
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64 под операционную систему Windows
+					 *
+					 * \~english
+					 * If the processor is x86_64 for OS Windows
+					 *
+					 * \~
+					 */
+					#if(defined(__x86_64__) || defined(_M_X64)) && defined(_WIN32)
 						/**
 						 * \~russian
 						 * Номера регистров набора команд x86-64 под Windows
@@ -227,6 +235,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Register numbers of the x86-64 instruction set under Windows
+						 *
 						 * @details Windows keeps to a convention of its own rather than
 						 *          System V: the call arguments arrive in the registers
 						 *          rcx, rdx, r8 and r9, the fifth argument is passed
@@ -266,6 +275,12 @@ namespace awh {
 						 * \~english
 						 * Address of the summit of the area of records, register r13
 						 *
+						 * @details The allocation of a record is led by the summit, and the access
+						 *          to its places goes through the register of the record: lowering
+						 *          the level of the summit does not move it as long as descending
+						 *          into it stays possible. The PCRE2 reference keeps the summit of
+						 *          the area in a register by the same order.
+						 *
 						 * \~
 						 */
 						SUMMIT  = 0x0D, // Адрес вершины области записей
@@ -273,6 +288,15 @@ namespace awh {
 						SCRATCH = 0x00, // Промежуточное значение вычисления, регистр rax
 						SPARE   = 0x03, // Второе промежуточное значение вычисления, регистр rbx
 						KEEPER  = 0x0C, // Значение, сохраняемое между шагами сопоставления, регистр r12
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64
+					 *
+					 * \~english
+					 * If the processor is x86_64
+					 *
+					 * \~
+					 */
 					#elif defined(__x86_64__) || defined(_M_X64)
 						/**
 						 * \~russian
@@ -287,6 +311,7 @@ namespace awh {
 						 *
 						 * \~english
 						 * Register numbers of the x86-64 instruction set
+						 *
 						 * @details The call arguments arrive in the registers rdi, rsi, rdx,
 						 *          rcx and r8, and the result is yielded in rax — such is the System V
 						 *          convention. The intermediate value is allotted the same
@@ -318,6 +343,12 @@ namespace awh {
 						 * \~english
 						 * Address of the summit of the area of records, register r13
 						 *
+						 * @details The allocation of a record is led by the summit, and the access
+						 *          to its places goes through the register of the record: lowering
+						 *          the level of the summit does not move it as long as descending
+						 *          into it stays possible. The PCRE2 reference keeps the summit of
+						 *          the area in a register by the same order.
+						 *
 						 * \~
 						 */
 						SUMMIT  = 0x0D, // Адрес вершины области записей
@@ -325,6 +356,15 @@ namespace awh {
 						SCRATCH = 0x00, // Промежуточное значение вычисления, регистр rax
 						SPARE   = 0x03, // Второе промежуточное значение вычисления, регистр rbx
 						KEEPER  = 0x0C, // Значение, сохраняемое между шагами сопоставления, регистр r12
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
 					#else
 						TEXT    = 0x00, // Адрес начала текста сопоставления
 						SIZE    = 0x01, // Размер текста сопоставления в байтах
@@ -348,6 +388,12 @@ namespace awh {
 						 * \~english
 						 * Address of the summit of the area of records, register x12
 						 *
+						 * @details The allocation of a record is led by the summit, and the access
+						 *          to its places goes through the register of the record: lowering
+						 *          the level of the summit does not move it as long as descending
+						 *          into it stays possible. The PCRE2 reference keeps the summit of
+						 *          the area in a register by the same order.
+						 *
 						 * \~
 						 */
 						SUMMIT  = 0x0C, // Адрес вершины области записей
@@ -358,51 +404,53 @@ namespace awh {
 					#endif
 					/**
 					 * \~russian
-					 * Регистр адреса возврата из вызова подпрограммы
-					 *
-					 * @details Команда вызова подпрограммы записывает в этот регистр
-					 *          адрес возврата, отчего вызов из порождённого кода обязан
-					 *          сохранять его прежде вызова и восстанавливать после:
-					 *          иначе завершение сопоставителя передавало бы исполнение
-					 *          внутрь самого сопоставителя.
+					 * Если процессор принадлежит к x86_64
 					 *
 					 * \~english
-					 * Register of the return address from a subroutine call
-					 * @details The subroutine call instruction writes the return address into that register,
-					 *          which is why a call from the generated code is obliged
-					 *          to save it before the call and restore it afterwards:
-					 *          otherwise the completion of the matcher would pass execution
-					 *          inside the matcher itself.
+					 * If the processor is x86_64
 					 *
 					 * \~
 					 */
 					#if defined(__x86_64__) || defined(_M_X64)
-						LINK    = 0x0D,
+						// Номер регистра связи набора команд x86-64
+						LINK = 0x0D,
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
 					#else
-						LINK    = 0x1E,
+						// Номер регистра связи прочих наборов команд
+						LINK = 0x1E,
 					#endif
 					/**
 					 * \~russian
-					 * Указатель стека вызова
-					 *
-					 * @details Набор команд ARM64 обозначает указатель стека тем же
-					 *          номером, что и нулевой регистр, а различает их сама
-					 *          команда: сложение и вычитание с числом, а равно чтение
-					 *          и запись по смещению обращаются к указателю стека.
+					 * Если процессор принадлежит к x86_64
 					 *
 					 * \~english
-					 * Call stack pointer
-					 * @details The ARM64 instruction set denotes the stack pointer by the same
-					 *          number as the zero register, and it is the instruction itself that tells them apart:
-					 *          addition and subtraction with a number, as well as reading
-					 *          and writing by an offset, refer to the stack pointer.
+					 * If the processor is x86_64
 					 *
 					 * \~
 					 */
 					#if defined(__x86_64__) || defined(_M_X64)
-						STACK   = 0x04
+						// Номер регистра указателя стека набора команд x86-64
+						STACK = 0x04
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
 					#else
-						STACK   = 0x1F
+						// Номер регистра указателя стека прочих наборов команд
+						STACK = 0x1F
 					#endif
 				};
 				/**
@@ -415,6 +463,15 @@ namespace awh {
 				 * \~
 				 */
 				enum class cond_t : uint8_t {
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к x86_64
+					 *
+					 * \~english
+					 * If the processor is x86_64
+					 *
+					 * \~
+					 */
 					#if defined(__x86_64__) || defined(_M_X64)
 						EQUAL    = 0x04, // Значения равны
 						NOTEQUAL = 0x05, // Значения не равны
@@ -422,6 +479,15 @@ namespace awh {
 						BELOW    = 0x02, // Значение меньше без учёта знака
 						GREATER  = 0x07, // Значение больше без учёта знака
 						LESS     = 0x06  // Значение не больше без учёта знака
+					/**
+					 * \~russian
+					 * Если процессор принадлежит к ARM64 или E2K
+					 *
+					 * \~english
+					 * If the processor is ARM64 or E2K
+					 *
+					 * \~
+					 */
 					#else
 						EQUAL    = 0x00, // Значения равны
 						NOTEQUAL = 0x01, // Значения не равны
@@ -442,6 +508,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Generated sequence of processor instructions
+				 *
 				 * @details The sequence is kept in bytes rather than in words: the ARM64 instruction
 				 *          set carries instructions of a constant width, and x86-64 of a
 				 *          variable one, and the byte form is fit for both.
@@ -467,15 +534,23 @@ namespace awh {
 					// Номер записанного значения в области
 					uint32_t index;
 					/**
+					 * \~russian
 					 * @brief Конструктор записи
 					 *
 					 * @param source регистр записанного значения
 					 * @param base   регистр адреса начала области записи
 					 * @param index  номер записанного значения в области
 					 *
+					 * \~english
+					 * @brief Constructor of a record
+					 *
+					 * @param source register of the recorded value
+					 * @param base   register of the base of the record area
+					 * @param index  number of the recorded value in the area
+					 *
+					 * \~
 					 */
-					Stored(const reg_t source, const reg_t base, const uint32_t index) noexcept :
-					 source(source), base(base), index(index) {}
+					Stored(const reg_t source, const reg_t base, const uint32_t index) noexcept;
 				} stored_t;
 			private:
 				/**
@@ -498,6 +573,20 @@ namespace awh {
 				 * \~english
 				 * A row of writes to memory placed one after another
 				 *
+				 * @details The row is kept to remove a redundant read: the generation
+				 *          puts the value into a place of the frame and at once reads it
+				 *          back from there, whereas it is still intact in the register.
+				 *          The experience named the price of such a read directly - it
+				 *          costs a transfer from the buffer of the write rather than a
+				 *          memory access, and costs it on every trip of the repetition.
+				 *
+				 *          The row is kept only while the writes go one after another: a
+				 *          write of registers changes nothing, hence the value written
+				 *          into the row is known to be intact. Any other command breaks
+				 *          the row - the break is recognised by the length of the code
+				 *          mismatching the mark of the row, so that no method of placing
+				 *          has to be amended.
+				 *
 				 * \~
 				 */
 				vector <stored_t> _stored;
@@ -513,6 +602,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * The length of the code at the moment the row of writes ended
+				 *
+				 * @details The value `SIZE_MAX` means a broken row: it is put by laying
+				 *          out a mark and by placing the target of a jump to an address in
+				 *          a register - through them the control passes from the outside,
+				 *          and the contents of the registers are no longer known to the row.
 				 *
 				 * \~
 				 */
@@ -533,6 +627,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * The number of the slots of the call frame allocated by the prologue
+				 *
 				 * @details A slot of the frame is addressed by number, and the size of
 				 *          the frame is computed by the generation from the number of slots
 				 *          it uses. There was no tie between them: a number exceeding
@@ -542,6 +637,15 @@ namespace awh {
 				 * \~
 				 */
 				size_t _seats;
+			/**
+			 * \~russian
+			 * Если процессор принадлежит к E2K
+			 *
+			 * \~english
+			 * If the processor is E2K
+			 *
+			 * \~
+			 */
 			#if defined(__e2k__)
 			private:
 				/**
@@ -559,6 +663,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief A wide processor instruction deferred for emission
+				 *
 				 * @details The e2k instruction set executes a wide instruction carrying
 				 *          up to six operations in channels. The generation emitted one
 				 *          operation per instruction - one channel out of six was busy -
@@ -573,15 +678,19 @@ namespace awh {
 				typedef struct Packed {
 					// Слоги арифметико-логических каналов и признаки их наличия
 					uint32_t als[6];
+					// Признаки наличия слогов каналов
 					bool has[6];
 					// Слог расширения канала нулевого и признак его наличия
 					uint16_t ales;
+					// Признак наличия слога расширения
 					bool extended;
 					// Слог коротких операций и признак его наличия
 					uint32_t stub;
+					// Признак наличия слога коротких операций
 					bool stubbed;
 					// Слоги управления и признаки их наличия
 					uint32_t cs0, cs1;
+					// Признаки наличия слогов управления
 					bool first, second;
 					// Слоги литералов, младший первым
 					uint32_t lts[2];
@@ -594,17 +703,20 @@ namespace awh {
 					// Признак наличия отложенной команды
 					bool opened;
 					/**
-					 * @brief Конструктор широкой команды
-					 *
-					 */
-					Packed() noexcept : als{0, 0, 0, 0, 0, 0}, has{false, false, false, false, false, false},
-					 ales(0), extended(false), stub(0), stubbed(false), cs0(0), cs1(0), first(false), second(false),
-					 lts{0, 0}, literals(0), writes(0), predicates(0), opened(false) {}
+						 * \~russian
+						 * @brief Конструктор широкой команды
+						 *
+						 * \~english
+						 * @brief Constructor of a wide command
+						 *
+						 * \~
+						 */
+						Packed() noexcept;
 				} packed_t;
 			private:
 				// Широкая команда процессора, к выдаче отложенная
 				packed_t _packed;
-			#endif // defined(__e2k__)
+			#endif
 			private:
 				// Положения меток в порождаемой последовательности команд
 				vector <size_t> _labels;
@@ -643,20 +755,28 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Fixup() noexcept : position(0), label(0), kind(kind_t::JUMP) {}
+					Fixup() noexcept;
 				} fixup_t;
-			private:
-				// Набор отложенных переходов, подлежащих разрешению
-				vector <fixup_t> _fixups;
 			private:
 				// Флаг отказа порождения машинного кода
 				bool _failed;
+			private:
+				// Набор отложенных переходов, подлежащих разрешению
+				vector <fixup_t> _fixups;
+			/**
+			 * \~russian
+			 * Если процессор принадлежит к E2K
+			 *
+			 * \~english
+			 * If the processor is E2K
+			 *
+			 * \~
+			 */
 			#if defined(__e2k__)
 			private:
 				/**
@@ -672,6 +792,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of emitting the wide instruction deferred for emission
+				 *
 				 * @details The emission is obligatory before every place control enters
 				 *          from the side or leaves from: declaring a label, a jump, a call,
 				 *          opening and closing the register window. Otherwise an operation
@@ -701,11 +822,11 @@ namespace awh {
 				 * @param channels маска каналов, операцию принимающих
 				 * @param reads    маска регистров, операцией читаемых
 				 * @param writes   маска регистров, операцией записываемых
-				 *
-				 * @return номер отведённого канала широкой команды
+				 * @return         номер отведённого канала широкой команды
 				 *
 				 * \~english
 				 * @brief Method of allocating a wide instruction channel for an operation
+				 *
 				 * @details The operation is appended to the deferred instruction when
 				 *          a free channel is found for it among the allowed ones and when
 				 *          its arguments are not taken from what that instruction writes:
@@ -721,17 +842,16 @@ namespace awh {
 				 * @param channels mask of the channels accepting the operation
 				 * @param reads    mask of the registers read by the operation
 				 * @param writes   mask of the registers written by the operation
-				 *
-				 * @return number of the allocated channel of the wide instruction
+				 * @return         number of the allocated channel of the wide instruction
 				 *
 				 * \~
 				 */
 				uint8_t reserve(const uint8_t channels, const uint32_t reads, const uint32_t writes) noexcept;
-			#endif // defined(__e2k__)
+			#endif
 			private:
 				/**
 				 * \~russian
-				 * Объект журнала событий
+				 * @brief Объект журнала событий
 				 *
 				 * @details Журналом сообщается лишь ОДНА беда - переход к метке,
 				 *          заведению не подвергшейся. Она означает несогласованность
@@ -742,10 +862,16 @@ namespace awh {
 				 *          где на деле изъян
 				 *
 				 * \~english
-				 * The event log object
-				 * @details Only ONE trouble is reported through the log - a jump to
+				 * @brief The event log object
+				 *
+				 * @details Only ONE trouble is reported through the log — a jump to
 				 *          a label that has not been declared. It means an inconsistency
-				 *          of the generation itself rather than a property of the expression
+				 *          of the generation itself rather than a property of the expression,
+				 *          and it cannot be kept silent: outwardly it surfaces indistinguishable
+				 *          from a legitimate failure — from a number that does not fit into
+				 *          the instruction field, — and the consumer receives the message
+				 *          «code generation is not applicable» where in fact the defect
+				 *          is the generation itself.
 				 *
 				 * \~
 				 */
@@ -772,15 +898,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the support of machine code generation by the build
+				 *
 				 * @details The generation is implemented for the ARM64, x86-64 and Elbrus (e2k)
 				 *          instruction sets; builds for the other sets (RISC-V, POWER) do not receive it.
 				 *          The absence of the support is not a defect: the matching
 				 *          is performed by executing the program, as before.
+				 *
 				 * @note On the sets without generation the instruction methods exist - without them
 				 *       the matcher would not link, - but each of them only marks a failure
 				 *       visible through «failed», and «resolve» answers false. A call that bypassed
 				 *       this check receives a failure rather than empty code that looks fit.
 				 *       The failure was uncovered on the Elbrus processor, the first third instruction set.
+				 *
 				 * @return result of checking the support of machine code generation
 				 *
 				 * \~
@@ -807,8 +936,20 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the register preservation across a subroutine call
+				 *
+				 * @details The calling convention splits the registers in two: the callee
+				 *          must return some untouched, and is free to clobber the others.
+				 *          The generation of a call saves in the frame only the clobbered
+				 *          ones: saving the preserved ones would be work in vain, while
+				 *          every subroutine call lies in the loop of trials and pays at every
+				 *          position of the start.
+				 *
+				 *          The x86-64 set has three preserved registers of nine saved, while
+				 *          the ARM64 set has none: the lower ones were taken on purpose, and
+				 *          their preservation is ensured by the matcher itself.
+				 *
 				 * @param reg checked register of the calling convention
-				 * @return result of checking the register preservation across a call
+				 * @return    result of checking the register preservation across a call
 				 *
 				 * \~
 				 */
@@ -836,8 +977,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of introducing a jump label
+				 *
 				 * @details An introduced label has no position: it gets its position
 				 *          by being laid out, and before that it only takes jumps.
+				 *
 				 * @return number of the introduced jump label
 				 *
 				 * \~
@@ -851,6 +994,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of laying out a jump label
+				 *
 				 * @param label number of the jump label being laid out
 				 *
 				 * \~
@@ -918,7 +1062,9 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing the entry into the generated matcher
+				 *
 				 * @param frame size of the allotted call frame in bytes
+				 *
 				 * @details The entry saves the registers entrusted by the calling convention to the callee
 				 *          side and allots the call frame. What is saved
 				 *          is determined by the instruction set: ARM64 allots
@@ -933,18 +1079,20 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод размещения выхода из порождаемого сопоставителя
 				 *
-				 * @param frame размер освобождаемого кадра вызова в байтах
-				 *
 				 * @details Выход освобождает кадр вызова и восстанавливает регистры,
 				 *          входом сохранённые. Размещается он перед всяким
 				 *          завершением вызова, а не единожды.
 				 *
+				 * @param frame размер освобождаемого кадра вызова в байтах
+				 *
 				 * \~english
 				 * @brief Method of placing the exit from the generated matcher
-				 * @param frame size of the released call frame in bytes
+				 *
 				 * @details The exit releases the call frame and restores the registers
 				 *          saved by the entry. It is placed before every
 				 *          completion of the call rather than once.
+				 *
+				 * @param frame size of the released call frame in bytes
 				 *
 				 * \~
 				 */
@@ -952,8 +1100,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Метод отведения записи вложенного уровня
-				 *
-				 * @param frame размер отводимой записи в байтах
 				 *
 				 * @details Места кадра адресуются регистром записи, отчего
 				 *          продвижение его на размер кадра даёт обращениям,
@@ -967,12 +1113,23 @@ namespace awh {
 				 *          областью требует записи своей на каждый проход,
 				 *          и число их доходит до длины текста.
 				 *
+				 * @param frame размер отводимой записи в байтах
+				 *
 				 * \~english
 				 * @brief Method of allotting the record of a nested level
-				 * @param frame size of the allotted record in bytes
+				 *
 				 * @details The places of the frame are addressed by the record register, and so
 				 *          advancing it by the size of the frame gives the accesses placed by
-				 *          the generation a fresh set of the very same places.
+				 *          the generation a fresh set of the very same places. The sequence
+				 *          that holds its position receives it separately for every nesting
+				 *          level, and the accesses themselves do not change in any way.
+				 *
+				 *          The area of records is allocated by the call of the matching
+				 *          and does not consume the machine stack: the walk of a repetition
+				 *          over the area requires a record of its own for every pass, and
+				 *          the count of them reaches the length of the text.
+				 *
+				 * @param frame size of the allotted record in bytes
 				 *
 				 * \~
 				 */
@@ -981,15 +1138,21 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод снятия записи вложенного уровня
 				 *
-				 * @param frame размер снимаемой записи в байтах
-				 *
 				 * @details Размер снимаемой записи обязан совпадать с размером,
 				 *          отведённым при входе в уровень: регистр записи
 				 *          отступает на него, возвращая обращения к местам
 				 *          записи уровня вызывающего.
 				 *
+				 * @param frame размер снимаемой записи в байтах
+				 *
 				 * \~english
 				 * @brief Method of removing the record of a nested level
+				 *
+				 * @details The size of the removed record must match the size allotted
+				 *          at the entry into the level: the record register steps back
+				 *          by it, returning the accesses to the places of the
+				 *          record of the calling level.
+				 *
 				 * @param frame size of the removed record in bytes
 				 *
 				 * \~
@@ -1004,6 +1167,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a jump to a label
+				 *
 				 * @param label number of the label the jump is taken to
 				 *
 				 * \~
@@ -1018,6 +1182,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a conditional jump to a label
+				 *
 				 * @param cond  condition for taking the jump
 				 * @param label number of the label the jump is taken to
 				 *
@@ -1034,6 +1199,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a comparison of the register values
+				 *
 				 * @param first  register of the minuend value
 				 * @param second register of the subtrahend value
 				 *
@@ -1052,8 +1218,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a comparison of a register value with a number
+				 *
 				 * @details The number is placed in the instruction itself and is therefore bounded
 				 *          by twelve bits.
+				 *
 				 * @param reg   register of the compared value
 				 * @param value compared number
 				 *
@@ -1071,6 +1239,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing an addition of a register value with a number
+				 *
 				 * @param target register of the result of the addition
 				 * @param source register of the addend value
 				 * @param value  added number
@@ -1088,6 +1257,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a subtraction of a number from a register value
+				 *
 				 * @param target register of the result of the subtraction
 				 * @param source register of the minuend value
 				 * @param value  subtracted number
@@ -1105,6 +1275,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a move of a register value
+				 *
 				 * @param target destination register of the move
 				 * @param source source register of the move
 				 *
@@ -1120,6 +1291,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a write of a number into a register
+				 *
 				 * @param target destination register of the write
 				 * @param value  written number
 				 *
@@ -1141,9 +1313,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a read of a byte of the text
+				 *
 				 * @details The byte is read at the sum of the address of the beginning of the text and the matching
 				 *          position, which corresponds to referring to the text by a pointer
 				 *          without bounds checking: the position was checked by the comparison above.
+				 *
 				 * @param target register of the read byte value
 				 * @param base   register of the address of the beginning of the read area
 				 * @param offset register of the offset of the read byte
@@ -1151,6 +1325,15 @@ namespace awh {
 				 * \~
 				 */
 				void load(const reg_t target, const reg_t base, const reg_t offset) noexcept;
+				/**
+				 * \~russian
+				 * Если процессор принадлежит к x86_64
+				 *
+				 * \~english
+				 * If the processor is x86_64
+				 *
+				 * \~
+				 */
 				#if defined(__x86_64__) || defined(_M_X64)
 					/**
 					 * \~russian
@@ -1196,8 +1379,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a read of a value of the execution context
+				 *
 				 * @details The reference is performed by an offset from the context register,
 				 *          which is what ensures the relocatability of the generated code.
+				 *
 				 * @param target register of the read value
 				 * @param index  number of the value in the address table of the context
 				 *
@@ -1214,6 +1399,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a read of a value from memory
+				 *
 				 * @param target register of the read value
 				 * @param base   register of the address of the beginning of the read area
 				 * @param index  number of the read value in the area
@@ -1231,6 +1417,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a write of a register value into memory
+				 *
 				 * @param source register of the written value
 				 * @param base   register of the address of the beginning of the written area
 				 * @param index  number of the written value in the area
@@ -1260,10 +1447,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a read of a value from memory by an address in a register
+				 *
 				 * @details The offset is given by a register rather than by a field of the instruction,
 				 *          which is why the place being read is known only at execution time. This is needed by
 				 *          a set whose depth depends on the data: by the return stack
 				 *          of recursive calls.
+				 *
+				 * @note The generation of the matcher does not yet sound this access:
+				 *       it was added for the sake of recursion and is left on purpose.
+				 *       Yet unchecked code it does not stay — the comparison is led by the
+				 *       «Regex.EmitterIndexed» check that generates a sample of a write by
+				 *       one offset and a read by another, and runs it through all their combinations.
+				 *
 				 * @param target register of the read value
 				 * @param base   register of the address of the beginning of the read area
 				 * @param offset register of the number of the read value in the area
@@ -1282,6 +1477,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a write of a register value into memory by an address in a register
+				 *
 				 * @param source register of the written value
 				 * @param base   register of the address of the beginning of the write area
 				 * @param offset register of the number of the written value in the area
@@ -1304,11 +1500,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a subroutine call by an address in a register
+				 *
 				 * @details The call is performed by the address read from the execution
 				 *          context, which is what keeps the relocatability of the generated
 				 *          code. The register values clobbered by the call are saved by
 				 *          the calling side: the subroutine calling convention
 				 *          promises no preservation of the lower registers.
+				 *
 				 * @param reg register of the address of the called subroutine
 				 *
 				 * \~
@@ -1327,9 +1525,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a computation of the address of a label
+				 *
 				 * @details The address is computed by adding the offset to the position of the
 				 *          instruction itself, which is why the relocatability of the generated code is kept:
 				 *          the remembered address moves together with the code.
+				 *
 				 * @param target register of the computed address
 				 * @param label  number of the label whose address is computed
 				 *
@@ -1344,6 +1544,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a jump by an address in a register
+				 *
 				 * @param reg register of the address of the taken jump
 				 *
 				 * \~
@@ -1359,6 +1560,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing the target marker of a jump by an address in a register
+				 *
 				 * @details It is placed right after the label the jump arrives at by the
 				 *          «proceed» method. The instruction sets that make no such requirement
 				 *          place nothing.
@@ -1388,8 +1590,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resolving the deferred jumps
+				 *
 				 * @details The method writes the jump offsets into the placed instructions
 				 *          and is obliged to be called after all the labels have been laid out.
+				 *
 				 * @return result of resolving the deferred jumps
 				 *
 				 * \~
@@ -1404,6 +1608,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the generated instruction sequence
+				 *
 				 * @return generated sequence of processor instructions
 				 *
 				 * \~
@@ -1417,6 +1622,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the size of the generated machine code
+				 *
 				 * @return size of the generated machine code in bytes
 				 *
 				 * \~
@@ -1435,10 +1641,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking a failure of the machine code generation
+				 *
 				 * @details A failure is caused by an argument not fitting into the instruction field,
 				 *          by a reference to a label that was not introduced or by a jump offset
 				 *          going beyond the bounds of the field. The generation continues after a failure,
 				 *          but its code is unfit for execution.
+				 *
 				 * @return result of checking a failure of the machine code generation
 				 *
 				 * \~
@@ -1448,7 +1656,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor

@@ -33,9 +33,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <regex/grok/grok.hpp>
 #include <num/lexical/lexical.hpp>
-#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -52,7 +52,11 @@ using namespace std;
  *
  */
 static constexpr uint16_t MAX_DEPTH = 64;
-
+/**
+ * @brief Версия устройства записи собранных шаблонов Grok
+ *
+ */
+static constexpr uint8_t GROK_VERSION = 0x02;
 /**
  * @brief Наибольший допустимый размер развёрнутого текста выражения
  *
@@ -63,7 +67,6 @@ static constexpr uint16_t MAX_DEPTH = 64;
  *
  */
 static constexpr size_t MAX_LENGTH = 0x400000;
-
 /**
  * @brief Опознание записи собранных шаблонов Grok
  *
@@ -71,28 +74,10 @@ static constexpr size_t MAX_LENGTH = 0x400000;
 static constexpr uint64_t GROK_MAGIC = 0x4B4F52474841574Aull;
 
 /**
- * @brief Версия устройства записи собранных шаблонов Grok
- *
- */
-static constexpr uint8_t GROK_VERSION = 0x02;
-
-/**
  * @brief Пространство имён вспомогательных функций записи и чтения
  *
  */
 namespace {
-	/**
-	 * @brief Функция записи числа переменной длины
-	 *
-	 * @param value  записываемое число
-	 * @param result запись собранных шаблонов
-	 *
-	 * @details Число записывается семью разрядами на байт, старший разряд
-	 *          байта отмечает продолжение. Значения малые - а таковы номера
-	 *          групп, количества полей и длины названий - занимают один байт
-	 *          взамен восьми.
-	 *
-	 */
 	/**
 	 * @brief Функция вычисления контрольной суммы содержимого записи
 	 *
@@ -107,7 +92,7 @@ namespace {
 	 * @return     вычисленная контрольная сумма содержимого
 	 *
 	 */
-	uint64_t checksum(string_view data) noexcept {
+	static uint64_t checksum(string_view data) noexcept {
 		// Накопленная контрольная сумма содержимого
 		uint64_t result = 0xCBF29CE484222325ull;
 		// Получаем позицию чтения содержимого
@@ -143,7 +128,19 @@ namespace {
 		// Выводим вычисленную контрольную сумму содержимого
 		return result;
 	}
-	void writeNumber(uint64_t value, string & result) noexcept {
+	/**
+	 * @brief Функция записи числа переменной длины
+	 *
+	 * @param value  записываемое число
+	 * @param result запись собранных шаблонов
+	 *
+	 * @details Число записывается семью разрядами на байт, старший разряд
+	 *          байта отмечает продолжение. Значения малые - а таковы номера
+	 *          групп, количества полей и длины названий - занимают один байт
+	 *          взамен восьми.
+	 *
+	 */
+	static void writeNumber(uint64_t value, string & result) noexcept {
 		/**
 		 * Выполняем запись числа долями по семь разрядов
 		 */
@@ -165,7 +162,7 @@ namespace {
 	 * @return       результат чтения числа
 	 *
 	 */
-	bool readNumber(string_view data, size_t & offset, uint64_t & value) noexcept {
+	static bool readNumber(string_view data, size_t & offset, uint64_t & value) noexcept {
 		// Выполняем сброс прочитанного числа
 		value = 0;
 		/**
@@ -199,7 +196,7 @@ namespace {
 	 * @param result запись собранных шаблонов
 	 *
 	 */
-	void writeText(const string & value, string & result) noexcept {
+	static void writeText(const string & value, string & result) noexcept {
 		// Выполняем запись длины последовательности символов
 		writeNumber(static_cast <uint64_t> (value.size()), result);
 		// Выполняем запись последовательности символов
@@ -214,7 +211,7 @@ namespace {
 	 * @return       результат чтения последовательности символов
 	 *
 	 */
-	bool readText(string_view data, size_t & offset, string & value) noexcept {
+	static bool readText(string_view data, size_t & offset, string & value) noexcept {
 		// Длина читаемой последовательности символов
 		uint64_t length = 0;
 		/**
@@ -235,6 +232,126 @@ namespace {
 		offset += static_cast <size_t> (length);
 		// Выводим результат чтения последовательности символов
 		return true;
+	}
+	/**
+	 * @brief Функция разбора захвата числом по договору JSON
+	 *
+	 * @details Разбор ведётся по правилу записи числа JSON, а не по виду,
+	 *          полем объявленному: вид объявленный лишь дозволяет захвату
+	 *          лечь числом, а лечь им захват вправе, только если числом JSON
+	 *          он и является. Правило это строже привычных средств разбора:
+	 *          «007», «3.», «.5», «nan», «inf» и «0x10» ими принимаются,
+	 *          а записью JSON числом быть не вправе.
+	 *
+	 *          Прежняя проверка спрашивала «похоже ли на число по виду
+	 *          объявленному» и выдавала оттого запись неправильную -
+	 *          обнаружилось это разбором выданного нашим же кодеком JSON.
+	 *          Захват, числом не являющийся, выводится текстом, как и прежде.
+	 *
+	 * @param text     текст захвата поля
+	 * @param fraction признак наличия дробной части либо порядка
+	 * @param negative признак отрицательности числа
+	 * @return         результат разбора захвата числом
+	 *
+	 */
+	static bool numeric(const string & text, bool & fraction, bool & negative) noexcept {
+		// Выполняем сброс признака наличия дробной части
+		fraction = false;
+		// Выполняем сброс признака отрицательности числа
+		negative = false;
+		/**
+		 * Если текст захвата пуст
+		 */
+		if(text.empty())
+			// Выводим результат разбора захвата числом
+			return false;
+		// Получаем положение разбора текста захвата
+		size_t pos = 0;
+		/**
+		 * Если число начинается знаком минуса
+		 *
+		 * @details Знак плюса записью числа JSON не дозволен вовсе.
+		 */
+		if(text.front() == '-'){
+			// Запоминаем отрицательность числа
+			negative = true;
+			// Переходим к знаку следующему
+			pos++;
+		}
+		/**
+		 * Если целая часть числа отсутствует
+		 */
+		if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
+			// Выводим результат разбора захвата числом
+			return false;
+		/**
+		 * Если целая часть числа начинается нулём
+		 *
+		 * @details Ведущие нули записью числа JSON не дозволены: «007» числом
+		 *          не является, тогда как «0» и «0.5» являются.
+		 */
+		if(text.at(pos) == '0')
+			// Переходим к знаку следующему
+			pos++;
+		/**
+		 * Выполняем разбор целой части числа
+		 */
+		else while((pos < text.size()) && ::isdigit(static_cast <unsigned char> (text.at(pos))))
+			// Переходим к знаку следующему
+			pos++;
+		/**
+		 * Если число несёт дробную часть
+		 */
+		if((pos < text.size()) && (text.at(pos) == '.')){
+			// Запоминаем наличие дробной части
+			fraction = true;
+			// Переходим к знаку следующему
+			pos++;
+			/**
+			 * Если дробная часть цифр не несёт
+			 *
+			 * @details Запись «3.» числом JSON не является: после точки
+			 *          обязана стоять хотя бы одна цифра.
+			 */
+			if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
+				// Выводим результат разбора захвата числом
+				return false;
+			/**
+			 * Выполняем разбор дробной части числа
+			 */
+			while((pos < text.size()) && ::isdigit(static_cast <unsigned char> (text.at(pos))))
+				// Переходим к знаку следующему
+				pos++;
+		}
+		/**
+		 * Если число несёт порядок
+		 */
+		if((pos < text.size()) && ((text.at(pos) == 'e') || (text.at(pos) == 'E'))){
+			// Запоминаем наличие порядка
+			fraction = true;
+			// Переходим к знаку следующему
+			pos++;
+			/**
+			 * Если порядок несёт знак
+			 */
+			if((pos < text.size()) && ((text.at(pos) == '+') || (text.at(pos) == '-')))
+				// Переходим к знаку следующему
+				pos++;
+			/**
+			 * Если порядок цифр не несёт
+			 */
+			if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
+				// Выводим результат разбора захвата числом
+				return false;
+			/**
+			 * Выполняем разбор порядка числа
+			 */
+			while((pos < text.size()) && ::isdigit(static_cast <unsigned char> (text.at(pos))))
+				// Переходим к знаку следующему
+				pos++;
+		}
+		// Выводим результат разбора захвата числом до конца текста
+		return (pos == text.size());
 	}
 };
 
@@ -816,13 +933,13 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, awh::log::flag_t::WARNING);
+			log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Grok pattern \"%s\" could not be expanded", awh::log::flag_t::WARNING, string(pattern).c_str());
+			log::print("Grok pattern \"%s\" could not be expanded", log::flag_t::WARNING, string(pattern).c_str());
 		#endif
 		// Выводим собранный шаблон Grok
 		return result;
@@ -846,13 +963,8 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	}
 	// Выполняем установку собранного шаблона Grok
 	result = ::move(expression);
-	/**
-	 * Выполняем размещение собранного шаблона в кэше собранных шаблонов
-	 */
-	{
-		// Выполняем размещение собранного шаблона в кэше
-		this->_cache[key] = result;
-	}
+	// Выполняем размещение собранного шаблона в кэше
+	this->_cache[key] = result;
 	// Выводим собранный шаблон Grok
 	return result;
 }
@@ -1023,133 +1135,6 @@ bool awh::Grok::exec(string_view text, const exp_t & exp, vector <value_t> & res
 	return true;
 }
 /**
- * @brief Пространство имён вспомогательных функций вывода записи JSON
- *
- */
-namespace {
-	/**
-	 * @brief Функция разбора захвата числом по договору JSON
-	 *
-	 * @details Разбор ведётся по правилу записи числа JSON, а не по виду,
-	 *          полем объявленному: вид объявленный лишь дозволяет захвату
-	 *          лечь числом, а лечь им захват вправе, только если числом JSON
-	 *          он и является. Правило это строже привычных средств разбора:
-	 *          «007», «3.», «.5», «nan», «inf» и «0x10» ими принимаются,
-	 *          а записью JSON числом быть не вправе.
-	 *
-	 *          Прежняя проверка спрашивала «похоже ли на число по виду
-	 *          объявленному» и выдавала оттого запись неправильную -
-	 *          обнаружилось это разбором выданного нашим же кодеком JSON.
-	 *          Захват, числом не являющийся, выводится текстом, как и прежде.
-	 *
-	 * @param text     текст захвата поля
-	 * @param fraction признак наличия дробной части либо порядка
-	 * @param negative признак отрицательности числа
-	 * @return         результат разбора захвата числом
-	 *
-	 */
-	bool numeric(const string & text, bool & fraction, bool & negative) noexcept {
-		// Выполняем сброс признака наличия дробной части
-		fraction = false;
-		// Выполняем сброс признака отрицательности числа
-		negative = false;
-		/**
-		 * Если текст захвата пуст
-		 */
-		if(text.empty())
-			// Выводим результат разбора захвата числом
-			return false;
-		// Получаем положение разбора текста захвата
-		size_t pos = 0;
-		/**
-		 * Если число начинается знаком минуса
-		 *
-		 * @details Знак плюса записью числа JSON не дозволен вовсе.
-		 */
-		if(text.front() == '-'){
-			// Запоминаем отрицательность числа
-			negative = true;
-			// Переходим к знаку следующему
-			pos++;
-		}
-		/**
-		 * Если целая часть числа отсутствует
-		 */
-		if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
-			// Выводим результат разбора захвата числом
-			return false;
-		/**
-		 * Если целая часть числа начинается нулём
-		 *
-		 * @details Ведущие нули записью числа JSON не дозволены: «007» числом
-		 *          не является, тогда как «0» и «0.5» являются.
-		 */
-		if(text.at(pos) == '0')
-			// Переходим к знаку следующему
-			pos++;
-		/**
-		 * Выполняем разбор целой части числа
-		 */
-		else while((pos < text.size()) && ::isdigit(static_cast <unsigned char> (text.at(pos))))
-			// Переходим к знаку следующему
-			pos++;
-		/**
-		 * Если число несёт дробную часть
-		 */
-		if((pos < text.size()) && (text.at(pos) == '.')){
-			// Запоминаем наличие дробной части
-			fraction = true;
-			// Переходим к знаку следующему
-			pos++;
-			/**
-			 * Если дробная часть цифр не несёт
-			 *
-			 * @details Запись «3.» числом JSON не является: после точки
-			 *          обязана стоять хотя бы одна цифра.
-			 */
-			if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
-				// Выводим результат разбора захвата числом
-				return false;
-			/**
-			 * Выполняем разбор дробной части числа
-			 */
-			while((pos < text.size()) && ::isdigit(static_cast <unsigned char> (text.at(pos))))
-				// Переходим к знаку следующему
-				pos++;
-		}
-		/**
-		 * Если число несёт порядок
-		 */
-		if((pos < text.size()) && ((text.at(pos) == 'e') || (text.at(pos) == 'E'))){
-			// Запоминаем наличие порядка
-			fraction = true;
-			// Переходим к знаку следующему
-			pos++;
-			/**
-			 * Если порядок несёт знак
-			 */
-			if((pos < text.size()) && ((text.at(pos) == '+') || (text.at(pos) == '-')))
-				// Переходим к знаку следующему
-				pos++;
-			/**
-			 * Если порядок цифр не несёт
-			 */
-			if((pos >= text.size()) || !::isdigit(static_cast <unsigned char> (text.at(pos))))
-				// Выводим результат разбора захвата числом
-				return false;
-			/**
-			 * Выполняем разбор порядка числа
-			 */
-			while((pos < text.size()) && ::isdigit(static_cast <unsigned char> (text.at(pos))))
-				// Переходим к знаку следующему
-				pos++;
-		}
-		// Выводим результат разбора захвата числом до конца текста
-		return (pos == text.size());
-	}
-};
-
-/**
  * @brief Метод вывода набора значений полей значением JSON
  *
  * @details Значение собирается сборщиком кодека, а не складывается текстом:
@@ -1243,6 +1228,9 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 				builder.value(value.value);
 			// Выполняем занесение значения поля числом целым со знаком
 			else builder.value(static_cast <int64_t> (number));
+		/**
+		 * Если число получено в обычном виде
+		 */
 		} else {
 			// Выполняем сброс признака ошибки преобразования
 			errno = 0;
@@ -1317,21 +1305,6 @@ const vector <awh::Grok::field_t> & awh::Grok::fields(const exp_t & exp) const n
 awh::Grok::error_t awh::Grok::error() const noexcept {
 	// Выводим код ошибки разбора шаблона
 	return this->_error;
-}
-/**
- * @brief Конструктор
- *
- */
-awh::Grok::Grok() noexcept :
- _regexp(), _storage(), _method(compressor::method_t::NONE), _error(error_t::NONE) {
-	// Выполняем размещение реестра шаблонов
-	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
-	/**
-	 * Выполняем перебор встроенного набора шаблонов
-	 */
-	for(size_t i = 0; i < awh::grok::PATTERNS_COUNT; i++)
-		// Выполняем добавление шаблона в реестр
-		this->_patterns.emplace(awh::grok::PATTERNS[i].name, awh::grok::PATTERNS[i].body);
 }
 /**
  * @brief Метод наполнения реестра набором шаблонов из текста
@@ -1943,3 +1916,25 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	// Выводим результат восстановления собранных шаблонов
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Grok::Grok() noexcept :
+ _regexp(), _storage(),
+ _method(compressor::method_t::NONE),
+ _error(error_t::NONE) {
+	// Выполняем размещение реестра шаблонов
+	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
+	/**
+	 * Выполняем перебор встроенного набора шаблонов
+	 */
+	for(size_t i = 0; i < awh::grok::PATTERNS_COUNT; i++)
+		// Выполняем добавление шаблона в реестр
+		this->_patterns.emplace(awh::grok::PATTERNS[i].name, awh::grok::PATTERNS[i].body);
+}
+/**
+ * @brief Деструктор реестра шаблонов
+ *
+ */
+awh::Grok::~Grok() noexcept {}

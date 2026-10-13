@@ -101,7 +101,9 @@
  * @brief Header file of the deterministic execution of regular expressions — the Dfa class,
  *        which builds the states of a deterministic automaton as they become necessary and determines
  *        the presence of a match in one pass over the text without keeping a set of states
+ *
  * @section dfa_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -204,7 +206,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -236,6 +237,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest number of states of the deterministic automaton
+		 *
 		 * @details The states are built as they become necessary and are kept in a cache.
 		 *          Reaching the limit leads to a reset of the cache, after which the building
 		 *          continues from the current state.
@@ -257,6 +259,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the deterministic execution of a regular expression
+		 *
 		 * @details The class determines the presence of a match in one pass over the text,
 		 *          handling every byte by a single transition instead of keeping
 		 *          a set of states. The states of the automaton correspond to sets of states
@@ -306,6 +309,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Flag of the absence of started matches in a state
+					 *
 					 * @details The state holds the single address of the beginning of the expression,
 					 *          that is, no match has been started. From such a state
 					 *          skipping positions by the preliminary selection is admissible.
@@ -321,13 +325,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					State() noexcept : sparse(false), context(0) {}
+					State() noexcept;
 				} state_t;
 			private:
 				// Исполняемая программа регулярного выражения
@@ -358,6 +361,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of the indications of the states checked during the pass over the text
+				 *
 				 * @details The indications are taken out of the state as a separate array, since
 				 *          they are checked at every byte of the text, whereas the other fields
 				 *          of the state are required only when building a transition.
@@ -378,6 +382,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Contiguous transition table of all the states of the automaton
+				 *
 				 * @details The transitions of all the states are placed as a single array in which
 				 *          a state corresponds to a span as long as the number of equivalence
 				 *          classes of bytes. Placing the transitions of every state
@@ -405,6 +410,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Mapping of the byte values to the equivalence classes
+				 *
 				 * @details The bytes indistinguishable by any instruction of the program and by any
 				 *          anchor to a position in the text are joined into one class, which is why
 				 *          the span of the transition table of a state shrinks from the space
@@ -429,6 +435,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Mapping of the position indications to the indices of the initial states
+				 *
 				 * @details The initial state of a pass is determined by the single address
 				 *          of the beginning of the expression together with the indications of the position in the text,
 				 *          and there are no more than thirty-two of those indications. Locating such a
@@ -460,11 +467,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the applicability of deterministic execution
+				 *
 				 * @details Deterministic execution is performed byte by byte, whereas
 				 *          a program in the UTF-8 parsing mode matches whole characters,
 				 *          therefore in that mode the execution is inapplicable. The method does not read
 				 *          the state of the automaton and answers by the program alone: the flag of the
 				 *          expression derived from it is computed by both the build and the storage.
+				 *
 				 * @param program program of the regular expression being executed
 				 * @return        result of checking the applicability of the execution
 				 *
@@ -483,9 +492,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the beginning of the pass over the text
+				 *
 				 * @details The beginning of the pass is pinned by alignment - see
 				 *          «Deliberate decisions», - and the check of the pinning reads
 				 *          the address here: the method of the pass itself is private.
+				 *
 				 * @return address of the beginning of the method of the pass over the text
 				 *
 				 * \~
@@ -503,6 +514,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of a match in the text
+				 *
 				 * @param program program of the regular expression being executed
 				 * @param text    text to match
 				 * @param start   position to start the search for a match from
@@ -528,9 +540,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of searching for the position where a match ends
+				 *
 				 * @details The method determines the position at which the match found
 				 *          first during the pass over the text ends. The position where the match
 				 *          begins is not determined there.
+				 *
 				 * @param program program of the regular expression being executed
 				 * @param text    text to match
 				 * @param start   position to start the search for a match from
@@ -558,11 +572,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of searching for the position where a match begins
+				 *
 				 * @details The method performs a backward pass over the text by
 				 *          the reversed program of the regular expression and determines the smallest
 				 *          position at which a match begins. The pass is performed up to
 				 *          the beginning of the text, since a match beginning further to the left may
 				 *          end further to the right than the one found earlier.
+				 *
 				 * @param program reversed program of the regular expression being executed
 				 * @param text    text to match
 				 * @param from    position the backward pass starts from
@@ -586,8 +602,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the index of a state of the automaton
+				 *
 				 * @details The state is located in the cache by the set of instruction addresses
 				 *          and by the indications of the position in the text, and is created if absent.
+				 *
 				 * @param list    set of the instruction addresses of the state
 				 * @param context set of the indications of the position in the text
 				 * @return        index of the state of the deterministic automaton
@@ -611,10 +629,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of computing a transition of a state of the automaton
+				 *
 				 * @details The method performs the closure of the state over the instructions that do not
 				 *          match characters, with a check of the anchors to a position in the text,
 				 *          after which it determines the state reached by matching a byte.
 				 *          The indication that a match was found is placed in the highest bit of the result.
+				 *
 				 * @param index  index of the initial state of the automaton
 				 * @param letter value of the matched byte or the indication of the end of the text
 				 * @param last   flag of matching the last byte of the text
@@ -633,6 +653,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the position indications of the initial state
+				 *
 				 * @param text text to match
 				 * @param from position where the pass over the text starts
 				 * @return     set of the position indications of the initial state
@@ -654,6 +675,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking an anchor to a position in the text
+				 *
 				 * @param type    type of the checked anchor to a position in the text
 				 * @param flags   set of compilation modes of the instruction
 				 * @param context set of the indications of the position in the text
@@ -680,10 +702,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the pass over the text with building the states of the automaton
+				 *
 				 * @details The direction of the pass is determined by the state of the object. During a pass
 				 *          in the forward direction the search ends at the first found
 				 *          match, during a backward pass the pass is performed
 				 *          up to the edge of the text keeping the smallest found position.
+				 *
 				 * @param text   text to match
 				 * @param from   position where the pass over the text starts
 				 * @param result position of the found match
@@ -706,10 +730,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of splitting the equivalence classes of bytes
+				 *
 				 * @details The method splits every equivalence class into two by the
 				 *          belonging of a byte to the passed set, which keeps
 				 *          in one class only the bytes indistinguishable by all the sets passed
 				 *          earlier.
+				 *
 				 * @param members set of the belonging of the byte values to the distinguished set
 				 *
 				 * \~
@@ -725,6 +751,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building the equivalence classes of bytes
+				 *
 				 * @details The method joins into one class the bytes indistinguishable by any
 				 *          instruction of the program and by any anchor to a position in the text,
 				 *          which shrinks the span of the transition table corresponding to a state.
@@ -748,7 +775,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -759,13 +785,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~Dfa() noexcept {}
+				~Dfa() noexcept;
 		} dfa_t;
 	};
 };

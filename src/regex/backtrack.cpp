@@ -37,7 +37,6 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
  * Признак подстановки прохода ряда телом цикла исполнения
@@ -161,10 +160,16 @@ using namespace awh;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Наибольшее количество письменностей в наборе символа
 	 *
 	 */
 	static constexpr size_t SCRIPTS = 32;
+
 	/**
 	 * @brief Письменности составные, сочетания письменностей задающие
 	 *
@@ -177,9 +182,20 @@ namespace {
 	 *          всякой письменности заданной.
 	 *
 	 */
-	static constexpr uint16_t UNITED_CHINESE  = 0xFF01;
+
+	/**
+	 * Составное число сочетания «Хани + Ханг»
+	 */
+	static constexpr uint16_t UNITED_KOREAN = 0xFF03;
+	/**
+	 * Составное число сочетания письменности «Хани»
+	 */
+	static constexpr uint16_t UNITED_CHINESE = 0xFF01;
+	/**
+	 * Составное число сочетания «Хани + Хира + Кана»
+	 */
 	static constexpr uint16_t UNITED_JAPANESE = 0xFF02;
-	static constexpr uint16_t UNITED_KOREAN   = 0xFF03;
+
 	/**
 	 * @brief Функция извлечения номера письменности по её имени
 	 *
@@ -199,9 +215,9 @@ namespace {
 	 *       выдал бы номер недостижимый вместо номера чужого.
 	 *
 	 */
-	uint16_t numbering(const char * name) noexcept {
+	static uint16_t numbering(const char * name) noexcept {
 		// Получаем идентификатор письменности по её имени
-		const uint16_t id = awh::unicode::property(name);
+		const uint16_t id = unicode::property(name);
 		/**
 		 * Если имя письменности выведено с основанием расширений
 		 *
@@ -211,23 +227,23 @@ namespace {
 		 *          наравне с основанием письменностей самих.
 		 *
 		 */
-		if((id >= awh::unicode::UNITED_BASE) && (id < awh::unicode::EXTENDED_BASE))
+		if((id >= unicode::UNITED_BASE) && (id < unicode::EXTENDED_BASE))
 			// Выводим номер письменности без основания идентификаторов
-			return static_cast <uint16_t> (id - awh::unicode::UNITED_BASE);
+			return static_cast <uint16_t> (id - unicode::UNITED_BASE);
 		/**
 		 * Если имя письменности выведено с основанием расширений письменностей
 		 */
-		if((id >= awh::unicode::EXTENDED_BASE) && (id < awh::unicode::BINARY_BASE))
+		if((id >= unicode::EXTENDED_BASE) && (id < unicode::BINARY_BASE))
 			// Выводим номер письменности без основания идентификаторов
-			return static_cast <uint16_t> (id - awh::unicode::EXTENDED_BASE);
+			return static_cast <uint16_t> (id - unicode::EXTENDED_BASE);
 		/**
 		 * Если имя письменности не распознано
 		 */
-		if((id < awh::unicode::SCRIPT_BASE) || (id >= awh::unicode::UNITED_BASE))
+		if((id < unicode::SCRIPT_BASE) || (id >= unicode::UNITED_BASE))
 			// Выводим номер письменности недостижимый
 			return 0xFFFF;
 		// Выводим номер письменности без основания идентификаторов
-		return static_cast <uint16_t> (id - awh::unicode::SCRIPT_BASE);
+		return static_cast <uint16_t> (id - unicode::SCRIPT_BASE);
 	}
 	/**
 	 * @brief Функция извлечения набора письменностей символа
@@ -242,15 +258,19 @@ namespace {
 	 * @return       количество письменностей, в набор выведенных
 	 *
 	 */
-	size_t collecting(const uint32_t code, uint16_t * output) noexcept {
+	static size_t collecting(const uint32_t code, uint16_t * output) noexcept {
 		// Получаем номера письменностей восточноазиатских
 		static const uint16_t HAN = numbering("Han");
-		static const uint16_t BOPOMOFO = numbering("Bopomofo");
-		static const uint16_t HIRAGANA = numbering("Hiragana");
-		static const uint16_t KATAKANA = numbering("Katakana");
+		// Получаем номер письменности HANGUL
 		static const uint16_t HANGUL = numbering("Hangul");
+		// Получаем номер письменности BOPOMOFO
+		static const uint16_t BOPOMOFO = numbering("Bopomofo");
+		// Получаем номер письменности HIRAGANA
+		static const uint16_t HIRAGANA = numbering("Hiragana");
+		// Получаем номер письменности KATAKANA
+		static const uint16_t KATAKANA = numbering("Katakana");
 		// Выполняем извлечение набора письменностей символа
-		size_t result = awh::unicode::scripts(code, output, (SCRIPTS - 4));
+		size_t result = unicode::scripts(code, output, (SCRIPTS - 4));
 		// Получаем количество письменностей, символом заданных
 		const size_t count = result;
 		/**
@@ -296,9 +316,10 @@ namespace {
 	 * @return       результат проверки принадлежности письменности общей
 	 *
 	 */
-	bool commoning(const uint16_t * output, const size_t count) noexcept {
+	static bool commoning(const uint16_t * output, const size_t count) noexcept {
 		// Получаем номера письменностей общих
 		static const uint16_t COMMON = numbering("Common");
+		// Получаем номер письменности INHERITED
 		static const uint16_t INHERITED = numbering("Inherited");
 		// Выводим результат проверки принадлежности символа письменности общей
 		return ((count == 1) && ((output[0] == COMMON) || (output[0] == INHERITED)));
@@ -314,7 +335,7 @@ namespace {
 	 * @return     кодовое значение нуля набора десятичных цифр
 	 *
 	 */
-	uint32_t grounding(const uint32_t code) noexcept {
+	static uint32_t grounding(const uint32_t code) noexcept {
 		// Кодовое значение нуля набора десятичных цифр
 		uint32_t result = code;
 		/**
@@ -324,7 +345,7 @@ namespace {
 			/**
 			 * Если символ предшествующий десятичною цифрой не является
 			 */
-			if(awh::unicode::general(result - 1) != static_cast <uint16_t> (awh::unicode::property_id_t::Nd))
+			if(unicode::general(result - 1) != static_cast <uint16_t> (unicode::property_id_t::Nd))
 				// Выходим из отступа назад
 				break;
 			// Переходим к символу предшествующему
@@ -350,7 +371,7 @@ namespace {
 	 * @return      результат проверки прогона письменности
 	 *
 	 */
-	bool scripted(const string_view text, const size_t begin, const size_t finish, const uint32_t flags) noexcept {
+	static bool scripted(const string_view text, const size_t begin, const size_t finish, const uint32_t flags) noexcept {
 		// Набор письменностей прогона
 		uint16_t common[SCRIPTS];
 		// Количество письменностей прогона
@@ -368,13 +389,13 @@ namespace {
 			// Длина сопоставленного символа в байтах
 			size_t width = 1;
 			// Получаем кодовое значение символа прогона
-			const uint32_t code = awh::regex::letter(text, pos, flags, width);
+			const uint32_t code = regex::letter(text, pos, flags, width);
 			// Переходим к символу следующему
 			pos += ((width > 0) ? width : 1);
 			/**
 			 * Если символ прогона является десятичной цифрой
 			 */
-			if(awh::unicode::general(code) == static_cast <uint16_t> (awh::unicode::property_id_t::Nd)){
+			if(unicode::general(code) == static_cast <uint16_t> (unicode::property_id_t::Nd)){
 				// Получаем кодовое значение нуля набора десятичных цифр
 				const uint32_t zero = grounding(code);
 				/**
@@ -455,14 +476,8 @@ namespace {
 		// Выводим результат проверки прогона письменности
 		return true;
 	}
-}
+};
 
-/**
- * @brief Конструктор
- *
- */
-awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _onset(string_view::npos), _frontier(string_view::npos), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE), _located(string_view::npos) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -681,13 +696,6 @@ void awh::regex::Backtrack::rollback(const size_t mark) noexcept {
 	}
 }
 /**
- * @brief Метод извлечения таблицы принадлежности байтов классу символов
- *
- * @param instruction инструкция класса символов, повторением проходимого
- * @return            таблица принадлежности значений байта классу
- *
- */
-/**
  * @brief Метод прохода ряда класса символов по таблице принадлежности байтов
  *
  * @details Ряд одинаковых инструкций сопоставления класса проходится тесным
@@ -868,6 +876,7 @@ size_t awh::regex::Backtrack::chain(const instruction_t & instruction, const add
 	if(count > 0){
 		// Выполняем размещение точки возврата к ветви завершения повторения
 		AWH_REGEX_COUNTED(this->_points_spent);
+		// Выполняем размещение точки возврата к ветви повторения
 		this->_points.emplace_back();
 		// Выполняем установку адреса ветви завершения повторения
 		this->_points.back().pc = instruction.split.second;
@@ -881,6 +890,16 @@ size_t awh::regex::Backtrack::chain(const instruction_t & instruction, const add
 	// Выводим количество копий цепочки, проходом поглощённых
 	return count;
 }
+/**
+ * @brief Метод извлечения таблицы принадлежности байтов классу символов
+ *
+ * @details Таблица строится при первом обращении к классу и удерживается
+ *          до смены программы, а при смене набора режимов перестраивается.
+ *
+ * @param instruction инструкция класса символов, повторением проходимого
+ * @return            таблица принадлежности значений байта классу
+ *
+ */
 const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) noexcept {
 	// Получаем номер класса символов, повторяемого инструкцией
 	const uint32_t index = instruction.charclass.index;
@@ -1350,18 +1369,18 @@ bool awh::regex::Backtrack::single(const instruction_t & instruction, const size
  *
  */
 bool awh::regex::Backtrack::attempt(const size_t pos) noexcept {
+	// Позиция завершения исполнения программы
+	size_t end = 0;
 	// Выполняем установку позиции начала попытки сопоставления нынешней
 	this->_attempt = pos;
 	// Выполняем очистку набора точек возврата
 	this->_points.clear();
-	// Выполняем очистку журнала изменений ячеек захвата
-	this->_journal.clear();
 	// Выполняем очистку набора кадров рекурсивных вызовов
 	this->_frames.clear();
+	// Выполняем очистку журнала изменений ячеек захвата
+	this->_journal.clear();
 	// Выполняем сброс номера кадра исполняемого рекурсивного вызова
 	this->_current = string_view::npos;
-	// Позиция завершения исполнения программы
-	size_t end = 0;
 	// Выводим результат исполнения программы регулярного выражения
 	return this->run(0, pos, 0, string_view::npos, end);
 }
@@ -1598,7 +1617,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	/**
 	 * Выполняем исполнение программы регулярного выражения
 	 */
-	while(true){
+	for(;;){
 		// Флаг отказа сопоставления исполняемой инструкции
 		bool failed = false;
 		// Выполняем учёт обхода цикла исполнения с возвратом
@@ -1655,7 +1674,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 			if((this->_points.size() > MAX_POINTS) ||
 			   (this->_frames.size() > MAX_FRAMES) || (this->_journal.size() > MAX_JOURNAL) ||
 			   (((this->_points.size() * sizeof(point_t)) + (this->_frames.size() * sizeof(frame_t)) +
-			     (this->_journal.size() * sizeof(change_t))) > this->_memory)){
+			   (this->_journal.size() * sizeof(change_t))) > this->_memory)){
 				// Выполняем установку ошибки превышения допустимого объёма работы
 				this->_error = error_t::BUDGET_EXCEEDED;
 				// Выводим результат исполнения программы
@@ -1678,9 +1697,6 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 			 * Определяем код операции исполняемой инструкции
 			 */
 			switch(static_cast <uint8_t> (instruction.type)){
-				/**
-				 * Выполняем завершение сопоставления с успехом
-				 */
 				/**
 				 * Выполняем размещение точки возврата глагола управления
 				 *
@@ -1730,6 +1746,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					}
 					// Выполняем размещение точки возврата глагола управления
 					AWH_REGEX_COUNTED(this->_points_spent);
+					// Заводим очередную точку возврата
 					this->_points.emplace_back();
 					// Выполняем установку номера ячейки отметки ветви охватывающей
 					this->_points.back().cell = instruction.control.cell;
@@ -1815,8 +1832,8 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 *
 					 */
 					if((instruction.type == opcode_t::MATCH) && (this->_slots.at(0) == current) &&
-					 (hasFlag(this->_program->flags, flag_t::NOTEMPTY) ||
-					  (hasFlag(this->_program->flags, flag_t::ATSTART) && (current == this->_start)))){
+					   (hasFlag(this->_program->flags, flag_t::NOTEMPTY) ||
+					   (hasFlag(this->_program->flags, flag_t::ATSTART) && (current == this->_start)))){
 						// Выполняем установку флага отказа сопоставления
 						failed = true;
 						// Прекращаем исполнение инструкции программы
@@ -1935,7 +1952,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						/**
 						 * Если ряд проходится сопоставлением символов по одному
 						 */
-						} else while(true) {
+						} else for(;;) {
 							// Длина сопоставленного символа в байтах
 							size_t width = 1;
 							/**
@@ -1968,19 +1985,19 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						if((instruction.split.solid != 0) && (count > 0)){
 							// Выполняем учёт пропуска точек возврата ряда повторения
 							AWH_REGEX_TICK(path_t::SOLIDING);
-							/**
-							 * Возврат в ряд повторения бесплоден, и точки ему не нужны
-							 *
-							 * @details Символ, телом повторения поглощаемый, продолжению
-							 *          заведомо не отвечает - разбор при сборке то
-							 *          установил, - и всякая длина ряда убавленная
-							 *          упрётся ровно в него. Точки возврата ряда были
-							 *          бы перебраны одна за другой лишь затем, чтобы
-							 *          отказать в том же месте: на «(\w+)@(\w+)\.(\w+)»
-							 *          с текстом в два килобайта это давало полторы
-							 *          сотых доли времени сопоставления.
-							 *
-							 */
+						/**
+						 * Возврат в ряд повторения бесплоден, и точки ему не нужны
+						 *
+						 * @details Символ, телом повторения поглощаемый, продолжению
+						 *          заведомо не отвечает - разбор при сборке то
+						 *          установил, - и всякая длина ряда убавленная
+						 *          упрётся ровно в него. Точки возврата ряда были
+						 *          бы перебраны одна за другой лишь затем, чтобы
+						 *          отказать в том же месте: на «(\w+)@(\w+)\.(\w+)»
+						 *          с текстом в два килобайта это давало полторы
+						 *          сотых доли времени сопоставления.
+						 *
+						 */
 						} else if(uniform) {
 							/**
 							 * Если ряд подходящих символов не пуст
@@ -1988,6 +2005,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							if(count > 0){
 								// Выполняем размещение точки возврата к ветви завершения повторения
 								AWH_REGEX_COUNTED(this->_points_spent);
+								// Заводим очередную точку возврата
 								this->_points.emplace_back();
 								// Выполняем установку адреса ветви завершения повторения
 								this->_points.back().pc = exit;
@@ -2018,6 +2036,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 									break;
 								// Выполняем размещение точки возврата к ветви завершения повторения
 								AWH_REGEX_COUNTED(this->_points_spent);
+								// Заводим очередную точку возврата
 								this->_points.emplace_back();
 								// Выполняем установку адреса ветви завершения повторения
 								this->_points.back().pc = exit;
@@ -2151,6 +2170,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					}
 					// Выполняем размещение точки возврата к ветви с наименьшим приоритетом
 					AWH_REGEX_COUNTED(this->_points_spent);
+					// Заводим очередную точку возврата
 					this->_points.emplace_back();
 					// Выполняем установку адреса ветви с наименьшим приоритетом
 					this->_points.back().pc = instruction.split.second;
@@ -2399,6 +2419,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							if(length > least){
 								// Выполняем размещение точки перебора длин проверки
 								AWH_REGEX_COUNTED(this->_points_spent);
+								// Заводим точку перебора длин проверки
 								this->_points.emplace_back();
 								// Получаем размещённую точку перебора длин проверки
 								point_t & entry = this->_points.back();
@@ -2562,8 +2583,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					/**
 					 * Если прогон письменности сопоставлен
 					 */
-					if((entry != string_view::npos) && (entry <= current) &&
-					 scripted(this->_text, entry, current, this->_program->flags)){
+					if((entry != string_view::npos) && (entry <= current) && ::scripted(this->_text, entry, current, this->_program->flags)){
 						// Переходим к инструкции следующей
 						pc++;
 						// Продолжаем исполнение программы регулярного выражения
@@ -2639,8 +2659,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						/**
 						 * Если вызов той же группы в той же позиции уже исполняется
 						 */
-						if((this->_frames.at(frame).number == instruction.call.number) &&
-						 (this->_frames.at(frame).pos == current)){
+						if((this->_frames.at(frame).number == instruction.call.number) && (this->_frames.at(frame).pos == current)){
 							// Выполняем установку ошибки повторного рекурсивного вызова
 							this->_error = error_t::NESTED_RECURSION;
 							// Выводим результат исполнения программы
@@ -2671,6 +2690,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 *
 					 */
 					AWH_REGEX_COUNTED(this->_points_spent);
+					// Заводим точку возврата рекурсивного вызова
 					this->_points.emplace_back();
 					// Выполняем установку флага восстановления кадра вызова
 					this->_points.back().frame = true;
@@ -2680,6 +2700,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					this->_points.back().journal = this->_journal.size();
 					// Выполняем размещение кадра рекурсивного вызова
 					AWH_REGEX_COUNTED(this->_frames_spent);
+					// Заводим очередной кадр рекурсивного вызова
 					this->_frames.emplace_back();
 					// Выполняем установку адреса возврата из рекурсивного вызова
 					this->_frames.back().back = (pc + 1);
@@ -2812,6 +2833,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 * Выполняем размещение точки восстановления исполняемого вызова
 					 */
 					AWH_REGEX_COUNTED(this->_points_spent);
+					// Заводим точку возврата рекурсивного вызова
 					this->_points.emplace_back();
 					// Выполняем установку флага восстановления кадра вызова
 					this->_points.back().frame = true;
@@ -2826,7 +2848,10 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Продолжаем исполнение программы регулярного выражения
 					continue;
 				}
-#if AWH_REGEX_LITERAL_CASE
+			/**
+			 * Если включён режим однозаходного сопоставления литерала
+			 */
+			#if AWH_REGEX_LITERAL_CASE
 				/**
 				 * Выполняем сопоставление литерала одним заходом
 				 *
@@ -2836,12 +2861,15 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				 *
 				 */
 				case static_cast <uint8_t> (opcode_t::CHAR): {
-#else
+			/**
+			 * Иная ветвь условия
+			 */
+			#else
 				/**
 				 * Выполняем сопоставление символа текста
 				 */
 				default: {
-#endif
+			#endif
 					/**
 					 * Если инструкция литерал возглавляет
 					 *
@@ -2902,14 +2930,18 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						// Прекращаем исполнение инструкции программы
 						break;
 					}
-#if AWH_REGEX_LITERAL_CASE
+			/**
+			 * Условная компиляция
+			 */
+			#if AWH_REGEX_LITERAL_CASE
 				}
+				// Переходим к следующей ветви разбора без перерыва
 				[[fallthrough]];
 				/**
 				 * Выполняем сопоставление символа текста
 				 */
 				default: {
-#endif
+			#endif
 					/**
 					 * Получаем длину ряда одинаковых инструкций, с этой начинающегося
 					 *
@@ -3034,16 +3066,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 *          из цикла вовсе.
 						 *
 						 */
-						/**
-						 * Если ряд поглощён проходом по таблице принадлежности байтов
-						 *
-						 * @details Проход ведётся методом, а подставлять ли его сюда телом,
-						 *          решает признак «AWH_REGEX_SERIES_INLINE»: смотрите
-						 *          примечание при «Backtrack::consume».
-						 *
-						 */
-						if((series > 1) && (instruction.type == opcode_t::CLASS) &&
-						 !hasFlag(this->_program->flags, flag_t::UTF)){
+						if((series > 1) && (instruction.type == opcode_t::CLASS) && !hasFlag(this->_program->flags, flag_t::UTF)){
 							// Выполняем проход ряда класса символов по таблице принадлежности
 							const size_t consumed = this->consume(instruction, current, size, series);
 							/**
@@ -3069,111 +3092,111 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 *          разбирается однажды, а копии поглощаются циклом
 						 *
 						 */
-						else while(true) {
-						// Длина сопоставляемого символа в байтах
-						size_t width = 1;
-						// Получаем кодовое значение сопоставляемого символа
-						const uint32_t code = letter(this->_text, current, this->_program->flags, width);
-						// Флаг сопоставления символа инструкцией
-						bool matched = false;
-						/**
-						 * Определяем код операции исполняемой инструкции
-						 */
-						switch(static_cast <uint8_t> (instruction.type)){
+						else for(;;) {
+							// Длина сопоставляемого символа в байтах
+							size_t width = 1;
+							// Получаем кодовое значение сопоставляемого символа
+							const uint32_t code = letter(this->_text, current, this->_program->flags, width);
+							// Флаг сопоставления символа инструкцией
+							bool matched = false;
 							/**
-							 * Выполняем сопоставление одиночного символа
+							 * Определяем код операции исполняемой инструкции
 							 */
-							case static_cast <uint8_t> (opcode_t::CHAR): {
+							switch(static_cast <uint8_t> (instruction.type)){
 								/**
-								 * Если установлен режим сопоставления без учёта регистра
+								 * Выполняем сопоставление одиночного символа
 								 */
-								if(hasFlag(instruction.flags, flag_t::CASELESS))
-									// Выполняем сопоставление символов без учёта регистра
-									matched = (fold(code, instruction.flags) == fold(instruction.letter.code, instruction.flags));
-								// Выполняем сопоставление символов с учётом регистра
-								else matched = (code == instruction.letter.code);
-							} break;
-							/**
-							 * Выполняем сопоставление символа из класса символов
-							 */
-							case static_cast <uint8_t> (opcode_t::CLASS):
-								// Выполняем проверку принадлежности символа классу символов
-								matched = this->member(instruction, code);
-							break;
-							/**
-							 * Выполняем сопоставление любого символа
-							 */
-							case static_cast <uint8_t> (opcode_t::ANY): {
+								case static_cast <uint8_t> (opcode_t::CHAR): {
+									/**
+									 * Если установлен режим сопоставления без учёта регистра
+									 */
+									if(hasFlag(instruction.flags, flag_t::CASELESS))
+										// Выполняем сопоставление символов без учёта регистра
+										matched = (fold(code, instruction.flags) == fold(instruction.letter.code, instruction.flags));
+									// Выполняем сопоставление символов с учётом регистра
+									else matched = (code == instruction.letter.code);
+								} break;
 								/**
-								 * Если установлен режим соответствия точки переводу строки
+								 * Выполняем сопоставление символа из класса символов
 								 */
-								if(hasFlag(instruction.flags, flag_t::DOTALL))
+								case static_cast <uint8_t> (opcode_t::CLASS):
+									// Выполняем проверку принадлежности символа классу символов
+									matched = this->member(instruction, code);
+								break;
+								/**
+								 * Выполняем сопоставление любого символа
+								 */
+								case static_cast <uint8_t> (opcode_t::ANY): {
+									/**
+									 * Если установлен режим соответствия точки переводу строки
+									 */
+									if(hasFlag(instruction.flags, flag_t::DOTALL))
+										// Выполняем установку флага сопоставления символа
+										matched = true;
+									// Выполняем проверку несоответствия символа переводу строки
+									else matched = (code != 0x0A);
+								} break;
+								/**
+								 * Выполняем сопоставление одиночной единицы кодирования
+								 */
+								case static_cast <uint8_t> (opcode_t::CODEUNIT): {
 									// Выполняем установку флага сопоставления символа
 									matched = true;
-								// Выполняем проверку несоответствия символа переводу строки
-								else matched = (code != 0x0A);
-							} break;
+									// Выполняем установку длины единицы кодирования
+									width = 1;
+								} break;
+								/**
+								 * Выполняем сопоставление расширенного графемного кластера
+								 */
+								case static_cast <uint8_t> (opcode_t::GRAPHEME): {
+									// Получаем длину графемного кластера в позиции текста
+									width = grapheme(this->_text, current, this->_program->flags);
+									// Выполняем установку флага сопоставления графемного кластера
+									matched = (width > 0);
+								} break;
+							}
 							/**
-							 * Выполняем сопоставление одиночной единицы кодирования
+							 * Если символ инструкцией сопоставлен
 							 */
-							case static_cast <uint8_t> (opcode_t::CODEUNIT): {
-								// Выполняем установку флага сопоставления символа
-								matched = true;
-								// Выполняем установку длины единицы кодирования
-								width = 1;
-							} break;
+							if(!matched){
+								// Выполняем установку флага отказа сопоставления
+								failed = true;
+								// Выходим из прохода ряда одинаковых инструкций
+								break;
+							}
+							// Переходим к следующей позиции текста сопоставления
+							current += width;
 							/**
-							 * Выполняем сопоставление расширенного графемного кластера
+							 * Если ряд поглощён целиком
+							 *
+							 * @details Инструкция одиночная сюда не приходит вовсе:
+							 *          она ведётся путём отдельным, и цикл этот
+							 *          проходит лишь ряды из двух копий и более
+							 *
 							 */
-							case static_cast <uint8_t> (opcode_t::GRAPHEME): {
-								// Получаем длину графемного кластера в позиции текста
-								width = grapheme(this->_text, current, this->_program->flags);
-								// Выполняем установку флага сопоставления графемного кластера
-								matched = (width > 0);
-							} break;
-						}
-						/**
-						 * Если символ инструкцией сопоставлен
-						 */
-						if(!matched){
-							// Выполняем установку флага отказа сопоставления
-							failed = true;
-							// Выходим из прохода ряда одинаковых инструкций
-							break;
-						}
-						// Переходим к следующей позиции текста сопоставления
-						current += width;
-						/**
-						 * Если ряд поглощён целиком
-						 *
-						 * @details Инструкция одиночная сюда не приходит вовсе:
-						 *          она ведётся путём отдельным, и цикл этот
-						 *          проходит лишь ряды из двух копий и более
-						 *
-						 */
-						if(++taken >= series)
-							// Выходим из прохода ряда одинаковых инструкций
-							break;
-						/**
-						 * Если позиция сопоставления в конец текста упёрлась
-						 */
-						if(current >= size){
-							// Выполняем установку флага отказа сопоставления
-							failed = true;
-							// Выходим из прохода ряда одинаковых инструкций
-							break;
-						}
-						/**
-						 * Выполняем учёт единицы объёма работы сопоставления
-						 *
-						 * @details Учёт ведётся ПО КОПИЯМ, а не по заходам:
-						 *          предел объёма стережёт работу, и один заход,
-						 *          три байта поглотивший, стоит трёх её единиц.
-						 *          Заход первый учтён шапкою цикла исполнения,
-						 *          отчего учитываются копии последующие.
-						 *
-						 */
-						steps++;
+							if(++taken >= series)
+								// Выходим из прохода ряда одинаковых инструкций
+								break;
+							/**
+							 * Если позиция сопоставления в конец текста упёрлась
+							 */
+							if(current >= size){
+								// Выполняем установку флага отказа сопоставления
+								failed = true;
+								// Выходим из прохода ряда одинаковых инструкций
+								break;
+							}
+							/**
+							 * Выполняем учёт единицы объёма работы сопоставления
+							 *
+							 * @details Учёт ведётся ПО КОПИЯМ, а не по заходам:
+							 *          предел объёма стережёт работу, и один заход,
+							 *          три байта поглотивший, стоит трёх её единиц.
+							 *          Заход первый учтён шапкою цикла исполнения,
+							 *          отчего учитываются копии последующие.
+							 *
+							 */
+							steps++;
 						}
 						/**
 						 * Если ряд поглощён целиком
@@ -3199,7 +3222,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 		/**
 		 * Выполняем возврат к последней сохранённой точке возврата
 		 */
-		while(true){
+		for(;;){
 			/**
 			 * Если точки возврата исполнения исчерпаны
 			 */
@@ -3366,14 +3389,14 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 			 * Если точка возврата исполнение не продолжает
 			 */
 			if(point.frame){
-			/**
-			 * Если восстанавливается отмена рекурсивного вызова
-			 *
-			 * @details Кадр, размещённый отменяемым вызовом, находится в вершине набора
-			 *          кадров и более недостижим, поэтому удаляется, что удерживает
-			 *          набор кадров соразмерным исполняемому пути.
-			 *
-			 */
+				/**
+				 * Если восстанавливается отмена рекурсивного вызова
+				 *
+				 * @details Кадр, размещённый отменяемым вызовом, находится в вершине набора
+				 *          кадров и более недостижим, поэтому удаляется, что удерживает
+				 *          набор кадров соразмерным исполняемому пути.
+				 *
+				 */
 				if(!this->_frames.empty() && (this->_current == (this->_frames.size() - 1))){
 					// Выполняем откат изменений отметок отменяемого вызова
 					this->rollback(this->_frames.back().remarks);
@@ -3453,8 +3476,13 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	 *
 	 */
 	#if defined(__has_attribute)
+		/**
+		 * Условная компиляция
+		 */
 		#if __has_attribute(no_stack_protector)
-			// Выполняем снятие сторожа стека с функции
+			/**
+			 * Выполняем снятие сторожа стека с функции
+			 */
 			#define AWH_REGEX_UNGUARDED __attribute__((no_stack_protector))
 		#endif
 	#endif
@@ -3462,7 +3490,9 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	 * Если снимать сторожа стека собиратель не умеет
 	 */
 	#if !defined(AWH_REGEX_UNGUARDED)
-		// Сторож стека остаётся на усмотрение собирателя
+		/**
+		 * Сторож стека остаётся на усмотрение собирателя
+		 */
 		#define AWH_REGEX_UNGUARDED
 	#endif
 #endif
@@ -3489,7 +3519,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		/**
 		 * Если запаса стека до границы страницы недостаёт
 		 */
-		if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < STACK_RESERVE)
+		if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < (STACK_RESERVE + STACK_ENTRY))
 			// Выводим результат сопоставления под прокладкой стека
 			return this->padded(program, text, start, captures, mode_t::PLAIN);
 		// Выводим результат сопоставления регулярного выражения с поиском по тексту
@@ -3503,91 +3533,103 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	#endif
 }
 /**
- * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
- *
- * @param program  исполняемая программа регулярного выражения
- * @param text     текст для сопоставления
- * @param start    позиция начала поиска совпадения
- * @param captures набор границ совпадения и захваченных групп
- * @param mode     режим сопоставления регулярного выражения с текстом
- * @return         результат поиска совпадения
- *
- */
-/**
  * Если кадры исполнения отводятся от границы страницы
  */
 #if AWH_REGEX_STACK_PAGE > 0
-bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
 	/**
-	 * Если запаса стека до границы страницы недостаёт
+	 * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
 	 *
-	 * @details Вход кадра не заводит: положение стека читается командой,
-	 *          и оба пути уходят в тело переходом. Кадр входа сам лёг бы
-	 *          поперёк границы, от какой вход кадры отводит.
+	 * @param program  исполняемая программа регулярного выражения
+	 * @param text     текст для сопоставления
+	 * @param start    позиция начала поиска совпадения
+	 * @param captures набор границ совпадения и захваченных групп
+	 * @param mode     режим сопоставления регулярного выражения с текстом
+	 * @return         результат поиска совпадения
 	 *
 	 */
-	if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < STACK_RESERVE)
-		// Выводим результат сопоставления под прокладкой стека
-		return this->padded(program, text, start, captures, mode);
-	// Выводим результат сопоставления регулярного выражения
-	return this->search(program, text, start, captures, mode);
-}
-/**
- * @brief Метод сопоставления регулярного выражения с текстом под прокладкой стека
- *
- * @param program  исполняемая программа регулярного выражения
- * @param text     текст для сопоставления
- * @param start    позиция начала поиска совпадения
- * @param captures набор границ совпадения и захваченных групп
- * @param mode     режим сопоставления регулярного выражения с текстом
- * @return         результат поиска совпадения
- *
- */
-AWH_REGEX_UNGUARDED bool awh::regex::Backtrack::padded(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
-	// Выполняем учёт отвода кадров исполнения за границу страницы
-	AWH_REGEX_TICK(path_t::PADDING);
+	bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+		/**
+		 * Если запаса стека до границы страницы недостаёт
+		 *
+		 * @details Вход кадра не заводит: положение стека читается командой,
+		 *          и оба пути уходят в тело переходом. Кадр входа сам лёг бы
+		 *          поперёк границы, от какой вход кадры отводит.
+		 *
+		 */
+		if((stackPointer() & (AWH_REGEX_STACK_PAGE - 1)) < (STACK_RESERVE + STACK_ENTRY))
+			// Выводим результат сопоставления под прокладкой стека
+			return this->padded(program, text, start, captures, mode);
+		// Выводим результат сопоставления регулярного выражения
+		return this->search(program, text, start, captures, mode);
+	}
 	/**
-	 * Прокладка кадра, отводящая кадры тела сопоставления за границу страницы
+	 * @brief Метод сопоставления регулярного выражения с текстом под прокладкой стека
 	 *
-	 * @details Прокладка передаётся вставке затем, чтобы собиратель разместил
-	 *          её в кадре целиком: прокладку, какой никто не читает, он сжимает
-	 *          до нуля. Передача держит и кадр до возврата: адрес прокладки
-	 *          ушёл наружу, и вызов тела переходом, снявшим бы кадр прежде
-	 *          тела, собирателю запрещён - у Clang вызов остаётся вызовом
-	 *          и без сторожа стека.
+	 * @param program  исполняемая программа регулярного выражения
+	 * @param text     текст для сопоставления
+	 * @param start    позиция начала поиска совпадения
+	 * @param captures набор границ совпадения и захваченных групп
+	 * @param mode     режим сопоставления регулярного выражения с текстом
+	 * @return         результат поиска совпадения
 	 *
 	 */
-	uint8_t pad[STACK_RESERVE];
-	// Выполняем передачу прокладки вставке
-	__asm__ volatile("" : : "r" (pad));
-	// Выводим результат сопоставления регулярного выражения
-	return this->search(program, text, start, captures, mode);
-}
-/**
- * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
- *
- * @param program  исполняемая программа регулярного выражения
- * @param text     текст для сопоставления
- * @param start    позиция начала поиска совпадения
- * @param captures набор границ совпадения и захваченных групп
- * @param mode     режим сопоставления регулярного выражения с текстом
- * @return         результат поиска совпадения
- *
- */
-bool awh::regex::Backtrack::search(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+	AWH_REGEX_UNGUARDED bool awh::regex::Backtrack::padded(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+		// Выполняем учёт отвода кадров исполнения за границу страницы
+		AWH_REGEX_TICK(path_t::PADDING);
+		/**
+		 * Прокладка кадра, отводящая кадры тела сопоставления за границу страницы
+		 *
+		 * @details Прокладка передаётся вставке затем, чтобы собиратель разместил
+		 *          её в кадре целиком: прокладку, какой никто не читает, он сжимает
+		 *          до нуля. Передача держит и кадр до возврата: адрес прокладки
+		 *          ушёл наружу, и вызов тела переходом, снявшим бы кадр прежде
+		 *          тела, собирателю запрещён - у Clang вызов остаётся вызовом
+		 *          и без сторожа стека.
+		 *
+		 */
+		uint8_t pad[STACK_RESERVE + STACK_ENTRY];
+		// Выполняем передачу прокладки вставке
+		__asm__ volatile("" : : "r" (pad));
+		// Выводим результат сопоставления регулярного выражения
+		return this->search(program, text, start, captures, mode);
+	}
+	/**
+	 * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
+	 *
+	 * @param program  исполняемая программа регулярного выражения
+	 * @param text     текст для сопоставления
+	 * @param start    позиция начала поиска совпадения
+	 * @param captures набор границ совпадения и захваченных групп
+	 * @param mode     режим сопоставления регулярного выражения с текстом
+	 * @return         результат поиска совпадения
+	 *
+	 */
+	bool awh::regex::Backtrack::search(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
 /**
  * Если кадры исполнения от границы страницы не отводятся
  */
 #else
-bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
+	/**
+	 * @brief Метод сопоставления регулярного выражения с текстом в заданном режиме
+	 *
+	 * @param program  исполняемая программа регулярного выражения
+	 * @param text     текст для сопоставления
+	 * @param start    позиция начала поиска совпадения
+	 * @param captures набор границ совпадения и захваченных групп
+	 * @param mode     режим сопоставления регулярного выражения с текстом
+	 * @return         результат поиска совпадения
+	 *
+	 */
+	bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
 #endif
 	/**
 	 * Если учёт путей исполнения заведён и кадры исполнения отводятся от границы страницы
 	 *
 	 * @details Учёт стережёт самый запас: тело входит, имея под собою до
-	 *          границы страницы запас за вычетом кадров своего и прокладки.
-	 *          Запас меньше трёх четвертей положенного значит, что отвод не
-	 *          сработал либо отвёл кадры недалеко.
+	 *          границы страницы запас целиком, ибо вход держит под ним и
+	 *          запас «STACK_RESERVE», и кадры промежуточные. Запас меньше
+	 *          трёх четвертей положенного значит, что отвод не сработал
+	 *          либо отвёл кадры недалеко.
 	 *
 	 */
 	#if defined(AWH_REGEX_PROBING) && (AWH_REGEX_STACK_PAGE > 0)
@@ -3599,14 +3641,6 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			AWH_REGEX_TICK(path_t::CROWDING);
 	#endif
 	/**
-	 * @brief Сторож внесения мер работы в общий учёт
-	 *
-	 * @details Сопоставление покидается семью возвратами, и внесение по каждому
-	 *          из них потерялось бы при заведении возврата восьмого. Деструктор
-	 *          же зовётся всяким выходом без изъятия.
-	 *
-	 */
-	/**
 	 * Количество выполненных попыток сопоставления
 	 *
 	 * @details Счётчик этот ведёт предел числа попыток, и он же вносится в учёт
@@ -3617,6 +3651,14 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 *
 	 */
 	size_t probes = 0;
+	/**
+	 * @brief Структура сторожа внесения мер работы в общий учёт
+	 *
+	 * @details Сопоставление покидается семью возвратами, и внесение по каждому
+	 *          из них потерялось бы при заведении возврата восьмого. Деструктор
+	 *          же зовётся всяким выходом без изъятия.
+	 *
+	 */
 	struct Spending {
 		// Учитываемое исполнение с возвратом
 		const Backtrack * owner;
@@ -3686,13 +3728,15 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		this->_saves = 0;
 		// Выполняем сброс счётчика проверок принадлежности байта классу
 		this->_checks = 0;
+		// Выполняем сброс счётчика обходов цикла исполнения
+		this->_rounds = 0;
 		// Выполняем сброс счётчика размещённых точек возврата
 		this->_points_spent = 0;
 		// Выполняем сброс счётчика заведённых кадров вызова
 		this->_frames_spent = 0;
-		// Выполняем сброс счётчика обходов цикла исполнения
-		this->_rounds = 0;
 	#endif
+	// Выполняем сброс признака прекращения пределом числа попыток
+	this->_bounded = false;
 	/**
 	 * Выполняем установку действующего объёма работы сопоставления
 	 *
@@ -3714,8 +3758,6 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	const size_t horizon = this->_horizon;
 	// Выполняем снятие предела числа попыток
 	this->_horizon = string_view::npos;
-	// Выполняем сброс признака прекращения пределом числа попыток
-	this->_bounded = false;
 	/**
 	 * Выполняем установку действующей позиции первой попытки
 	 *
@@ -3762,8 +3804,10 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 *          вызывающей стороны понижает наравне с пределом шагов.
 	 *
 	 */
-	this->_deepest = ((static_cast <size_t> (program.depth) < this->_nesting) ?
-	 static_cast <size_t> (program.depth) : this->_nesting);
+	this->_deepest = (
+		(static_cast <size_t> (program.depth) < this->_nesting) ?
+		static_cast <size_t> (program.depth) : this->_nesting
+	);
 	/**
 	 * Выполняем установку действующего предела объёма памяти сопоставления
 	 *
@@ -3868,6 +3912,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 *
 	 */
 	this->_control = 0;
+	// Устанавливаем значение «_failing»
 	this->_failing = string_view::npos;
 	/**
 	 * Определяем применимость проверки возможности совпадения по литералу
@@ -3877,8 +3922,10 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 *          и проверка при нём излишня.
 	 *
 	 */
-	const bool checking = (!bound && !program.prefilter.literal.empty() &&
-	 (program.prefilter.distance == string_view::npos));
+	const bool checking = (
+		!bound && !program.prefilter.literal.empty() &&
+		(program.prefilter.distance == string_view::npos)
+	);
 	/**
 	 * Определяем применимость проверки байта позиции на месте
 	 *
@@ -3948,7 +3995,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	/**
 	 * Выполняем обход позиций начала попытки сопоставления
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если выражение к позиции начала попытки не привязано
 		 *
@@ -4020,14 +4067,6 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 				// Переходим к позиции, раньше какой совпадение начаться не может
 				pos = limit;
 			/**
-			 * Если удаление обязательного литерала неограничено
-			 *
-			 * @details Позиционно литерал при таком удалении не употребить -
-			 *          ему предшествует узел длины неограниченной, - и служит
-			 *          он лишь проверке возможности совпадения.
-			 *
-			 */
-			/**
 			 * Если попытки вхождение обязательного литерала прошли
 			 *
 			 * @details Покуда вхождение лежит правее позиции попытки, совпадение
@@ -4058,8 +4097,8 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		 *
 		 */
 		if(!bound && program.prefilter.active && !(screening && (pos < size) &&
-		 program.prefilter.bytes[static_cast <uint8_t> (text[pos])] &&
-		 !(program.prefilter.utf && ((static_cast <uint8_t> (text[pos]) & 0xC0) == 0x80)))){
+		   program.prefilter.bytes[static_cast <uint8_t> (text[pos])] &&
+		   !(program.prefilter.utf && ((static_cast <uint8_t> (text[pos]) & 0xC0) == 0x80)))){
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = program.prefilter.search(text, pos);
 			/**
@@ -4085,10 +4124,10 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		 * Если выражение к началу строки привязано
 		 */
 		if(lining){
-			// Позиция начала попытки до пропуска
-			const size_t former = pos;
 			// Признак достижения начала строки
 			bool lined = true;
+			// Позиция начала попытки до пропуска
+			const size_t former = pos;
 			/**
 			 * Выполняем обход позиций до ближайшего начала строки
 			 */
@@ -4186,18 +4225,6 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			return false;
 		}
 		/**
-		 * Сброс набора позиций захвата групп на попытку НЕ выполняется
-		 *
-		 * @details Захваты, установленные отказавшей попыткой, в следующей
-		 *          недействительны, но и не остаются: исполнение, исчерпав точки
-		 *          возврата, откатывает журнал изменений до отметки своего входа,
-		 *          а у попытки она - журнал пустой. Всякий иной выход из исполнения
-		 *          без совпадения ставит ошибку и прекращает сопоставление целиком,
-		 *          отчего следующей попытки не бывает. Набор сброшен однажды - при
-		 *          входе в сопоставление.
-		 *
-		 */
-		/**
 		 * Выполняем сброс вида глагола, попытку прекратившего
 		 *
 		 * @details Адрес глагола отметки при этом НЕ сбрасывается: отказ выводит
@@ -4247,9 +4274,6 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		 *          с продвижением на знак - иначе обход зациклился бы.
 		 *
 		 */
-		/**
-		 * Если попытка сопоставления прекращена глаголом управления
-		 */
 		if(this->_control > 0){
 			// Получаем вид глагола, попытку сопоставления прекратившего
 			const control_t verb = static_cast <control_t> (this->_control - 1);
@@ -4291,3 +4315,48 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		pos += width;
 	}
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Backtrack::Backtrack() noexcept :
+ _program(nullptr), _start(0), _attempt(0), _steps(0),
+ _saves(0), _checks(0), _points_spent(0), _frames_spent(0),
+ _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS),
+ _horizon(string_view::npos), _bounded(false),
+ _onset(string_view::npos), _frontier(string_view::npos),
+ _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION),
+ _memory(numeric_limits <size_t>::max()), _control(0), _resume(0),
+ _failing(string_view::npos), _nested(0), _identity(0),
+ _current(string_view::npos), _error(error_t::NONE), _located(string_view::npos) {}
+
+/**
+ * @brief Конструктор точки возврата
+ *
+ */
+awh::regex::Backtrack::Point::Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0), control(0), seek(0), cell(0) {}
+/**
+ * @brief Конструктор записи журнала
+ *
+ */
+awh::regex::Backtrack::Change::Change() noexcept : slot(0), value(0) {}
+/**
+ * @brief Конструктор записи розыска
+ *
+ */
+awh::regex::Backtrack::Lookup::Lookup() noexcept : modes(0), bytes(nullptr) {}
+/**
+ * @brief Конструктор записи отметки
+ *
+ */
+awh::regex::Backtrack::Remark::Remark() noexcept : cell(0), value(0) {}
+/**
+ * @brief Конструктор записи кадра
+ *
+ */
+awh::regex::Backtrack::Frame::Frame() noexcept : back(0), number(0), journal(0), parent(0), depth(0), pos(0) {}
+/**
+ * @brief Деструктор модуля возвратов
+ *
+ */
+awh::regex::Backtrack::~Backtrack() noexcept {}

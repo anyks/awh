@@ -52,7 +52,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -112,6 +111,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the execution of a regular expression without backtracking
+		 *
 		 * @details The class performs the simultaneous simulation of all the reachable states
 		 *          of a nondeterministic finite automaton. The states are ordered by
 		 *          decreasing priority, thanks to which the choice of a branch coincides with the choice of
@@ -145,6 +145,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * Number of the set of group capture positions
+					 *
 					 * @details The set is shared by the states and is replaced by a new one when
 					 *          a position is saved, thanks to which multiplying the states
 					 *          is not accompanied by copying the whole set. A state
@@ -157,13 +158,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Thread() noexcept : pc(0), slots(NO_SLOTS) {}
+					Thread() noexcept;
 				} thread_t;
 			private:
 				/**
@@ -177,6 +177,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Object of the deterministic execution of a regular expression
+				 *
 				 * @details Deterministic execution determines the presence of a match
 				 *          many times faster than execution that keeps a set of
 				 *          states, but does not establish the boundaries of the captured groups,
@@ -211,6 +212,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Stack of the closure of a state over the instructions that match no characters
+				 *
 				 * @details The stack is placed in the object rather than in the closure method, thanks to
 				 *          which the memory allocated for it is reused by all the
 				 *          closures instead of being allocated at every closure.
@@ -229,6 +231,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of the visit marks of the instructions for the states of the current position
+				 *
 				 * @details The sets of marks for the current and for the next positions are separate:
 				 *          a common set would block the placement of the continuation state
 				 *          whose instruction has already been visited at the current position.
@@ -267,6 +270,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Storage of the sets of group capture positions
+				 *
 				 * @details The sets are placed in the storage and are counted by the number
 				 *          of the states holding them. Released sets are returned
 				 *          to the storage and are handed out again, thanks to which multiplying
@@ -306,11 +310,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text
+				 *
 				 * @details The search for a match is performed starting from the specified position.
 				 *          The boundaries of the match and of the captured groups are placed in the result
 				 *          set: the first element of the set holds the boundaries of the whole
 				 *          match, the following ones the boundaries of the captured groups by their numbers.
 				 *          The boundaries of the uncaptured groups take the «string_view::npos» value.
+				 *
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -339,11 +345,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text in the given mode
+				 *
 				 * @details The «ANCHORED» mode requires the match to begin exactly at the passed
 				 *          position and is used if the position where the match begins has been established
 				 *          in advance. The «VERIFIED» mode relieves from checking the presence of a match
 				 *          by deterministic execution if the presence has already been established
 				 *          by the calling side.
+				 *
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -373,10 +381,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding a state to the set of executed states
+				 *
 				 * @details The method performs the closure of the state over the instructions that do not
 				 *          match characters, keeping the order of decreasing priority.
 				 *          A repeated addition of an instruction within one position
 				 *          is not performed.
+				 *
 				 * @param list       set of executed states
 				 * @param marks      set of the visit marks of the program instructions
 				 * @param generation generation number of the visit marks
@@ -399,8 +409,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of allotting a set of group capture positions
+				 *
 				 * @details The set is looked up among the released ones, and in their absence
 				 *          is created. The handed out set is held by a single reference.
+				 *
 				 * @return number of the allotted set of group capture positions
 				 *
 				 * \~
@@ -414,6 +426,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of holding a set of group capture positions
+				 *
 				 * @param index number of the held set of group capture positions
 				 *
 				 * \~
@@ -430,8 +443,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of releasing a set of group capture positions
+				 *
 				 * @details A set released by the last reference holding it
 				 *          is returned to the storage for being handed out again.
+				 *
 				 * @param index number of the released set of group capture positions
 				 *
 				 * \~
@@ -452,9 +467,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of saving a position in a capture cell
+				 *
 				 * @details A set held by a single reference is changed in place.
 				 *          A set shared by the other states is replaced by its copy,
 				 *          and the reference held by the calling side is released.
+				 *
 				 * @param index number of the changed set of group capture positions
 				 * @param slot  number of the capture cell the position is saved in
 				 * @param pos   position in the text saved in the capture cell
@@ -474,8 +491,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of clearing the set of executed states
+				 *
 				 * @details The clearing is accompanied by the release of the sets of group capture
 				 *          positions held by the removed states.
+				 *
 				 * @param list set of executed states to clear
 				 *
 				 * \~
@@ -485,7 +504,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -497,13 +515,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~Pike() noexcept {}
+				~Pike() noexcept;
 		} pike_t;
 	};
 };

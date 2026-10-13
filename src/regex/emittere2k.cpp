@@ -99,19 +99,18 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочные файлы проекта
  */
-#include <regex/emitter.hpp>
 #include <sys/log.hpp>
+#include <regex/emitter.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
- * Если сборка выполняется для процессора с набором команд e2k
+ * Если сборка выполняется для процессора с набором команд E2K
  */
 #if defined(__e2k__)
 
@@ -206,7 +205,9 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t PRED_EQUAL = 0x00;
+	// Предикат «ниже»
 	constexpr uint8_t PRED_BELOW = 0x01;
+	// Предикат «не выше»
 	constexpr uint8_t PRED_NOTABOVE = 0x02;
 
 	/**
@@ -217,6 +218,7 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t CHANNEL = 0x00;
+	// Номер канала, слогом какого размещается запись в память
 	constexpr uint8_t KEEPING = 0x02;
 
 	/**
@@ -224,14 +226,23 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t OP_ADDD = 0x11;
+	// Код операции вычитания двойной точности
 	constexpr uint8_t OP_SUBD = 0x13;
+	// Код операции сдвига двойной точности
 	constexpr uint8_t OP_SHLD = 0x19;
+	// Код операции записи двойного слова в память
 	constexpr uint8_t OP_STD = 0x27;
+	// Код операции сравнения двойной точности
 	constexpr uint8_t OP_CMPD = 0x21;
+	// Код операции загрузки байта
 	constexpr uint8_t OP_LDB = 0x64;
+	// Код операции загрузки двойного слова
 	constexpr uint8_t OP_LDD = 0x67;
+	// Код операции пересылки значения в регистр
 	constexpr uint8_t OP_MOVTD = 0x61;
+	// Код операции чтения указателя стека
 	constexpr uint8_t OP_GETSP = 0x58;
+	// Код операции чтения регистра
 	constexpr uint8_t OP_RRD = 0x3F;
 
 	/**
@@ -239,7 +250,9 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t CMP_BELOW = 0x01;
+	// Признак равенства, сравнением записываемый
 	constexpr uint8_t CMP_EQUAL = 0x02;
+	// Признак «не выше», сравнением записываемый
 	constexpr uint8_t CMP_NOTABOVE = 0x03;
 
 	/**
@@ -251,6 +264,7 @@ namespace {
 	 *
 	 */
 	constexpr uint16_t EXTENSION = 0x01C0;
+	// Код второй операции слога расширения
 	constexpr uint8_t CONTROL1 = 0x15;
 
 	/**
@@ -264,6 +278,7 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t SINGLE = 0xD8;
+	// Признак слога литерала двойной длины во втором доводе
 	constexpr uint8_t DOUBLE = 0xDC;
 
 	/**
@@ -284,27 +299,31 @@ namespace {
 	struct Bundle {
 		// Слоги арифметико-логических каналов и признаки их наличия
 		uint32_t als[6];
+		// Признаки наличия слогов каналов
 		bool has[6];
 		// Слог расширения канала нулевого и признак его наличия
 		uint16_t ales;
+		// Признак наличия слога расширения
 		bool extended;
 		// Слог коротких операций и признак его наличия
 		uint32_t stub;
+		// Признак наличия слога коротких операций
 		bool stubbed;
 		// Слоги управления и признаки их наличия
 		uint32_t cs0, cs1;
+		// Признаки наличия слогов управления
 		bool first, second;
 		// Слоги литералов, младший первым
 		uint32_t lts[2];
 		// Количество слогов литералов
 		uint8_t literals;
 		/**
+		 ales(0), extended(false), stub(0), stubbed(false), cs0(0), cs1(0), first(false), second(false),
+		 lts{0, 0}, literals(0) {}
 		 * @brief Конструктор
 		 *
 		 */
 		Bundle() noexcept : als{0, 0, 0, 0, 0, 0}, has{false, false, false, false, false, false},
-		 ales(0), extended(false), stub(0), stubbed(false), cs0(0), cs1(0), first(false), second(false),
-		 lts{0, 0}, literals(0) {}
 	};
 	/**
 	 * @brief Функция размещения широкой команды в порождаемом коде
@@ -563,8 +582,9 @@ void awh::regex::Emitter::flush() noexcept {
 		// Выполняем перенос признака занятости канала
 		bundle.has[i] = this->_packed.has[i];
 	}
-	// Выполняем перенос слогов литералов
+	// Выполняем перенос первого слога литералов
 	bundle.lts[0] = this->_packed.lts[0];
+	// Выполняем перенос второго слога литералов
 	bundle.lts[1] = this->_packed.lts[1];
 	// Выполняем перенос количества слогов литералов
 	bundle.literals = this->_packed.literals;
@@ -722,19 +742,9 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
  * @param frame размер освобождаемого кадра вызова в байтах
  *
  */
-void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
+void awh::regex::Emitter::epilogue([[maybe_unused]] const uint32_t frame) noexcept {
 	// Выполняем выдачу широкой команды, к выдаче отложенной: управление сюда приходит либо отсюда уходит
 	this->flush();
-	/**
-	 * Выход кадра вызова не освобождает намеренно
-	 *
-	 * @details Описатель стека пользователя хранится стеком связующей
-	 *          информации и восстанавливается самим возвратом из процедуры:
-	 *          освобождение кадра вручную было бы работою впустую. Собиратель
-	 *          LCC поступает так же - отводит кадр входом и не снимает его.
-	 *
-	 */
-	(void) frame;
 }
 /**
  * @brief Метод отведения записи вложенного уровня
@@ -792,7 +802,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выполняем вывод сообщения об изъяне порождения машинного кода
-		awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
+		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -840,7 +850,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выполняем вывод сообщения об изъяне порождения машинного кода
-		awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
+		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -913,9 +923,6 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 	// Набор номеров предикатов, видам сравнения отвечающих
 	const uint8_t preds[3] = {PRED_EQUAL, PRED_BELOW, PRED_NOTABOVE};
 	/**
-	 * Выполняем обход видов сравнения
-	 */
-	/**
 	 * Если предикаты широкою командою уже записываются
 	 *
 	 * @details Сравнение пишет ТРИ предиката разом, и сравнение второе
@@ -939,8 +946,7 @@ void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcep
 		// Выполняем отведение канала под сравнение значений регистров
 		const uint8_t slot = this->reserve(COMPARISON, (::mask(first) | ::mask(second)), 0);
 		// Выполняем сборку слога сравнения значений регистров
-		this->_packed.als[slot] = ::alop(OP_CMPD, ::reg(first), ::reg(second),
-		 static_cast <uint8_t> ((kinds[i] << 5) | preds[i]));
+		this->_packed.als[slot] = ::alop(OP_CMPD, ::reg(first), ::reg(second), static_cast <uint8_t> ((kinds[i] << 5) | preds[i]));
 	}
 	// Выполняем учёт записи предикатов широкою командою
 	this->_packed.predicates = 0x07;
@@ -1019,7 +1025,6 @@ void awh::regex::Emitter::compare(const reg_t reg, const uint32_t value) noexcep
  *
  */
 void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint32_t value) noexcept {
-	// Создаём широкую команду сложения значения регистра с числом
 	/**
 	 * Если число полем довода размещается
 	 *
@@ -1044,6 +1049,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 *
 	 */
 	this->flush();
+	// Создаём широкую команду сложения значения регистра с числом
 	Bundle add;
 	// Выполняем установку слога канала нулевого
 	add.has[CHANNEL] = true;
@@ -1082,7 +1088,6 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
  *
  */
 void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint32_t value) noexcept {
-	// Создаём широкую команду вычитания числа из значения регистра
 	/**
 	 * Если число полем довода размещается
 	 *
@@ -1107,6 +1112,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 *
 	 */
 	this->flush();
+	// Создаём широкую команду вычитания числа из значения регистра
 	Bundle sub;
 	// Выполняем установку слога канала нулевого
 	sub.has[CHANNEL] = true;
@@ -1585,7 +1591,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выполняем вывод сообщения об изъяне порождения машинного кода
-		awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
+		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения вычисления адреса метки
 		return;
 	}
@@ -1788,5 +1794,4 @@ bool awh::regex::Emitter::resolve() noexcept {
 	// Выводим результат разрешения отложенных переходов
 	return true;
 }
-
-#endif // defined(__e2k__)
+#endif

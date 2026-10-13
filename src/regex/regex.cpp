@@ -87,7 +87,7 @@ namespace {
 	 * @return отчёт об ошибке потока исполнения
 	 *
 	 */
-	report_t & report() noexcept {
+	static report_t & report() noexcept {
 		// Создаём отчёт об ошибке потока исполнения
 		static thread_local report_t result;
 		// Выводим отчёт об ошибке потока исполнения
@@ -114,7 +114,7 @@ namespace {
 	 *          проверку следует снимать.
 	 *
 	 */
-	bool verified(string_view text, const regexp_t::exp_t & exp) noexcept {
+	static bool verified(string_view text, const regexp_t::exp_t & exp) noexcept {
 		/**
 		 * Если режим разбора текста посимвольно не установлен
 		 */
@@ -275,6 +275,7 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 		// Выполняем запоминание значения, отправленного движку
 		this->_limitSent = this->_limit;
 	}
+	// Если параметр «_nesting» изменился, передаём его движку
 	if(this->_nesting != this->_nestingSent){
 		// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
 		this->_engine.nesting(this->_nesting);
@@ -581,6 +582,7 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 		// Выполняем запоминание значения, отправленного движку
 		this->_limitSent = this->_limit;
 	}
+	// Если параметр «_nesting» изменился, передаём его движку
 	if(this->_nesting != this->_nestingSent){
 		// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
 		this->_engine.nesting(this->_nesting);

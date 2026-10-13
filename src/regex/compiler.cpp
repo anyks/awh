@@ -37,13 +37,17 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
  * @brief Пространство имён вспомогательных функций свёртки классов символов
  *
  */
 namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Функция проверки принадлежности выражения регулярному подмножеству
 	 *
@@ -66,7 +70,7 @@ namespace {
 	 *          и назван поимённо, а не выведен отрицанием.
 	 *
 	 * @warning Функцию эту НЕЛЬЗЯ звать «regular»: заголовок <concepts> заводит таким
-	 *          именем понятие `std::regular`, и при сборке по стандарту C++20 обращение
+	 *          именем понятие `regular`, и при сборке по стандарту C++20 обращение
 	 *          `::regular(...)` становится неоднозначным - «reference to 'regular' is
 	 *          ambiguous». Ныне дерево собирается по gnu++17, где понятия этого нет
 	 *          вовсе, и капкан молчит; вскрыт он проходом по всем исходникам с
@@ -81,11 +85,11 @@ namespace {
 	 * @return       признак принадлежности выражения регулярному подмножеству
 	 *
 	 */
-	bool regularSubset(const awh::regex::Parser & parser, const uint32_t flags) noexcept {
+	static bool regularSubset(const regex::Parser & parser, const uint32_t flags) noexcept {
 		// Подписываемся на перечисление разновидностей узлов дерева
-		using node_t = awh::regex::node_t;
+		using node_t = regex::node_t;
 		// Получаем признак разбора текста как последовательности UTF-8
-		const bool utf = ((flags & static_cast <uint32_t> (awh::regex::flag_t::UTF)) != 0);
+		const bool utf = ((flags & static_cast <uint32_t> (regex::flag_t::UTF)) != 0);
 		/**
 		 * Выполняем обход узлов синтаксического дерева выражения
 		 */
@@ -123,7 +127,7 @@ namespace {
 					/**
 					 * Если квантор повторения является захватывающим
 					 */
-					if(node.repeat.greed == awh::regex::greed_t::POSSESSIVE)
+					if(node.repeat.greed == regex::greed_t::POSSESSIVE)
 						// Выводим непринадлежность выражения регулярному подмножеству
 						return false;
 				} break;
@@ -134,7 +138,7 @@ namespace {
 					/**
 					 * Если группа является атомарной
 					 */
-					if(node.group.type == awh::regex::group_t::ATOMIC)
+					if(node.group.type == regex::group_t::ATOMIC)
 						// Выводим непринадлежность выражения регулярному подмножеству
 						return false;
 				} break;
@@ -145,7 +149,7 @@ namespace {
 					/**
 					 * Если привязка сбрасывает начало совпадения
 					 */
-					if(node.anchor.type == awh::regex::anchor_t::KEEP_OUT)
+					if(node.anchor.type == regex::anchor_t::KEEP_OUT)
 						// Выводим непринадлежность выражения регулярному подмножеству
 						return false;
 				} break;
@@ -168,7 +172,7 @@ namespace {
 	 * @param ranges приводимый набор участков кодовых значений
 	 *
 	 */
-	void ordering(std::vector <awh::regex::range_t> & ranges) noexcept {
+	static void ordering(vector <regex::range_t> & ranges) noexcept {
 		/**
 		 * Если набор участков пуст
 		 */
@@ -178,7 +182,7 @@ namespace {
 		/**
 		 * Выполняем упорядочивание участков по нижней границе
 		 */
-		::sort(ranges.begin(), ranges.end(), [](const awh::regex::range_t & a, const awh::regex::range_t & b) noexcept -> bool {
+		::sort(ranges.begin(), ranges.end(), [](const regex::range_t & a, const regex::range_t & b) noexcept -> bool {
 			// Выводим результат сравнения границ участков
 			return ((a.begin < b.begin) || ((a.begin == b.begin) && (a.end < b.end)));
 		});
@@ -222,8 +226,7 @@ namespace {
 	 * @param result итоговый набор участков кодовых значений
 	 *
 	 */
-	void deducting(const std::vector <awh::regex::range_t> & source,
-	 const std::vector <awh::regex::range_t> & remove, std::vector <awh::regex::range_t> & result) noexcept {
+	static void deducting(const vector <regex::range_t> & source, const vector <regex::range_t> & remove, vector <regex::range_t> & result) noexcept {
 		// Выполняем очистку итогового набора участков
 		result.clear();
 		// Получаем позицию участка вычитаемого набора
@@ -255,7 +258,7 @@ namespace {
 				 */
 				if(remove.at(current).begin > begin)
 					// Выполняем запись остатка участка в итоговый набор
-					result.push_back(awh::regex::range_t(begin, remove.at(current).begin - 1));
+					result.push_back(regex::range_t(begin, remove.at(current).begin - 1));
 				/**
 				 * Если участок вычитаемого покрывает остаток участка целиком
 				 */
@@ -277,7 +280,7 @@ namespace {
 			 */
 			if(begin <= range.end)
 				// Выполняем запись остатка участка в итоговый набор
-				result.push_back(awh::regex::range_t(begin, range.end));
+				result.push_back(regex::range_t(begin, range.end));
 		}
 	}
 	/**
@@ -290,7 +293,7 @@ namespace {
 	 * @return     разряд вида глагола в наборе видов
 	 *
 	 */
-	constexpr uint32_t verb(const awh::regex::control_t type) noexcept {
+	static constexpr uint32_t verb(const regex::control_t type) noexcept {
 		// Выводим разряд вида глагола в наборе видов
 		return (1u << static_cast <uint8_t> (type));
 	}
@@ -312,11 +315,11 @@ namespace {
 	 * @return       наибольшая длина сопоставления повторения в байтах
 	 *
 	 */
-	size_t repeated(const uint32_t max, const size_t length) noexcept {
+	static size_t repeated(const uint32_t max, const size_t length) noexcept {
 		/**
 		 * Если верхнего предела числа повторений нет либо длина тела не ограничена
 		 */
-		if((max == awh::regex::UNBOUNDED) || (length == string_view::npos))
+		if((max == regex::UNBOUNDED) || (length == string_view::npos))
 			// Выводим длину сопоставления неограниченную
 			return string_view::npos;
 		/**
@@ -334,15 +337,17 @@ namespace {
 		// Выводим наибольшую длину сопоставления повторения
 		return (static_cast <size_t> (max) * length);
 	}
-}
+};
 
 /**
  * @brief Конструктор
  *
  */
 awh::regex::Compiler::Compiler() noexcept :
- _parser(nullptr), _arena(nullptr), _program(nullptr), _reverse(false), _full(false),
+ _parser(nullptr), _arena(nullptr),
+ _program(nullptr), _reverse(false), _full(false),
  _cells(0), _branch(~0u), _atomics(0), _error(error_t::NONE) {}
+
 /**
  * @brief Метод извлечения кода ошибки компиляции
  *
@@ -399,7 +404,7 @@ AWH_REGEX_PLACING awh::regex::address_t awh::regex::Compiler::emit(const opcode_
 	 *          завершения записей, и ждало оно дважды на всякую инструкцию.
 	 *
 	 */
-	instruction_t * const instruction = this->_program->instructions.emplace_back();
+	instruction_t * const instruction = this->_program->instructions.emplaceBack();
 	/**
 	 * Если размещение инструкции не выполнено
 	 *
@@ -543,7 +548,7 @@ uint32_t awh::regex::Compiler::store(const class_t & value, const uint32_t flags
 	// Выполняем перенос свойств класса в сплошной набор программы
 	this->_program->properties.append(value.properties.data(), value.properties.size());
 	// Выполняем размещение ссылки на класс символов в хранилище
-	this->_program->classes.push_back(record);
+	this->_program->classes.pushBack(record);
 	// Выполняем учёт режимов, с какими класс символов размещён
 	this->_modes.push_back(flags);
 	// Выводим индекс класса символов в хранилище классов
@@ -616,6 +621,7 @@ bool awh::regex::Compiler::merging(const node_id_t id) noexcept {
 			if((value.flags & static_cast <uint32_t> (flag_t::CASELESS)) != 0)
 				// Выводим неприменимость свёртки ветвей выбора
 				return false;
+		// Если ветвь выражения подлежит свёртке
 		} else branch = INVALID_NODE;
 		/**
 		 * Определяем вид узла очередной ветви выражения
@@ -765,8 +771,10 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 	if(this->merging(id))
 		// Выводим результат выполнения компиляции
 		return true;
-	// Создаём набор адресов инструкций перехода к завершению выражения
-	// Получаем отметку основания набора адресов перехода к завершению в сберегательном ряду
+	/**
+	 * Создаём набор адресов инструкций перехода к завершению выражения
+	 * Получаем отметку основания набора адресов перехода к завершению в сберегательном ряду
+	 */
 	const size_t base = this->_exits.size();
 	// Заводим обозреватель набора адресов переходов
 	vector <address_t> & exits = this->_exits;
@@ -1270,8 +1278,7 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 	 *          проверка продвижения вне повторения ей неприменима.
 	 *
 	 */
-	const bool empty = ((node.repeat.max == UNBOUNDED) && this->_full &&
-	 !advancing(child) && this->stateful(child));
+	const bool empty = ((node.repeat.max == UNBOUNDED) && this->_full && !advancing(child) && this->stateful(child));
 	// Набор адресов проверок продвижения обязательных повторений
 	vector <address_t> guards;
 	/**
@@ -1424,8 +1431,10 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 		// Выводим результат выполнения компиляции
 		return true;
 	}
-	// Создаём набор адресов инструкций завершения необязательных повторений
-	// Получаем отметку основания набора адресов завершения повторений в сберегательном ряду
+	/**
+	 * Создаём набор адресов инструкций завершения необязательных повторений
+	 * Получаем отметку основания набора адресов завершения повторений в сберегательном ряду
+	 */
 	const size_t base = this->_exits.size();
 	// Заводим обозреватель набора адресов переходов
 	vector <address_t> & exits = this->_exits;
@@ -1577,10 +1586,10 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 		}
 		// Выполняем компиляцию узла класса символов
 		case static_cast <uint8_t> (node_t::CLASS): {
-			// Получаем номер класса символов в хранилище разбора
-			const uint32_t source = node.charclass.index;
 			// Номер класса символов в программе
 			uint32_t index = INVALID_CLASS;
+			// Получаем номер класса символов в хранилище разбора
+			const uint32_t source = node.charclass.index;
 			/**
 			 * Если класс узла размещён прежде с теми же режимами
 			 *
@@ -1592,8 +1601,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			 *          до байта.
 			 *
 			 */
-			if((source < this->_stored.size()) && (this->_stored[source].first != INVALID_CLASS) &&
-			 (this->_stored[source].second == node.flags)){
+			if((source < this->_stored.size()) && (this->_stored[source].first != INVALID_CLASS) && (this->_stored[source].second == node.flags)){
 				// Выполняем учёт размещения класса номером запомненным
 				AWH_REGEX_TICK(path_t::RECALLING);
 				// Получаем номер класса символов, размещённого прежде
@@ -1789,6 +1797,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 				// Выводим результат выполнения компиляции
 				return true;
 			}
+			// Если група принадлежит к атамарному типу
 			if(node.group.type == group_t::ATOMIC){
 				/**
 				 * Если выполняется компиляция регулярного подмножества
@@ -2360,19 +2369,19 @@ uint32_t awh::regex::Compiler::naming(const uint32_t offset, const uint32_t leng
 /**
  * @brief Метод размещения инструкции глагола отметки имени
  *
- * @param offset смещение имени отметки в хранилище имён разбора
- * @param length длина имени отметки в октетах
- * @param flags  флаги размещаемой инструкции
- * @param named  признак открытия имени розыску глаголом переноса
- *
- * @return адрес размещённой инструкции глагола отметки
- *
  * @details Имя переносится в хранилище имён программы, ячейка отметки последней
  *          отводится единожды на всё выражение, а ячейка положения - единожды
  *          на имя: глагол пишет в первую адрес свой, а во вторую положение своё,
  *          и возврат обе записи отменяет наравне с ячейками захвата. Ячейка
  *          положения отводится лишь отметке настоящей: имя, глаголу отсечения
  *          приписанное, эталон розыску глаголом переноса не открывает.
+ *
+ * @param offset смещение имени отметки в хранилище имён разбора
+ * @param length длина имени отметки в октетах
+ * @param flags  флаги размещаемой инструкции
+ * @param named  признак открытия имени розыску глаголом переноса
+ *
+ * @return адрес размещённой инструкции глагола отметки
  *
  */
 awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const uint32_t length, const uint32_t flags, const bool named) noexcept {
@@ -2400,7 +2409,7 @@ awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const
 	 */
 	for(uint32_t index = 0; index < length; index++)
 		// Выполняем добавление очередного октета имени отметки
-		this->_program->markers.push_back(this->_parser->markers().at(static_cast <size_t> (offset) + static_cast <size_t> (index)));
+		this->_program->markers.pushBack(this->_parser->markers().at(static_cast <size_t> (offset) + static_cast <size_t> (index)));
 	// Выполняем размещение инструкции глагола управления возвратом
 	const address_t result = this->emit(opcode_t::CONTROL, flags);
 	/**
@@ -3010,10 +3019,10 @@ string awh::regex::Compiler::requiredNode(const node_id_t id, size_t & distance)
  *
  */
 awh::regex::Compiler::piece_t awh::regex::Compiler::requiredNode(const node_id_t id, size_t & distance, size_t & span, const bool need) const noexcept {
-	// Выполняем сброс удаления литерала от начала сопоставления узла
-	distance = 0;
 	// Выполняем сброс наибольшей длины сопоставления узла
 	span = 0;
+	// Выполняем сброс удаления литерала от начала сопоставления узла
+	distance = 0;
 	/**
 	 * Если индекс узла отсутствует
 	 */
@@ -3256,8 +3265,7 @@ awh::regex::Compiler::piece_t awh::regex::Compiler::required(const node_id_t id,
 			/**
 			 * Если удаление литерала узла либо длина цепочки не ограничены
 			 */
-			if((passed == string_view::npos) || (spacing == string_view::npos) ||
-			 (spacing > (string_view::npos - passed)))
+			if((passed == string_view::npos) || (spacing == string_view::npos) || (spacing > (string_view::npos - passed)))
 				// Выполняем установку удаления неограниченного
 				found = string_view::npos;
 			// Выполняем установку удаления обнаруженного литерала
@@ -3658,14 +3666,6 @@ string awh::regex::Compiler::leading(const node_id_t id) const noexcept {
 		// Получаем очередной узел синтаксического дерева
 		const node_data_t & node = this->node(index);
 		/**
-		 * Если узел является привязкой к позиции в тексте
-		 *
-		 * @details Привязка длины не имеет и начала совпадения не смещает,
-		 *          поэтому ведущий литерал ею не прерывается. Сброс начала
-		 *          совпадения смещает его границу и литерал прерывает.
-		 *
-		 */
-		/**
 		 * Если узел является глаголом управления возвратом
 		 *
 		 * @details Глагол длины не имеет и начала совпадения не смещает наравне
@@ -3678,13 +3678,21 @@ string awh::regex::Compiler::leading(const node_id_t id) const noexcept {
 		if(node.type == node_t::CONTROL)
 			// Переходим к следующему узлу цепочки
 			continue;
+		/**
+		 * Если узел является привязкой к позиции в тексте
+		 *
+		 * @details Привязка длины не имеет и начала совпадения не смещает,
+		 *          поэтому ведущий литерал ею не прерывается. Сброс начала
+		 *          совпадения смещает его границу и литерал прерывает.
+		 *
+		 */
 		if(node.type == node_t::ANCHOR){
 			/**
 			 * Если привязка сбрасывает начало совпадения
 			 */
 			if(node.anchor.type == anchor_t::KEEP_OUT)
 				// Выводим отсутствие ведущего литерала
-				return string();
+				return "";
 			// Переходим к следующему узлу цепочки
 			continue;
 		}
@@ -3748,10 +3756,10 @@ string awh::regex::Compiler::leading(const node_id_t id) const noexcept {
  * @param anchor общий первый байт литералов
  *
  */
-void awh::regex::Compiler::alternates(const node_id_t id,
- vector <string> & alts, char & anchor) const noexcept {
+void awh::regex::Compiler::alternates(const node_id_t id, vector <string> & alts, char & anchor) const noexcept {
 	// Обнуляем выходные параметры на случай отказа обхода
 	alts.clear();
+	// Инициализируем якорь
 	anchor = 0;
 	// Получаем очередной узел синтаксического дерева
 	const node_data_t & node = this->node(id);
@@ -3780,7 +3788,7 @@ void awh::regex::Compiler::alternates(const node_id_t id,
 		// Выходим из метода без изменений
 		return;
 	// Наибольшее количество альтернатив, обходом разбираемых
-	constexpr size_t ALTS_LIMIT = 4;
+	constexpr size_t ALTS_LIMIT = regex::SPARSE;
 	// Ожидаемая длина литерала каждой альтернативы
 	size_t length = 0;
 	// Признак установленной длины
@@ -3830,7 +3838,7 @@ void awh::regex::Compiler::alternates(const node_id_t id,
 		/**
 		 * Если ветвь является одной строкой литералов
 		 */
-		}else if(sub.type == node_t::STRING){
+		} else if(sub.type == node_t::STRING) {
 			// Получаем адрес начала последовательности в хранилище разбора
 			const uint32_t * source = this->_parser->sequence(sub.string.offset, sub.string.length);
 			/**
@@ -3845,7 +3853,9 @@ void awh::regex::Compiler::alternates(const node_id_t id,
 			if(sub.string.length > 4)
 				// Выходим из метода без изменений
 				return;
-			// Выполняем проверку ASCII-ности и наполнение литерала
+			/**
+			 * @brief Цикл проверки ASCII-ности и наполнения литерала
+			 */
 			for(uint32_t i = 0; i < sub.string.length; i++){
 				/**
 				 * Если символ не принадлежит набору ASCII
@@ -3859,7 +3869,7 @@ void awh::regex::Compiler::alternates(const node_id_t id,
 		/**
 		 * Иные узлы альтернативой служить не могут
 		 */
-		}else{
+		} else {
 			// Выполняем очистку уже собранных альтернатив
 			alts.clear();
 			// Выходим из метода без изменений
@@ -3876,7 +3886,7 @@ void awh::regex::Compiler::alternates(const node_id_t id,
 		/**
 		 * Если длина текущей ветви отличается от ожидаемой
 		 */
-		}else if(alt.size() != length){
+		} else if(alt.size() != length) {
 			// Выполняем очистку уже собранных альтернатив
 			alts.clear();
 			// Выходим из метода без изменений
@@ -3885,11 +3895,21 @@ void awh::regex::Compiler::alternates(const node_id_t id,
 		// Выполняем добавление литерала в набор альтернатив
 		alts.push_back(alt);
 		/**
-		 * Если предел альтернатив достигнут
+		 * Если предел альтернатив достигнут, а ветвей осталось больше
+		 *
+		 * @details Набор неполный отбору позиций не годится: сканер ищет
+		 *          лишь перечисленные литералы, и вхождение прочих осталось
+		 *          бы незамеченным, а совпадение - потерянным. Отбор он при
+		 *          наборе неполном снимается тем же порядком, каким снимается
+		 *          он при ветви, альтернативой служить не могущей.
+		 *
 		 */
-		if(alts.size() >= ALTS_LIMIT)
-			// Выходим из обхода цикла
-			break;
+		if((alts.size() >= ALTS_LIMIT) && (this->node(branch).next != INVALID_NODE)){
+			// Выполняем очистку уже собранных альтернатив
+			alts.clear();
+			// Выходим из метода без изменений
+			return;
+		}
 	}
 	/**
 	 * Если альтернатив меньше двух, обход не имеет смысла
@@ -3957,9 +3977,7 @@ void awh::regex::Compiler::condense() noexcept {
 	 *          последовательности находит её в любой позиции текста.
 	 *
 	 */
-	if(((program.flags & static_cast <uint32_t> (flag_t::ANCHORED)) != 0) ||
-	 ((program.flags & (static_cast <uint32_t> (flag_t::NOTEMPTY) |
-	  static_cast <uint32_t> (flag_t::ATSTART))) != 0))
+	if(((program.flags & static_cast <uint32_t> (flag_t::ANCHORED)) != 0) || ((program.flags & (static_cast <uint32_t> (flag_t::NOTEMPTY) | static_cast <uint32_t> (flag_t::ATSTART))) != 0))
 		// Выходим из метода распознавания выражения
 		return;
 	/**
@@ -3977,8 +3995,7 @@ void awh::regex::Compiler::condense() noexcept {
 	/**
 	 * Если предпоследняя инструкция границу совпадения не сохраняет
 	 */
-	if((instructions.at(instructions.size() - 2).type != opcode_t::SAVE) ||
-	 (instructions.at(instructions.size() - 2).save.slot != 1))
+	if((instructions.at(instructions.size() - 2).type != opcode_t::SAVE) || (instructions.at(instructions.size() - 2).save.slot != 1))
 		// Выходим из метода распознавания выражения
 		return;
 	/**
@@ -3993,7 +4010,7 @@ void awh::regex::Compiler::condense() noexcept {
 	 *          не сопоставляемых, оставалось 3278 байтов, а у одного - 345.
 	 *
 	 */
-	string text;
+	string text = "";
 	/**
 	 * Выполняем сбор последовательности символов выражения
 	 */
@@ -4125,14 +4142,6 @@ void awh::regex::Compiler::analyze() noexcept {
 		prefilter.clear();
 	// Выполняем установку режима разбора текста как последовательности UTF-8
 	prefilter.utf = ((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0);
-	/**
-	 * Выполняем определение обязательного литерала совпадения и удаления его
-	 *
-	 * @details Удаление берётся тем же разбором, что и литерал: оно есть
-	 *          наибольшее число байтов, какое способно предшествовать литералу
-	 *          внутри совпадения, и позволяет употребить литерал позиционно.
-	 *
-	 */
 	// Наибольшая длина сопоставления выражения, выводимая разбором литерала попутно
 	size_t span = 0;
 	/**
@@ -4292,7 +4301,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & vi
 	 *          не подтверждает - подтверждение сняло бы сторожа продвижения.
 	 *
 	 */
-	if(std::find(visited.begin(), visited.end(), id) != visited.end())
+	if(find(visited.begin(), visited.end(), id) != visited.end())
 		// Выводим результат проверки обязательного продвижения узла по тексту
 		return false;
 	// Получаем проверяемый узел арены узлов
@@ -4421,8 +4430,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & vi
 			/**
 			 * Если вызываемая группа сборкою уже пройдена
 			 */
-			else if((node.recurse.number < this->_groups.size()) &&
-			 (this->_groups.at(node.recurse.number) != INVALID_NODE))
+			else if((node.recurse.number < this->_groups.size()) && (this->_groups.at(node.recurse.number) != INVALID_NODE))
 				// Выполняем установку индекса узла вызываемой группы
 				called = this->_groups.at(node.recurse.number);
 			// Получаем результат проверки продвижения вызываемого узла
@@ -4621,13 +4629,6 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain, const
 						// Выводим отсутствие привязки к позиции начала поиска
 						return false;
 				}
-				/**
-				 * Переходим к следующему узлу цепочки
-				 *
-				 * @details Прочие привязки длины не имеют и позиций совпадения
-				 *          не ограничивают, поэтому обходятся насквозь.
-				 *
-				 */
 			} break;
 			/**
 			 * Если узел является группой
@@ -5073,12 +5074,12 @@ void awh::regex::Compiler::mark() noexcept {
 		if(instruction.type != opcode_t::SPLIT)
 			// Переходим к следующей инструкции программы
 			continue;
-		// Выполняем сброс пометки повторения одиночного символа
-		instruction.split.run = INVALID_ADDRESS;
-		// Выполняем сброс признака ленивости повторения одиночного символа
-		instruction.split.lazily = 0;
 		// Выполняем сброс признака бесплодности возврата в ряд повторения
 		instruction.split.solid = 0;
+		// Выполняем сброс признака ленивости повторения одиночного символа
+		instruction.split.lazily = 0;
+		// Выполняем сброс пометки повторения одиночного символа
+		instruction.split.run = INVALID_ADDRESS;
 		/**
 		 * Получаем признак ленивого повторения элемента выражения
 		 *
@@ -5379,8 +5380,7 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
 	// Получаем узел проверки окружения
 	const node_data_t & node = this->node(id);
 	// Определяем направление проверки окружения
-	const bool backward = ((node.look.type == look_t::BEHIND) || (node.look.type == look_t::BEHIND_NEG) ||
-	 (node.look.type == look_t::BEHIND_FREE));
+	const bool backward = ((node.look.type == look_t::BEHIND) || (node.look.type == look_t::BEHIND_NEG) || (node.look.type == look_t::BEHIND_FREE));
 	// Определяем знак проверки окружения
 	const bool negative = ((node.look.type == look_t::AHEAD_NEG) || (node.look.type == look_t::BEHIND_NEG));
 	/**
@@ -5475,13 +5475,6 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
 	return true;
 }
 /**
- * @brief Метод компиляции узла условного выражения
- *
- * @param id индекс узла условного выражения в арене узлов
- * @return   результат выполнения компиляции
- *
- */
-/**
  * @brief Метод извлечения набора номеров одноимённых групп
  *
  * @param name индекс имени группы в хранилище имён
@@ -5506,6 +5499,13 @@ const vector <uint32_t> * awh::regex::Compiler::duplicates(const uint32_t name) 
 	// Выводим набор номеров одноимённых групп
 	return &i->second;
 }
+/**
+ * @brief Метод компиляции узла условного выражения
+ *
+ * @param id индекс узла условного выражения в арене узлов
+ * @return   результат выполнения компиляции
+ *
+ */
 bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 	// Получаем узел условного выражения
 	const node_data_t & node = this->node(id);
@@ -5567,8 +5567,10 @@ bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 		 *          ветвь выполненного условия у каждой из которых одна и та же.
 		 *
 		 */
-		const vector <uint32_t> * numbers = (((node.condition.type == condition_t::GROUP_SET) ||
-		 (node.condition.type == condition_t::NAME_SET)) ? this->duplicates(node.condition.name) : nullptr);
+		const vector <uint32_t> * numbers = (
+			((node.condition.type == condition_t::GROUP_SET) ||
+			(node.condition.type == condition_t::NAME_SET)) ? this->duplicates(node.condition.name) : nullptr
+		);
 		// Получаем количество размещаемых проверок условия
 		const size_t count = ((numbers != nullptr) ? numbers->size() : 1);
 		// Определяем тип условия условного выражения
@@ -5825,14 +5827,6 @@ bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) n
  *
  */
 bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noexcept {
-	// Выполняем установку объекта разбора регулярного выражения
-	this->_parser = &parser;
-	// Выполняем установку арены узлов синтаксического дерева
-	this->_arena = &parser.nodes();
-	// Выполняем установку компилируемой программы
-	this->_program = &program;
-	// Выполняем сброс кода ошибки компиляции
-	this->_error = error_t::NONE;
 	// Выполняем сброс количества размещённых ячеек состояния
 	this->_cells = 0;
 	// Выполняем сброс количества ячеек отметки состояния возврата
@@ -5841,6 +5835,14 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	this->_named.clear();
 	// Выполняем очистку набора инструкций рекурсивного вызова
 	this->_calls.clear();
+	// Выполняем установку объекта разбора регулярного выражения
+	this->_parser = &parser;
+	// Выполняем установку арены узлов синтаксического дерева
+	this->_arena = &parser.nodes();
+	// Выполняем установку компилируемой программы
+	this->_program = &program;
+	// Выполняем сброс кода ошибки компиляции
+	this->_error = error_t::NONE;
 	/**
 	 * Выполняем сброс соответствий, номерами захватывающих групп берущихся
 	 *
@@ -5854,6 +5856,10 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	this->_sections.assign((parser.captures() + 1), INVALID_ADDRESS);
 	// Выполняем сброс соответствия номеров групп индексам их узлов
 	this->_groups.assign((parser.captures() + 1), INVALID_NODE);
+	// Выполняем очистку сберегательного ряда узлов цепочки
+	this->_chain.clear();
+	// Выполняем очистку набора режимов размещённых классов символов
+	this->_modes.clear();
 	/**
 	 * Выполняем очистку сберегательных рядов построения
 	 *
@@ -5866,10 +5872,6 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	this->_exits.clear();
 	// Выполняем очистку следа узлов проверки продвижения по тексту
 	this->_visited.clear();
-	// Выполняем очистку сберегательного ряда узлов цепочки
-	this->_chain.clear();
-	// Выполняем очистку набора режимов размещённых классов символов
-	this->_modes.clear();
 	/**
 	 * Выполняем сброс соответствия номеров классов разбора номерам классов программы
 	 *
@@ -5926,12 +5928,14 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	if(this->_full)
 		// Выполняем сбор узлов захватывающих групп выражения
 		this->collect(parser.root());
-	// Выполняем установку набора режимов компиляции программы
-	program.flags = parser.options();
+	// Выполняем установку предела объёма памяти сопоставления
+	program.heap = parser.heap();
 	// Выполняем установку пределов, самим выражением заданных
 	program.steps = parser.steps();
+	// Выполняем установку предела глубины рекурсивных вызовов
 	program.depth = parser.depth();
-	program.heap = parser.heap();
+	// Выполняем установку набора режимов компиляции программы
+	program.flags = parser.options();
 	// Выполняем установку соглашения о переводе строки выражения
 	program.newline = parser.newline();
 	// Выполняем размещение инструкции сохранения начала совпадения
@@ -6028,3 +6032,14 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	// Выводим результат выполнения компиляции
 	return true;
 }
+
+/**
+ * @brief Конструктор записи отрезка выражения
+ *
+ */
+awh::regex::Compiler::Piece::Piece() noexcept : first(INVALID_NODE), count(0), length(0) {}
+/**
+ * @brief Деструктор разбора регулярного выражения
+ *
+ */
+awh::regex::Compiler::~Compiler() noexcept {}

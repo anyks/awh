@@ -143,12 +143,12 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags) noexce
 bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expression_t & expression) noexcept {
 	// Выполняем сброс флага готовности выражения
 	expression.ready = false;
-	// Выполняем сброс флага исполнения выражения с возвратом
-	expression.backtracking = false;
 	// Выполняем сброс флага применимости поиска позиции начала
 	expression.reversible = false;
 	// Выполняем сброс флага применимости детерминированного исполнения
 	expression.automatic = false;
+	// Выполняем сброс флага исполнения выражения с возвратом
+	expression.backtracking = false;
 	// Выполняем очистку соответствия имён именованных групп
 	expression.names.clear();
 	// Выполняем сброс кода ошибки последней операции
@@ -177,8 +177,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	const auto generating = [&]() noexcept -> void {
 		/**
 		 * Если сборка выражения в режиме порождения машинного кода не ведётся
-		 */
-		/**
+		 *
 		 * @details Признаки берутся у ПРОГРАММЫ собранной, а не у сборки заказанной:
 		 *          указания начала выражения - «(*NOTEMPTY)» и «(*NOTEMPTY_ATSTART)» -
 		 *          признаки эти ставят разбором, и у заказчика сборки их нет вовсе.
@@ -190,10 +189,9 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		 *
 		 */
 		if(((flags & static_cast <uint32_t> (flag_t::JIT)) == 0) ||
-		 ((expression.forward.flags & (static_cast <uint32_t> (flag_t::ANCHORED) |
-		  static_cast <uint32_t> (flag_t::NOTEMPTY) |
-		  static_cast <uint32_t> (flag_t::ATSTART))) != 0) ||
-		 expression.forward.plain)
+		   ((expression.forward.flags & (static_cast <uint32_t> (flag_t::ANCHORED) |
+		   static_cast <uint32_t> (flag_t::NOTEMPTY) |
+		   static_cast <uint32_t> (flag_t::ATSTART))) != 0) || expression.forward.plain)
 			// Выходим из порождения сопоставителя выражения
 			return;
 		/**
@@ -228,13 +226,13 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern)}, awh::log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
+			log::debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern)}, log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("Regular expression could not be parsed at offset %zu: %s", awh::log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
+			log::print("Regular expression could not be parsed at offset %zu: %s", log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
 		#endif
 		// Выводим результат выполнения сборки
 		return false;
@@ -313,8 +311,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *          114 выражениям, и всем впустую: две пятых их сборки и 1.18 МБ.
 	 *
 	 */
-	if(!expression.automatic || hasFlag(expression.forward.flags, flag_t::NOTEMPTY) ||
-	 hasFlag(expression.forward.flags, flag_t::ATSTART))
+	if(!expression.automatic || hasFlag(expression.forward.flags, flag_t::NOTEMPTY) || hasFlag(expression.forward.flags, flag_t::ATSTART))
 		// Выводим результат выполнения сборки
 		return true;
 	/**
@@ -620,14 +617,12 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          исполнением без возврата.
 	 *
 	 */
-	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) ||
-	 hasFlag(expression.forward.flags, flag_t::ATSTART))
+	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) || hasFlag(expression.forward.flags, flag_t::ATSTART))
 		// Выводим результат сопоставления исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, this->_spare);
 	/**
 	 * Если детерминированное исполнение применимо
-	 */
-	/**
+	 *
 	 * @details Пробы исполнением с возвратом проверка наличия НЕ получает,
 	 *          хотя сопоставление полное её и получает. Причина в том, что
 	 *          вопросы у них разные: проверке довольно наличия совпадения,
@@ -745,8 +740,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *          совпадение поглощает байт, а поглощать там нечего.
 		 *
 		 */
-		if(expression.forward.prefilter.active && ((start >= text.size()) ||
-		 !expression.forward.prefilter.bytes[static_cast <uint8_t> (text[start])])){
+		if(expression.forward.prefilter.active && ((start >= text.size()) || !expression.forward.prefilter.bytes[static_cast <uint8_t> (text[start])])){
 			// Выполняем учёт отказа по набору допустимых начальных байтов
 			AWH_REGEX_TICK(path_t::BARRING);
 			// Выводим результат поиска совпадения
@@ -920,8 +914,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          продолжая сопоставление состояниями меньшего приоритета.
 	 *
 	 */
-	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) ||
-	 hasFlag(expression.forward.flags, flag_t::ATSTART))
+	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) || hasFlag(expression.forward.flags, flag_t::ATSTART))
 		// Выводим результат сопоставления исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, captures);
 	/**
@@ -1026,8 +1019,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          прежде и 53 ныне, при границах тех же.
 	 *
 	 */
-	if(!exhausted && ((span <= MAX_BACKTRACK) || !expression.forward.prefilter.leading.empty() ||
-	 expression.forward.anchored)){
+	if(!exhausted && ((span <= MAX_BACKTRACK) || !expression.forward.prefilter.leading.empty() || expression.forward.anchored)){
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((span + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
 		/**
@@ -1124,3 +1116,14 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 */
 	return this->_pike.exec(expression.forward, text, start, captures, mode_t::VERIFIED);
 }
+
+/**
+ * @brief Конструктор выражения движка
+ *
+ */
+awh::regex::Expression::Expression() noexcept : backtracking(false), ready(false), reversible(false), automatic(false) {}
+/**
+ * @brief Деструктор движка регулярных выражений
+ *
+ */
+awh::regex::Engine::~Engine() noexcept {}

@@ -388,7 +388,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор копирования
 				 *
-				 *
 				 * \~english
 				 * @brief Copy constructor
 				 *
@@ -409,7 +408,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Деструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Destructor

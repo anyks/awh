@@ -36,7 +36,6 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
  * Если выравнивание начала функции ещё не определено
@@ -73,28 +72,9 @@ using namespace awh;
  */
 namespace {
 	/**
-	 * @brief Значение перехода, соответствующее непостроенному состоянию
-	 *
+	 * Пространство имён библиотеки
 	 */
-	constexpr uint32_t UNKNOWN = static_cast <uint32_t> (~0u);
-
-	/**
-	 * @brief Значение байта, соответствующее концу текста
-	 *
-	 */
-	constexpr uint32_t FINISH = 0x100;
-
-	/**
-	 * @brief Признак обнаружения совпадения в значении перехода
-	 *
-	 */
-	constexpr uint32_t MATCHED = 0x80000000;
-
-	/**
-	 * @brief Маска индекса состояния в значении перехода
-	 *
-	 */
-	constexpr uint32_t ADDRESS = 0x7FFFFFFF;
+	using namespace awh;
 
 	/**
 	 * @brief Признак отсутствия начатых сопоставлений в состоянии
@@ -109,12 +89,31 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t SCANT = 0x01;
-
 	/**
 	 * @brief Признак отсутствия достижимых инструкций в состоянии
 	 *
 	 */
 	constexpr uint8_t EMPTY = 0x02;
+	/**
+	 * @brief Значение байта, соответствующее концу текста
+	 *
+	 */
+	constexpr uint32_t FINISH = 0x100;
+	/**
+	 * @brief Признак обнаружения совпадения в значении перехода
+	 *
+	 */
+	constexpr uint32_t MATCHED = 0x80000000;
+	/**
+	 * @brief Маска индекса состояния в значении перехода
+	 *
+	 */
+	constexpr uint32_t ADDRESS = 0x7FFFFFFF;
+	/**
+	 * @brief Значение перехода, соответствующее непостроенному состоянию
+	 *
+	 */
+	constexpr uint32_t UNKNOWN = static_cast <uint32_t> (~0u);
 
 	/**
 	 * @brief Функция проверки установки режима компиляции
@@ -124,7 +123,7 @@ namespace {
 	 * @return      результат проверки установки режима компиляции
 	 *
 	 */
-	inline bool hasFlag(const uint32_t flags, const awh::regex::flag_t value) noexcept {
+	inline bool hasFlag(const uint32_t flags, const regex::flag_t value) noexcept {
 		// Выполняем проверку установки режима компиляции
 		return ((flags & static_cast <uint32_t> (value)) != 0);
 	}
@@ -171,7 +170,7 @@ namespace {
 	 * @return         результат проверки сопоставления байта классом символов
 	 *
 	 */
-	inline bool belongs(const awh::regex::classview_t & value, const uint32_t letter, const bool caseless) noexcept {
+	inline bool belongs(const regex::classview_t & value, const uint32_t letter, const bool caseless) noexcept {
 		// Создаём набор проверяемых значений байта
 		uint32_t codes[2] = {letter, letter};
 		/**
@@ -256,6 +255,8 @@ void awh::regex::Dfa::reset() noexcept {
  *
  */
 void awh::regex::Dfa::refine(const bool * members) noexcept {
+	// Количество полученных классов эквивалентности байтов
+	uint32_t count = 0;
 	/**
 	 * Создаём соответствие исходных классов и признака принадлежности новым классам
 	 *
@@ -267,8 +268,6 @@ void awh::regex::Dfa::refine(const bool * members) noexcept {
 	uint32_t map[0x200];
 	// Выполняем сброс соответствия исходных классов новым
 	::memset(map, 0xFF, sizeof(map));
-	// Количество полученных классов эквивалентности байтов
-	uint32_t count = 0;
 	/**
 	 * Выполняем обход пространства значений байта
 	 */
@@ -968,15 +967,6 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 	// Получаем соответствие значений байтов классам эквивалентности
 	const uint8_t * alphabet = this->_classes;
 	/**
-	 * Определяем применимость пропуска позиций предварительным отбором
-	 *
-	 * @details Ограничение пропуска отбором по подстроке либо по единственному байту
-	 *          пробовалось и откачено: отбор по набору допустимых начальных байтов
-	 *          проходит участки текста, совпадения начать не способные, вдвое быстрее
-	 *          построения переходов в каждой их позиции.
-	 *
-	 */
-	/**
 	 * Получаем признак привязки выражения к позиции начала поиска
 	 *
 	 * @details Привязка означает невозможность совпадения, начинающегося правее
@@ -985,6 +975,15 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 	 *
 	 */
 	const bool halting = (!backward && this->_program->anchored);
+	/**
+	 * Определяем применимость пропуска позиций предварительным отбором
+	 *
+	 * @details Ограничение пропуска отбором по подстроке либо по единственному байту
+	 *          пробовалось и откачено: отбор по набору допустимых начальных байтов
+	 *          проходит участки текста, совпадения начать не способные, вдвое быстрее
+	 *          построения переходов в каждой их позиции.
+	 *
+	 */
 	const bool skipping = (!backward && (prefilter.active || halting));
 	/**
 	 * Получаем позицию, до которой сопоставляемый байт не является последним
@@ -998,7 +997,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 	/**
 	 * Выполняем обход байтов текста сопоставления
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Выполняем проход участка текста, не затрагивающего краёв
 		 *
@@ -1189,8 +1188,7 @@ AWH_REGEX_ALIGNED bool awh::regex::Dfa::scan(string_view text, const size_t from
 		// Определяем достижение края текста, завершающего проход
 		const bool edge = (backward ? (pos == 0) : (pos >= size));
 		// Определяем значение сопоставляемого байта
-		const uint32_t letter = (edge ? FINISH :
-		 static_cast <uint32_t> (static_cast <uint8_t> (source[backward ? (pos - 1) : pos])));
+		const uint32_t letter = (edge ? FINISH : static_cast <uint32_t> (static_cast <uint8_t> (source[backward ? (pos - 1) : pos])));
 		/**
 		 * Определяем сопоставление последнего байта текста
 		 *
@@ -1404,3 +1402,14 @@ bool awh::regex::Dfa::test(const program_t & program, string_view text, const si
 	// Выводим результат поиска совпадения в тексте
 	return this->search(program, text, start, finish);
 }
+
+/**
+ * @brief Конструктор состояния детерминированного исполнения
+ *
+ */
+awh::regex::Dfa::State::State() noexcept : sparse(false), context(0) {}
+/**
+ * @brief Деструктор детерминированного сопоставителя
+ *
+ */
+awh::regex::Dfa::~Dfa() noexcept {}

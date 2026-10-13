@@ -119,7 +119,9 @@
  * @brief Header file of the public interface of the Grok module —
  *        the registry of named patterns, the expansion of references of the «%{NAME:field:kind}» form
  *        into a regular expression and the extraction of named fields from a text
+ *
  * @section grok_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -236,7 +238,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -247,7 +248,6 @@ namespace awh {
 	 * Используем стандартное пространство имён
 	 */
 	using namespace std;
-
 
 	/**
 	 * \~russian
@@ -262,6 +262,7 @@ namespace awh {
 	 *
 	 * \~english
 	 * @brief Class of parsing a text by Grok patterns
+	 *
 	 * @details The class keeps the registry of named patterns, expands the references
 	 *          of the «%{NAME}», «%{NAME:field}» and «%{NAME:field:kind}» form into the text
 	 *          of a regular expression and extracts the named fields from a text.
@@ -374,6 +375,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Operator computing the hash of a cache key
+				 *
 				 * @param key key of the cache of built Grok patterns
 				 * @return    computed hash value of the key
 				 *
@@ -401,6 +403,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Compression method of the part of the record describing the patterns
+			 *
 			 * @details The record consists of the part describing the patterns and of the
 			 *          record of the storage of built expressions attached to it.
 			 *          The storage compresses its own part itself, while this part is compressed
@@ -439,6 +442,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of expanding the references of the text of a pattern
+			 *
 			 * @param body   text of the pattern with references
 			 * @param result expanded text of the regular expression
 			 * @param fields set of the fields of the pattern
@@ -460,6 +464,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of counting the capture groups of a stretch of the text of an expression
+			 *
 			 * @param text   stretch of the text of the regular expression
 			 * @param number number of the next capture group
 			 *
@@ -475,6 +480,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of clearing the pattern registry
+			 *
 			 * @details The registry is cleared as a whole, together with the built-in set.
 			 *
 			 * \~
@@ -488,6 +494,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of restoring the built-in pattern set
+			 *
 			 * @details The registry is cleared and filled with the built-in set anew.
 			 *
 			 * \~
@@ -503,6 +510,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking the presence of a pattern in the registry
+			 *
 			 * @param name name of the pattern
 			 * @return     result of checking the presence of the pattern in the registry
 			 *
@@ -518,6 +526,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of removing a pattern from the registry
+			 *
 			 * @param name name of the pattern
 			 * @return     result of removing the pattern from the registry
 			 *
@@ -534,6 +543,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the text of a pattern from the registry
+			 *
 			 * @param name name of the pattern
 			 * @return     text of the pattern or an empty text if it is absent
 			 *
@@ -554,9 +564,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding a pattern to the registry
+			 *
 			 * @param name name of the pattern
 			 * @param body text of the pattern, admitting references of the «%{NAME}» form
 			 * @return     result of adding the pattern to the registry
+			 *
 			 * @details A pattern with a name already known to the registry replaces
 			 *          the former one: the user set is laid over the
 			 *          built-in one.
@@ -584,8 +596,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of filling the registry with a pattern set from a text
+			 *
 			 * @param text text of the pattern set
 			 * @return     number of the patterns accepted by the registry
+			 *
 			 * @details The set is written line by line in the «NAME expression» form:
 			 *          the name is separated from the text of the pattern by whitespace characters.
 			 *          Empty lines and lines starting with the «#» sign are skipped.
@@ -607,6 +621,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the names of the patterns of the registry
+			 *
 			 * @return set of the names of the patterns of the registry
 			 *
 			 * \~
@@ -623,6 +638,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a Grok pattern
+			 *
 			 * @param pattern text of the pattern with references of the «%{NAME}» form
 			 * @param flags   set of build modes of the regular expression
 			 * @return        built pattern or an empty reference on a failure
@@ -640,6 +656,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building a Grok pattern
+			 *
 			 * @param pattern text of the pattern with references of the «%{NAME}» form
 			 * @param flags   set of build modes of the regular expression
 			 * @return        built pattern or an empty reference on a failure
@@ -663,9 +680,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the compression of the record of built patterns
+			 *
 			 * @param method compression method of the record of built patterns
 			 * @param pack   compression handler of the record
 			 * @param unpack decompression handler of the record
+			 *
 			 * @details Subject to compression is the record of built regular expressions —
 			 *          the largest share. The compression itself is performed by the handlers
 			 *          set by the calling side: Grok, like the storage,
@@ -690,7 +709,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the trust in the generated code of the record
+			 *
 			 * @param mode indication of trust in the generated code of the record
+			 *
 			 * @details The indication is cleared by default: restoration does not take the generated
 			 *          machine code of the record but generates it anew.
 			 *          Setting it means that the record was produced by the
@@ -717,10 +738,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of writing built Grok patterns
+			 *
 			 * @param patterns set of the texts of the patterns with references
 			 * @param result   record of the built patterns
 			 * @param flags    set of build modes of the regular expression
 			 * @return         result of writing the built patterns
+			 *
 			 * @details The patterns are built and written together with the expanded
 			 *          text and the field table, therefore restoration bypasses
 			 *          both the expansion of the references and the parsing of the expression and the compilation.
@@ -739,6 +762,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of writing built Grok patterns
+			 *
 			 * @param patterns set of the texts of the patterns with references
 			 * @param result   record of the built patterns
 			 * @param flags    set of build modes of the regular expression
@@ -761,9 +785,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of restoring built Grok patterns
+			 *
 			 * @param record record of the built patterns
 			 * @param result set of the restored patterns
 			 * @return       result of restoring the built patterns
+			 *
 			 * @details The restored patterns are placed in the cache as well, therefore
 			 *          building a pattern belonging to the record is yielded by the cache
 			 *          while the calling side holds it in the set.
@@ -782,6 +808,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether a text matches a pattern
+			 *
 			 * @param text text to match
 			 * @param exp  built pattern
 			 * @return     result of checking whether the text matches the pattern
@@ -800,6 +827,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the boundaries of a match and of the captured groups
+			 *
 			 * @param text text to match
 			 * @param exp  built pattern
 			 * @return     set of the boundaries of the match and of the captured groups
@@ -822,10 +850,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the named fields from a text
+			 *
 			 * @param text   text to match
 			 * @param exp    built pattern
 			 * @param result set of the extracted fields
 			 * @return       result of extracting the named fields from the text
+			 *
 			 * @details A field whose capture was not performed is not added to the set:
 			 *          an empty capture cannot be told from an unperformed one otherwise.
 			 *
@@ -852,10 +882,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of extracting the field values from a text
+			 *
 			 * @param text   text to match
 			 * @param exp    built pattern
 			 * @param result set of the extracted field values
 			 * @return       result of extracting the field values from the text
+			 *
 			 * @details The values are yielded in the order of declaration of the fields of the pattern and
 			 *          together with the kind of each. That way differs from yielding
 			 *          a set of correspondences in that it keeps both the order and the
@@ -879,6 +911,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting the extracted fields as a JSON record
+			 *
 			 * @param text   text to match
 			 * @param exp    built pattern
 			 * @param result JSON record of the extracted fields
@@ -898,6 +931,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting a set of field values as a JSON record
+			 *
 			 * @param values set of the field values
 			 * @param pretty indication of outputting the record with indentation
 			 * @return       JSON record of the set of field values
@@ -915,6 +949,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the set of fields of a built pattern
+			 *
 			 * @param exp built pattern
 			 * @return    set of the fields of the built pattern
 			 *
@@ -930,6 +965,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the parse error code of a pattern
+			 *
 			 * @return parse error code of the pattern
 			 *
 			 * \~
@@ -939,11 +975,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор
-			 *
-			 * @details Журналом сообщается отказ сборки шаблона: имя неизвестное,
-			 *          ссылка круговая либо вложенность чрезмерная. Ошибки самого
-			 *          регулярного выражения сообщает фасад выражений, каким
-			 *          объект журнала и передаётся.
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -961,6 +992,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			~Grok() noexcept {}
+			~Grok() noexcept;
 	} grok_t;
 }

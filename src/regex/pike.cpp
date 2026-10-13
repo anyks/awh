@@ -36,14 +36,7 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
-/**
- * @brief Конструктор
- *
- */
-awh::regex::Pike::Pike() noexcept :
- _program(nullptr), _start(0), _generation(0), _upcoming(0), _width(0) {}
 /**
  * @brief Метод выделения набора позиций захвата групп
  *
@@ -148,8 +141,7 @@ uint32_t awh::regex::Pike::assign(const uint32_t index, const uint32_t slot, con
 		 *          от вызова не дало: отрезок занимает единицы позиций.
 		 *
 		 */
-		::memcpy(&this->_storage[static_cast <size_t> (result) * this->_width],
-		 &this->_storage[static_cast <size_t> (index) * this->_width], (this->_width * sizeof(size_t)));
+		::memcpy(&this->_storage[static_cast <size_t> (result) * this->_width], &this->_storage[static_cast <size_t> (index) * this->_width], (this->_width * sizeof(size_t)));
 		// Выполняем освобождение разделяемого набора позиций захвата групп
 		this->release(index);
 	}
@@ -508,7 +500,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	/**
 	 * Выполняем обход позиций текста сопоставления
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Если совпадение ещё не найдено и выражение не привязано к началу
 		 *
@@ -605,8 +597,8 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 				 *
 				 */
 				if((this->_storage[(static_cast <size_t> (thread.slots) * this->_width)] == pos) &&
-				 (hasFlag(program.flags, flag_t::NOTEMPTY) ||
-				  (hasFlag(program.flags, flag_t::ATSTART) && (pos == this->_start))))
+				   (hasFlag(program.flags, flag_t::NOTEMPTY) ||
+				   (hasFlag(program.flags, flag_t::ATSTART) && (pos == this->_start))))
 					// Переходим к следующему состоянию текущей позиции
 					continue;
 				// Выполняем освобождение набора позиций захвата прежнего совпадения
@@ -646,10 +638,10 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 				/**
 				 * Выполняем сопоставление символа из класса символов
 				 */
-				case static_cast <uint8_t> (opcode_t::CLASS): {
+				case static_cast <uint8_t> (opcode_t::CLASS):
 					// Выполняем проверку принадлежности символа классу символов
 					matched = belongs(program.charclass(instruction.charclass.index), code, instruction.flags);
-				} break;
+				break;
 				/**
 				 * Выполняем сопоставление любого символа
 				 */
@@ -666,10 +658,10 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 				/**
 				 * Выполняем сопоставление одиночной единицы кодирования
 				 */
-				case static_cast <uint8_t> (opcode_t::CODEUNIT): {
+				case static_cast <uint8_t> (opcode_t::CODEUNIT):
 					// Выполняем установку флага сопоставления символа
 					matched = true;
-				} break;
+				break;
 			}
 			/**
 			 * Если символ инструкцией не сопоставлен
@@ -697,7 +689,7 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		// Выполняем обмен наборов отметок посещения текущей и следующей позиций
 		this->_marks.swap(this->_pending);
 		// Выполняем обмен номеров поколений отметок посещения
-		std::swap(this->_generation, this->_upcoming);
+		::swap(this->_generation, this->_upcoming);
 		// Выполняем очистку набора состояний следующей позиции
 		this->discard(this->_next);
 		/**
@@ -741,3 +733,21 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	// Выводим результат поиска совпадения
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::regex::Pike::Pike() noexcept :
+ _program(nullptr), _start(0),
+ _generation(0), _upcoming(0), _width(0) {}
+
+/**
+ * @brief Конструктор нити исполнения
+ *
+ */
+awh::regex::Pike::Thread::Thread() noexcept : pc(0), slots(NO_SLOTS) {}
+/**
+ * @brief Деструктор сопоставителя без возврата
+ *
+ */
+awh::regex::Pike::~Pike() noexcept {}

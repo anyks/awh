@@ -58,7 +58,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -124,6 +123,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Kinds of the field values of a Grok pattern
+		 *
 		 * @details The kind is set by the third part of a reference: «%{INT:code:int}». The module
 		 *          remembers the kind but does not convert the value: the capture
 		 *          is yielded as text, and interpreting it is left to the consumer —
@@ -158,7 +158,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
@@ -176,6 +175,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Extracted value of a field of a Grok pattern
+		 *
 		 * @details The value is always yielded as text: its kind is needed by the consumer
 		 *          to choose the representation rather than by the module for parsing.
 		 *
@@ -191,7 +191,6 @@ namespace awh {
 			/**
 			 * \~russian
 			 * @brief Конструктор
-			 *
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -219,10 +218,19 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Value of the JSON codec filled with the extracted fields
+		 *
 		 * @details The alias is introduced because «value_t» in this namespace is
 		 *          already taken by the value of a Grok field, while the name «json»
 		 *          would be taken by the methods of the output. The suffix matches
 		 *          the style of the names adopted throughout the framework.
+		 *
+		 *          The output of a JSON record by handwritten code was removed from
+		 *          Grok: the codec handles both the escaping and the writing of
+		 *          numbers in their native form, and the settings of the form of
+		 *          the output. The handwritten output produced a record that was
+		 *          incorrect at the edges — leading zeros, «3.», «.5», «nan», «inf»,
+		 *          and bytes that do not correspond to the UTF-8 encoding — which
+		 *          was discovered by parsing it with the very same codec.
 		 *
 		 * \~
 		 */
@@ -237,6 +245,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Built Grok pattern
+		 *
 		 * @details A built pattern is not changed after building and is shared
 		 *          by the threads of execution without coordinating the access.
 		 *

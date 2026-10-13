@@ -282,7 +282,9 @@
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
  *        fit for execution without backtracking
+ *
  * @section compiler_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -637,7 +639,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -673,6 +674,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the compilation of a regular expression
+		 *
 		 * @details The class converts a syntax tree into a program of a
 		 *          nondeterministic finite automaton. Subject to compilation are
 		 *          the expressions belonging to the regular subset of the PCRE syntax.
@@ -700,6 +702,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief A literal described by the nodes of the syntax tree
+				 *
 				 * @details The analysis of the mandatory literal compares literals by their length
 				 *          alone, while the bytes are needed by only one of them - the winning one.
 				 *          The literal is therefore described by nodes: the first node of the chain,
@@ -721,13 +724,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Piece() noexcept : first(INVALID_NODE), count(0), length(0) {}
+					Piece() noexcept;
 				} piece_t;
 			private:
 				// Объект разбора, предоставляющий синтаксическое дерево
@@ -746,6 +748,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Arena of the syntax tree nodes of the parser object
+				 *
 				 * @details The arena is kept as a pointer because getting a node by
 				 *          index happens at every step of the compilation, while the
 				 *          getter of the parser object lies in a foreign translation
@@ -769,6 +772,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Scratch program of the compilation
+				 *
 				 * @details The build is carried out over this program, and the calling
 				 *          side receives the outcome by assignment. Its sequences outlive
 				 *          their space, so the build requests almost no allocations, while
@@ -789,6 +793,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Scratch sequence of the visit marks of the instructions
+				 *
 				 * @details The sequence belongs to the compiler because the traversal
 				 *          of the instructions is carried out at every build, while
 				 *          the space allocated once outlives the build.
@@ -824,6 +829,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Flag of compiling the expression as a whole
+				 *
 				 * @details Compiling the expression as a whole places the instructions of the constructs
 				 *          that do not belong to the regular subset of the syntax, whose execution
 				 *          is available only to the way of execution with backtracking.
@@ -846,6 +852,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Number of the mark cell of the branch being compiled now
+				 *
 				 * @details The cell is allotted to a branch of an alternation that carries the verb
 				 *          of moving, and is inherited by its verbs: backtracking into a verb cuts off
 				 *          the points down to the mark of the beginning of the branch. An unreachable value
@@ -869,6 +876,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Correspondence of mark names to the numbers of their position cells
+				 *
 				 * @details The cell is allotted once per name, not per mark verb: the marks
 				 *          of one name write their position into it, whereby the lookup
 				 *          by the moving verb finds the last live mark of that name.
@@ -882,7 +890,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Соответствие номеров групп адресам их рекурсивно вызываемых тел
+				 * @brief Соответствие номеров групп адресам их рекурсивно вызываемых тел
 				 *
 				 * @details Соответствие держится плотным рядом, а не отображением
 				 *          упорядоченным: номера захватывающих групп идут подряд
@@ -894,10 +902,16 @@ namespace awh {
 				 *          Отсутствие записи означено приметою `INVALID_ADDRESS`.
 				 *
 				 * \~english
-				 * Correspondence of the group numbers to the addresses of their recursively called bodies
+				 * @brief Correspondence of the group numbers to the addresses of their recursively called bodies
+				 *
 				 * @details The correspondence is held by a dense sequence rather than an ordered map:
 				 *          the numbers of the capturing groups run consecutively from one,
-				 *          and their count is known from the parsing.
+				 *          and their count is known from the parsing. A map would allocate
+				 *          a node for every entry and balance the tree, while a sequence
+				 *          is taken by the number directly, and the room for it is allocated
+				 *          once and outlives the build.
+				 *
+				 *          The absence of an entry is marked by the flag `INVALID_ADDRESS`.
 				 *
 				 * \~
 				 */
@@ -913,8 +927,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * Correspondence of the group numbers to the indices of their nodes of the syntax tree
-				 * @details Held by a dense sequence for the same reasons as the correspondence
-				 *          of the addresses of the bodies.
+				 *
+				 * @details It maintains a contiguous layout based on the same logic
+				 *          as the body address mapping. The absence of an entry
+				 *          is indicated by the `INVALID_NODE` marker.
 				 *
 				 * \~
 				 */
@@ -922,7 +938,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Сберегательный ряд адресов переходов, построением накапливаемых
+				 * @brief Сберегательный ряд адресов переходов, построением накапливаемых
 				 *
 				 * @details Выбор одной из ветвей и повторение с границами копят
 				 *          адреса переходов прежде, чем разрешить их: число
@@ -937,10 +953,19 @@ namespace awh {
 				 *          и узлы, и построения.
 				 *
 				 * \~english
-				 * Scratch sequence of the jump addresses accumulated by the building
+				 * @brief Scratch sequence of the jump addresses accumulated by the building
+				 *
 				 * @details Alternation and bounded repetition accumulate the addresses
 				 *          of the jumps before resolving them: the number of branches
-				 *          and passes is not known in advance.
+				 *          and passes is not known in advance. The sequence was kept
+				 *          for every node, and such nodes in an expression are as many
+				 *          as there are alternations and bounded repetitions.
+				 *
+				 *          The sequence is now common, and the nesting is kept by
+				 *          the mark of the base: the build remembers the length of the
+				 *          sequence at the entry, accumulates on top of it, and truncates
+				 *          the sequence back when the jumps are resolved. The room
+				 *          allocated once outlives both the nodes and the builds.
 				 *
 				 * \~
 				 */
@@ -958,9 +983,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * Scratch trace of the nodes for the check of advancing over the text
-				 * @details The check of the obligatory advancing walks the tree
-				 *          with a trace telling the recursive calls apart, and that trace
-				 *          was introduced for every check.
+				 *
+				 * @details The mandatory-propagation check traverses the tree
+				 *          while maintaining a trace; recursive calls are
+				 *          distinguished, and a fresh trace is initialized for
+				 *          each check. The check is invoked for every unbounded
+				 *          iteration and is unaware of nesting levels—hence,
+				 *          clearing the trace suffices, rather than marking nodes.
 				 *
 				 * \~
 				 */
@@ -968,7 +997,7 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Сберегательный ряд узлов цепочки при построении развёрнутом
+				 * @brief Сберегательный ряд узлов цепочки при построении развёрнутом
 				 *
 				 * @details Развёрнутое выражение сопоставляет последовательность
 				 *          элементов в обратном порядке, отчего узлы цепочки
@@ -981,10 +1010,17 @@ namespace awh {
 				 *          сберегательные ряды разбора и построения.
 				 *
 				 * \~english
-				 * Scratch sequence of the nodes of a chain for the reversed building
+				 * @brief Scratch sequence of the nodes of a chain for the reversed building
+				 *
 				 * @details A reversed expression matches the sequence of the elements
 				 *          in the reverse order, which is why the nodes of a chain
-				 *          are built from the end, while the linking of the nodes leads only forward.
+				 *          are built from the end, while the linking of the nodes leads
+				 *          only forward — the chain has to be accumulated. The sequence
+				 *          was kept for every nesting level.
+				 *
+				 *          The sequence is now common, and the nesting is kept by
+				 *          the mark of the base — in the same way as the other scratch
+				 *          sequences of the parsing and the building live.
 				 *
 				 * \~
 				 */
@@ -1010,6 +1046,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of the modes with which each character class was stored
+				 *
 				 * @details The set is kept for the sake of folding duplicate classes and lives
 				 *          only during the build: it does not enter the storage record, so the
 				 *          layout of that record is not affected by the folding at all.
@@ -1047,6 +1084,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Correspondence of the class numbers of the parser to the class numbers of the program
+				 *
 				 * @details A counted repetition is compiled by copies, and every copy of a
 				 *          character class called the placement, while the placement compared
 				 *          the class with all the ones placed before: the folding of duplicates
@@ -1084,10 +1122,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a regular expression
+				 *
 				 * @details The compilation is performed over the syntax tree obtained by
 				 *          the parsing object. A compilation failure with the «UNSUPPORTED» error code
 				 *          means that the expression belongs to the non-regular subset
 				 *          and requires execution of the expression with backtracking.
+				 *
 				 * @param parser  parsing object of the regular expression
 				 * @param program program of the regular expression being compiled
 				 * @return        result of performing the compilation
@@ -1110,10 +1150,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a reversed regular expression
+				 *
 				 * @details A reversed program matches the expression while walking the text
 				 *          backwards: the sequences of elements and of characters
 				 *          are placed in reverse order. The program is intended for searching for
 				 *          the position where a match begins and performs no capture of groups.
+				 *
 				 * @param parser  parsing object of the regular expression
 				 * @param program program of the regular expression being compiled
 				 * @return        result of performing the compilation
@@ -1135,9 +1177,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a regular expression as a whole
+				 *
 				 * @details The compilation places the instructions of all the syntax constructs,
 				 *          including those not belonging to the regular subset. The resulting
 				 *          program is executed exclusively by the way with backtracking.
+				 *
 				 * @param parser  parsing object of the regular expression
 				 * @param program program of the regular expression being compiled
 				 * @return        result of performing the compilation
@@ -1154,6 +1198,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the compilation error code
+				 *
 				 * @return error code of the last compilation operation
 				 *
 				 * \~
@@ -1169,6 +1214,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a node of the syntax tree
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   node of the syntax tree
 				 *
@@ -1185,6 +1231,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building the program of a regular expression
+				 *
 				 * @param parser  parsing object of the regular expression
 				 * @param program program of the regular expression being built
 				 * @return        result of performing the build
@@ -1201,6 +1248,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a chain of nodes of the syntax tree
+				 *
 				 * @param id index of the first node of the chain in the node arena
 				 * @return   result of performing the compilation
 				 *
@@ -1216,6 +1264,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a node of the syntax tree
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   result of performing the compilation
 				 *
@@ -1231,6 +1280,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a repetition node
+				 *
 				 * @param id index of the repetition node in the node arena
 				 * @return   result of performing the compilation
 				 *
@@ -1250,29 +1300,17 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a repetition of an expression element
+				 *
 				 * @details The method places the instructions of the repetition without taking into account the prohibition
 				 *          of backtracking into the repeated element, which is placed by
 				 *          the method of compiling a repetition node.
+				 *
 				 * @param id index of the repetition node in the node arena
 				 * @return   result of performing the compilation
 				 *
 				 * \~
 				 */
 				bool compileIteration(const node_id_t id) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод компиляции узла выбора одной из ветвей
-				 *
-				 * @param id индекс узла выбора одной из ветвей в арене узлов
-				 * @return   результат выполнения компиляции
-				 *
-				 * \~english
-				 * @brief Method of compiling a node choosing one of the branches
-				 * @param id index of the node choosing one of the branches in the node arena
-				 * @return   result of performing the compilation
-				 *
-				 * \~
-				 */
 				/**
 				 * \~russian
 				 * @brief Метод свёртки ветвей выбора в один класс символов
@@ -1288,6 +1326,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of folding the branches of a choice into a single character class
+				 *
 				 * @details A choice among single characters and classes is the very same class
 				 *          made up by the union of the branches, whereas the generation tells
 				 *          them apart: a choice is compiled into a two-branch jump
@@ -1313,11 +1352,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of folding a repetition over optional parts into a run of characters
+			 *
 			 * @details A repetition of the form «(?:A* B?)*», every part of whose body is optional,
 			 *          accepts exactly the same strings as the run «[A∪B]*»: the body takes any
 			 *          part one at a time, and the outer repetition repeats this without count. The run
 			 *          is passed by a table of bytes in one go, whereas a repetition over a region
 			 *          goes by a frame record on every pass.
+			 *
 			 * @param id index of the repetition node in the arena of nodes
 			 * @return   result of performing the folding of the repetition
 			 *
@@ -1350,6 +1391,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a lookaround node
+				 *
 				 * @param id      index of the lookaround node in the node arena
 				 * @param address address of the placed lookaround instruction
 				 * @return        result of performing the compilation
@@ -1366,6 +1408,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling a conditional expression node
+				 *
 				 * @param id index of the conditional expression node in the node arena
 				 * @return   result of performing the compilation
 				 *
@@ -1388,12 +1431,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the set of the numbers of the same-named groups
+				 *
 				 * @details In the «DUPNAMES» mode one name is declared by several groups,
 				 *          and a reference by name addresses the one of them that performed the capture,
 				 *          whereas a condition by name holds on the capture of any of them. The parsing
 				 *          yields by a name the number of the first declared one, which is not enough for those
 				 *          rules, and the compiler places a chain of checks by
 				 *          the set of the numbers.
+				 *
 				 * @param name index of the name of the group in the name storage
 				 * @return     set of the numbers of the same-named groups or nothing
 				 *
@@ -1412,9 +1457,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of compiling the bodies of the recursively called subexpressions
+				 *
 				 * @details The bodies are placed after the main program as separate sections
 				 *          terminated by a return instruction, after which the addresses of the sections
 				 *          are set in the recursive call instructions.
+				 *
 				 * @return result of performing the compilation
 				 *
 				 * \~
@@ -1429,6 +1476,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of collecting the nodes of the capturing groups of the expression
+				 *
 				 * @param id index of the node the collection starts from
 				 *
 				 * \~
@@ -1442,6 +1490,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of allocating an execution state cell
+				 *
 				 * @return number of the state cell in the set of the group capture positions
 				 *
 				 * \~
@@ -1453,14 +1502,14 @@ namespace awh {
 				 *
 				 * @param offset смещение имени отметки в хранилище имён разбора
 				 * @param length длина имени отметки в октетах
-				 *
-				 * @return номер ячейки положения отметки имени
+				 * @return       номер ячейки положения отметки имени
 				 *
 				 * \~english
 				 * @brief Method of allotting the position cell of a named mark
+				 *
 				 * @param offset offset of the mark name in the parsing name storage
 				 * @param length length of the mark name in octets
-				 * @return number of the position cell of the named mark
+				 * @return       number of the position cell of the named mark
 				 *
 				 * \~
 				 */
@@ -1470,11 +1519,11 @@ namespace awh {
 				 * @brief Метод проверки наличия глагола управления возвратом
 				 *
 				 * @param id индекс узла, с которого начинается обход
-				 *
 				 * @return   результат проверки наличия глагола управления
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of a backtracking control verb
+				 *
 				 * @param id index of the node the traversal starts from
 				 * @return   result of checking the presence of a control verb
 				 *
@@ -1486,11 +1535,11 @@ namespace awh {
 				 * @brief Метод проверки зависимости пустого сопоставления от состояния
 				 *
 				 * @param id индекс узла, с которого начинается обход
-				 *
 				 * @return   результат проверки зависимости от состояния
 				 *
 				 * \~english
 				 * @brief Method of checking whether an empty match depends on the state
+				 *
 				 * @param id index of the node the traversal starts from
 				 * @return   result of checking the dependence on the state
 				 *
@@ -1502,11 +1551,11 @@ namespace awh {
 				 * @brief Метод проверки наличия глагола завершения сопоставления
 				 *
 				 * @param id индекс узла, с которого начинается обход
-				 *
 				 * @return   результат проверки наличия глагола завершения
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of a match-completing verb
+				 *
 				 * @param id index of the node the traversal starts from
 				 * @return   result of checking the presence of a completing verb
 				 *
@@ -1521,15 +1570,16 @@ namespace awh {
 				 * @param length длина имени отметки в октетах
 				 * @param flags  флаги размещаемой инструкции
 				 * @param named  признак открытия имени розыску глаголом переноса
-				 *
-				 * @return адрес размещённой инструкции глагола отметки
+				 * @return       адрес размещённой инструкции глагола отметки
 				 *
 				 * \~english
 				 * @brief Method of emitting the instruction of a named mark verb
+				 *
 				 * @param offset offset of the mark name in the parsing name storage
 				 * @param length length of the mark name in octets
 				 * @param flags  flags of the instruction being emitted
-				 * @return address of the emitted instruction of the mark verb
+				 * @param named  flag of opening the name to be sought by a transfer verb
+				 * @return       address of the emitted instruction of the mark verb
 				 *
 				 * \~
 				 */
@@ -1547,9 +1597,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether the expression carries control verbs of the given kinds
+				 *
 				 * @details The parsing marks the kinds of the verbs whose nodes it creates, and the tree
 				 *          is walked in search of a verb only when the bit of the needed kind is set.
 				 *          Giving up the walk is accounted for by the «WAIVING» path.
+				 *
 				 * @param kinds set of the bits of the kinds of control verbs
 				 * @return      result of checking whether verbs of the given kinds are present
 				 *
@@ -1572,12 +1624,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of the verb of moving to the next branch
+				 *
 				 * @details A branch that does not carry that verb requires no mark of its beginning:
 				 *          the mark is placed only where backtracking into the verb will use it.
 				 *          The node itself and the nodes nested in it are checked, while its
 				 *          neighbours are not: the branches of an alternation are linked by one
 				 *          chain, and walking it would take in all the branches following
 				 *          the checked one.
+				 *
 				 * @param id index of the checked node in the node arena
 				 * @return   result of checking the presence of the verb of moving
 				 *
@@ -1599,6 +1653,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building the preliminary selection of positions
+				 *
 				 * @details The method determines the set of bytes admissible at the beginning of a match
 				 *          and the mandatory literal of a match. The set of bytes is not applied
 				 *          if the expression admits a match of zero length, since
@@ -1622,6 +1677,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of marking the repetitions of a single character
+				 *
 				 * @details The method marks the two-branch jumps whose repetition branch
 				 *          consists of matching a single character and a jump to the beginning of
 				 *          the repetition, with the address of the body of the repetition, thanks to which execution
@@ -1641,6 +1697,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of marking the rows of identical instructions in a row
+				 *
 				 * @details The copies of a counted repetition of a single character follow
 				 *          one another and do not take control between themselves: traversing
 				 *          them in a tight loop equals traversing them one by one, while
@@ -1665,12 +1722,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of prolonging the literals compared by bytes verbatim with a placed character
+				 *
 				 * @details Consecutive single characters matched by a byte verbatim do not
 				 *          take control between themselves and set no backtracking points:
 				 *          comparing them in one trip equals comparing them one by one, while
 				 *          costing one trip through the dispatch of the operation code
 				 *          instead of several. The mark is set when a character is placed
 				 *          rather than by a pass over the program
+				 *
 				 * @param address address of the placed instruction of a single character
 				 *
 				 * \~
@@ -1688,6 +1747,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of marking the chains of a bounded repetition of a single character
+				 *
 				 * @details A bounded repetition is compiled as a chain of jumps with a common
 				 *          exit, carrying no backward jump at all, which is why the mark of
 				 *          an unbounded row does not cover it. The mark yields a traversal of
@@ -1715,6 +1775,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the analysis of the futility of backtracking into a run of the repetition
+				 *
 				 * @details Backtracking into a greedy run enumerates its decreasing lengths, repeating
 				 *          the continuation at every one. That enumeration is futile when a character
 				 *          consumed by the body of the repetition certainly does not suit the
@@ -1723,6 +1784,7 @@ namespace awh {
 				 *          the continuation, stepping over the saving of a position into a capture
 				 *          cell: it consumes no text and gives no refusal. The reference calls this
 				 *          «auto-possessification».
+				 *
 				 * @param body body of the repetition of a single character
 				 * @param exit address of the branch completing the repetition
 				 * @return     result of the analysis of the futility of backtracking into the run
@@ -1741,6 +1803,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of counting the repetitions of any character and checking their nesting
+				 *
 				 * @param id     index of the checked node in the node arena
 				 * @param inside flag of the node being within a repetition
 				 * @param nested flag of a repetition being found within a repetition
@@ -1759,6 +1822,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of recognising an expression walking the text in a single attempt
+				 *
 				 * @details The indication is set for an expression beginning with an unbounded
 				 *          greedy repetition of any character, in the absence of nested
 				 *          repetitions and when the repetition of any character is a single one.
@@ -1788,6 +1852,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking that matching begins with an anchor to the position where the search starts
+				 *
 				 * @details The method confirms the anchor only when matching
 				 *          begins with it on all paths of the expression. Zero-length anchors
 				 *          that do not limit the positions of a match are walked through,
@@ -1797,6 +1862,7 @@ namespace awh {
 				 *          confirmed in the «MULTILINE» mode as well, while the anchor to the beginning
 				 *          of an attempt «\\G» is, on the contrary, rejected, since the position where the search
 				 *          starts is not bound to be the beginning of a line.
+				 *
 				 * @param id    index of the checked node in the node arena
 				 * @param chain flag of walking a chain of nodes of the same nesting level
 				 * @param lines flag of the analysis of the anchor to the beginning of a line
@@ -1817,6 +1883,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of recognising an expression anchored to the position where the search starts
+				 *
 				 * @details The indication is set for an expression beginning with an anchor
 				 *          to the beginning of the text on all paths, as well as for an expression matched
 				 *          in the «ANCHORED» mode. The recognition runs before the analysis of the
@@ -1838,6 +1905,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of recognizing an expression anchored to the beginning of a line
+				 *
 				 * @details The indication serves the walk over the positions of the beginning of an attempt: the positions
 				 *          that are not the beginning of a line are skipped by it at once. An expression
 				 *          anchored to the position where the search starts is also granted this indication —
@@ -1868,6 +1936,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the mandatory advance of a node through the text
+				 *
 				 * @details The method confirms the advance by the structure of the node:
 				 *          a concatenation advances if at least one of its nodes advances,
 				 *          an alternation - if every one of its branches advances, a group -
@@ -1902,11 +1971,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the mandatory advance of a node through the text with a trail of the walk
+				 *
 				 * @details The trail holds the nodes whose check is not yet finished and serves
 				 *          as a guard of a circular walk: a recursive call refers to the expression
 				 *          containing that very call, which is why checking it would come to itself.
 				 *          A node already standing in the trail confirms no advance - saying nothing
 				 *          is safe, whereas confirming wrongly would remove the guard of the advance.
+				 *
 				 * @param id      index of the checked node in the node arena
 				 * @param visited trail of the nodes whose check is not finished
 				 * @return        result of checking the mandatory advance of the node through the text
@@ -1926,6 +1997,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of recognising an expression matched by a literal
+				 *
 				 * @details An expression consisting of a single character sequence
 				 *          is matched by searching for that sequence in the text,
 				 *          bypassing the execution of the program. The method recognises such an expression
@@ -1950,11 +2022,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the leading literal of a match
+				 *
 				 * @details The leading literal is the character sequence every match
 				 *          of the expression begins with. Its presence allows
 				 *          locating the positions of a possible beginning of a match by searching for a
 				 *          sequence rather than by walking the text byte by byte.
 				 *          Anchors to a position have no length and are skipped.
+				 *
 				 * @param id index of the first node of the chain in the node arena
 				 * @return   leading literal of a match of the expression
 				 *
@@ -1976,6 +2050,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of recognizing an expression that starts with an alternation of literals
+				 *
 				 * @details Fills «alts» and «anchor» of the prefilter, if the first node
 				 *          of the expression is an alternation of literals of equal length.
 				 *          Otherwise both parameters are left empty, and codegen stays
@@ -2002,10 +2077,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extending the set of admissible starting bytes
+				 *
 				 * @details The method walks the instructions of the program reachable without matching
 				 *          characters and extends the set with the bytes admissible at the beginning of
 				 *          a match. The checks of the anchors to a position in the text are considered
 				 *          satisfiable, thanks to which the set remains a superset.
+				 *
 				 * @param address address of the instruction the walk starts from
 				 * @return        result of the applicability of the set of admissible bytes
 				 *
@@ -2021,6 +2098,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mandatory literal of a chain of nodes
+				 *
 				 * @param id index of the first node of the chain in the node arena
 				 * @return   mandatory literal of a match of the chain of nodes
 				 *
@@ -2046,6 +2124,15 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mandatory literal of a chain of nodes with its distance
+				 *
+				 * @details The distance is the greatest number of bytes that can
+				 *          precede the literal inside a match. It allows the literal
+				 *          to be used positionally: a match must contain it, so
+				 *          the beginning of a match cannot lie beyond the distance
+				 *          from the nearest occurrence of the literal. The value
+				 *          «string_view::npos» means an unbounded distance, with which
+				 *          the positional use of the literal is not applicable.
+				 *
 				 * @param id       index of the first node of the chain in the node arena
 				 * @param distance the greatest distance of the literal from the beginning of a match
 				 * @return         mandatory literal of a match of the chain of nodes
@@ -2103,6 +2190,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the greatest matching length of a node
+				 *
+				 * @details The length is yielded in octets of the text. The value
+				 *          «string_view::npos» means an unbounded length: it is
+				 *          given by a repetition without an upper bound, a backreference,
+				 *          a recursive call, and a conditional expression.
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   the greatest matching length of the node in bytes
 				 *
@@ -2118,6 +2211,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the greatest matching length of a chain of nodes
+				 *
 				 * @param id index of the first node of the chain in the node arena
 				 * @return   the greatest matching length of the chain of nodes in bytes
 				 *
@@ -2133,6 +2227,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mandatory literal of a node
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   mandatory literal of a match of the node
 				 *
@@ -2149,6 +2244,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mandatory literal of a node with its distance
+				 *
 				 * @param id       index of the node in the node arena
 				 * @param distance the greatest distance of the literal from the beginning of the node match
 				 * @return         mandatory literal of a match of the node
@@ -2201,9 +2297,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the literal matched by a node as a whole
+				 *
 				 * @details The literal is obtained for the nodes of a single character and of a
 				 *          character sequence that are not matched case-insensitively
 				 *          and are representable by the characters of the ASCII set.
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   literal matched by the node as a whole
 				 *
@@ -2220,6 +2318,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of appending the literal matched by the node as a whole
+				 *
 				 * @param id     index of the node in the node arena
 				 * @param result literal of the match being appended
 				 * @return       result of the node being matched by a literal
@@ -2243,11 +2342,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of measuring the literal matched by a node as a whole
+				 *
 				 * @details The conditions are those of appending the literal: a node of a single
 				 *          character or of a character sequence, matched case-sensitively and
 				 *          representable by the characters of the ASCII set. The literal is not
 				 *          formed: the analysis of the mandatory literal compares literals by length
 				 *          and forms the string only for the winning one.
+				 *
 				 * @param id     index of the node in the node arena
 				 * @param length length of the literal of the node in bytes
 				 * @return       result of the node being matched by a literal
@@ -2269,10 +2370,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of forming a literal from its description by nodes
+				 *
 				 * @details The nodes of the literal are walked along the chain from the first one, and
 				 *          the literal of each is appended to the one being formed. A walked node is
 				 *          accounted by the «SPELLING» path: the analysis of the literal forms the
 				 *          string once, for the winning literal, and as many nodes are walked as it has.
+				 *
 				 * @param piece  description of the literal by the nodes of the syntax tree
 				 * @param result literal of the match being appended
 				 *
@@ -2293,8 +2396,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a program instruction
+				 *
 				 * @details The inlining of the placing is set explicitly per compiler - see
 				 *          «AWH_REGEX_PLACING» and the section «Deliberate decisions».
+				 *
 				 * @param type  operation code of the placed instruction
 				 * @param flags set of compilation modes of the instruction
 				 * @return      address of the placed program instruction
@@ -2311,6 +2416,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of placing a character class in the program
+				 *
 				 * @param value character class to place in the program
 				 * @return      index of the character class in the class storage
 				 *
@@ -2326,6 +2432,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the next instruction to place
+				 *
 				 * @return address of the next program instruction to place
 				 *
 				 * \~
@@ -2335,7 +2442,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -2347,13 +2453,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~Compiler() noexcept {}
+				~Compiler() noexcept;
 		} compiler_t;
 	};
 };

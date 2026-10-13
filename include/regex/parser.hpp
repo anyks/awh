@@ -72,7 +72,9 @@
  * @brief Header file of the syntax parsing of regular expressions — the Parser class,
  *        which converts the text of a regular expression of the PCRE syntax into a syntax tree
  *        placed in the node arena, without allocating memory for every node and without throwing exceptions
+ *
  * @section parser_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -154,7 +156,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -210,6 +211,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the syntax parsing of a regular expression
+		 *
 		 * @details The class parses the text of a regular expression of the PCRE syntax
 		 *          and builds a syntax tree in the node arena. The nodes of the tree are linked
 		 *          by indices, the texts of the character classes, of the group names and of the character
@@ -230,6 +232,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Deferred reference to a named group
+				 *
 				 * @details A reference to a named group may occur in the text of
 				 *          a regular expression before the declaration of the group itself, therefore
 				 *          resolution of such references is performed after parsing has finished.
@@ -247,13 +250,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Deferred() noexcept : node(INVALID_NODE), name(0), offset(0) {}
+					Deferred() noexcept;
 				} deferred_t;
 			private:
 				// Текст разбираемого регулярного выражения
@@ -284,15 +286,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * Limits of the matching steps and of the call depth set by the expression
+				 *
 				 * @details The limits are set by the «(*LIMIT_MATCH=N)» and «(*LIMIT_DEPTH=N)»
 				 *          options at the start of an expression, whereas zero means
 				 *          that the expression sets no limit of its own at all.
 				 *
 				 * \~
 				 */
-				uint32_t _stepLimit;
-				uint32_t _depthLimit;
-				uint32_t _heapLimit;
+				uint32_t _stepLimit, _depthLimit, _heapLimit;
 			private:
 				/**
 				 * \~russian
@@ -305,6 +306,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Newline convention and the coverage of the «\\R» sequence
+				 *
 				 * @details The convention is set by an option of the «(*CRLF)» kind at the start
 				 *          of an expression and governs the dot and the anchors, whereas the coverage of «\\R»
 				 *          is governed by the «(*BSR_ANYCRLF)» and «(*BSR_UNICODE)» options
@@ -313,6 +315,7 @@ namespace awh {
 				 * \~
 				 */
 				newline_t _convention;
+				// Признак включения ограничений разбора
 				bool _restricted;
 			private:
 				/**
@@ -325,6 +328,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Storage of the names of the marks of the control verbs
+				 *
 				 * @details The names of all the marks of an expression lie in a contiguous set
 				 *          of octets, whereas the node of a verb refers to a span of it
 				 *          by an offset and a length, along with the character classes.
@@ -353,14 +357,14 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Сберегательный ряд составов узлов, разбором накапливаемых
+				 * @brief Сберегательный ряд составов узлов, разбором накапливаемых
 				 *
 				 * @details Разбор последовательности и разбор выбора ветвей
 				 *          накапливают состав узла прежде, чем связать его:
 				 *          число элементов заранее не известно. Ряд для того
 				 *          заводился на каждый вызов, а вызовы эти приходятся
 				 *          на всякую группу и всякую ветвь выражения - и
-                 *          всякий раз размещался заново.
+				 *          всякий раз размещался заново.
 				 *
 				 *          Ряд ныне общий, а вложенность держится отметкою
 				 *          основания: вызов помнит длину ряда при входе,
@@ -369,10 +373,20 @@ namespace awh {
 				 *          переживает и вызовы, и разборы.
 				 *
 				 * \~english
-				 * Scratch sequence of the node contents accumulated by the parsing
+				 * @brief Scratch sequence of the node contents accumulated by the parsing
+				 *
 				 * @details Parsing a concatenation and parsing an alternation
 				 *          accumulate the content of a node before linking it:
-				 *          the number of elements is not known in advance.
+				 *          the number of elements is not known in advance. The sequence
+				 *          was kept for every call, and the calls occur for every group
+				 *          and every branch of the expression — and each time it was
+				 *          allocated anew.
+				 *
+				 *          The sequence is now common, and the nesting is kept by
+				 *          the mark of the base: the call remembers the length of the
+				 *          sequence at the entry, accumulates on top of it, and truncates
+				 *          the sequence back when the content is linked. The room
+				 *          allocated once outlives both the calls and the parsings.
 				 *
 				 * \~
 				 */
@@ -390,6 +404,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Storage of the character classes
+				 *
 				 * @details The storage outlives parsings: a reset zeroes only the count
 				 *          of the classes, while the records with their sequences stay
 				 *          in place, and a class of the next parsing is formed in a former
@@ -411,16 +426,19 @@ namespace awh {
 				 *          вида. Разряд выставляет заведение узла, и разрешение ссылок
 				 *          обходит узлы дерева в поисках условий, ссылок и вызовов по
 				 *          номеру лишь тогда, когда узел такого вида разбором заводился.
+				 *
 				 * @note Поле лежит в зазоре за счётом классов намеренно: размер объекта
 				 *       и смещения прочих полей прежние - смотрите поле «_verbs».
 				 *
 				 * \~english
 				 * @brief Set of the kinds of nodes created by the parsing
+				 *
 				 * @details A bit of the set answers a kind of node: the number of the bit is
 				 *          the value of the kind. Creating a node sets the bit, and the
 				 *          resolution of references walks the nodes of the tree in search of
 				 *          conditions, references and calls by number only when a node of such
 				 *          a kind was created by the parsing.
+				 *
 				 * @note The field lies in the gap after the count of the classes deliberately:
 				 *       the size of the object and the offsets of the other fields stay as
 				 *       before - see the «_verbs» field.
@@ -451,6 +469,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Flag of the quantifier binding break by inline options
+				 *
 				 * @details Inline character options match nothing and do not form
 				 *          an item of the expression, yet they break the binding
 				 *          of a repetition quantifier to the preceding item: a quantifier
@@ -472,16 +491,19 @@ namespace awh {
 				 *          разбор различает с восьмеричной последовательностью по числу
 				 *          групп. Проход ведётся по требованию, первою такой ссылкой,
 				 *          и флаг отмечает, что число групп уже снято.
+				 *
 				 * @note Поля прохода лежат в зазоре за признаком разрыва связи квантора
 				 *       намеренно: размер объекта и смещения прочих полей прежние.
 				 *
 				 * \~english
 				 * @brief Flag of the performed preliminary pass
+				 *
 				 * @details The preliminary pass counts the capturing groups of the expression,
 				 *          while only a reference with a number from ten needs their number:
 				 *          the parsing tells it apart from an octal sequence by the number of
 				 *          groups. The pass is performed on demand, by the first such reference,
 				 *          and the flag marks that the number of groups is already taken.
+				 *
 				 * @note The fields of the pass lie in the gap after the flag of the quantifier
 				 *       binding break deliberately: the size of the object and the offsets of
 				 *       the other fields stay as before.
@@ -507,6 +529,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of lookbehinds whose length is given by a subroutine call
+				 *
 				 * @details The length of a call is taken as the length of the called group,
 				 *          and the group may be declared later than the lookbehind: the length
 				 *          of such lookbehinds is computed after parsing completes, on a par with
@@ -543,11 +566,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of the kinds of the control verbs created by the parsing
+				 *
 				 * @details A bit of the set answers a kind of verb: the number of the bit is
 				 *          the value of the kind. The parsing sets the bit when it creates
 				 *          the node of a verb, and the compiler decides by the set whether
 				 *          to search for a verb by walking the tree: an expression that has
 				 *          created no node of a verb of the needed kind needs no walk at all.
+				 *
 				 * @note The field lies in the gap after the flag of length computation
 				 *       deliberately: the size of the object and the offsets of the other fields
 				 *       stay as before. Inserted after the storage of names, it shifted the
@@ -577,9 +602,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a regular expression
+				 *
 				 * @details The result of the previous parsing is reset before the work begins.
 				 *          On a parsing failure the state of the object keeps the error code and
 				 *          the offset at which the error was found.
+				 *
 				 * @param pattern text of the regular expression to parse
 				 * @param flags   set of compilation modes of the regular expression
 				 * @return        result of performing the parsing
@@ -607,6 +634,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the parsing error code
+				 *
 				 * @return error code of the last parsing operation
 				 *
 				 * \~
@@ -620,6 +648,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the offset of the parsing error
+				 *
 				 * @return offset of the error in the text of the regular expression
 				 *
 				 * \~
@@ -633,6 +662,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the text of the parsing error
+				 *
 				 * @return text of the error of the last parsing operation
 				 *
 				 * \~
@@ -651,10 +681,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of interpreting an error code as text
+				 *
 				 * @details The interpretation is provided separately from message():
 				 *          the code of a matching error is held by the engine rather
 				 *          than by the parser, and it is to be interpreted as text
 				 *          in the same order as the code of the parsing.
+				 *
 				 * @param error interpreted error code
 				 * @return      text of the interpreted error code
 				 *
@@ -670,6 +702,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the index of the root node of the syntax tree
+				 *
 				 * @return index of the root node of the syntax tree
 				 *
 				 * \~
@@ -683,6 +716,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of capturing groups
+				 *
 				 * @return number of capturing groups of the regular expression
 				 *
 				 * \~
@@ -699,8 +733,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of character classes
+				 *
 				 * @details Every node of a character class creates its own record in the
 				 *          class storage, which is why the number of the record answers the node.
+				 *
 				 * @return number of character classes in the class storage
 				 *
 				 * \~
@@ -720,11 +756,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the set of the kinds of the control verbs
+				 *
 				 * @details A bit of the set is set when the parsing creates the node of a verb
 				 *          of the kind answering the bit: the number of the bit is the value of
 				 *          the kind. The set tells about the created nodes rather than the
 				 *          reachable ones: a set bit does not promise a node in the tree, whereas
 				 *          a clear bit surely promises that there is no node of that kind at all.
+				 *
 				 * @return set of the kinds of the control verbs created by the parsing
 				 *
 				 * \~
@@ -738,6 +776,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limit of the matching steps of the expression
+				 *
 				 * @return limit of the matching steps or zero if it is absent
 				 *
 				 * \~
@@ -751,6 +790,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limit of the recursive call depth of the expression
+				 *
 				 * @return limit of the recursive call depth or zero if it is absent
 				 *
 				 * \~
@@ -764,6 +804,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the limit of the matching memory of the expression
+				 *
 				 * @return limit of the memory in kibibytes or the largest value of the type if it is absent
 				 *
 				 * \~
@@ -777,6 +818,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the newline convention of the expression
+				 *
 				 * @return newline convention of the expression
 				 *
 				 * \~
@@ -790,6 +832,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the storage of the names of the marks of the control verbs
+				 *
 				 * @return storage of the names of the marks of the control verbs
 				 *
 				 * \~
@@ -807,9 +850,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the original set of compilation modes
+				 *
 				 * @details The set of modes matches the one passed at parsing and does not
 				 *          take into account the inline options of the expression, whose effect
 				 *          is kept in every node of the syntax tree separately.
+				 *
 				 * @return original set of compilation modes of the regular expression
 				 *
 				 * \~
@@ -827,8 +872,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the possibility of an empty match of a node
+				 *
 				 * @details A node admits an empty match if the smallest length
 				 *          of the sequence it matches equals zero.
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   result of checking the possibility of an empty match
 				 *
@@ -845,6 +892,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a node of the syntax tree
+				 *
 				 * @param id index of the node in the node arena
 				 * @return   node of the syntax tree
 				 *
@@ -859,6 +907,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the node arena of the syntax tree
+				 *
 				 * @return node arena of the syntax tree
 				 *
 				 * \~
@@ -874,6 +923,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a character class
+				 *
 				 * @param index index of the character class in the class storage
 				 * @return      character class of the regular expression
 				 *
@@ -889,6 +939,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the name of a named group
+				 *
 				 * @param index index of the name in the name storage
 				 * @return      name of the named group
 				 *
@@ -907,9 +958,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the mapping of the group names to their numbers
+				 *
 				 * @details The mapping holds the names of all the named groups of the expression.
 				 *          In the «DUPNAMES» mode one name is declared by several groups,
 				 *          therefore a name corresponds to a set of their numbers in declaration order.
+				 *
 				 * @return mapping of the names of the named groups to the sets of their numbers
 				 *
 				 * \~
@@ -925,6 +978,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the character sequence of a node
+				 *
 				 * @param offset offset of the beginning of the sequence in the string storage
 				 * @param length length of the sequence in code point values
 				 * @return       address of the beginning of the sequence of code point values
@@ -941,6 +995,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing an expression choosing one of the branches
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -954,6 +1009,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a sequence of expression elements
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -967,6 +1023,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing an expression element with a repetition quantifier
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -980,6 +1037,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a single expression element
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -993,6 +1051,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a group of a regular expression
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -1006,6 +1065,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a character class
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -1023,9 +1083,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a conditional expression
+				 *
 				 * @details The parsing position is set at the parenthesis opening the condition.
 				 *          The method parses the condition, both branches of the conditional expression and the closing
 				 *          parenthesis of the conditional expression as a whole.
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -1039,6 +1101,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing an escaped sequence outside a character class
+				 *
 				 * @return index of the built node of the syntax tree
 				 *
 				 * \~
@@ -1057,8 +1120,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the repetition quantifiers of an expression element
+				 *
 				 * @details The method applies to the passed node all the repetition quantifiers
 				 *          that follow it. If there is no quantifier, the node is returned unchanged.
+				 *
 				 * @param node index of the node the repetition quantifier is applied to
 				 * @return     index of the built node of the syntax tree
 				 *
@@ -1072,17 +1137,19 @@ namespace awh {
 				 * @details Метод разбирает последовательность букв опций вида «(?imsx-imsx»
 				 *          и формирует набор устанавливаемых и снимаемых режимов компиляции.
 				 *
-				 * @param enable набор устанавливаемых режимов компиляции
+				 * @param enable  набор устанавливаемых режимов компиляции
 				 * @param disable набор снимаемых режимов компиляции
-				 * @return       результат выполнения разбора
+				 * @return        результат выполнения разбора
 				 *
 				 * \~english
 				 * @brief Method of parsing the inline options of a regular expression
+				 *
 				 * @details The method parses a sequence of option letters of the «(?imsx-imsx» form
 				 *          and builds the set of the compilation modes being set and cleared.
-				 * @param enable set of the compilation modes being set
+				 *
+				 * @param enable  set of the compilation modes being set
 				 * @param disable set of the compilation modes being cleared
-				 * @return       result of performing the parsing
+				 * @return        result of performing the parsing
 				 *
 				 * \~
 				 */
@@ -1098,6 +1165,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the name of a named group
+				 *
 				 * @param terminator character terminating the group name
 				 * @param index      index of the name in the name storage
 				 * @return           result of performing the parsing
@@ -1118,8 +1186,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a Unicode property
+				 *
 				 * @details The method parses a sequence of the «\p{Lu}» or «\pL» form
 				 *          and adds the corresponding property to the character class.
+				 *
 				 * @param negative property negation flag
 				 * @param result   character class to add the property to
 				 * @return         result of performing the parsing
@@ -1139,8 +1209,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing a POSIX character class
+				 *
 				 * @details The method parses a sequence of the «[:alpha:]» form
 				 *          and adds the corresponding ranges to the character class.
+				 *
 				 * @param result character class to add the ranges to
 				 * @return       result of performing the parsing
 				 *
@@ -1168,6 +1240,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing an escaped sequence inside a character class
+				 *
 				 * @details The method parses an escaped sequence and either returns
 				 *          the code point value of a single character or adds the ranges
 				 *          of an abbreviated character class to the class being built.
@@ -1175,6 +1248,7 @@ namespace awh {
 				 *          at an edge of a range: its last character serves as the lower
 				 *          edge and its first one as the upper edge, whereas the rest of
 				 *          the characters enter the class along with the others.
+				 *
 				 * @param result character class to add the ranges to
 				 * @param code   code point value of the parsed single character
 				 * @param single flag of parsing a single character
@@ -1194,6 +1268,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a node of the syntax tree
+				 *
 				 * @param type type of the node of the syntax tree to create
 				 * @return     index of the created node in the node arena
 				 *
@@ -1209,31 +1284,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a character sequence node
+				 *
 				 * @param codes set of the code point values of the characters of the sequence
 				 * @return      index of the created node in the node arena
 				 *
 				 * \~
 				 */
 				node_id_t makeString(const vector <uint32_t> & codes) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод создания узла класса символов
-				 *
-				 * @details Набор диапазонов класса символов приводится к нормальному виду
-				 *          перед размещением класса в хранилище классов.
-				 *
-				 * @param value класс символов для размещения в хранилище классов
-				 * @return      индекс созданного узла в арене узлов
-				 *
-				 * \~english
-				 * @brief Method of creating a character class node
-				 * @details The set of ranges of the character class is brought to the normal form
-				 *          before the class is placed in the class storage.
-				 * @param value character class to place in the class storage
-				 * @return      index of the created node in the node arena
-				 *
-				 * \~
-				 */
 				/**
 				 * \~russian
 				 * @brief Метод создания узла любого символа с учётом соглашения
@@ -1251,6 +1308,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a node of any character with regard to the convention
+				 *
 				 * @details Outside the «DOTALL» mode the dot matches every character
 				 *          except those that the newline convention deems an end
 				 *          of a line. The node of any character knows the line feed alone,
@@ -1258,6 +1316,7 @@ namespace awh {
 				 *          class — a construct already known to every execution path. The convention
 				 *          of the carriage return pair knows no single-character terminators at all,
 				 *          hence the dot under it matches every character.
+				 *
 				 * @return index of the created node in the node arena
 				 *
 				 * \~
@@ -1280,6 +1339,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting a record for a character class being formed
+				 *
 				 * @details The record is taken from the class storage right after the last
 				 *          created one and is cleared: its sequences are empty, while their
 				 *          room, allotted by a former parsing, is kept. The record is created
@@ -1288,6 +1348,7 @@ namespace awh {
 				 *          cleared again by the next getting. One class is formed at a time:
 				 *          the getting may extend the storage, and it invalidates the references
 				 *          to the other records.
+				 *
 				 * @return record for the character class being formed
 				 *
 				 * \~
@@ -1307,10 +1368,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a node of a character class
+				 *
 				 * @details The class is brought to the normal form and created in the class
 				 *          storage. A class formed in a record got by the «acquireClass» method
 				 *          is created by the count, without a transfer; a class assembled
 				 *          elsewhere is transferred into a record by ownership.
+				 *
 				 * @param value character class created in the class storage
 				 * @return      index of the created node in the node arena
 				 *
@@ -1330,8 +1393,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a node from a set of child nodes
+				 *
 				 * @details If the set of child nodes is empty, a node of an empty expression is created.
 				 *          If the set consists of a single node, the node is returned without a wrapper.
+				 *
 				 * @param type  type of the node of the syntax tree to create
 				 * @param items set of the indices of the child nodes in the node arena
 				 * @return      index of the created node in the node arena
@@ -1344,11 +1409,11 @@ namespace awh {
 				 * @brief Метод проверки наличия вызова подпрограммы либо ссылки на захват
 				 *
 				 * @param id индекс узла, с которого начинается обход
-				 *
 				 * @return   результат проверки наличия вызова либо ссылки
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of a subroutine call or a backreference
+				 *
 				 * @param id index of the node the traversal starts from
 				 * @return   result of checking the presence of a subroutine call
 				 *
@@ -1360,11 +1425,11 @@ namespace awh {
 				 * @brief Метод поиска узла захватывающей группы по её номеру
 				 *
 				 * @param number номер разыскиваемой захватывающей группы
-				 *
 				 * @return       индекс узла захватывающей группы
 				 *
 				 * \~english
 				 * @brief Method of searching for a capturing group node by its number
+				 *
 				 * @param number number of the capturing group being searched for
 				 * @return       index of the capturing group node
 				 *
@@ -1385,8 +1450,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a recursive call node
+				 *
 				 * @details If the call is given by a group name, the number of the called group
 				 *          is resolved after parsing of the regular expression has finished.
+				 *
 				 * @param number number of the called group or zero for a call of the whole expression
 				 * @param index  index of the name of the called group in the name storage
 				 * @param offset offset of the call in the text of the regular expression
@@ -1408,8 +1475,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of creating a named group reference node
+				 *
 				 * @details The number of the group is resolved after parsing of
 				 *          the regular expression has finished by the method resolving the deferred references.
+				 *
 				 * @param index  index of the group name in the name storage
 				 * @param offset offset of the reference in the text of the regular expression
 				 * @return       index of the created node in the node arena
@@ -1426,6 +1495,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding a child node of the syntax tree
+				 *
 				 * @param parent index of the parent node in the node arena
 				 * @param child  index of the added child node in the node arena
 				 *
@@ -1445,8 +1515,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the code point value of the character at the current position
+				 *
 				 * @details In the «UTF» mode the method parses the whole UTF-8 sequence,
 				 *          otherwise it returns the code point value of a single byte.
+				 *
 				 * @param code code point value of the obtained character
 				 * @return     result of getting the code point value of the character
 				 *
@@ -1462,6 +1534,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the integer at the current position
+				 *
 				 * @param result the obtained value of the integer
 				 * @return       result of getting the integer
 				 *
@@ -1482,10 +1555,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the code point value of an escaped character
+				 *
 				 * @details The method parses the escaped sequences denoting
 				 *          a single character: control characters, hexadecimal,
 				 *          octal and control sequences of the «\cX» form.
 				 *          The parsing position is set at the letter of the sequence.
+				 *
 				 * @param code code point value of the parsed character
 				 * @return     result of getting the code point value of the character
 				 *
@@ -1505,9 +1580,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the beginning of a repetition quantifier
+				 *
 				 * @details The method determines whether the sequence starting
 				 *          at the specified position forms a valid repetition quantifier in curly
 				 *          braces. The parsing position is not changed by the check.
+				 *
 				 * @param pos position of the checked sequence
 				 * @return    result of checking the beginning of a repetition quantifier
 				 *
@@ -1527,6 +1604,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Intermediary of skipping whitespace characters and comments
+				 *
 				 * @details The skipping is performed only in the «EXTENDED» mode, in which
 				 *          the whitespace characters of the expression are ignored, and the «#» character
 				 *          begins a comment up to the end of the line. The mode is checked at
@@ -1559,8 +1637,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of bringing a character class to the normal form
+				 *
 				 * @details The ranges of the character class are ordered by the lower bound,
 				 *          overlapping and adjacent ranges are merged.
+				 *
 				 * @param value character class to bring to the normal form
 				 *
 				 * \~
@@ -1579,8 +1659,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of adding an abbreviated character class
+				 *
 				 * @details The method adds to the character class the ranges of the abbreviated classes
 				 *          denoted by the sequences of the «\d», «\w», «\s», «\h» and «\v» form.
+				 *
 				 * @param letter letter of the abbreviated character class
 				 * @param result character class to add the ranges to
 				 * @return       result of adding the abbreviated character class
@@ -1603,11 +1685,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the preliminary pass over the regular expression
+				 *
 				 * @details The pass determines the total number of capturing groups of the expression.
 				 *          The number of groups is required to tell apart the references to captured
 				 *          groups and the octal escaped sequences. The pass is performed on demand -
 				 *          by the «total» method - and starts from the position after the leading
 				 *          directives of the expression.
+				 *
 				 * @return result of performing the preliminary pass
 				 *
 				 * \~
@@ -1626,9 +1710,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of extracting the total number of capturing groups of the expression
+				 *
 				 * @details The number is taken by the preliminary pass at the first request and
 				 *          remembered: only a reference with a number from ten needs it, while
 				 *          the pass over the whole expression used to run for every parsing.
+				 *
 				 * @return total number of capturing groups of the expression
 				 *
 				 * \~
@@ -1648,10 +1734,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the need to walk the nodes of a kind when resolving references
+				 *
 				 * @details The resolution of references walks the nodes of the tree in search of
 				 *          conditions, references and calls by number, and a walk is needed only
 				 *          when a node of such a kind was created by the parsing. Every needed walk
 				 *          is marked by the «RESOLVING» execution path.
+				 *
 				 * @param type kind of the nodes of the syntax tree
 				 * @return     result of checking the need to walk the nodes
 				 *
@@ -1670,6 +1758,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of parsing the start-of-pattern options of a regular expression
+				 *
 				 * @details The options of the «(*UTF)» kind are placed at the start of an expression
 				 *          and govern the modes of its compilation. The ones parsed are those
 				 *          that map onto the compilation flags declared by the module,
@@ -1694,10 +1783,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of computing the length of the sequence matched by the nodes
+				 *
 				 * @details The method computes the smallest and the largest length of the sequence
 				 *          matched by a chain of nodes of the same nesting level. The largest
 				 *          length takes the «UNBOUNDED» value if the sequence
 				 *          is not bounded from above.
+				 *
 				 * @param id  index of the first node of the chain in the node arena
 				 * @param min smallest length of the matched sequence
 				 * @param max largest length of the matched sequence
@@ -1719,9 +1810,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of computing the length of the sequence matched by a node
+				 *
 				 * @details The method computes the length of the sequence matched by
 				 *          a single node, without taking into account the nodes that follow it
 				 *          at the same nesting level.
+				 *
 				 * @param id  index of the node in the node arena
 				 * @param min smallest length of the matched sequence
 				 * @param max largest length of the matched sequence
@@ -1738,6 +1831,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of resolving the deferred references to named groups
+				 *
 				 * @return result of resolving the deferred references
 				 *
 				 * \~
@@ -1754,6 +1848,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting a parsing error
+				 *
 				 * @param error parse error code of the regular expression
 				 * @param pos   offset of the error in the text of the regular expression
 				 * @return      index of a missing node of the syntax tree
@@ -1766,7 +1861,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -1777,13 +1871,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~Parser() noexcept {}
+				~Parser() noexcept;
 		} parser_t;
 	};
 };

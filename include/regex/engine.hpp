@@ -148,7 +148,9 @@
  * @brief Header file of the regular expression engine — the Engine class, which unites parsing,
  *        compilation of the forward and the reversed programs, deterministic execution and execution
  *        without backtracking, and chooses the way of matching by the properties of the expression and of the text
+ *
  * @section engine_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -299,7 +301,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -310,7 +311,6 @@ namespace awh {
 	 * Используем стандартное пространство имён
 	 */
 	using namespace std;
-
 
 	/**
 	 * \~russian
@@ -332,6 +332,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Smallest length of a stretch of the text justifying the search for the beginning of a match
+		 *
 		 * @details The search for the position where a match begins is performed by a backward pass
 		 *          over the text and is justified only when execution
 		 *          without backtracking would cost more.
@@ -350,6 +351,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Ratio of the cost of execution without backtracking to the deterministic one
+		 *
 		 * @details The ratio was obtained by measurement and determines how many times longer
 		 *          a stretch of the text may be walked by deterministic
 		 *          execution instead of execution without backtracking.
@@ -368,6 +370,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest length of a stretch of the text justifying execution with backtracking
+		 *
 		 * @details Execution with backtracking establishes the boundaries of a match cheaper than
 		 *          execution without backtracking, but its time grows with the length of the text
 		 *          exponentially, therefore the length of the stretch is bounded.
@@ -391,6 +394,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest length of the text at which the pass of the deterministic execution is superfluous
+		 *
 		 * @details The deterministic execution establishes the PRESENCE of a match
 		 *          and the position of its end, while the boundaries are established by the execution
 		 *          with backtracking, which walks the text anew: on a long text the first
@@ -424,6 +428,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest number of attempts of the probe by execution with backtracking
+		 *
 		 * @details The probe tries the execution with backtracking before the pass
 		 *          of the deterministic execution, and its price is bound to remain
 		 *          a small share of that pass: a text exceeding the length threshold
@@ -453,6 +458,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Ratio of the admissible amount of work of execution with backtracking to its estimate
+		 *
 		 * @details The amount of work of execution with backtracking that does not resort to enumeration
 		 *          is proportional to the product of the length of the stretch of the text by the size of the program.
 		 *          The ratio sets the margin, on exhausting which the matching
@@ -473,6 +479,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Compiled regular expression
+		 *
 		 * @details The expression is built by the engine once and is not changed after building,
 		 *          thanks to which it is shared by several threads of execution without
 		 *          coordinating the access. The working state of the matching does not belong to the expression
@@ -494,6 +501,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Mapping of the names of the named groups to the sets of their numbers
+			 *
 			 * @details In the «DUPNAMES» mode one name is declared by several groups,
 			 *          therefore a name corresponds to a set of their numbers in declaration order.
 			 *
@@ -512,6 +520,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Flag of executing the expression with backtracking
+			 *
 			 * @details The flag is set if the expression holds constructs outside
 			 *          the regular subset of the syntax, unreachable by execution
 			 *          without backtracking: references to captured groups, recursive calls,
@@ -537,6 +546,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Flag of the applicability of deterministic execution to the forward program
+			 *
 			 * @details The applicability is a pure function of the program, and formerly it was asked
 			 *          on every match - by a walk over all the classes in search of Unicode
 			 *          properties. The flag is computed by the build and by the storage:
@@ -558,6 +568,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * Matcher of the expression in the form of generated machine code
+			 *
 			 * @details The matcher is generated by the build in the «JIT» mode if
 			 *          the expression belongs to the subset that receives code generation.
 			 *          Its ownership is shared: the expression is copied by the consumers
@@ -571,13 +582,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * \~
 			 */
-			Expression() noexcept : backtracking(false), ready(false), reversible(false), automatic(false) {}
+			Expression() noexcept;
 		} expression_t;
 
 		/**
@@ -593,6 +603,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the regular expression engine
+		 *
 		 * @details The class unites the ways of matching and chooses between them.
 		 *          The presence of a match is determined by deterministic execution.
 		 *          The boundaries of the captured groups are established by execution without backtracking,
@@ -650,12 +661,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the probe of matching by execution with backtracking
+				 *
 				 * @details The probe tries the execution with backtracking before the pass
 				 *          of the deterministic execution and removes it when
 				 *          the match lies close to the beginning of the search. The price of the probe
 				 *          is bounded by two limits — the number of attempts and the amount
 				 *          of work — and the arguments in favour of both are given at the definition
 				 *          of the method.
+				 *
 				 * @param expression matched regular expression
 				 * @param text       text to match
 				 * @param start      position to start the search for a match from
@@ -687,6 +700,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Set of boundaries discarded by the check of the presence of a match
+				 *
 				 * @details The check of the presence of a match yields no capture boundaries,
 				 *          but execution writes them, and a set for them is required by
 				 *          every call. The set is introduced as a field rather than as a variable of
@@ -713,6 +727,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * Name of the mark left by the last match
+				 *
 				 * @details The name is yielded by the «(*MARK:name)» verb that marked the path
 				 *          which produced the match. A match that passed no mark verbs
 				 *          leaves the name empty.
@@ -735,9 +750,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building a regular expression
+				 *
 				 * @details A build failure with the «UNSUPPORTED» error code means that the expression
 				 *          belongs to the non-regular subset of the syntax and requires
 				 *          execution of the expression with backtracking.
+				 *
 				 * @param pattern text of the regular expression
 				 * @param flags   set of compilation modes of the regular expression
 				 * @return        result of performing the build
@@ -760,9 +777,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building a regular expression into a separate expression
+				 *
 				 * @details The built expression does not belong to the engine and is not changed
 				 *          after building, thanks to which it is executed by several
 				 *          engines at once.
+				 *
 				 * @param pattern    text of the regular expression
 				 * @param flags      set of compilation modes of the regular expression
 				 * @param expression regular expression being built
@@ -782,6 +801,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of a match in the text
+				 *
 				 * @param text  text to match
 				 * @param start position to start the search for a match from
 				 * @return      result of checking the presence of a match
@@ -800,6 +820,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against the text
+				 *
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
 				 * @param captures set of the boundaries of the match and of the captured groups
@@ -820,6 +841,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the presence of a match of a separate expression
+				 *
 				 * @param expression regular expression being executed
 				 * @param text       text to match
 				 * @param start      position to start the search for a match from
@@ -840,6 +862,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a separate expression against the text
+				 *
 				 * @param expression regular expression being executed
 				 * @param text       text to match
 				 * @param start      position to start the search for a match from
@@ -858,6 +881,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the error code of the last operation
+				 *
 				 * @return error code of the last operation of the engine
 				 *
 				 * \~
@@ -875,9 +899,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the name of the mark of the last match
+				 *
 				 * @details The name is left by the «(*MARK:name)» verb that marked the path:
 				 *          an expression carrying no mark verbs, and a match that passed
 				 *          none of them, yield an empty name.
+				 *
 				 * @return name of the mark of the last match
 				 *
 				 * \~
@@ -891,6 +917,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the error text of the last operation
+				 *
 				 * @return error text of the last operation of the engine
 				 *
 				 * \~
@@ -904,6 +931,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the offset of the parse error of the expression
+				 *
 				 * @return offset of the error in the text of the regular expression
 				 *
 				 * \~
@@ -917,6 +945,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the number of capturing groups
+				 *
 				 * @return number of capturing groups of the regular expression
 				 *
 				 * \~
@@ -938,12 +967,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the largest admissible amount of work of the matching
+				 *
 				 * @details The amount of work is computed by the engine from the length of the text and
 				 *          the length of the program, and the ceiling truncates it. Exhausting the amount stops the
 				 *          execution with backtracking and moves the matching to the fallback way, whose
 				 *          time does not depend on the kind of the expression: lowering the ceiling moves
 				 *          to that way earlier, raising it allows a more difficult expression to
 				 *          be completed with backtracking. Zero removes the ceiling entirely.
+				 *
 				 * @param limit largest admissible number of matching steps
 				 *
 				 * \~
@@ -961,9 +992,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the largest admissible depth of recursive calls
+				 *
 				 * @details The depth bounds the nesting of recursive calls of subpatterns
 				 *          in the execution with backtracking: the memory of the call frames
 				 *          grows in proportion to it. Zero restores the depth of the default.
+				 *
 				 * @param nesting largest admissible depth of recursive calls
 				 *
 				 * \~
@@ -973,11 +1006,6 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
-				 * @details Журналом сообщается отказ сборки выражения: текст его
-				 *          и смещение ошибки в шаблоне иначе выходят наружу лишь
-				 *          опросом методов error() и message(), какого потребитель
-				 *          сделать и не обязан.
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -989,13 +1017,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Деструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Destructor
 				 *
 				 * \~
 				 */
-				~Engine() noexcept {}
+				~Engine() noexcept;
 		} engine_t;
 	};
 };

@@ -49,16 +49,15 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочные файлы проекта
  */
-#include <regex/emitter.hpp>
 #include <sys/log.hpp>
+#include <regex/emitter.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
-using namespace awh;
 
 /**
  * Если сборка выполняется для процессора с набором команд x86-64
@@ -104,8 +103,17 @@ namespace {
 	 *
 	 */
 	#if defined(_WIN32)
+		/**
+		 * Формируем размер участка доводов
+		 */
 		constexpr uint32_t SHADOW = 32;
+	/**
+	 * Иная ветвь условия
+	 */
 	#else
+		/**
+		 * Формируем размер участка доводов
+		 */
 		constexpr uint32_t SHADOW = 0;
 	#endif
 
@@ -209,8 +217,7 @@ namespace {
 	 */
 	inline uint8_t rex(const bool wide, const uint32_t reg, const uint32_t index, const uint32_t base) noexcept {
 		// Выводим собранный байт расширения набора регистров
-		return static_cast <uint8_t> (0x40u | (wide ? 0x08u : 0x00u) |
-		 (((reg >> 3) & 0x01u) << 2) | (((index >> 3) & 0x01u) << 1) | ((base >> 3) & 0x01u));
+		return static_cast <uint8_t> (0x40u | (wide ? 0x08u : 0x00u) | (((reg >> 3) & 0x01u) << 2) | (((index >> 3) & 0x01u) << 1) | ((base >> 3) & 0x01u));
 	}
 	/**
 	 * @brief Функция сборки байта указания способа обращения
@@ -285,7 +292,10 @@ namespace {
 void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	// Выполняем установку количества мест кадра вызова, входом отведённых
 	this->_seats = (static_cast <size_t> (frame) / sizeof(size_t));
-	#if defined(_WIN32)
+	/**
+	 * Если операционная система принадлежит к MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Выполняем сохранение регистров, вызываемой стороне доверенных
 		 *
@@ -327,6 +337,9 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 *
 		 */
 		this->sub(reg_t::STACK, reg_t::STACK, (frame + SHADOW + ALIGN));
+	/**
+	 * Если операционная система не принадлежит к MS Windows
+	 */
 	#else
 		/**
 		 * Выполняем сохранение регистров, вызываемой стороне доверенных
@@ -355,7 +368,10 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
  *
  */
 void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
-	#if defined(_WIN32)
+	/**
+	 * Если операционная система принадлежит к MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем освобождение кадра вызова вместе с участком доводов
 		this->add(reg_t::STACK, reg_t::STACK, (frame + SHADOW + ALIGN));
 		/**
@@ -370,6 +386,9 @@ void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 		emit8(this->_code, 0x5F);
 		emit8(this->_code, 0x5E);
 		emit8(this->_code, 0x5B);
+	/**
+	 * Если операционная система не принадлежит к MS Windows
+	 */
 	#else
 		// Выполняем освобождение кадра вызова порождаемого сопоставителя
 		this->add(reg_t::STACK, reg_t::STACK, (frame + ALIGN));
@@ -426,11 +445,14 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 	 * Если расстоянию достаёт восьми байтов
 	 */
 	if(gap >= 8){
-		// Выполняем размещение восьмибайтовой холостой команды: nop [rax + rax]
+		/**
+		 * Выполняем размещение восьмибайтовой холостой команды: nop [rax + rax]
+		 */
 		emit8(this->_code, 0x0F);
 		emit8(this->_code, 0x1F);
 		emit8(this->_code, modrm(0x02, 0, 4));
 		emit8(this->_code, sib(0, 0, 0));
+		// Размещаем нулевое смещение холостой команды
 		emit32(this->_code, 0);
 		// Уменьшаем остающееся расстояние до границы строки выборки команд
 		gap -= 8;
@@ -441,15 +463,20 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 	switch(gap){
 		// Если остающееся расстояние составляет семь байтов
 		case 7: {
-			// Выполняем размещение семибайтовой холостой команды: nop [rax]
+			/**
+			 * Выполняем размещение семибайтовой холостой команды: nop [rax]
+			 */
 			emit8(this->_code, 0x0F);
 			emit8(this->_code, 0x1F);
 			emit8(this->_code, modrm(0x02, 0, 0));
+			// Размещаем нулевое смещение холостой команды
 			emit32(this->_code, 0);
 		} break;
 		// Если остающееся расстояние составляет шесть байтов
 		case 6: {
-			// Выполняем размещение шестибайтовой холостой команды: nop [rax + rax]
+			/**
+			 * Выполняем размещение шестибайтовой холостой команды: nop [rax + rax]
+			 */
 			emit8(this->_code, 0x66);
 			emit8(this->_code, 0x0F);
 			emit8(this->_code, 0x1F);
@@ -459,7 +486,9 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 		} break;
 		// Если остающееся расстояние составляет пять байтов
 		case 5: {
-			// Выполняем размещение пятибайтовой холостой команды: nop [rax + rax]
+			/**
+			 * Выполняем размещение пятибайтовой холостой команды: nop [rax + rax]
+			 */
 			emit8(this->_code, 0x0F);
 			emit8(this->_code, 0x1F);
 			emit8(this->_code, modrm(0x01, 0, 4));
@@ -468,7 +497,9 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 		} break;
 		// Если остающееся расстояние составляет четыре байта
 		case 4: {
-			// Выполняем размещение четырёхбайтовой холостой команды: nop [rax]
+			/**
+			 * Выполняем размещение четырёхбайтовой холостой команды: nop [rax]
+			 */
 			emit8(this->_code, 0x0F);
 			emit8(this->_code, 0x1F);
 			emit8(this->_code, modrm(0x01, 0, 0));
@@ -476,24 +507,26 @@ void awh::regex::Emitter::aligned(const size_t label) noexcept {
 		} break;
 		// Если остающееся расстояние составляет три байта
 		case 3: {
-			// Выполняем размещение трёхбайтовой холостой команды: nop [rax]
+			/**
+			 * Выполняем размещение трёхбайтовой холостой команды: nop [rax]
+			 */
 			emit8(this->_code, 0x0F);
 			emit8(this->_code, 0x1F);
 			emit8(this->_code, modrm(0x00, 0, 0));
 		} break;
 		// Если остающееся расстояние составляет два байта
 		case 2: {
-			// Выполняем размещение двухбайтовой холостой команды: nop
+			/**
+			 * Выполняем размещение двухбайтовой холостой команды: nop
+			 */
 			emit8(this->_code, 0x66);
 			emit8(this->_code, 0x90);
 		} break;
 		// Если остающееся расстояние составляет один байт
-		case 1: {
+		case 1:
 			// Выполняем размещение однословной холостой команды: nop
 			emit8(this->_code, 0x90);
-		} break;
-		// Если остающегося расстояния нет
-		default: break;
+		break;
 	}
 	// Выполняем расстановку метки перехода
 	this->place(label);
@@ -511,17 +544,8 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
-		/**
-		 * Если объект журнала событий передан
-		 *
-		 * @details Переход к метке, заведению не подвергшейся, означает
-		 *          несогласованность самого порождения, а не свойство выражения:
-		 *          наружу он выходит неотличимым от отказа законного, и молчание
-		 *          о нём обращает изъян в «кодогенерация неприменима»
-		 *
-		 */
-			// Выполняем вывод сообщения об изъяне порождения машинного кода
-			awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
+		// Выполняем вывод сообщения об изъяне порождения машинного кода
+		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -552,17 +576,8 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
-		/**
-		 * Если объект журнала событий передан
-		 *
-		 * @details Переход к метке, заведению не подвергшейся, означает
-		 *          несогласованность самого порождения, а не свойство выражения:
-		 *          наружу он выходит неотличимым от отказа законного, и молчание
-		 *          о нём обращает изъян в «кодогенерация неприменима»
-		 *
-		 */
-			// Выполняем вывод сообщения об изъяне порождения машинного кода
-			awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
+		// Выполняем вывод сообщения об изъяне порождения машинного кода
+		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -781,8 +796,9 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
  *
  */
 void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t offset) noexcept {
-	// Получаем номера регистров назначения, основания и смещения
+	// Получаем номер регистра прочитанного значения
 	const uint32_t result = static_cast <uint32_t> (target);
+	// Получаем номера регистров основания и смещения обращения
 	const uint32_t origin = static_cast <uint32_t> (base), shift = static_cast <uint32_t> (offset);
 	// Выполняем размещение байта расширения набора регистров
 	emit8(this->_code, rex(true, result, shift, origin));
@@ -815,15 +831,11 @@ void awh::regex::Emitter::context(const reg_t target, const uint32_t index) noex
 	/**
 	 * Если номер значения в поле команды не помещается
 	 */
-	if(index > MAX_INDEX){
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+	if((this->_failed = (index > MAX_INDEX)))
 		// Выходим из метода размещения чтения
 		return;
-	}
 	// Выполняем размещение команды чтения значения обстановки исполнения
-	memory(this->_code, 0x8B, static_cast <uint32_t> (target),
-	 static_cast <uint32_t> (reg_t::CONTEXT), (index * 8));
+	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), (index * 8));
 }
 /**
  * @brief Метод размещения чтения значения по смещению
@@ -837,12 +849,9 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	/**
 	 * Если номер значения в поле команды не помещается
 	 */
-	if(index > MAX_INDEX){
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+	if((this->_failed = (index > MAX_INDEX)))
 		// Выходим из метода размещения чтения
 		return;
-	}
 	/**
 	 * Если место кадра вызова за пределы отведённого выходит
 	 *
@@ -850,12 +859,9 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	 *          прочие основания адресуют область записей, кадром не мерянную.
 	 *
 	 */
-	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+	if((this->_failed = ((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats))))
 		// Выходим из метода размещения обращения к памяти
 		return;
-	}
 	/**
 	 * Выполняем размещение команды чтения значения по смещению
 	 *
@@ -863,8 +869,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 	 *          доводов: места кадра размещаются за ним.
 	 *
 	 */
-	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (base),
-	 ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
+	memory(this->_code, 0x8B, static_cast <uint32_t> (target), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
  * @brief Метод размещения записи значения по смещению
@@ -878,12 +883,9 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	/**
 	 * Если номер значения в поле команды не помещается
 	 */
-	if(index > MAX_INDEX){
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+	if((this->_failed = (index > MAX_INDEX)))
 		// Выходим из метода размещения записи
 		return;
-	}
 	/**
 	 * Если место кадра вызова за пределы отведённого выходит
 	 *
@@ -891,12 +893,9 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 *          прочие основания адресуют область записей, кадром не мерянную.
 	 *
 	 */
-	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+	if((this->_failed = ((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats))))
 		// Выходим из метода размещения обращения к памяти
 		return;
-	}
 	/**
 	 * Выполняем размещение команды записи значения по смещению
 	 *
@@ -904,8 +903,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 *          доводов: места кадра размещаются за ним.
 	 *
 	 */
-	memory(this->_code, 0x89, static_cast <uint32_t> (source), static_cast <uint32_t> (base),
-	 ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
+	memory(this->_code, 0x89, static_cast <uint32_t> (source), static_cast <uint32_t> (base), ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
  * @brief Метод размещения чтения значения из памяти по адресу в регистре
@@ -1003,17 +1001,8 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
-		/**
-		 * Если объект журнала событий передан
-		 *
-		 * @details Переход к метке, заведению не подвергшейся, означает
-		 *          несогласованность самого порождения, а не свойство выражения:
-		 *          наружу он выходит неотличимым от отказа законного, и молчание
-		 *          о нём обращает изъян в «кодогенерация неприменима»
-		 *
-		 */
-			// Выполняем вывод сообщения об изъяне порождения машинного кода
-			awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
+		// Выполняем вывод сообщения об изъяне порождения машинного кода
+		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения вычисления адреса
 		return;
 	}
@@ -1074,7 +1063,9 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
  *
  */
 void awh::regex::Emitter::landing() noexcept {
-	// Метка цели перехода набору команд x86-64 не нужна
+	/**
+	 * Метка цели перехода набору команд x86-64 не нужна
+	 */
 }
 /**
  * @brief Метод размещения завершения вызова
@@ -1106,12 +1097,9 @@ bool awh::regex::Emitter::resolve() noexcept {
 		/**
 		 * Если метка перехода положения не получила
 		 */
-		if(target == INVALID_LABEL){
-			// Выполняем установку флага отказа порождения машинного кода
-			this->_failed = true;
+		if((this->_failed = (target == INVALID_LABEL)))
 			// Выводим результат разрешения отложенных переходов
 			return false;
-		}
 		/**
 		 * Получаем смещение перехода в байтах
 		 *
@@ -1124,12 +1112,9 @@ bool awh::regex::Emitter::resolve() noexcept {
 		/**
 		 * Если смещение перехода за пределы поля команды выходит
 		 */
-		if((delta > MAX_DISPLACEMENT) || (delta < -MAX_DISPLACEMENT)){
-			// Выполняем установку флага отказа порождения машинного кода
-			this->_failed = true;
+		if((this->_failed = ((delta > MAX_DISPLACEMENT) || (delta < -MAX_DISPLACEMENT))))
 			// Выводим результат разрешения отложенных переходов
 			return false;
-		}
 		// Получаем вписываемое значение поля смещения
 		const uint32_t offset = static_cast <uint32_t> (static_cast <int32_t> (delta));
 		/**
@@ -1144,160 +1129,160 @@ bool awh::regex::Emitter::resolve() noexcept {
 	// Выводим результат разрешения отложенных переходов
 	return true;
 }
-
+/**
+ * @brief Метод размещения поиска байта непрерывного диапазона средствами SSE2
+ *
+ * @param lower нижняя граница диапазона включительно
+ * @param upper верхняя граница диапазона включительно
+ * @param ready метка найденного кандидата
+ * @param empty метка отсутствия кандидата
+ *
+ */
+void awh::regex::Emitter::ranging(const uint8_t lower, const uint8_t upper, const size_t ready, const size_t empty) noexcept {
 	/**
-	 * @brief Метод размещения поиска байта непрерывного диапазона средствами SSE2
+	 * Если границы диапазона заданы неверно
+	 */
+	if((this->_failed = (lower > upper)))
+		// Выходим из метода размещения поиска
+		return;
+	// Проверяем наличие хотя бы одного байта до вычитания позиции из размера
+	this->compare(reg_t::KEEPER, reg_t::SIZE);
+	// Выполняем переход к отсутствию кандидата при исчерпании текста
+	this->branch(cond_t::ABOVE, empty);
+	/**
+	 * Если диапазон содержит все значения байта
+	 */
+	if((lower == 0) && (upper == 0xFF)){
+		// Выполняем переход к первому байту участка
+		this->jump(ready);
+		// Выходим из метода размещения поиска
+		return;
+	}
+	// Получаем номера рабочих регистров
+	const uint32_t text = static_cast <uint32_t> (reg_t::TEXT);
+	// Получаем номер регистра хранения
+	const uint32_t keeper = static_cast <uint32_t> (reg_t::KEEPER);
+	// Получаем номер запасного регистра
+	const uint32_t spare = static_cast <uint32_t> (reg_t::SPARE);
+	// Получаем номер промежуточного регистра
+	const uint32_t scratch = static_cast <uint32_t> (reg_t::SCRATCH);
+	// Получаем номер регистра значения байта
+	const uint32_t letter = static_cast <uint32_t> (reg_t::LETTER);
+	// Получаем ширину допустимого диапазона
+	const uint32_t width = (static_cast <uint32_t> (upper) - lower + 1);
+	// Заводим метки векторного прохода, хвоста и найденного вектора
+	const size_t scan = this->label(), tail = this->label(), found = this->label();
+	// Получаем количество байтов, оставшихся до конца текста
+	this->move(reg_t::SPARE, reg_t::SIZE);
+	// Выполняем вычитание текущей позиции из оставшегося размера: sub spare, keeper
+	emit8(this->_code, rex(true, keeper, 0, spare));
+	emit8(this->_code, 0x29);
+	emit8(this->_code, modrm(0x03, keeper, spare));
+	// Проверяем наличие полного вектора перед чтением памяти
+	this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
+	// Выполняем переход к побайтному хвосту при коротком остатке
+	this->branch(cond_t::BELOW, tail);
+	/**
+	 * Выполняем подготовку двух векторных постоянных
 	 *
-	 * @param lower нижняя граница диапазона включительно
-	 * @param upper верхняя граница диапазона включительно
-	 * @param ready метка найденного кандидата
-	 * @param empty метка отсутствия кандидата
+	 * @details Сложение байта с 128 - lower переводит разность без знака
+	 *          в порядок знаковых байтов. Сравнение с width - 128 тогда
+	 *          принимает ровно исходный диапазон, включая его края.
+	 *          XMM0..XMM3 затираются вызываемым и в System V, и в Windows.
 	 *
 	 */
-	void awh::regex::Emitter::ranging(const uint8_t lower, const uint8_t upper, const size_t ready, const size_t empty) noexcept {
-		/**
-		 * Если границы диапазона заданы неверно
-		 */
-		if(lower > upper){
-			// Выполняем установку признака отказа порождения
-			this->_failed = true;
-			// Выходим из метода размещения поиска
-			return;
-		}
-		// Проверяем наличие хотя бы одного байта до вычитания позиции из размера
-		this->compare(reg_t::KEEPER, reg_t::SIZE);
-		// Выполняем переход к отсутствию кандидата при исчерпании текста
-		this->branch(cond_t::ABOVE, empty);
-		/**
-		 * Если диапазон содержит все значения байта
-		 */
-		if((lower == 0) && (upper == 0xFF)){
-			// Выполняем переход к первому байту участка
-			this->jump(ready);
-			// Выходим из метода размещения поиска
-			return;
-		}
-		// Получаем номера рабочих регистров
-		const uint32_t text = static_cast <uint32_t> (reg_t::TEXT);
-		const uint32_t keeper = static_cast <uint32_t> (reg_t::KEEPER);
-		const uint32_t spare = static_cast <uint32_t> (reg_t::SPARE);
-		const uint32_t scratch = static_cast <uint32_t> (reg_t::SCRATCH);
-		const uint32_t letter = static_cast <uint32_t> (reg_t::LETTER);
-		// Получаем ширину допустимого диапазона
-		const uint32_t width = (static_cast <uint32_t> (upper) - lower + 1);
-		// Заводим метки векторного прохода, хвоста и найденного вектора
-		const size_t scan = this->label(), tail = this->label(), found = this->label();
-		// Получаем количество байтов, оставшихся до конца текста
-		this->move(reg_t::SPARE, reg_t::SIZE);
-		// Выполняем вычитание текущей позиции из оставшегося размера: sub spare, keeper
-		emit8(this->_code, rex(true, keeper, 0, spare));
-		emit8(this->_code, 0x29);
-		emit8(this->_code, modrm(0x03, keeper, spare));
-		// Проверяем наличие полного вектора перед чтением памяти
-		this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
-		// Выполняем переход к побайтному хвосту при коротком остатке
-		this->branch(cond_t::BELOW, tail);
-		/**
-		 * Выполняем подготовку двух векторных постоянных
-		 *
-		 * @details Сложение байта с 128 - lower переводит разность без знака
-		 *          в порядок знаковых байтов. Сравнение с width - 128 тогда
-		 *          принимает ровно исходный диапазон, включая его края.
-		 *          XMM0..XMM3 затираются вызываемым и в System V, и в Windows.
-		 *
-		 */
-		for(uint32_t index = 0; index < 2; index++){
-			// Получаем байт постоянной в знаковом представлении сравнения
-			const uint8_t value = static_cast <uint8_t> ((index == 0) ? (128 - lower) : (width - 128));
-			// Размножаем постоянную по четырём байтам целого регистра
-			this->move(reg_t::LETTER, (static_cast <uint32_t> (value) * 0x01010101u));
-			// Переносим младшие четыре байта в XMM: movd xmm, letter
-			emit8(this->_code, 0x66);
-			emit8(this->_code, rex(false, index, 0, letter));
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x6E);
-			emit8(this->_code, modrm(0x03, index, letter));
-			// Размножаем постоянную по всему вектору: pshufd xmm, xmm, 0
-			emit8(this->_code, 0x66);
-			emit8(this->_code, 0x0F);
-			emit8(this->_code, 0x70);
-			emit8(this->_code, modrm(0x03, index, index));
-			emit8(this->_code, 0x00);
-		}
-		// Выполняем расстановку метки векторного прохода
-		this->aligned(scan);
-		// Читаем полный невыровненный вектор: movdqu xmm2, [text + keeper]
-		emit8(this->_code, 0xF3);
-		emit8(this->_code, rex(false, 2, keeper, text));
+	for(uint32_t index = 0; index < 2; index++){
+		// Получаем байт постоянной в знаковом представлении сравнения
+		const uint8_t value = static_cast <uint8_t> ((index == 0) ? (128 - lower) : (width - 128));
+		// Размножаем постоянную по четырём байтам целого регистра
+		this->move(reg_t::LETTER, (static_cast <uint32_t> (value) * 0x01010101u));
+		// Переносим младшие четыре байта в XMM: movd xmm, letter
+		emit8(this->_code, 0x66);
+		emit8(this->_code, rex(false, index, 0, letter));
 		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0x6F);
-		emit8(this->_code, modrm(0x00, 2, STACK_POINTER));
-		emit8(this->_code, sib(0x00, keeper, text));
-		// Переводим значения байтов в порядок знакового сравнения: paddb xmm2, xmm0
+		emit8(this->_code, 0x6E);
+		emit8(this->_code, modrm(0x03, index, letter));
+		// Размножаем постоянную по всему вектору: pshufd xmm, xmm, 0
 		emit8(this->_code, 0x66);
 		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0xFC);
-		emit8(this->_code, modrm(0x03, 2, 0));
-		// Копируем верхнюю границу перед сравнением: movdqa xmm3, xmm1
-		emit8(this->_code, 0x66);
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0x6F);
-		emit8(this->_code, modrm(0x03, 3, 1));
-		// Сравниваем байты с шириной диапазона: pcmpgtb xmm3, xmm2
-		emit8(this->_code, 0x66);
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0x64);
-		emit8(this->_code, modrm(0x03, 3, 2));
-		// Получаем маску допустимых байтов: pmovmskb scratch, xmm3
-		emit8(this->_code, 0x66);
-		emit8(this->_code, rex(false, scratch, 0, 3));
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0xD7);
-		emit8(this->_code, modrm(0x03, scratch, 3));
-		// Проверяем наличие кандидата в векторе
-		this->compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
-		// Выполняем переход к первому установленному разряду маски
-		this->branch(cond_t::NOTEQUAL, found);
-		// Переходим к следующему полному вектору
-		this->add(reg_t::KEEPER, reg_t::KEEPER, 16);
-		this->sub(reg_t::SPARE, reg_t::SPARE, 16);
-		// Проверяем размер остатка перед следующим чтением вектора
-		this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
-		// Продолжаем векторный проход лишь при наличии шестнадцати байтов
-		this->branch(cond_t::ABOVE, scan);
-		// Выполняем расстановку метки побайтного хвоста
-		this->aligned(tail);
-		// Проверяем наличие следующего байта перед чтением памяти
-		this->compare(reg_t::KEEPER, reg_t::SIZE);
-		// Выполняем переход к отсутствию кандидата при исчерпании хвоста
-		this->branch(cond_t::ABOVE, empty);
-		// Читаем очередной байт хвоста
-		this->load(reg_t::LETTER, reg_t::TEXT, reg_t::KEEPER);
-		// Если нижняя граница не нулевая, отсчитываем значение от неё
-		if(lower > 0)
-			// Выполняем вычитание нижней границы диапазона
-			this->sub(reg_t::LETTER, reg_t::LETTER, lower);
-		// Сравниваем смещение байта с шириной диапазона без учёта знака
-		this->compare(reg_t::LETTER, width);
-		// Выполняем переход к кандидату при принадлежности байта диапазону
-		this->branch(cond_t::BELOW, ready);
-		// Переходим к следующему байту хвоста
-		this->add(reg_t::KEEPER, reg_t::KEEPER, 1);
-		// Продолжаем побайтный проход
-		this->jump(tail);
-		// Выполняем расстановку метки вектора с найденным кандидатом
-		this->place(found);
-		// Находим первый установленный разряд ненулевой маски: bsf scratch, scratch
-		emit8(this->_code, rex(true, scratch, 0, scratch));
-		emit8(this->_code, 0x0F);
-		emit8(this->_code, 0xBC);
-		emit8(this->_code, modrm(0x03, scratch, scratch));
-		// Прибавляем смещение первого кандидата: add keeper, scratch
-		emit8(this->_code, rex(true, scratch, 0, keeper));
-		emit8(this->_code, 0x01);
-		emit8(this->_code, modrm(0x03, scratch, keeper));
-		// Выполняем переход к попытке сопоставления в найденной позиции
-		this->jump(ready);
+		emit8(this->_code, 0x70);
+		emit8(this->_code, modrm(0x03, index, index));
+		emit8(this->_code, 0x00);
 	}
-
-#endif // defined(__x86_64__) || defined(_M_X64)
+	// Выполняем расстановку метки векторного прохода
+	this->aligned(scan);
+	// Читаем полный невыровненный вектор: movdqu xmm2, [text + keeper]
+	emit8(this->_code, 0xF3);
+	emit8(this->_code, rex(false, 2, keeper, text));
+	emit8(this->_code, 0x0F);
+	emit8(this->_code, 0x6F);
+	emit8(this->_code, modrm(0x00, 2, STACK_POINTER));
+	emit8(this->_code, sib(0x00, keeper, text));
+	// Переводим значения байтов в порядок знакового сравнения: paddb xmm2, xmm0
+	emit8(this->_code, 0x66);
+	emit8(this->_code, 0x0F);
+	emit8(this->_code, 0xFC);
+	emit8(this->_code, modrm(0x03, 2, 0));
+	// Копируем верхнюю границу перед сравнением: movdqa xmm3, xmm1
+	emit8(this->_code, 0x66);
+	emit8(this->_code, 0x0F);
+	emit8(this->_code, 0x6F);
+	emit8(this->_code, modrm(0x03, 3, 1));
+	// Сравниваем байты с шириной диапазона: pcmpgtb xmm3, xmm2
+	emit8(this->_code, 0x66);
+	emit8(this->_code, 0x0F);
+	emit8(this->_code, 0x64);
+	emit8(this->_code, modrm(0x03, 3, 2));
+	// Получаем маску допустимых байтов: pmovmskb scratch, xmm3
+	emit8(this->_code, 0x66);
+	emit8(this->_code, rex(false, scratch, 0, 3));
+	emit8(this->_code, 0x0F);
+	emit8(this->_code, 0xD7);
+	emit8(this->_code, modrm(0x03, scratch, 3));
+	// Проверяем наличие кандидата в векторе
+	this->compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
+	// Выполняем переход к первому установленному разряду маски
+	this->branch(cond_t::NOTEQUAL, found);
+	// Переходим к следующему полному вектору
+	this->add(reg_t::KEEPER, reg_t::KEEPER, 16);
+	// Убавляем остающийся размер на длину вектора
+	this->sub(reg_t::SPARE, reg_t::SPARE, 16);
+	// Проверяем размер остатка перед следующим чтением вектора
+	this->compare(reg_t::SPARE, static_cast <uint32_t> (16));
+	// Продолжаем векторный проход лишь при наличии шестнадцати байтов
+	this->branch(cond_t::ABOVE, scan);
+	// Выполняем расстановку метки побайтного хвоста
+	this->aligned(tail);
+	// Проверяем наличие следующего байта перед чтением памяти
+	this->compare(reg_t::KEEPER, reg_t::SIZE);
+	// Выполняем переход к отсутствию кандидата при исчерпании хвоста
+	this->branch(cond_t::ABOVE, empty);
+	// Читаем очередной байт хвоста
+	this->load(reg_t::LETTER, reg_t::TEXT, reg_t::KEEPER);
+	// Если нижняя граница не нулевая, отсчитываем значение от неё
+	if(lower > 0)
+		// Выполняем вычитание нижней границы диапазона
+		this->sub(reg_t::LETTER, reg_t::LETTER, lower);
+	// Сравниваем смещение байта с шириной диапазона без учёта знака
+	this->compare(reg_t::LETTER, width);
+	// Выполняем переход к кандидату при принадлежности байта диапазону
+	this->branch(cond_t::BELOW, ready);
+	// Переходим к следующему байту хвоста
+	this->add(reg_t::KEEPER, reg_t::KEEPER, 1);
+	// Продолжаем побайтный проход
+	this->jump(tail);
+	// Выполняем расстановку метки вектора с найденным кандидатом
+	this->place(found);
+	// Находим первый установленный разряд ненулевой маски: bsf scratch, scratch
+	emit8(this->_code, rex(true, scratch, 0, scratch));
+	emit8(this->_code, 0x0F);
+	emit8(this->_code, 0xBC);
+	emit8(this->_code, modrm(0x03, scratch, scratch));
+	// Прибавляем смещение первого кандидата: add keeper, scratch
+	emit8(this->_code, rex(true, scratch, 0, keeper));
+	emit8(this->_code, 0x01);
+	emit8(this->_code, modrm(0x03, scratch, keeper));
+	// Выполняем переход к попытке сопоставления в найденной позиции
+	this->jump(ready);
+}
+#endif
