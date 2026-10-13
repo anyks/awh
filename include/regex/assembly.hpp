@@ -53,7 +53,9 @@
  * @brief Header file of the executable memory of code generation — the Assembly class, which allocates
  *        a stretch of memory that admits execution, fills it with generated machine
  *        code and passes control to it
+ *
  * @section assembly_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -141,6 +143,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the executable memory of code generation
+		 *
 		 * @details The class allocates a stretch of memory that admits execution, fills
 		 *          it with generated machine code and moves it into a state fit
 		 *          for passing control. Ownership of the stretch is exclusive: copying
@@ -177,12 +180,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the support of executable memory by the build
+				 *
 				 * @details The check concerns the allocation of memory that admits execution
 				 *          and does not depend on the instruction set of the executing processor:
 				 *          the generation of machine code is checked separately. The separation
 				 *          is deliberate — otherwise the means of memory allocation would remain
 				 *          unchecked on all the platforms that have received no code generation,
 				 *          and it is exactly those that it will need first.
+				 *
 				 * @return result of checking the support of executable memory by the build
 				 *
 				 * \~
@@ -201,8 +206,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of allocating a stretch of executable memory
+				 *
 				 * @details The allocated stretch is available for writing but not for execution.
 				 *          A repeated allocation frees the stretch allocated before.
+				 *
 				 * @param size required size of the stretch of memory in bytes
 				 * @return     result of allocating the stretch of executable memory
 				 *
@@ -233,8 +240,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of filling the stretch of memory with generated machine code
+				 *
 				 * @details Filling is admissible only before execution is allowed. The code
 				 *          is written from the beginning of the stretch, replacing what was written before.
+				 *
 				 * @param code   address of the generated machine code
 				 * @param length size of the generated machine code in bytes
 				 * @return       result of filling the stretch of memory
@@ -254,9 +263,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of allowing execution of the stretch of memory
+				 *
 				 * @details The method forbids writing, allows execution and flushes
 				 *          the instruction cache of the processor, after which control may be
 				 *          passed to the stretch.
+				 *
 				 * @return result of allowing execution of the stretch of memory
 				 *
 				 * \~
@@ -271,6 +282,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the generated machine code
+				 *
 				 * @return address of the generated machine code or a null pointer
 				 *
 				 * \~
@@ -291,10 +303,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the filled stretch of memory
+				 *
 				 * @details The method gives the address of the stretch even before the execution
 				 *          is allowed, unlike «entry»: the comparison of the imprint of the code
 				 *          is performed over the very bytes that are to be executed, and it must
 				 *          be performed BEFORE the stretch receives execution.
+				 *
 				 * @return address of the filled stretch of memory or a null pointer
 				 *
 				 * \~
@@ -308,6 +322,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the size of the generated machine code
+				 *
 				 * @return size of the generated machine code in bytes
 				 *
 				 * \~
@@ -321,6 +336,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking whether execution of the stretch of memory is allowed
+				 *
 				 * @return result of checking whether execution of the stretch of memory is allowed
 				 *
 				 * \~
@@ -336,6 +352,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Move operator
+				 *
 				 * @param assembly executable memory object to move
 				 * @return         the current executable memory object
 				 *
@@ -361,6 +378,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Move constructor
+				 *
 				 * @param assembly executable memory object to move
 				 *
 				 * \~

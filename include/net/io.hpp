@@ -2751,11 +2751,11 @@ namespace awh {
 				 *          that one takes a hops_t rank, this one takes an exact number.
 				 *
 				 * @warning The method is NOT a counterpart of getCountHops, in spite of the name: that one
-                 *          returns the number of the hops of the LAST RECEIVED packet, while this one
-                 *          corrects the lifetime of the sent ones
-                 *
-                 * @note The given number is coarsened to the nearest hops_t rank in the state of the node,
-                 *       so getHops returns a rank and not that very number
+				 *          returns the number of the hops of the LAST RECEIVED packet, while this one
+				 *          corrects the lifetime of the sent ones
+				 *
+				 * @note The given number is coarsened to the nearest hops_t rank in the state of the node,
+				 *       so getHops returns a rank and not that very number
 				 *
 				 * @param id   identifier of the event
 				 * @param hops maximum number of the hops (0-255)

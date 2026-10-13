@@ -274,7 +274,9 @@
  * @brief Header file of the execution of regular expressions with backtracking — the Backtrack class,
  *        which executes the program by a single state while saving backtracking points,
  *        which allows matching constructs outside the regular subset of the syntax
+ *
  * @section backtrack_decisions Deliberate decisions
+ *
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
@@ -674,7 +676,7 @@
 	/**
 	 * Если сборка ведётся собирателем GCC либо Clang под ARM64
 	 */
-	#if (defined(__GNUC__) || defined(__clang__)) && defined(__aarch64__)
+	#if(defined(__GNUC__) || defined(__clang__)) && defined(__aarch64__)
 		/**
 		 * Если сборка ведётся под системы Apple
 		 */
@@ -682,7 +684,7 @@
 			/**
 			 * Кадры не пересекают границ страниц в шестнадцать килобайтов
 			 */
-			#define AWH_REGEX_STACK_PAGE 16384
+			#define AWH_REGEX_STACK_PAGE 0x4000
 		/**
 		 * Если сборка ведётся под прочие системы
 		 */
@@ -690,7 +692,7 @@
 			/**
 			 * Кадры не пересекают границ страниц в четыре килобайта
 			 */
-			#define AWH_REGEX_STACK_PAGE 4096
+			#define AWH_REGEX_STACK_PAGE 0x1000
 		#endif
 	/**
 	 * Если сборка ведётся под прочие архитектуры либо прочими собирателями
@@ -782,6 +784,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest admissible number of matching steps
+		 *
 		 * @details Execution with backtracking requires time growing with the length of the text
 		 *          exponentially on expressions with nested quantifiers, therefore the amount
 		 *          of work is bounded. Exhausting the limit stops the matching
@@ -801,6 +804,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest admissible number of backtracking points
+		 *
 		 * @details The limit on the number of steps bounds the time of the matching, but not
 		 *          the memory it occupies: every two-branch jump places a backtracking
 		 *          point, therefore their number is bounded separately.
@@ -821,6 +825,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Mark of a chain of a bounded repetition not walked in one move
+		 *
 		 * @details The walk of a chain is not taken for every body, and its refusal must be
 		 *          told apart from a walk that consumed zero copies: the first orders to walk
 		 *          the chain by instructions, whereas the second means an immediate transition
@@ -844,6 +849,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Mark of a break of comparing a literal on a byte not matching the literal
+		 *
 		 * @details Comparing a literal returns the number of the coinciding characters, and a
 		 *          break must be told apart from a literal that coincided up to the end of the
 		 *          text: the first is a refusal of the next instruction, the second orders the
@@ -864,6 +870,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest admissible number of recursive call frames
+		 *
 		 * @details A call frame is kept until the call is cancelled by a return, therefore their
 		 *          number grows with the number of performed calls rather than with the nesting
 		 *          depth, and is bounded separately from it.
@@ -883,6 +890,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest admissible number of change log records
+		 *
 		 * @details A return from a recursive call cancels the captures it performed
 		 *          by writing the former values again, which appends its own tail to the
 		 *          log. Nested calls grow the log exponentially,
@@ -901,6 +909,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest admissible depth of recursive calls
+		 *
 		 * @details A recursive call of a subexpression is able not to advance through the text,
 		 *          therefore the depth of the calls is bounded independently of the amount of work.
 		 *
@@ -920,6 +929,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest admissible nesting of executions of the program
+		 *
 		 * @details The body of a lookaround assertion is executed by a nested
 		 *          execution, and its nesting is bounded by the stack of the machine
 		 *          rather than by the memory of the matching. A program whose body
@@ -947,6 +957,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Reserve of the stack below the entry to the execution that crosses no page boundary
+		 *
 		 * @details The reserve covers the frame of the body of matching, the frame of the execution
 		 *          loop and nested executions of lookaround assertions: with Clang on ARM64 their
 		 *          frames are 224 and 416 bytes, and the body, the loop and three nested executions
@@ -974,6 +985,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Largest number of the byte belonging tables of the classes
+		 *
 		 * @details A table is set up for every class walked by a repetition, and lives
 		 *          until the program changes. A program of the Grok extension carries tens
 		 *          of thousands of classes, and without a limit its tables would take
@@ -997,6 +1009,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Class of the execution of a regular expression with backtracking
+		 *
 		 * @details The class executes the program by a single state, saving backtracking
 		 *          points at a two-branch jump and returning to them on a matching
 		 *          failure. Unlike execution without backtracking, the way admits
@@ -1121,7 +1134,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0), control(0), seek(0), cell(0) {}
+					Point() noexcept;
 				} point_t;
 			private:
 				/**
@@ -1134,6 +1147,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Record of the change log of the capture cells
+				 *
 				 * @details The log keeps the former values of the changed cells, thanks to
 				 *          which backtracking restores the state of the capture without keeping
 				 *          the whole set of cells at every backtracking point.
@@ -1155,7 +1169,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Change() noexcept : slot(0), value(0) {}
+					Change() noexcept;
 				} change_t;
 			private:
 				/**
@@ -1168,6 +1182,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Table of the belonging of the byte values to a character class
+				 *
 				 * @details The set of modes is kept together with the table: the belonging
 				 *          depends on the case-insensitive matching mode on a par with
 				 *          the class itself.
@@ -1205,6 +1220,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Resolution of the byte belonging table of a character class
+				 *
 				 * @details A resolution carries the address of the table together with the set
 				 *          of modes it was built with, and serves as a direct way from the number
 				 *          of the class to the table: the set of tables is kept by numbers, and
@@ -1230,7 +1246,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Lookup() noexcept : modes(0), bytes(nullptr) {}
+					Lookup() noexcept;
 				} lookup_t;
 			private:
 				// Исполняемая программа регулярного выражения
@@ -1601,6 +1617,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Change of an atomic group mark
+				 *
 				 * @details The mark cell is a single one for the whole program, while
 				 *          a recursive call enters the same atomic group anew
 				 *          and overwrites the cell. Because of that the cut of an outer level
@@ -1627,7 +1644,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Remark() noexcept : cell(0), value(0) {}
+					Remark() noexcept;
 				} remark_t;
 			private:
 				// Журнал изменений отметок атомарных групп
@@ -1682,7 +1699,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Frame() noexcept : back(0), number(0), journal(0), parent(0), depth(0), pos(0) {}
+					Frame() noexcept;
 				} frame_t;
 			private:
 				// Набор кадров рекурсивных вызовов подвыражений
@@ -1727,6 +1744,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text
+				 *
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -1756,12 +1774,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text in the given mode
+				 *
 				 * @details Where the frames are moved away from the boundary of a page - the
 				 *          «AWH_REGEX_STACK_PAGE» flag - the entry is thin deliberately: it reads the
 				 *          position of the stack and leaves by a jump into the «search» body, and when
 				 *          the reserve down to the boundary is smaller than «STACK_RESERVE» - into
 				 *          «padded», without setting up a frame of its own. Where the moving is off, the
 				 *          entry is the body of matching itself, as it was before the moving.
+				 *
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -1773,6 +1793,9 @@ namespace awh {
 				 */
 				bool exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept;
 			private:
+			/**
+			 * Условная компиляция
+			 */
 			#if AWH_REGEX_STACK_PAGE > 0
 				/**
 				 * \~russian
@@ -1795,6 +1818,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text in the given mode
+				 *
 				 * @details The body of matching is moved out of the «exec» entry and is forbidden
 				 *          to be inlined: the entry checks the position of the stack and leaves
 				 *          here by a jump without setting up a frame - see the
@@ -1802,6 +1826,7 @@ namespace awh {
 				 *          its frame there, and the pair stores of that frame would lie across the
 				 *          very boundary the entry moves the frames away from. Where the moving is
 				 *          off, the entry is the body itself, and this method does not exist.
+				 *
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -1831,11 +1856,13 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a regular expression against a text under a pad of the stack
+				 *
 				 * @details The pad of «STACK_RESERVE» length lies in the frame of the method and
 				 *          moves the frames of the body of matching and of the execution loop past
 				 *          the boundary of the page. Inlining is forbidden: inlined into the entry,
 				 *          the pad would lie in its frame at every position of the stack rather than
 				 *          only when the reserve falls short.
+				 *
 				 * @param program  program of the regular expression being executed
 				 * @param text     text to match
 				 * @param start    position to start the search for a match from
@@ -1862,9 +1889,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching a character by a single instruction
+				 *
 				 * @details The method is used when walking a run of matching characters
 				 *          and matches only the instructions that advance through the text
 				 *          independently of the state of the execution.
+				 *
 				 * @param instruction matching instruction of the program
 				 * @param pos         matching position in the text
 				 * @param width       length of the matched character in bytes
@@ -1889,12 +1918,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the admissible amount of work of the matching
+				 *
 				 * @details The set amount acts on one subsequent match,
 				 *          after which the limiting one is restored. A reduced amount
 				 *          is required by a calling side that has a fallback way of
 				 *          matching at its disposal: exhausting the amount stops the execution with the
 				 *          «BUDGET_EXCEEDED» error, and the matching is performed by the fallback way,
 				 *          whose time does not depend on the kind of the expression.
+				 *
 				 * @param budget admissible number of matching steps
 				 *
 				 * \~
@@ -1923,6 +1954,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the largest number of matching attempts
+				 *
 				 * @details The limit acts on one subsequent match, after which
 				 *          it is removed. It is required by a calling side that wishes
 				 *          to try the execution with backtracking at a small price without paying for
@@ -1934,6 +1966,7 @@ namespace awh {
 				 *          This limit is NOT equivalent to the amount of work: the amount bounds
 				 *          the steps, while a single attempt is able to pass over the whole text by a single
 				 *          repetition, which is why both limits are set together.
+				 *
 				 * @param horizon largest number of matching attempts
 				 *
 				 * \~
@@ -1952,9 +1985,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the indication of a stop by the limit of the attempts
+				 *
 				 * @details The indication distinguishes a failure by the limit of the attempts from an absence
 				 *          of a match: the first requires the fallback way, the second
 				 *          is final.
+				 *
 				 * @return indication of a stop of the matching by the limit of the attempts
 				 *
 				 * \~
@@ -1978,6 +2013,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the position of the first matching attempt
+				 *
 				 * @details The position acts on one subsequent match, after which it is
 				 *          removed. It is needed by a calling side repeating a search previously
 				 *          interrupted by a limit: the attempts to the left of the position where
@@ -1986,6 +2022,7 @@ namespace awh {
 				 *          anchor and the «ATSTART» flag judge by it, - and for an expression
 				 *          anchored to the start of the search the position does not act at all:
 				 *          it has a single attempt.
+				 *
 				 * @param onset position of the first matching attempt
 				 *
 				 * \~
@@ -2008,6 +2045,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of handing over the occurrence of the mandatory literal
+				 *
 				 * @details The position acts on one subsequent match, after which it is
 				 *          removed. It is handed over by the engine that checked the possibility
 				 *          of a match before choosing the path of execution: the execution takes
@@ -2015,6 +2053,7 @@ namespace awh {
 				 *          The occurrence must be the first one not to the left of the start of the
 				 *          search; one lying to the left of the first attempt the execution discards
 				 *          and searches for the literal from the attempt by itself.
+				 *
 				 * @param located position of the occurrence of the mandatory literal or «npos»
 				 *
 				 * \~
@@ -2034,9 +2073,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the position where the matching was stopped by a limit
+				 *
 				 * @details The position belongs to the attempt interrupted by the limit or not
 				 *          admitted before it: all the attempts to the left of it have failed
 				 *          conclusively. A matching not interrupted by a limit sets no position.
+				 *
 				 * @return position of the stop of the matching or «npos»
 				 *
 				 * \~
@@ -2055,9 +2096,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the largest admissible amount of work of the matching
+				 *
 				 * @details The ceiling truncates the amount computed by the calling side from the length
 				 *          of the text and the length of the program, and acts on all subsequent
 				 *          matches rather than on one. Zero removes the ceiling entirely.
+				 *
 				 * @param ceiling largest admissible number of matching steps
 				 *
 				 * \~
@@ -2075,9 +2118,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of setting the largest admissible depth of recursive calls
+				 *
 				 * @details The depth bounds the nesting of recursive calls of subpatterns:
 				 *          the memory of the call frames grows in proportion to it. Zero
 				 *          restores the depth of the default.
+				 *
 				 * @param nesting largest admissible depth of recursive calls
 				 *
 				 * \~
@@ -2096,9 +2141,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the error code of the last operation
+				 *
 				 * @details The «BUDGET_EXCEEDED» error code means the exhaustion of the admissible
 				 *          amount of work of the matching, at which the absence of a match
 				 *          is not established.
+				 *
 				 * @return error code of the last matching operation
 				 *
 				 * \~
@@ -2117,10 +2164,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the mark verb of the last match
+				 *
 				 * @details The address is taken from the cell of the last mark, maintained along
 				 *          with the capture cells: upon a match it holds the verb of the path
 				 *          that produced the match. An unreachable value means a match
 				 *          that passed no mark verbs.
+				 *
 				 * @return address of the mark verb of the last match
 				 *
 				 * \~
@@ -2134,6 +2183,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the address of the mark verb of the last attempt
+				 *
 				 * @return address of the mark verb of the last attempt
 				 *
 				 * \~
@@ -2153,9 +2203,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of performing a match attempt from the given position
+				 *
 				 * @details The attempt executes the program from its first instruction, saving
 				 *          backtracking points and returning to them on a matching failure.
 				 *          Exhausting the backtracking points means the failure of the attempt.
+				 *
 				 * @param pos position where the match attempt begins
 				 * @return    result of performing the match attempt
 				 *
@@ -2182,12 +2234,14 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of executing the program from the given instruction
+				 *
 				 * @details The execution saves the backtracking points in a common set without descending
 				 *          below the given depth, thanks to which the nested executions
 				 *          of lookarounds and of recursive calls spend no memory
 				 *          on sets of their own. Finishing the execution gives up
 				 *          the accumulated backtracking points, which corresponds to the prohibition
 				 *          of backtracking into lookarounds and recursive calls.
+				 *
 				 * @param pc    address of the instruction the execution starts from
 				 * @param pos   position in the text the execution starts from
 				 * @param base  depth of the set of backtracking points below which backtracking is inadmissible
@@ -2210,6 +2264,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of matching the text captured by a group
+				 *
 				 * @param number number of the group whose captured text is matched
 				 * @param flags  set of compilation modes of the instruction
 				 * @param pos    matching position in the text
@@ -2232,8 +2287,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of saving a position in a capture cell
+				 *
 				 * @details The former value of the cell is placed in the change log,
 				 *          thanks to which backtracking restores the state of the capture.
+				 *
 				 * @param slot  number of the capture cell
 				 * @param value position in the text saved in the capture cell
 				 *
@@ -2248,6 +2305,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of restoring the state of the group capture
+				 *
 				 * @param mark size of the change log the rollback is performed down to
 				 *
 				 * \~
@@ -2267,10 +2325,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of rolling back the changes of the atomic group marks
+				 *
 				 * @details The rollback is performed on returning from a recursive call
 				 *          and on cancelling it: the mark cell is a single one for the whole program,
 				 *          and a call that has entered the same atomic group overwrites
 				 *          its value.
+				 *
 				 * @param mark watermark of the journal of the mark changes
 				 *
 				 * \~
@@ -2289,8 +2349,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the byte belonging table of a character class
+				 *
 				 * @details The table is built on the first reference to the class and is held
 				 *          until the program changes, while a change of the set of modes rebuilds it.
+				 *
 				 * @param instruction instruction of the character class walked by a repetition
 				 * @return            table of the belonging of the byte values to the class
 				 *
@@ -2310,6 +2372,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of walking a row of a character class by the byte belonging table
+				 *
 				 * @param instruction instruction matching a character class
 				 * @param from        position of the start of the walk in the matching text
 				 * @param size        size of the matching text
@@ -2335,9 +2398,11 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of comparing a literal with the text in one trip
+				 *
 				 * @details The first character of the literal is already matched, and the bytes after
 				 *          it are compared. The comparison stops at the first byte not matching the
 				 *          literal and at the end of the text.
+				 *
 				 * @param instruction instruction of a single character heading the literal
 				 * @param from        position of the first character of the literal in the matching text
 				 * @param size        size of the matching text
@@ -2368,15 +2433,18 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of walking a chain of a bounded repetition of a single character
+				 *
 				 * @details The chain is walked in one move and with a single backtracking point
 				 *          instead of two instructions and a point per every copy. The walk is
 				 *          taken only for a body of a character class outside the UTF-8 parsing
 				 *          mode; another body is walked by instructions, which is what the return
 				 *          value tells
+				 *
 				 * @note The method is separated from the execution loop deliberately, and it is
 				 *       separated by measurement: placed into the body of the loop, it gains the
 				 *       chain nothing on any machine, while with LCC the rows with chains lose
 				 *       up to 9.3 per cent
+				 *
 				 * @param instruction the jump heading the chain
 				 * @param pc          address of the jump in the program of the regular expression
 				 * @param from        position of the start of the walk in the matching text
@@ -2400,10 +2468,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of building the byte belonging table of a character class
+				 *
 				 * @details The method sets up a table for a class that has none, builds it by
 				 *          walking the space of the byte values and updates the set of resolutions
 				 *          as a whole. It is separated out of «table» so that the frequent path —
 				 *          issuing a resolved table — stays short and inlinable.
+				 *
 				 * @param instruction instruction of the character class walked by a repetition
 				 * @return            table of the belonging of the byte values to the class
 				 *
@@ -2425,10 +2495,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of checking the belonging of a character to a character class
+				 *
 				 * @details A value that fits into a single byte is checked by the table, while
 				 *          a greater value is checked by computation: the table covers only
 				 *          the first two hundred and fifty six code values, and building it
 				 *          for the whole Unicode area would cost more than any gain.
+				 *
 				 * @param instruction instruction of the character class
 				 * @param code        checked code value of the character
 				 * @return            result of the check of the belonging of the character to the class
@@ -2458,6 +2530,7 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of the advancement of a lazy repetition of a single character
+				 *
 				 * @details A lazy row continues the matching at once, while the body of the
 				 *          repetition consumes a character only upon a refusal of the continuation.
 				 *          A continuation begun by the matching of a single character rejects
@@ -2469,6 +2542,7 @@ namespace awh {
 				 *          repeats the condition of the code generator word for word — the paths
 				 *          must skip the same positions, otherwise their comparison would diverge
 				 *          in the captures.
+				 *
 				 * @param instruction instruction of the branch heading the lazy repetition
 				 * @param pos         position of the row changed by the advancement
 				 * @param reached     flag of reaching a position suitable for the continuation
@@ -2499,7 +2573,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				~Backtrack() noexcept {}
+				~Backtrack() noexcept;
 		} backtrack_t;
 	};
 };

@@ -119,6 +119,59 @@ def group_extent(block_lines, groups):
 		res.append((content, table, paragraphs, text))
 	return res
 
+def section_has_text(block_lines, lang):
+    """В секции языка есть строки без тегов."""
+    began = False
+    for l in block_lines:
+        s = l.strip()
+        if re.match(r"^\s*\*\s*\\~" + lang + r"\s*$", s):
+            began = True
+            continue
+        if began:
+            if re.match(r"^\s*\*\s*\\~", s) or s.endswith("*/"):
+                break
+            if s.strip("*").strip():
+                return True
+    return False
+
+LEAD_MARK = re.compile(r"^\s*\*\s*\\~")
+LEAD_TAG = re.compile(r"^\s*\*\s*@(\w+)")
+LEAD_TEXT = re.compile(r"^\s*\*\s*[^\s@]")
+LEAD_CONT = re.compile(r"^\s*\*\s{2,}\S")
+LEAD_LANG = re.compile(r"^\s*\*\s*\\~(russian|english)\s*$")
+LEAD_BLANK = re.compile(r"^\s*\*\s*$")
+def check_lead_gap(path, start, block, report, fixes=None):
+    """Отбивка вокруг зачина секции: лишняя пустая строка после метки языка (§7.1)
+    и недостающая перед первым тегом после текста без тега (§7.3)."""
+    for k in range(1, len(block) - 1):
+        s = block[k].strip()
+        mt = LEAD_TAG.match(s)
+        if not mt:
+            continue
+        prev = block[k - 1].strip()
+        if not LEAD_TEXT.match(prev) or LEAD_MARK.match(prev):
+            continue
+        j = k - 1
+        while j > 0 and LEAD_TEXT.match(block[j].strip()) and not LEAD_MARK.match(block[j].strip()):
+            j -= 1
+        if LEAD_MARK.match(block[j].strip()):
+            report(path, start + k, "ERROR", "§7.3", f"перед @{mt.group(1)} нет пустой строки ' *' — зачин секции без тега отделяется отбивкой (§7.3)")
+    for k in range(len(block) - 2):
+        if not LEAD_LANG.match(block[k].strip()):
+            continue
+        if not LEAD_BLANK.match(block[k + 1].strip()):
+            continue
+        j = k + 2
+        while j < len(block) and LEAD_BLANK.match(block[j].strip()):
+            j += 1
+        if j >= len(block) or not LEAD_TAG.match(block[j].strip()):
+            continue
+        report(path, start + k + 1, "ERROR", "§7.1", f"пустая строка сразу после {block[k].strip()[1:].strip()} лишняя — первым идёт тег (§7.1)")
+        if fixes is not None:
+            for d in range(k + 1, j):
+                fixes.add(start + d - 1)
+
+
 def check_doc_parity(path, lines, report, fixes=None):
 	in_block = False
 	start = 0
@@ -140,6 +193,8 @@ def check_doc_parity(path, lines, report, fixes=None):
 							report(path, start, "ERROR", "§7.6", f"заголовочный блок: секция `\\~russian` есть, `\\~english` нет — перевод не начат")
 						elif "english" in sec and "russian" not in sec:
 							report(path, start, "ERROR", "§7.6", f"заголовочный блок: секция `\\~english` есть, `\\~russian` нет — публичный заголовок ведёт обе")
+					check_lead_gap(path, start, block, report, fixes)
+
 					ru, en = sec.get("russian"), sec.get("english")
 					for lang in ("russian", "english"):
 						gg = sec.get(lang) or []
@@ -149,6 +204,11 @@ def check_doc_parity(path, lines, report, fixes=None):
 							packed = (tag in ("param", "return") and prev_tag in ("param", "return", "par")) or tag == "endcode" or (tag == "par" and prev_tag in ("param", "return", "par")) or (tag == prev_tag and tag in ("note", "details", "warning", "tparam"))
 							if not packed and not blank:
 								report(path, start + ln - 1, "ERROR", "§7.3", f"в секции {lang}: перед @{tag} нет пустой строки ' *' (группы тегов разделяются)")
+					if (ru or en) and not (ru and en):
+						have, miss = ("russian", "english") if ru else ("english", "russian")
+						tags_have = ", ".join("@" + t[0] for t in (ru or en))
+						note = "текст в ней есть, но без тегов: разметку секций выравнивай, @details/@note переводятся теми же тегами" if section_has_text(block, miss) else "перевод не начат"
+						report(path, start, "ERROR", "§7.6", f"секция {miss} не несёт ни одного тега, в {have} они есть ({tags_have}) — {note} (§7.6.2)")
 					if ru and en:
 						tags_ru = [t[0] for t in ru]
 						tags_en = [t[0] for t in en]
@@ -263,10 +323,12 @@ def check_class_order(lines, report, path):
             report(path, min(dtors), "ERROR", "§5.1", f"{cname}: деструктор объявлен до методов — деструктор в конце блока")
         if dtors and ctors and min(dtors) < max(ctors):
             report(path, min(dtors), "ERROR", "§5.1", f"{cname}: деструктор идёт прежде конструктора — сначала конструкторы, затем деструктор")
-        if len(ctors) > 1:
-            broken = [ln for k, ln in seq if k != "CTOR" and min(ctors) < ln < max(ctors)]
+        if len(ctors) > 1 and (not methods or min(ctors) >= max(methods)):
+            broken = [(k, ln) for k, ln in seq if k not in ("CTOR", "SPECIAL") and min(ctors) < ln < max(ctors)]
             if broken:
-                report(path, broken[0], "ERROR", "§5.1", f"{cname}: конструкторы разорваны объявлением — конструкторы идут подряд в конце блока")
+                kind, ln = broken[0]
+                what = "деструктором" if kind == "DTOR" else "объявлением метода"
+                report(path, ln, "ERROR", "§5.1", f"{cname}: конструкторы разорваны {what} — конструкторы идут подряд в конце блока, деструктор за ними")
 
 def template_above(code, n):
     """Над строкой n стоит шаблонный заголовок (одно- или многострочный)."""
@@ -861,7 +923,7 @@ def main():
             dele = 0
             for idx in sorted(idxs, reverse=True):
                 anchor = fl[idx] if idx < len(fl) else ""
-                if anchor.strip() == "":
+                if anchor.strip() in ("", "*"):
                     del fl[idx]
                     dele += 1
                     continue
