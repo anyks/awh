@@ -436,7 +436,7 @@ namespace awh {
 		 * @return       положение найденной последовательности и число отвергнутых
 		 *
 		 */
-		AWH_REGEX_ALIGNED scanning_t scanning(const std::string_view text, const std::string_view what, const size_t pos, const size_t first, const size_t second) noexcept {
+		AWH_REGEX_ALIGNED scanning_t scanning(const string_view text, const string_view what, const size_t pos, const size_t first, const size_t second) noexcept {
 			// Число ложных кандидатов, проходом отвергнутых
 			size_t rejects = 0;
 			// Получаем размер текста сопоставления
@@ -989,6 +989,11 @@ namespace awh {
 	 */
 	namespace {
 		/**
+		 * Пространство имён библиотеки
+		 */
+		using namespace awh;
+
+		/**
 		 * @brief Шаблон функции поиска короткого литерала
 		 *
 		 * @tparam LENGTH длина искомой последовательности от четырёх до восьми байтов
@@ -1036,7 +1041,7 @@ namespace awh {
 			// Если искомое в остаток текста не помещается
 			if((size < length) || (pos > (size - length)))
 				// Выводим отсутствие совпадения
-				return ::finish(string_view::npos);
+				return finish(string_view::npos);
 			// Получаем предел начала совпадения
 			const size_t limit = ((size - length) + 1);
 			// Получаем расстояние между байтами пары
@@ -1098,7 +1103,7 @@ namespace awh {
 					// Если кандидат выходит за предел начала совпадения
 					if(start >= limit)
 						// Выводим отсутствие совпадения
-						return ::finish(string_view::npos);
+						return finish(string_view::npos);
 					// Слово начала кандидата
 					uint32_t first = 0;
 					// Читаем начало кандидата
@@ -1117,11 +1122,11 @@ namespace awh {
 						// Если оба слова совпали
 						if((first == head) && (second == tail))
 							// Выводим найденную позицию
-							return ::finish(start);
+							return finish(start);
 					// Иначе довольно сравнения по одному слову
 					} else if(first == head)
 						// Выводим найденную позицию
-						return ::finish(start);
+						return finish(start);
 					// Снимаем рассмотренного кандидата
 					hits &= (hits - 1);
 				}
@@ -1148,14 +1153,14 @@ namespace awh {
 					// Если оба слова совпали
 					if((first == head) && (second == tail))
 						// Выводим найденную позицию
-						return ::finish(at);
+						return finish(at);
 				// Иначе довольно сравнения по одному слову
 				} else if(first == head)
 					// Выводим найденную позицию
-					return ::finish(at);
+					return finish(at);
 			}
 			// Выводим отсутствие совпадения
-			return ::finish(string_view::npos);
+			return finish(string_view::npos);
 		}
 		/**
 		 * @brief Шаблон отбора позиции по ведущему литералу постоянной длины
@@ -1310,26 +1315,26 @@ namespace awh {
  *
  */
 void awh::regex::Prefilter::clear() noexcept {
-	// Выполняем сброс флага применимости набора байтов
-	this->active = false;
-	// Выполняем сброс признака единственного допустимого байта
-	this->unique = false;
-	// Выполняем сброс единственного допустимого начального байта
-	this->letter = 0;
-	// Выполняем очистку ведущего литерала совпадения
-	this->leading.clear();
 	// Выполняем сброс общего первого байта альтернатив
 	this->anchor = 0;
-	// Выполняем очистку списка альтернативных ведущих литералов
-	this->alts.clear();
+	// Выполняем сброс единственного допустимого начального байта
+	this->letter = 0;
+	// Выполняем сброс удаления обязательного литерала
+	this->distance = 0;
 	/**
 	 * Выполняем сброс флага разбора текста как последовательности UTF-8
 	 */
 	this->utf = false;
+	// Выполняем сброс флага применимости набора байтов
+	this->active = false;
+	// Выполняем сброс признака единственного допустимого байта
+	this->unique = false;
+	// Выполняем очистку списка альтернативных ведущих литералов
+	this->alts.clear();
+	// Выполняем очистку ведущего литерала совпадения
+	this->leading.clear();
 	// Выполняем очистку обязательного литерала совпадения
 	this->literal.clear();
-	// Выполняем сброс удаления обязательного литерала
-	this->distance = 0;
 	/**
 	 * Выполняем очистку набора допустимых начальных байтов
 	 */
