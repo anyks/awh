@@ -161,18 +161,20 @@ void awh::RegularExpression::clear() noexcept {
  *
  */
 void awh::RegularExpression::receive() const noexcept {
+	// Получаем ссылку на накопитель отчёта об ошибке
+	report_t & rep = report();
 	// Выполняем снятие кода ошибки сопоставления с движка
-	report().error = this->_engine.error();
+	rep.error = this->_engine.error();
 	/**
 	 * Если ошибки сопоставления не случилось
 	 */
-	if(report().error == error_t::NONE)
+	if(rep.error == error_t::NONE)
 		// Выходим из метода снятия кода ошибки
 		return;
 	// Выполняем снятие текста ошибки сопоставления с движка
-	report().message = this->_engine.message();
+	rep.message = this->_engine.message();
 	// Записываем ошибку в лог
-	log::print("Regular expression matching failed: %s", log::flag_t::WARNING, report().message.c_str());
+	log::print("Regular expression matching failed: %s", log::flag_t::WARNING, rep.message.c_str());
 }
 /**
  * @brief Метод извлечения кода ошибки последней сборки
