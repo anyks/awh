@@ -1269,6 +1269,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/punycode.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/context.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/idna.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/common.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/program.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/probe.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/prefilter.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
