@@ -6,18 +6,17 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки выбора короткого поиска при подготовке JIT
  *
  * @copyright Copyright © 2026
  *
  */
-
-/**
- * Подключаем поиск и окружение проверок
- */
-#include <regex/engine.hpp>
-#include <regex/codegen.hpp>
-#include "../main.hpp"
 
 /**
  * Если доступны защищённые страницы POSIX
@@ -28,9 +27,23 @@
 #endif
 
 /**
+ * Подключаем заголовочные файлы тестового окружения
+ */
+#include "../main.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/regex/engine.hpp"
+#include "../../include/regex/codegen.hpp"
+
+/**
  * Используем стандартное пространство имён и пространство имён проекта
  */
 using namespace std;
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -60,6 +73,9 @@ TEST(Regex, PrefilterSelection) {
 		filter.active = true;
 		// Выбираем подпрограмму единожды для этой длины
 		const regex::prefilter_t::seeker_t selected = filter.select();
+		/**
+		 * Если набор команд несёт специальный путь поиска пары
+		 */
 		#if (defined(__x86_64__) || defined(_M_X64)) && !defined(__e2k__) && !defined(AWH_REGEX_SCALAR)
 			// Если длина не принадлежит специальному пути
 			if((width < 4) || (width > 8)){
@@ -70,6 +86,9 @@ TEST(Regex, PrefilterSelection) {
 			}
 			// Проверяем наличие специального входа
 			ASSERT_NE(selected, nullptr);
+		/**
+		 * Если набор команд специального пути поиска пары не несёт
+		 */
 		#else
 			// На остальных наборах команд сохраняется общий отбор
 			EXPECT_EQ(selected, nullptr);
@@ -78,9 +97,11 @@ TEST(Regex, PrefilterSelection) {
 		#endif
 		// Отбрасываем текст, содержащий только неполный литерал
 		const string truncated = filter.leading.substr(0, width - 1);
+		// Проверяем выбор общей подпрограммы на усечённом тексте
 		EXPECT_EQ(selected(truncated.data(), truncated.size(), 0, &filter), truncated.size());
 		// Нарушаем последний байт полного литерала
 		string changed = filter.leading;
+		// Инвертируем последний байт проверяемого текста
 		changed.back() ^= 1;
 		// Проверяем, что выбор меньшей длины не принимает этот префикс
 		EXPECT_EQ(selected(changed.data(), changed.size(), 0, &filter), changed.size());
@@ -140,6 +161,9 @@ TEST(Regex, PrefilterSelection) {
  *
  */
 TEST(Regex, PrefilterSelectionGuardPages) {
+	/**
+	 * Если сборка ведётся для систем семейства POSIX
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем размер страницы памяти
 		const long page = ::sysconf(_SC_PAGESIZE);
@@ -147,7 +171,8 @@ TEST(Regex, PrefilterSelectionGuardPages) {
 		ASSERT_GE(page, 1024);
 		// Отводим одну доступную страницу между недоступными
 		const size_t length = (static_cast <size_t> (page) * 3);
-		void * allocated = ::mmap(nullptr, length, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// Отводим три страницы на чтение и запись
+		void * allocated = ::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// Проверяем размещение участка
 		ASSERT_NE(allocated, MAP_FAILED);
 		/**
@@ -164,15 +189,18 @@ TEST(Regex, PrefilterSelectionGuardPages) {
 		unique_ptr <char, decltype(release)> storage(static_cast <char *> (allocated), release);
 		// Получаем начало доступной страницы
 		char * middle = (storage.get() + page);
-		// Разрешаем чтение и запись средней страницы
-		ASSERT_EQ(::mprotect(middle, static_cast <size_t> (page), PROT_READ | PROT_WRITE), 0);
+		// Запрещаем защитные страницы понижением прав: NetBSD не повышает права, выданные при отводе
+		ASSERT_EQ(::mprotect(storage.get(), static_cast <size_t> (page), PROT_NONE), 0);
+		ASSERT_EQ(::mprotect((middle + page), static_cast <size_t> (page), PROT_NONE), 0);
 		/**
 		 * Перебираем длины короткого литерала
 		 */
 		for(size_t width = 4; width <= 8; width++){
 			// Создаём активный отбор по ведущему литералу
 			regex::prefilter_t filter;
+			// Разрешаем отбор позиций
 			filter.active = true;
+			// Заводим ведущий литерал заданной ширины
 			filter.leading.assign(width, 'a');
 			// Выбираем подпрограмму поиска
 			const regex::prefilter_t::seeker_t selected = filter.select();
@@ -184,6 +212,9 @@ TEST(Regex, PrefilterSelectionGuardPages) {
 			 * Перебираем длины текста и обе границы страницы
 			 */
 			for(size_t size = 0; size <= 100; size++){
+				/**
+				 * Перебираем обе границы страницы
+				 */
 				for(size_t side = 0; side < 2; side++){
 					// Помещаем текст у выбранной границы
 					char * body = ((side == 0) ? middle : (middle + page - size));
@@ -206,6 +237,9 @@ TEST(Regex, PrefilterSelectionGuardPages) {
 				}
 			}
 		}
+	/**
+	 * Если сборка ведётся для системы семейства Windows
+	 */
 	#else
 		// Пропускаем проверку без защищённых страниц POSIX
 		GTEST_SKIP() << "проверка требует защищённых страниц POSIX";
@@ -231,23 +265,28 @@ TEST(Regex, CodegenSelectionRestore) {
 		const string needle = string("abcdefgh").substr(0, width);
 		// Создаём выражение с захватом после ведущего литерала
 		regex::expression_t expression;
+		// Собираем выражение с ведущим литералом
 		ASSERT_TRUE(engine.build(needle + "([0-9]+)", static_cast <uint32_t> (regex::flag_t::JIT), expression));
 		// Проверяем наличие JIT и точность ведущего литерала
 		ASSERT_NE(expression.machine, nullptr);
+		// Проверяем ведущий литерал собранного выражения
 		ASSERT_EQ(expression.forward.prefilter.leading, needle);
 		// Сохраняем порождённый сопоставитель
-		string record;
+		string record = "";
+		// Сохраняем порождённый машинный код в запись
 		ASSERT_TRUE(expression.machine->save(record));
 		// Восстанавливаем сопоставитель с новой таблицей адресов
 		regex::codegen_t restored;
+		// Заводим смещение чтения записи
 		size_t offset = 0;
+		// Восстанавливаем выражение из записи
 		ASSERT_TRUE(restored.restore(record, offset, expression.forward));
 		/**
 		 * Проверяем близкую и дальнюю находки, включая остаток за окном
 		 */
 		for(const size_t place : {0, 31, 32, 64, 1023, 1024, 2048}){
 			// Создаём текст с единственным полным совпадением
-			const string text = string(place, 'x') + needle + "123!";
+			const string text = (string(place, 'x') + needle + "123!");
 			/**
 			 * Сличаем исходный и восстановленный сопоставители
 			 */
@@ -256,7 +295,9 @@ TEST(Regex, CodegenSelectionRestore) {
 				vector <pair <size_t, size_t>> captures;
 				// Проверяем сопоставление непосредственно порождённым кодом
 				ASSERT_TRUE(machine->exec(text, 0, captures));
+				// Проверяем количество извлечённых границ
 				ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+				// Проверяем начало извлечённого совпадения
 				EXPECT_EQ(captures[0].first, place);
 				EXPECT_EQ(captures[0].second, place + width + 3);
 				EXPECT_EQ(captures[1].first, place + width);

@@ -21,13 +21,13 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstdint>
-#include <cstring>
+#include <vector>
 #include <memory>
 #include <string>
-#include <string_view>
+#include <cstdint>
+#include <cstring>
 #include <utility>
-#include <vector>
+#include <string_view>
 
 /**
  * Если доступны защищённые страницы POSIX
@@ -38,16 +38,23 @@
 #endif
 
 /**
- * Подключаем заголовочные файлы проекта и тестового окружения
+ * Подключаем заголовочные файлы тестового окружения
  */
-#include <regex/engine.hpp>
-#include <regex/codegen.hpp>
 #include "../main.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/regex/engine.hpp"
+#include "../../include/regex/codegen.hpp"
 
 /**
  * Используем стандартное пространство имён и пространство имён проекта
  */
 using namespace std;
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -100,6 +107,7 @@ TEST(Regex, CodegenRangeSifting) {
 	for(const auto & sample : SAMPLES){
 		// Создаём движок и программу выражения
 		regex::engine_t engine;
+		// Заводим собираемое регулярное выражение
 		regex::expression_t expression;
 		// Получаем признаки сборки выражения
 		const uint32_t flags = (sample.caseless ? static_cast <uint32_t> (regex::flag_t::CASELESS) : 0);
@@ -109,6 +117,7 @@ TEST(Regex, CodegenRangeSifting) {
 		regex::codegen_t codegen;
 		// Проверяем наличие машинного кода и выбора просеивания
 		ASSERT_TRUE(codegen.compile(expression.forward)) << sample.pattern;
+		// Проверяем вид отбора позиций, порождению выданный
 		ASSERT_EQ(codegen.filter(), regex::filter_t::SIFTING) << sample.pattern;
 		// Создаём запись порождённого сопоставителя
 		string record;
@@ -120,6 +129,7 @@ TEST(Regex, CodegenRangeSifting) {
 		size_t offset = 0;
 		// Проверяем восстановление всего сохранённого кода
 		ASSERT_TRUE(restored.restore(record, offset, expression.forward)) << sample.pattern;
+		// Проверяем полное чтение записи
 		ASSERT_EQ(offset, record.size());
 		/**
 		 * Выполняем обход удалений первой попытки сопоставления
@@ -161,6 +171,7 @@ TEST(Regex, CodegenRangeSifting) {
 						if(expected){
 							// Проверяем количество и точность границ совпадения
 							ASSERT_EQ(bounds.size(), static_cast <size_t> (1));
+							// Проверяем начало совпадения с учётом начала поиска
 							EXPECT_EQ(bounds.front().first, ((start > begin) ? start : begin));
 							EXPECT_EQ(bounds.front().second, begin + 5);
 						}
@@ -187,6 +198,9 @@ TEST(Regex, CodegenRangeSifting) {
  *
  */
 TEST(Regex, CodegenRangeGuardPages) {
+	/**
+	 * Если сборка ведётся для систем семейства POSIX
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если порождение машинного кода недоступно, проверка неприменима
 		if(!regex::emitter_t::available() || !regex::assembly_t::available())
@@ -198,8 +212,8 @@ TEST(Regex, CodegenRangeGuardPages) {
 		ASSERT_GE(page, 256);
 		// Получаем размер трёх страниц, включая защитные
 		const size_t length = (static_cast <size_t> (page) * 3);
-		// Размещаем три недоступные страницы
-		void * allocated = ::mmap(nullptr, length, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// Размещаем три страницы на чтение и запись
+		void * allocated = ::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// Проверяем успешность выделения памяти
 		ASSERT_NE(allocated, MAP_FAILED);
 		/**
@@ -216,8 +230,9 @@ TEST(Regex, CodegenRangeGuardPages) {
 		unique_ptr <char, decltype(release)> storage(static_cast <char *> (allocated), release);
 		// Получаем начало средней страницы
 		char * middle = (storage.get() + page);
-		// Разрешаем чтение и запись только в средней странице
-		ASSERT_EQ(::mprotect(middle, static_cast <size_t> (page), PROT_READ | PROT_WRITE), 0);
+		// Запрещаем защитные страницы понижением прав: NetBSD не повышает права, выданные при отводе
+		ASSERT_EQ(::mprotect(storage.get(), static_cast <size_t> (page), PROT_NONE), 0);
+		ASSERT_EQ(::mprotect((middle + page), static_cast <size_t> (page), PROT_NONE), 0);
 		/**
 		 * @brief Набор диапазонов с границами в обеих половинах байта
 		 */
@@ -239,6 +254,7 @@ TEST(Regex, CodegenRangeGuardPages) {
 		for(const auto & sample : SAMPLES){
 			// Создаём движок и программу выражения
 			regex::engine_t engine;
+			// Заводим собираемое регулярное выражение
 			regex::expression_t expression;
 			// Проверяем успешную сборку программы
 			ASSERT_TRUE(engine.build(sample.pattern, 0, expression)) << sample.pattern;
@@ -290,6 +306,9 @@ TEST(Regex, CodegenRangeGuardPages) {
 				}
 			}
 		}
+	/**
+	 * Если сборка ведётся для системы семейства Windows
+	 */
 	#else
 		// Защита страниц POSIX в этой системе недоступна
 		GTEST_SKIP() << "POSIX guard pages are unavailable";
@@ -307,6 +326,9 @@ TEST(Regex, CodegenRangeGuardPages) {
  *
  */
 TEST(Regex, EmitterRangeCandidates) {
+	/**
+	 * Если сборка ведётся под набор команд x86-64
+	 */
 	#if defined(__x86_64__) || defined(_M_X64)
 		// Если исполняемая память недоступна, проверка неприменима
 		if(!regex::assembly_t::available())
@@ -344,20 +366,29 @@ TEST(Regex, EmitterRangeCandidates) {
 				emitter.ranging(static_cast <uint8_t> (lower), static_cast <uint8_t> (upper), ready, empty);
 				// Размещаем выдачу найденной позиции
 				emitter.place(ready);
+				// Размещаем запись границы совпадения в память
 				emitter.store(reg_t::KEEPER, reg_t::BOUNDS, 0);
+				// Размещаем пересылку признака совпадения в регистр результата
 				emitter.move(reg_t::RESULT, 1);
+				// Размещаем завершение тела сопоставителя
 				emitter.epilogue(0);
+				// Размещаем возврат из сопоставителя
 				emitter.ret();
 				// Размещаем выдачу отсутствия кандидата
 				emitter.place(empty);
+				// Размещаем пересылку признака отказа в регистр результата
 				emitter.move(reg_t::RESULT, 0);
+				// Размещаем завершение тела сопоставителя
 				emitter.epilogue(0);
+				// Размещаем возврат из сопоставителя
 				emitter.ret();
 				// Проверяем разрешение всех переходов
 				ASSERT_TRUE(emitter.resolve());
+				// Проверяем успешность порождения машинного кода
 				ASSERT_FALSE(emitter.failed());
 				// Размещаем и разрешаем исполнение полученного кода
 				regex::assembly_t assembly;
+				// Отводим исполняемую память под порождённый код
 				ASSERT_TRUE(assembly.allocate(emitter.length()));
 				ASSERT_TRUE(assembly.fill(emitter.code().data(), emitter.length()));
 				ASSERT_TRUE(assembly.commit());
@@ -375,6 +406,7 @@ TEST(Regex, EmitterRangeCandidates) {
 					for(uint16_t value = 0; value < 256; value++){
 						// Размещаем проверяемый байт среди заполнения
 						string text(64, filler);
+						// Записываем проверяемое значение байта в текст
 						text[pos] = static_cast <char> (value);
 						/**
 						 * Проверяем поиск до кандидата, после него и вне текста
@@ -398,6 +430,9 @@ TEST(Regex, EmitterRangeCandidates) {
 		}
 		// Проверяем, что набор охватил более пятидесяти разных диапазонов
 		ASSERT_GT(checked, static_cast <size_t> (50));
+	/**
+	 * Если сборка ведётся под прочие наборы команд
+	 */
 	#else
 		// Этот способ порождения предназначен для набора команд x86-64
 		GTEST_SKIP() << "поиск диапазона SSE2 недоступен";

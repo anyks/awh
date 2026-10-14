@@ -28,18 +28,18 @@
 #include <random>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/regex.hpp>
-#include <regex/storage.hpp>
-#include <regex/backtrack.hpp>
-#include <sys/fs.hpp>
-
-/**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/sys/fs.hpp"
+#include "../../include/sys/log.hpp"
+#include "../../include/regex/regex.hpp"
+#include "../../include/regex/storage.hpp"
+#include "../../include/regex/backtrack.hpp"
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -73,6 +73,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -154,6 +157,7 @@ static vector <string> samples(const size_t count) noexcept {
 	// Выводим набор текстов порождённых выражений
 	return result;
 }
+
 /**
  * @brief Тест записи и восстановления собранных выражений
  *
@@ -225,6 +229,7 @@ TEST(Regex, StorageRoundtrip) {
 		EXPECT_EQ(regexp.captures(fresh.at(i)), regexp.captures(restored.at(i)));
 	}
 }
+
 /**
  * @brief Тест восстановления выражения с порождением машинного кода
  *
@@ -257,6 +262,7 @@ TEST(Regex, StorageMachine) {
 	// Выполняем проверку извлечения захваченных групп
 	EXPECT_EQ(regexp.exec("forman@anyks.com", restored.front()).size(), static_cast <size_t> (3));
 }
+
 /**
  * @brief Тест отказа восстановления записи испорченной
  *
@@ -281,6 +287,7 @@ TEST(Regex, StorageCorrupted) {
 	vector <regex::storage_t::exp_t> restored;
 	// Выполняем проверку отказа восстановления пустой записи
 	EXPECT_FALSE(storage.load("", restored));
+	// Проверяем отказ чтения пустого хранилища
 	EXPECT_EQ(storage.error(), regex::storage_error_t::EMPTY);
 	/**
 	 * Выполняем проверку отказа восстановления записи с чужим опознанием
@@ -292,6 +299,7 @@ TEST(Regex, StorageCorrupted) {
 		damaged[0] = static_cast <char> (damaged[0] ^ 0xFF);
 		// Выполняем проверку отказа восстановления записи
 		EXPECT_FALSE(storage.load(damaged, restored));
+		// Проверяем отказ чтения по несовпадению подписи
 		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_MAGIC);
 	}
 	/**
@@ -304,6 +312,7 @@ TEST(Regex, StorageCorrupted) {
 		damaged[8] = static_cast <char> (damaged[8] + 1);
 		// Выполняем проверку отказа восстановления записи
 		EXPECT_FALSE(storage.load(damaged, restored));
+		// Проверяем отказ чтения по неизвестной версии
 		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_VERSION);
 	}
 	/**
@@ -383,6 +392,7 @@ TEST(Regex, StorageCorrupted) {
 		else EXPECT_NE(storage.error(), regex::storage_error_t::NONE);
 	}
 }
+
 /**
  * @brief Тест записи набора выражений
  *
@@ -417,13 +427,17 @@ TEST(Regex, StorageMultiple) {
 	ASSERT_EQ(restored.size(), fresh.size());
 	// Выполняем проверку сопоставления восстановленных выражений
 	EXPECT_TRUE(regexp.test("aaa", restored.at(0)));
+	// Проверяем отказ сопоставления первого восстановленного выражения
 	EXPECT_FALSE(regexp.test("aab", restored.at(0)));
+	// Проверяем совпадение второго восстановленного выражения
 	EXPECT_TRUE(regexp.test("123-45", restored.at(1)));
 	EXPECT_TRUE(regexp.test("ПРИВЕТ", restored.at(2)));
 	EXPECT_TRUE(regexp.test("узел", restored.at(3)));
+	// Проверяем отказ сопоставления четвёртого восстановленного выражения
 	EXPECT_FALSE(regexp.test("node", restored.at(3)));
 	// Выполняем проверку отказа записи набора с пустой ссылкой
 	EXPECT_FALSE(storage.save({nullptr}, record));
+	// Проверяем отказ чтения по несоответствию содержимого
 	EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_CONTENT);
 }
 
@@ -495,6 +509,7 @@ TEST(Regex, StoragePlatform) {
 		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_CONTENT);
 	}
 }
+
 /**
  * @brief Тест восстановления записи, взятой во владение
  *
@@ -539,6 +554,7 @@ TEST(Regex, StorageAdopt) {
 	// Выполняем проверку захваченного текста восстановленного выражения
 	EXPECT_EQ(string("forman@anyks.com").size(), (bounds.front().second - bounds.front().first));
 }
+
 /**
  * @brief Тест переживания выражением уничтожения источника записи
  *
@@ -576,6 +592,7 @@ TEST(Regex, StorageLifetime) {
 	ASSERT_EQ(restored.size(), static_cast <size_t> (1));
 	// Выполняем проверку сопоставления восстановленного выражения
 	EXPECT_TRUE(regexp.test("узел 192.168.5.150 отвечает", restored.front()));
+	// Проверяем отказ сопоставления восстановленного выражения
 	EXPECT_FALSE(regexp.test("узел 192.168.5 отвечает", restored.front()));
 }
 
@@ -600,6 +617,7 @@ static bool reversed(string_view source, string & result) noexcept {
 	// Выводим результат обращения последовательности
 	return true;
 }
+
 /**
  * @brief Тест записи и восстановления со сжатием содержимого
  *
@@ -670,6 +688,7 @@ TEST(Regex, StoragePacking) {
 			 << "выражение \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
 	}
 }
+
 /**
  * @brief Тест отказов сжатия записи хранилища
  *
@@ -765,6 +784,7 @@ TEST(Regex, StoragePackingErrors) {
 		EXPECT_EQ(shrunk.error(), regex::storage_error_t::BAD_CONTENT);
 	}
 }
+
 /**
  * @brief Тест отказа восстановления записи подделанной
  *
@@ -1157,6 +1177,7 @@ TEST(Regex, StorageTruncatedForged) {
 	 */
 	EXPECT_GT(truncating({crowded}, 1, 0, false), static_cast <size_t> (10));
 }
+
 /**
  * @brief Тест отказа восстановления записи с подделанными полями
  *
@@ -1363,6 +1384,7 @@ TEST(Regex, StorageForgedFields) {
 		EXPECT_EQ(storage.error(), regex::storage_error_t::TOO_LARGE);
 	}
 }
+
 /**
  * @brief Тест отказа восстановления записи с самоуказанием проверки окружения
  *
@@ -1440,6 +1462,7 @@ TEST(Regex, StorageSelfReference) {
 		EXPECT_TRUE(restored.empty());
 	}
 }
+
 /**
  * @brief Тест отказа восстановления записи машины иной
  *
@@ -1485,6 +1508,7 @@ TEST(Regex, StorageMachineIdentity) {
 		EXPECT_EQ(storage.error(), regex::storage_error_t::BAD_MACHINE);
 	}
 }
+
 /**
  * @brief Тест отказа восстановления записи просроченной
  *
@@ -1596,6 +1620,7 @@ TEST(Regex, StorageExpiry) {
 		EXPECT_TRUE(storage.load(ahead, restored)) << "код " << static_cast <uint32_t> (storage.error());
 	}
 }
+
 /**
  * @brief Тест шифрования записи хранилища
  *
@@ -1733,7 +1758,6 @@ TEST(Regex, StorageCipher) {
 	}
 }
 
-
 /**
  * @brief Проверка круга записи через файловую систему
  *
@@ -1824,6 +1848,7 @@ TEST(Regex, StorageFilesystem) {
 	// Выполняем удаление файла записи собранных выражений
 	EXPECT_TRUE(fs.unlink(filename));
 }
+
 /**
  * @brief Тест отказа восстановления записи с поддельной пометкой ряда
  *
@@ -2039,6 +2064,7 @@ TEST(Regex, StorageForgedSeries) {
 		EXPECT_TRUE(restored.empty());
 	}
 }
+
 /**
  * @brief Тест отказа восстановления записи с поддельной пометкой цепочки
  *
@@ -2174,6 +2200,7 @@ TEST(Regex, StorageForgedChain) {
 		EXPECT_TRUE(restored.empty());
 	}
 }
+
 /**
  * @brief Тест отказа восстановления записи с признаком единственного байта, набору не отвечающим
  *
@@ -2264,6 +2291,7 @@ TEST(Regex, StoragePrefilterUnique) {
 		forged.letter = 'z';
 	}, true);
 }
+
 /**
  * @brief Тест флага применимости детерминированного исполнения
  *
@@ -2347,6 +2375,7 @@ TEST(Regex, StorageAutomatic) {
 		// Выполняем сличение флага восстановленного выражения с флагом собранного
 		EXPECT_EQ(restored.at(i)->automatic, fresh.at(i)->automatic) << samples[i].pattern;
 }
+
 /**
  * @brief Тест отказа восстановления записи с поддельной пометкой литерала
  *
@@ -2564,13 +2593,19 @@ TEST(Regex, StorageForgedLiteral) {
 		}
 		// Выполняем проверку подделки собранного выражения
 		ASSERT_TRUE(forged);
-#if AWH_REGEX_LITERAL_CASE
-		// Выполняем проверку безвредности подделки здесь: класс пометки не читает
-		ASSERT_TRUE(run(twisted, "ac"));
-#else
-		// Выполняем проверку опасности подделки: совпадение пропало
-		ASSERT_FALSE(run(twisted, "ac"));
-#endif
+		/**
+		 * Если сопоставление литерала учитывает регистр
+		 */
+		#if AWH_REGEX_LITERAL_CASE
+			// Выполняем проверку безвредности подделки здесь: класс пометки не читает
+			ASSERT_TRUE(run(twisted, "ac"));
+		/**
+		 * Если сопоставление литерала регистра не учитывает
+		 */
+		#else
+			// Выполняем проверку опасности подделки: совпадение пропало
+			ASSERT_FALSE(run(twisted, "ac"));
+		#endif
 		// Выполняем проверку отказа восстановления подделанного выражения
 		refuse(twisted);
 	}

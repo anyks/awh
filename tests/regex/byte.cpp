@@ -21,11 +21,11 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
-#include <cstdint>
 #include <memory>
 #include <random>
 #include <vector>
+#include <cstring>
+#include <cstdint>
 
 /**
  * Если система поддерживает защиту страниц памяти средствами POSIX
@@ -36,15 +36,22 @@
 #endif
 
 /**
- * Подключаем заголовочные файлы проекта и тестового окружения
+ * Подключаем заголовочные файлы тестового окружения
  */
-#include <regex/prefilter.hpp>
 #include "../main.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../include/regex/prefilter.hpp"
 
 /**
  * Используем стандартное пространство имён и пространство имён проекта
  */
 using namespace std;
+/** 
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -59,7 +66,7 @@ TEST(Regex, ByteSearchValues) {
 	/**
 	 * Перебираем значения, включая отрицательные и превышающие один байт
 	 */
-	for(int value = -257; value <= 511; value++){
+	for(int32_t value = -257; value <= 511; value++){
 		/**
 		 * Перебираем смещения начала относительно границы вектора
 		 */
@@ -91,6 +98,9 @@ TEST(Regex, ByteSearchValues) {
  *
  */
 TEST(Regex, ByteSearchGuardPages) {
+	/**
+	 * Если сборка ведётся для систем семейства POSIX
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем размер страницы памяти
 		const long page = ::sysconf(_SC_PAGESIZE);
@@ -98,8 +108,8 @@ TEST(Regex, ByteSearchGuardPages) {
 		ASSERT_GE(page, 256);
 		// Получаем размер трёх страниц, включая две защитные
 		const size_t length = (static_cast <size_t> (page) * 3);
-		// Резервируем участок из трёх недоступных страниц
-		void * allocated = ::mmap(nullptr, length, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// Резервируем участок из трёх страниц на чтение и запись
+		void * allocated = ::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// Проверяем успешность выделения страниц
 		ASSERT_NE(allocated, MAP_FAILED);
 		/**
@@ -116,12 +126,13 @@ TEST(Regex, ByteSearchGuardPages) {
 		unique_ptr <uint8_t, decltype(release)> storage(static_cast <uint8_t *> (allocated), release);
 		// Получаем начало средней страницы
 		uint8_t * middle = (storage.get() + page);
-		// Разрешаем чтение и запись только в средней странице
-		ASSERT_EQ(::mprotect(middle, static_cast <size_t> (page), PROT_READ | PROT_WRITE), 0);
+		// Запрещаем защитные страницы понижением прав: NetBSD не повышает права, выданные при отводе
+		ASSERT_EQ(::mprotect(storage.get(), static_cast <size_t> (page), PROT_NONE), 0);
+		ASSERT_EQ(::mprotect((middle + page), static_cast <size_t> (page), PROT_NONE), 0);
 		/**
 		 * Перебираем обычные, старшие и приведённые значения байта
 		 */
-		for(const int value : {0, 0x80, 0xFF, 0x101, -1}){
+		for(const int32_t value : {0, 0x80, 0xFF, 0x101, -1}){
 			// Получаем байтовое представление искомого значения
 			const uint8_t letter = static_cast <uint8_t> (value);
 			// Получаем заведомо отличающееся значение заполнения
@@ -164,6 +175,9 @@ TEST(Regex, ByteSearchGuardPages) {
 				}
 			}
 		}
+	/**
+	 * Если сборка ведётся для системы семейства Windows
+	 */
 	#else
 		// Защита страниц POSIX в этой системе недоступна
 		GTEST_SKIP() << "POSIX guard pages are unavailable";

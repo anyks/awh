@@ -29,19 +29,19 @@
 #include <vector>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/dfa.hpp>
-#include <regex/engine.hpp>
-#include <regex/pike.hpp>
-#include <regex/parser.hpp>
-#include <regex/compiler.hpp>
-
-/**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/sys/log.hpp"
+#include "../../include/regex/dfa.hpp"
+#include "../../include/regex/pike.hpp"
+#include "../../include/regex/engine.hpp"
+#include "../../include/regex/parser.hpp"
+#include "../../include/regex/compiler.hpp"
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -75,6 +75,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/** 
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -528,6 +531,7 @@ TEST(Regex, AutomatonOverflow) {
 	// Выполняем проверку позиции завершения обнаруженного совпадения
 	EXPECT_EQ(finish, text.size());
 }
+
 /**
  * @brief Проверка выравнивания начала прохода автомата по тексту
  *

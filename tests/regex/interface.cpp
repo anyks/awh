@@ -31,17 +31,17 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/regex.hpp>
-#include <regex/emitter.hpp>
-#include <regex/assembly.hpp>
-
-/**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/sys/log.hpp"
+#include "../../include/regex/regex.hpp"
+#include "../../include/regex/emitter.hpp"
+#include "../../include/regex/assembly.hpp"
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -75,6 +75,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -232,31 +235,33 @@ TEST(Regex, InterfaceControlBacktracking) {
 	 *
 	 */
 	static const struct {
-		// Выражение с глаголом управления возвратом
-		const char * pattern;
-		// Текст сопоставления выражения
-		const char * text;
 		// Ожидаемые границы совпадения либо отсутствие его
 		bool matched;
+		// Ожидаемое начало совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
+		// Текст сопоставления выражения
+		const char * text;
+		// Выражение с глаголом управления возвратом
+		const char * pattern;
 	} SAMPLES[] = {
 		// Глагол завершения сопоставления
-		{"a(*ACCEPT)b", "ab", true, 0, 1},
-		{"a(?:b(*ACCEPT))?c", "abc", true, 0, 2},
+		{true, 0, 1, "ab", "a(*ACCEPT)b"},
+		{true, 0, 2, "abc", "a(?:b(*ACCEPT))?c"},
 		// Глагол отказа сопоставления целиком
-		{"a(*COMMIT)b", "xab", true, 1, 3},
-		{"a+(*COMMIT)b", "aaac", false, 0, 0},
-		{"(?:a(*COMMIT)b|ac)", "ac", false, 0, 0},
+		{true, 1, 3, "xab", "a(*COMMIT)b"},
+		{false, 0, 0, "aaac", "a+(*COMMIT)b"},
+		{false, 0, 0, "ac", "(?:a(*COMMIT)b|ac)"},
 		// Глагол отказа попытки с переносом её на знак
-		{"a(*PRUNE)b", "xab", true, 1, 3},
-		{"(?:a(*PRUNE)b|ac)", "ac", false, 0, 0},
-		{"a+(*PRUNE)b", "aaab", true, 0, 4},
+		{true, 1, 3, "xab", "a(*PRUNE)b"},
+		{false, 0, 0, "ac", "(?:a(*PRUNE)b|ac)"},
+		{true, 0, 4, "aaab", "a+(*PRUNE)b"},
 		// Глагол отказа попытки с переносом её в позицию глагола
-		{"a(*SKIP)b", "xab", true, 1, 3},
-		{"(?:a(*SKIP)b|ac)", "ac", false, 0, 0},
-		{"a+(*SKIP)b", "aaab", true, 0, 4},
-		{"(?:aa(*SKIP)b|a)", "aaa", true, 2, 3},
+		{true, 1, 3, "xab", "a(*SKIP)b"},
+		{false, 0, 0, "ac", "(?:a(*SKIP)b|ac)"},
+		{true, 0, 4, "aaab", "a+(*SKIP)b"},
+		{true, 2, 3, "aaa", "(?:aa(*SKIP)b|a)"},
 		/**
 		 * Отбор позиций начала совпадения глагол обходит
 		 *
@@ -266,8 +271,8 @@ TEST(Regex, InterfaceControlBacktracking) {
 		 *          «(*NO_START_OPT)» отбор снимает, и совпадения нет.
 		 *
 		 */
-		{"(*COMMIT)a", "ba", true, 1, 2},
-		{"(*NO_START_OPT)(*COMMIT)a", "ba", false, 0, 0}
+		{true, 1, 2, "ba", "(*COMMIT)a"},
+		{false, 0, 0, "ba", "(*NO_START_OPT)(*COMMIT)a"}
 	};
 	/**
 	 * Выполняем обход набора ожиданий сопоставления
@@ -299,25 +304,27 @@ TEST(Regex, InterfaceControlBacktracking) {
 	 *
 	 */
 	static const struct {
-		// Выражение с глаголом перехода к ветви следующей
-		const char * pattern;
-		// Текст сопоставления выражения
-		const char * text;
 		// Ожидаемые границы совпадения либо отсутствие его
 		bool matched;
+		// Ожидаемое начало совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
+		// Текст сопоставления выражения
+		const char * text;
+		// Выражение с глаголом перехода к ветви следующей
+		const char * pattern;
 	} MOVING[] = {
-		{"(?:a(*THEN)b|ac)", "ac", true, 0, 2},
-		{"(?:a(*THEN)b|c)", "ac", true, 1, 2},
-		{"a(*THEN)b|ac", "ac", true, 0, 2},
-		{"(?:(?:a(*THEN)b)|ac)", "ac", true, 0, 2},
-		{"a(*THEN)b", "xab", true, 1, 3},
-		{"(?:a(*THEN)b|ad)", "ab", true, 0, 2},
-		{"(?:a(*THEN)b|ac|ad)", "ad", true, 0, 2},
-		{"(?:(a)(*THEN)b|ac)", "ac", true, 0, 2},
-		{"^(?:a(*THEN)b|ac)$", "ac", true, 0, 2},
-		{"(?:a+(*THEN)b|aac)", "aac", true, 0, 3}
+		{true, 0, 2, "ac", "(?:a(*THEN)b|ac)"},
+		{true, 1, 2, "ac", "(?:a(*THEN)b|c)"},
+		{true, 0, 2, "ac", "a(*THEN)b|ac"},
+		{true, 0, 2, "ac", "(?:(?:a(*THEN)b)|ac)"},
+		{true, 1, 3, "xab", "a(*THEN)b"},
+		{true, 0, 2, "ab", "(?:a(*THEN)b|ad)"},
+		{true, 0, 2, "ad", "(?:a(*THEN)b|ac|ad)"},
+		{true, 0, 2, "ac", "(?:(a)(*THEN)b|ac)"},
+		{true, 0, 2, "ac", "^(?:a(*THEN)b|ac)$"},
+		{true, 0, 3, "aac", "(?:a+(*THEN)b|aac)"}
 	};
 	/**
 	 * Выполняем обход ожиданий глагола перехода к ветви следующей
@@ -359,26 +366,26 @@ TEST(Regex, InterfaceControlBacktracking) {
 	 *
 	 */
 	static const struct {
-		// Выражение с глаголом отметки ветви именем
-		const char * pattern;
-		// Текст сопоставления выражения
-		const char * text;
 		// Ожидаемый исход сопоставления
 		bool matched;
+		// Текст сопоставления выражения
+		const char * text;
 		// Ожидаемое имя отметки совпадения
 		const char * marker;
+		// Выражение с глаголом отметки ветви именем
+		const char * pattern;
 	} MARKERS[] = {
-		{"a(*MARK:один)b", "ab", true, "один"},
-		{"a(*MARK:один)b", "ax", false, ""},
-		{"(*MARK:A)a|(*MARK:B)b", "b", true, "B"},
-		{"(*NO_START_OPT)(*MARK:A)a|(*MARK:B)b", "c", false, "B"},
-		{"a(*:кратко)b", "ab", true, "кратко"},
-		{"(*MARK:A)x", "ax", true, "A"},
-		{"a(*MARK:A)b|ac", "ac", true, ""},
-		{"(?:a(*MARK:A)(*THEN)b|ac)", "ac", true, ""},
-		{"(*MARK:A)(*FAIL)|b", "b", true, ""},
-		{"(*NO_START_OPT)a(*MARK:A)(*COMMIT)b", "ax", false, "A"},
-		{"(*MARK:A)a(*MARK:B)b", "ab", true, "B"}
+		{true, "ab", "один", "a(*MARK:один)b"},
+		{false, "ax", "", "a(*MARK:один)b"},
+		{true, "b", "B", "(*MARK:A)a|(*MARK:B)b"},
+		{false, "c", "B", "(*NO_START_OPT)(*MARK:A)a|(*MARK:B)b"},
+		{true, "ab", "кратко", "a(*:кратко)b"},
+		{true, "ax", "A", "(*MARK:A)x"},
+		{true, "ac", "", "a(*MARK:A)b|ac"},
+		{true, "ac", "", "(?:a(*MARK:A)(*THEN)b|ac)"},
+		{true, "b", "", "(*MARK:A)(*FAIL)|b"},
+		{false, "ax", "A", "(*NO_START_OPT)a(*MARK:A)(*COMMIT)b"},
+		{true, "ab", "B", "(*MARK:A)a(*MARK:B)b"}
 	};
 	/**
 	 * Выполняем обход ожиданий глагола отметки ветви именем
@@ -451,36 +458,37 @@ TEST(Regex, InterfaceNamedControlVerbs) {
 	 *
 	 */
 	static const struct {
-		// Выражение с глаголом управления, имя несущим
-		const char * pattern;
-		// Текст сопоставления выражения
-		const char * text;
 		// Ожидаемый исход сопоставления
 		bool matched;
 		// Ожидаемые границы обнаруженного совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
+		// Текст сопоставления выражения
+		const char * text;
 		// Ожидаемое имя отметки сопоставления
 		const char * marker;
+		// Выражение с глаголом управления, имя несущим
+		const char * pattern;
 	} SAMPLES[] = {
 		// Имя глагола отсечения означает отметку, глаголу предшествующую
-		{"a(*COMMIT:A)b", "ab", true, 0, 2, "A"},
-		{"a(*PRUNE:A)b", "xab", true, 1, 3, "A"},
-		{"a(*ACCEPT:A)b", "ab", true, 0, 1, "A"},
-		{"a(*FAIL:A)b", "ab", false, 0, 0, "A"},
-		{"(*NO_START_OPT)aa(*COMMIT:Z)b", "aaab", false, 0, 0, "Z"},
-		{"(?:aa(*THEN:Z)b|aab)", "aaab", true, 1, 4, "Z"},
-		{"aa(*PRUNE:Z)b", "aaab", true, 1, 4, "Z"},
+		{true, 0, 2, "ab", "A", "a(*COMMIT:A)b"},
+		{true, 1, 3, "xab", "A", "a(*PRUNE:A)b"},
+		{true, 0, 1, "ab", "A", "a(*ACCEPT:A)b"},
+		{false, 0, 0, "ab", "A", "a(*FAIL:A)b"},
+		{false, 0, 0, "aaab", "Z", "(*NO_START_OPT)aa(*COMMIT:Z)b"},
+		{true, 1, 4, "aaab", "Z", "(?:aa(*THEN:Z)b|aab)"},
+		{true, 1, 4, "aaab","Z", "aa(*PRUNE:Z)b"},
 		// Отметка глагола отсечения снимается возвратом наравне с захватами
-		{"a(*THEN:A)b|ac", "ac", true, 0, 2, ""},
+		{true, 0, 2, "ac", "", "a(*THEN:A)b|ac"},
 		// Глагол переноса отметки своей не заводит вовсе
-		{"a(*SKIP:A)b", "xab", true, 1, 3, ""},
-		{"a(*SKIP:A:B)b", "ab", true, 0, 2, ""},
-		{"a(*SKIP:A B)b", "ab", true, 0, 2, ""},
+		{true, 1, 3, "xab", "", "a(*SKIP:A)b"},
+		{true, 0, 2, "ab", "", "a(*SKIP:A:B)b"},
+		{true, 0, 2, "ab", "", "a(*SKIP:A B)b"},
 		// Глагол переноса переносит попытку в положение отметки имени
-		{"a(*MARK:A)a(*SKIP:A)b", "aaab", true, 1, 4, "A"},
-		{"(*MARK:A)aa(*SKIP:A)b", "aaab", true, 1, 4, "A"},
-		{"(*NO_START_OPT)(*MARK:A)a+(*SKIP:A)b", "aaac", false, 0, 0, "A"},
+		{true, 1, 4, "aaab", "A", "a(*MARK:A)a(*SKIP:A)b"},
+		{true, 1, 4, "aaab", "A", "(*MARK:A)aa(*SKIP:A)b"},
+		{false, 0, 0, "aaac", "A", "(*NO_START_OPT)(*MARK:A)a+(*SKIP:A)b"},
 		/**
 		 * Отметки имени не найдя, глагол переноса не правит вовсе
 		 *
@@ -489,9 +497,9 @@ TEST(Regex, InterfaceNamedControlVerbs) {
 		 *          неведомым обход позиций не правит и совпадение находит.
 		 *
 		 */
-		{"aa(*SKIP:Z)b", "aaab", true, 1, 4, ""},
-		{"aa(*SKIP)b", "aaab", false, 0, 0, ""},
-		{"aa(*SKIP:A)b", "aaab", true, 1, 4, ""},
+		{true, 1, 4, "aaab", "", "aa(*SKIP:Z)b"},
+		{false, 0, 0, "aaab", "", "aa(*SKIP)b"},
+		{true, 1, 4, "aaab", "", "aa(*SKIP:A)b"},
 		/**
 		 * Розыск находит отметку ЖИВУЮ, а не встреченную последнею
 		 *
@@ -499,11 +507,11 @@ TEST(Regex, InterfaceNamedControlVerbs) {
 		 *          и розыском не находится: глагол переноса не правит вовсе.
 		 *
 		 */
-		{"(?:(*MARK:A)xx|aa)(*SKIP:A)b", "aaab", true, 1, 4, ""},
-		{"(?:(*MARK:A)xx|aa)(*SKIP)b", "aaab", false, 0, 0, "A"},
+		{true, 1, 4, "aaab", "", "(?:(*MARK:A)xx|aa)(*SKIP:A)b"},
+		{false, 0, 0, "aaab", "A", "(?:(*MARK:A)xx|aa)(*SKIP)b"},
 		// Имя пустое обращает глагол в безымянный
-		{"a(*SKIP:)b", "aab", true, 1, 3, ""},
-		{"a(*COMMIT:)b", "ab", true, 0, 2, ""},
+		{true, 1, 3, "aab", "", "a(*SKIP:)b"},
+		{true, 0, 2, "ab", "", "a(*COMMIT:)b"},
 		/**
 		 * Отказ выводит отметку последнюю, сопоставлением встреченную
 		 *
@@ -511,9 +519,9 @@ TEST(Regex, InterfaceNamedControlVerbs) {
 		 *          опытом на «a(*MARK:A)(*COMMIT)b» с текстом «aab».
 		 *
 		 */
-		{"(*NO_START_OPT)a(*MARK:A)(*COMMIT)b", "aab", false, 0, 0, "A"},
-		{"(*NO_START_OPT)x(*MARK:A)y", "xq", false, 0, 0, "A"},
-		{"(*NO_START_OPT)(*MARK:A)x|(*MARK:B)y(*SKIP:A)z", "yq", false, 0, 0, "B"}
+		{false, 0, 0, "aab", "A", "(*NO_START_OPT)a(*MARK:A)(*COMMIT)b"},
+		{false, 0, 0, "xq", "A", "(*NO_START_OPT)x(*MARK:A)y"},
+		{false, 0, 0, "yq", "B", "(*NO_START_OPT)(*MARK:A)x|(*MARK:B)y(*SKIP:A)z"}
 	};
 	/**
 	 * Выполняем обход ожиданий сопоставления глаголов с именем
@@ -574,6 +582,7 @@ TEST(Regex, InterfaceSubroutineCalls) {
 		bool matched;
 		// Ожидаемые границы обнаруженного совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
 	} SAMPLES[] = {
 		/**
@@ -660,45 +669,7 @@ TEST(Regex, InterfaceSubroutineCalls) {
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(a)(?<=(?0))")));
 }
 
-/**
- * @brief Проверка ретроспективных проверок переменной длины
- *
- * @details Правила сняты с эталонной реализации опытом. Длина ссылки на захват
- *          берётся длиною группы, ею указанной, наравне с длиною вызова
- *          подпрограммы, а длины проверки перебираются от НАИБОЛЬШЕЙ:
- *          исход самой проверки порядок не правит - она нулевой ширины, -
- *          а захваты тела правит целиком.
- *
- */
-/**
- * @brief Проверка сопоставления не отсекающих проверок окружения
- *
- * @details Проверка окружения обыкновенная атомарна: точки возврата, телом её
- *          накопленные, отсекаются выполнением проверки. Проверка же
- *          не отсекающая - «(?*...)» и «(?<*...)» - точки сохраняет,
- *          отчего отказ последующего текста продолжается перебором
- *          тела: правило снято с эталонной реализации опытом
- *          на «(?*(a|ab))\1c», где «(?=(a|ab))\1c» отказывает.
- *
- */
-/**
- * @brief Проверка сопоставления прогонов письменности
- *
- * @details Прогон письменности - «(*sr:...)» - сводит письменности сопоставленного
- *          текста пересечением наборов расширений: набор пустой отказывает
- *          сопоставлению. Десятичные цифры сверх того обязаны принадлежать
- *          набору единому. Правила сняты с эталонной реализации опытом.
- *
- */
-/**
- * @brief Проверка указаний начала выражения
- *
- * @details Указание «(*NOTEMPTY_ATSTART)» запрещает пустое совпадение одною лишь
- *          позицией начала поиска, тогда как «(*NOTEMPTY)» запрещает его всюду.
- *          Оба испытываются и путём порождения машинного кода: признаки
- *          эти ставит разбор выражения, а не заказчик сборки.
- *
- */
+
 /**
  * @brief Проверка завершения комментария соглашением о переводе строки
  *
@@ -776,6 +747,16 @@ TEST(Regex, InterfaceCommentConvention) {
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(*CRLF)(?x)(#c\na")));
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(*CRLF)(?x)(#c\n)a")));
 }
+
+/**
+ * @brief Проверка указаний начала выражения
+ *
+ * @details Указание «(*NOTEMPTY_ATSTART)» запрещает пустое совпадение одною лишь
+ *          позицией начала поиска, тогда как «(*NOTEMPTY)» запрещает его всюду.
+ *          Оба испытываются и путём порождения машинного кода: признаки
+ *          эти ставит разбор выражения, а не заказчик сборки.
+ *
+ */
 TEST(Regex, InterfaceStartOptions) {
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp;
@@ -794,6 +775,7 @@ TEST(Regex, InterfaceStartOptions) {
 		bool matched;
 		// Ожидаемые границы обнаруженного совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
 	} SAMPLES[] = {
 		/**
@@ -863,6 +845,16 @@ TEST(Regex, InterfaceStartOptions) {
 		}
 	}
 }
+
+/**
+ * @brief Проверка сопоставления прогонов письменности
+ *
+ * @details Прогон письменности - «(*sr:...)» - сводит письменности сопоставленного
+ *          текста пересечением наборов расширений: набор пустой отказывает
+ *          сопоставлению. Десятичные цифры сверх того обязаны принадлежать
+ *          набору единому. Правила сняты с эталонной реализации опытом.
+ *
+ */
 TEST(Regex, InterfaceScriptRuns) {
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp;
@@ -881,6 +873,7 @@ TEST(Regex, InterfaceScriptRuns) {
 		bool matched;
 		// Ожидаемые границы обнаруженного совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
 	} SAMPLES[] = {
 		/**
@@ -990,6 +983,18 @@ TEST(Regex, InterfaceScriptRuns) {
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(*sr)a")));
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(*srx:a)")));
 }
+
+/**
+ * @brief Проверка сопоставления не отсекающих проверок окружения
+ *
+ * @details Проверка окружения обыкновенная атомарна: точки возврата, телом её
+ *          накопленные, отсекаются выполнением проверки. Проверка же
+ *          не отсекающая - «(?*...)» и «(?<*...)» - точки сохраняет,
+ *          отчего отказ последующего текста продолжается перебором
+ *          тела: правило снято с эталонной реализации опытом
+ *          на «(?*(a|ab))\1c», где «(?=(a|ab))\1c» отказывает.
+ *
+ */
 TEST(Regex, InterfaceNonAtomicLookarounds) {
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp;
@@ -1008,9 +1013,11 @@ TEST(Regex, InterfaceNonAtomicLookarounds) {
 		bool matched;
 		// Ожидаемые границы обнаруженного совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
 		// Ожидаемые границы захвата первой группы
 		size_t first;
+		// Ожидаемый конец второй группы
 		size_t second;
 	} SAMPLES[] = {
 		/**
@@ -1139,6 +1146,17 @@ TEST(Regex, InterfaceNonAtomicLookarounds) {
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(*pla)a")));
 	EXPECT_FALSE(static_cast <bool> (regexp.build("(*plx:a)a")));
 }
+
+/**
+ * @brief Проверка ретроспективных проверок переменной длины
+ *
+ * @details Правила сняты с эталонной реализации опытом. Длина ссылки на захват
+ *          берётся длиною группы, ею указанной, наравне с длиною вызова
+ *          подпрограммы, а длины проверки перебираются от НАИБОЛЬШЕЙ:
+ *          исход самой проверки порядок не правит - она нулевой ширины, -
+ *          а захваты тела правит целиком.
+ *
+ */
 TEST(Regex, InterfaceVariableLookbehind) {
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp;
@@ -1155,9 +1173,11 @@ TEST(Regex, InterfaceVariableLookbehind) {
 		const char * text;
 		// Ожидаемые границы обнаруженного совпадения
 		size_t begin;
+		// Ожидаемый конец совпадения
 		size_t finish;
 		// Ожидаемые границы захвата первой группы
 		size_t first;
+		// Ожидаемый конец второй группы
 		size_t second;
 	} SAMPLES[] = {
 		/**
@@ -1721,6 +1741,7 @@ TEST(Regex, InterfaceClassRules) {
 	 *
 	 */
 	EXPECT_FALSE(static_cast <bool> (regexp.build("[..]")));
+	// Проверяем сборку выражения с классом исключений
 	EXPECT_TRUE(static_cast <bool> (regexp.build("[^..]")));
 	// Выполняем сборку выражения с дословной последовательностью краем нижним
 	const auto lower = regexp.build("[\\Qa\\E-z]");
@@ -2135,7 +2156,9 @@ TEST(Regex, InterfaceThreads) {
 	 */
 	for(size_t i = 0; i < count; i++){
 		// Выполняем запуск потока исполнения сопоставления
-		threads.emplace_back([&regexp, &expression, &matched, i]() noexcept {
+		threads.emplace_back([&expression, &matched, i]() noexcept {
+			// Создаём объект работы с регулярными выражениями потока исполнения
+			regexp_t regexp;
 			/**
 			 * Выполняем сопоставление выражения с текстом
 			 */
@@ -2164,6 +2187,7 @@ TEST(Regex, InterfaceThreads) {
 		// Выполняем проверку количества совпадений потока исполнения
 		EXPECT_EQ(matched.at(i), rounds) << "Поток: " << i;
 }
+
 /**
  * @brief Проверка сопоставления порождённым машинным кодом несколькими потоками
  *
@@ -2212,7 +2236,9 @@ TEST(Regex, InterfaceThreadsCodegen) {
 	 */
 	for(size_t i = 0; i < count; i++){
 		// Выполняем запуск потока исполнения сопоставления
-		threads.emplace_back([&regexp, &expression, &matched, i]() noexcept {
+		threads.emplace_back([&expression, &matched, i]() noexcept {
+			// Создаём объект работы с регулярными выражениями потока исполнения
+			regexp_t regexp;
 			/**
 			 * Выполняем сопоставление выражения с текстом
 			 */
@@ -2241,6 +2267,7 @@ TEST(Regex, InterfaceThreadsCodegen) {
 		// Выполняем проверку количества совпадений потока исполнения
 		EXPECT_EQ(matched.at(i), rounds) << "Поток: " << i;
 }
+
 /**
  * @brief Тест соответствия классов POSIX режиму соответствия Юникоду
  *
@@ -2261,6 +2288,7 @@ TEST(Regex, InterfacePosixUnicode) {
 	 */
 	struct sample_t {
 		// Название класса символов POSIX
+		// Название проверяемого случая
 		const char * name;
 		// Текст для сопоставления
 		const char * text;
@@ -2323,8 +2351,10 @@ TEST(Regex, InterfacePosixUnicode) {
 	ASSERT_TRUE(!!negated);
 	// Выполняем проверку отрицания класса символов POSIX
 	EXPECT_FALSE(regexp.test("ы", negated));
+	// Проверяем совпадение отрицаемого класса символов
 	EXPECT_TRUE(regexp.test("7", negated));
 }
+
 /**
  * @brief Тест отказа сопоставления по тексту с неверной записью UTF-8
  *
@@ -2391,6 +2421,7 @@ TEST(Regex, InterfaceBadUtf8Subject) {
 	 */
 	EXPECT_TRUE(regexp.test(string("\xFF\xFE", 2), plain));
 }
+
 /**
  * @brief Тест отказа разбора выражения с неправильной записью UTF-8
  *
@@ -2409,7 +2440,9 @@ TEST(Regex, InterfaceMalformedUTF) {
 	 *
 	 */
 	const struct {
+		// Название проверяемого случая
 		const char * name;
+		// Образец регулярного выражения
 		const string pattern;
 	} samples[] = {
 		{"обрыв двухбайтовой последовательности", string("a\xD0", 2)},
@@ -2448,6 +2481,7 @@ TEST(Regex, InterfaceMalformedUTF) {
 		EXPECT_TRUE(regexp.test("привет", expression));
 	}
 }
+
 /**
  * @brief Тест отказа разбора выражения с записью неверной
  *
@@ -2503,6 +2537,7 @@ TEST(Regex, InterfaceMalformedSyntax) {
 		EXPECT_TRUE(!!expression) << pattern;
 	}
 }
+
 /**
  * @brief Тест разбора выражений с записью пограничной
  *
@@ -2562,6 +2597,7 @@ TEST(Regex, InterfaceMalformedTokens) {
 		EXPECT_TRUE(regexp.test(pattern, expression)) << pattern;
 	}
 }
+
 /**
  * @brief Тест отказа сборки выражения, размах программы превышающего
  *
@@ -2569,16 +2605,6 @@ TEST(Regex, InterfaceMalformedTokens) {
 TEST(Regex, InterfaceProgramLimit) {
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp;
-	/**
-	 * @brief Набор выражений, размах программы превышающих
-	 *
-	 * @details Размах программы ограничен, и превышение его обязано быть
-	 *          отвергнуто сборкой, а не обращено программой усечённой.
-	 *          Превышается он тремя путями разными: длиною самого выражения,
-	 *          повторением развёрнутым и повторением вложенным - отказ обязан
-	 *          быть при всяком.
-	 *
-	 */
 	/**
 	 * @brief Набивка, подводящая программу к пределу вплотную
 	 *
@@ -2589,6 +2615,16 @@ TEST(Regex, InterfaceProgramLimit) {
 	 *
 	 */
 	constexpr const char * FILLER = "(?:(?:a|b){1000}){262}(?:a|b){141}";
+	/**
+	 * @brief Набор выражений, размах программы превышающих
+	 *
+	 * @details Размах программы ограничен, и превышение его обязано быть
+	 *          отвергнуто сборкой, а не обращено программой усечённой.
+	 *          Превышается он тремя путями разными: длиною самого выражения,
+	 *          повторением развёрнутым и повторением вложенным - отказ обязан
+	 *          быть при всяком.
+	 *
+	 */
 	const struct {
 		const char * name;
 		const string pattern;
@@ -2644,6 +2680,7 @@ TEST(Regex, InterfaceProgramLimit) {
 		EXPECT_TRUE(regexp.test(text, expression));
 	}
 }
+
 /**
  * @brief Тест предела длины ретроспективной проверки
  *
@@ -2695,6 +2732,7 @@ TEST(Regex, InterfaceLookbehindBounds) {
 		EXPECT_TRUE(regexp.test(sample.text, expression)) << sample.pattern;
 	}
 }
+
 /**
  * @brief Тест настройки глубины рекурсии и снятия кода ошибки фасадом
  *
@@ -2771,6 +2809,7 @@ TEST(Regex, InterfaceNestingAndError) {
 		EXPECT_EQ(regexp.error(), regex::error_t::NONE);
 	}
 }
+
 /**
  * @brief Тест выдачи текста ошибки по всякому её коду
  *
@@ -2835,6 +2874,7 @@ TEST(Regex, InterfaceMessages) {
 	 */
 	EXPECT_EQ(regex::parser_t::message(static_cast <regex::error_t> (0xFF)), "unknown error");
 }
+
 /**
  * @brief Тест отказа сборки выражений негодных
  *
@@ -3014,6 +3054,7 @@ TEST(Regex, InterfaceMalformedCorpus) {
 		 << sample.pattern << ": " << regexp.message();
 	}
 }
+
 /**
  * @brief Тест отказа сборки выражений с ломаной последовательностью UTF-8
  *
@@ -3046,6 +3087,7 @@ TEST(Regex, InterfaceMalformedPattern) {
 		EXPECT_EQ(regexp.error(), regex::error_t::BAD_UTF8) << regexp.message();
 	}
 }
+
 /**
  * @brief Тест отказа сборки выражения с вложенностью сверх допустимой
  *
@@ -3080,6 +3122,7 @@ TEST(Regex, InterfaceNestingDepth) {
 	 */
 	EXPECT_TRUE(regexp.build(string(64, '(') + "a" + string(64, ')')));
 }
+
 /**
  * @brief Тест проверки существования группы, условием указанной вперёд
  *
@@ -3139,6 +3182,7 @@ TEST(Regex, InterfaceConditionForward) {
 		EXPECT_TRUE(regexp.test("bxy", expression));
 	}
 }
+
 /**
  * @brief Тест связи квантора повторения с элементом своего вызова
  *
@@ -3198,6 +3242,7 @@ TEST(Regex, InterfaceQuantifierBinding) {
 		// Выполняем проверку сборки регулярного выражения
 		EXPECT_TRUE(regexp.build(pattern)) << pattern << ": " << regexp.message();
 }
+
 /**
  * @brief Тест прозрачных последовательностей в начале класса символов
  *
@@ -3273,6 +3318,7 @@ TEST(Regex, InterfaceClassTransparent) {
 		EXPECT_TRUE(regexp.test("^", expression));
 	}
 }
+
 /**
  * @brief Тест признака отведения привязке одного конца текста
  *
@@ -3374,6 +3420,7 @@ TEST(Regex, InterfaceDollarEnd) {
 		EXPECT_TRUE(regexp.test("a\n", expression));
 	}
 }
+
 /**
  * @brief Тест разрядов свойств Юникода без учёта регистра символов
  *
@@ -3459,6 +3506,7 @@ TEST(Regex, InterfaceCaselessProperty) {
 		}
 	}
 }
+
 /**
  * @brief Тест атомарности последовательности перевода строки
  *
@@ -3537,6 +3585,7 @@ TEST(Regex, InterfaceLineBreakAtomic) {
 		}
 	}
 }
+
 /**
  * @brief Тест разрыва графемного кластера у связки индийских письменностей
  *
@@ -3566,6 +3615,7 @@ TEST(Regex, InterfaceGraphemeConjunct) {
 	 */
 	EXPECT_EQ(bounds.front().second, static_cast <size_t> (9));
 }
+
 /**
  * @brief Проверка сопоставления литералом за пределами базовой плоскости
  *

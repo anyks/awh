@@ -6,6 +6,12 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки оконного поиска коротких литералов
  *
  * @copyright Copyright © 2026
@@ -15,10 +21,10 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstdint>
-#include <cstring>
 #include <memory>
 #include <string>
+#include <cstdint>
+#include <cstring>
 #include <string_view>
 
 /**
@@ -30,15 +36,22 @@
 #endif
 
 /**
- * Подключаем поиск и окружение проверок
+ * Подключаем заголовочные файлы тестового окружения
  */
-#include <regex/prefilter.hpp>
 #include "../main.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/regex/prefilter.hpp"
 
 /**
  * Используем стандартное пространство имён и пространство имён проекта
  */
 using namespace std;
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -139,18 +152,23 @@ TEST(Regex, PrefilterWindowedCount) {
 		size_t rejected = string_view::npos;
 		// Проверяем оба участка
 		ASSERT_EQ(regex::windowed(text, needle, 0, rejected), static_cast <size_t> (64));
+		// Проверяем счёт отвергнутых кандидатов обоих участков
 		EXPECT_EQ(rejected, static_cast <size_t> (2));
 		// Проверяем пропуск первого кандидата
 		ASSERT_EQ(regex::windowed(text, needle, 1, rejected), static_cast <size_t> (64));
+		// Проверяем уменьшение счёта отвергнутых кандидатов
 		EXPECT_EQ(rejected, static_cast <size_t> (1));
 		// Проверяем сброс счёта после полного совпадения
 		ASSERT_EQ(regex::windowed(text, needle, 65, rejected), string_view::npos);
+		// Проверяем обнулённый счёт после полного совпадения
 		EXPECT_EQ(rejected, static_cast <size_t> (0));
 		// Проверяем начало за пределами текста
 		ASSERT_EQ(regex::windowed(text, needle, 129, rejected), string_view::npos);
+		// Проверяем обнулённый счёт при начале за текстом
 		EXPECT_EQ(rejected, static_cast <size_t> (0));
 		// Проверяем наибольшее возможное начало поиска
 		ASSERT_EQ(regex::windowed(text, needle, string_view::npos, rejected), string_view::npos);
+		// Проверяем обнулённый счёт при наибольшем начале поиска
 		EXPECT_EQ(rejected, static_cast <size_t> (0));
 	}
 }
@@ -164,6 +182,9 @@ TEST(Regex, PrefilterWindowedCount) {
  *
  */
 TEST(Regex, PrefilterWindowedGuardPages) {
+	/**
+	 * Если сборка ведётся для систем семейства POSIX
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем размер страницы памяти
 		const long page = ::sysconf(_SC_PAGESIZE);
@@ -171,7 +192,8 @@ TEST(Regex, PrefilterWindowedGuardPages) {
 		ASSERT_GE(page, 128);
 		// Отводим области текста и литерала с защитными страницами
 		const size_t length = (static_cast <size_t> (page) * 6);
-		void * allocated = ::mmap(nullptr, length, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// Отводим шесть страниц на чтение и запись
+		void * allocated = ::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 		// Проверяем успешность размещения
 		ASSERT_NE(allocated, MAP_FAILED);
 		/**
@@ -188,9 +210,10 @@ TEST(Regex, PrefilterWindowedGuardPages) {
 		unique_ptr <char, decltype(release)> storage(static_cast <char *> (allocated), release);
 		// Получаем начала доступных страниц
 		char * haystack = (storage.get() + page), * literal = (storage.get() + (page * 4));
-		// Разрешаем чтение и запись только в этих страницах
-		ASSERT_EQ(::mprotect(haystack, static_cast <size_t> (page), PROT_READ | PROT_WRITE), 0);
-		ASSERT_EQ(::mprotect(literal, static_cast <size_t> (page), PROT_READ | PROT_WRITE), 0);
+		// Запрещаем защитные страницы понижением прав: NetBSD не повышает права, выданные при отводе
+		ASSERT_EQ(::mprotect(storage.get(), static_cast <size_t> (page), PROT_NONE), 0);
+		ASSERT_EQ(::mprotect((haystack + page), (static_cast <size_t> (page) * 2), PROT_NONE), 0);
+		ASSERT_EQ(::mprotect((literal + page), static_cast <size_t> (page), PROT_NONE), 0);
 		/**
 		 * Перебираем длины литерала
 		 */
@@ -236,6 +259,9 @@ TEST(Regex, PrefilterWindowedGuardPages) {
 				}
 			}
 		}
+	/**
+	 * Если сборка ведётся для системы семейства Windows
+	 */
 	#else
 		// Пропускаем проверку при отсутствии защищённых страниц POSIX
 		GTEST_SKIP() << "проверка требует защищённых страниц POSIX";

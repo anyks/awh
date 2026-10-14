@@ -6,17 +6,17 @@
  *
  * @author Yuriy Lobarev
  *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
  * @brief Проверки поиска обязательного двухбайтового литерала
  *
  * @copyright Copyright © 2026
  *
  */
-
-/**
- * Подключаем поиск и окружение проверок
- */
-#include <regex/prefilter.hpp>
-#include "../main.hpp"
 
 /**
  * Стандартные заголовочные файлы
@@ -35,9 +35,22 @@
 #endif
 
 /**
+ * Подключаем заголовочные файлы тестового окружения
+ */
+#include "../main.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/regex/prefilter.hpp"
+
+/**
  * Используем стандартное пространство имён и пространство имён проекта
  */
 using namespace std;
+/** 
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -76,6 +89,7 @@ TEST(Regex, PrefilterLocateDoublet) {
 					const char filler = (needle.empty() ? 'x' : static_cast <char> (needle.front() ^ ((frequent == 0) ? 0x55 : 0)));
 					// Создаём текст с запасом перед его началом
 					string storage(size + shift, filler);
+					// Получаем указатель на участок текста со сдвигом
 					char * body = (storage.data() + shift);
 					/**
 					 * Проверяем отсутствие, конец и два полных вхождения
@@ -93,6 +107,7 @@ TEST(Regex, PrefilterLocateDoublet) {
 								::memcpy(body, needle.data(), needle.size());
 						}
 						// Получаем представление проверяемого участка
+						// Заводим обзор текста заданной длины
 						const string_view text(body, size);
 						/**
 						 * Проверяем все начала поиска и ближайшую недопустимую позицию
@@ -121,13 +136,19 @@ TEST(Regex, PrefilterLocateDoublet) {
  *
  */
 TEST(Regex, PrefilterLocateDoubletGuardPages) {
+	/**
+	 * Если сборка ведётся для систем семейства POSIX
+	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем размер страницы системы
 		const long page = ::sysconf(_SC_PAGESIZE);
+		// Проверяем достаточный размер страницы памяти
 		ASSERT_GE(page, 128);
 		// Отводим доступную страницу между двумя защищёнными
 		const size_t length = (static_cast <size_t> (page) * 3);
-		void * allocated = ::mmap(nullptr, length, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// Отводим три страницы на чтение и запись
+		void * allocated = ::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// Проверяем успешность отвода памяти
 		ASSERT_NE(allocated, MAP_FAILED);
 		/**
 		 * @brief Функция освобождения страниц при любом выходе из проверки
@@ -141,19 +162,27 @@ TEST(Regex, PrefilterLocateDoubletGuardPages) {
 		};
 		// Закрепляем освобождение памяти и открываем только среднюю страницу
 		unique_ptr <char, decltype(release)> storage(static_cast <char *> (allocated), release);
+		// Получаем указатель на начало второй страницы
 		char * region = (storage.get() + page);
-		ASSERT_EQ(::mprotect(region, static_cast <size_t> (page), PROT_READ | PROT_WRITE), 0);
+		// Запрещаем защитные страницы понижением прав: NetBSD не повышает права, выданные при отводе
+		ASSERT_EQ(::mprotect(storage.get(), static_cast <size_t> (page), PROT_NONE), 0);
+		ASSERT_EQ(::mprotect((region + page), static_cast <size_t> (page), PROT_NONE), 0);
 		// Создаём предварительный отбор по двоичной паре
 		regex::prefilter_t filter;
+		// Заводим искомую пару байтов, нулём начинающуюся
 		filter.literal.assign("\0\xff", 2);
 		/**
 		 * Перебираем длины текста и обе границы страницы
 		 */
 		for(size_t size = 0; size <= 100; size++){
+			/**
+			 * Перебираем обе границы страницы
+			 */
 			for(size_t side = 0; side < 2; side++){
 				// Получаем участок у выбранной границы
 				char * body = ((side == 0) ? region : (region + page - size));
 				::memset(body, 0, size);
+				// Заводим обзор текста заданной длины
 				const string_view text(body, size);
 				// Проверяем текст из ложных кандидатов и недопустимое начало
 				ASSERT_EQ(filter.locate(text, 0), string_view::npos);
@@ -174,6 +203,9 @@ TEST(Regex, PrefilterLocateDoubletGuardPages) {
 				}
 			}
 		}
+	/**
+	 * Если сборка ведётся для системы семейства Windows
+	 */
 	#else
 		// Пропускаем проверку при отсутствии защищённых страниц POSIX
 		GTEST_SKIP() << "проверка требует защищённых страниц POSIX";

@@ -36,19 +36,19 @@
 #include <vector>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/emitter.hpp>
-#include <regex/assembly.hpp>
-#include <regex/regex.hpp>
-#include <regex/engine.hpp>
-#include <regex/storage.hpp>
-
-/**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/sys/log.hpp"
+#include "../../include/regex/regex.hpp"
+#include "../../include/regex/engine.hpp"
+#include "../../include/regex/storage.hpp"
+#include "../../include/regex/emitter.hpp"
+#include "../../include/regex/assembly.hpp"
 
 /**
  * Если сборка выполняется со сличением с эталонной реализацией
@@ -93,6 +93,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -109,7 +112,6 @@ namespace {
 	 *
 	 */
 	constexpr size_t SAMPLES = 20000;
-
 	/**
 	 * @brief Количество образцов сличения исчерпывающего прогона
 	 *
@@ -316,7 +318,7 @@ namespace {
 			// Получаем набор режимов сопоставления движком
 			const uint32_t flags = (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -327,7 +329,7 @@ namespace {
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
@@ -361,6 +363,9 @@ namespace {
 			}
 			// Выполняем проверку совпадения вердикта проверки наличия
 			ASSERT_EQ(engine.test(compiled, text, 0), expected) << "проверка наличия: «" << pattern << "»";
+		/**
+		 * Если эталонная реализация PCRE2 сборке недоступна
+		 */
 		#else
 			// Выходим из сличения с эталонной реализацией
 			GTEST_SKIP() << "эталонная реализация PCRE2 сборке недоступна";
@@ -412,7 +417,7 @@ namespace {
 				// Получаем порождённый текст сопоставления
 				const string text = subject(gen, length, utf);
 				// Код ошибки сборки эталонного регулярного выражения
-				int code = 0;
+				int32_t code = 0;
 				// Положение ошибки сборки эталонного регулярного выражения
 				PCRE2_SIZE offset = 0;
 				// Выполняем сборку эталонного регулярного выражения
@@ -438,7 +443,7 @@ namespace {
 				 */
 				const size_t start = (((sample % 3) == 0) ? (gen() % (text.size() + 1)) : 0);
 				// Выполняем сопоставление эталонного регулярного выражения
-				const int count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), start, 0, data, nullptr);
+				const int32_t count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), start, 0, data, nullptr);
 				/**
 				 * Если эталон предел возврата исчерпал
 				 *
@@ -484,7 +489,7 @@ namespace {
 				 *          захваченной, и пары за нею содержания не несут.
 				 *
 				 */
-				for(int index = 0; expected && (index < count); index++)
+				for(int32_t index = 0; expected && (index < count); index++)
 					// Выполняем снятие границ очередной группы эталона
 					expects.emplace_back(static_cast <size_t> (bounds[index * 2]), static_cast <size_t> (bounds[(index * 2) + 1]));
 				// Выполняем освобождение набора границ эталонного совпадения
@@ -670,6 +675,9 @@ namespace {
 				ASSERT_GT((generated * 10), checked)
 					<< "машинный код порождён у " << generated << " образцов из " << checked;
 			}
+		/**
+		 * Если эталонная реализация PCRE2 сборке недоступна
+		 */
 		#else
 			// Выходим из сличения с эталонной реализацией
 			GTEST_SKIP() << "эталонная реализация PCRE2 сборке недоступна";
@@ -787,7 +795,7 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			// Получаем режим разбора выражения как последовательности UTF-8
 			const bool utf = ((gen() % 4) == 0);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -896,6 +904,7 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		EXPECT_GT(refused, (samples / 10));
 	#endif
 }
+
 /**
  * @brief Сличение границ совпадения с эталонной реализацией вне режима UTF-8
  *
@@ -906,6 +915,7 @@ TEST(Regex, ReferencePlain) {
 	// Выполняем сличение на текстах, вынуждающих проход по их длине
 	compare((SAMPLES / 4), 400, 7, false);
 }
+
 /**
  * @brief Функция сличения сопоставления по режимам сборки
  *
@@ -973,7 +983,9 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 		};
 		// Получаем количества частей, признаков и текстов
 		const size_t count = (sizeof(PARTS) / sizeof(PARTS[0]));
+		// Получаем количество элементов набора OPTIONS
 		const size_t options = (sizeof(OPTIONS) / sizeof(OPTIONS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
@@ -1031,7 +1043,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 				names.append(names.empty() ? "" : "+").append("JIT");
 			}
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -1059,13 +1071,14 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -1102,6 +1115,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 		EXPECT_GT(checked, (samples / 2));
 	#endif
 }
+
 /**
  * @brief Сличение вердикта сборки с эталонной реализацией
  *
@@ -1110,6 +1124,7 @@ TEST(Regex, ReferenceRefusal) {
 	// Выполняем сличение вердиктов сборки на наборе образцов
 	refusals(4000, 20260831);
 }
+
 /**
  * @brief Функция сличения приведения регистра Юникода с эталонной реализацией
  *
@@ -1153,6 +1168,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		};
 		// Получаем количества частей и текстов сличения
 		const size_t count = (sizeof(PARTS) / sizeof(PARTS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
@@ -1180,6 +1196,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			const bool jit = ((gen() % 2) == 0);
 			// Собираем наборы признаков сборки модуля и эталона
 			uint32_t mine = (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP));
+			// Заводим набор режимов эталонной реализации
 			uint32_t theirs = (PCRE2_UTF | PCRE2_UCP);
 			/**
 			 * Если сопоставление ведётся без учёта регистра символов
@@ -1197,7 +1214,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				// Выполняем установку признака порождения машинного кода
 				mine |= static_cast <uint32_t> (regex::flag_t::JIT);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -1225,13 +1242,14 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -1262,6 +1280,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		EXPECT_GT(checked, (samples / 2));
 	#endif
 }
+
 /**
  * @brief Сличение сопоставления по режимам сборки с эталонной реализацией
  *
@@ -1270,6 +1289,7 @@ TEST(Regex, ReferenceModes) {
 	// Выполняем сличение сопоставления на наборе образцов
 	modes(20000, 20260901);
 }
+
 /**
  * @brief Функция сличения захватов при возврате с эталонной реализацией
  *
@@ -1331,8 +1351,11 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		};
 		// Получаем количества оснований, продолжений, обёрток и текстов
 		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		// Получаем количество элементов набора TAILS
 		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
+		// Получаем количество элементов набора WRAPS
 		const size_t wraps = (sizeof(WRAPS) / sizeof(WRAPS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
@@ -1383,7 +1406,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			// Получаем признак сборки с порождением машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -1412,7 +1435,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
@@ -1426,7 +1449,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 				/**
 				 * Выполняем обход набора границ эталонных захватов
 				 */
-				for(int index = 0; index < result; index++){
+				for(int32_t index = 0; index < result; index++){
 					/**
 					 * Если захват эталоном не установлен
 					 */
@@ -1477,6 +1500,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		EXPECT_GT(checked, (samples / 2));
 	#endif
 }
+
 /**
  * @brief Функция сличения переводов строки с эталонной реализацией
  *
@@ -1523,8 +1547,9 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			"a\r\nb", "a\nb", "a\rb", "\r\n", "\n\r", "ab", "a b", "abc", "",
 			"\r", "\n", "a\r\n\r\nb", "\u00e9x", "e\u0301x"
 		};
-		// Получаем количества частей и текстов сличения
+		// Получаем количество элементов набора PARTS
 		const size_t count = (sizeof(PARTS) / sizeof(PARTS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine;
@@ -1548,8 +1573,11 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 				pattern.append(PARTS[gen() % count]);
 			// Получаем режимы сборки образца сличения
 			const bool utf = ((gen() % 2) == 0);
+			// Заводим признак режима «DOTALL»
 			const bool dotall = ((gen() % 3) == 0);
+			// Заводим признак режима многострочности
 			const bool multi = ((gen() % 3) == 0);
+			// Заводим признак порождения машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Собираем наборы признаков сборки модуля и эталона
 			uint32_t mine = 0, theirs = PCRE2_NO_AUTO_POSSESS;
@@ -1587,7 +1615,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 				// Выполняем установку признака порождения машинного кода
 				mine |= static_cast <uint32_t> (regex::flag_t::JIT);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -1615,13 +1643,14 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -1652,6 +1681,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		EXPECT_GT(checked, (samples / 2));
 	#endif
 }
+
 /**
  * @brief Функция сличения имён захватывающих групп с эталонной реализацией
  *
@@ -1711,11 +1741,15 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		 *
 		 */
 		static const char * TEXTS[] = {"", "a", "b", "ab", "abc", "xyz", "a1b2", "dz", "zzz", "cab"};
-		// Получаем количества имён, тел, частей и текстов сличения
+		// Получаем количество элементов набора NAMES
 		const size_t names = (sizeof(NAMES) / sizeof(NAMES[0]));
+		// Получаем количество элементов набора BODIES
 		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		// Получаем количество элементов набора PARTS
 		const size_t parts = (sizeof(PARTS) / sizeof(PARTS[0]));
+		// Получаем количество элементов набора REFERENCES
 		const size_t references = (sizeof(REFERENCES) / sizeof(REFERENCES[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -1784,6 +1818,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			}
 			// Получаем режимы сборки образца сличения
 			const bool duplicates = ((gen() % 2) == 0);
+			// Заводим признак порождения машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Собираем наборы признаков сборки модуля и эталона
 			uint32_t mine = 0, theirs = 0;
@@ -1803,12 +1838,11 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 				// Выполняем установку признака порождения машинного кода
 				mine |= static_cast <uint32_t> (regex::flag_t::JIT);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
-			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()),
-			 pattern.size(), theirs, &code, &spot, nullptr);
+			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()), pattern.size(), theirs, &code, &spot, nullptr);
 			// Выполняем сборку регулярного выражения движком
 			const auto expression = regexp.build(pattern, mine);
 			// Получаем вердикт сборки регулярного выражения движком
@@ -1890,7 +1924,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Набор границ совпадения и захваченных групп
 			vector <pair <size_t, size_t>> bounds;
 			// Получаем вердикт сопоставления движком
@@ -1913,7 +1947,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 					// Длина текста, извлечённого эталоном по имени группы
 					PCRE2_SIZE length = 0;
 					// Выполняем извлечение эталоном текста по имени группы
-					const int status = ::pcre2_substring_get_byname(data,
+					const int32_t status = ::pcre2_substring_get_byname(data,
 					 reinterpret_cast <PCRE2_SPTR> (item.first.c_str()), &buffer, &length);
 					// Выполняем извлечение движком текста по имени группы
 					const string_view captured = regexp.capture(text, bounds, expression, item.first);
@@ -1956,6 +1990,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		EXPECT_GT(unperformed, (samples / 100));
 	#endif
 }
+
 /**
  * @brief Сличение приведения регистра Юникода с эталонной реализацией
  *
@@ -1964,6 +1999,7 @@ TEST(Regex, ReferenceFolding) {
 	// Выполняем сличение приведения регистра на наборе образцов
 	folding(20000, 20260903);
 }
+
 /**
  * @brief Функция сличения экранированных последовательностей с эталонной реализацией
  *
@@ -2025,9 +2061,11 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			"a", "A", "ab", "0", "01", "z", "\t", "\n", "\r", " ", "-", "]",
 			"\\", "é", "й", "α", "", "aa", "b", "Ab", "\x01"
 		};
-		// Получаем количества последовательностей, частей и текстов сличения
+		// Получаем количество элементов набора ESCAPES
 		const size_t count = (sizeof(ESCAPES) / sizeof(ESCAPES[0]));
+		// Получаем количество элементов набора PARTS
 		const size_t parts = (sizeof(PARTS) / sizeof(PARTS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -2068,8 +2106,9 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				// Иначе выполняем добавление последовательности экранированной
 				} else pattern.append(ESCAPES[gen() % count]);
 			}
-			// Получаем режимы сборки образца сличения
+			// Заводим признак режима UTF
 			const bool utf = ((gen() % 2) == 0);
+			// Заводим признак порождения машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Собираем наборы признаков сборки модуля и эталона
 			uint32_t mine = 0, theirs = 0;
@@ -2089,7 +2128,7 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				// Выполняем установку признака порождения машинного кода
 				mine |= static_cast <uint32_t> (regex::flag_t::JIT);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -2112,13 +2151,14 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -2149,6 +2189,7 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		EXPECT_GT(checked, (samples / 4));
 	#endif
 }
+
 /**
  * @brief Функция сличения проверок окружения с эталонной реализацией
  *
@@ -2209,11 +2250,15 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		static const char * TEXTS[] = {
 			"a", "ab", "abc", "b", "ba", "aab", "", "x", "aa", "abab", "cab", "bba"
 		};
-		// Получаем количества составных частей порождения
+		// Получаем количество элементов набора BODIES
 		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		// Получаем количество элементов набора LOOKS
 		const size_t looks = (sizeof(LOOKS) / sizeof(LOOKS[0]));
+		// Получаем количество элементов набора QUANTS
 		const size_t quants = (sizeof(QUANTS) / sizeof(QUANTS[0]));
+		// Получаем количество элементов набора TAILS
 		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -2245,7 +2290,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 				pattern.append(TAILS[gen() % tails]);
 			}
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -2268,7 +2313,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
@@ -2298,6 +2343,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 				const size_t count = static_cast <size_t> (result);
 				// Получаем границы эталонного совпадения
 				const size_t begin = static_cast <size_t> (bounds[0]);
+				// Получаем конец извлечённого совпадения
 				const size_t finish = static_cast <size_t> (bounds[1]);
 				// Границы захваченных групп эталонного совпадения
 				vector <pair <size_t, size_t>> captures;
@@ -2342,6 +2388,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		EXPECT_GT((checked * 2), samples);
 	#endif
 }
+
 /**
  * @brief Функция сличения прогонов письменности с эталонной реализацией
  *
@@ -2409,11 +2456,15 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 			"!", "a!b", "\u03b1\u03b2\u03b3", "\u4e00\u30a2", "1\u0430",
 			"\u05d0a", "\u0928\u093f"
 		};
-				// Получаем количества составных частей порождения
+		// Получаем количество элементов набора BODIES
 		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		// Получаем количество элементов набора LOOKS
 		const size_t looks = (sizeof(LOOKS) / sizeof(LOOKS[0]));
+		// Получаем количество элементов набора QUANTS
 		const size_t quants = (sizeof(QUANTS) / sizeof(QUANTS[0]));
+		// Получаем количество элементов набора TAILS
 		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -2445,7 +2496,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 				pattern.append(TAILS[gen() % tails]);
 			}
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -2468,7 +2519,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
@@ -2498,6 +2549,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 				const size_t count = static_cast <size_t> (result);
 				// Получаем границы эталонного совпадения
 				const size_t begin = static_cast <size_t> (bounds[0]);
+				// Получаем конец извлечённого совпадения
 				const size_t finish = static_cast <size_t> (bounds[1]);
 				// Границы захваченных групп эталонного совпадения
 				vector <pair <size_t, size_t>> captures;
@@ -2542,6 +2594,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 		EXPECT_GT((checked * 2), samples);
 	#endif
 }
+
 /**
  * @brief Функция проверки условия внутри ретроспективной проверки
  *
@@ -2575,6 +2628,7 @@ bool conditioned(const string & pattern) noexcept {
 	// Выводим результат проверки наличия условия в выражении
 	return (pattern.find("(?(") != string::npos);
 }
+
 /**
  * @brief Функция сличения вызовов подпрограмм и условий с эталонной реализацией
  *
@@ -2636,12 +2690,17 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		static const char * TEXTS[] = {
 			"a", "ab", "aab", "abab", "", "b", "x", "aaa", "abc", "ba", "aba", "0", "a0"
 		};
-		// Получаем количества составных частей порождения
+		// Получаем количество элементов набора BODIES
 		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		// Получаем количество элементов набора CALLS
 		const size_t calls = (sizeof(CALLS) / sizeof(CALLS[0]));
+		// Получаем количество элементов набора CONDS
 		const size_t conds = (sizeof(CONDS) / sizeof(CONDS[0]));
+		// Получаем количество элементов набора QUANTS
 		const size_t quants = (sizeof(QUANTS) / sizeof(QUANTS[0]));
+		// Получаем количество элементов набора WRAPS
 		const size_t wraps = (sizeof(WRAPS) / sizeof(WRAPS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -2686,7 +2745,7 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 				pattern.append(QUANTS[gen() % quants]);
 			}
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -2722,13 +2781,14 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -2756,6 +2816,7 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		EXPECT_GT((checked * 5), samples);
 	#endif
 }
+
 /**
  * @brief Функция сличения кванторов повторения с эталонной реализацией
  *
@@ -2805,10 +2866,13 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			"", "a", "aa", "aaa", "aaaa", "ab", "abab", "b", "ba", "x",
 			"a{2}", "a{ 2 }", "a{,}", "a{}", "a{", "aab", "xa", "0a"
 		};
-		// Получаем количества частей, кванторов, признаков и текстов сличения
+		// Получаем количество элементов набора ATOMS
 		const size_t atoms = (sizeof(ATOMS) / sizeof(ATOMS[0]));
+		// Получаем количество элементов набора REPEATS
 		const size_t counts = (sizeof(REPEATS) / sizeof(REPEATS[0]));
+		// Получаем количество элементов набора GREEDS
 		const size_t greeds = (sizeof(GREEDS) / sizeof(GREEDS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -2835,10 +2899,10 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				// Выполняем добавление признака жадности квантора
 				pattern.append(GREEDS[gen() % greeds]);
 			}
-			// Получаем признак порождения машинного кода
+			// Заводим признак порождения машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -2884,13 +2948,14 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -2921,6 +2986,7 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		EXPECT_GT(checked, (samples / 4));
 	#endif
 }
+
 /**
  * @brief Функция сличения состава классов символов с эталонной реализацией
  *
@@ -2959,8 +3025,9 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			"a", "b", "z", "A", "Z", "0", "9", "-", "^", "]", "[", " ", "\t", "\n",
 			"_", ".", "*", "é", "й", "α", "", "ab", "a-", "\\", "\b"
 		};
-		// Получаем количества частей и текстов сличения
+		// Получаем количество элементов набора ITEMS
 		const size_t count = (sizeof(ITEMS) / sizeof(ITEMS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -2990,9 +3057,11 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				pattern.append(ITEMS[gen() % count]);
 			// Выполняем добавление закрывающей части класса символов
 			pattern.append(1, ']');
-			// Получаем режимы сборки образца сличения
+			// Заводим признак режима UTF
 			const bool utf = ((gen() % 2) == 0);
+			// Заводим признак сопоставления без учёта регистра
 			const bool caseless = ((gen() % 3) == 0);
+			// Заводим признак порождения машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Собираем наборы признаков сборки модуля и эталона
 			uint32_t mine = 0, theirs = 0;
@@ -3021,7 +3090,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				// Выполняем установку признака порождения машинного кода
 				mine |= static_cast <uint32_t> (regex::flag_t::JIT);
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
@@ -3044,13 +3113,14 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -3082,6 +3152,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		EXPECT_GT(checked, (samples / 4));
 	#endif
 }
+
 /**
  * @brief Функция сличения внутристрочных признаков с эталонной реализацией
  *
@@ -3146,10 +3217,13 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			"a", "A", "ab", "AB", "aB", "a b", "a\nb", "A\nB", "abc", "ABC",
 			"", " ", "\n", "aa", "AA", "a#c", "b", "cB"
 		};
-		// Получаем количества установок, областей, частей и текстов сличения
+		// Получаем количество элементов набора SETTINGS
 		const size_t settings = (sizeof(SETTINGS) / sizeof(SETTINGS[0]));
+		// Получаем количество элементов набора SCOPES
 		const size_t scopes = (sizeof(SCOPES) / sizeof(SCOPES[0]));
+		// Получаем количество элементов набора ATOMS
 		const size_t atoms = (sizeof(ATOMS) / sizeof(ATOMS[0]));
+		// Получаем количество элементов набора TEXTS
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
 		regexp_t regexp;
@@ -3213,13 +3287,13 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 				else pattern.append(ATOMS[gen() % atoms]);
 			}
 			// Код ошибки сборки эталонного регулярного выражения
-			int code = 0;
+			int32_t code = 0;
 			// Смещение ошибки сборки эталонного регулярного выражения
 			PCRE2_SIZE spot = 0;
 			// Выполняем сборку эталонного регулярного выражения
 			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()),
 			 pattern.size(), 0, &code, &spot, nullptr);
-			// Получаем признак порождения машинного кода
+			// Заводим признак порождения машинного кода
 			const bool jit = ((gen() % 2) == 0);
 			// Выполняем сборку регулярного выражения движком
 			const auto expression = regexp.build(pattern, (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0));
@@ -3238,13 +3312,14 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 			// Выполняем размещение набора границ эталонного совпадения
 			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
 			// Выполняем сопоставление эталонного регулярного выражения
-			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			const int32_t result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
 			// Получаем набор границ эталонного совпадения
 			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
 			// Получаем вердикт эталонного сопоставления
 			const bool expected = (result > 0);
 			// Получаем границы эталонного совпадения
 			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем ожидаемый конец совпадения
 			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
 			// Выполняем освобождение набора границ эталонного совпадения
 			::pcre2_match_data_free(data);
@@ -3275,6 +3350,7 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		EXPECT_GT(checked, (samples / 4));
 	#endif
 }
+
 /**
  * @brief Сличение экранированных последовательностей с эталонной реализацией
  *
@@ -3283,6 +3359,7 @@ TEST(Regex, ReferenceEscapes) {
 	// Выполняем сличение экранированных последовательностей на наборе образцов
 	escapes(20000, 20260918);
 }
+
 /**
  * @brief Сличение экранированных последовательностей, полное
  *
@@ -3291,10 +3368,7 @@ TEST(Regex, DISABLED_ReferenceEscapesThorough) {
 	// Выполняем сличение последовательностей на наборе образцов расширенном
 	escapes(300000, 20260919);
 }
-/**
- * @brief Сличение проверок окружения с эталонной реализацией
- *
- */
+
 /**
  * @brief Проверка сличения прогонов письменности с эталонной реализацией
  *
@@ -3303,6 +3377,7 @@ TEST(Regex, ReferenceScriptRuns) {
 	// Выполняем сличение прогонов письменности на наборе образцов
 	runs(20000, 20260923);
 }
+
 /**
  * @brief Проверка сличения прогонов письменности числом образцов наибольшим
  *
@@ -3311,10 +3386,16 @@ TEST(Regex, DISABLED_ReferenceScriptRunsThorough) {
 	// Выполняем сличение прогонов письменности числом образцов наибольшим
 	runs(500000, 20260923);
 }
+
+/**
+ * @brief Сличение проверок окружения с эталонной реализацией
+ *
+ */
 TEST(Regex, ReferenceLookarounds) {
 	// Выполняем сличение проверок окружения на наборе образцов
 	lookarounds(20000, 20260922);
 }
+
 /**
  * @brief Сличение проверок окружения, полное
  *
@@ -3323,6 +3404,7 @@ TEST(Regex, DISABLED_ReferenceLookaroundsThorough) {
 	// Выполняем сличение проверок окружения на наборе образцов расширенном
 	lookarounds(300000, 20260923);
 }
+
 /**
  * @brief Сличение вызовов подпрограмм и условий с эталонной реализацией
  *
@@ -3331,6 +3413,7 @@ TEST(Regex, ReferenceSubroutines) {
 	// Выполняем сличение вызовов подпрограмм и условий на наборе образцов
 	subroutines(20000, 20260920);
 }
+
 /**
  * @brief Сличение вызовов подпрограмм и условий, полное
  *
@@ -3339,6 +3422,7 @@ TEST(Regex, DISABLED_ReferenceSubroutinesThorough) {
 	// Выполняем сличение вызовов и условий на наборе образцов расширенном
 	subroutines(300000, 20260921);
 }
+
 /**
  * @brief Сличение кванторов повторения с эталонной реализацией
  *
@@ -3347,6 +3431,7 @@ TEST(Regex, ReferenceRepeats) {
 	// Выполняем сличение кванторов повторения на наборе образцов
 	repeats(20000, 20260916);
 }
+
 /**
  * @brief Сличение кванторов повторения, полное
  *
@@ -3355,6 +3440,7 @@ TEST(Regex, DISABLED_ReferenceRepeatsThorough) {
 	// Выполняем сличение кванторов повторения на наборе образцов расширенном
 	repeats(300000, 20260917);
 }
+
 /**
  * @brief Сличение состава классов символов с эталонной реализацией
  *
@@ -3363,6 +3449,7 @@ TEST(Regex, ReferenceClasses) {
 	// Выполняем сличение состава классов символов на наборе образцов
 	classes(20000, 20260914);
 }
+
 /**
  * @brief Сличение состава классов символов, полное
  *
@@ -3371,6 +3458,7 @@ TEST(Regex, DISABLED_ReferenceClassesThorough) {
 	// Выполняем сличение состава классов символов на наборе образцов расширенном
 	classes(300000, 20260915);
 }
+
 /**
  * @brief Сличение внутристрочных признаков с эталонной реализацией
  *
@@ -3379,6 +3467,7 @@ TEST(Regex, ReferenceInlines) {
 	// Выполняем сличение внутристрочных признаков на наборе образцов
 	inlines(20000, 20260912);
 }
+
 /**
  * @brief Сличение внутристрочных признаков, полное
  *
@@ -3387,6 +3476,7 @@ TEST(Regex, DISABLED_ReferenceInlinesThorough) {
 	// Выполняем сличение внутристрочных признаков на наборе образцов расширенном
 	inlines(300000, 20260913);
 }
+
 /**
  * @brief Сличение имён захватывающих групп с эталонной реализацией
  *
@@ -3395,6 +3485,7 @@ TEST(Regex, ReferenceNaming) {
 	// Выполняем сличение имён групп на наборе образцов
 	naming(20000, 20260910);
 }
+
 /**
  * @brief Сличение имён захватывающих групп, полное
  *
@@ -3403,6 +3494,7 @@ TEST(Regex, DISABLED_ReferenceNamingThorough) {
 	// Выполняем сличение имён групп на наборе образцов расширенном
 	naming(300000, 20260911);
 }
+
 /**
  * @brief Сличение захватов при возврате с эталонной реализацией
  *
@@ -3411,6 +3503,7 @@ TEST(Regex, ReferenceCaptures) {
 	// Выполняем сличение захватов на наборе образцов
 	captures(20000, 20260907);
 }
+
 /**
  * @brief Сличение захватов при возврате, полное
  *
@@ -3419,6 +3512,7 @@ TEST(Regex, DISABLED_ReferenceCapturesThorough) {
 	// Выполняем сличение захватов на наборе образцов расширенном
 	captures(300000, 20260908);
 }
+
 /**
  * @brief Сличение переводов строки с эталонной реализацией
  *
@@ -3427,6 +3521,7 @@ TEST(Regex, ReferenceBreaks) {
 	// Выполняем сличение переводов строки на наборе образцов
 	breaks(20000, 20260905);
 }
+
 /**
  * @brief Сличение переводов строки, полное
  *
@@ -3435,6 +3530,7 @@ TEST(Regex, DISABLED_ReferenceBreaksThorough) {
 	// Выполняем сличение переводов строки на наборе образцов расширенном
 	breaks(300000, 20260906);
 }
+
 /**
  * @brief Сличение приведения регистра Юникода, полное
  *
@@ -3443,6 +3539,7 @@ TEST(Regex, DISABLED_ReferenceFoldingThorough) {
 	// Выполняем сличение приведения регистра на наборе образцов расширенном
 	folding(300000, 20260904);
 }
+
 /**
  * @brief Сличение сопоставления по режимам сборки, полное
  *
@@ -3451,6 +3548,7 @@ TEST(Regex, DISABLED_ReferenceModesThorough) {
 	// Выполняем сличение сопоставления на наборе образцов расширенном
 	modes(300000, 20260902);
 }
+
 /**
  * @brief Сличение вердикта сборки с эталонной реализацией, полное
  *
@@ -3459,6 +3557,7 @@ TEST(Regex, DISABLED_ReferenceRefusalThorough) {
 	// Выполняем сличение вердиктов сборки на наборе образцов расширенном
 	refusals(200000, 20260901);
 }
+
 /**
  * @brief Сличение границ совпадения с эталонной реализацией в режиме UTF-8
  *
@@ -3469,6 +3568,7 @@ TEST(Regex, ReferenceUnicode) {
 	// Выполняем сличение на текстах, вынуждающих проход по их длине
 	compare((SAMPLES / 4), 300, 77, true);
 }
+
 /**
  * @brief Сличение границ совпадения с эталонной реализацией у порождённого машинного кода
  *
@@ -3496,6 +3596,7 @@ TEST(Regex, ReferenceCodegen) {
 	// Выполняем сличение на текстах, вынуждающих проход по их длине
 	compare((SAMPLES / 4), 400, 13, false, true);
 }
+
 /**
  * @brief Сличение границ совпадения у порождённого машинного кода в режиме UTF-8
  *
@@ -3517,6 +3618,7 @@ TEST(Regex, ReferenceCodegenUnicode) {
 	// Выполняем сличение на текстах, вынуждающих проход по их длине
 	compare((SAMPLES / 4), 300, 83, true, true);
 }
+
 /**
  * @brief Сличение с эталоном у выражений, сохранение и восстановление прошедших
  *
@@ -3533,6 +3635,7 @@ TEST(Regex, ReferenceStorage) {
 	// Выполняем сличение в режиме разбора UTF-8
 	compare((SAMPLES / 4), 24, 37, true, false, true);
 }
+
 /**
  * @brief Сличение с эталоном у поиска начала совпадения проходом в обратном направлении
  *
@@ -3572,6 +3675,7 @@ TEST(Regex, ReferenceReverse) {
 		verify("(?:[a-y]|z)+0", tail, jit);
 	}
 }
+
 /**
  * @brief Исчерпывающее сличение границ совпадения с эталонной реализацией
  *

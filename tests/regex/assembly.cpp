@@ -27,15 +27,15 @@
 #include <cstdint>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/assembly.hpp>
-
-/**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/sys/log.hpp"
+#include "../../include/regex/assembly.hpp"
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -69,6 +69,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/** 
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -129,6 +132,9 @@ namespace {
 			0x00, 0x00, 0x01, 0xCB, // sub x0, x0, x1
 			0xC0, 0x03, 0x5F, 0xD6  // ret
 		};
+	/**
+	 * Если сборка ведётся под набор команд x86-64
+	 */
 	#elif defined(__x86_64__) || defined(_M_X64)
 		/**
 		 * Машинный код сложения набора команд x86-64
@@ -162,6 +168,9 @@ namespace {
 				0x48, 0x29, 0xD0, // sub rax, rdx
 				0xC3              // ret
 			};
+		/**
+		 * Если соглашение о вызове принадлежит System V
+		 */
 		#else
 			/**
 			 * Машинный код сложения для соглашения о вызове System V
@@ -185,6 +194,9 @@ namespace {
 				0xC3              // ret
 			};
 		#endif
+	/**
+	 * Если сборка ведётся под набор команд e2k
+	 */
 	#elif defined(__e2k__)
 		/**
 		 * Машинный код сложения для набора команд e2k
@@ -215,6 +227,9 @@ namespace {
 			0x01, 0x00, 0x00, 0x04, 0x80, 0x81, 0x80, 0x13, // subd,0 %r0, %r1, %r0
 			0x01, 0x10, 0x00, 0x00, 0x20, 0x0C, 0x00, 0xC0  // ct %ctpr3
 		};
+	/**
+	 * Если сборка ведётся под прочие наборы команд
+	 */
 	#else
 		/**
 		 * Машинный код сложения для прочих наборов команд отсутствует
@@ -278,6 +293,7 @@ TEST(Regex, AssemblyExecution) {
 	 *
 	 */
 	ASSERT_FALSE(assembly.executable());
+	// Проверяем отсутствие точки входа порождённого кода
 	ASSERT_EQ(assembly.entry(), nullptr);
 	// Выполняем проверку наполнения участка порождённым машинным кодом
 	ASSERT_TRUE(assembly.fill(ADDER, sizeof(ADDER)));
@@ -361,6 +377,7 @@ TEST(Regex, AssemblyProtection) {
 	// Выполняем проверку отсутствия адреса освобождённого участка
 	ASSERT_EQ(assembly.entry(), nullptr);
 }
+
 /**
  * @brief Проверка передачи владения участком памяти при перемещении
  *

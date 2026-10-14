@@ -125,9 +125,42 @@ if [ "$(uname -s)" != "Darwin" ]; then
 	rm -f "$PROBE" "$PROBE.c"
 fi
 LIBS="$LIBZ"
+##
+# Путь к собственной стандартной библиотеке собирателя закрепляется в двоичном
+#
+# На DragonFly собиратель портовой (g++14), а загрузчик при прогоне находит
+# системную libstdc++ от gcc11, и набор отказывает на собственной строке
+# «version GLIBCXX_3.4.32 ... not found» (замер 14.10.2026 на стенде DragonFly).
+# Путь берётся лишь тогда, когда собиратель отдаёт его полным: `clang` на этот
+# вопрос отвечает одним именем файла, и `dirname` от него дал бы текущий каталог.
+# У целей MS Windows выдача эта негодна: библиотека там идёт отдельным файлом
+# рядом с двоичным, и `rpath` у формата PE не работает вовсе
+##
+RPATH=""
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) ;;
+	*)
+		STDLIB="$($CXX -print-file-name=libstdc++.so 2> /dev/null)"
+		case "$STDLIB" in
+			/*) RPATH="-Wl,-rpath,$(cd "$(dirname "$STDLIB")" && pwd)" ;;
+		esac
+	;;
+esac
+##
+# У FreeBSD и систем Sun основания свои, и в общую ветку они не годятся
+#
+# Слой процессов «src/sys/procre.cpp» зовёт у FreeBSD «kinfo_getproc», какой живёт
+# в «libutil», а не в libc: без неё связывание отвечает «undefined symbol:
+# kinfo_getproc» (замер 06.10.2026 на стенде FreeBSD). Системам Sun нужны «libsocket»
+# и «libnsl» отдельно: «if_nametoindex» и «getsockopt» в варианте xnet, какие зовут
+# «src/net/net.cpp» и «src/sys/procre.cpp», живут там, а не в libc, и связывание
+# отвечает «symbol referencing errors» на OpenIndiana (замер 06.10.2026)
+##
 case "$(uname -s)" in
 	Darwin) LIBS="$LIBS -framework Foundation -lpthread" ;;
-	MINGW*|MSYS*|CYGWIN*) LIBS="$LIBS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32" ;;
+	MINGW*|MSYS*|CYGWIN*) LIBS="$LIBS -lws2_32 -lIphlpapi -lole32 -luuid -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32" ;;
+	FreeBSD) LIBS="$LIBS -lpthread -lutil" ;;
+	SunOS) LIBS="$LIBS -lpthread -lsocket -lnsl" ;;
 	*) LIBS="$LIBS -lpthread" ;;
 esac
 ##
@@ -220,7 +253,7 @@ rm -f "$OUT/regex-tests" "$OUT/regex-tests.exe"
 ##
 $CXX -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
  -o "$OUT/regex-tests" $LANGUAGE $SOURCES $RELEASE $LIBRARY \
- -L"$GTEST/lib" -lgmock -lgtest -lgtest_main $LIBS > "$OUT/build.log" 2>&1
+ -L"$GTEST/lib" -lgmock -lgtest -lgtest_main $RPATH $LIBS > "$OUT/build.log" 2>&1
 head -40 "$OUT/build.log"
 if [ ! -x "$OUT/regex-tests" ] && [ ! -x "$OUT/regex-tests.exe" ]; then
 	echo "ОТКАЗ СБОРКИ, смотрите $OUT/build.log"

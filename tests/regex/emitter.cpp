@@ -28,16 +28,16 @@
 #include <cstdint>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <regex/emitter.hpp>
-#include <regex/assembly.hpp>
-
-/**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
-#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../include/sys/log.hpp"
+#include "../../include/regex/emitter.hpp"
+#include "../../include/regex/assembly.hpp"
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -71,6 +71,9 @@ namespace {
  * Используем стандартное пространство имён
  */
 using namespace std;
+/** 
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**
@@ -307,6 +310,7 @@ TEST(Regex, EmitterMatcher) {
 	// Выполняем проверку конечной границы совпадения
 	EXPECT_EQ(bounds[1], static_cast <size_t> (5));
 }
+
 /**
  * @brief Проверка записи чисел в регистр порождённым кодом
  *
@@ -385,6 +389,7 @@ TEST(Regex, EmitterConstants) {
 		EXPECT_EQ(constant(), sample);
 	}
 }
+
 /**
  * @brief Проверка отказа порождения машинного кода
  *
@@ -435,6 +440,9 @@ TEST(Regex, EmitterFailure) {
 		constexpr uint32_t OVERINDEX = 0x10000000u;
 		// Признак отказа сложения и вычитания на числе, полю не помещающемся
 		constexpr bool OVERFLOWING = false;
+	/**
+	 * Если сборка ведётся под прочие наборы команд
+	 */
 	#else
 		/**
 		 * Число, командами набора ARM64 не укладываемое
@@ -620,6 +628,7 @@ TEST(Regex, EmitterFailure) {
 	}
 	#endif
 }
+
 /**
  * @brief Проверка очистки порождаемой последовательности команд
  *
@@ -738,6 +747,7 @@ TEST(RegexEmitter, DefectReachesTheLog) {
 		 << "отказ не дошёл до журнала, единственного на процесс";
 	}
 }
+
 /**
  * @brief Проверка чтения и записи памяти по смещению в регистре
  *
