@@ -4359,4 +4359,4 @@ awh::regex::Backtrack::Frame::Frame() noexcept : back(0), number(0), journal(0),
  * @brief Деструктор модуля возвратов
  *
  */
-awh::regex::Backtrack::~Backtrack() noexcept {}
+awh::regex::Backtrack::~Backtrack() noexcept = default;

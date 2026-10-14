@@ -120,6 +120,100 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Сдвиг окна при вызове подпрограммы в парах регистров
+	 *
+	 * @details Сдвиг оставляет вызываемому последние две пары окна: доводы
+	 *          подпрограмм обстановки числом четыре, и область их обязана быть
+	 *          хвостом окна - иначе окно вызываемого не достаёт до конца окна
+	 *          вызывающего, и исполнение обрывается недопустимой командой.
+	 *
+	 */
+	constexpr uint8_t SHIFT = 0x12;
+	/**
+	 * @brief Признак слога литерала в поле второго довода
+	 *
+	 */
+	constexpr uint8_t SINGLE = 0xD8;
+	// Признак слога литерала двойной длины во втором доводе
+	constexpr uint8_t DOUBLE = 0xDC;
+	/**
+	 * @brief Размер окна регистров порождаемого сопоставителя в парах
+	 *
+	 * @details Окно вмещает назначения договора (регистры с нулевого по
+	 *          тридцать первый), два запасных регистра порождения и область
+	 *          доводов вызова. Мера окна — пара регистров, а не регистр.
+	 *
+	 */
+	constexpr uint8_t WINDOW = 0x14;
+	/**
+	 * @brief Номер первого регистра области доводов вызова
+	 *
+	 */
+	constexpr uint8_t ARGUMENT = 0x24;
+	/**
+	 * @brief Номер запасного регистра номера значения
+	 *
+	 * @details Обращение по смещению в регистре требует умножения номера на
+	 *          размер значения: итог умножения ложится сюда.
+	 *
+	 */
+	constexpr uint8_t INDEXER = 0x21;
+	/**
+	 * @brief Номера каналов арифметико-логических устройств
+	 *
+	 * @details Операции размещаются каналом нулевым, а запись в память -
+	 *          каналом вторым: прочие каналы её не исполняют.
+	 *
+	 */
+	constexpr uint8_t CHANNEL = 0x00;
+	// Номер канала, слогом какого размещается запись в память
+	constexpr uint8_t KEEPING = 0x02;
+	/**
+	 * @brief Коды операций арифметико-логических слогов
+	 *
+	 */
+	// Код операции загрузки байта
+	constexpr uint8_t OP_LDB = 0x64;
+	// Код операции загрузки двойного слова
+	constexpr uint8_t OP_LDD = 0x67;
+	// Код операции записи двойного слова в память
+	constexpr uint8_t OP_STD = 0x27;
+	// Код операции чтения регистра
+	constexpr uint8_t OP_RRD = 0x3F;
+	// Код операции сложения двойной точности
+	constexpr uint8_t OP_ADDD = 0x11;
+	// Код операции вычитания двойной точности
+	constexpr uint8_t OP_SUBD = 0x13;
+	// Код операции сдвига двойной точности
+	constexpr uint8_t OP_SHLD = 0x19;
+	// Код операции сравнения двойной точности
+	constexpr uint8_t OP_CMPD = 0x21;
+	// Код операции пересылки значения в регистр
+	constexpr uint8_t OP_MOVTD = 0x61;
+	// Код операции чтения указателя стека
+	constexpr uint8_t OP_GETSP = 0x58;
+	/**
+	 * @brief Признак постоянной в поле довода
+	 *
+	 */
+	constexpr uint8_t CONSTANT = 0xC0;
+	// Код второй операции слога расширения
+	constexpr uint8_t CONTROL1 = 0x15;
+	/**
+	 * @brief Признак регистра назначения в виде регистра подготовки первого
+	 *
+	 */
+	constexpr uint8_t PREPARED = 0xD1;
+	/**
+	 * @brief Номер запасного регистра адреса записи
+	 *
+	 * @details Запись в память постоянной в поле первого довода ограничена
+	 *          тридцатью одним байтом, а слога литерала не принимает вовсе:
+	 *          адрес места дальнего вычисляется сюда.
+	 *
+	 */
+	constexpr uint8_t ADDRESSER = 0x22;
+	/**
 	 * @brief Наибольшее число, полем второго довода несомое
 	 *
 	 * @details Поле несёт постоянные от нуля до пятнадцати, а числа большие
@@ -127,13 +221,47 @@ namespace {
 	 *
 	 */
 	constexpr uint32_t MAX_LITTLE = 0x0F;
-
 	/**
 	 * @brief Наибольшее число, полем первого довода несомое
 	 *
 	 */
 	constexpr uint32_t MAX_FIRST = 0x1F;
-
+	/**
+	 * @brief Виды сравнения, разрядами семь-пять слога задаваемые
+	 *
+	 */
+	constexpr uint8_t CMP_BELOW = 0x01;
+	// Признак равенства, сравнением записываемый
+	constexpr uint8_t CMP_EQUAL = 0x02;
+	// Признак «не выше», сравнением записываемый
+	constexpr uint8_t CMP_NOTABOVE = 0x03;
+	/**
+	 * @brief Номера предикатов, сравнением записываемых
+	 *
+	 */
+	constexpr uint8_t PRED_EQUAL = 0x00;
+	// Предикат «ниже»
+	constexpr uint8_t PRED_BELOW = 0x01;
+	// Предикат «не выше»
+	constexpr uint8_t PRED_NOTABOVE = 0x02;
+	/**
+	 * @brief Слог расширения операции и номер регистра подготовки первого
+	 *
+	 * @details Слог расширения несёт код второй операции и её расширение:
+	 *          операции чтения и записи особых регистров, а равно отведения
+	 *          стека без него не собираются вовсе.
+	 *
+	 */
+	constexpr uint16_t EXTENSION = 0x01C0;
+	/**
+	 * @brief Наибольшее смещение перехода в широких командах
+	 *
+	 * @details Поле смещения несёт двадцать восемь разрядов со знаком, а само
+	 *          смещение отсчитывается восьмёрками байтов от начала своей
+	 *          широкой команды.
+	 *
+	 */
+	constexpr int64_t MAX_BRANCH = 0x7FFFFFF;
 	/**
 	 * @brief Наибольшее число, слогом литерала несомое
 	 *
@@ -145,149 +273,6 @@ namespace {
 	constexpr uint32_t MAX_LITERAL = 0x7FFFFFFF;
 
 	/**
-	 * @brief Наибольшее смещение перехода в широких командах
-	 *
-	 * @details Поле смещения несёт двадцать восемь разрядов со знаком, а само
-	 *          смещение отсчитывается восьмёрками байтов от начала своей
-	 *          широкой команды.
-	 *
-	 */
-	constexpr int64_t MAX_BRANCH = 0x7FFFFFF;
-
-	/**
-	 * @brief Размер окна регистров порождаемого сопоставителя в парах
-	 *
-	 * @details Окно вмещает назначения договора (регистры с нулевого по
-	 *          тридцать первый), два запасных регистра порождения и область
-	 *          доводов вызова. Мера окна — пара регистров, а не регистр.
-	 *
-	 */
-	constexpr uint8_t WINDOW = 0x14;
-
-	/**
-	 * @brief Сдвиг окна при вызове подпрограммы в парах регистров
-	 *
-	 * @details Сдвиг оставляет вызываемому последние две пары окна: доводы
-	 *          подпрограмм обстановки числом четыре, и область их обязана быть
-	 *          хвостом окна - иначе окно вызываемого не достаёт до конца окна
-	 *          вызывающего, и исполнение обрывается недопустимой командой.
-	 *
-	 */
-	constexpr uint8_t SHIFT = 0x12;
-
-	/**
-	 * @brief Номер первого регистра области доводов вызова
-	 *
-	 */
-	constexpr uint8_t ARGUMENT = 0x24;
-
-	/**
-	 * @brief Номер запасного регистра номера значения
-	 *
-	 * @details Обращение по смещению в регистре требует умножения номера на
-	 *          размер значения: итог умножения ложится сюда.
-	 *
-	 */
-	constexpr uint8_t INDEXER = 0x21;
-
-	/**
-	 * @brief Номер запасного регистра адреса записи
-	 *
-	 * @details Запись в память постоянной в поле первого довода ограничена
-	 *          тридцатью одним байтом, а слога литерала не принимает вовсе:
-	 *          адрес места дальнего вычисляется сюда.
-	 *
-	 */
-	constexpr uint8_t ADDRESSER = 0x22;
-
-	/**
-	 * @brief Номера предикатов, сравнением записываемых
-	 *
-	 */
-	constexpr uint8_t PRED_EQUAL = 0x00;
-	// Предикат «ниже»
-	constexpr uint8_t PRED_BELOW = 0x01;
-	// Предикат «не выше»
-	constexpr uint8_t PRED_NOTABOVE = 0x02;
-
-	/**
-	 * @brief Номера каналов арифметико-логических устройств
-	 *
-	 * @details Операции размещаются каналом нулевым, а запись в память -
-	 *          каналом вторым: прочие каналы её не исполняют.
-	 *
-	 */
-	constexpr uint8_t CHANNEL = 0x00;
-	// Номер канала, слогом какого размещается запись в память
-	constexpr uint8_t KEEPING = 0x02;
-
-	/**
-	 * @brief Коды операций арифметико-логических слогов
-	 *
-	 */
-	constexpr uint8_t OP_ADDD = 0x11;
-	// Код операции вычитания двойной точности
-	constexpr uint8_t OP_SUBD = 0x13;
-	// Код операции сдвига двойной точности
-	constexpr uint8_t OP_SHLD = 0x19;
-	// Код операции записи двойного слова в память
-	constexpr uint8_t OP_STD = 0x27;
-	// Код операции сравнения двойной точности
-	constexpr uint8_t OP_CMPD = 0x21;
-	// Код операции загрузки байта
-	constexpr uint8_t OP_LDB = 0x64;
-	// Код операции загрузки двойного слова
-	constexpr uint8_t OP_LDD = 0x67;
-	// Код операции пересылки значения в регистр
-	constexpr uint8_t OP_MOVTD = 0x61;
-	// Код операции чтения указателя стека
-	constexpr uint8_t OP_GETSP = 0x58;
-	// Код операции чтения регистра
-	constexpr uint8_t OP_RRD = 0x3F;
-
-	/**
-	 * @brief Виды сравнения, разрядами семь-пять слога задаваемые
-	 *
-	 */
-	constexpr uint8_t CMP_BELOW = 0x01;
-	// Признак равенства, сравнением записываемый
-	constexpr uint8_t CMP_EQUAL = 0x02;
-	// Признак «не выше», сравнением записываемый
-	constexpr uint8_t CMP_NOTABOVE = 0x03;
-
-	/**
-	 * @brief Слог расширения операции и номер регистра подготовки первого
-	 *
-	 * @details Слог расширения несёт код второй операции и её расширение:
-	 *          операции чтения и записи особых регистров, а равно отведения
-	 *          стека без него не собираются вовсе.
-	 *
-	 */
-	constexpr uint16_t EXTENSION = 0x01C0;
-	// Код второй операции слога расширения
-	constexpr uint8_t CONTROL1 = 0x15;
-
-	/**
-	 * @brief Признак постоянной в поле довода
-	 *
-	 */
-	constexpr uint8_t CONSTANT = 0xC0;
-
-	/**
-	 * @brief Признак слога литерала в поле второго довода
-	 *
-	 */
-	constexpr uint8_t SINGLE = 0xD8;
-	// Признак слога литерала двойной длины во втором доводе
-	constexpr uint8_t DOUBLE = 0xDC;
-
-	/**
-	 * @brief Признак регистра назначения в виде регистра подготовки первого
-	 *
-	 */
-	constexpr uint8_t PREPARED = 0xD1;
-
-	/**
 	 * @brief Широкая команда процессора в сборке
 	 *
 	 * @details Собирается она слогами: головной слог несёт состав и длину,
@@ -296,35 +281,43 @@ namespace {
 	 *          широкой команды, прочие - подряд за головным слогом.
 	 *
 	 */
-	struct Bundle {
-		// Слоги арифметико-логических каналов и признаки их наличия
-		uint32_t als[6];
-		// Признаки наличия слогов каналов
-		bool has[6];
-		// Слог расширения канала нулевого и признак его наличия
-		uint16_t ales;
-		// Признак наличия слога расширения
-		bool extended;
-		// Слог коротких операций и признак его наличия
-		uint32_t stub;
+	typedef struct Bundle {
+		// Первый признак наличия слогов управления
+		bool first;
+		// Второй признак наличия слогов управления
+		bool second;
 		// Признак наличия слога коротких операций
 		bool stubbed;
-		// Слоги управления и признаки их наличия
-		uint32_t cs0, cs1;
-		// Признаки наличия слогов управления
-		bool first, second;
-		// Слоги литералов, младший первым
-		uint32_t lts[2];
+		// Признак наличия слога расширения
+		bool extended;
+		// Первый слог управления и признак наличия
+		uint32_t cs0;
+		// Второй слог управления и признак наличия
+		uint32_t cs1;
+		// Слог коротких операций и признак его наличия
+		uint32_t stub;
+		// Слог расширения канала нулевого и признак его наличия
+		uint16_t ales;
 		// Количество слогов литералов
 		uint8_t literals;
+		// Признаки наличия слогов каналов
+		bool has[6];
+		// Слоги литералов, младший первым
+		uint32_t lts[2];
+		// Слоги арифметико-логических каналов и признаки их наличия
+		uint32_t als[6];
 		/**
-		 ales(0), extended(false), stub(0), stubbed(false), cs0(0), cs1(0), first(false), second(false),
-		 lts{0, 0}, literals(0) {}
 		 * @brief Конструктор
 		 *
 		 */
-		Bundle() noexcept : als{0, 0, 0, 0, 0, 0}, has{false, false, false, false, false, false},
-	};
+		explicit Bundle() noexcept :
+		 first(false), second(false),
+		 stubbed(false), extended(false),
+		 cs0(0), cs1(0), stub(0),
+		 ales(0), literals(0),
+		 has{false}, lts{0}, als{0} {}
+	} bundle_t;
+
 	/**
 	 * @brief Функция размещения широкой команды в порождаемом коде
 	 *
@@ -332,7 +325,7 @@ namespace {
 	 * @param bundle размещаемая широкая команда
 	 *
 	 */
-	void emit(vector <uint8_t> & code, const Bundle & bundle) noexcept {
+	static void emit(vector <uint8_t> & code, const bundle_t & bundle) noexcept {
 		// Количество слов головной части широкой команды
 		size_t middle = (bundle.stubbed ? 1 : 0);
 		/**
@@ -511,8 +504,10 @@ namespace {
 	 */
 	inline uint32_t transfer(const uint8_t ctpr, const uint8_t kind, const uint8_t pred) noexcept {
 		// Выводим собранный слог коротких операций
-		return (0xC0000000u | (static_cast <uint32_t> (ctpr) << 10) |
-		 (static_cast <uint32_t> (kind) << 5) | static_cast <uint32_t> (pred & 0x1F));
+		return (
+			(0xC0000000u | (static_cast <uint32_t> (ctpr) << 10) |
+			(static_cast <uint32_t> (kind) << 5) | static_cast <uint32_t> (pred & 0x1F))
+		);
 	}
 	/**
 	 * @brief Функция сборки слога управления для подготовки перехода
@@ -572,7 +567,7 @@ void awh::regex::Emitter::flush() noexcept {
 	 *          имён файла и вложенного закрытого типа назвать не может
 	 *
 	 */
-	Bundle bundle;
+	bundle_t bundle;
 	/**
 	 * Выполняем обход каналов широкой команды
 	 */
@@ -685,7 +680,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	// Выполняем выдачу широкой команды, к выдаче отложенной: управление сюда приходит либо отсюда уходит
 	this->flush();
 	// Создаём широкую команду установки окна регистров
-	Bundle window;
+	bundle_t window;
 	/**
 	 * Выполняем установку окна регистров порождаемого сопоставителя
 	 *
@@ -709,7 +704,7 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	 */
 	if(frame > 0){
 		// Создаём широкую команду отведения кадра вызова
-		Bundle allot;
+		bundle_t allot;
 		// Получаем размер кадра, выровненный по границе шестнадцати байтов
 		const uint32_t size = (((frame + 15) / 16) * 16);
 		/**
@@ -815,7 +810,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	// Выполняем установку вида размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::JUMP;
 	// Создаём широкую команду подготовки перехода
-	Bundle ready;
+	bundle_t ready;
 	// Выполняем установку слога управления подготовки перехода
 	ready.first = true;
 	// Выполняем сборку слога подготовки перехода, смещения ещё не несущего
@@ -823,7 +818,7 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	// Выполняем размещение подготовки перехода
 	::emit(this->_code, ready);
 	// Создаём широкую команду передачи управления
-	Bundle pass;
+	bundle_t pass;
 	// Выполняем установку слога коротких операций
 	pass.stubbed = true;
 	// Выполняем сборку слога передачи управления без условия
@@ -890,7 +885,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	// Выполняем установку вида размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::BRANCH;
 	// Создаём широкую команду подготовки перехода
-	Bundle ready;
+	bundle_t ready;
 	// Выполняем установку слога управления подготовки перехода
 	ready.first = true;
 	// Выполняем сборку слога подготовки перехода, смещения ещё не несущего
@@ -898,7 +893,7 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	// Выполняем размещение подготовки перехода
 	::emit(this->_code, ready);
 	// Создаём широкую команду передачи управления по условию
-	Bundle pass;
+	bundle_t pass;
 	// Выполняем установку слога коротких операций
 	pass.stubbed = true;
 	// Выполняем сборку слога передачи управления по предикату
@@ -1050,7 +1045,7 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 */
 	this->flush();
 	// Создаём широкую команду сложения значения регистра с числом
-	Bundle add;
+	bundle_t add;
 	// Выполняем установку слога канала нулевого
 	add.has[CHANNEL] = true;
 	/**
@@ -1113,7 +1108,7 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 */
 	this->flush();
 	// Создаём широкую команду вычитания числа из значения регистра
-	Bundle sub;
+	bundle_t sub;
 	// Выполняем установку слога канала нулевого
 	sub.has[CHANNEL] = true;
 	/**
@@ -1185,7 +1180,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 	 */
 	this->flush();
 	// Создаём широкую команду записи числа в регистр
-	Bundle write;
+	bundle_t write;
 	// Выполняем установку слога канала нулевого
 	write.has[CHANNEL] = true;
 	/**
@@ -1319,7 +1314,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 		return;
 	}
 	// Создаём широкую команду чтения значения из памяти
-	Bundle fetch;
+	bundle_t fetch;
 	// Выполняем установку слога канала нулевого
 	fetch.has[CHANNEL] = true;
 	// Выполняем сборку слога чтения значения из памяти
@@ -1373,7 +1368,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	// Получаем смещение записываемого значения в байтах
 	const uint32_t offset = (index * static_cast <uint32_t> (sizeof(size_t)));
 	// Создаём широкую команду записи значения регистра в память
-	Bundle store;
+	bundle_t store;
 	/**
 	 * Выполняем установку слога канала второго
 	 *
@@ -1399,7 +1394,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 */
 	else {
 		// Создаём широкую команду вычисления адреса места записи
-		Bundle address;
+		bundle_t address;
 		// Выполняем установку слога канала нулевого
 		address.has[CHANNEL] = true;
 		/**
@@ -1448,7 +1443,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	 */
 	this->flush();
 	// Создаём широкую команду вычисления смещения в байтах
-	Bundle shift;
+	bundle_t shift;
 	// Выполняем установку слога канала нулевого
 	shift.has[CHANNEL] = true;
 	/**
@@ -1463,7 +1458,7 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_
 	// Выполняем размещение вычисления смещения в байтах
 	::emit(this->_code, shift);
 	// Создаём широкую команду чтения значения из памяти
-	Bundle fetch;
+	bundle_t fetch;
 	// Выполняем установку слога канала нулевого
 	fetch.has[CHANNEL] = true;
 	// Выполняем сборку слога чтения значения по сумме регистров
@@ -1490,7 +1485,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_
 	 */
 	this->flush();
 	// Создаём широкую команду вычисления смещения в байтах
-	Bundle shift;
+	bundle_t shift;
 	// Выполняем установку слога канала нулевого
 	shift.has[CHANNEL] = true;
 	// Выполняем сборку слога умножения номера на размер значения
@@ -1498,7 +1493,7 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_
 	// Выполняем размещение вычисления смещения в байтах
 	::emit(this->_code, shift);
 	// Создаём широкую команду записи значения регистра в память
-	Bundle store;
+	bundle_t store;
 	// Выполняем установку слога канала второго
 	store.has[KEEPING] = true;
 	// Выполняем сборку слога записи значения по сумме регистров
@@ -1529,7 +1524,7 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	 */
 	for(uint8_t i = 0; i < 4; i++){
 		// Создаём широкую команду переноса очередного довода
-		Bundle pass;
+		bundle_t pass;
 		// Выполняем установку слога канала нулевого
 		pass.has[CHANNEL] = true;
 		// Выполняем сборку слога переноса довода в область доводов
@@ -1538,7 +1533,7 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 		::emit(this->_code, pass);
 	}
 	// Создаём широкую команду подготовки вызова подпрограммы
-	Bundle ready;
+	bundle_t ready;
 	// Выполняем установку слога канала нулевого
 	ready.has[CHANNEL] = true;
 	// Выполняем сборку слога переноса адреса подпрограммы в регистр подготовки
@@ -1546,7 +1541,7 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	// Выполняем размещение подготовки вызова подпрограммы
 	::emit(this->_code, ready);
 	// Создаём широкую команду вызова подпрограммы
-	Bundle invoke;
+	bundle_t invoke;
 	// Выполняем установку слога коротких операций
 	invoke.stubbed = true;
 	// Выполняем сборку слога передачи управления вызовом
@@ -1558,7 +1553,7 @@ void awh::regex::Emitter::call(const reg_t reg) noexcept {
 	// Выполняем размещение вызова подпрограммы
 	::emit(this->_code, invoke);
 	// Создаём широкую команду переноса итога вызова
-	Bundle result;
+	bundle_t result;
 	// Выполняем установку слога канала нулевого
 	result.has[CHANNEL] = true;
 	/**
@@ -1604,7 +1599,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	// Выполняем установку вида размещаемой команды
 	this->_fixups.back().kind = fixup_t::kind_t::ADDRESS;
 	// Создаём широкую команду подготовки перехода к метке
-	Bundle ready;
+	bundle_t ready;
 	// Выполняем установку слога управления подготовки перехода
 	ready.first = true;
 	// Выполняем сборку слога подготовки перехода, смещения ещё не несущего
@@ -1612,7 +1607,7 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	// Выполняем размещение подготовки перехода
 	::emit(this->_code, ready);
 	// Создаём широкую команду чтения регистра подготовки перехода
-	Bundle read;
+	bundle_t read;
 	// Выполняем установку слога канала нулевого
 	read.has[CHANNEL] = true;
 	/**
@@ -1643,7 +1638,7 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 	// Выполняем выдачу широкой команды, к выдаче отложенной: управление сюда приходит либо отсюда уходит
 	this->flush();
 	// Создаём широкую команду подготовки перехода по адресу
-	Bundle ready;
+	bundle_t ready;
 	// Выполняем установку слога канала нулевого
 	ready.has[CHANNEL] = true;
 	/**
@@ -1663,7 +1658,7 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 	// Выполняем размещение подготовки перехода по адресу
 	::emit(this->_code, ready);
 	// Создаём широкую команду передачи управления
-	Bundle pass;
+	bundle_t pass;
 	// Выполняем установку слога коротких операций
 	pass.stubbed = true;
 	// Выполняем сборку слога передачи управления без условия
@@ -1699,7 +1694,7 @@ void awh::regex::Emitter::ret() noexcept {
 	// Выполняем выдачу широкой команды, к выдаче отложенной: управление сюда приходит либо отсюда уходит
 	this->flush();
 	// Создаём широкую команду подготовки возврата
-	Bundle ready;
+	bundle_t ready;
 	// Выполняем установку слога управления первого
 	ready.first = true;
 	/**
@@ -1713,7 +1708,7 @@ void awh::regex::Emitter::ret() noexcept {
 	// Выполняем размещение подготовки возврата
 	::emit(this->_code, ready);
 	// Создаём широкую команду передачи управления возвратом
-	Bundle pass;
+	bundle_t pass;
 	// Выполняем установку слога коротких операций
 	pass.stubbed = true;
 	// Выполняем сборку слога передачи управления возвратом
