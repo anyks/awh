@@ -36,6 +36,7 @@
 #include <sys/log.hpp>
 #include <regex/grok/grok.hpp>
 #include <num/lexical/lexical.hpp>
+#include <num/lexical/lexical.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -1180,6 +1181,10 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 			// Переходим к значению поля следующему
 			continue;
 		}
+		// Получаем начальную позицию захватываемого значения
+		const char * const first = value.value.data();
+		// Получаем конечную позицию захватываемого значения
+		const char * const back = (first + value.value.size());
 		/**
 		 * Если число несёт дробную часть либо порядок
 		 *
@@ -1188,10 +1193,10 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 		 *
 		 */
 		if(fraction || (value.kind == kind_t::FLOATING)){
-			// Выполняем сброс признака ошибки преобразования
-			errno = 0;
+			// Заводим значение захвата числом дробным
+			double number = 0.;
 			// Выполняем преобразование захвата числом дробным
-			const double number = ::strtod(value.value.c_str(), nullptr);
+			const auto parsed = lexical::fromChars(first, back, number);
 			/**
 			 * Если число за пределы вида дробного выходит
 			 *
@@ -1201,7 +1206,7 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 			 *          вывод текстом сохраняет захват в точности.
 			 *
 			 */
-			if((errno == ERANGE) || !std::isfinite(number))
+			if(!parsed || !std::isfinite(number))
 				// Выполняем занесение значения поля текстом
 				builder.value(value.value);
 			// Выполняем занесение значения поля числом дробным
@@ -1210,10 +1215,10 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 		 * Если число является отрицательным
 		 */
 		} else if(negative) {
-			// Выполняем сброс признака ошибки преобразования
-			errno = 0;
+			// Заводим значение захвата числом целым со знаком
+			int64_t number = 0;
 			// Выполняем преобразование захвата числом целым со знаком
-			const long long number = ::strtoll(value.value.c_str(), nullptr, 10);
+			const auto parsed = lexical::fromChars(first, back, number);
 			/**
 			 * Если число за пределы вида целого выходит
 			 *
@@ -1223,27 +1228,27 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 			 *          Вывод текстом сохраняет захват в точности.
 			 *
 			 */
-			if(errno == ERANGE)
+			if(!parsed)
 				// Выполняем занесение значения поля текстом
 				builder.value(value.value);
 			// Выполняем занесение значения поля числом целым со знаком
-			else builder.value(static_cast <int64_t> (number));
+			else builder.value(number);
 		/**
 		 * Если число получено в обычном виде
 		 */
 		} else {
-			// Выполняем сброс признака ошибки преобразования
-			errno = 0;
+			// Заводим значение захвата числом целым без знака
+			uint64_t number = 0;
 			// Выполняем преобразование захвата числом целым без знака
-			const unsigned long long number = ::strtoull(value.value.c_str(), nullptr, 10);
+			const auto parsed = lexical::fromChars(first, back, number);
 			/**
 			 * Если число за пределы вида целого выходит
 			 */
-			if(errno == ERANGE)
+			if(!parsed)
 				// Выполняем занесение значения поля текстом
 				builder.value(value.value);
 			// Выполняем занесение значения поля числом целым без знака
-			else builder.value(static_cast <uint64_t> (number));
+			else builder.value(number);
 		}
 	}
 	// Выводим собранное значение JSON набора значений полей
