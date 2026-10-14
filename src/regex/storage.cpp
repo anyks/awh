@@ -1879,13 +1879,13 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 	 */
 	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
-		log::debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, {blob ? blob->size() : 0}, log::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+		log::debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, {blob ? blob->size() : 0}, log::flag_t::CRITICAL, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		log::print("Storage record of %zu bytes could not be restored: error %u", log::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+		log::print("Storage record of %zu bytes could not be restored: error %u", log::flag_t::CRITICAL, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
 	#endif
 	// Выводим результат восстановления собранных выражений
 	return false;

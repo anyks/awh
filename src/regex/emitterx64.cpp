@@ -538,8 +538,19 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
-		// Выполняем вывод сообщения об изъяне порождения машинного кода
-		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Regex codegen: jump to the label %zu that has not been declared", __PRETTY_FUNCTION__, {label}, log::flag_t::CRITICAL, label);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
+		#endif
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -570,8 +581,19 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
-		// Выполняем вывод сообщения об изъяне порождения машинного кода
-		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Regex codegen: jump to the label %zu that has not been declared", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cond), label}, log::flag_t::CRITICAL, label);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
+		#endif
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -995,8 +1017,19 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	if(label >= this->_labels.size()){
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
-		// Выполняем вывод сообщения об изъяне порождения машинного кода
-		log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("Regex codegen: jump to the label %zu that has not been declared", __PRETTY_FUNCTION__, {static_cast <uint16_t> (target), label}, log::flag_t::CRITICAL, label);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
+		#endif
 		// Выходим из метода размещения вычисления адреса
 		return;
 	}

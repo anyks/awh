@@ -934,13 +934,13 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::WARNING);
+			log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Grok pattern \"%s\" could not be expanded", log::flag_t::WARNING, string(pattern).c_str());
+			log::print("Grok pattern \"%s\" could not be expanded", log::flag_t::CRITICAL, string(pattern).c_str());
 		#endif
 		// Выводим собранный шаблон Grok
 		return result;

@@ -73,12 +73,14 @@ namespace {
 		string message;
 		// Код ошибки последней операции потока
 		regex::error_t error;
+		// Признак отложенного снятия кода ошибки с движка
+		bool defer;
 		/**
 		* @brief Конструктор
 		*
 		*/
 		explicit Report() noexcept :
-		offset(0), error(regex::error_t::NONE) {}
+		offset(0), error(regex::error_t::NONE), defer(false) {}
 	} report_t;
 
 	/**
@@ -161,20 +163,17 @@ void awh::RegularExpression::clear() noexcept {
  *
  */
 void awh::RegularExpression::receive() const noexcept {
-	// Получаем ссылку на накопитель отчёта об ошибке
-	report_t & rep = report();
-	// Выполняем снятие кода ошибки сопоставления с движка
-	rep.error = this->_engine.error();
 	/**
-	 * Если ошибки сопоставления не случилось
+	 * Помечаем отчёт признаком отложенного снятия кода ошибки с движка
+	 *
+	 * @details Снятие откладывается до чтения отчёта: сопоставление вызывается
+	 *          на каждой позиции текста, и снятие кода ошибки на всякое из них
+	 *          тратило на потоковый отчёт и опрос движка больше, чем стоит само
+	 *          сопоставление короткое. Договор отчёт читает сразу за операцией,
+	 *          отчего снятие в момент чтения того же стоит.
+	 *
 	 */
-	if(rep.error == error_t::NONE)
-		// Выходим из метода снятия кода ошибки
-		return;
-	// Выполняем снятие текста ошибки сопоставления с движка
-	rep.message = this->_engine.message();
-	// Записываем ошибку в лог
-	log::print("Regular expression matching failed: %s", log::flag_t::WARNING, rep.message.c_str());
+	report().defer = true;
 }
 /**
  * @brief Метод извлечения кода ошибки последней сборки
@@ -183,8 +182,25 @@ void awh::RegularExpression::receive() const noexcept {
  *
  */
 awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
-	// Выводим код ошибки последней операции сборки
-	return report().error;
+	// Получаем ссылку на накопитель отчёта об ошибке
+	report_t & rep = report();
+	/**
+	 * Если код ошибки сопоставления с движка снят не был
+	 */
+	if(rep.defer){
+		// Выполняем снятие кода ошибки сопоставления с движка
+		rep.error = this->_engine.error();
+		/**
+		 * Если ошибки сопоставления случилось
+		 */
+		if(rep.error != error_t::NONE)
+			// Выполняем снятие текста ошибки сопоставления с движка
+			rep.message = this->_engine.message();
+		// Снимаем признак отложенного снятия кода ошибки
+		rep.defer = false;
+	}
+	// Выводим код ошибки последней операции
+	return rep.error;
 }
 /**
  * @brief Метод извлечения смещения ошибки последней сборки
@@ -213,8 +229,25 @@ const string & awh::RegularExpression::marker() const noexcept {
  *
  */
 const string & awh::RegularExpression::message() const noexcept {
-	// Выводим текст ошибки последней операции сборки
-	return report().message;
+	// Получаем ссылку на накопитель отчёта об ошибке
+	report_t & rep = report();
+	/**
+	 * Если код ошибки сопоставления с движка снят не был
+	 */
+	if(rep.defer){
+		// Выполняем снятие кода ошибки сопоставления с движка
+		rep.error = this->_engine.error();
+		/**
+		 * Если ошибки сопоставления случилось
+		 */
+		if(rep.error != error_t::NONE)
+			// Выполняем снятие текста ошибки сопоставления с движка
+			rep.message = this->_engine.message();
+		// Снимаем признак отложенного снятия кода ошибки
+		rep.defer = false;
+	}
+	// Выводим текст ошибки последней операции
+	return rep.message;
 }
 /**
  * @brief Метод установки наибольшего допустимого объёма работы сопоставления
@@ -257,6 +290,8 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	if(!verified(text, exp)){
 		// Устанавливаем ошибку неверной записи текста сопоставления
 		report().error = error_t::BAD_UTF8_SUBJECT;
+		// Снимаем признак отложенного снятия кода ошибки
+		report().defer = false;
 		// Выводим результат проверки наличия совпадения
 		return false;
 	}
@@ -351,13 +386,13 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::WARNING, report().offset, report().message.c_str());
+			log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::CRITICAL, report().offset, report().message.c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Regular expression could not be built at offset %zu: %s", log::flag_t::WARNING, report().offset, report().message.c_str());
+			log::print("Regular expression could not be built at offset %zu: %s", log::flag_t::CRITICAL, report().offset, report().message.c_str());
 		#endif
 		// Выводим отсутствие собранного регулярного выражения
 		return exp_t();
@@ -557,6 +592,8 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	if(!verified(text, exp)){
 		// Устанавливаем ошибку неверной записи текста сопоставления
 		report().error = error_t::BAD_UTF8_SUBJECT;
+		// Снимаем признак отложенного снятия кода ошибки
+		report().defer = false;
 		// Выводим результат поиска совпадения
 		return false;
 	}

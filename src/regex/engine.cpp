@@ -226,13 +226,13 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern)}, log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
+			log::debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, log::flag_t::CRITICAL, this->_parser.errorPos(), this->message().c_str());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log::print("Regular expression could not be parsed at offset %zu: %s", log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
+			log::print("Regular expression could not be parsed at offset %zu: %s", log::flag_t::CRITICAL, this->_parser.errorPos(), this->message().c_str());
 		#endif
 		// Выводим результат выполнения сборки
 		return false;

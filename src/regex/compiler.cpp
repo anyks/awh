@@ -6042,4 +6042,4 @@ awh::regex::Compiler::Piece::Piece() noexcept : first(INVALID_NODE), count(0), l
  * @brief Деструктор разбора регулярного выражения
  *
  */
-awh::regex::Compiler::~Compiler() noexcept {}
+awh::regex::Compiler::~Compiler() noexcept = default;
