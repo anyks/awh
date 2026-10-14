@@ -1098,7 +1098,7 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
-		explicit RAW_Endpoint() noexcept {}
+		explicit RAW_Endpoint() noexcept = default;
 	} raw_endpoint_t;
 
 	/**
