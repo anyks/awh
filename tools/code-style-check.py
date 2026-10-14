@@ -852,6 +852,7 @@ def check_steps(path, lines, report):
     in_macro = False
     balance = 0
     init_depth = 0
+    bodies = find_bodies(lines)
     prev_code_raw = ""
     prev_stmt_shape = None
     prev_significant = None   # ('kind', index) kind: comment/code/blank
@@ -919,6 +920,13 @@ def check_steps(path, lines, report):
                 init_depth = 0
         elif re.search(r"=\s*\{\s*$", st):
             init_depth = 1
+        if re.match(r"^using\s+namespace\b", st) and not bodies[n - 1]:
+            j = n - 2
+            while j >= 0 and lines[j].strip() == "":
+                j -= 1
+            pl = lines[j].strip() if j >= 0 else ""
+            if pl.startswith("//"):
+                report(path, n, "ERROR", "§9.5", f"директива «{st}» со строчным комментарием — по §9.5 над ней нужен doc-блок /** */")
         if re.match(r"^namespace(?:\s+[\w:]+)?\s*\{?$", st):
             j = n - 2
             while j >= 0 and lines[j].strip() == "":
