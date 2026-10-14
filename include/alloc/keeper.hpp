@@ -93,6 +93,14 @@ namespace awh {
 		 *
 		 */
 		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Класс распределителя укрытой памяти
+		 *
+		 * \~english
+		 * @brief Class of the concealed memory allocator
+		 *
+		 */
 		class Keeper {
 			public:
 				// Тип хранимого значения
@@ -111,6 +119,14 @@ namespace awh {
 				 *
 				 */
 				template <typename U>
+				/**
+				 * \~russian
+				 * @brief Структура переноса распределителя на иной тип значения
+				 *
+				 * \~english
+				 * @brief Structure of rebinding the allocator to another value type
+				 *
+				 */
 				struct rebind {
 					// Распределитель для иного типа значения
 					typedef Keeper <U> other;
@@ -169,7 +185,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Keeper() noexcept {}
+				explicit Keeper() noexcept = default;
 				/**
 				 * \~russian
 				 * @brief Шаблон конструктора переноса на иной тип значения
@@ -191,6 +207,21 @@ namespace awh {
 		};
 		/**
 		 * \~russian
+		 * @brief Шаблон оператора сравнения распределителей
+		 *
+		 * @tparam T тип первого сравниваемого значения
+		 * @tparam U тип второго сравниваемого значения
+		 *
+		 * \~english
+		 * @brief Allocator comparison operator template
+		 *
+		 * @tparam T type of first value compared
+		 * @tparam U type of the second value being compared
+		 *
+		 */
+		template <typename T, typename U>
+		/**
+		 * \~russian
 		 * @brief Оператор сравнения распределителей
 		 *
 		 * @note Распределители эти состояния не имеют, оттого равны всегда: память,
@@ -202,11 +233,25 @@ namespace awh {
 		 * @brief Comparison operator of the allocators
 		 *
 		 */
-		template <typename T, typename U>
 		inline bool operator == (const Keeper <T> &, const Keeper <U> &) noexcept {
 			// Распределители равны всегда
 			return true;
 		}
+		/**
+		 * \~russian
+		 * @brief Шаблон оператора сравнения распределителей
+		 *
+		 * @tparam T тип первого сравниваемого значения
+		 * @tparam U тип второго сравниваемого значения
+		 *
+		 * \~english
+		 * @brief Allocator comparison operator template
+		 *
+		 * @tparam T type of first value compared
+		 * @tparam U type of the second value being compared
+		 *
+		 */
+		template <typename T, typename U>
 		/**
 		 * \~russian
 		 * @brief Оператор сравнения распределителей
@@ -217,7 +262,6 @@ namespace awh {
 		 * @brief Comparison operator of the allocators
 		 *
 		 */
-		template <typename T, typename U>
 		inline bool operator != (const Keeper <T> &, const Keeper <U> &) noexcept {
 			// Распределители не равны никогда
 			return false;
