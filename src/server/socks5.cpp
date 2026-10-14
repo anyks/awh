@@ -211,7 +211,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit PortAllocator() noexcept {}
+			explicit PortAllocator() noexcept = default;
 	} port_alloc_t;
 
 	/**
