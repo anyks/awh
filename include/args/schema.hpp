@@ -177,20 +177,20 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Param {
-					// Потребность параметра в значении
-					value_t value;
+					// Признак наличия значения по умолчанию
+					bool preset;
+					// Короткое имя параметра одним знаком, нуль при его отсутствии
+					char letter;
 					// Признак обязательности параметра
 					bool required;
 					// Признак дозволенности повторной подачи параметра
 					bool multiple;
-					// Короткое имя параметра одним знаком, нуль при его отсутствии
-					char letter;
+					// Потребность параметра в значении
+					value_t value;
 					// Длинное имя параметра с разделителем звеньев
 					string name;
 					// Значение параметра по умолчанию
 					string fallback;
-					// Признак наличия значения по умолчанию
-					bool preset;
 					// Описание назначения параметра для справки
 					string description;
 					/**
@@ -203,23 +203,26 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Param() noexcept :
-					 value(value_t::REQUIRED), required(false), multiple(false),
-					 letter(0), name{""}, fallback{""}, preset(false), description{""} {}
+					explicit Param() noexcept :
+					 preset(false), letter(0),
+					 required(false), multiple(false),
+					 value(value_t::REQUIRED), 
+					 name{""}, fallback{""},
+					 description{""} {}
 				} param_t;
-			private:
-				// Описания ожидаемых параметров в порядке их заведения
-				vector <param_t> _params;
-			private:
-				// Розыск описания по длинному имени параметра
-				map <string, size_t> _names;
-				// Розыск описания по короткому имени параметра
-				map <char, size_t> _letters;
 			private:
 				// Название приложения для справки
 				string _application;
 				// Описание назначения приложения для справки
 				string _description;
+			private:
+				// Описания ожидаемых параметров в порядке их заведения
+				vector <param_t> _params;
+			private:
+				// Розыск описания по длинному имени параметра
+				std::map <string, size_t> _names;
+				// Розыск описания по короткому имени параметра
+				std::map <char, size_t> _letters;
 			public:
 				/**
 				 * \~russian
@@ -423,7 +426,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				~Schema() noexcept {}
+				~Schema() noexcept = default;
 		} schema_t;
 	}
 }

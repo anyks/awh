@@ -129,7 +129,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Settings() noexcept :
+					explicit Settings() noexcept :
 					 terminus(true), negative(true),
 					 maxKey(1024), maxValue(1048576), maxTokens(65536) {}
 				} settings_t;
@@ -301,7 +301,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				~Lexer() noexcept {}
+				~Lexer() noexcept = default;
 		} lexer_t;
 	}
 }

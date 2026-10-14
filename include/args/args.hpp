@@ -145,6 +145,29 @@ namespace awh {
 					bool typed;
 					/**
 					 * \~russian
+					 * Признак отказа на параметр, описанию ожидаемых неизвестный
+					 *
+					 * @note Строгость спрашивается ВСЯКИМ источником - набором доводов
+					 *       запуска, текстовым потоком, окружением, файлом настроек и
+					 *       значением по умолчанию, - ибо она есть свойство разбора, а
+					 *       не одной его дороги. Закреплено проверкой
+					 *       `Args.TheStrictnessIsAskedByEverySource`
+					 *
+					 * @note Годным считается не только имя описанного параметра, но и
+					 *       всякое имя ПОД ним: описав имя `host`, потребитель вправе
+					 *       подать ему поддерево файлом настроек
+					 *
+					 * @note При описании ПУСТОМ строгость не спрашивается вовсе:
+					 *       сверять поданное не с чем, и разбор принимает всякое имя
+					 *
+					 * \~english
+					 * Sign of a refusal of a parameter unknown to the schema of the expected ones
+					 *
+					 * \~
+					 */
+					bool strict;
+					/**
+					 * \~russian
 					 * Признак укладки повторно поданного параметра массивом
 					 *
 					 * @details Признак этот СТАРШЕ одноимённого признака у описания
@@ -171,29 +194,6 @@ namespace awh {
 					 * \~
 					 */
 					bool multiple;
-					/**
-					 * \~russian
-					 * Признак отказа на параметр, описанию ожидаемых неизвестный
-					 *
-					 * @note Строгость спрашивается ВСЯКИМ источником - набором доводов
-					 *       запуска, текстовым потоком, окружением, файлом настроек и
-					 *       значением по умолчанию, - ибо она есть свойство разбора, а
-					 *       не одной его дороги. Закреплено проверкой
-					 *       `Args.TheStrictnessIsAskedByEverySource`
-					 *
-					 * @note Годным считается не только имя описанного параметра, но и
-					 *       всякое имя ПОД ним: описав имя `host`, потребитель вправе
-					 *       подать ему поддерево файлом настроек
-					 *
-					 * @note При описании ПУСТОМ строгость не спрашивается вовсе:
-					 *       сверять поданное не с чем, и разбор принимает всякое имя
-					 *
-					 * \~english
-					 * Sign of a refusal of a parameter unknown to the schema of the expected ones
-					 *
-					 * \~
-					 */
-					bool strict;
 					// Разделитель звеньев пути в имени параметра
 					char delimiter;
 					/**
@@ -206,33 +206,36 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Settings() noexcept : typed(true), multiple(true), strict(false), delimiter('.') {}
+					explicit Settings() noexcept :
+					 typed(true), strict(false),
+					 multiple(true), delimiter('.') {}
 				} settings_t;
 			private:
-				// Настройки сбора параметров запуска
-				settings_t _settings;
+				// Объект работы с файловой системой
+				const fs_t _fs;
+			private:
+				// Начало имён переменных окружения, приложению отведённых
+				string _prefix;
 			private:
 				// Описание ожидаемых параметров запуска
 				schema_t _schema;
 			private:
-				// Начало имён переменных окружения, приложению отведённых
-				string _prefix;
+				// Настройки сбора параметров запуска
+				settings_t _settings;
 			private:
 				// Разборщик параметров запуска и текстовых потоков
 				lexer_t _lexer;
 				// Мост между контейнером ABC и текстовыми кодеками
 				codec::bridge_t _bridge;
-				// Объект работы с файловой системой
-				const fs_t _fs;
 			private:
 				// Дерево собранных значений настроек
 				codec::abc::value_t _root;
 			private:
 				// Источники собранных значений настроек, ключом путь звеньями
-				map <string, source_t> _origins;
+				std::map <string, source_t> _origins;
+			private:
 				// Позиционные доводы в порядке их встречи в наборе запуска
 				vector <string> _operands;
-			private:
 				// Отказы, случившиеся при последнем разборе
 				vector <pair <error_t, location_t>> _errors;
 			private:
@@ -841,7 +844,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Args() noexcept;
+				explicit Args() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
@@ -852,7 +855,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				~Args() noexcept {}
+				~Args() noexcept = default;
 		} args_t;
 	}
 }
