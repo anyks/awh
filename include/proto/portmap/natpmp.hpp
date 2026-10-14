@@ -365,12 +365,12 @@ namespace awh {
 					typedef struct __AWH_SHARED_EXPORT__ Request {
 						// Договор перенаправления порта
 						proto_t proto;
+						// Запрашиваемый срок жизни перенаправления в секундах
+						uint32_t lifeTime;
 						// Внутренний порт перенаправления
 						uint16_t internalPort;
 						// Желаемый внешний порт перенаправления
 						uint16_t externalPort;
-						// Запрашиваемый срок жизни перенаправления в секундах
-						uint32_t lifeTime;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -381,7 +381,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Request() noexcept;
+						explicit Request() noexcept;
 					} request_t;
 				public:
 					/**
@@ -490,7 +490,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					NAT_PMP() noexcept {}
+					explicit NAT_PMP() noexcept = default;
 			} natpmp_t;
 
 			/**

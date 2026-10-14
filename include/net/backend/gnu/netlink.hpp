@@ -303,7 +303,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Netlink() noexcept {}
+				explicit Netlink() noexcept = default;
 				/**
 				 * \~russian
 				 * @brief Деструктор
@@ -314,7 +314,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				~Netlink() noexcept {}
+				~Netlink() noexcept = default;
 		} netlink_t;
 	};
 };

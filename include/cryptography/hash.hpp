@@ -1167,7 +1167,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Hash() noexcept;
+			explicit Hash() noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -1191,7 +1191,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			~Hash() noexcept {}
+			~Hash() noexcept = default;
 	} hash_t;
 };
 

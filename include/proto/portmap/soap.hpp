@@ -42,9 +42,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../../sys/macro/global.hpp"
 #include "../../codec/xml/writer.hpp"
 #include "../../codec/xml/document.hpp"
-#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -206,7 +206,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Argument() noexcept {}
+						explicit Argument() noexcept = default;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -221,7 +221,8 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Argument(const string_view name, const string_view value) noexcept : name(name), value(value) {}
+						Argument(const string_view name, const string_view value) noexcept :
+						 name{name}, value{value} {}
 					} argument_t;
 					/**
 					 * \~russian
@@ -266,7 +267,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Answer() noexcept : fault(false), code(0) {}
+						explicit Answer() noexcept : fault(false), code(0) {}
 					} answer_t;
 				public:
 					/**
@@ -364,7 +365,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					SOAP() noexcept {}
+					explicit SOAP() noexcept = default;
 			} soap_t;
 
 			/**

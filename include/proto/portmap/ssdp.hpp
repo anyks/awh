@@ -42,8 +42,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../../codec/xml/document.hpp"
 #include "../http/parser/http1/http.hpp"
-#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -304,14 +304,14 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxAge;
-						// Обозначение службы, о которой сообщает устройство
-						string target;
 						// Обозначение самого устройства и его службы
 						string usn;
-						// Адрес описания устройства
-						string location;
+						// Обозначение службы, о которой сообщает устройство
+						string target;
 						// Сведения об устройстве и его встроенной программе
 						string server;
+						// Адрес описания устройства
+						string location;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -322,7 +322,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Answer() noexcept;
+						explicit Answer() noexcept;
 					} answer_t;
 				public:
 					/**
@@ -427,7 +427,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					SSDP() noexcept {}
+					explicit SSDP() noexcept = default;
 			} ssdp_t;
 
 			/**

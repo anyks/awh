@@ -37,11 +37,11 @@
 #include <vector>
 #include <cstddef>
 #include <cstdint>
-#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -367,7 +367,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Option() noexcept;
+						explicit Option() noexcept;
 					} opt_t;
 					/**
 					 * \~russian
@@ -393,18 +393,20 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Request {
-						// Действие договора
-						opcode_t opcode;
 						// Договор перенаправления порта
 						proto_t proto;
+						// Действие договора
+						opcode_t opcode;
 						// Запрашиваемый срок жизни перенаправления в секундах
 						uint32_t lifeTime;
+						// Порт узла, с которым ведётся сношение
+						uint16_t remotePort;
 						// Внутренний порт перенаправления
 						uint16_t internalPort;
 						// Желаемый внешний порт перенаправления
 						uint16_t externalPort;
-						// Порт узла, с которым ведётся сношение
-						uint16_t remotePort;
+						// Дополнения запроса
+						vector <opt_t> options;
 						// Отличительная метка перенаправления
 						uint8_t nonce[NONCE_SIZE];
 						// Адрес машины, обращающейся к маршрутизатору
@@ -413,8 +415,6 @@ namespace awh {
 						uint8_t external[ADDRESS_SIZE];
 						// Адрес узла, с которым ведётся сношение
 						uint8_t remote[ADDRESS_SIZE];
-						// Дополнения запроса
-						vector <opt_t> options;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -425,7 +425,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Request() noexcept;
+						explicit Request() noexcept;
 					} request_t;
 					/**
 					 * \~russian
@@ -437,14 +437,12 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Answer {
-						// Действие договора
-						opcode_t opcode;
-						// Код итога, выданный маршрутизатором
-						result_t result;
 						// Договор перенаправления порта
 						proto_t proto;
-						// Назначенный срок жизни перенаправления в секундах
-						uint32_t lifeTime;
+						// Код итога, выданный маршрутизатором
+						result_t result;
+						// Действие договора
+						opcode_t opcode;
 						/**
 						 * \~russian
 						 * Время работы маршрутизатора в секундах
@@ -460,6 +458,10 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t epoch;
+						// Назначенный срок жизни перенаправления в секундах
+						uint32_t lifeTime;
+						// Порт узла, с которым ведётся сношение
+						uint16_t remotePort;
 						// Внутренний порт перенаправления
 						uint16_t internalPort;
 						/**
@@ -477,16 +479,14 @@ namespace awh {
 						 * \~
 						 */
 						uint16_t externalPort;
-						// Порт узла, с которым ведётся сношение
-						uint16_t remotePort;
-						// Отличительная метка перенаправления
-						uint8_t nonce[NONCE_SIZE];
-						// Внешний адрес, назначенный маршрутизатором
-						uint8_t external[ADDRESS_SIZE];
-						// Адрес узла, с которым ведётся сношение
-						uint8_t remote[ADDRESS_SIZE];
 						// Дополнения ответа
 						vector <opt_t> options;
+						// Отличительная метка перенаправления
+						uint8_t nonce[NONCE_SIZE];
+						// Адрес узла, с которым ведётся сношение
+						uint8_t remote[ADDRESS_SIZE];
+						// Внешний адрес, назначенный маршрутизатором
+						uint8_t external[ADDRESS_SIZE];
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -497,7 +497,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Answer() noexcept;
+						explicit Answer() noexcept;
 					} answer_t;
 				public:
 					/**
@@ -609,7 +609,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					PCP() noexcept {}
+					explicit PCP() noexcept = default;
 			} pcp_t;
 
 			/**

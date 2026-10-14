@@ -217,16 +217,16 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Service {
-						// Обозначение вида службы
-						string type;
 						// Обозначение самой службы
 						string id;
-						// Адрес управления службой
-						string control;
-						// Адрес подписки на события службы
-						string event;
+						// Обозначение вида службы
+						string type;
 						// Адрес описания действий службы
 						string spec;
+						// Адрес подписки на события службы
+						string event;
+						// Адрес управления службой
+						string control;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -237,7 +237,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Service() noexcept {}
+						explicit Service() noexcept :
+						 id{""}, type{""},
+						 spec{""}, event{""}, control{""} {}
 					} service_t;
 					/**
 					 * \~russian
@@ -249,14 +251,6 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Description {
-						// Обозначение вида устройства
-						string type;
-						// Понятное человеку название устройства
-						string name;
-						// Изготовитель устройства
-						string manufacturer;
-						// Обозначение изделия
-						string model;
 						/**
 						 * \~russian
 						 * Обозначение самого устройства
@@ -287,6 +281,14 @@ namespace awh {
 						 * \~
 						 */
 						string base;
+						// Обозначение вида устройства
+						string type;
+						// Понятное человеку название устройства
+						string name;
+						// Обозначение изделия
+						string model;
+						// Изготовитель устройства
+						string manufacturer;
 						// Перечень всех служб устройства, включая вложенные устройства
 						vector <service_t> services;
 						/**
@@ -299,7 +301,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Description() noexcept {}
+						explicit Description() noexcept :
+						 udn{""}, base{""}, type{""},
+						 name{""}, model{""}, manufacturer{""} {}
 					} description_t;
 				private:
 					// Объект работы с адресами ресурсов
@@ -387,7 +391,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Device() noexcept : _uri() {}
+					explicit Device() noexcept = default;
 			} device_t;
 
 			/**

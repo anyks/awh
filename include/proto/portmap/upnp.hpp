@@ -254,10 +254,6 @@ namespace awh {
 						bool enabled;
 						// Договор перенаправления порта
 						proto_t proto;
-						// Внешний порт перенаправления
-						uint16_t externalPort;
-						// Внутренний порт перенаправления
-						uint16_t internalPort;
 						/**
 						 * \~russian
 						 * Срок жизни перенаправления в секундах
@@ -273,6 +269,10 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t lifeTime;
+						// Внешний порт перенаправления
+						uint16_t externalPort;
+						// Внутренний порт перенаправления
+						uint16_t internalPort;
 						/**
 						 * \~russian
 						 * Внешний узел, подключения с которого пропускаются
@@ -288,10 +288,10 @@ namespace awh {
 						 * \~
 						 */
 						string remoteHost;
-						// Внутренний адрес машины, которой отдаются подключения
-						string internalClient;
 						// Описание перенаправления, видное в настройках маршрутизатора
 						string description;
+						// Внутренний адрес машины, которой отдаются подключения
+						string internalClient;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -302,9 +302,11 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Mapping() noexcept :
-						 enabled(true), proto(proto_t::NONE), externalPort(0),
-						 internalPort(0), lifeTime(0) {}
+						explicit Mapping() noexcept :
+						 enabled(true), proto(proto_t::NONE),
+						 lifeTime(0), externalPort(0),
+						 internalPort(0), remoteHost{""},
+						 description{""}, internalClient{""} {}
 					} mapping_t;
 					/**
 					 * \~russian
@@ -340,21 +342,6 @@ namespace awh {
 						proto_t proto;
 						/**
 						 * \~russian
-						 * Порт узла, с которого пропускаются подключения
-						 *
-						 * @note Нулевой порт означает «с любого порта»
-						 *
-						 * \~english
-						 * Port of the node from which the connections are let through
-						 * @note A zero port means «from any port»
-						 *
-						 * \~
-						 */
-						uint16_t remotePort;
-						// Внутренний порт машины, которой отдаются подключения
-						uint16_t internalPort;
-						/**
-						 * \~russian
 						 * Срок жизни пробоя в секундах
 						 *
 						 * @note Бессрочных пробоев договор не заводит: срок обязателен, и
@@ -368,6 +355,21 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t lifeTime;
+						/**
+						 * \~russian
+						 * Порт узла, с которого пропускаются подключения
+						 *
+						 * @note Нулевой порт означает «с любого порта»
+						 *
+						 * \~english
+						 * Port of the node from which the connections are let through
+						 * @note A zero port means «from any port»
+						 *
+						 * \~
+						 */
+						uint16_t remotePort;
+						// Внутренний порт машины, которой отдаются подключения
+						uint16_t internalPort;
 						/**
 						 * \~russian
 						 * Внешний узел, подключения с которого пропускаются
@@ -395,9 +397,10 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Pinhole() noexcept :
-						 proto(proto_t::NONE), remotePort(0),
-						 internalPort(0), lifeTime(0) {}
+						explicit Pinhole() noexcept :
+						 proto(proto_t::NONE), lifeTime(0),
+						 remotePort(0), internalPort(0),
+						 remoteHost{""}, internalClient{""} {}
 					} pinhole_t;
 					/**
 					 * \~russian
@@ -409,23 +412,12 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Request {
+						// Собранный текст вызова действия службы
+						string body;
 						// Название вызываемого действия службы
 						string action;
 						// Обозначение вызываемого действия для поля заголовка запроса
 						string header;
-						// Собранный текст вызова действия службы
-						string body;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Request() noexcept {}
 						/**
 						 * \~russian
 						 * @brief Метод проверки собранного вызова на пригодность
@@ -442,6 +434,17 @@ namespace awh {
 							// Выводим итог проверки собранного вызова на пригодность
 							return (!this->action.empty() && !this->header.empty() && !this->body.empty());
 						}
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Request() noexcept = default;
 					} request_t;
 				private:
 					// Объект кодека договора SOAP
@@ -848,7 +851,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					UPnP() noexcept : _soap() {}
+					explicit UPnP() noexcept : _soap() {}
 			} upnp_t;
 
 			/**

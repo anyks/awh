@@ -578,7 +578,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Stream_Control_Transmission_Protocol() noexcept {}
+				Stream_Control_Transmission_Protocol() noexcept = default;
 				/**
 				 * \~russian
 				 * @brief Деструктор
@@ -589,7 +589,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				~Stream_Control_Transmission_Protocol() noexcept {}
+				~Stream_Control_Transmission_Protocol() noexcept = default;
 		} sctp_t;
 	};
 };
