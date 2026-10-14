@@ -642,12 +642,74 @@ def check_alignment(path, lines, report):
             walk_block(path, block, report)
             block = []
 
+def find_bodies(lines):
+    """Строки тел определений: от заголовка до его закрывающей скобки (§1.3).
+
+    Накопным по файлу счётом скобок тело не ищут: у ветвей условной компиляции
+    открывающая «{» стоит в одной, а закрывающая «}» в другой (и у «case …: {»
+    тоже), отчего сбой уносил метку «внутри тела» до конца файла. Тело кончают
+    раньше из двух: счёт скобок от заголовка вернулся к нулю, или попала
+    одиночная «}» не глубже отступа заголовка. Заголовок начинается не дальше
+    одного таба, кончается «{», «:» (список инициализации) или «{}».
+    """
+    code = []
+    in_block = False
+    for raw in lines:
+        c, in_block = strip_comments_strings(raw.rstrip("\n"), in_block)
+        code.append(c)
+    inside = [False] * len(lines)
+    kw = re.compile(r"^(?:if|for|while|switch|else|catch|try|do|return|namespace|struct|class|union|enum|typedef|using|static_assert|case|default)\b")
+    closer = re.compile(r"^([ \t]*)\}([();, \t]*)(?://.*|/\*.*\*/)?$")
+    n = 0
+    while n < len(lines):
+        line = lines[n].rstrip("\n")
+        st = line.strip()
+        tabs = len(line) - len(line.lstrip("\t"))
+        head = bool(st) and tabs <= 1 and not st.startswith(("#", "}", "*", "/")) \
+            and "(" in code[n] and ";" not in code[n] and not kw.match(st) \
+            and st.endswith(("{", ":", "{}"))
+        if not head:
+            n += 1
+            continue
+        pad = len(line) - len(line.lstrip())
+        open_idx = None
+        cur = n
+        while cur < len(lines):
+            if "{" in code[cur]:
+                open_idx = cur
+                break
+            if ";" in code[cur]:
+                break
+            cur += 1
+        if open_idx is None:
+            n += 1
+            continue
+        end_idx = None
+        depth = 0
+        cur = open_idx
+        while cur < len(lines):
+            body = code[cur][code[cur].index("{"):] if cur == open_idx else code[cur]
+            depth += body.count("{") - body.count("}")
+            m = closer.match(lines[cur].rstrip("\n"))
+            if depth <= 0 or (m and len(m.group(1)) <= pad):
+                end_idx = cur
+                break
+            cur += 1
+        if end_idx is None:
+            # закрывающей скобки не найдено: тело не помечать, иначе разметка
+            # уезжает в конец файла ложными «§1.3»
+            n += 1
+            continue
+        for idx in range(n, end_idx + 1):
+            inside[idx] = True
+        n = end_idx + 1
+    return inside
+
 def check_file(path, lines, members, report, fixes=None):
     is_cpp = path.endswith(".cpp") or "/src/" in path
     is_hdr = path.endswith((".hpp", ".h")) and "/include/" in path
     in_block = False
-    func_depth = 0
-    in_func = False
+    bodies = find_bodies(lines)
     blank_ctx = None
     prev_code = ""
     static_names = set(re.findall(r"^\s*(?:\[\[.*?\]\]\s*)?static\s+(?:[\w:<>]+\s+)+?[*&]?\s*(\w+)\s*\(", "\n".join(lines), re.M))
@@ -656,7 +718,7 @@ def check_file(path, lines, members, report, fixes=None):
         line = raw.rstrip("\n")
         code, in_block = strip_comments_strings(line, in_block)
         if line.strip() == "":
-            if in_func and blank_ctx is None:
+            if bodies[n - 1] and blank_ctx is None:
                 blank_ctx = n
             continue
         if blank_ctx is not None:
@@ -680,14 +742,6 @@ def check_file(path, lines, members, report, fixes=None):
                 report(path, n, "ERROR", "§2.3", f"английский в doc-комментарии .cpp: '{cm.group(1)[:60]}'")
         if not code.strip():
             continue
-        # func depth (грубо: считаем только в коде)
-        opens, closes = code.count("{"), code.count("}")
-        base = func_depth
-        func_depth = max(0, func_depth + opens - closes)
-        if not in_func and opens and base == 0 and re.search(r"\)[^()]*\{\s*$", code) and not re.search(r"\b(if|for|while|switch|else|catch|try|namespace|struct|class|enum|union|do)\b", code):
-            in_func = True
-        elif in_func and func_depth == 0 and closes:
-            in_func = False
         # комментарий над циклом/switch (§6.6): непосредственно над заголовком — // или */
         lm = re.match(r"^\s*(for|while|switch)\s*\(", line)
         if lm and not re.match(r"^\s*}\s*while", line):
