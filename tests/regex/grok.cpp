@@ -193,7 +193,7 @@ TEST(Grok, NestedNumbering) {
 /**
  * @brief Тест видов значений полей
  *
- * @details Ссылка вида «%{INT:code:int32_t}» задаёт вид значения третьей частью.
+ * @details Ссылка вида «%{INT:code:int}» задаёт вид значения третьей частью.
  *          Модуль вид запоминает, но приведением значения не занимается.
  *
  */
@@ -201,7 +201,7 @@ TEST(Grok, FieldKinds) {
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok;
 	// Выполняем сборку шаблона Grok
-	const auto exp = grok.build("%{WORD:name} %{INT:code:int32_t} %{NUMBER:rate:float}");
+	const auto exp = grok.build("%{WORD:name} %{INT:code:int} %{NUMBER:rate:float}");
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!exp);
 	// Получаем набор полей собранного шаблона
@@ -510,7 +510,7 @@ TEST(Grok, ValuesExtract) {
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok;
 	// Выполняем сборку шаблона Grok
-	const auto exp = grok.build("%{WORD:tag}-%{WORD:tag} %{INT:code:int32_t} %{NUMBER:rate:float}");
+	const auto exp = grok.build("%{WORD:tag}-%{WORD:tag} %{INT:code:int} %{NUMBER:rate:float}");
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!exp);
 	// Набор извлечённых значений полей
@@ -553,7 +553,7 @@ TEST(Grok, JsonOutput) {
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok;
 	// Выполняем сборку шаблона Grok
-	const auto exp = grok.build("%{WORD:name} %{INT:code:int32_t} %{NUMBER:rate:float}");
+	const auto exp = grok.build("%{WORD:name} %{INT:code:int} %{NUMBER:rate:float}");
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!exp);
 	// Запись JSON извлечённых полей
@@ -595,7 +595,7 @@ TEST(Grok, JsonKindMismatch) {
 	// Выполняем добавление пользовательского шаблона в реестр
 	ASSERT_TRUE(grok.pattern("ANYTHING", "\\S+"));
 	// Выполняем сборку шаблона Grok
-	const auto exp = grok.build("%{ANYTHING:value:int32_t}");
+	const auto exp = grok.build("%{ANYTHING:value:int}");
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!exp);
 	// Запись JSON извлечённых полей
@@ -678,15 +678,15 @@ TEST(Grok, JsonNumberEdges) {
 		const char * expected;
 	} samples[] = {
 		// Числа, договору JSON отвечающие
-		{"%{ANY:value:int32_t}",   "0",                    "{\"value\":0}"},
-		{"%{ANY:value:int32_t}",   "42",                   "{\"value\":42}"},
-		{"%{ANY:value:int32_t}",   "-42",                  "{\"value\":-42}"},
-		{"%{ANY:value:int32_t}",   "9223372036854775807",  "{\"value\":9223372036854775807}"},
-		{"%{ANY:value:int32_t}",   "9223372036854775808",  "{\"value\":9223372036854775808}"},
+		{"%{ANY:value:int}",   "0",                    "{\"value\":0}"},
+		{"%{ANY:value:int}",   "42",                   "{\"value\":42}"},
+		{"%{ANY:value:int}",   "-42",                  "{\"value\":-42}"},
+		{"%{ANY:value:int}",   "9223372036854775807",  "{\"value\":9223372036854775807}"},
+		{"%{ANY:value:int}",   "9223372036854775808",  "{\"value\":9223372036854775808}"},
 		{"%{ANY:value:float}", "3.14",                 "{\"value\":3.14}"},
 		// Записи, договором JSON числом не признаваемые
-		{"%{ANY:value:int32_t}",   "007",                  "{\"value\":\"007\"}"},
-		{"%{ANY:value:int32_t}",   "+42",                  "{\"value\":\"+42\"}"},
+		{"%{ANY:value:int}",   "007",                  "{\"value\":\"007\"}"},
+		{"%{ANY:value:int}",   "+42",                  "{\"value\":\"+42\"}"},
 		{"%{ANY:value:float}", "3.",                   "{\"value\":\"3.\"}"},
 		{"%{ANY:value:float}", ".5",                   "{\"value\":\".5\"}"},
 		{"%{ANY:value:float}", "nan",                  "{\"value\":\"nan\"}"},
@@ -694,8 +694,8 @@ TEST(Grok, JsonNumberEdges) {
 		{"%{ANY:value:float}", "0x10",                 "{\"value\":\"0x10\"}"},
 		{"%{ANY:value:float}", "1e",                   "{\"value\":\"1e\"}"},
 		// Числа, за пределы вида выходящие
-		{"%{ANY:value:int32_t}",   "18446744073709551616", "{\"value\":\"18446744073709551616\"}"},
-		{"%{ANY:value:int32_t}",   "-99999999999999999999", "{\"value\":\"-99999999999999999999\"}"},
+		{"%{ANY:value:int}",   "18446744073709551616", "{\"value\":\"18446744073709551616\"}"},
+		{"%{ANY:value:int}",   "-99999999999999999999", "{\"value\":\"-99999999999999999999\"}"},
 		{"%{ANY:value:float}", "1e999",                "{\"value\":\"1e999\"}"}
 	};
 	/**
@@ -727,7 +727,7 @@ TEST(Grok, JsonValueOutput) {
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok;
 	// Выполняем сборку шаблона Grok
-	const auto exp = grok.build("%{WORD:name} %{INT:code:int32_t}");
+	const auto exp = grok.build("%{WORD:name} %{INT:code:int}");
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!exp);
 	// Значение JSON извлечённых полей
@@ -814,7 +814,7 @@ TEST(Grok, ReadSet) {
 		"\n"
 		"   \t \n"
 		"NGINXSTAMP  \\d{2}/\\w{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2}\r\n"
-		"\tNGINXCODE\t%{NUMBER:code:int32_t}\n"
+		"\tNGINXCODE\t%{NUMBER:code:int}\n"
 		"ШАБЛОН_БЕЗ_ТЕЛА\n"
 		"NGINXLINE  %{IP:client} \\[%{NGINXSTAMP:stamp}\\] %{NGINXCODE}\n";
 	// Выполняем наполнение реестра набором шаблонов
@@ -828,7 +828,7 @@ TEST(Grok, ReadSet) {
 	// Выполняем проверку отсечения возврата каретки в конце строки
 	EXPECT_EQ(grok.pattern("NGINXSTAMP"), "\\d{2}/\\w{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2}");
 	// Выполняем проверку отсечения пробельных знаков вокруг названия
-	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:code:int32_t}");
+	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:code:int}");
 	// Выполняем сборку шаблона, ссылающегося на прочитанные
 	const auto exp = grok.build("%{NGINXLINE}");
 	// Выполняем проверку сборки шаблона
@@ -842,9 +842,9 @@ TEST(Grok, ReadSet) {
 	EXPECT_EQ(values["stamp"], "04/Aug/2026:12:30:00");
 	EXPECT_EQ(values["code"], "200");
 	// Выполняем проверку замещения шаблона реестра прочитанным
-	EXPECT_EQ(grok.read("NGINXCODE %{NUMBER:status:int32_t}"), static_cast <size_t> (1));
+	EXPECT_EQ(grok.read("NGINXCODE %{NUMBER:status:int}"), static_cast <size_t> (1));
 	// Выполняем проверку замещения текста шаблона реестра
-	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:status:int32_t}");
+	EXPECT_EQ(grok.pattern("NGINXCODE"), "%{NUMBER:status:int}");
 	// Выполняем проверку пропуска набора, шаблонов не несущего
 	EXPECT_EQ(grok.read("# одни лишь примечания\n\n#\n"), static_cast <size_t> (0));
 }
@@ -861,9 +861,9 @@ TEST(Grok, StorageRoundtrip) {
 	 *
 	 */
 	const vector <string> patterns = {
-		"%{IP:client}", "%{NUMBER:code:int32_t}", "%{WORD:method} %{URIPATH:path}",
+		"%{IP:client}", "%{NUMBER:code:int}", "%{WORD:method} %{URIPATH:path}",
 		"%{TIMESTAMP_ISO8601:stamp}", "%{EMAILADDRESS:mail}", "%{LOGLEVEL:level}",
-		"%{IP:client} - %{USER:user} %{NUMBER:code:int32_t} %{NUMBER:bytes:int32_t}",
+		"%{IP:client} - %{USER:user} %{NUMBER:code:int} %{NUMBER:bytes:int}",
 		"%{HOSTNAME:host}", "%{QUOTEDSTRING:text}", "%{BASE16NUM:hex}"
 	};
 	// Запись собранных шаблонов Grok
@@ -965,7 +965,7 @@ TEST(Grok, StorageErrors) {
 	// Проверяем отказ чтения по пустому содержимому
 	EXPECT_EQ(grok.error(), Grok::error_t::STORAGE_EMPTY);
 	// Выполняем запись собранных шаблонов
-	ASSERT_TRUE(grok.save({"%{IP:client}", "%{NUMBER:code:int32_t}"}, record));
+	ASSERT_TRUE(grok.save({"%{IP:client}", "%{NUMBER:code:int}"}, record));
 	/**
 	 * Выполняем проверку отказа восстановления записи с чужим опознанием
 	 */
@@ -1123,7 +1123,7 @@ TEST(Grok, StoragePacking) {
 	 *
 	 */
 	const vector <string> patterns = {
-		"%{IP:client}", "%{NUMBER:code:int32_t}", "%{TIMESTAMP_ISO8601:stamp}", "%{LOGLEVEL:level}"
+		"%{IP:client}", "%{NUMBER:code:int}", "%{TIMESTAMP_ISO8601:stamp}", "%{LOGLEVEL:level}"
 	};
 	// Запись собранных шаблонов без сжатия
 	string plain;
@@ -1845,7 +1845,7 @@ TEST(Grok, RefusalCodes) {
 		// Запись собранных шаблонов Grok
 		string record = "";
 		// Выполняем запись собранных шаблонов
-		ASSERT_TRUE(keeper.save({"%{IP:client}", "%{NUMBER:code:int32_t}"}, record))
+		ASSERT_TRUE(keeper.save({"%{IP:client}", "%{NUMBER:code:int}"}, record))
 		 << "код " << static_cast <uint32_t> (keeper.error());
 		/**
 		 * Получаем позицию содержимого части записи, шаблоны описывающей
