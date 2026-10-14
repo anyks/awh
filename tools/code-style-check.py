@@ -204,6 +204,15 @@ def check_doc_parity(path, lines, report, fixes=None):
 							packed = (tag in ("param", "return") and prev_tag in ("param", "return", "par")) or tag == "endcode" or (tag == "par" and prev_tag in ("param", "return", "par")) or (tag == prev_tag and tag in ("note", "details", "warning", "tparam"))
 							if not packed and not blank:
 								report(path, start + ln - 1, "ERROR", "§7.3", f"в секции {lang}: перед @{tag} нет пустой строки ' *' (группы тегов разделяются)")
+							tight = (tag in ("param", "tparam", "retval", "arg", "return")
+								and prev_tag in ("param", "tparam", "retval", "arg", "return"))
+							if tight and blank:
+								report(path, start + ln - 1, "ERROR", "§7.3", f"лишняя пустая строка перед @{tag} внутри блока @param/@return — блок ведёт плотно (§7.3)")
+								if fixes is not None:
+									m = ln - 2
+									while m >= 0 and re.match(r"\s*\*\s*$", block[m].strip()):
+										fixes.add(start + m - 1)
+										m -= 1
 					if (ru or en) and not (ru and en):
 						have, miss = ("russian", "english") if ru else ("english", "russian")
 						tags_have = ", ".join("@" + t[0] for t in (ru or en))
@@ -697,6 +706,8 @@ def check_file(path, lines, members, report, fixes=None):
             report(path, n, "ERROR", "§1.4", "закрывающая `*/` склеена с кодом — закрывание блока на своей строке")
         # if/for/while/switch с пробелом
         for m in re.finditer(r"\b(if|for|while|switch)\s+\(", code):
+            if code[:m.start()].rstrip().endswith("#"):
+                continue  # ж мосл #if/#elif
             report(path, n, "ERROR", "§1.2", f"{m.group(1)} с пробелом перед скобкой: '{m.group(0)}'")
         # static_cast без пробелов
         if "static_cast<" in code:
@@ -786,6 +797,7 @@ def check_steps(path, lines, report):
     in_block = False
     in_macro = False
     balance = 0
+    init_depth = 0
     prev_code_raw = ""
     prev_stmt_shape = None
     prev_significant = None   # ('kind', index) kind: comment/code/blank
@@ -844,7 +856,15 @@ def check_steps(path, lines, report):
         decl_pair = bool(re.match(r"^(?:const\s+)?(?:struct\s+)?[\w:<>]+\s+\w+\{\s*\};$", st)) and bool(re.match(r"^(?:const\s+)?(?:struct\s+)?[\w:<>]+\s+\w+\{\s*\};$", prev_code_raw.strip()))
         continued = balance > 0 or prev_ctrl or decl_pair or (prev_code_raw.rstrip().endswith((":", ",", "(", "&", "|", "?", "+", "-", "="))) or ("//" in line)
         continued = continued or (prev_code_raw.strip() != "" and prev_stmt_shape and re.match(r"^[\w:>.-]*\s*", st).group(0) and re.match(r"^[\w:>.<-]*", st).group(0) == prev_stmt_shape)
+        continued = continued or (init_depth > 0)
+        continued = continued or bool(re.match(r"^(?:\<\<|>>|&&|\|\|\|->|::|\.|\?|:|[+=*/,-])", st))
         balance += code.count("(") + code.count("[") - code.count(")") - code.count("]")
+        if init_depth:
+            init_depth += st.count("{") - st.count("}")
+            if init_depth <= 0:
+                init_depth = 0
+        elif re.search(r"=\s*\{\s*$", st):
+            init_depth = 1
         if re.match(r"^namespace(?:\s+[\w:]+)?\s*\{?$", st):
             j = n - 2
             while j >= 0 and lines[j].strip() == "":
