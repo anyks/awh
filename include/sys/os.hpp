@@ -1286,6 +1286,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Operating_System() noexcept {}
+			explicit Operating_System() noexcept = default;
 	} os_t;
 };

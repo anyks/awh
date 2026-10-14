@@ -377,7 +377,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			~Version() noexcept {}
+			~Version() noexcept = default;
 	} version_t;
 	/**
 	 * \~russian
