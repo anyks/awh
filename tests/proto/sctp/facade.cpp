@@ -71,16 +71,20 @@ using namespace awh;
  *
  */
 namespace {
-	// Сторожевой предел ожидания обмена, в миллисекундах
-	static constexpr uint32_t WATCHDOG_TIMEOUT = 30000;
-	// Предел ожидания завершения фонового потока цикла событий, в секундах
+	/**
+	 * Предел ожидания завершения фонового потока цикла событий, в секундах
+	 */
 	static constexpr uint32_t SHUTDOWN_TIMEOUT = 5;
+	/**
+	 * Сторожевой предел ожидания обмена, в миллисекундах
+	 */
+	static constexpr uint32_t WATCHDOG_TIMEOUT = 30000;
 
 	/**
 	 * @brief Структура принятого сообщения
 	 *
 	 */
-	struct message_t {
+	typedef struct Message {
 		// Данные принятого сообщения
 		std::string data;
 		// Метаданные принятого сообщения
@@ -89,8 +93,8 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		message_t() noexcept {}
-	};
+		explicit Message() noexcept = default;
+	} message_t;
 
 	/**
 	 * @brief Класс стенда сквозного обмена по протоколу SCTP
@@ -101,13 +105,13 @@ namespace {
 	 *          его завершения сторожевым пределом
 	 *
 	 */
-	class Harness {
+	typedef class Harness {
 		public:
 			/**
 			 * @brief Структура настроек прогона
 			 *
 			 */
-			struct config_t {
+			typedef struct Config {
 				// Признак выдачи данных вместе с метаданными
 				bool metadata;
 				// Признак отправки сообщения по частям
@@ -130,15 +134,15 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 */
-				config_t() noexcept :
+				explicit Config() noexcept :
 				 metadata(false), partial(false),
 				 echo(true), stream(0), chunks(0) {}
-			};
+			} config_t;
 			/**
 			 * @brief Структура итогов прогона
 			 *
 			 */
-			struct result_t {
+			typedef struct Result {
 				// Признак прерывания прогона сторожевым пределом
 				bool timedOut;
 				// Признак неостановимого цикла событий
@@ -175,11 +179,11 @@ namespace {
 				 * @brief Конструктор
 				 *
 				 */
-				result_t() noexcept :
+				explicit Result() noexcept :
 				 timedOut(false), unstoppable(false),
 				 broken(false), sent(0), overflows(0),
 				 progress(0), assembled(0), partial(false) {}
-			};
+			} result_t;
 		private:
 			// Настройки прогона
 			config_t _config;
@@ -629,10 +633,12 @@ namespace {
 			 * @param port   порт прослушивания сервера на локальной петле
 			 *
 			 */
-			Harness(const config_t & config, const uint16_t port) noexcept :
+			explicit Harness(const config_t & config, const uint16_t port) noexcept :
 			 _config(config), _port(port),
-			 _sid(0), _cid(0), _pid(0), _index(0), _offset(0), _done(false), _pieces(0), _received(0) {}
-	};
+			 _sid(0), _cid(0), _pid(0),
+			 _index(0), _offset(0),
+			 _done(false), _pieces(0), _received(0) {}
+	} harness_t;
 };
 
 /**
@@ -683,13 +689,13 @@ class SctpFacadeTest : public testing::Test {
  */
 TEST_F(SctpFacadeTest, MessagesArriveByteExact){
 	// Настройки прогона
-	Harness::config_t config;
+	harness_t::config_t config;
 	// Устанавливаем размеры отправляемых сообщений
 	config.sizes = {1, 2, 15, 127, 128, 129, 1023, 1024, 1025, 4095, 4096, 8191, 16384, 65535};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort());
+	harness_t harness(config, this->pickPort());
 	// Выполняем прогон обмена
-	const Harness::result_t result = harness.run();
+	const harness_t::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
 	ASSERT_FALSE(result.broken) << "Стенд обмена завести не удалось";
 	// Проверяем, что обмен уложился в сторожевой предел
@@ -725,7 +731,7 @@ TEST_F(SctpFacadeTest, MessagesArriveByteExact){
  */
 TEST_F(SctpFacadeTest, LargeMessageKeepsBoundary){
 	// Настройки прогона
-	Harness::config_t config;
+	harness_t::config_t config;
 	// Включаем выдачу данных вместе с метаданными
 	config.metadata = true;
 	// Устанавливаем номер потока отправляемых сообщений
@@ -740,9 +746,9 @@ TEST_F(SctpFacadeTest, LargeMessageKeepsBoundary){
 	 */
 	config.sizes = {(1024 * 1024)};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort());
+	harness_t harness(config, this->pickPort());
 	// Выполняем прогон обмена
-	const Harness::result_t result = harness.run();
+	const harness_t::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
 	ASSERT_FALSE(result.broken) << "Стенд обмена завести не удалось";
 	// Проверяем, что обмен уложился в сторожевой предел
@@ -778,7 +784,7 @@ TEST_F(SctpFacadeTest, LargeMessageKeepsBoundary){
  */
 TEST_F(SctpFacadeTest, MessageInfoArrivesWithData){
 	// Настройки прогона
-	Harness::config_t config;
+	harness_t::config_t config;
 	// Включаем выдачу данных вместе с метаданными
 	config.metadata = true;
 	// Устанавливаем номер потока отправляемых сообщений
@@ -786,9 +792,9 @@ TEST_F(SctpFacadeTest, MessageInfoArrivesWithData){
 	// Устанавливаем размеры отправляемых сообщений
 	config.sizes = {64, 4096, 65535};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort());
+	harness_t harness(config, this->pickPort());
 	// Выполняем прогон обмена
-	const Harness::result_t result = harness.run();
+	const harness_t::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
 	ASSERT_FALSE(result.broken) << "Стенд обмена завести не удалось";
 	// Проверяем, что обмен уложился в сторожевой предел
@@ -830,7 +836,7 @@ TEST_F(SctpFacadeTest, MessageInfoArrivesWithData){
  */
 TEST_F(SctpFacadeTest, PartialMessageAssemblesIntoOne){
 	// Настройки прогона
-	Harness::config_t config;
+	harness_t::config_t config;
 	// Включаем отправку сообщения по частям
 	config.partial = true;
 	// Устанавливаем количество кусков, на какие делится сообщение
@@ -840,9 +846,9 @@ TEST_F(SctpFacadeTest, PartialMessageAssemblesIntoOne){
 	// Устанавливаем размеры отправляемых сообщений
 	config.sizes = {40000};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort());
+	harness_t harness(config, this->pickPort());
 	// Выполняем прогон обмена
-	const Harness::result_t result = harness.run();
+	const harness_t::result_t result = harness.run();
 	/**
 	 * Если система не несёт явного режима границы записи
 	 *
@@ -892,7 +898,7 @@ TEST_F(SctpFacadeTest, PartialMessageAssemblesIntoOne){
  */
 TEST_F(SctpFacadeTest, HugeMessageViaPartialSending){
 	// Настройки прогона
-	Harness::config_t config;
+	harness_t::config_t config;
 	// Включаем отправку сообщения по частям
 	config.partial = true;
 	// Устанавливаем количество кусков, на какие делится сообщение
@@ -904,9 +910,9 @@ TEST_F(SctpFacadeTest, HugeMessageViaPartialSending){
 	// Устанавливаем размер отправляемого сообщения
 	config.sizes = {(4 * 1024 * 1024)};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort());
+	harness_t harness(config, this->pickPort());
 	// Выполняем прогон обмена
-	const Harness::result_t result = harness.run();
+	const harness_t::result_t result = harness.run();
 	/**
 	 * Если система не несёт явного режима границы записи
 	 *
@@ -955,15 +961,15 @@ TEST_F(SctpFacadeTest, HugeMessageViaPartialSending){
  */
 TEST_F(SctpFacadeTest, StreamSendAcceptsPartiallyWithoutStall){
 	// Настройки прогона
-	Harness::config_t config;
+	harness_t::config_t config;
 	// Отключаем отражение принятых сообщений обратно клиенту
 	config.echo = false;
 	// Устанавливаем размер отправляемого объёма
 	config.sizes = {(4 * 1024 * 1024)};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort());
+	harness_t harness(config, this->pickPort());
 	// Выполняем прогон обмена
-	const Harness::result_t result = harness.run();
+	const harness_t::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
 	ASSERT_FALSE(result.broken) << "Стенд обмена завести не удалось";
 	// Проверяем, что обмен уложился в сторожевой предел
@@ -984,5 +990,4 @@ TEST_F(SctpFacadeTest, StreamSendAcceptsPartiallyWithoutStall){
 	// Проверяем, что принятый объём совпадает с отправленным до октета
 	EXPECT_EQ(assembled, result.transmitted.front()) << "Принятый объём не совпадает с отправленным";
 }
-
 #endif
