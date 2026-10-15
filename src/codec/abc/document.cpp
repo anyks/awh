@@ -12,23 +12,18 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации дерева документа бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the tree of a document of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
  */
 
 /**
- * Подключаем заголовочный файл модуля
+ * Стандартные заголовочные файлы
  */
 #include <cmath>
-#include <codec/abc/document.hpp>
+#include <limits>
+#include <cstring>
 
 /**
  * Подключаем заголовочный файл общего для кодеков приведения чисел
@@ -36,11 +31,10 @@
 #include <codec/numeric.hpp>
 
 /**
- * Стандартные заголовочные файлы
+ * Подключаем заголовочный файл проекта
  */
-#include <cstring>
-#include <limits>
 #include <sys/log.hpp>
+#include <codec/abc/document.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -52,11 +46,55 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Структура состояния сборки дерева документа
+	 *
+	 * @details Состояние это живёт одним разбором и документу не принадлежит: держи он
+	 *          стек открытых вместимых своим полем, поле это стояло бы пустым у всякого
+	 *          собранного документа
+	 *
+	 */
+	typedef struct Building {
+		// Признак отказа сборки дерева документа
+		bool failed;
+		/**
+		 * Номер узла значения, собираемого кусками, либо предел, если такого нет
+		 *
+		 * Значение, собранное кусками, ложится в дерево ОДНИМ узлом: куски суть части
+		 * значения, а не значения, и потребителю дерева они видны быть не должны
+		 */
+		uint32_t segment;
+		// Стек номеров узлов открытых вместимых
+		vector <uint32_t> stack;
+		// Документ, чьё дерево собирается
+		codec::abc::document_t * self;
+		/**
+		 * Правило обращения с повторяющимся именем поля отображения
+		 *
+		 * Правило это живёт состоянием сборки, а не документом: применяется оно в миг
+		 * закрытия отображения, а собранному документу знать о нём уже незачем
+		 */
+		codec::abc::duplicate_t duplicates;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Building() noexcept :
+		 failed(false), segment(0), self(nullptr),
+		 duplicates(codec::abc::duplicate_t::REFUSE) {}
+	} building_t;
+
+	/**
 	 * @brief Шаблон затребованного вида числа
 	 *
 	 * @tparam T затребованный вид числа
 	 *
 	 */
+	template <typename T>
 	/**
 	 * @brief Функция приведения дробного числа к затребованному виду
 	 *
@@ -77,109 +115,76 @@ namespace {
 	 * @return      приведённое число
 	 *
 	 */
-	template <typename T>
 	static T convert(const double value) noexcept {
 		// Выполняем приведение числа общим для кодеков способом
-		return awh::codec::convert <T> (value);
+		return codec::convert <T> (value);
+	}
+	/**
+	 * @brief Функция поверки места в хранилище октетов дерева документа
+	 *
+	 * @details Узел дерева держит смещение и длину содержимого тридцатью двумя разрядами
+	 *          НАМЕРЕННО: дерево тем и живо, что тесно, а восемьдесят разрядов на узел
+	 *          стоили бы памяти на всяком документе ради невиданного. Но выход за предел
+	 *          обязан быть ОТКАЗОМ, а не усечением: усечённое смещение указывает в чужое
+	 *          место хранилища, и узел молча выдаёт не своё содержимое
+	 *
+	 * @note Довод этот ЗАМЕРЕН 26.08.2026, а не выведен рассуждением. Щуп кладёт запись в
+	 *       4.25 ГиБ (семнадцать двоичных значений по 256 МиБ) и разбирает её в дерево:
+	 *       со сторожем разбор отвечает отказом «declared length is inadmissible», построив
+	 *       16 узлов; со снятым сторожем разбор ПРОХОДИТ, отдаёт 18 узлов и не жалуется
+	 *       вовсе - смещения завернулись молча. Проверкою набора это не закрепить: прогон
+	 *       стоит двадцати шести секунд и восьми гигабайт памяти
+	 *
+	 * @param held объём хранилища, уже занятый содержимым
+	 * @param size объём содержимого, какое требуется положить
+	 * @return     признак того, что содержимое в хранилище умещается
+	 *
+	 */
+	static bool room(const size_t held, const size_t size) noexcept {
+		/**
+		 * Выводим признак того, что содержимое умещается в предел смещения узла
+		 *
+		 * @note Все ПЯТЬ мест, зовущих эту поверку, щуп нужности 09.09.2026 нашёл
+		 *       МОЛЧАЩИМИ, и проверкою они не берутся вовсе: отказ требует настоящих
+		 *       четырёх гигабайт накопленного хранилища октетов. Заслон тот же, что и у
+		 *       обёртки записи кадром, у отрезка события разбора и у длины собираемой
+		 *       записи, - смещение узла несёт ТРИДЦАТЬ ДВА разряда, и содержимое, за них
+		 *       выходящее, легло бы в узел УСЕЧЁННЫМ молча: значение выходило годным по
+		 *       виду, а отдавалось бы ЧУЖОЕ
+		 */
+		return (size <= (static_cast <size_t> (numeric_limits <uint32_t>::max()) - held));
+	}
+	/**
+	 * @brief Функция поверки того, что содержимое узла лежит в хранилище октетов
+	 *
+	 * @details Узел держит содержимое своё двояко: число родного вида ложится прямо в поле
+	 *          содержимого, а строка, двоичные данные и величина неограниченной ширины - в
+	 *          хранилище, узлу же остаётся смещение. Сличение узлов обязано знать, куда
+	 *          смотреть, - на то и заведена поверка эта
+	 *
+	 * @param type вид значения узла
+	 * @return     признак того, что содержимое узла лежит в хранилище октетов
+	 *
+	 */
+	static bool stored(const codec::abc::type_t type) noexcept {
+		/**
+		 * Определяем вид значения узла
+		 */
+		switch(static_cast <uint32_t> (type)){
+			// Если содержимое узла лежит в хранилище октетов
+			case static_cast <uint32_t> (codec::abc::type_t::STRING):
+			case static_cast <uint32_t> (codec::abc::type_t::BLOB):
+			case static_cast <uint32_t> (codec::abc::type_t::UUID):
+			case static_cast <uint32_t> (codec::abc::type_t::EXTENDED):
+			case static_cast <uint32_t> (codec::abc::type_t::DECIMAL):
+			case static_cast <uint32_t> (codec::abc::type_t::CUSTOM):
+				// Сообщаем, что содержимое узла лежит в хранилище октетов
+				return true;
+		}
+		// Сообщаем, что содержимое узла лежит в поле содержимого его
+		return false;
 	}
 };
-
-/**
- * @brief Функция поверки места в хранилище октетов дерева документа
- *
- * @details Узел дерева держит смещение и длину содержимого тридцатью двумя разрядами
- *          НАМЕРЕННО: дерево тем и живо, что тесно, а восемьдесят разрядов на узел
- *          стоили бы памяти на всяком документе ради невиданного. Но выход за предел
- *          обязан быть ОТКАЗОМ, а не усечением: усечённое смещение указывает в чужое
- *          место хранилища, и узел молча выдаёт не своё содержимое
- *
- * @note Довод этот ЗАМЕРЕН 26.08.2026, а не выведен рассуждением. Щуп кладёт запись в
- *       4.25 ГиБ (семнадцать двоичных значений по 256 МиБ) и разбирает её в дерево:
- *       со сторожем разбор отвечает отказом «declared length is inadmissible», построив
- *       16 узлов; со снятым сторожем разбор ПРОХОДИТ, отдаёт 18 узлов и не жалуется
- *       вовсе - смещения завернулись молча. Проверкою набора это не закрепить: прогон
- *       стоит двадцати шести секунд и восьми гигабайт памяти
- *
- * @param held объём хранилища, уже занятый содержимым
- * @param size объём содержимого, какое требуется положить
- * @return     признак того, что содержимое в хранилище умещается
- *
- */
-static bool room(const size_t held, const size_t size) noexcept {
-	/**
-	 * @note Все ПЯТЬ мест, зовущих эту поверку, щуп нужности 09.09.2026 нашёл
-	 *       МОЛЧАЩИМИ, и проверкою они не берутся вовсе: отказ требует настоящих
-	 *       четырёх гигабайт накопленного хранилища октетов. Заслон тот же, что и у
-	 *       обёртки записи кадром, у отрезка события разбора и у длины собираемой
-	 *       записи, - смещение узла несёт ТРИДЦАТЬ ДВА разряда, и содержимое, за них
-	 *       выходящее, легло бы в узел УСЕЧЁННЫМ молча: значение выходило годным по
-	 *       виду, а отдавалось бы ЧУЖОЕ
-	 */
-	// Выводим признак того, что содержимое умещается в предел смещения узла
-	return (size <= (static_cast <size_t> (numeric_limits <uint32_t>::max()) - held));
-}
-
-/**
- * @brief Структура состояния сборки дерева документа
- *
- * @details Состояние это живёт одним разбором и документу не принадлежит: держи он
- *          стек открытых вместимых своим полем, поле это стояло бы пустым у всякого
- *          собранного документа
- *
- */
-typedef struct Building {
-	// Документ, чьё дерево собирается
-	awh::codec::abc::Document * self;
-	// Стек номеров узлов открытых вместимых
-	vector <uint32_t> stack;
-	/**
-	 * Номер узла значения, собираемого кусками, либо предел, если такого нет.
-	 *
-	 * Значение, собранное кусками, ложится в дерево ОДНИМ узлом: куски суть части
-	 * значения, а не значения, и потребителю дерева они видны быть не должны
-	 */
-	uint32_t segment;
-	// Признак отказа сборки дерева документа
-	bool failed;
-	/**
-	 * Правило обращения с повторяющимся именем поля отображения.
-	 *
-	 * Правило это живёт состоянием сборки, а не документом: применяется оно в миг
-	 * закрытия отображения, а собранному документу знать о нём уже незачем
-	 */
-	awh::codec::abc::duplicate_t duplicates;
-} building_t;
-
-/**
- * @brief Функция поверки того, что содержимое узла лежит в хранилище октетов
- *
- * @details Узел держит содержимое своё двояко: число родного вида ложится прямо в поле
- *          содержимого, а строка, двоичные данные и величина неограниченной ширины - в
- *          хранилище, узлу же остаётся смещение. Сличение узлов обязано знать, куда
- *          смотреть, - на то и заведена поверка эта
- *
- * @param type вид значения узла
- * @return     признак того, что содержимое узла лежит в хранилище октетов
- *
- */
-static bool stored(const awh::codec::abc::type_t type) noexcept {
-	/**
-	 * Определяем вид значения узла
-	 */
-	switch(static_cast <uint32_t> (type)){
-		// Если содержимое узла лежит в хранилище октетов
-		case static_cast <uint32_t> (awh::codec::abc::type_t::STRING):
-		case static_cast <uint32_t> (awh::codec::abc::type_t::BLOB):
-		case static_cast <uint32_t> (awh::codec::abc::type_t::UUID):
-		case static_cast <uint32_t> (awh::codec::abc::type_t::EXTENDED):
-		case static_cast <uint32_t> (awh::codec::abc::type_t::DECIMAL):
-		case static_cast <uint32_t> (awh::codec::abc::type_t::CUSTOM):
-			// Сообщаем, что содержимое узла лежит в хранилище октетов
-			return true;
-	}
-	// Сообщаем, что содержимое узла лежит в поле содержимого его
-	return false;
-}
 
 /**
  * @brief Метод заведения указателя имён полей отображения
@@ -439,10 +444,10 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
 	if(!dropped)
 		// Выходим из метода
 		return;
-	// Уцелевшие узлы отображения
-	vector <node_t> kept;
 	// Количество детей, уцелевших в отображении
 	uint32_t count = 0;
+	// Уцелевшие узлы отображения
+	vector <node_t> kept;
 	// Выполняем резервирование места под уцелевшие узлы
 	kept.reserve(this->_nodes.size() - index - 1);
 	/**
@@ -478,6 +483,8 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
  */
 bool awh::codec::abc::Document::fail(const error_t error) noexcept {
 	/**
+	 * Выполняем установку кода отказа
+	 *
 	 * @note Воронка эта чёрным ящиком НЕДОСТИЖИМА, и это измерено: щуп нужности
 	 *       08.09.2026 обесточил объявление журналу, и не покраснело ничего. Зовётся она
 	 *       всего из ДВУХ мест разбора, и оба объявлены последними руками - внутренний
@@ -489,7 +496,6 @@ bool awh::codec::abc::Document::fail(const error_t error) noexcept {
 	 *          стояла на чужом донесении. Ныне она честно объявляет, что стережёт
 	 *          разбирателя: `CodecAbcDocument.TheRefusedParseReachesTheJournal`
 	 */
-	// Выполняем установку кода отказа
 	this->_error = error;
 	/**
 	 * Если объект логирования отдан, доносим об отказе.
@@ -504,14 +510,13 @@ bool awh::codec::abc::Document::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
-			 awh::log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
+			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -527,10 +532,10 @@ bool awh::codec::abc::Document::fail(const error_t error) noexcept {
 void awh::codec::abc::Document::discard() noexcept {
 	// Выполняем очистку вместилища узлов дерева
 	this->_nodes.clear();
-	// Выполняем очистку хранилища содержимого
-	this->_storage.clear();
 	// Выполняем очистку указателей имён полей
 	this->_index.clear();
+	// Выполняем очистку хранилища содержимого
+	this->_storage.clear();
 }
 /**
  * @brief Метод приёма события разбора, выданного прямо из чтения
@@ -544,7 +549,7 @@ void awh::codec::abc::Document::assemble(void * context, reader_t & reader, cons
 	// Выполняем получение состояния сборки дерева документа
 	building_t * state = reinterpret_cast <building_t *> (context);
 	// Выполняем получение документа, чьё дерево собирается
-	Document * self = state->self;
+	document_t * self = state->self;
 	/**
 	 * Если сборка дерева по очередному событию разбора отвечена отказом
 	 *
@@ -554,7 +559,7 @@ void awh::codec::abc::Document::assemble(void * context, reader_t & reader, cons
 	 *       пустом стеке - а вместимые разбор уравновешивает сам, и незакрытое до дерева
 	 *       не доходит
 	 */
-	if(!Document::digest(state, self, reader, event)){
+	if(!document_t::digest(state, self, reader, event)){
 		// Выполняем установку признака отказа сборки дерева
 		state->failed = true;
 		/**
@@ -576,7 +581,7 @@ void awh::codec::abc::Document::assemble(void * context, reader_t & reader, cons
  * @return        признак успешности сборки дерева
  *
  */
-bool awh::codec::abc::Document::digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept {
+bool awh::codec::abc::Document::digest(void * context, document_t * self, const reader_t & reader, const event_t event) noexcept {
 	// Выполняем получение состояния сборки дерева документа
 	building_t * state = reinterpret_cast <building_t *> (context);
 	/**
@@ -683,10 +688,10 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		/**
 		 * Если значение является логическим
 		 */
-		case static_cast <uint32_t> (type_t::BOOL): {
+		case static_cast <uint32_t> (type_t::BOOL):
 			// Выполняем установку логического значения
 			node.length(value.boolean ? 1 : 0);
-		} break;
+		break;
 		/**
 		 * Если значение является строкой, двоичными данными либо опознавателем
 		 */
@@ -771,11 +776,11 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		/**
 		 * Если значение является вместимым
 		 */
+		case static_cast <uint32_t> (type_t::MAP):
 		case static_cast <uint32_t> (type_t::ARRAY):
-		case static_cast <uint32_t> (type_t::MAP): {
 			// Выполняем установку количества значений вместимого
 			node.length(0);
-		} break;
+		break;
 		/**
 		 * Если значение является числом родного вида либо отметкой времени
 		 */
@@ -825,10 +830,10 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 void awh::codec::abc::Document::clear() noexcept {
 	// Выполняем снятие собранного содержимого документа
 	this->discard();
-	// Выполняем сброс места, где отказ разбора произошёл
-	this->_location = location_t();
 	// Выполняем сброс кода отказа разбора
 	this->_error = error_t::NONE;
+	// Выполняем сброс места, где отказ разбора произошёл
+	this->_location = location_t();
 }
 /**
  * @brief Метод разбора записи в дерево документа
@@ -847,14 +852,20 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	// Выполняем установку настроек разбора записи
 	reader.settings(settings);
 	// Состояние сборки дерева документа
-	building_t state{this, {}, numeric_limits <uint32_t>::max(), false, settings.duplicates};
+	building_t state;
+	// Устанавливаем текущий значение текущего объекта
+	state.self = this;
+	// Устанавливаем значение правило обращения с повторяющимся именем поля отображения
+	state.duplicates = settings.duplicates;
+	// Устанавливаем номер узла значения, собираемого кусками, либо предел, если такого нет
+	state.segment = numeric_limits <uint32_t>::max();
 	/**
 	 * Выполняем установку обработчика прямой выдачи событий разбора.
 	 *
 	 * События приходят прямо в сборку дерева, минуя очередь выдачи разбирателя:
 	 * событие ложилось в неё, а затем снималось с неё же копией, - работа двойная
 	 */
-	reader.handler(& Document::assemble, & state);
+	reader.handler(& document_t::assemble, & state);
 	// Выполняем подачу записи разбирателю
 	const bool result = reader.feed(buffer, size, true);
 	// Выполняем снятие обработчика прямой выдачи событий разбора
@@ -980,30 +991,36 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 		 */
 		switch(static_cast <uint32_t> (node.type)){
 			// Если значение является пустым
-			case static_cast <uint32_t> (type_t::NUL): result = writer.nul(); break;
+			case static_cast <uint32_t> (type_t::NUL):
+				// Выполняем укладку NULL значения
+				result = writer.nul();
+			break;
 			// Если значение является логическим
-			case static_cast <uint32_t> (type_t::BOOL): result = writer.boolean(node.length() != 0); break;
+			case static_cast <uint32_t> (type_t::BOOL):
+				// Выполняем укладку булевого значения
+				result = writer.boolean(node.length() != 0);
+			break;
 			/**
 			 * Если значение является строкой
 			 */
-			case static_cast <uint32_t> (type_t::STRING): {
+			case static_cast <uint32_t> (type_t::STRING):
 				// Выполняем укладку строки
 				result = writer.text(string_view(this->_storage.data() + node.offset, node.length()));
-			} break;
+			break;
 			/**
 			 * Если значение является двоичными данными
 			 */
-			case static_cast <uint32_t> (type_t::BLOB): {
+			case static_cast <uint32_t> (type_t::BLOB):
 				// Выполняем укладку двоичных данных
 				result = writer.blob(this->_storage.data() + node.offset, node.length());
-			} break;
+			break;
 			/**
 			 * Если значение является опознавателем
 			 */
-			case static_cast <uint32_t> (type_t::UUID): {
+			case static_cast <uint32_t> (type_t::UUID):
 				// Выполняем укладку опознавателя
 				result = writer.uuid(this->_storage.data() + node.offset, node.length());
-			} break;
+			break;
 			/**
 			 * Если значение является целым неограниченной ширины либо десятичным
 			 */
@@ -1018,8 +1035,7 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 					// Выполняем снятие очередного октета порядка
 					bits |= (static_cast <uint64_t> (static_cast <uint8_t> (this->_storage.at(node.offset + i))) << (i * 8));
 				// Выполняем укладку десятичного числа
-				result = writer.decimal(this->_storage.data() + node.offset + 8, node.length(),
-				 node.negative, static_cast <int64_t> (bits));
+				result = writer.decimal(this->_storage.data() + node.offset + 8, node.length(), node.negative, static_cast <int64_t> (bits));
 			} break;
 			/**
 			 * Если значение является открытым расширением
@@ -1039,8 +1055,8 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 			/**
 			 * Если значение является вместимым
 			 */
-			case static_cast <uint32_t> (type_t::ARRAY):
-			case static_cast <uint32_t> (type_t::MAP): {
+			case static_cast <uint32_t> (type_t::MAP):
+			case static_cast <uint32_t> (type_t::ARRAY): {
 				// Признак того, что вместимое является отображением
 				const bool mapping = (node.type == type_t::MAP);
 				// Если вместимое является отображением
@@ -1189,8 +1205,7 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 	}
 	/**
 	 * Если вместимые остались незакрытыми
-	 */
-	/**
+	 *
 	 * @note Место НЕДОСТИЖИМО извне: арена дерева строится разбором и всегда согласована -
 	 *       число детей у вместимого отвечает числу узлов за ним. Стек остаётся непустым
 	 *       лишь при ПОРЧЕ арены, и заслон этот есть последняя рука на такой случай.
@@ -1295,6 +1310,9 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::root() const noexc
 	// Выводим ссылку на корень дерева документа
 	return value_t(this, 0, static_cast <uint32_t> (this->_nodes.size()));
 }
+/**
+ * Количество значений корня дерева документа
+ */
 size_t awh::codec::abc::Document::size() const noexcept {
 	// Выводим количество значений корня дерева документа
 	return this->root().size();
@@ -1321,12 +1339,12 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::at(const string & 
 	value_t current = this->root();
 	// Смещение разбора пути
 	size_t offset = 0;
-	// Разбираемое звено пути
-	string_view segment;
-	// Вместилище звена пути со снятыми отменяющими записями
-	string unescaped;
 	// Признак недействительности разбираемого пути
 	bool invalid = false;
+	// Вместилище звена пути со снятыми отменяющими записями
+	string unescaped = "";
+	// Разбираемое звено пути
+	string_view segment = "";
 	/**
 	 * Выполняем обход всех звеньев пути
 	 */
@@ -1444,11 +1462,29 @@ const awh::codec::abc::location_t & awh::codec::abc::Document::errorLocation() c
 	return this->_location;
 }
 /**
+ * @brief Псевдоним сброса состояния документа (см. clear())
+ *
+ */
+void awh::codec::abc::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
+}
+/**
  * @brief Конструктор
  *
  */
 awh::codec::abc::Document::Document() noexcept :
- _error(error_t::NONE) {}
+ _storage{""}, _error(error_t::NONE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Document::Node::Node() noexcept :
+ type(type_t::UNDEFINED), keyed(false),
+ negative(false), pending(false),
+ offset(0), content{0, 0} {}
+
 /**
  * @brief Метод проверки действительности ссылки
  *
@@ -1772,10 +1808,10 @@ bool awh::codec::abc::Document::Value::value(bool & result) const noexcept {
 bool awh::codec::abc::Document::Value::value(uint64_t & result) const noexcept {
 	// Выполняем сброс извлекаемого значения
 	result = 0;
-	// Выполняем получение вида значения документа
-	const type_t type = this->type();
 	// Разрядная запись значения
 	uint64_t bits = 0;
+	// Выполняем получение вида значения документа
+	const type_t type = this->type();
 	/**
 	 * Если значение является отметкой времени
 	 *
@@ -2041,3 +2077,19 @@ bool awh::codec::abc::Document::Value::negative() const noexcept {
 	// Выводим признак того, что величина меньше нуля
 	return this->_doc->_nodes.at(this->_index).negative;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Document::Value::Value() noexcept :
+ _bound(0), _index(NO_INDEX), _doc(nullptr) {}
+/**
+ * @brief Конструктор
+ *
+ * @param doc   документ, которому значение принадлежит
+ * @param index номер узла значения в дереве документа
+ * @param bound номер узла за последним узлом вместимого, какому значение принадлежит
+ *
+ */
+awh::codec::abc::Document::Value::Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
+ _bound(bound), _index(index), _doc(doc) {}

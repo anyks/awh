@@ -37,7 +37,7 @@
 #include <cstddef>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -301,14 +301,6 @@ namespace awh {
 				uint8_t revision;
 				// Разряды свойств контейнера
 				uint16_t flags;
-				// Вид содержимого контейнера, ставимый потребителем
-				uint32_t content;
-				// Длина тела контейнера в октетах
-				uint64_t length;
-				// Количество записей в теле контейнера
-				uint64_t records;
-				// Смещение оглавления от начала контейнера, ноль - оглавления нет
-				uint64_t index;
 				/**
 				 * \~russian
 				 * Длина содержимого кадра оглавления в октетах
@@ -337,6 +329,14 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t extent;
+				// Вид содержимого контейнера, ставимый потребителем
+				uint32_t content;
+				// Смещение оглавления от начала контейнера, ноль - оглавления нет
+				uint64_t index;
+				// Длина тела контейнера в октетах
+				uint64_t length;
+				// Количество записей в теле контейнера
+				uint64_t records;
 				/**
 				 * \~russian
 				 * Смещение подписи от начала контейнера, ноль - подписи нет
@@ -390,7 +390,7 @@ namespace awh {
 				 * @brief Method of the checking of a declared property of a container
 				 *
 				 * @param flag property of the container being checked
-				 * @return sign of the declaration of the property
+				 * @return     sign of the declaration of the property
 				 *
 				 * \~
 				 */
@@ -405,7 +405,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of the declaration of a property of a container
 				 *
-				 * @param flag property of the container being declared
+				 * @param flag  property of the container being declared
 				 * @param value value of the property being set
 				 *
 				 * \~
@@ -464,9 +464,9 @@ namespace awh {
 				 *       the properties and on the length of what was submitted
 				 *
 				 * @param buffer buffer of the submitted octets
-				 * @param size size of the submitted octets
-				 * @param error error code if the header could not be taken
-				 * @return sign of a successfully taken header
+				 * @param size   size of the submitted octets
+				 * @param error  error code if the header could not be taken
+				 * @return       sign of a successfully taken header
 				 *
 				 * \~
 				 */
@@ -475,13 +475,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Header() noexcept;
+				explicit Header() noexcept;
 			} header_t;
 
 			/**
@@ -546,8 +545,8 @@ namespace awh {
 			 *       separate run of this check alone
 			 *
 			 * @param buffer buffer of the submitted octets
-			 * @param size size of the submitted octets
-			 * @return sign that the octets begin a container
+			 * @param size   size of the submitted octets
+			 * @return       sign that the octets begin a container
 			 *
 			 * \~
 			 */

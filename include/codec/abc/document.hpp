@@ -42,16 +42,15 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-
 #include "common.hpp"
-#include "encoding.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
-#include <sys/macro/global.hpp>
+#include "encoding.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -496,30 +495,14 @@ namespace awh {
 						}
 						/**
 						 * \~russian
-						 * @brief Метод проверки того, что узел является вместимым
-						 *
-						 * @return признак того, что узел является вместимым
-						 *
-						 * \~english
-						 * @brief Method of the checking that a node is a container
-						 *
-						 * @return sign that the node is a container
-						 *
-						 * \~
-						 */
-						/**
-						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Node() noexcept :
-						 type(type_t::UNDEFINED), keyed(false), negative(false),
-						 pending(false), offset(0), content{0, 0} {}
+						explicit Node() noexcept;
 					} node_t;
 					/**
 					 * \~russian
@@ -577,12 +560,6 @@ namespace awh {
 					 */
 					typedef class __AWH_SHARED_EXPORT__ Value {
 						private:
-							// Документ, которому значение принадлежит
-							const Document * _doc;
-						private:
-							// Номер узла значения в дереве документа
-							uint32_t _index;
-						private:
 							/**
 							 * \~russian
 							 * Номер узла за последним узлом вместимого, какому значение принадлежит
@@ -601,6 +578,12 @@ namespace awh {
 							 * \~
 							 */
 							uint32_t _bound;
+						private:
+							// Номер узла значения в дереве документа
+							uint32_t _index;
+						private:
+							// Документ, которому значение принадлежит
+							const Document * _doc;
 						public:
 							/**
 							 * \~russian
@@ -655,7 +638,7 @@ namespace awh {
 							 * @brief Method of the checking of the belonging of a value to a kind
 							 *
 							 * @param type kind of the value, composite or exact
-							 * @return sign of the belonging of the value to the kind
+							 * @return     sign of the belonging of the value to the kind
 							 *
 							 * \~
 							 */
@@ -680,13 +663,13 @@ namespace awh {
 							 * @brief Метод извлечения значения вместимого по его номеру
 							 *
 							 * @param index номер значения вместимого
-							 * @return       ссылка на значение вместимого
+							 * @return      ссылка на значение вместимого
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a value of a container by its number
 							 *
 							 * @param index number of the value of the container
-							 * @return reference to the value of the container
+							 * @return      reference to the value of the container
 							 *
 							 * \~
 							 */
@@ -699,7 +682,7 @@ namespace awh {
 							 *          не только строка, но и число, и отметка времени, и опознаватель.
 							 *
 							 * @param index номер пары отображения
-							 * @return       ссылка на имя поля отображения
+							 * @return      ссылка на имя поля отображения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of the name of a field of a mapping by its number
@@ -708,7 +691,7 @@ namespace awh {
 							 *          to stand as a name, but also a number, and a time stamp, and an identifier.
 							 *
 							 * @param index number of the pair of the mapping
-							 * @return reference to the name of the field of the mapping
+							 * @return      reference to the name of the field of the mapping
 							 *
 							 * \~
 							 */
@@ -796,7 +779,7 @@ namespace awh {
 							 *       докажет - два разных узла вправе нести одно и то же
 							 *
 							 * @param value сличаемая ссылка на значение
-							 * @return       признак того, что обе ссылки ведут к одному узлу
+							 * @return      признак того, что обе ссылки ведут к одному узлу
 							 *
 							 * \~english
 							 * @brief Method of the checking that two references lead to the SAME node of a tree
@@ -816,28 +799,11 @@ namespace awh {
 							 *       have the right to carry the same thing
 							 *
 							 * @param value reference to a value being compared
-							 * @return flag that both references lead to the same node
+							 * @return      flag that both references lead to the same node
 							 *
 							 * \~
 							 */
 							[[nodiscard]] bool same(const Value & value) const noexcept;
-							/**
-							 * \~russian
-							 * @note Оператор равенства у курсора НЕ ЗАВЕДЁН намеренно, и решение это
-							 *       закреплено проверкою
-							 *       `CodecAbcDocument.EqualityIsAskedByDifferentWordsInTwoViews`:
-							 *       отсутствие хода поведением не стережётся вовсе - его нельзя ни
-							 *       позвать, ни увидеть, - и закрепляется оно сборкою, утверждением
-							 *       о том, что выражение `курсор == курсор` не составляется
-							 *
-							 * \~english
-							 * @note The equality operator is deliberately NOT declared for the cursor, and this decision is
-							 *       fixed by a check `CodecAbcDocument.EqualityIsAskedByDifferentWordsInTwoViews`: the absence of
-							 *       a method is not guarded by behaviour at all - it can be neither called nor seen, - and it is
-							 *       fixed by a build, an assertion that the expression `cursor == cursor` does not form
-							 *
-							 * \~
-							 */
 							/**
 							 * \~russian
 							 * @brief Метод извлечения значения поля отображения по имени
@@ -849,7 +815,7 @@ namespace awh {
 							 * @brief Method of the extraction of a value of a field of a mapping by a name
 							 *
 							 * @param name name of the field of the mapping
-							 * @return reference to the value of the field of the mapping
+							 * @return     reference to the value of the field of the mapping
 							 *
 							 * \~
 							 */
@@ -890,7 +856,7 @@ namespace awh {
 							 *       its checks. Fixed by a call in CodecContract.PresenceOfANestedValueIsAskedByOneWord
 							 *
 							 * @param name name of the field of the mapping
-							 * @return sign of the presence of the field of the mapping
+							 * @return     sign of the presence of the field of the mapping
 							 *
 							 * \~
 							 */
@@ -901,13 +867,13 @@ namespace awh {
 							 * @brief Метод извлечения логического значения
 							 *
 							 * @param result извлекаемое значение
-							 * @return        признак успешности извлечения
+							 * @return       признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a logical value
 							 *
 							 * @param result value being extracted
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -917,13 +883,13 @@ namespace awh {
 							 * @brief Метод извлечения числа видом целого без знака
 							 *
 							 * @param result извлекаемое значение
-							 * @return        признак успешности извлечения
+							 * @return       признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind of an integer without a sign
 							 *
 							 * @param result value being extracted
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -933,13 +899,13 @@ namespace awh {
 							 * @brief Метод извлечения числа видом целого со знаком
 							 *
 							 * @param result извлекаемое значение
-							 * @return        признак успешности извлечения
+							 * @return       признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind of an integer with a sign
 							 *
 							 * @param result value being extracted
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -949,13 +915,13 @@ namespace awh {
 							 * @brief Метод извлечения числа видом дробного
 							 *
 							 * @param result извлекаемое значение
-							 * @return        признак успешности извлечения
+							 * @return       признак успешности извлечения
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a number by the kind of a fractional one
 							 *
 							 * @param result value being extracted
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1031,13 +997,12 @@ namespace awh {
 							 * \~russian
 							 * @brief Конструктор
 							 *
-							 *
 							 * \~english
 							 * @brief Constructor
 							 *
 							 * \~
 							 */
-							Value() noexcept : _doc(nullptr), _index(NO_INDEX), _bound(0) {}
+							explicit Value() noexcept;
 							/**
 							 * \~russian
 							 * @brief Конструктор
@@ -1049,24 +1014,23 @@ namespace awh {
 							 * \~english
 							 * @brief Constructor
 							 *
-							 * @param doc document the value belongs to
+							 * @param doc   document the value belongs to
 							 * @param index number of the node of the value in the tree of the document
 							 * @param bound index of the node past the last node of the container to which the value belongs
 							 *
 							 * \~
 							 */
-							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
-							 _doc(doc), _index(index), _bound(bound) {}
+							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept;
 					} value_t;
-				private:
-					// Вместилище узлов дерева документа
-					vector <node_t> _nodes;
 				private:
 					// Хранилище содержимого значений и имён полей
 					string _storage;
 				private:
 					// Код отказа разбора записи
 					mutable error_t _error;
+				private:
+					// Вместилище узлов дерева документа
+					vector <node_t> _nodes;
 				private:
 					/**
 					 * \~russian
@@ -1104,41 +1068,19 @@ namespace awh {
 				private:
 					// Указатели имён полей отображений, заводимые по требованию
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
-				protected:
-					/**
-					 * \~russian
-					 * @brief Объект фреймворка
-					 *
-					 * @note Дерево само по себе им не пользуется: оно держит его затем, чтобы
-					 *       отдать тем, кому он нужен, - и затем, что пара указателей `fmk` и
-					 *       `log` есть общий договор заведения у всех кодеков дерева. Расхождение
-					 *       в одном лишь ABC уже дважды приводило к правкам его потребителей
-					 *       вместо правки его самого
-					 *
-					 * \~english
-					 * @brief Object of the framework
-					 *
-					 * @note The tree itself does not use it: it holds it in order to give it away
-					 *       to those who need it - and because the pair of the pointers `fmk` and
-					 *       `log` is the common contract of the creation at all the codecs of the tree.
-					 *       A divergence at ABC alone has already twice led to the fixes of its consumers
-					 *       instead of the fix of itself
-					 *
-					 * \~
-					 */
 				private:
 					/**
 					 * \~russian
 					 * @brief Метод заведения указателя имён полей отображения
 					 *
 					 * @param index номер узла отображения в дереве документа
-					 * @return       заведённый указатель имён полей
+					 * @return      заведённый указатель имён полей
 					 *
 					 * \~english
 					 * @brief Method of the creation of an index of the names of the fields of a mapping
 					 *
 					 * @param index number of the node of the mapping in the tree of the document
-					 * @return created index of the names of the fields
+					 * @return      created index of the names of the fields
 					 *
 					 * \~
 					 */
@@ -1161,7 +1103,7 @@ namespace awh {
 					 *
 					 * @param left  номер узла первого сличаемого поддерева
 					 * @param right номер узла второго сличаемого поддерева
-					 * @return       признак совпадения поддеревьев
+					 * @return      признак совпадения поддеревьев
 					 *
 					 * \~english
 					 * @brief Method of the comparison of two subtrees of the tree of a document
@@ -1176,9 +1118,9 @@ namespace awh {
 					 *          it at once - the agreement of the parser and the loss of a pair by the tree on the very same
 					 *          record.
 					 *
-					 * @param left number of the node of the first subtree being compared
+					 * @param left  number of the node of the first subtree being compared
 					 * @param right number of the node of the second subtree being compared
-					 * @return sign of the coincidence of the subtrees
+					 * @return      sign of the coincidence of the subtrees
 					 *
 					 * \~
 					 */
@@ -1215,7 +1157,7 @@ namespace awh {
 					 *       a par with `KEEP`
 					 *
 					 * @param index number of the node of the mapping being closed
-					 * @param rule rule of the handling of a repeating name of a field
+					 * @param rule  rule of the handling of a repeating name of a field
 					 *
 					 * \~
 					 */
@@ -1231,7 +1173,7 @@ namespace awh {
 					 *          тот слой донёс о нём сам, и второе донесение лишь двоило бы записи.
 					 *
 					 * @param error объявляемый код отказа
-					 * @return       признак успешности, всегда ложь
+					 * @return      признак успешности, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a failure
@@ -1242,7 +1184,7 @@ namespace awh {
 					 *          reported it itself, and a second report would only double the records.
 					 *
 					 * @param error code of the failure being declared
-					 * @return       flag of the success, always false
+					 * @return      flag of the success, always false
 					 *
 					 * \~
 					 */
@@ -1301,8 +1243,8 @@ namespace awh {
 					 * @brief Method of the reception of an event of the parsing issued directly from the reading
 					 *
 					 * @param context pointer to the state of the assembling of the tree of the document
-					 * @param reader parser of a binary record
-					 * @param event kind of the received event of the parsing
+					 * @param reader  parser of a binary record
+					 * @param event   kind of the received event of the parsing
 					 *
 					 * \~
 					 */
@@ -1315,16 +1257,16 @@ namespace awh {
 					 * @param self    документ, чьё дерево собирается
 					 * @param reader  разбиратель бинарной записи
 					 * @param event   вид принимаемого события разбора
-					 * @return         признак успешности сборки дерева
+					 * @return        признак успешности сборки дерева
 					 *
 					 * \~english
 					 * @brief Method of the assembling of the tree of a document by an event of the parsing
 					 *
 					 * @param context pointer to the state of the assembling of the tree of the document
-					 * @param self document whose tree is being assembled
-					 * @param reader parser of a binary record
-					 * @param event kind of the received event of the parsing
-					 * @return sign of the success of the assembling of the tree
+					 * @param self    document whose tree is being assembled
+					 * @param reader  parser of a binary record
+					 * @param event   kind of the received event of the parsing
+					 * @return        sign of the success of the assembling of the tree
 					 *
 					 * \~
 					 */
@@ -1350,7 +1292,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора записи в дерево документа
@@ -1358,7 +1300,7 @@ namespace awh {
 					 * @param buffer   буфер разбираемой записи
 					 * @param size     размер разбираемой записи в октетах
 					 * @param settings настройки разбора записи
-					 * @return          признак успешности разбора
+					 * @return         признак успешности разбора
 					 *
 					 * @note Настройка `stream` записью из НЕСКОЛЬКИХ документов складывает их
 					 *       в ОДНО дерево: корень отдаёт первый документ, прочие стоят за ним
@@ -1370,10 +1312,10 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the parsing of a record into a tree of a document
 					 *
-					 * @param buffer buffer of the record being parsed
-					 * @param size size of the record being parsed in octets
+					 * @param buffer   buffer of the record being parsed
+					 * @param size     size of the record being parsed in octets
 					 * @param settings settings of the parsing of the record
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * @note The `stream` setting folds a record of SEVERAL documents into a SINGLE
 					 *       tree: the root gives the first document, the others stand after it as
@@ -1437,7 +1379,7 @@ namespace awh {
 					 *          дословность, тот держит исходные октеты сам, а не пересобирает их деревом
 					 *
 					 * @param writer сборщик бинарной записи
-					 * @return        признак успешности сборки
+					 * @return       признак успешности сборки
 					 *
 					 * \~english
 					 * @brief Method of the assembling of a record from a tree of a document
@@ -1452,7 +1394,7 @@ namespace awh {
 					 *          octets himself rather than reassembling them by the tree
 					 *
 					 * @param writer assembler of a binary record
-					 * @return sign of the success of the assembling
+					 * @return       sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1490,13 +1432,13 @@ namespace awh {
 					 * @brief Метод сборки записи из дерева документа затребованными настройками
 					 *
 					 * @param settings настройки сборки записи
-					 * @return          собранная запись, пустая при отказе сборки
+					 * @return         собранная запись, пустая при отказе сборки
 					 *
 					 * \~english
 					 * @brief Method of the assembling of a record out of the tree of a document by the requested settings
 					 *
 					 * @param settings settings of the assembling of the record
-					 * @return assembled record, empty upon a failure of the assembling
+					 * @return         assembled record, empty upon a failure of the assembling
 					 *
 					 * \~
 					 */
@@ -1631,7 +1573,7 @@ namespace awh {
 					 *       there is a road, but it has no twin
 					 *
 					 * @param path path to the value being extracted
-					 * @return reference to the value, invalid if it is absent
+					 * @return     reference to the value, invalid if it is absent
 					 *
 					 * \~
 					 */
@@ -1653,7 +1595,7 @@ namespace awh {
 					 *          even at one link, they would have diverged silently.
 					 *
 					 * @param path path to the value being asked about
-					 * @return sign of the presence of the value by the path
+					 * @return     sign of the presence of the value by the path
 					 *
 					 * \~
 					 */
@@ -1757,18 +1699,17 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Document() noexcept {}
+					~Document() noexcept = default;
 			} document_t;
 		};
 	};

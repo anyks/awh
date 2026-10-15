@@ -46,8 +46,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../../sys/macro/global.hpp"
 #include "../../cryptography/crypto.hpp"
-#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -92,9 +92,13 @@ namespace awh {
 			 *          октета к старшему:
 			 *
 			 * @li `0` (1) - вид подписи владельца, величина `crypto_t::signature_t`;
+			 *
 			 * @li `1` (1) - вид хэш-суммы, какой подпись выработана, `crypto_t::hash_t`;
+			 *
 			 * @li `2` (2) - длина октетов ПОДПИСИ;
+			 *
 			 * @li `4` (2) - длина КОРНЯ дерева свёрток, всегда `DIGEST_LENGTH`;
+			 *
 			 * @li `6` (2) - оставлено впрок, обязано быть нулевым
 			 *
 			 * @warning За заголовком идёт СНАЧАЛА корень дерева свёрток, а ЗА НИМ октеты
@@ -118,9 +122,13 @@ namespace awh {
 			 *          the least significant octet to the most significant one:
 			 *
 			 * @li `0` (1) - the kind of the signature of the owner, the value of `crypto_t::signature_t`;
+			 *
 			 * @li `1` (1) - the kind of the hash by which the signature is produced, `crypto_t::hash_t`;
+			 *
 			 * @li `2` (2) - the length of the octets of the SIGNATURE;
+			 *
 			 * @li `4` (2) - the length of the ROOT of the tree of the digests, always `DIGEST_LENGTH`;
+			 *
 			 * @li `6` (2) - left in reserve, obliged to be zero
 			 *
 			 * @warning After the header goes FIRST the root of the tree of the digests, and AFTER IT the
@@ -349,8 +357,8 @@ namespace awh {
 					 *          and it would turn out that not what lies is signed.
 					 *
 					 * @param buffer buffer of the octets of the chunk being added
-					 * @param size size of the octets of the chunk being added
-					 * @return sign of a successful adding
+					 * @param size   size of the octets of the chunk being added
+					 * @return       sign of a successful adding
 					 *
 					 * \~
 					 */
@@ -366,7 +374,7 @@ namespace awh {
 					 * @brief Method of the reduction of the tree to the root
 					 *
 					 * @param result buffer the root of the tree should be placed into
-					 * @return sign of a successfully reduced tree
+					 * @return       sign of a successfully reduced tree
 					 *
 					 * \~
 					 */
@@ -395,8 +403,8 @@ namespace awh {
 					 *
 					 * @param result buffer the root of the tree should be placed into
 					 * @param buffer buffer of the octets of the attached chunk
-					 * @param size size of the octets of the attached chunk
-					 * @return sign of a successfully reduced tree
+					 * @param size   size of the octets of the attached chunk
+					 * @return       sign of a successfully reduced tree
 					 *
 					 * \~
 					 */
@@ -436,19 +444,17 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Merkle() noexcept :
-					 _crypto(nullptr) {}
+					explicit Merkle() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Merkle() noexcept {}
+					~Merkle() noexcept = default;
 			} merkle_t;
 
 			/**
@@ -461,10 +467,10 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Sign {
-				// Вид подписи владельца контейнера
-				crypto_t::signature_t kind;
 				// Вид хэш-суммы, какой подпись выработана
 				crypto_t::hash_t hash;
+				// Вид подписи владельца контейнера
+				crypto_t::signature_t kind;
 				// Корень дерева свёрток по кадрам контейнера
 				vector <uint8_t> root;
 				// Октеты подписи владельца контейнера
@@ -473,14 +479,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Sign() noexcept :
-				 kind(crypto_t::signature_t::NONE), hash(crypto_t::hash_t::NONE) {}
+				explicit Sign() noexcept;
 			} sign_t;
 
 			/**
@@ -506,12 +510,11 @@ namespace awh {
 			 *
 			 * @param kind kind of the signature of the owner of the container
 			 * @param hash desired kind of the hash
-			 * @return kind of the hash fit for the kind of the signature
+			 * @return     kind of the hash fit for the kind of the signature
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ crypto_t::hash_t digest(const crypto_t::signature_t kind,
-			 const crypto_t::hash_t hash) noexcept;
+			__AWH_SHARED_EXPORT__ crypto_t::hash_t digest(const crypto_t::signature_t kind, const crypto_t::hash_t hash) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция укладки записи подписи контейнера
@@ -542,9 +545,9 @@ namespace awh {
 			 *          up only at the reader, and not by that code either. Measured by a probe on 2026-09-03:
 			 *          `internal parsing error` instead of a broken signature
 			 *
-			 * @param sign signature of the container being laid
+			 * @param sign   signature of the container being laid
 			 * @param result buffer the record of the signature should be laid into
-			 * @return flag of the successfully laid record of the signature
+			 * @return       flag of the successfully laid record of the signature
 			 *
 			 * \~
 			 */
@@ -563,15 +566,14 @@ namespace awh {
 			 * @brief Function of the taking of the record of the signature of a container
 			 *
 			 * @param buffer buffer of the submitted octets
-			 * @param size size of the submitted octets
-			 * @param sign taken signature of the container
-			 * @param error error code if the signature could not be taken
-			 * @return sign of a successfully taken signature
+			 * @param size   size of the submitted octets
+			 * @param sign   taken signature of the container
+			 * @param error  error code if the signature could not be taken
+			 * @return       sign of a successfully taken signature
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool unpack(const void * buffer, const size_t size,
-			 sign_t & sign, error_t & error) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool unpack(const void * buffer, const size_t size, sign_t & sign, error_t & error) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция выработки отпечатка открытого ключа владельца
@@ -601,14 +603,13 @@ namespace awh {
 			 *       the owner is proven by the signature rather than by the fingerprint
 			 *
 			 * @param crypto module of the encryption given by the consumer
-			 * @param name name of the key of the owner of the container
+			 * @param name   name of the key of the owner of the container
 			 * @param result buffer the truncated fingerprint should be placed into
-			 * @return sign of a successfully produced fingerprint
+			 * @return       sign of a successfully produced fingerprint
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool fingerprint(const crypto_t & crypto, const string & name,
-			 vector <uint8_t> & result) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool fingerprint(const crypto_t & crypto, const string & name, vector <uint8_t> & result) noexcept;
 		};
 	};
 };

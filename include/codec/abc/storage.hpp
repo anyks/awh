@@ -48,7 +48,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../sys/fs.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -269,11 +269,30 @@ namespace awh {
 						PLAIN = 0x01  // Сброс из ядра накопителю, обрыва питания не переживающий
 					};
 				private:
+					/**
+					 * \~russian
+					 * @brief Признак привязанности хранилища к файлу контейнера
+					 *
+					 * @note Признак нужен свой: объекты файла заводятся ЛЕНИВО, первым обращением,
+					 *       и до него оба недействительны. Судить открытость по ним значило бы
+					 *       звать контейнер закрытым сразу после успешного открытия
+					 *
+					 * \~english
+					 * @brief Sign of the binding of the storage to the file of the container
+					 *
+					 * @note A own sign is needed: the file objects are created LAZILY, by a first access, and before it both
+					 *       are invalid. To judge an openness by them would mean to call a container closed right after a
+					 *       successful opening
+					 *
+					 * \~
+					 */
+					bool _opened;
+				private:
+					// Полная длина контейнера на носителе
+					uint64_t _length;
+				private:
 					// Объект работы с файловой системой
 					fs_t _fs;
-				private:
-					// Название файла контейнера
-					string _filename;
 				private:
 					/**
 					 * \~russian
@@ -294,6 +313,11 @@ namespace awh {
 					 * \~
 					 */
 					sync_t _sync;
+					// Код отказа работы с файлом контейнера
+					error_t _error;
+				private:
+					// Название файла контейнера
+					string _filename;
 				private:
 					/**
 					 * \~russian
@@ -325,34 +349,8 @@ namespace awh {
 					 * \~
 					 */
 					handle_file_t _reader;
-				private:
 					// Объект файла контейнера, открытый на запись
 					handle_file_t _writer;
-				private:
-					/**
-					 * \~russian
-					 * @brief Признак привязанности хранилища к файлу контейнера
-					 *
-					 * @note Признак нужен свой: объекты файла заводятся ЛЕНИВО, первым обращением,
-					 *       и до него оба недействительны. Судить открытость по ним значило бы
-					 *       звать контейнер закрытым сразу после успешного открытия
-					 *
-					 * \~english
-					 * @brief Sign of the binding of the storage to the file of the container
-					 *
-					 * @note A own sign is needed: the file objects are created LAZILY, by a first access, and before it both
-					 *       are invalid. To judge an openness by them would mean to call a container closed right after a
-					 *       successful opening
-					 *
-					 * \~
-					 */
-					bool _opened;
-				private:
-					// Полная длина контейнера на носителе
-					uint64_t _length;
-				private:
-					// Код отказа работы с файлом контейнера
-					error_t _error;
 				protected:
 					/**
 					 * \~russian
@@ -417,7 +415,7 @@ namespace awh {
 					 *          is conducted in place, and the reading alone is not enough for it.
 					 *
 					 * @param filename name of the file of the container being opened
-					 * @return sign of a successfully opened file
+					 * @return         sign of a successfully opened file
 					 *
 					 * \~
 					 */
@@ -439,7 +437,7 @@ namespace awh {
 					 *       the creation of a new container over an old one is its replacement as a whole
 					 *
 					 * @param filename name of the file of the container being created
-					 * @return sign of a successfully created file
+					 * @return         sign of a successfully created file
 					 *
 					 * \~
 					 */
@@ -561,7 +559,7 @@ namespace awh {
 					 *          longer than the editing, for the editing calls them both at a commit and at a compaction.
 					 *
 					 * @param editor editing the container is opened by
-					 * @return sign of a successfully opened container
+					 * @return       sign of a successfully opened container
 					 *
 					 * \~
 					 */
@@ -596,7 +594,7 @@ namespace awh {
 					 *       unknown, the guard is removed, and the last barrier becomes the source itself
 					 *
 					 * @param fetcher fetcher the container is opened by
-					 * @return sign of a successfully opened container
+					 * @return        sign of a successfully opened container
 					 *
 					 * \~
 					 */
@@ -621,9 +619,9 @@ namespace awh {
 					 *          them into a created file.
 					 *
 					 * @param filename name of the file of the container being created
-					 * @param buffer buffer of the octets of the assembled container
-					 * @param size size of the octets of the assembled container
-					 * @return sign of the success of the writing
+					 * @param buffer   buffer of the octets of the assembled container
+					 * @param size     size of the octets of the assembled container
+					 * @return         sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -679,14 +677,13 @@ namespace awh {
 					 *       opposite
 					 *
 					 * @param filename name of the file being read
-					 * @param result read octets of the file
-					 * @param limit largest admissible length of the file in octets
-					 * @return sign of the success of the reading
+					 * @param result   read octets of the file
+					 * @param limit    largest admissible length of the file in octets
+					 * @return         sign of the success of the reading
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool fetch(const string & filename, vector <uint8_t> & result,
-					 const uint64_t limit = 0x4000000) noexcept;
+					[[nodiscard]] bool fetch(const string & filename, vector <uint8_t> & result, const uint64_t limit = 0x4000000) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подачи файла контейнера снимателю
@@ -705,8 +702,8 @@ namespace awh {
 					 *          and there is no need for it to hold the container in the memory as a whole.
 					 *
 					 * @param loader loader the file of the container is submitted to
-					 * @param block size of the submitted chunk in octets
-					 * @return sign of the success of the submission
+					 * @param block  size of the submitted chunk in octets
+					 * @return       sign of the success of the submission
 					 *
 					 * \~
 					 */
@@ -783,6 +780,19 @@ namespace awh {
 					 * \~
 					 */
 					Storage(const Storage &) = delete;
+					/**
+					 * \~russian
+					 * @brief Удаляем оператор копирующего присваивания — хранилище не копируется
+					 *
+					 * @return текущее значение объекта
+					 *
+					 * \~english
+					 * @brief We remove the copy assignment operator — the storage is not copied.
+					 *
+					 * @return current value of the object
+					 *
+					 * \~
+					 */
 					Storage & operator = (const Storage &) = delete;
 				public:
 					/**
@@ -804,7 +814,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor

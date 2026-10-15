@@ -37,7 +37,7 @@
 #include <cstddef>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -97,14 +97,20 @@ namespace awh {
 			 *          октета к старшему, места запаса заполнены нулями:
 			 *
 			 * @li `0` (1) - метод сжатия содержимого, величина `compressor::method_t`;
+			 *
 			 * @li `1` (1) - разряды кадра: `0x01` содержимое зашифровано, `0x02` кадр обращён
 			 *     в мусор (`CHUNK_WASTE`), прочие разряды при снятии отвергаются;
 			 *
 			 * @li `2` (2) - запас;
+			 *
 			 * @li `4` (4) - длина УЛОЖЕННОГО содержимого, то есть сжатого и зашифрованного;
+			 *
 			 * @li `8` (4) - длина ИСХОДНОГО содержимого, до сжатия;
+			 *
 			 * @li `12` (8) - порядковый номер кадра;
+			 *
 			 * @li `20` (4) - поколение записи кадра;
+			 *
 			 * @li `24` (8) - контрольная сумма кадра (`CHUNK_DIGEST`)
 			 *
 			 * @details **Выработка контрольной суммы.** Сумма берётся с заголовка, приведённого
@@ -130,13 +136,20 @@ namespace awh {
 			 *          filled with zeros:
 			 *
 			 * @li `0` (1) - the method of the compression of the content, the value of `compressor::method_t`;
+			 *
 			 * @li `1` (1) - the bits of the chunk: `0x01` the content is encrypted, `0x02` the chunk is turned
 			 *     into a waste (`CHUNK_WASTE`), the other bits are refused at the taking;
+			 *
 			 * @li `2` (2) - a reserve;
+			 *
 			 * @li `4` (4) - the length of the LAID content, that is, of the compressed and encrypted one;
+			 *
 			 * @li `8` (4) - the length of the ORIGINAL content, before the compression;
+			 *
 			 * @li `12` (8) - the ordinal number of the chunk;
+			 *
 			 * @li `20` (4) - the generation of the record of the chunk;
+			 *
 			 * @li `24` (8) - the checksum of the chunk (`CHUNK_DIGEST`)
 			 *
 			 * @details **The production of the checksum.** The sum is taken from the header brought to the
@@ -231,18 +244,6 @@ namespace awh {
 			 *          однородном кадре: в кадре вперемешку всякий метод покажет среднее, и выбирать
 			 *          будет не из чего.
 			 *
-			 * \~english
-			 * @brief Kinds of the content of a chunk
-			 *
-			 * @details The kind of the content chooses the method of the compression: for a character text it is one, for
-			 *          raw octets another, for homogeneous numbers a third one. This selection is worth it only with
-			 *          a homogeneous chunk: in a chunk of a mixture every method will show an average, and there will be
-			 *          nothing to choose from.
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
 			 * @note Имя `TEXT` занято макросом `winnt.h` у MS Windows, и переименовано оно НЕ
 			 *       БЫЛО - в отличие от пары `single_t::NO`/`YES`, прежде звавшейся `FALSE`/`TRUE`.
 			 *       Разница у макросов существенная: `TEXT(quote)` ФУНКЦИОНАЛЬНЫЙ и подставляется
@@ -260,6 +261,13 @@ namespace awh {
 			 *          потребителя. Всплывёт такой случай - переименовывать, и довод к тому уже здесь
 			 *
 			 * \~english
+			 * @brief Kinds of the content of a chunk
+			 *
+			 * @details The kind of the content chooses the method of the compression: for a character text it is one, for
+			 *          raw octets another, for homogeneous numbers a third one. This selection is worth it only with
+			 *          a homogeneous chunk: in a chunk of a mixture every method will show an average, and there will be
+			 *          nothing to choose from.
+			 *
 			 * @note The name `TEXT` is occupied by a macro of `winnt.h` at MS Windows, and renamed it was
 			 *       NOT - unlike the pair `single_t::NO`/`YES`, which used to be called `FALSE`/`TRUE`. The
 			 *       difference between the macros is essential: `TEXT(quote)` is FUNCTION-LIKE and expands
@@ -295,18 +303,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Chunk {
-				// Метод сжатия содержимого кадра
-				compressor::method_t method;
-				// Длина уложенного содержимого кадра в октетах
-				uint32_t length;
-				// Длина исходного содержимого кадра в октетах
-				uint32_t origin;
-				// Порядковый номер кадра
-				uint64_t number;
-				// Поколение записи кадра
-				uint32_t generation;
-				// Признак того, что содержимое кадра зашифровано
-				bool encrypted;
 				/**
 				 * \~russian
 				 * Признак того, что кадр обращён правкой в мусор
@@ -323,23 +319,113 @@ namespace awh {
 				 * \~
 				 */
 				bool waste;
+				// Признак того, что содержимое кадра зашифровано
+				bool encrypted;
+				// Длина уложенного содержимого кадра в октетах
+				uint32_t length;
+				// Длина исходного содержимого кадра в октетах
+				uint32_t origin;
+				// Порядковый номер кадра
+				uint64_t number;
+				// Поколение записи кадра
+				uint32_t generation;
+				// Метод сжатия содержимого кадра
+				compressor::method_t method;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Chunk() noexcept :
-				 method(compressor::method_t::NONE), length(0), origin(0),
-				 number(0), generation(0), encrypted(false), waste(false) {}
+				explicit Chunk() noexcept;
 			} chunk_t;
 
 			/**
 			 * \~russian
+			 * @brief Функция выработки контрольной суммы кадра
+			 *
+			 * @details Сумма кроет заголовок кадра вместе с содержимым его, а САМА в неё не
+			 *          входит. Разряд мусора при выработке снимается: он учётный, метится правкой
+			 *          одного октета уже уложенного кадра, и сумма ему следовать не обязана.
+			 *
+			 * @note Работа открыта наружу ради тех, кто правит кадр НА МЕСТЕ: всякая правка
+			 *       содержимого обязана обновить сумму, иначе снятие кадра ответит отказом
+			 *
+			 * @param buffer буфер кадра целиком, от заголовка его
+			 * @param size   размер кадра в октетах
+			 * @return       выработанная контрольная сумма кадра
+			 *
+			 * \~english
+			 * @brief Function of the production of the checksum of a chunk
+			 *
+			 * @details The sum covers the header of the chunk together with its content while ITSELF is not
+			 *          included in it. The bit of the waste is cleared upon the production: it is an accounting
+			 *          one, marked by an editing of one octet of a chunk already laid, and the sum is not
+			 *          obliged to follow it.
+			 *
+			 * @note The work is opened outwards for those who edit a chunk IN PLACE: every editing of the
+			 *       content is obliged to update the sum, otherwise the taking of the chunk answers with a
+			 *       refusal
+			 *
+			 * @param buffer buffer of the whole chunk, from its header
+			 * @param size   size of the chunk in octets
+			 * @return       produced checksum of the chunk
+			 *
+			 * \~
+			 */
+			[[nodiscard]] __AWH_SHARED_EXPORT__ uint64_t digest(const void * buffer, const size_t size) noexcept;
+
+			/**
+			 * \~russian
+			 * @brief Функция обёртки уложенной записи кадром
+			 *
+			 * @details Заголовок кадра ставится ВПЕРЕДИ поданной записи, а сама она остаётся
+			 *          как есть. Служит записи подписи владельца: тело контейнера обходится кадрами
+			 *          подряд, и всё, что лежит внутри обхода, обязано быть кадром. Без обёртки место
+			 *          записи подписи приходилось бы затирать кадром-заглушкой при следующей фиксации,
+			 *          а между затиранием и записью головного заголовка оставалось окно, где обрыв
+			 *          губил подпись прежнего поколения.
+			 *
+			 * @note Кадр метится МУСОРОМ: содержимое его записью контейнера не является, и
+			 *       подрядное чтение обязано его пропустить
+			 *
+			 * @note Отказом отвечается запись, в кадр не вмещающаяся: длина кадра объявлена
+			 *       четырьмя октетами, и запись длиннее легла бы в них усечённой МОЛЧА
+			 *
+			 * @param result     буфер уложенной записи, обёртываемой кадром
+			 * @param number     порядковый номер кадра
+			 * @param generation поколение записи кадра
+			 * @return           признак успешной обёртки записи кадром
+			 *
+			 * \~english
+			 * @brief Function of the wrapping of a laid record by a chunk
+			 *
+			 * @details The header of the chunk is put IN FRONT of the submitted record while the record
+			 *          itself is left as is. It serves the record of the signature of the owner: the body of a container
+			 *          is walked by the chunks in a row, and everything lying inside the walk is obliged to be a chunk.
+			 *
+			 * @note The chunk is marked as a WASTE: its content is not a record of the container, and a
+			 *       consecutive reading is obliged to skip it
+			 *
+			 * @note A record which does not fit into a chunk is answered with a REFUSAL: the length of a chunk
+			 *       is declared by four octets, and a longer record would lie in them truncated SILENTLY
+			 *
+			 * @param result     buffer of the laid record being wrapped by a chunk
+			 * @param number     ordinal number of the chunk
+			 * @param generation generation of the record of the chunk
+			 * @return           true if the record has been wrapped by a chunk
+			 *
+			 * \~
+			 */
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
+
+			/**
+			 * \~russian
+			 * @brief Класс укладки и снятия кадра
+			 *
 			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
 			 *       28 заслонов части, под сторожем 24. Молчали ЧЕТЫРЕ:
 			 *       - воронка отказа укладчика, доносящая причину журналу
@@ -351,8 +437,6 @@ namespace awh {
 			 *       длины содержимого требуют четырёх гигабайт поданного. Сужены, не закрыты.
 			 *       Шесть мест части краснят падением набора, что нужность их устанавливает
 			 *       крепче всякого покраснения
-			 *
-			 * @brief Класс укладки и снятия кадра
 			 *
 			 * @note **О местах отказа, каких проверкою не навести.** Щуп ПУТИ 05.09.2026
 			 *       (заслон принуждается срабатывать всегда) прошёл пять мест кадра, каким щуп
@@ -396,6 +480,8 @@ namespace awh {
 			 *       программы он не виден вовсе
 			 *
 			 * \~english
+			 * @brief Class of the laying and the taking of a chunk
+			 *
 			 * @note **The NEEDNESS audit (a guard is removed), 2026-09-08.** All 28 guards of the part were
 			 *       de-energized apart, under the watch 24. FOUR stood silent:
 			 *       - the funnel of a refusal of the packer, reporting its cause to the journal
@@ -408,8 +494,6 @@ namespace awh {
 			 *       chunk and at the length of the content require four gigabytes fed. Narrowed, not closed.
 			 *       Six sites of the part turn red by a crash of the fixture, which settles their needness
 			 *       harder than any reddening
-			 *
-			 * @brief Class of the laying and the taking of a chunk
 			 *
 			 * @note **Of the failure sites that a check cannot reach.** The PATH probe of 2026-09-05 (a guard
 			 *       is forced to fire always) went over five sites of a chunk to which the probe of the CAUSES
@@ -455,85 +539,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			/**
-			 * \~russian
-			 * @brief Функция выработки контрольной суммы кадра
-			 *
-			 * @details Сумма кроет заголовок кадра вместе с содержимым его, а САМА в неё не
-			 *          входит. Разряд мусора при выработке снимается: он учётный, метится правкой
-			 *          одного октета уже уложенного кадра, и сумма ему следовать не обязана.
-			 *
-			 * @note Работа открыта наружу ради тех, кто правит кадр НА МЕСТЕ: всякая правка
-			 *       содержимого обязана обновить сумму, иначе снятие кадра ответит отказом
-			 *
-			 * @param buffer буфер кадра целиком, от заголовка его
-			 * @param size   размер кадра в октетах
-			 * @return       выработанная контрольная сумма кадра
-			 *
-			 * \~english
-			 * @brief Function of the production of the checksum of a chunk
-			 *
-			 * @details The sum covers the header of the chunk together with its content while ITSELF is not
-			 *          included in it. The bit of the waste is cleared upon the production: it is an accounting
-			 *          one, marked by an editing of one octet of a chunk already laid, and the sum is not
-			 *          obliged to follow it.
-			 *
-			 * @note The work is opened outwards for those who edit a chunk IN PLACE: every editing of the
-			 *       content is obliged to update the sum, otherwise the taking of the chunk answers with a
-			 *       refusal
-			 *
-			 * @param buffer buffer of the whole chunk, from its header
-			 * @param size size of the chunk in octets
-			 * @return produced checksum of the chunk
-			 *
-			 * \~
-			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ uint64_t digest(const void * buffer, const size_t size) noexcept;
-
-			/**
-			 * \~russian
-			 * @brief Функция обёртки уложенной записи кадром
-			 *
-			 * @details Заголовок кадра ставится ВПЕРЕДИ поданной записи, а сама она остаётся
-			 *          как есть. Служит записи подписи владельца: тело контейнера обходится кадрами
-			 *          подряд, и всё, что лежит внутри обхода, обязано быть кадром. Без обёртки место
-			 *          записи подписи приходилось бы затирать кадром-заглушкой при следующей фиксации,
-			 *          а между затиранием и записью головного заголовка оставалось окно, где обрыв
-			 *          губил подпись прежнего поколения.
-			 *
-			 * @note Кадр метится МУСОРОМ: содержимое его записью контейнера не является, и
-			 *       подрядное чтение обязано его пропустить
-			 *
-			 * @note Отказом отвечается запись, в кадр не вмещающаяся: длина кадра объявлена
-			 *       четырьмя октетами, и запись длиннее легла бы в них усечённой МОЛЧА
-			 *
-			 * @param result     буфер уложенной записи, обёртываемой кадром
-			 * @param number     порядковый номер кадра
-			 * @param generation поколение записи кадра
-			 * @return           признак успешной обёртки записи кадром
-			 *
-			 * \~english
-			 * @brief Function of the wrapping of a laid record by a chunk
-			 *
-			 * @details The header of the chunk is put IN FRONT of the submitted record while the record
-			 *          itself is left as is. It serves the record of the signature of the owner: the body of a container
-			 *          is walked by the chunks in a row, and everything lying inside the walk is obliged to be a chunk.
-			 *
-			 * @note The chunk is marked as a WASTE: its content is not a record of the container, and a
-			 *       consecutive reading is obliged to skip it
-			 *
-			 * @note A record which does not fit into a chunk is answered with a REFUSAL: the length of a chunk
-			 *       is declared by four octets, and a longer record would lie in them truncated SILENTLY
-			 *
-			 * @param result buffer of the laid record being wrapped by a chunk
-			 * @param number ordinal number of the chunk
-			 * @param generation generation of the record of the chunk
-			 * @return true if the record has been wrapped by a chunk
-			 *
-			 * \~
-			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
-
 			typedef class __AWH_SHARED_EXPORT__ Packer {
 				public:
 					/**
@@ -546,14 +551,8 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Метод сжатия содержимого вперемешку
-						compressor::method_t mixed;
-						// Метод сжатия знакового текста
-						compressor::method_t text;
-						// Метод сжатия сырых октетов
-						compressor::method_t binary;
-						// Метод сжатия однородных чисел
-						compressor::method_t numeric;
+						// Признак шифрования содержимого кадра
+						bool encrypt;
 						/**
 						 * \~russian
 						 * Длина, ниже которой сжатие не выполняется вовсе
@@ -588,26 +587,31 @@ namespace awh {
 						crypto_t::hash_t hash;
 						// Размер шифрования содержимого кадра
 						crypto_t::cipher_t cipher;
-						// Признак шифрования содержимого кадра
-						bool encrypt;
+						// Метод сжатия содержимого вперемешку
+						compressor::method_t mixed;
+						// Метод сжатия знакового текста
+						compressor::method_t text;
+						// Метод сжатия сырых октетов
+						compressor::method_t binary;
+						// Метод сжатия однородных чисел
+						compressor::method_t numeric;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
-				private:
-					// Настройки укладки кадра
-					settings_t _settings;
 				private:
 					// Код отказа укладки либо снятия кадра
 					error_t _error;
+				private:
+					// Настройки укладки кадра
+					settings_t _settings;
 				private:
 					// Модуль сжатия, отданный потребителем
 					const compressor::block_t * _compressor;
@@ -653,7 +657,7 @@ namespace awh {
 					 * @brief Method of the selection of the method of the compression for the kind of the content
 					 *
 					 * @param kind kind of the content of the chunk
-					 * @return method of the compression of the content
+					 * @return     method of the compression of the content
 					 *
 					 * \~
 					 */
@@ -710,18 +714,17 @@ namespace awh {
 					 *          its method is declared to be the absence of the compression. Otherwise a small content would grow
 					 *          from the headers of the compression, and the parsing would not learn of it at all.
 					 *
-					 * @param buffer buffer of the content being laid
-					 * @param size size of the content being laid in octets
-					 * @param kind kind of the content being laid
-					 * @param number ordinal number of the chunk
+					 * @param buffer     buffer of the content being laid
+					 * @param size       size of the content being laid in octets
+					 * @param kind       kind of the content being laid
+					 * @param number     ordinal number of the chunk
 					 * @param generation generation of the record of the chunk
-					 * @param result buffer the chunk should be laid into
-					 * @return sign of the success of the laying
+					 * @param result     buffer the chunk should be laid into
+					 * @return           sign of the success of the laying
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool pack(const void * buffer, const size_t size, const payload_t kind,
-					 const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept;
+					[[nodiscard]] bool pack(const void * buffer, const size_t size, const payload_t kind, const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод снятия кадра
@@ -743,16 +746,15 @@ namespace awh {
 					 *          octets wait for the next submission.
 					 *
 					 * @param buffer buffer of the submitted octets
-					 * @param size size of the submitted octets
+					 * @param size   size of the submitted octets
 					 * @param offset offset the chunk should be taken from
 					 * @param result buffer the content of the chunk should be placed into
-					 * @param chunk taken information about the chunk
-					 * @return sign of a successfully taken chunk
+					 * @param chunk  taken information about the chunk
+					 * @return       sign of a successfully taken chunk
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool unpack(const void * buffer, const size_t size, size_t & offset,
-					 vector <uint8_t> & result, chunk_t & chunk) noexcept;
+					[[nodiscard]] bool unpack(const void * buffer, const size_t size, size_t & offset, vector <uint8_t> & result, chunk_t & chunk) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -811,13 +813,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Packer() noexcept {}
+					~Packer() noexcept = default;
 			} packer_t;
 		};
 	};

@@ -39,10 +39,14 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл модуля
+ */
+#include "../value.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
  */
 #include "../../sys/macro/global.hpp"
-#include "../value.hpp"
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -532,17 +536,17 @@ namespace awh {
 				DECIMAL   = 0x00080000, // Десятичное с точным дробным разрядом
 				CUSTOM    = 0x00100000, // Открытое расширение, заведённое потребителем
 				// Целое со знаком любой ширины
-				SIGNED    = (INT8 | INT16 | INT32 | INT64),
+				SIGNED = (INT8 | INT16 | INT32 | INT64),
 				// Целое без знака любой ширины
-				UNSIGNED  = (UINT8 | UINT16 | UINT32 | UINT64),
+				UNSIGNED = (UINT8 | UINT16 | UINT32 | UINT64),
 				// Целое любой ширины и любой знаковости
-				INT       = (SIGNED | UNSIGNED),
+				INT = (SIGNED | UNSIGNED),
 				// Дробное любой точности
-				REAL      = (FLOAT | DOUBLE),
+				REAL = (FLOAT | DOUBLE),
 				// Число любого вида
-				NUMBER    = (INT | REAL | EXTENDED | DECIMAL),
+				NUMBER = (INT | REAL | EXTENDED | DECIMAL),
 				// Значение, хранимое отрезком октетов
-				SEGMENT   = (STRING | BLOB),
+				SEGMENT = (STRING | BLOB),
 				// Вместимое любого вида
 				CONTAINER = (ARRAY | MAP)
 			};
@@ -687,6 +691,12 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Правила обращения со строкой, не отвечающей кодировке UTF-8
+			 *
+			 * @details Строка записи объявлена кодировкой UTF-8, и байты, ей не отвечающие,
+			 *          разбор отвергает. Данные, кодировке не подчинённые, записываются двоичным
+			 *          значением, а не строкой, - на то оно и заведено.
+			 *
 			 * @note Правила эти живут РАЗНЫМИ слоями кодека, и знать о том потребителю
 			 *       должно. `REFUSE` отвечается потоковым разбором: повтор виден ему сразу, и
 			 *       запись отвергается кодом `DUPLICATE_KEY`, не дойдя до дерева. `FIRST` и
@@ -703,6 +713,12 @@ namespace awh {
 			 *       и `LAST` выбирают между значениями, и ширина метки к выбору отношения не имеет
 			 *
 			 * \~english
+			 * @brief Rules of the handling of a string not conforming to the UTF-8 encoding
+			 *
+			 * @details A string of the record is declared to be in the UTF-8 encoding, and the bytes not conforming to it
+			 *          the parsing rejects. The data not subordinate to an encoding are written by a binary
+			 *          value rather than by a string — that is what it is made for.
+			 *
 			 * @note These rules live in DIFFERENT layers of the codec, and a consumer is bound to know of
 			 *       that. `REFUSE` is answered by the streaming parsing: a repeat is seen by it at once, and the
 			 *       record is refused by the code `DUPLICATE_KEY` without reaching the tree. `FIRST` and `LAST`
@@ -718,24 +734,6 @@ namespace awh {
 			 *       repeat by the tree, and as different names by the streaming parsing. This divergence is
 			 *       deliberate: `FIRST` and `LAST` choose between the values, and the width of the tag bears on
 			 *       the choice in no way
-			 *
-			 * \~
-			 */
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения со строкой, не отвечающей кодировке UTF-8
-			 *
-			 * @details Строка записи объявлена кодировкой UTF-8, и байты, ей не отвечающие,
-			 *          разбор отвергает. Данные, кодировке не подчинённые, записываются двоичным
-			 *          значением, а не строкой, - на то оно и заведено.
-			 *
-			 * \~english
-			 * @brief Rules of the handling of a string not conforming to the UTF-8 encoding
-			 *
-			 * @details A string of the record is declared to be in the UTF-8 encoding, and the bytes not conforming to it
-			 *          the parsing rejects. The data not subordinate to an encoding are written by a binary
-			 *          value rather than by a string — that is what it is made for.
 			 *
 			 * \~
 			 */
@@ -771,13 +769,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Span() noexcept : offset(0), length(0) {}
+				explicit Span() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -793,7 +790,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+				Span(const uint32_t offset, const uint32_t length) noexcept;
 			} span_t;
 
 			/**
@@ -818,21 +815,20 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Piece {
-				// Буфер октетов куска выдачи
-				const void * buffer;
 				// Размер октетов куска выдачи
 				size_t size;
+				// Буфер октетов куска выдачи
+				const void * buffer;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Piece() noexcept : buffer(nullptr), size(0) {}
+				explicit Piece() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -844,11 +840,11 @@ namespace awh {
 				 * @brief Constructor
 				 *
 				 * @param buffer buffer of the octets of the piece of the issuance
-				 * @param size size of the octets of the piece of the issuance
+				 * @param size   size of the octets of the piece of the issuance
 				 *
 				 * \~
 				 */
-				Piece(const void * buffer, const size_t size) noexcept : buffer(buffer), size(size) {}
+				Piece(const void * buffer, const size_t size) noexcept;
 			} piece_t;
 
 			/**
@@ -869,21 +865,20 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Смещение от начала записи в октетах
-				uint64_t offset;
 				// Глубина вложенности, считая с нуля
 				uint32_t depth;
+				// Смещение от начала записи в октетах
+				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Location() noexcept : offset(NO_OFFSET), depth(0) {}
+				explicit Location() noexcept;
 			} location_t;
 
 			/**
@@ -897,7 +892,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the textual description of a refusal code
 			 *
 			 * @param error error code of the parsing
-			 * @return textual description of the error code
+			 * @return      textual description of the error code
 			 *
 			 * \~
 			 */
@@ -913,7 +908,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the name of a kind of a node
 			 *
 			 * @param kind kind of a node of a document
-			 * @return name of the kind of the node
+			 * @return     name of the kind of the node
 			 *
 			 * \~
 			 */
@@ -935,7 +930,7 @@ namespace awh {
 			 *       named, for it is a set of the kinds rather than a kind
 			 *
 			 * @param type kind of a value of a document
-			 * @return name of the kind of the value
+			 * @return     name of the kind of the value
 			 *
 			 * \~
 			 */
@@ -957,7 +952,7 @@ namespace awh {
 			 *          number, by whichever kind it is stored, is a node of the kind `NUMBER`
 			 *
 			 * @param type kind of a value of a document
-			 * @return kind of a node of a document
+			 * @return     kind of a node of a document
 			 *
 			 * \~
 			 */
@@ -973,9 +968,9 @@ namespace awh {
 			 * \~english
 			 * @brief Function of the assembling of the leading octet of a value
 			 *
-			 * @param group group kind of the wire record
+			 * @param group  group kind of the wire record
 			 * @param detail detail of the tag
-			 * @return assembled leading octet
+			 * @return       assembled leading octet
 			 *
 			 * \~
 			 */
@@ -991,7 +986,7 @@ namespace awh {
 			 * @brief Function of the extraction of the group kind from the leading octet
 			 *
 			 * @param tag leading octet of a value
-			 * @return group kind of the wire record
+			 * @return    group kind of the wire record
 			 *
 			 * \~
 			 */
@@ -1007,7 +1002,7 @@ namespace awh {
 			 * @brief Function of the extraction of the detail from the leading octet
 			 *
 			 * @param tag leading octet of a value
-			 * @return detail of the tag
+			 * @return    detail of the tag
 			 *
 			 * \~
 			 */
@@ -1041,7 +1036,7 @@ namespace awh {
 			 *
 			 * @param detail detail of the tag
 			 * @param result width of the led record in octets
-			 * @return sign of the recognition of the detail
+			 * @return       sign of the recognition of the detail
 			 *
 			 * \~
 			 */
@@ -1067,7 +1062,7 @@ namespace awh {
 			 *          a strict kind of the record would become impossible.
 			 *
 			 * @param value value being laid
-			 * @return detail of the tag
+			 * @return      detail of the tag
 			 *
 			 * \~
 			 */
@@ -1121,15 +1116,14 @@ namespace awh {
 			 * @note Of whether a segment is taken by a number or by a name, this work does NOT judge: of that
 			 *       judges the kind of the CONTAINER at the caller, as RFC 6901 itself commands
 			 *
-			 * @param path path being parsed
+			 * @param path   path being parsed
 			 * @param offset offset of the parsing, changed by the function
 			 * @param result segment of the path being issued
-			 * @return sign of an issued segment
+			 * @return       sign of an issued segment
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result,
-			 string & buffer, bool & invalid) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result, string & buffer, bool & invalid) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция разбора звена пути номером значения
@@ -1162,8 +1156,8 @@ namespace awh {
 			 *       needed by the tree of the parsing as well: the rules of a path are held in ONE place for all
 			 *
 			 * @param segment segment of the path being parsed
-			 * @param result parsed index of the value
-			 * @return sign of the fitness of the record as an index
+			 * @param result  parsed index of the value
+			 * @return        sign of the fitness of the record as an index
 			 *
 			 * \~
 			 */

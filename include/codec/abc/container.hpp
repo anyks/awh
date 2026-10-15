@@ -42,16 +42,16 @@
  */
 #include "chunk.hpp"
 #include "index.hpp"
-#include "signature.hpp"
 #include "value.hpp"
 #include "common.hpp"
 #include "header.hpp"
 #include "writer.hpp"
-#include <sys/macro/global.hpp>
+#include "signature.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -283,24 +283,6 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						/**
-						 * \~russian
-						 * Порог накопления записей, по достижении которого копится кадр
-						 *
-						 * @note Порог считается по несжатым записям: сколько выйдет после
-						 *       сжатия, известно лишь после него, а решать надо до
-						 *
-						 * \~english
-						 * Threshold of the accumulation of the records upon the reaching of which a chunk is laid
-						 *
-						 * @note The threshold is counted over the uncompressed records: how much will come out after
-						 *       the compression is known only after it, while the decision must be made before
-						 *
-						 * \~
-						 */
-						size_t block;
-						// Признак строгого вида записи собираемых значений
-						bool canonical;
 						// Признак того, что тело несёт череду документов, а не один
 						bool stream;
 						/**
@@ -321,45 +303,69 @@ namespace awh {
 						 * \~
 						 */
 						bool indexed;
+						// Признак строгого вида записи собираемых значений
+						bool canonical;
+						/**
+						 * \~russian
+						 * Порог накопления записей, по достижении которого копится кадр
+						 *
+						 * @note Порог считается по несжатым записям: сколько выйдет после
+						 *       сжатия, известно лишь после него, а решать надо до
+						 *
+						 * \~english
+						 * Threshold of the accumulation of the records upon the reaching of which a chunk is laid
+						 *
+						 * @note The threshold is counted over the uncompressed records: how much will come out after
+						 *       the compression is known only after it, while the decision must be made before
+						 *
+						 * \~
+						 */
+						size_t block;
 						// Вид содержимого контейнера, ставимый потребителем
 						uint32_t content;
 						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
-				private:
-					// Настройки сборки контейнера
-					settings_t _settings;
-				private:
-					// Заголовок опознания собираемого контейнера
-					header_t _header;
-				private:
-					// Модуль укладки кадра
-					packer_t _packer;
-				private:
-					// Код отказа сборки контейнера
-					error_t _error;
-				private:
-					// Вид содержимого накопленных записей
-					payload_t _kind;
-				private:
-					// Накопленные записи, ещё не уложенные кадром
-					vector <uint8_t> _pending;
-				private:
-					// Уложенные кадры собираемого контейнера
-					vector <uint8_t> _body;
 				private:
 					// Оглавление собираемого контейнера
 					index_t _index;
+					// Код отказа сборки контейнера
+					error_t _error;
+					// Вид содержимого накопленных записей
+					payload_t _kind;
+					// Модуль укладки кадра
+					packer_t _packer;
+					// Дерево свёрток по кадрам собираемого контейнера
+					merkle_t _merkle;
+					// Заголовок опознания собираемого контейнера
+					header_t _header;
+					// Настройки сборки контейнера
+					settings_t _settings;
 				private:
+					// Признак того, что хоть один кадр вышел сжатым
+					bool _compressed;
+				private:
+					// Порядковый номер следующего кадра
+					uint64_t _number;
+					// Количество уложенных записей
+					uint64_t _records;
+				private:
+					// Желаемый вид хэш-суммы подписи владельца
+					crypto_t::hash_t _hash;
+				private:
+					// Имя ключа владельца собираемого контейнера
+					string _name;
+				private:
+					// Уложенные кадры собираемого контейнера
+					vector <uint8_t> _body;
 					/**
 					 * \~russian
 					 * Строки оглавления накопленных записей
@@ -376,27 +382,11 @@ namespace awh {
 					 * \~
 					 */
 					vector <entry_t> _marks;
-				private:
-					// Количество уложенных записей
-					uint64_t _records;
-				private:
-					// Порядковый номер следующего кадра
-					uint64_t _number;
-				private:
-					// Признак того, что хоть один кадр вышел сжатым
-					bool _compressed;
-				private:
-					// Дерево свёрток по кадрам собираемого контейнера
-					merkle_t _merkle;
+					// Накопленные записи, ещё не уложенные кадром
+					vector <uint8_t> _pending;
 				private:
 					// Модуль шифрования, отданный для подписи контейнера
 					const crypto_t * _signer;
-				private:
-					// Имя ключа владельца собираемого контейнера
-					string _name;
-				private:
-					// Желаемый вид хэш-суммы подписи владельца
-					crypto_t::hash_t _hash;
 				private:
 					/**
 					 * \~russian
@@ -483,13 +473,12 @@ namespace awh {
 					 *          one submitted to them would turn into a refusal of the signature in the middle of the assembling.
 					 *
 					 * @param crypto module of the encryption, zero — removal of the signature
-					 * @param name name of the key of the owner of the container
-					 * @param hash desired kind of the hash of the signature
+					 * @param name   name of the key of the owner of the container
+					 * @param hash   desired kind of the hash of the signature
 					 *
 					 * \~
 					 */
-					void sign(const crypto_t * crypto, const string & name,
-					 const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
+					void sign(const crypto_t * crypto, const string & name, const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -502,7 +491,7 @@ namespace awh {
 					 * @brief Method of the setting of the sign of the owner of a container
 					 *
 					 * @param buffer buffer of the sign of the owner being set
-					 * @param size size of the sign of the owner being set
+					 * @param size   size of the sign of the owner being set
 					 *
 					 * \~
 					 */
@@ -518,7 +507,7 @@ namespace awh {
 					 * @brief Method of the setting of the fingerprint of the public key of the owner
 					 *
 					 * @param buffer buffer of the fingerprint of the key being set
-					 * @param size size of the fingerprint of the key being set
+					 * @param size   size of the fingerprint of the key being set
 					 *
 					 * \~
 					 */
@@ -536,8 +525,8 @@ namespace awh {
 					 * @brief Method of the adding of a value as a record of a container
 					 *
 					 * @param value value being added
-					 * @param kind kind of the content of the record being added
-					 * @return sign of the success of the adding
+					 * @param kind  kind of the content of the record being added
+					 * @return      sign of the success of the adding
 					 *
 					 * \~
 					 */
@@ -561,9 +550,9 @@ namespace awh {
 					 *          its length, and there is no point in parsing it for the sake of the adding.
 					 *
 					 * @param buffer buffer of the record being added
-					 * @param size size of the record being added
-					 * @param kind kind of the content of the record being added
-					 * @return sign of the success of the adding
+					 * @param size   size of the record being added
+					 * @param kind   kind of the content of the record being added
+					 * @return       sign of the success of the adding
 					 *
 					 * \~
 					 */
@@ -594,7 +583,7 @@ namespace awh {
 					 * @brief Method of the completion of the assembling of a container
 					 *
 					 * @param result buffer the assembled container should be laid into
-					 * @return sign of the success of the assembling
+					 * @return       sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -725,13 +714,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Assembler() noexcept {}
+					~Assembler() noexcept = default;
 			} assembler_t;
 
 			/**
@@ -776,20 +764,8 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Loader {
 				private:
-					// Снятый заголовок опознания контейнера
-					header_t _header;
-				private:
-					// Модуль снятия кадра
-					packer_t _packer;
-				private:
-					// Код отказа снятия контейнера
-					error_t _error;
-				private:
 					// Признак снятого заголовка опознания контейнера
 					bool _ready;
-				private:
-					// Смещение разбора в буфере поданных октетов
-					size_t _offset;
 				private:
 					/**
 					 * \~russian
@@ -807,6 +783,15 @@ namespace awh {
 					 * \~
 					 */
 					size_t _origin;
+					// Смещение разбора в буфере поданных октетов
+					size_t _offset;
+				private:
+					// Код отказа снятия контейнера
+					error_t _error;
+					// Снятый заголовок опознания контейнера
+					header_t _header;
+					// Модуль снятия кадра
+					packer_t _packer;
 				private:
 					// Буфер поданных октетов
 					vector <uint8_t> _buffer;
@@ -879,8 +864,8 @@ namespace awh {
 					 * @brief Method of the submission of the octets of a container
 					 *
 					 * @param buffer buffer of the octets being submitted
-					 * @param size size of the octets being submitted
-					 * @return sign of the success of the submission
+					 * @param size   size of the octets being submitted
+					 * @return       sign of the success of the submission
 					 *
 					 * \~
 					 */
@@ -909,11 +894,12 @@ namespace awh {
 					 *       submitted in full. The codes `TRUNCATED_HEADER` and `TRUNCATED_CHUNK` mean
 					 *       "submit more octets" rather than "all is lost"; at `NONE` the chunks are over
 					 *
-					 * @note The end of the body is recognised by `complete()` rather than by the end of the chunks
+					 * @note The end of the body is recognised by `complete()` rather than by the end of the chunks:
+					 *       behind the body lie the index, the record of the signature and the tail header
 					 *
 					 * @param result buffer the content of the chunk should be placed into
-					 * @param chunk taken information about the chunk
-					 * @return sign of an issued chunk
+					 * @param chunk  taken information about the chunk
+					 * @return       sign of an issued chunk
 					 *
 					 * \~
 					 */
@@ -1031,13 +1017,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Loader() noexcept {}
+					~Loader() noexcept = default;
 			} loader_t;
 
 			/**
@@ -1118,16 +1103,15 @@ namespace awh {
 			 *          run its silence is not to be counted as proof of superfluity
 			 *
 			 * @param crypto module of the encryption given by the consumer
-			 * @param name name of the key of the owner of the container
+			 * @param name   name of the key of the owner of the container
 			 * @param buffer buffer of the submitted octets of the container
-			 * @param size size of the submitted octets of the container
-			 * @param error error code if the checking has failed
-			 * @return sign of an agreed signature of the owner
+			 * @param size   size of the submitted octets of the container
+			 * @param error  error code if the checking has failed
+			 * @return       sign of an agreed signature of the owner
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name,
-			 const void * buffer, const size_t size, error_t & error) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name, const void * buffer, const size_t size, error_t & error) noexcept;
 		};
 	};
 };

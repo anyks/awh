@@ -45,10 +45,6 @@
 #include "encoding.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-
-/**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
  * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
  * Имена снимаются лишь на время объявлений - возврат в конце файла
@@ -280,6 +276,76 @@ namespace awh {
 						bool stream;
 						/**
 						 * \~russian
+						 * Признак поверки записи на строгий вид
+						 *
+						 * @details Строгий вид требует трёх условий разом: наименьшая запись всякой
+						 *          метки (значение, вместимое наименьшей шириной, шире не пишется), запрет
+						 *          неопределённой длины и возрастание имён полей отображения. Сборка тем же
+						 *          признаком (`Writer::Settings::canonical`) их соблюдает, а заголовок
+						 *          контейнера объявляет признаком `flag_t::CANONICAL`
+						 *
+						 * @note Признак этот по умолчанию снят: запись, собранная не строгим видом,
+						 *       годна к разбору, и поверка навязывалась бы всякому потребителю. Строгий вид
+						 *       нужен там, где запись подписывается либо сличается октет в октет: одно и то
+						 *       же значение обязано записываться единственным способом
+						 *
+						 * \~english
+						 * Flag of the checking of the record for the strict kind
+						 *
+						 * @details The strict kind demands three conditions at once: the smallest record of
+						 *          every tag, the prohibition of the indefinite length and the ascending of the names
+						 *          of the fields of a mapping. The assembly observes them by the same flag
+						 *          (`Writer::Settings::canonical`), while the header of a container declares it by the
+						 *          `flag_t::CANONICAL` flag.
+						 *
+						 * @note This flag is removed by default: a record assembled not by the strict kind is fit for the
+						 *       parsing, and a check would be forced upon every consumer. The strict kind is needed where a
+						 *       record is signed or compared octet for octet: the very same value is obliged to be written
+						 *       in a single way
+						 *
+						 * \~
+						 */
+						bool canonical;
+						/**
+						 * \~russian
+						 * Наибольшее допустимое количество неснятых событий, ноль - без предела
+						 *
+						 * @details Пределы на строку, на данные, на глубину и на узлы держат разбор,
+						 *          а память держит очередь событий: потребитель, подающий и не снимающий,
+						 *          растит её без всякой границы. Замер 24.08.2026, поток 79 720 окт. о 20 000
+						 *          документах: очередь снимается - 20 624 окт. взято, не снимается -
+						 *          21 233 552 окт., умножение в 266 раз.
+						 *
+						 * @note Предел этот по умолчанию снят: подающий и снимающий подряд в него не
+						 *       упрётся никогда, а поточному потребителю он даёт границу, за какой подача
+						 *       отвечает отказом вместо молчаливого роста
+						 *
+						 * \~english
+						 * Greatest admissible number of the unclaimed events, zero — without a limit
+						 *
+						 * @details The limits on a string, on data, on the depth and on the nodes hold the parsing,
+						 *          while the memory is held by the queue of the events: a consumer that feeds and does not
+						 *          claim grows it without any bound. A measurement of 2026-08-24, a stream of 79 720 oct.
+						 *          about 20 000 documents: the queue is claimed - 20 624 oct. taken, is not claimed -
+						 *          21 233 552 oct., a multiplication by 266 times.
+						 *
+						 * @note This limit is removed by default: one who feeds and claims in a row will never run into it,
+						 *       while for a streaming consumer it gives a bound beyond which the feeding answers with a refusal
+						 *       instead of a silent growth
+						 *
+						 * \~
+						 */
+						size_t maxEvents;
+						// Наибольшая допустимая длина двоичного значения в октетах, ноль - без предела
+						uint64_t maxBlob;
+						// Наибольшая допустимая глубина вложенности, ноль - предел модуля
+						uint32_t maxDepth;
+						// Наибольшее допустимое количество узлов документа, ноль - предел модуля
+						uint32_t maxNodes;
+						// Наибольшая допустимая длина строкового значения в октетах, ноль - без предела
+						uint64_t maxString;
+						/**
+						 * \~russian
 						 * Правило обращения со строкой, не отвечающей кодировке UTF-8
 						 *
 						 * @details Правило это стоит НА МЕСТЕ прежнего признака проверки строк, а
@@ -338,38 +404,6 @@ namespace awh {
 						malformed_t malformed;
 						/**
 						 * \~russian
-						 * Признак поверки записи на строгий вид
-						 *
-						 * @details Строгий вид требует трёх условий разом: наименьшая запись всякой
-						 *          метки (значение, вместимое наименьшей шириной, шире не пишется), запрет
-						 *          неопределённой длины и возрастание имён полей отображения. Сборка тем же
-						 *          признаком (`Writer::Settings::canonical`) их соблюдает, а заголовок
-						 *          контейнера объявляет признаком `flag_t::CANONICAL`
-						 *
-						 * @note Признак этот по умолчанию снят: запись, собранная не строгим видом,
-						 *       годна к разбору, и поверка навязывалась бы всякому потребителю. Строгий вид
-						 *       нужен там, где запись подписывается либо сличается октет в октет: одно и то
-						 *       же значение обязано записываться единственным способом
-						 *
-						 * \~english
-						 * Flag of the checking of the record for the strict kind
-						 *
-						 * @details The strict kind demands three conditions at once: the smallest record of
-						 *          every tag, the prohibition of the indefinite length and the ascending of the names
-						 *          of the fields of a mapping. The assembly observes them by the same flag
-						 *          (`Writer::Settings::canonical`), while the header of a container declares it by the
-						 *          `flag_t::CANONICAL` flag.
-						 *
-						 * @note This flag is removed by default: a record assembled not by the strict kind is fit for the
-						 *       parsing, and a check would be forced upon every consumer. The strict kind is needed where a
-						 *       record is signed or compared octet for octet: the very same value is obliged to be written
-						 *       in a single way
-						 *
-						 * \~
-						 */
-						bool canonical;
-						/**
-						 * \~russian
 						 * Правило обращения с повторяющимся именем поля отображения
 						 *
 						 * @details Потоковому разбору доступны лишь ДВА исхода из четырёх: отказ и
@@ -398,55 +432,16 @@ namespace awh {
 						 * \~
 						 */
 						duplicate_t duplicates;
-						// Наибольшая допустимая длина строкового значения в октетах, ноль - без предела
-						uint64_t maxString;
-						// Наибольшая допустимая длина двоичного значения в октетах, ноль - без предела
-						uint64_t maxBlob;
-						// Наибольшая допустимая глубина вложенности, ноль - предел модуля
-						uint32_t maxDepth;
-						// Наибольшее допустимое количество узлов документа, ноль - предел модуля
-						uint32_t maxNodes;
-						/**
-						 * \~russian
-						 * Наибольшее допустимое количество неснятых событий, ноль - без предела
-						 *
-						 * @details Пределы на строку, на данные, на глубину и на узлы держат разбор,
-						 *          а память держит очередь событий: потребитель, подающий и не снимающий,
-						 *          растит её без всякой границы. Замер 24.08.2026, поток 79 720 окт. о 20 000
-						 *          документах: очередь снимается - 20 624 окт. взято, не снимается -
-						 *          21 233 552 окт., умножение в 266 раз.
-						 *
-						 * @note Предел этот по умолчанию снят: подающий и снимающий подряд в него не
-						 *       упрётся никогда, а поточному потребителю он даёт границу, за какой подача
-						 *       отвечает отказом вместо молчаливого роста
-						 *
-						 * \~english
-						 * Greatest admissible number of the unclaimed events, zero — without a limit
-						 *
-						 * @details The limits on a string, on data, on the depth and on the nodes hold the parsing,
-						 *          while the memory is held by the queue of the events: a consumer that feeds and does not
-						 *          claim grows it without any bound. A measurement of 2026-08-24, a stream of 79 720 oct.
-						 *          about 20 000 documents: the queue is claimed - 20 624 oct. taken, is not claimed -
-						 *          21 233 552 oct., a multiplication by 266 times.
-						 *
-						 * @note This limit is removed by default: one who feeds and claims in a row will never run into it,
-						 *       while for a streaming consumer it gives a bound beyond which the feeding answers with a refusal
-						 *       instead of a silent growth
-						 *
-						 * \~
-						 */
-						size_t maxEvents;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 					/**
 					 * \~russian
@@ -472,42 +467,10 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Value {
-						/**
-						 * \~russian
-						 * Содержимое значения
-						 *
-						 * @note У строки и у двоичных данных - их октеты; у опознавателя -
-						 *       шестнадцать его октетов; у целого свыше родных видов и у десятичного -
-						 *       октеты величины от младшего к старшему
-						 *
-						 * \~english
-						 * Content of the value
-						 *
-						 * @note For a string and for binary data — their octets; for an identifier —
-						 *       its sixteen octets; for an integer above the native kinds and for a decimal one —
-						 *       the octets of the magnitude from the low one to the high one
-						 *
-						 * \~
-						 */
-						string_view data;
 						// Вид значения
 						type_t type;
-						// Количество значений вместимого, ноль при неопределённой длине
-						uint64_t count;
-						// Целое без знака
-						uint64_t number;
-						// Целое со знаком, а у отметки времени - её значение
-						int64_t integer;
-						// Дробное число
-						double real;
-						// Десятичный порядок величины
-						int64_t exponent;
 						// Логическое значение
 						bool boolean;
-						// Признак того, что величина меньше нуля
-						bool negative;
-						// Признак неопределённой длины вместимого
-						bool indefinite;
 						/**
 						 * \~russian
 						 * Признак того, что содержимое строки было исправлено
@@ -529,20 +492,48 @@ namespace awh {
 						 * \~
 						 */
 						bool repaired;
+						// Признак того, что величина меньше нуля
+						bool negative;
+						// Признак неопределённой длины вместимого
+						bool indefinite;
+						// Дробное число
+						double real;
+						// Количество значений вместимого, ноль при неопределённой длине
+						uint64_t count;
+						// Целое без знака
+						uint64_t number;
+						// Целое со знаком, а у отметки времени - её значение
+						int64_t integer;
+						// Десятичный порядок величины
+						int64_t exponent;
+						/**
+						 * \~russian
+						 * Содержимое значения
+						 *
+						 * @note У строки и у двоичных данных - их октеты; у опознавателя -
+						 *       шестнадцать его октетов; у целого свыше родных видов и у десятичного -
+						 *       октеты величины от младшего к старшему
+						 *
+						 * \~english
+						 * Content of the value
+						 *
+						 * @note For a string and for binary data — their octets; for an identifier —
+						 *       its sixteen octets; for an integer above the native kinds and for a decimal one —
+						 *       the octets of the magnitude from the low one to the high one
+						 *
+						 * \~
+						 */
+						string_view data;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Value() noexcept :
-						 type(type_t::UNDEFINED), count(0), number(0), integer(0), real(0.0),
-						 exponent(0), boolean(false), negative(false), indefinite(false),
-						 repaired(false) {}
+						explicit Value() noexcept;
 					} value_t;
 					/**
 					 * \~russian
@@ -596,33 +587,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Frame {
-						/**
-						 * \~russian
-						 * Место записи за вместимым, объявленное размахом, ноль - не объявлено
-						 *
-						 * @note Место это ПОЛНОЕ, от начала записи, а не смещение в буфере:
-						 *       буфер ужимается по выдаче событий, и смещение в нём не переживает
-						 *       ужатия
-						 *
-						 * \~english
-						 * Place of the record past the container declared by the span, zero — not declared
-						 *
-						 * @note This place is FULL, from the beginning of the record, rather than an offset
-						 *       in the buffer: the buffer is compacted upon the issuing of the events, and an offset
-						 *       in it does not survive a compaction
-						 *
-						 * \~
-						 */
-						uint64_t beyond;
-						// Признак того, что вместимое является отображением
-						bool mapping;
-						// Признак неопределённой длины вместимого
-						bool indefinite;
-						// Признак того, что следующим ожидается имя поля
-						bool expectKey;
-						// Количество оставшихся значений вместимого
-						uint64_t remain;
+					typedef struct __AWH_SHARED_EXPORT__ Frame {
 						/**
 						 * \~russian
 						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
@@ -643,23 +608,6 @@ namespace awh {
 						type_t segment;
 						/**
 						 * \~russian
-						 * Длина кусков значения, собранная вместимым
-						 *
-						 * @note Предел длины значения поверяется по СУММЕ кусков, а не по всякому
-						 *       куску порознь: значение неопределённой длины иначе обходило бы предел
-						 *       дроблением на куски ниже него
-						 *
-						 * \~english
-						 * Length of the pieces of a value gathered by the container
-						 *
-						 * @note The limit of the length of a value is checked by the SUM of the pieces
-						 *       rather than by every piece separately
-						 *
-						 * \~
-						 */
-						uint64_t gathered;
-						/**
-						 * \~russian
 						 * Признак того, что имя поля отображения этим вместимым уже укладывалось
 						 *
 						 * \~english
@@ -668,32 +616,12 @@ namespace awh {
 						 * \~
 						 */
 						bool marked;
-						/**
-						 * \~russian
-						 * Запись имени поля отображения, разобранного прежде, у строгого вида
-						 *
-						 * @details Возрастание имён поверяется сличением с ПРЕДЫДУЩИМ именем, а не со
-						 *          всеми: у строгого вида имена идут по возрастанию, и повтор встал бы рядом.
-						 *          Запись держится своей копией, а не отрезком буфера: буфер ужимается по
-						 *          выдаче событий, и отрезок в нём ужатия не переживает.
-						 *
-						 * @note Вместилище это наполняется ЛИШЬ при строгом виде разбора: вне его
-						 *       сличать нечего, и памяти оно не занимает вовсе
-						 *
-						 * \~english
-						 * Record of the name of a field of a mapping parsed previously, at the strict kind
-						 *
-						 * @details The ascending is checked by the comparison with the PREVIOUS name, not with all of them:
-						 *          under the strict kind the names go in the ascending order, and a repeat would stand next to
-						 *          it. The record is held by its own copy, not by a segment of the buffer: the buffer shrinks
-						 *          upon the issuance of the events, and a segment in it does not survive the shrinking.
-						 *
-						 * @note This container is filled ONLY at the strict kind of the parsing: outside it there is nothing
-						 *       to compare, and it occupies no memory at all
-						 *
-						 * \~
-						 */
-						vector <uint8_t> key;
+						// Признак того, что вместимое является отображением
+						bool mapping;
+						// Признак неопределённой длины вместимого
+						bool indefinite;
+						// Признак того, что следующим ожидается имя поля
+						bool expectKey;
 						/**
 						 * \~russian
 						 * Начало части общего перечня имён полей, принадлежащей вместимому
@@ -765,17 +693,77 @@ namespace awh {
 						size_t hashed;
 						/**
 						 * \~russian
-						 * @brief Конструктор
+						 * Место записи за вместимым, объявленное размахом, ноль - не объявлено
 						 *
+						 * @note Место это ПОЛНОЕ, от начала записи, а не смещение в буфере:
+						 *       буфер ужимается по выдаче событий, и смещение в нём не переживает
+						 *       ужатия
+						 *
+						 * \~english
+						 * Place of the record past the container declared by the span, zero — not declared
+						 *
+						 * @note This place is FULL, from the beginning of the record, rather than an offset
+						 *       in the buffer: the buffer is compacted upon the issuing of the events, and an offset
+						 *       in it does not survive a compaction
+						 *
+						 * \~
+						 */
+						uint64_t beyond;
+						// Количество оставшихся значений вместимого
+						uint64_t remain;
+						/**
+						 * \~russian
+						 * Длина кусков значения, собранная вместимым
+						 *
+						 * @note Предел длины значения поверяется по СУММЕ кусков, а не по всякому
+						 *       куску порознь: значение неопределённой длины иначе обходило бы предел
+						 *       дроблением на куски ниже него
+						 *
+						 * \~english
+						 * Length of the pieces of a value gathered by the container
+						 *
+						 * @note The limit of the length of a value is checked by the SUM of the pieces
+						 *       rather than by every piece separately
+						 *
+						 * \~
+						 */
+						uint64_t gathered;
+						/**
+						 * \~russian
+						 * Запись имени поля отображения, разобранного прежде, у строгого вида
+						 *
+						 * @details Возрастание имён поверяется сличением с ПРЕДЫДУЩИМ именем, а не со
+						 *          всеми: у строгого вида имена идут по возрастанию, и повтор встал бы рядом.
+						 *          Запись держится своей копией, а не отрезком буфера: буфер ужимается по
+						 *          выдаче событий, и отрезок в нём ужатия не переживает.
+						 *
+						 * @note Вместилище это наполняется ЛИШЬ при строгом виде разбора: вне его
+						 *       сличать нечего, и памяти оно не занимает вовсе
+						 *
+						 * \~english
+						 * Record of the name of a field of a mapping parsed previously, at the strict kind
+						 *
+						 * @details The ascending is checked by the comparison with the PREVIOUS name, not with all of them:
+						 *          under the strict kind the names go in the ascending order, and a repeat would stand next to
+						 *          it. The record is held by its own copy, not by a segment of the buffer: the buffer shrinks
+						 *          upon the issuance of the events, and a segment in it does not survive the shrinking.
+						 *
+						 * @note This container is filled ONLY at the strict kind of the parsing: outside it there is nothing
+						 *       to compare, and it occupies no memory at all
+						 *
+						 * \~
+						 */
+						vector <uint8_t> key;
+						/**
+						 * \~russian
+						 * @brief Конструктор
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Frame() noexcept :
-						 beyond(0), mapping(false), indefinite(false), expectKey(false), remain(0),
-						 segment(type_t::UNDEFINED), gathered(0), marked(false), base(0), mark(0), hashed(0) {}
+						explicit Frame() noexcept;
 					} frame_t;
 					/**
 					 * \~russian
@@ -792,59 +780,9 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Record {
-						// Вид события разбора
-						event_t event;
-						// Вид значения
-						type_t type;
-						// Отрезок содержимого значения в буфере разбора
-						span_t span;
-						// Количество значений вместимого
-						uint64_t count;
-						// Целое без знака
-						uint64_t number;
-						// Целое со знаком
-						int64_t integer;
-						// Дробное число
-						double real;
-						// Десятичный порядок величины
-						int64_t exponent;
+					typedef struct __AWH_SHARED_EXPORT__ Record {
 						// Логическое значение
 						bool boolean;
-						// Признак того, что величина меньше нуля
-						bool negative;
-						// Признак неопределённой длины вместимого
-						bool indefinite;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						/**
-						 * \~russian
-						 * Место события в поданной записи
-						 *
-						 * @note Место запоминается событием, а не берётся состоянием
-						 *       разбирателя: события копятся очередью, и состояние к выдаче события
-						 *       уходит вперёд тем дальше, чем крупнее поданный кусок. Место,
-						 *       взятое состоянием, разошлось бы от одной лишь нарезки на куски
-						 *
-						 * \~english
-						 * Place of the event in the submitted record
-						 *
-						 * @note The place is remembered by the event rather than being taken from the state
-						 *       of the parser: the events accumulate in a queue, and by the issuing of an event the state
-						 *       goes ahead the further the larger the submitted chunk is. A place
-						 *       taken from the state would diverge from the slicing into the chunks alone
-						 *
-						 * \~
-						 */
-						location_t location;
 						/**
 						 * \~russian
 						 * Признак того, что содержимое взято из хранилища исправленных строк
@@ -863,6 +801,26 @@ namespace awh {
 						 * \~
 						 */
 						bool repaired;
+						// Признак того, что величина меньше нуля
+						bool negative;
+						// Признак неопределённой длины вместимого
+						bool indefinite;
+						// Дробное число
+						double real;
+						// Количество значений вместимого
+						uint64_t count;
+						// Целое без знака
+						uint64_t number;
+						// Целое со знаком
+						int64_t integer;
+						// Десятичный порядок величины
+						int64_t exponent;
+						// Вид значения
+						type_t type;
+						// Отрезок содержимого значения в буфере разбора
+						span_t span;
+						// Вид события разбора
+						event_t event;
 						/**
 						 * \~russian
 						 * Отрезок исправленного содержимого в хранилище исправленных строк
@@ -885,80 +843,37 @@ namespace awh {
 						 * \~
 						 */
 						span_t patch;
-						Record() noexcept :
-						 event(event_t::NONE), type(type_t::UNDEFINED), count(0), number(0),
-						 integer(0), real(0.0), exponent(0), boolean(false), negative(false),
-						 indefinite(false), repaired(false) {}
+						/**
+						 * \~russian
+						 * Место события в поданной записи
+						 *
+						 * @note Место запоминается событием, а не берётся состоянием
+						 *       разбирателя: события копятся очередью, и состояние к выдаче события
+						 *       уходит вперёд тем дальше, чем крупнее поданный кусок. Место,
+						 *       взятое состоянием, разошлось бы от одной лишь нарезки на куски
+						 *
+						 * \~english
+						 * Place of the event in the submitted record
+						 *
+						 * @note The place is remembered by the event rather than being taken from the state
+						 *       of the parser: the events accumulate in a queue, and by the issuing of an event the state
+						 *       goes ahead the further the larger the submitted chunk is. A place
+						 *       taken from the state would diverge from the slicing into the chunks alone
+						 *
+						 * \~
+						 */
+						location_t location;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Record() noexcept;
 					} record_t;
-				private:
-					// Настройки разбора записи
-					settings_t _settings;
-				private:
-					// Состояние разбора записи
-					state_t _state;
-				private:
-					// Код отказа разбора
-					error_t _error;
-				private:
-					// Положение разбора в поданной записи
-					location_t _location;
-				private:
-					// Буфер накопленных октетов поданной записи
-					vector <uint8_t> _buffer;
-				private:
-					/**
-					 * \~russian
-					 * Место начала разбираемой единицы
-					 *
-					 * @note Место это запоминается началом единицы и держится до следующей:
-					 *       значение, разбираемое несколькими подачами, началось раньше, а место
-					 *       события обязано указывать на начало его, а не на конец
-					 *
-					 * \~english
-					 * Place of the beginning of the unit being parsed
-					 *
-					 * @note This place is remembered at the beginning of a unit and is held until the next one:
-					 *       a value parsed by several submissions began earlier, while the place
-					 *       of the event is obliged to point to its beginning rather than to its end
-					 *
-					 * \~
-					 */
-					location_t _mark;
-				private:
-					/**
-					 * \~russian
-					 * Ведущие октеты разбираемой единицы у строгого вида разбора
-					 *
-					 * @details Сличение имён полей отображения идёт по ПОЛНОЙ записи имени, вместе
-					 *          с меткою: так же сличает их и сборка, и всякий иной порядок разошёлся бы с нею.
-					 *          Метка вместе с ведомой ею записью держится здесь, а содержимое берётся отрезком
-					 *          события в миг выдачи его.
-					 *
-					 * @note Вместилище это наполняется ЛИШЬ при строгом виде разбора
-					 *
-					 * \~english
-					 * Leading octets of the unit being parsed at the strict kind of the parsing
-					 *
-					 * @details The comparison of the names of the fields of a mapping goes by the FULL record
-					 *          of a name together with the tag, the same way as the writing compares them.
-					 *
-					 * @note This container is filled ONLY at the strict kind of the parsing
-					 *
-					 * \~
-					 */
-					vector <uint8_t> _lead;
-				private:
-					// Смещение разбора в буфере накопленных октетов
-					size_t _offset;
-				private:
-					// Смещение начала буфера от начала поданной записи
-					uint64_t _origin;
-				private:
-					// Размер места, выданного под приём октетов записи
-					size_t _reserved;
-				private:
-					// Стек вместимых разбора
-					vector <frame_t> _stack;
 				private:
 					/**
 					 * \~russian
@@ -985,7 +900,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Naming {
+					typedef struct __AWH_SHARED_EXPORT__ Naming {
 						// Смещение записи имени поля в общем вместилище октетов
 						uint32_t offset;
 						// Длина записи имени поля отображения
@@ -1009,61 +924,104 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Naming(const uint32_t offset = 0, const uint32_t length = 0, const uint64_t digest = 0) noexcept :
-						 offset(offset), length(length), digest(digest) {}
+						Naming(const uint32_t offset = 0, const uint32_t length = 0, const uint64_t digest = 0) noexcept;
 					} naming_t;
-					/**
-					 * \~russian
-					 * Отрезки записей имён полей всех вместимых стека
-					 *
-					 * @details Перечень общий: часть его, принадлежащая звену, начинается со
-					 *          смещения «frame_t::base», а снятие звена усекает перечень до него. Общим он
-					 *          заведён ради памяти: вместимость держится между отображениями, тогда как
-					 *          перечень в самом звене заводился бы заново на всякое из них.
-					 *
-					 * @note Наполняется ЛИШЬ при правиле `duplicate_t::REFUSE` вне строгого вида
-					 *
-					 * \~english
-					 * Segments of the records of the names of the fields of all the containers of the stack
-					 *
-					 * @details The list is shared: the part belonging to a link begins at the offset «frame_t::base»,
-					 *          and the removal of a link truncates the list to it. It is made shared for the sake of the
-					 *          memory: the capacity is kept between the mappings, whereas a list in the link itself would
-					 *          be created anew for every one of them.
-					 *
-					 * @note Filled ONLY at the rule `duplicate_t::REFUSE` outside the strict kind
-					 *
-					 * \~
-					 */
-					vector <naming_t> _spans;
 				private:
 					/**
 					 * \~russian
-					 * Запас указателей имён полей по глубине вложенности вместимых
+					 * Признак затребованного пропуска открываемого вместимого
 					 *
-					 * @details Указатель берётся глубиною звена в стеке, а не заводится внутри
-					 *          него: звено живёт одним вместимым, тогда как запас переживает и запись, -
-					 *          оттого выделение памяти случается однажды на разбиратель, а не на всякое
-					 *          отображение. Сбросом разбора запас НЕ освобождается: переиспользуемый
-					 *          разбиратель тем и ценен, что памяти заново не просит.
-					 *
-					 * @note Гнездо держит место имени в общем перечне `_spans`, увеличенное на
-					 *       единицу: нуль означает гнездо пустое
+					 * @note Пропуск объявляется обработчиком прямой выдачи ПОСРЕДИ открытия
+					 *       вместимого: событие начала его выдано, а звено стека ещё не заведено.
+					 *       Признак этот и переносит волю обработчика к тому месту, где вместимое
+					 *       заводится
 					 *
 					 * \~english
-					 * Reserve of the indexes of the names of the fields by the depth of the nesting of the containers
+					 * Sign of a demanded skipping of the container being opened
 					 *
-					 * @details An index is taken by the depth of a link in the stack rather than created inside it: a
-					 *          link lives by one container, whereas the reserve outlives the record, - therefore a memory
-					 *          allocation happens once per parser, not per every mapping. The reserve is NOT freed by the
-					 *          reset of the parsing: a reusable parser is valuable exactly because it does not ask for
-					 *          memory anew.
-					 *
-					 * @note A slot holds the place of a name in the shared list `_spans` increased by one
+					 * @note The skipping is declared by the handler of the direct issuing IN THE MIDDLE of
+					 *       the opening of a container: the event of its beginning is issued, while the link of
+					 *       the stack is not yet created
 					 *
 					 * \~
 					 */
-					vector <vector <uint32_t>> _tables;
+					bool _skipping;
+					// Признак того, что величина ожидаемого расширения меньше нуля
+					bool _negative;
+					// Признак завершённости хотя бы одного документа
+					bool _document;
+				private:
+					// Количество разобранных узлов документа
+					uint32_t _nodes;
+				private:
+					// Смещение первого невыданного события очереди
+					size_t _head;
+					// Смещение разбора в буфере накопленных октетов
+					size_t _offset;
+					// Размер места, выданного под приём октетов записи
+					size_t _reserved;
+				private:
+					/**
+					 * \~russian
+					 * Размах вместимого, объявленный меткою, ноль - не объявлен
+					 *
+					 * @note Размах считается от конца записи его: чтение, пропускающее
+					 *       вместимое, прибавляет размах к своему месту и оказывается за ним
+					 *
+					 * \~english
+					 * Span of the container declared by a tag, zero — not declared
+					 *
+					 * @note The span is counted from the end of its record: a reading skipping
+					 *       the container adds the span to its place and finds itself past it
+					 *
+					 * \~
+					 */
+					uint64_t _span;
+					// Смещение начала буфера от начала поданной записи
+					uint64_t _origin;
+					// Место записи за вместимым, объявленное последнею меткою размаха
+					uint64_t _beyond;
+					// Номер подвида ожидаемого открытого расширения
+					uint64_t _subtype;
+					// Количество недостающих октетов ожидаемой записи
+					uint64_t _pending;
+					// Десятичный порядок ожидаемой величины
+					int64_t _exponent;
+				private:
+					// Состояние разбора записи
+					state_t _state;
+					// Код отказа разбора
+					error_t _error;
+					// Вид значения, чьи октеты ожидаются
+					type_t _awaited;
+					/**
+					 * \~russian
+					 * Место начала разбираемой единицы
+					 *
+					 * @note Место это запоминается началом единицы и держится до следующей:
+					 *       значение, разбираемое несколькими подачами, началось раньше, а место
+					 *       события обязано указывать на начало его, а не на конец
+					 *
+					 * \~english
+					 * Place of the beginning of the unit being parsed
+					 *
+					 * @note This place is remembered at the beginning of a unit and is held until the next one:
+					 *       a value parsed by several submissions began earlier, while the place
+					 *       of the event is obliged to point to its beginning rather than to its end
+					 *
+					 * \~
+					 */
+					location_t _mark;
+					// Разновидность ожидаемого расширения
+					extend_t _extend;
+					// Событие, выданное последним переходом
+					record_t _current;
+					// Обработчик прямой выдачи событий разбора
+					handler_t _handler;
+					// Настройки разбора записи
+					settings_t _settings;
+					// Положение разбора в поданной записи
+					location_t _location;
 				private:
 					/**
 					 * \~russian
@@ -1081,6 +1039,28 @@ namespace awh {
 					 * \~
 					 */
 					vector <uint8_t> _pool;
+					/**
+					 * \~russian
+					 * Ведущие октеты разбираемой единицы у строгого вида разбора
+					 *
+					 * @details Сличение имён полей отображения идёт по ПОЛНОЙ записи имени, вместе
+					 *          с меткою: так же сличает их и сборка, и всякий иной порядок разошёлся бы с нею.
+					 *          Метка вместе с ведомой ею записью держится здесь, а содержимое берётся отрезком
+					 *          события в миг выдачи его.
+					 *
+					 * @note Вместилище это наполняется ЛИШЬ при строгом виде разбора
+					 *
+					 * \~english
+					 * Leading octets of the unit being parsed at the strict kind of the parsing
+					 *
+					 * @details The comparison of the names of the fields of a mapping goes by the FULL record
+					 *          of a name together with the tag, the same way as the writing compares them.
+					 *
+					 * @note This container is filled ONLY at the strict kind of the parsing
+					 *
+					 * \~
+					 */
+					vector <uint8_t> _lead;
 					/**
 					 * \~russian
 					 * Хранилище строк, исправленных правилом `malformed_t::REPLACE`
@@ -1113,7 +1093,35 @@ namespace awh {
 					 * \~
 					 */
 					vector <uint8_t> _repair;
+					// Буфер накопленных октетов поданной записи
+					vector <uint8_t> _buffer;
 				private:
+					// Стек вместимых разбора
+					vector <frame_t> _stack;
+					/**
+					 * \~russian
+					 * Отрезки записей имён полей всех вместимых стека
+					 *
+					 * @details Перечень общий: часть его, принадлежащая звену, начинается со
+					 *          смещения «frame_t::base», а снятие звена усекает перечень до него. Общим он
+					 *          заведён ради памяти: вместимость держится между отображениями, тогда как
+					 *          перечень в самом звене заводился бы заново на всякое из них.
+					 *
+					 * @note Наполняется ЛИШЬ при правиле `duplicate_t::REFUSE` вне строгого вида
+					 *
+					 * \~english
+					 * Segments of the records of the names of the fields of all the containers of the stack
+					 *
+					 * @details The list is shared: the part belonging to a link begins at the offset «frame_t::base»,
+					 *          and the removal of a link truncates the list to it. It is made shared for the sake of the
+					 *          memory: the capacity is kept between the mappings, whereas a list in the link itself would
+					 *          be created anew for every one of them.
+					 *
+					 * @note Filled ONLY at the rule `duplicate_t::REFUSE` outside the strict kind
+					 *
+					 * \~
+					 */
+					vector <naming_t> _spans;
 					/**
 					 * \~russian
 					 * Очередь собранных событий разбора
@@ -1133,78 +1141,34 @@ namespace awh {
 					 */
 					vector <record_t> _events;
 				private:
-					// Смещение первого невыданного события очереди
-					size_t _head;
-				private:
-					// Событие, выданное последним переходом
-					record_t _current;
-				private:
-					// Количество разобранных узлов документа
-					uint32_t _nodes;
-				private:
-					// Количество недостающих октетов ожидаемой записи
-					uint64_t _pending;
-				private:
-					// Вид значения, чьи октеты ожидаются
-					type_t _awaited;
-				private:
-					// Разновидность ожидаемого расширения
-					extend_t _extend;
-				private:
 					/**
 					 * \~russian
-					 * Размах вместимого, объявленный меткою, ноль - не объявлен
+					 * Запас указателей имён полей по глубине вложенности вместимых
 					 *
-					 * @note Размах считается от конца записи его: чтение, пропускающее
-					 *       вместимое, прибавляет размах к своему месту и оказывается за ним
+					 * @details Указатель берётся глубиною звена в стеке, а не заводится внутри
+					 *          него: звено живёт одним вместимым, тогда как запас переживает и запись, -
+					 *          оттого выделение памяти случается однажды на разбиратель, а не на всякое
+					 *          отображение. Сбросом разбора запас НЕ освобождается: переиспользуемый
+					 *          разбиратель тем и ценен, что памяти заново не просит.
+					 *
+					 * @note Гнездо держит место имени в общем перечне `_spans`, увеличенное на
+					 *       единицу: нуль означает гнездо пустое
 					 *
 					 * \~english
-					 * Span of the container declared by a tag, zero — not declared
+					 * Reserve of the indexes of the names of the fields by the depth of the nesting of the containers
 					 *
-					 * @note The span is counted from the end of its record: a reading skipping
-					 *       the container adds the span to its place and finds itself past it
+					 * @details An index is taken by the depth of a link in the stack rather than created inside it: a
+					 *          link lives by one container, whereas the reserve outlives the record, - therefore a memory
+					 *          allocation happens once per parser, not per every mapping. The reserve is NOT freed by the
+					 *          reset of the parsing: a reusable parser is valuable exactly because it does not ask for
+					 *          memory anew.
+					 *
+					 * @note A slot holds the place of a name in the shared list `_spans` increased by
+					 *       one: zero means an empty slot
 					 *
 					 * \~
 					 */
-					uint64_t _span;
-				private:
-					// Место записи за вместимым, объявленное последнею меткою размаха
-					uint64_t _beyond;
-				private:
-					/**
-					 * \~russian
-					 * Признак затребованного пропуска открываемого вместимого
-					 *
-					 * @note Пропуск объявляется обработчиком прямой выдачи ПОСРЕДИ открытия
-					 *       вместимого: событие начала его выдано, а звено стека ещё не заведено.
-					 *       Признак этот и переносит волю обработчика к тому месту, где вместимое
-					 *       заводится
-					 *
-					 * \~english
-					 * Sign of a demanded skipping of the container being opened
-					 *
-					 * @note The skipping is declared by the handler of the direct issuing IN THE MIDDLE of
-					 *       the opening of a container: the event of its beginning is issued, while the link of
-					 *       the stack is not yet created
-					 *
-					 * \~
-					 */
-					bool _skipping;
-				private:
-					// Десятичный порядок ожидаемой величины
-					int64_t _exponent;
-				private:
-					// Номер подвида ожидаемого открытого расширения
-					uint64_t _subtype;
-				private:
-					// Признак того, что величина ожидаемого расширения меньше нуля
-					bool _negative;
-				private:
-					// Признак завершённости хотя бы одного документа
-					bool _document;
-				private:
-					// Обработчик прямой выдачи событий разбора
-					handler_t _handler;
+					vector <vector <uint32_t>> _tables;
 				private:
 					// Опора обработчика прямой выдачи событий разбора
 					void * _context;
@@ -1220,7 +1184,7 @@ namespace awh {
 					 * @brief Method of the declaration of a refusal of the parsing
 					 *
 					 * @param error error code of the parsing
-					 * @return sign of the success of the parsing, always false
+					 * @return      sign of the success of the parsing, always false
 					 *
 					 * \~
 					 */
@@ -1288,7 +1252,7 @@ namespace awh {
 					 * @param offset offset of the record of the name of a field in the shared container of the octets
 					 * @param length length of the record of the name of a field of a mapping
 					 * @param digest digest of the record of the name of a field of a mapping
-					 * @return sign that the name of a field has already been in this container
+					 * @return       sign that the name of a field has already been in this container
 					 *
 					 * \~
 					 */
@@ -1324,7 +1288,7 @@ namespace awh {
 					 *          by an event of a name of a field, and itself closes the containers whose values are exhausted.
 					 *
 					 * @param record assembled event of the parsing
-					 * @return sign of the success of the parsing
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1340,7 +1304,7 @@ namespace awh {
 					 * @brief Method of the accounting of a completed value by its container
 					 *
 					 * @param record issued event of the completed value
-					 * @return sign of the success of the parsing
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1384,7 +1348,7 @@ namespace awh {
 					 * @brief Method of the parsing of the next unit of the wire record
 					 *
 					 * @param done sign that the unit could not be parsed
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1410,7 +1374,7 @@ namespace awh {
 					 * @brief Method of the parsing of the accumulated octets together with the end of the record
 					 *
 					 * @param last flag that the submitted chunk of the record is the last one
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1534,9 +1498,9 @@ namespace awh {
 					 *          that it gathers a whole and upon a failure removes it in full
 					 *
 					 * @param buffer buffer of the record being fed
-					 * @param size size of the buffer of the record being fed
-					 * @param last flag that the chunk is the last one
-					 * @return sign of the success of the parsing
+					 * @param size   size of the buffer of the record being fed
+					 * @param last   flag that the chunk is the last one
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1564,7 +1528,7 @@ namespace awh {
 					 *       commit: any other call has the right to move the buffer, and the pointer will become invalid
 					 *
 					 * @param size size of the requested place in octets
-					 * @return pointer to the issued place, zero — the parsing is answered by a refusal
+					 * @return     pointer to the issued place, zero — the parsing is answered by a refusal
 					 *
 					 * \~
 					 */
@@ -1582,7 +1546,7 @@ namespace awh {
 					 *
 					 * @param size size of the received octets, not above the issued place
 					 * @param last flag that the chunk is the last one
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1712,7 +1676,7 @@ namespace awh {
 					 *       issues nothing: all the events to a single one have gone to the handler
 					 *
 					 * @param callback handler being set, zero — removal of the handler
-					 * @param context support of the handler
+					 * @param context  support of the handler
 					 *
 					 * \~
 					 */
@@ -1804,13 +1768,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Reader() noexcept {}
+					~Reader() noexcept = default;
 			} reader_t;
 		};
 	};

@@ -39,7 +39,7 @@
 #include <cstddef>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -132,13 +132,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Item() noexcept : group(group_t::UNSIGNED), detail(0), value(0), indefinite(false) {}
+				explicit Item() noexcept;
 			} item_t;
 
 			/**
@@ -159,8 +158,8 @@ namespace awh {
 			 *          the native order on all the target machines, and a rearrangement on them costs nothing.
 			 *
 			 * @param result buffer the record should be laid into
-			 * @param value value being laid
-			 * @param width width of the record in octets
+			 * @param value  value being laid
+			 * @param width  width of the record in octets
 			 *
 			 * \~
 			 */
@@ -187,8 +186,8 @@ namespace awh {
 			 *          both sorts, and the appending sort calls this one.
 			 *
 			 * @param buffer buffer the record should be laid into
-			 * @param value value being laid
-			 * @param width width of the record in octets
+			 * @param value  value being laid
+			 * @param width  width of the record in octets
 			 *
 			 * \~
 			 */
@@ -213,8 +212,8 @@ namespace awh {
 			 *          width.
 			 *
 			 * @param result buffer the record should be laid into
-			 * @param group group kind of the wire record
-			 * @param value value being laid
+			 * @param group  group kind of the wire record
+			 * @param value  value being laid
 			 *
 			 * \~
 			 */
@@ -237,7 +236,7 @@ namespace awh {
 			 *          of a container of an indefinite length, its end and the singleton values.
 			 *
 			 * @param result buffer the record should be laid into
-			 * @param group group kind of the wire record
+			 * @param group  group kind of the wire record
 			 * @param detail detail of the leading octet
 			 *
 			 * \~
@@ -262,7 +261,7 @@ namespace awh {
 			 *          number receives the smallest record, and `INT64_MIN` is laid without an overflow.
 			 *
 			 * @param result buffer the record should be laid into
-			 * @param value value being laid
+			 * @param value  value being laid
 			 *
 			 * \~
 			 */
@@ -271,16 +270,16 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция обращения записи дополнения до −1 в число со знаком
 			 *
-			 * @param value значение, снятое с записи крупного вида `NEGATIVE`
+			 * @param value  значение, снятое с записи крупного вида `NEGATIVE`
 			 * @param result обращённое число со знаком
 			 * @return       признак представимости числа видом `int64_t`
 			 *
 			 * \~english
 			 * @brief Function of the turning of a record of a complement to −1 into a number with a sign
 			 *
-			 * @param value value taken from a record of the group kind `NEGATIVE`
+			 * @param value  value taken from a record of the group kind `NEGATIVE`
 			 * @param result turned number with a sign
-			 * @return sign of the representability of the number by the kind `int64_t`
+			 * @return       sign of the representability of the number by the kind `int64_t`
 			 *
 			 * \~
 			 */
@@ -296,7 +295,7 @@ namespace awh {
 			 * @brief Function of the laying of a fractional number of a single precision
 			 *
 			 * @param result buffer the record should be laid into
-			 * @param value value being laid
+			 * @param value  value being laid
 			 *
 			 * \~
 			 */
@@ -312,7 +311,7 @@ namespace awh {
 			 * @brief Function of the laying of a fractional number of a double precision
 			 *
 			 * @param result buffer the record should be laid into
-			 * @param value value being laid
+			 * @param value  value being laid
 			 *
 			 * \~
 			 */
@@ -362,11 +361,11 @@ namespace awh {
 			 *       substitution on 2026-09-04
 			 *
 			 * @param buffer buffer of the submitted record
-			 * @param size size of the submitted record in octets
+			 * @param size   size of the submitted record in octets
 			 * @param offset offset the unit should be taken from
-			 * @param item taken unit of the wire record
-			 * @param error error code if the unit could not be taken
-			 * @return sign of a successfully taken unit
+			 * @param item   taken unit of the wire record
+			 * @param error  error code if the unit could not be taken
+			 * @return       sign of a successfully taken unit
 			 *
 			 * \~
 			 */
@@ -383,8 +382,8 @@ namespace awh {
 			 * @brief Function of the taking of an integer of a set width
 			 *
 			 * @param buffer buffer of the submitted record
-			 * @param width width of the record in octets
-			 * @return taken value
+			 * @param width  width of the record in octets
+			 * @return       taken value
 			 *
 			 * \~
 			 */
@@ -409,10 +408,10 @@ namespace awh {
 			 *          of the continuing octets; a continuing octet outside the limit allotted to the leading one;
 			 *          a record of a code point longer than necessary; a surrogate; a code point above U+10FFFF.
 			 *
-			 * @param buffer buffer of the string being checked
-			 * @param size size of the string being checked in octets
+			 * @param buffer   buffer of the string being checked
+			 * @param size     size of the string being checked in octets
 			 * @param position offset of the first malformed sequence
-			 * @return sign of the conformity of the string to the encoding
+			 * @return         sign of the conformity of the string to the encoding
 			 *
 			 * \~
 			 */
@@ -435,9 +434,11 @@ namespace awh {
 			 *
 			 * @details The substitution is conducted by the MAXIMAL SUBPART as is prescribed by Unicode:
 			 *          a malformed sequence is substituted by ONE U+FFFD character however many octets it occupied.
+			 *          The substitution octet by octet would give three characters instead of one on a truncated
+			 *          four-octet point.
 			 *
 			 * @param buffer buffer of the string being repaired
-			 * @param size size of the string being repaired in octets
+			 * @param size   size of the string being repaired in octets
 			 * @param result buffer where the repaired string is placed
 			 *
 			 * \~

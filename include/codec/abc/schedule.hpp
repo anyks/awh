@@ -37,16 +37,19 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <shared_mutex>
 #include <condition_variable>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+
+#include "../../sys/locker.hpp"
 
 /**
  * \~russian
@@ -151,17 +154,14 @@ namespace awh {
 						THREAD   = 0x02  // Срок отбивается своим потоком
 					};
 				private:
+					// Признак работы отбоя срока
+					bool _working;
+				private:
 					// Способ отбоя срока
 					mode_t _mode;
 				private:
 					// Срок отбоя в миллисекундах
 					uint32_t _delay;
-				private:
-					// Признак работы отбоя срока
-					bool _working;
-				private:
-					// Штамп времени последнего отбоя срока в миллисекундах
-					uint64_t _stamp;
 				private:
 					/**
 					 * \~russian
@@ -189,15 +189,17 @@ namespace awh {
 					 * \~
 					 */
 					uint64_t _round;
-				private:
-					// Замок состояния отбоя срока
-					mutable mutex _mtx;
-				private:
-					// Условная переменная ожидания срока
-					condition_variable _cond;
+					// Штамп времени последнего отбоя срока в миллисекундах
+					uint64_t _stamp;
 				private:
 					// Поток отбоя срока
 					thread _thread;
+				private:
+					// Условная переменная ожидания срока
+					condition_variable_any _cond;
+				private:
+					// Замок состояния отбоя срока
+					mutable lock_state_t <std::shared_mutex> _mtx;
 					/**
 					 * \~russian
 					 * Потоки отбоя, ушедшие в отставку и ждущие ожидания
@@ -270,9 +272,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the start of the beating out of a deadline
 					 *
-					 * @param mode way of the beating out of the deadline
+					 * @param mode  way of the beating out of the deadline
 					 * @param delay deadline in milliseconds
-					 * @return sign of a successful start
+					 * @return      sign of a successful start
 					 *
 					 * \~
 					 */
@@ -420,11 +422,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Schedule() noexcept;
+					explicit Schedule() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor

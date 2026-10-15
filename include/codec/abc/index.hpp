@@ -43,11 +43,11 @@
 #include "chunk.hpp"
 #include "common.hpp"
 #include "header.hpp"
-#include <sys/macro/global.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -174,15 +174,20 @@ namespace awh {
 				uint32_t marks;
 				/**
 				 * \~russian
-				 * @brief Конструктор
+				 * @brief Метод объявления свойства строки оглавления
 				 *
+				 * @param mark  объявляемое свойство строки
+				 * @param value устанавливаемое значение свойства
 				 *
 				 * \~english
-				 * @brief Constructor
+				 * @brief Method of the declaration of a property of a row of the index
+				 *
+				 * @param mark  property of the row being declared
+				 * @param value value of the property being set
 				 *
 				 * \~
 				 */
-				Entry() noexcept : chunk(0), offset(0), length(0), marks(static_cast <uint32_t> (mark_t::NONE)) {}
+				void set(const mark_t mark, const bool value) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод проверки объявленного свойства строки оглавления
@@ -194,27 +199,21 @@ namespace awh {
 				 * @brief Method of the checking of a declared property of a row of the index
 				 *
 				 * @param mark property of the row being checked
-				 * @return sign of the declaration of the property
+				 * @return     sign of the declaration of the property
 				 *
 				 * \~
 				 */
 				[[nodiscard]] bool is(const mark_t mark) const noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод объявления свойства строки оглавления
-				 *
-				 * @param mark  объявляемое свойство строки
-				 * @param value устанавливаемое значение свойства
+				 * @brief Конструктор
 				 *
 				 * \~english
-				 * @brief Method of the declaration of a property of a row of the index
-				 *
-				 * @param mark property of the row being declared
-				 * @param value value of the property being set
+				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				void set(const mark_t mark, const bool value) noexcept;
+				explicit Entry() noexcept;
 			} entry_t;
 
 			/**
@@ -345,8 +344,8 @@ namespace awh {
 					 * @brief Method of the editing of a row of the index
 					 *
 					 * @param number number of the row of the index being edited
-					 * @param entry row of the index being set
-					 * @return sign of a successful editing
+					 * @param entry  row of the index being set
+					 * @return       sign of a successful editing
 					 *
 					 * \~
 					 */
@@ -395,7 +394,8 @@ namespace awh {
 					 * @details Serves the ROLLBACK: the commit brings the rows in as the chunks are written,
 					 *          and a refusal in the middle of it is obliged to return the index to what it was.
 					 *
-					 * @note A count greater than the present one does not touch the index
+					 * @note A count greater than the present one does not touch the index: the work
+					 *       truncates, and does not create rows out of nothing
 					 *
 					 * @param size count of the rows the index should be truncated to
 					 *
@@ -430,9 +430,9 @@ namespace awh {
 					 * @brief Method of the taking of an index from the octets
 					 *
 					 * @param buffer buffer of the submitted octets
-					 * @param size size of the submitted octets
-					 * @param error error code if the index could not be taken
-					 * @return sign of a successfully taken index
+					 * @param size   size of the submitted octets
+					 * @param error  error code if the index could not be taken
+					 * @return       sign of a successfully taken index
 					 *
 					 * \~
 					 */
@@ -447,18 +447,17 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Index() noexcept {}
+					explicit Index() noexcept = default;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Index() noexcept {}
+					~Index() noexcept = default;
 			} index_t;
 
 			/**
@@ -541,32 +540,27 @@ namespace awh {
 					 */
 					typedef function <bool (const uint64_t, const size_t, vector <uint8_t> &)> source_t;
 				private:
-					// Снятый заголовок опознания контейнера
-					header_t _header;
-				private:
-					// Снятое оглавление контейнера
-					index_t _index;
-				private:
-					// Модуль снятия кадра
-					packer_t _packer;
-				private:
-					// Код отказа выборки записи
-					error_t _error;
-				private:
 					// Признак открытого контейнера
 					bool _opened;
-				private:
 					// Признак удержания снятого кадра
 					bool _cached;
 				private:
 					// Смещение удерживаемого кадра от начала тела контейнера
 					uint64_t _origin;
 				private:
-					// Содержимое удерживаемого кадра
-					vector <uint8_t> _chunk;
-				private:
+					// Снятое оглавление контейнера
+					index_t _index;
+					// Код отказа выборки записи
+					error_t _error;
+					// Снятый заголовок опознания контейнера
+					header_t _header;
+					// Модуль снятия кадра
+					packer_t _packer;
 					// Работа чтения октетов контейнера
 					source_t _source;
+				private:
+					// Содержимое удерживаемого кадра
+					vector <uint8_t> _chunk;
 				private:
 					/**
 					 * \~russian
@@ -654,7 +648,7 @@ namespace awh {
 					 *
 					 * @param source work of the reading of the octets of the container being set
 					 * @param length full length of the container on the medium, zero — the length is unknown
-					 * @return sign of a successfully opened container
+					 * @return       sign of a successfully opened container
 					 *
 					 * \~
 					 */
@@ -672,7 +666,7 @@ namespace awh {
 					 *
 					 * @param number ordinal number of the record being fetched
 					 * @param result buffer the fetched record should be placed into
-					 * @return sign of a successfully fetched record
+					 * @return       sign of a successfully fetched record
 					 *
 					 * \~
 					 */
@@ -774,13 +768,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Fetcher() noexcept {}
+					~Fetcher() noexcept = default;
 			} fetcher_t;
 		};
 	};

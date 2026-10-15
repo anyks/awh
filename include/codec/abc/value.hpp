@@ -43,16 +43,15 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
 #include "document.hpp"
-#include <sys/macro/global.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -166,20 +165,24 @@ namespace awh {
 					typedef union Numeric {
 						// Логическое значение
 						bool flag;
+						// Дробное число
+						double real;
 						// Целое со знаком, а у отметки времени - её значение
 						int64_t integer;
 						// Целое без знака
 						uint64_t natural;
-						// Дробное число
-						double real;
 					} numeric_t;
+				private:
+					// Признак того, что величина числа меньше нуля
+					bool _negative;
+				private:
+					// Десятичный порядок величины числа неограниченной ширины
+					int64_t _exponent;
 				private:
 					// Вид узла значения
 					kind_t _kind;
-				private:
 					// Вид значения
 					type_t _type;
-				private:
 					// Число значения, хранимое родным видом
 					numeric_t _number;
 				private:
@@ -202,12 +205,6 @@ namespace awh {
 					 */
 					string _text;
 				private:
-					// Десятичный порядок величины числа неограниченной ширины
-					int64_t _exponent;
-				private:
-					// Признак того, что величина числа меньше нуля
-					bool _negative;
-				private:
 					/**
 					 * \~russian
 					 * Имена полей отображения
@@ -226,7 +223,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <Value> _keys;
-				private:
 					// Значения вместимого
 					vector <Value> _items;
 				private:
@@ -282,7 +278,7 @@ namespace awh {
 					 *          here in a single place so that the paths of the search do not diverge.
 					 *
 					 * @param name name of the field of the mapping being searched for
-					 * @return number of the field of the mapping, `size()` at the absence
+					 * @return     number of the field of the mapping, `size()` at the absence
 					 *
 					 * \~
 					 */
@@ -348,9 +344,9 @@ namespace awh {
 					 * @note Exactly two transitions diverge: an integer with a real, and an integer of an unlimited
 					 *       width with a decimal. A time stamp does not collapse with an integer - its kind has its own rank
 					 *
-					 * @param first first name of a field being compared
+					 * @param first  first name of a field being compared
 					 * @param second second name of a field being compared
-					 * @return sign that the names belong to one kind of the record
+					 * @return       sign that the names belong to one kind of the record
 					 *
 					 * \~
 					 */
@@ -515,7 +511,7 @@ namespace awh {
 					 * @brief Method of the checking of the belonging of a value to a kind
 					 *
 					 * @param type kind of the value, composite or exact
-					 * @return sign of the belonging of the value to the kind
+					 * @return     sign of the belonging of the value to the kind
 					 *
 					 * \~
 					 */
@@ -710,7 +706,7 @@ namespace awh {
 					 *       `CodecAbcValue.DigitsComeLeastSignificantFirst`
 					 *
 					 * @param result extracted digits of the number, the least significant octet first
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -769,16 +765,15 @@ namespace awh {
 					 *       record, and it must not diverge, otherwise the very same number would be laid by different
 					 *       labels. Fixed by a check `CodecAbcValue.DecimalIsBuildableWithoutARecord`
 					 *
-					 * @param buffer octets of the magnitude, the least significant octet first
-					 * @param size size of the octets of the magnitude
+					 * @param buffer   octets of the magnitude, the least significant octet first
+					 * @param size     size of the octets of the magnitude
 					 * @param negative sign that the number is less than zero
 					 * @param exponent decimal exponent of the magnitude, zero for an integer of any width
-					 * @return sign of the success of the setting
+					 * @return         sign of the success of the setting
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool decimal(const void * buffer, const size_t size,
-					 const bool negative = false, const int64_t exponent = 0) noexcept;
+					[[nodiscard]] bool decimal(const void * buffer, const size_t size, const bool negative = false, const int64_t exponent = 0) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения имени поля отображения по его номеру
@@ -790,7 +785,7 @@ namespace awh {
 					 * @brief Method of the extraction of the name of a field of a mapping by its number
 					 *
 					 * @param index number of the pair of the mapping
-					 * @return name of the field of the mapping
+					 * @return      name of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -807,7 +802,7 @@ namespace awh {
 					 * @brief Method of the checking of the presence of a field of a mapping by a name
 					 *
 					 * @param name name of the field of the mapping
-					 * @return sign of the presence of the field of the mapping
+					 * @return     sign of the presence of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -829,7 +824,7 @@ namespace awh {
 					 *          a leading zero is the number of a value of a container, the others are the name of a field of a mapping.
 					 *
 					 * @param path path to the value
-					 * @return reference to the value or a reference to an absent value
+					 * @return     reference to the value or a reference to an absent value
 					 *
 					 * \~
 					 */
@@ -853,7 +848,7 @@ namespace awh {
 					 *          issues a scrap value rather than creating a container of the demanded length.
 					 *
 					 * @param path path to the value
-					 * @return reference to the created value
+					 * @return     reference to the created value
 					 *
 					 * \~
 					 */
@@ -870,7 +865,7 @@ namespace awh {
 					 * @brief Operator of the extraction of a value of a field of a mapping by a name
 					 *
 					 * @param name name of the field of the mapping
-					 * @return reference to the value of the field of the mapping
+					 * @return     reference to the value of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -886,7 +881,7 @@ namespace awh {
 					 * @brief Operator of the creation of a value of a field of a mapping by a name
 					 *
 					 * @param name name of the field of the mapping
-					 * @return reference to the value of the field of the mapping
+					 * @return     reference to the value of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -902,7 +897,7 @@ namespace awh {
 					 * @brief Operator of the extraction of a value of a container by a number
 					 *
 					 * @param index number of the value of the container
-					 * @return reference to the value of the container
+					 * @return      reference to the value of the container
 					 *
 					 * \~
 					 */
@@ -918,7 +913,7 @@ namespace awh {
 					 * @brief Operator of the creation of a value of a container by a number
 					 *
 					 * @param index number of the value of the container
-					 * @return reference to the value of the container
+					 * @return      reference to the value of the container
 					 *
 					 * \~
 					 */
@@ -935,7 +930,7 @@ namespace awh {
 					 * @brief Method of the appending of a value to the end of a sequence
 					 *
 					 * @param value value being appended
-					 * @return sign of the success of the appending
+					 * @return      sign of the success of the appending
 					 *
 					 * \~
 					 */
@@ -957,9 +952,9 @@ namespace awh {
 					 * @details An occupied name is overwritten in its former place rather than transferred
 					 *          to the end: the order of the fields is a part of the record, and a transfer would change it.
 					 *
-					 * @param name name of the field of the mapping
+					 * @param name  name of the field of the mapping
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -994,9 +989,9 @@ namespace awh {
 					 *       of the storage: `UINT64(42)` narrows to `UINT8` upon a reassembling, and a comparison by
 					 *       the kinds would declare equal names different
 					 *
-					 * @param name name of the field of the mapping
+					 * @param name  name of the field of the mapping
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1022,10 +1017,10 @@ namespace awh {
 					 *          overwritten IN PLACE, preserving the order of the fields, and the number of the deposited
 					 *          field does not coincide with the length of the mapping at all.
 					 *
-					 * @param name name of the field of the mapping
+					 * @param name  name of the field of the mapping
 					 * @param value value being added
 					 * @param index number of the deposited field of the mapping
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1049,9 +1044,9 @@ namespace awh {
 					 *          `const char *` into `Value` and into `std::string` costs the compiler the same, and a call
 					 *          with a literal is ambiguous without it. Compare the same case at the constructor `Value(const char *)`
 					 *
-					 * @param name name of the field of the mapping
+					 * @param name  name of the field of the mapping
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1067,7 +1062,7 @@ namespace awh {
 					 * @brief Method of the removal of a field of a mapping by a name
 					 *
 					 * @param name name of the field of the mapping
-					 * @return sign of the success of the removal
+					 * @return     sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1083,7 +1078,7 @@ namespace awh {
 					 * @brief Method of the removal of a value of a container by a number
 					 *
 					 * @param index number of the value of the container
-					 * @return sign of the success of the removal
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1100,7 +1095,7 @@ namespace awh {
 					 * @brief Method of the extraction of a logical value
 					 *
 					 * @param result value being extracted
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1145,8 +1140,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the extraction of a number by the kind of an integer with a sign
 
+					 *
 					 * @param result value being extracted
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * @details The contract of the extraction is a CONVERSION, not a refusal upon a mismatch. A refusal
 					 *          is answered only by a value that is not a number at all, and by a number of an unlimited
@@ -1219,8 +1215,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the extraction of a number by the kind of an integer without a sign
 
+					 *
 					 * @param result value being extracted
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * @details The contract of the extraction is a CONVERSION, not a refusal upon a mismatch. A refusal
 					 *          is answered only by a value that is not a number at all, and by a number of an unlimited
@@ -1293,8 +1290,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the extraction of a number by the kind of a fractional one
 
+					 *
 					 * @param result value being extracted
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * @details The contract of the extraction is a CONVERSION, not a refusal upon a mismatch. A refusal
 					 *          is answered only by a value that is not a number at all, and by a number of an unlimited
@@ -1338,7 +1336,7 @@ namespace awh {
 					 * @brief Method of the extraction of the content of a value by a string
 					 *
 					 * @param result value being extracted
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1375,7 +1373,7 @@ namespace awh {
 					 * @brief Method of the laying of a value into an assembled record
 					 *
 					 * @param writer assembler of a binary record
-					 * @return sign of the success of the laying
+					 * @return       sign of the success of the laying
 					 *
 					 * \~
 					 */
@@ -1392,8 +1390,8 @@ namespace awh {
 					 * @brief Method of the parsing of a record into an owning value
 					 *
 					 * @param buffer buffer of the record being parsed
-					 * @param size size of the record being parsed in octets
-					 * @return sign of the success of the parsing
+					 * @param size   size of the record being parsed in octets
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1419,10 +1417,10 @@ namespace awh {
 					 *          refuses by default: a repetition of a field name of a mapping is refused by default, and
 					 *          without this kind of the work the owning value would not read such a record at all.
 					 *
-					 * @param buffer buffer of the record being parsed
-					 * @param size size of the record being parsed
+					 * @param buffer   buffer of the record being parsed
+					 * @param size     size of the record being parsed
 					 * @param settings settings of the parsing of the record
-					 * @return flag of the successful parsing
+					 * @return         flag of the successful parsing
 					 *
 					 * \~
 					 */
@@ -1476,8 +1474,8 @@ namespace awh {
 					 *          by an empty record, and by it one cannot learn what exactly has not been laid.
 					 *
 					 * @param result assembled record
-					 * @param error code of the refusal if the assembling has not succeeded
-					 * @return sign of the success of the assembling
+					 * @param error  code of the refusal if the assembling has not succeeded
+					 * @return       sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1514,10 +1512,10 @@ namespace awh {
 					 *          OCTETS, and a record assembled without the strict kind does not repeat itself octet for octet.
 					 *          Whoever needs the repeatability - needs these settings
 					 *
-					 * @param result assembled record
-					 * @param error code of the refusal if the assembling has not succeeded
+					 * @param result   assembled record
+					 * @param error    code of the refusal if the assembling has not succeeded
 					 * @param settings settings of the assembling of the record
-					 * @return sign of the success of the assembling
+					 * @return         sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1583,7 +1581,7 @@ namespace awh {
 					 *       `editor_t::append` with a subsequent commit
 					 *
 					 * @param document tree of the document the value is transferred into
-					 * @return sign of the success of the transfer
+					 * @return         sign of the success of the transfer
 					 *
 					 * @details **This circle goes by the DEFAULTS of both settings**: the laying is conducted by the
 					 *          default settings of the assembly, the parsing by the default settings of the parsing, and one
@@ -1618,7 +1616,7 @@ namespace awh {
 					 *       of the sequences does
 					 *
 					 * @param value value being compared
-					 * @return sign of the equality of the values
+					 * @return      sign of the equality of the values
 					 *
 					 * \~
 					 */
@@ -1634,7 +1632,7 @@ namespace awh {
 					 * @brief Operator of the comparison of the values for an inequality
 					 *
 					 * @param value value being compared
-					 * @return sign of the inequality of the values
+					 * @return      sign of the inequality of the values
 					 *
 					 * \~
 					 */
@@ -1644,13 +1642,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Value() noexcept;
+					explicit Value() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1761,6 +1758,20 @@ namespace awh {
 					Value(const char * value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон конструктора от указателя запрещён
+					 *
+					 * @tparam T тип данных указателя
+					 *
+					 * \~english
+					 * @brief Constructor template from a pointer is forbidden
+					 *
+					 * @tparam T pointer data type
+					 *
+					 * \~
+					 */
+					template <typename T>
+					/**
+					 * \~russian
 					 * @brief Конструктор от указателя запрещён
 					 *
 					 * @details Конструктор от истинности неявен намеренно - `insert("к", true)`
@@ -1787,7 +1798,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					Value(T *) = delete;
 					/**
 					 * \~russian
@@ -1842,7 +1852,7 @@ namespace awh {
 					 * @brief Copy assignment operator
 					 *
 					 * @param value value being copied
-					 * @return reference to the assigned value
+					 * @return      reference to the assigned value
 					 *
 					 * \~
 					 */
@@ -1858,7 +1868,7 @@ namespace awh {
 					 * @brief Move assignment operator
 					 *
 					 * @param value value being moved
-					 * @return reference to the assigned value
+					 * @return      reference to the assigned value
 					 *
 					 * \~
 					 */
@@ -1866,7 +1876,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
@@ -1911,6 +1920,27 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
 				private:
+					/**
+					 * \~russian
+					 * Признак завершённости сборки
+					 *
+					 * @details Признак нужен затем, что закрытие корневого вместилища путь
+					 *          опустошает, а опустошённый путь неотличим от несобранного значения.
+					 *
+					 * \~english
+					 * Flag of the completeness of the assembly
+					 *
+					 * @details The flag is needed because the closing of the root container empties the path,
+					 *          and an emptied path is indistinguishable from an unassembled value.
+					 *
+					 * \~
+					 */
+					bool _done;
+					// Признак назначенного имени поля отображения
+					bool _keyed;
+				private:
+					// Имя поля отображения, сборкой назначенное
+					Value _key;
 					// Собираемое значение
 					Value _root;
 				private:
@@ -1932,28 +1962,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <size_t> _path;
-				private:
-					// Имя поля отображения, сборкой назначенное
-					Value _key;
-				private:
-					// Признак назначенного имени поля отображения
-					bool _keyed;
-				private:
-					/**
-					 * \~russian
-					 * Признак завершённости сборки
-					 *
-					 * @details Признак нужен затем, что закрытие корневого вместилища путь
-					 *          опустошает, а опустошённый путь неотличим от несобранного значения.
-					 *
-					 * \~english
-					 * Flag of the completeness of the assembly
-					 *
-					 * @details The flag is needed because the closing of the root container empties the path.
-					 *
-					 * \~
-					 */
-					bool _done;
 				private:
 					/**
 					 * \~russian
@@ -1982,7 +1990,7 @@ namespace awh {
 					 *
 					 * @param value value being deposited
 					 * @param index number of the deposited value in the container
-					 * @return sign of the successful depositing
+					 * @return      sign of the successful depositing
 					 *
 					 * \~
 					 */
@@ -1998,7 +2006,7 @@ namespace awh {
 					 * @brief Method of the opening of a container of the requested kind
 					 *
 					 * @param value container being opened
-					 * @return sign of the success of the opening
+					 * @return      sign of the success of the opening
 					 *
 					 * \~
 					 */
@@ -2058,7 +2066,7 @@ namespace awh {
 					 * @brief Method of the assignment of the name of a field of a mapping
 					 *
 					 * @param name name of the field of the mapping being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2082,7 +2090,7 @@ namespace awh {
 					 *          the records which the codec itself both reads and writes.
 					 *
 					 * @param name name of the field of the mapping being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2104,7 +2112,7 @@ namespace awh {
 					 *          ambiguous without it. Compare `Value::insert(const char *, const Value &)`
 					 *
 					 * @param name name of the field of the mapping being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2121,7 +2129,7 @@ namespace awh {
 					 * @brief Method of the writing of a ready value
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2151,7 +2159,7 @@ namespace awh {
 					 * @brief Method of the writing of a logical value
 					 *
 					 * @param value logical value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2167,7 +2175,7 @@ namespace awh {
 					 * @brief Method of the writing of a whole value with a sign
 					 *
 					 * @param value whole value with a sign being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2183,7 +2191,7 @@ namespace awh {
 					 * @brief Method of the writing of a whole value without a sign
 					 *
 					 * @param value whole value without a sign being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2199,7 +2207,7 @@ namespace awh {
 					 * @brief Method of the writing of a fractional value
 					 *
 					 * @param value fractional value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2215,7 +2223,7 @@ namespace awh {
 					 * @brief Method of the writing of a string value
 					 *
 					 * @param value string value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2257,7 +2265,8 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the withdrawal of the assembled value
 					 *
-					 * @details The assembly is reset to the initial state after the withdrawal.
+					 * @details The assembly is reset to the initial state after the withdrawal and is
+					 *          fit for the assembly of the next value.
 					 *
 					 * @return assembled value
 					 *

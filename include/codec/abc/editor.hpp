@@ -32,7 +32,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <mutex>
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -44,16 +43,16 @@
  */
 #include "chunk.hpp"
 #include "index.hpp"
-#include "schedule.hpp"
-#include "signature.hpp"
 #include "value.hpp"
 #include "common.hpp"
 #include "header.hpp"
-#include <sys/macro/global.hpp>
+#include "schedule.hpp"
+#include "signature.hpp"
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -574,13 +573,12 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
@@ -592,13 +590,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Edit {
-						// Строка оглавления накопленной записи
-						entry_t entry;
-						// Номер правимой строки оглавления
-						uint64_t number;
+					typedef struct __AWH_SHARED_EXPORT__ Edit {
 						// Признак того, что запись вносится, а не правится
 						bool added;
+						// Строка оглавления накопленной записи
+						entry_t entry;
 						/**
 						 * \~russian
 						 * Номер уложенного кадра, несущего запись, либо предел размера,
@@ -611,80 +607,38 @@ namespace awh {
 						 * \~
 						 */
 						size_t batch;
+						// Номер правимой строки оглавления
+						uint64_t number;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Edit() noexcept : number(0), added(true), batch(0) {}
+						explicit Edit() noexcept;
 					} edit_t;
 				private:
-					/**
-					 * \~russian
-					 * Замок состояния правки контейнера
-					 *
-					 * @note Замок возвратный намеренно: самочинная фиксация зовётся изнутри
-					 *       внесения записи, и невозвратный замок затянул бы сам себя
-					 *
-					 * @note Замок этот берётся всяким обращением, а не одним лишь способом
-					 *       фиксации своим потоком: замок, берущийся выборочно, разошёлся бы с
-					 *       настройкой, смененной на ходу, и разошёлся бы молча
-					 *
-					 * \~english
-					 * Lock of the state of the editing of a container
-					 *
-					 * @note The lock is recursive deliberately: the self-willed commit is called from within
-					 *       the adding of a record, and a non-recursive lock would deadlock itself
-					 *
-					 * @note This lock is taken by every appeal rather than by the mode of the commit
-					 *       by an own thread alone: a lock taken selectively would diverge from
-					 *       a setting changed on the fly, and would diverge silently
-					 *
-					 * \~
-					 */
-					mutable recursive_mutex _mtx;
-				private:
-					// Отбой срока самочинной фиксации
-					schedule_t _schedule;
-				private:
-					// Дерево свёрток по кадрам правимого контейнера
-					merkle_t _merkle;
-				private:
-					// Модуль шифрования, отданный для подписи контейнера
-					const crypto_t * _signer;
+					// Признак наличия правок, ещё не закреплённых на носителе
+					bool _dirty;
+					// Признак открытого контейнера
+					bool _opened;
+					// Признак наличия хвостового заголовка опознания контейнера
+					bool _tailed;
+					// Признак удержания снятого кадра
+					bool _cached;
 				private:
 					// Имя ключа владельца правимого контейнера
 					string _name;
 				private:
-					// Желаемый вид хэш-суммы подписи владельца
-					crypto_t::hash_t _hash;
-				private:
-					// Заголовок опознания правимого контейнера
-					header_t _header;
-				private:
-					// Оглавление правимого контейнера
-					index_t _index;
-				private:
-					// Модуль укладки и снятия кадра
-					packer_t _packer;
-				private:
-					// Настройки правки контейнера
-					settings_t _settings;
-				private:
-					// Код отказа правки контейнера
-					error_t _error;
-				private:
-					// Признак открытого контейнера
-					bool _opened;
-				private:
+					// Порядковый номер следующего кадра
+					uint64_t _number;
 					// Полная длина правимого контейнера на носителе
 					uint64_t _length;
-				private:
+					// Смещение удерживаемого кадра от начала тела контейнера
+					uint64_t _origin;
 					// Количество октетов, обращённых правкой в мусор
 					uint64_t _garbage;
 					/**
@@ -711,18 +665,36 @@ namespace awh {
 					 */
 					uint64_t _erasing;
 				private:
-					// Порядковый номер следующего кадра
-					uint64_t _number;
-				private:
+					// Работа записи октетов контейнера
+					sink_t _sink;
+					// Оглавление правимого контейнера
+					index_t _index;
+					// Код отказа правки контейнера
+					error_t _error;
 					// Вид содержимого накопленных записей
 					payload_t _kind;
+					// Дерево свёрток по кадрам правимого контейнера
+					merkle_t _merkle;
+					// Заголовок опознания правимого контейнера
+					header_t _header;
+					// Модуль укладки и снятия кадра
+					packer_t _packer;
+					// Работа чтения октетов контейнера
+					source_t _source;
+					// Настройки правки контейнера
+					settings_t _settings;
+					// Отбой срока самочинной фиксации
+					schedule_t _schedule;
 				private:
-					// Накопленные записи, ещё не уложенные кадром
-					vector <uint8_t> _pending;
+					// Желаемый вид хэш-суммы подписи владельца
+					crypto_t::hash_t _hash;
 				private:
 					// Накопленные правки оглавления
 					vector <edit_t> _marks;
-				private:
+					// Содержимое удерживаемого кадра
+					vector <uint8_t> _chunk;
+					// Накопленные записи, ещё не уложенные кадром
+					vector <uint8_t> _pending;
 					/**
 					 * \~russian
 					 * Уложенные кадры, ещё не записанные на носитель
@@ -742,26 +714,8 @@ namespace awh {
 					 */
 					vector <vector <uint8_t>> _batches;
 				private:
-					// Признак наличия хвостового заголовка опознания контейнера
-					bool _tailed;
-				private:
-					// Признак наличия правок, ещё не закреплённых на носителе
-					bool _dirty;
-				private:
-					// Смещение удерживаемого кадра от начала тела контейнера
-					uint64_t _origin;
-				private:
-					// Признак удержания снятого кадра
-					bool _cached;
-				private:
-					// Содержимое удерживаемого кадра
-					vector <uint8_t> _chunk;
-				private:
-					// Работа чтения октетов контейнера
-					source_t _source;
-				private:
-					// Работа записи октетов контейнера
-					sink_t _sink;
+					// Модуль шифрования, отданный для подписи контейнера
+					const crypto_t * _signer;
 				private:
 					/**
 					 * \~russian
@@ -801,7 +755,7 @@ namespace awh {
 					 * @brief Method of the taking of a chunk of a container from the medium
 					 *
 					 * @param origin offset of the chunk from the beginning of the body of the container
-					 * @return sign of a successfully taken chunk
+					 * @return       sign of a successfully taken chunk
 					 *
 					 * \~
 					 */
@@ -859,16 +813,15 @@ namespace awh {
 					 * @brief Method of the accumulation of a record as an edit of a container
 					 *
 					 * @param buffer buffer of the record being accumulated
-					 * @param size size of the record being accumulated
-					 * @param kind kind of the content of the record being accumulated
-					 * @param added sign that the record is being added rather than edited
+					 * @param size   size of the record being accumulated
+					 * @param kind   kind of the content of the record being accumulated
+					 * @param added  sign that the record is being added rather than edited
 					 * @param number number of the row of the index being edited
-					 * @return sign of the success of the accumulation
+					 * @return       sign of the success of the accumulation
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool add(const void * buffer, const size_t size, const payload_t kind,
-					 const bool added, const uint64_t number) noexcept;
+					[[nodiscard]] bool add(const void * buffer, const size_t size, const payload_t kind, const bool added, const uint64_t number) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -925,14 +878,13 @@ namespace awh {
 					 *       agree
 					 *
 					 * @param crypto module of the encryption, zero — removal of the signature
-					 * @param name name of the key of the owner of the container
-					 * @param hash desired kind of the hash of the signature
-					 * @return sign of a successfully declared signature
+					 * @param name   name of the key of the owner of the container
+					 * @param hash   desired kind of the hash of the signature
+					 * @return       sign of a successfully declared signature
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool sign(const crypto_t * crypto, const string & name,
-					 const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
+					[[nodiscard]] bool sign(const crypto_t * crypto, const string & name, const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -955,9 +907,9 @@ namespace awh {
 					 *          to the generation which was before it.
 					 *
 					 * @param source work of the reading of the octets of the container being set
-					 * @param sink work of the writing of the octets of the container being set
+					 * @param sink   work of the writing of the octets of the container being set
 					 * @param length full length of the container on the medium
-					 * @return sign of a successfully opened container
+					 * @return       sign of a successfully opened container
 					 *
 					 * \~
 					 */
@@ -976,9 +928,9 @@ namespace awh {
 					 * @brief Method of the adding of a record to the end of a container
 					 *
 					 * @param buffer buffer of the record being added
-					 * @param size size of the record being added
-					 * @param kind kind of the content of the record being added
-					 * @return sign of the success of the adding
+					 * @param size   size of the record being added
+					 * @param kind   kind of the content of the record being added
+					 * @return       sign of the success of the adding
 					 *
 					 * \~
 					 */
@@ -998,14 +950,13 @@ namespace awh {
 					 *
 					 * @param number ordinal number of the record being edited
 					 * @param buffer buffer of the new record
-					 * @param size size of the new record
-					 * @param kind kind of the content of the new record
-					 * @return sign of the success of the editing
+					 * @param size   size of the new record
+					 * @param kind   kind of the content of the new record
+					 * @return       sign of the success of the editing
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool replace(const uint64_t number, const void * buffer, const size_t size,
-					 const payload_t kind = payload_t::MIXED) noexcept;
+					[[nodiscard]] bool replace(const uint64_t number, const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сноса записи контейнера по номеру
@@ -1025,7 +976,7 @@ namespace awh {
 					 *          from outside would turn into a reference to a foreign record.
 					 *
 					 * @param number ordinal number of the record being erased
-					 * @return sign of the success of the erasure
+					 * @return       sign of the success of the erasure
 					 *
 					 * \~
 					 */
@@ -1043,7 +994,7 @@ namespace awh {
 					 *
 					 * @param number ordinal number of the record being fetched
 					 * @param result buffer the fetched record should be placed into
-					 * @return sign of a successfully fetched record
+					 * @return       sign of a successfully fetched record
 					 *
 					 * \~
 					 */
@@ -1119,9 +1070,9 @@ namespace awh {
 					 *          a success and a truncated container will come out
 					 *
 					 * @param target work of the writing of the octets of the container being compacted
-					 * @param kind kind of the content of the records of the container being compacted
+					 * @param kind   kind of the content of the records of the container being compacted
 					 * @param length full length of the compacted container
-					 * @return sign of the success of the compaction
+					 * @return       sign of the success of the compaction
 					 *
 					 * \~
 					 */
@@ -1323,7 +1274,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor

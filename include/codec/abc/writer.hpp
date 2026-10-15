@@ -43,11 +43,11 @@
  */
 #include "common.hpp"
 #include "encoding.hpp"
-#include <sys/macro/global.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -290,8 +290,6 @@ namespace awh {
 						bool validate;
 						// Признак отказа на повторяющееся имя поля отображения
 						bool duplicates;
-						// Наибольшая допустимая глубина вложенности, ноль - предел модуля
-						uint32_t maxDepth;
 						/**
 						 * \~russian
 						 * Порог укладки содержимого ссылкой в октетах, ноль - копировать всегда
@@ -310,6 +308,8 @@ namespace awh {
 						 * \~
 						 */
 						size_t reference;
+						// Наибольшая допустимая глубина вложенности, ноль - предел модуля
+						uint32_t maxDepth;
 						/**
 						 * \~russian
 						 * Порог объявления размаха вместимого в значениях, ноль - не объявлять
@@ -357,18 +357,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
-					/**
-					 * \~russian
-					 * @brief Звено стека вместимых
-					 *
-					 * \~english
-					 * @brief Link of the stack of the containers
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Отрезок записи имени поля отображения вместе со свёрткой его
@@ -388,7 +379,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Naming {
+					typedef struct __AWH_SHARED_EXPORT__ Naming {
 						// Смещение записи имени поля от начала собираемой записи
 						uint32_t offset;
 						// Длина записи имени поля в октетах
@@ -412,7 +403,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Naming() noexcept : offset(0), length(0), digest(0) {}
+						explicit Naming() noexcept;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -430,23 +421,47 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept :
-						 offset(offset), length(length), digest(digest) {}
+						Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept;
 					} naming_t;
 				private:
-					typedef struct Frame {
+					/**
+					 * \~russian
+					 * @brief Звено стека вместимых
+					 *
+					 * \~english
+					 * @brief Link of the stack of the containers
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Frame {
+						// Отрезок записи имени поля, уложенного последним
+						span_t key;
+						/**
+						 * \~russian
+						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
+						 *
+						 * @note Значение, собираемое кусками, ведётся тем же стеком, что и
+						 *       вместимые: закрывается оно тем же концом, а куски его не суть
+						 *       значения вместившего
+						 *
+						 * \~english
+						 * Kind of the value assembled by the chunks, or UNDEFINED at a container
+						 *
+						 * @note A value assembled by the chunks is led by the same stack as the
+						 *       containers: it is closed by the same end, while its chunks are not
+						 *       the values of the container
+						 *
+						 * \~
+						 */
+						type_t segment;
+						// Признак того, что имя поля в этом вместимом уже было
+						bool marked;
 						// Признак того, что вместимое является отображением
 						bool mapping;
 						// Признак неопределённой длины вместимого
 						bool indefinite;
 						// Признак того, что следующим ожидается имя поля
 						bool expectKey;
-						// Признак того, что имя поля в этом вместимом уже было
-						bool marked;
-						// Количество оставшихся значений вместимого
-						uint64_t remain;
-						// Отрезок записи имени поля, уложенного последним
-						span_t key;
 						/**
 						 * \~russian
 						 * Отрезки записей всех имён полей вместимого
@@ -521,37 +536,18 @@ namespace awh {
 						 * \~
 						 */
 						size_t spanned;
-						/**
-						 * \~russian
-						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
-						 *
-						 * @note Значение, собираемое кусками, ведётся тем же стеком, что и
-						 *       вместимые: закрывается оно тем же концом, а куски его не суть
-						 *       значения вместившего
-						 *
-						 * \~english
-						 * Kind of the value assembled by the chunks, or UNDEFINED at a container
-						 *
-						 * @note A value assembled by the chunks is led by the same stack as the
-						 *       containers: it is closed by the same end, while its chunks are not
-						 *       the values of the container
-						 *
-						 * \~
-						 */
-						type_t segment;
+						// Количество оставшихся значений вместимого
+						uint64_t remain;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Frame() noexcept :
-						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
-						 base(0), hashed(0), spanned(0), segment(type_t::UNDEFINED) {}
+						explicit Frame() noexcept;
 					} frame_t;
 					/**
 					 * \~russian
@@ -570,13 +566,13 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Cut {
+					typedef struct __AWH_SHARED_EXPORT__ Cut {
+						// Размер октетов врезки
+						size_t size;
 						// Смещение врезки в буфере собираемой записи
 						size_t offset;
 						// Буфер октетов врезки
 						const void * buffer;
-						// Размер октетов врезки
-						size_t size;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -590,43 +586,26 @@ namespace awh {
 						 *
 						 * @param offset offset of the insertion in the buffer of the assembled record
 						 * @param buffer buffer of the octets of the insertion
-						 * @param size size of the octets of the insertion
+						 * @param size   size of the octets of the insertion
 						 *
 						 * \~
 						 */
-						Cut(const size_t offset, const void * buffer, const size_t size) noexcept :
-						 offset(offset), buffer(buffer), size(size) {}
+						Cut(const size_t offset, const void * buffer, const size_t size) noexcept;
 					} cut_t;
 				private:
-					// Настройки сборки записи
-					settings_t _settings;
+					// Признак того, что сборка отвечена отказом
+					bool _failed;
+				private:
+					// Количество собранных документов
+					uint32_t _documents;
 				private:
 					// Код отказа сборки
 					error_t _error;
-				private:
-					// Буфер собираемой записи
-					/**
-					 * \~russian
-					 * Буфер собираемой записи
-					 *
-					 * @note Буфер переменен у постоянного вида: выдача цельной записи вправе
-					 *       вклеить в него содержимое, уложенное ссылкой, и потребителю от того
-					 *       ничего не меняется
-					 *
-					 * \~english
-					 * Buffer of the assembled record
-					 *
-					 * @note The buffer is mutable at a constant kind: the issuance of a whole record
-					 *       has the right to glue into it the content laid by a reference, and for the consumer
-					 *       nothing changes from that
-					 *
-					 * \~
-					 */
-					mutable vector <uint8_t> _record;
+					// Настройки сборки записи
+					settings_t _settings;
 				private:
 					// Врезки чужого содержимого в собираемую запись
 					mutable vector <cut_t> _cuts;
-				private:
 					/**
 					 * \~russian
 					 * Стек вместимых сборки
@@ -677,6 +656,25 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Буфер собираемой записи
+					 *
+					 * @note Буфер переменен у постоянного вида: выдача цельной записи вправе
+					 *       вклеить в него содержимое, уложенное ссылкой, и потребителю от того
+					 *       ничего не меняется
+					 *
+					 * \~english
+					 * Buffer of the assembled record
+					 *
+					 * @note The buffer is mutable at a constant kind: the issuance of a whole record
+					 *       has the right to glue into it the content laid by a reference, and for the consumer
+					 *       nothing changes from that
+					 *
+					 * \~
+					 */
+					mutable vector <uint8_t> _record;
+				private:
+					/**
+					 * \~russian
 					 * Указатели имён полей, свои у всякой глубины вложенности
 					 *
 					 * @details Держатся они СБОРКОЙ, а не звеном стека: звено заводится и
@@ -696,12 +694,6 @@ namespace awh {
 					 */
 					mutable vector <vector <uint32_t>> _tables;
 				private:
-					// Признак того, что сборка отвечена отказом
-					bool _failed;
-				private:
-					// Количество собранных документов
-					uint32_t _documents;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод объявления отказа сборки
@@ -713,7 +705,7 @@ namespace awh {
 					 * @brief Method of the declaration of a refusal of the assembling
 					 *
 					 * @param error error code of the assembling
-					 * @return sign of the success of the assembling, always false
+					 * @return      sign of the success of the assembling, always false
 					 *
 					 * \~
 					 */
@@ -729,26 +721,11 @@ namespace awh {
 					 * @brief Method of the checking of the place a value is laid into
 					 *
 					 * @param container sign that a container is being laid
-					 * @return sign of the success of the assembling
+					 * @return          sign of the success of the assembling
 					 *
 					 * \~
 					 */
 					[[nodiscard]] bool prepare(const bool container) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод учёта уложенного значения
-					 *
-					 * @param start смещение начала записи уложенного значения
-					 * @return      признак успешности сборки
-					 *
-					 * \~english
-					 * @brief Method of the account of a laid value
-					 *
-					 * @param start offset of the beginning of the record of the laid value
-					 * @return sign of the success of the assembling
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Метод перестроения указателя имён полей вместимого
@@ -760,8 +737,8 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the rebuilding of the index of the names of the fields of a container
 					 *
-					 * @param depth the depth of a link whose index is rebuilt
-					 * @param frame a link of the stack of the containers
+					 * @param depth  the depth of a link whose index is rebuilt
+					 * @param frame  a link of the stack of the containers
 					 * @param needed the number of names the index must hold
 					 *
 					 * \~
@@ -780,15 +757,30 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the checking of the name of a field of a mapping for a repeat
 					 *
-					 * @param frame a link of the stack of the containers whose field name is checked
+					 * @param frame  a link of the stack of the containers whose field name is checked
 					 * @param offset an offset of the record of a field name from the beginning of the record being assembled
 					 * @param length the length of the record of the name of a field of a mapping
 					 * @param digest the digest of the record of the name of a field of a mapping
-					 * @return a sign that the field name has already been in this container
+					 * @return       a sign that the field name has already been in this container
 					 *
 					 * \~
 					 */
 					[[nodiscard]] bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод учёта уложенного значения
+					 *
+					 * @param start смещение начала записи уложенного значения
+					 * @return      признак успешности сборки
+					 *
+					 * \~english
+					 * @brief Method of the account of a laid value
+					 *
+					 * @param start offset of the beginning of the record of the laid value
+					 * @return      sign of the success of the assembling
+					 *
+					 * \~
+					 */
 					[[nodiscard]] bool account(const size_t start) noexcept;
 					/**
 					 * \~russian
@@ -802,10 +794,10 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the laying of the beginning of a container
 					 *
-					 * @param mapping sign that the container is a mapping
-					 * @param count number of the values of the container
+					 * @param mapping    sign that the container is a mapping
+					 * @param count      number of the values of the container
 					 * @param indefinite sign of an indefinite length of the container
-					 * @return sign of the success of the assembling
+					 * @return           sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -821,7 +813,7 @@ namespace awh {
 					 * @brief Method of the laying of the end of a container
 					 *
 					 * @param mapping sign that the container is a mapping
-					 * @return sign of the success of the assembling
+					 * @return        sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -837,7 +829,7 @@ namespace awh {
 					 * @brief Method of the beginning of a value assembled by the chunks
 					 *
 					 * @param string sign that a string is being assembled rather than binary data
-					 * @return sign of the success of the laying
+					 * @return       sign of the success of the laying
 					 *
 					 * \~
 					 */
@@ -853,7 +845,7 @@ namespace awh {
 					 * @brief Method of the end of a value assembled by the chunks
 					 *
 					 * @param string sign that a string is being assembled rather than binary data
-					 * @return sign of the success of the laying
+					 * @return       sign of the success of the laying
 					 *
 					 * \~
 					 */
@@ -894,8 +886,8 @@ namespace awh {
 					 *          by an insertion, while the rest is copied into the buffer of the assembled record.
 					 *
 					 * @param buffer buffer of the octets being laid
-					 * @param size size of the octets being laid
-					 * @param copy sign that the copying of the content is obligatory
+					 * @param size   size of the octets being laid
+					 * @param copy   sign that the copying of the content is obligatory
 					 *
 					 * \~
 					 */
@@ -926,7 +918,7 @@ namespace awh {
 					 * @brief Method of the laying of a logical value
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -942,7 +934,7 @@ namespace awh {
 					 * @brief Method of the laying of an integer with a sign
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -958,7 +950,7 @@ namespace awh {
 					 * @brief Method of the laying of an integer without a sign
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -974,7 +966,7 @@ namespace awh {
 					 * @brief Method of the laying of a fractional number of a double precision
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -990,7 +982,7 @@ namespace awh {
 					 * @brief Method of the laying of a fractional number of a single precision
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1006,7 +998,7 @@ namespace awh {
 					 * @brief Method of the laying of a string
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1023,8 +1015,8 @@ namespace awh {
 					 * @brief Method of the laying of binary data
 					 *
 					 * @param buffer buffer of the data being laid
-					 * @param size size of the data being laid in octets
-					 * @return sign of the success of the assembling
+					 * @param size   size of the data being laid in octets
+					 * @return       sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1040,7 +1032,7 @@ namespace awh {
 					 * @brief Method of the laying of a time stamp
 					 *
 					 * @param value value being laid
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1057,8 +1049,8 @@ namespace awh {
 					 * @brief Method of the laying of an identifier
 					 *
 					 * @param buffer buffer of the identifier being laid
-					 * @param size size of the identifier being laid in octets
-					 * @return sign of the success of the assembling
+					 * @param size   size of the identifier being laid in octets
+					 * @return       sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1083,10 +1075,10 @@ namespace awh {
 					 *          octet has no right to be a zero one: otherwise one and the same number would receive
 					 *          several records, and the strict kind would become impossible.
 					 *
-					 * @param buffer buffer of the octets of the magnitude
-					 * @param size size of the octets of the magnitude
+					 * @param buffer   buffer of the octets of the magnitude
+					 * @param size     size of the octets of the magnitude
 					 * @param negative sign that the number is less than zero
-					 * @return sign of the success of the assembling
+					 * @return         sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1120,11 +1112,11 @@ namespace awh {
 					 *       `CodecAbcValue.AbsorbFromDocument`: a substitution of the condition (an exponent always by a
 					 *       fractional) turns all three red (2026-09-04)
 					 *
-					 * @param buffer buffer of the octets of the magnitude
-					 * @param size size of the octets of the magnitude
+					 * @param buffer   buffer of the octets of the magnitude
+					 * @param size     size of the octets of the magnitude
 					 * @param negative sign that the number is less than zero
 					 * @param exponent decimal exponent of the magnitude
-					 * @return sign of the success of the assembling
+					 * @return         sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1158,29 +1150,14 @@ namespace awh {
 					 *       entirely: the agreement about them is the affair of the one who writes and reads the record
 					 *
 					 * @param subtype number of the subtype of the extension instituted by the consumer
-					 * @param buffer buffer of the octets of the extension
-					 * @param size size of the octets of the extension
-					 * @return sign of the success of the assembling
+					 * @param buffer  buffer of the octets of the extension
+					 * @param size    size of the octets of the extension
+					 * @return        sign of the success of the assembling
 					 *
 					 * \~
 					 */
 					[[nodiscard]] bool custom(const uint64_t subtype, const void * buffer, const size_t size) noexcept;
 				public:
-					/**
-					 * \~russian
-					 * @brief Метод укладки начала массива объявленной длины
-					 *
-					 * @param count количество значений массива
-					 * @return      признак успешности сборки
-					 *
-					 * \~english
-					 * @brief Method of the laying of the beginning of an array of a declared length
-					 *
-					 * @param count number of the values of the array
-					 * @return sign of the success of the assembling
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Метод начала строки, собираемой кусками
@@ -1259,6 +1236,21 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool blobEnd() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод укладки начала массива объявленной длины
+					 *
+					 * @param count количество значений массива
+					 * @return      признак успешности сборки
+					 *
+					 * \~english
+					 * @brief Method of the laying of the beginning of an array of a declared length
+					 *
+					 * @param count number of the values of the array
+					 * @return      sign of the success of the assembling
+					 *
+					 * \~
+					 */
 					[[nodiscard]] bool arrayBegin(const uint64_t count) noexcept;
 					/**
 					 * \~russian
@@ -1299,7 +1291,7 @@ namespace awh {
 					 * @brief Method of the laying of the beginning of a mapping of a declared length
 					 *
 					 * @param count number of the pairs of the mapping
-					 * @return sign of the success of the assembling
+					 * @return      sign of the success of the assembling
 					 *
 					 * \~
 					 */
@@ -1514,13 +1506,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Writer() noexcept {}
+					~Writer() noexcept = default;
 			} writer_t;
 		};
 	};
