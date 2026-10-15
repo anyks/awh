@@ -653,6 +653,23 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
  * @return         результат поиска совпадения
  *
  */
+void awh::regex::Engine::reset() noexcept {
+	/**
+	 * Если имя отметки совпадения последнего установлено
+	 */
+	if(!this->_marker.empty())
+		// Выполняем очистку имени отметки совпадения последнего
+		this->_marker.clear();
+}
+/**
+ * @brief Метод сопоставления текста выражением движка
+ *
+ * @param text     текст для сопоставления
+ * @param start    позиция начала поиска совпадения
+ * @param captures набор границ совпадения и захваченных групп
+ * @return         результат поиска совпадения
+ *
+ */
 bool awh::regex::Engine::exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept {
 	// Выводим результат сопоставления выражения движка с текстом
 	return this->exec(this->_expression, text, start, captures);

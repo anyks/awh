@@ -631,6 +631,30 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	/**
 	 * Если совпадение в тексте не обнаружено
 	 */
+	if((exp->machine != nullptr) && (exp->forward.steps != 0) &&
+	   (!exp->forward.anchored || !exp->forward.prefilter.active || ((text.size() > 0) &&
+	   exp->forward.prefilter.bytes[static_cast <uint8_t> (text.front())]))){
+		// Выполняем сброс отметки совпадения последнего
+		this->_engine.reset();
+		// Признак отказа порождённого сопоставителя от сопоставления
+		bool refused = false;
+		// Выполняем сопоставление порождённым машинным кодом напрямую
+		const bool done = exp->machine->exec(text, 0, result, refused);
+		/**
+		 * Если порождённый сопоставитель от сопоставления не отказался
+		 */
+		if(!refused){
+			// Выполняем снятие кода ошибки сопоставления с движка
+			this->receive();
+			// Если отсутствуют совпадения 
+			if(!done)
+				// Очищаем набор границ
+				result.clear();
+			// Выводим результат поиска совпадения
+			return done;
+		}
+	}
+	// Если совпадение в тексте не обнаружено
 	if(!this->_engine.exec(* exp, text, 0, result)){
 		// Выполняем очистку набора границ совпадения
 		result.clear();
