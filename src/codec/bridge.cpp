@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Исходный файл моста между контейнером ABC и текстовыми кодеками
- *
- * \~english
- * @brief Source file of the bridge between the container ABC and the text codecs
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -37,6 +31,12 @@
 #include <cstdio>
 
 /**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/bridge.hpp>
@@ -53,8 +53,6 @@
  *       нужна мосту: имя поля отображения разметке годно не всякое
  */
 #include <codec/xml/encoding.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -72,6 +70,11 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Метод проверки глубины дерева контейнера ABC
 	 *
 	 * @param value значение проверяемого дерева
@@ -87,7 +90,9 @@ namespace {
 			return false;
 		// Если значение содержит дочерние узлы
 		if(value.is(abc::type_t::CONTAINER)){
-			// Проверяем каждый дочерний узел без копирования дерева
+			/**
+			 * Проверяем каждый дочерний узел без копирования дерева
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Если глубина дочернего дерева недопустима
 				if(!::within(value[i], limit, depth + 1))
@@ -114,7 +119,9 @@ namespace {
 		if(((pos + 2) >= name.size()) || (name.at(pos + 1) != 'x'))
 			// Сообщаем, что ограждающая запись здесь не начата
 			return false;
-		// Выполняем перебор знаков шестнадцатеричных за знаком записи
+		/**
+		 * Выполняем перебор знаков шестнадцатеричных за знаком записи
+		 */
 		for(size_t i = (pos + 2); (i < name.size()) && (i <= (pos + 9)); i++){
 			// Если знаком является подчёркивание замыкающее
 			if(name.at(i) == '_')
@@ -145,7 +152,9 @@ namespace {
 		string result = "";
 		// Выполняем резервирование памяти под собираемое имя
 		result.reserve(name.size());
-		// Выполняем перебор всех знаков имени разметки
+		/**
+		 * Выполняем перебор всех знаков имени разметки
+		 */
 		for(size_t i = 0; i < name.size();){
 			// Если с этого места начата ограждающая запись
 			if((name.at(i) == '_') && ::escaped(name, i)){
@@ -156,7 +165,7 @@ namespace {
 				// Собираемая запись знака в кодировке UTF-8
 				string letter = "";
 				// Выполняем запись кодового значения знака в кодировке UTF-8
-				if(awh::codec::xml::encode(code, letter))
+				if(codec::xml::encode(code, letter))
 					// Выполняем добавление собранного знака
 					result.append(letter);
 				// Выполняем переход за ограждающую запись
@@ -174,10 +183,7 @@ namespace {
 	 * @brief Метод обращения имени поля в имя, разметке годное
 	 *
 	 * @details Знаки, имени разметки негодные, записываются видом `_xHH_`, где HH
-	 *          есть кодовое значение знака шестнадцатеричной записью
-	 *
-	 * @param name имя поля отображения
-	 * @return     имя, разметке годное
+	 *          есть кодовое значение знака шестнадцатеричной записью.
 	 *
 	 * @note Круг правка эта ЗАМЫКАЕТ: обратное чтение разбирает записи `_xHH_`
 	 *       обратно в знаки, и имя выходит исходным. Прежде круг не замыкался, и
@@ -188,20 +194,26 @@ namespace {
 	 * @warning Ограждение обязано быть ОДНОЗНАЧНЫМ: имя, само несущее запись вида
 	 *          `_xHH_`, огораживается подчёркиванием `_x5F_`, иначе обратное чтение
 	 *          обратило бы запись, потребителем писанную, в знак, коего он не писал
+	 *
+	 * @param name имя поля отображения
+	 * @return     имя, разметке годное
+	 *
 	 */
 	string nameable(const string & name) noexcept {
 		// Собираемое имя, разметке годное
 		string result = "";
 		// Выполняем резервирование памяти под собираемое имя
 		result.reserve(name.size());
-		// Выполняем перебор всех знаков имени поля
+		/**
+		 * Выполняем перебор всех знаков имени поля
+		 */
 		for(size_t i = 0; i < name.size();){
 			// Длина записи знака в кодировке UTF-8
 			size_t length = 0;
 			// Выполняем чтение кодового значения знака
-			const uint32_t code = awh::codec::xml::decode(name.data() + i, name.size() - i, length);
+			const uint32_t code = codec::xml::decode(name.data() + i, name.size() - i, length);
 			// Если кодовое значение прочесть не удалось
-			if((code == awh::codec::xml::INVALID_CODEPOINT) || (length == 0)){
+			if((code == codec::xml::INVALID_CODEPOINT) || (length == 0)){
 				// Хранилище записи кодового значения знака
 				char buffer[8];
 				// Выполняем запись кодового значения негодного октета
@@ -229,7 +241,7 @@ namespace {
 				continue;
 			}
 			// Признак годности знака на своём месте имени
-			const bool admissible = (result.empty() ? awh::codec::xml::isNameStart(code) : awh::codec::xml::isName(code));
+			const bool admissible = (result.empty() ? codec::xml::isNameStart(code) : codec::xml::isName(code));
 			// Если знак на своём месте имени годен
 			if(admissible)
 				// Выполняем добавление знака как он есть
@@ -252,17 +264,22 @@ namespace {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::codec::Bridge::Settings::Settings() noexcept : 
+ typed(true), depth(512), empty(empty_t::BOOLEAN),
+ narrow(narrow_t::TEXT), text{"value"}, root{"config"},
+ item{"item"}, array{"array"}, format(json::format_t::PRETTY) {}
+
+/**
  * @brief Метод упреждающего спроса пропуска значения правилом сужения
  *
- * @param value значение контейнера ABC
- * @param depth глубина обхода дерева
- * @return      признак пропуска значения правилом сужения
- *
  * @details Ход этот нужен ОДНОЙ лишь дороге JSON, и вот отчего: писатель её
- * поточный, имя поля уходит в запись ДО значения, и пропустить значение после
- * записи имени нельзя вовсе - вышло бы имя без значения. Прочие четыре дороги
- * собирают владеющее значение и кладут его полем СЛЕДОМ, и им довольно признака,
- * ходом подачи выставленного
+ *          поточный, имя поля уходит в запись ДО значения, и пропустить значение после
+ *          записи имени нельзя вовсе - вышло бы имя без значения. Прочие четыре дороги
+ *          собирают владеющее значение и кладут его полем СЛЕДОМ, и им довольно признака,
+ *          ходом подачи выставленного.
  *
  * @note Спрос идёт подачею писателю ЧЕРНОВОМУ, а собранное им отбрасывается:
  *       так знание о том, какие виды записи ведомы, остаётся в ОДНОМ месте - у
@@ -272,6 +289,10 @@ namespace {
  * @warning Спрос ставится лишь на значениях ПРОСТЫХ: вместилище правилом сужения
  *          не пропускается никогда, а черновая подача его обошла бы всё поддерево
  *          и обратила бы обход в квадратичный
+ *
+ * @param value значение контейнера ABC
+ * @param depth глубина обхода дерева
+ * @return      признак пропуска значения правилом сужения
  *
  */
 bool awh::codec::Bridge::narrows(const abc::value_t & value, const uint32_t depth) noexcept {
@@ -290,7 +311,6 @@ bool awh::codec::Bridge::narrows(const abc::value_t & value, const uint32_t dept
 	// Выводим результат спроса пропуска значения
 	return result;
 }
-
 /**
  * @brief Метод подачи значения ABC писателю JSON
  *
@@ -314,7 +334,9 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 	if(!value.valid())
 		// Выводим пустое значение записью JSON
 		return writer.null();
-	// Определяем вид поданного значения
+	/**
+	 * Определяем вид поданного значения
+	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является пустым
 		case static_cast <uint32_t> (abc::type_t::NUL):
@@ -348,7 +370,9 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 			if(!writer.array())
 				// Выходим из метода, заведение отвечено отказом
 				return false;
-			// Выполняем перебор всех значений вместимого
+			/**
+			 * Выполняем перебор всех значений вместимого
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Если значение пропускается правилом сужения
 				if(this->narrows(value[i], depth + 1))
@@ -370,7 +394,9 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 			if(!writer.object())
 				// Выходим из метода, заведение отвечено отказом
 				return false;
-			// Выполняем перебор всех полей отображения
+			/**
+			 * Выполняем перебор всех полей отображения
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Извлекаемое имя поля отображения
 				string name = "";
@@ -541,7 +567,6 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 	// Выходим из метода, перевод отвечен отказом
 	return false;
 }
-
 /**
  * @brief Метод укладки значения JSON в значение ABC
  *
@@ -565,12 +590,15 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 	if(!value.valid())
 		// Выходим из метода, укладывать нечего
 		return true;
-	// Определяем вид значения документа JSON
+	/**
+	 * Определяем вид значения документа JSON
+	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является пустым
 		case static_cast <uint32_t> (json::type_t::NUL):
 			// Выполняем укладку пустого значения
 			result = abc::value_t(abc::kind_t::NUL);
+		// Выводим признак уложенного пустого значения
 		return true;
 		// Если значение является логическим
 		case static_cast <uint32_t> (json::type_t::BOOL): {
@@ -598,7 +626,9 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 		case static_cast <uint32_t> (json::type_t::ARRAY): {
 			// Выполняем заведение вместимого контейнера ABC
 			result = abc::value_t(abc::kind_t::ARRAY);
-			// Выполняем перебор всех значений массива
+			/**
+			 * Выполняем перебор всех значений массива
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				/**
 				 * Добавляем место для элемента: длину задаёт разобранная запись JSON.
@@ -618,7 +648,9 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 		case static_cast <uint32_t> (json::type_t::OBJECT): {
 			// Выполняем заведение отображения контейнера ABC
 			result = abc::value_t(abc::kind_t::MAP);
-			// Выполняем перебор всех полей объекта
+			/**
+			 * Выполняем перебор всех полей объекта
+			 */
 			for(auto item = value.begin(); item.valid(); item = item.next()){
 				// Выполняем укладку значения поля в поле отображения
 				if(!this->absorb(item, result[string(item.name())], depth + 1))
@@ -689,7 +721,6 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 	// Сообщаем, что укладка значения выполнена
 	return true;
 }
-
 /**
  * @brief Метод спроса о виде, всякой текстовой записи родном
  *
@@ -720,19 +751,18 @@ bool awh::codec::Bridge::native(const abc::value_t & value) const noexcept {
 		value.is(abc::type_t::CONTAINER)
 	);
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись самого контейнера ABC
- *
- * @param value  дерево значений контейнера ABC
- * @param result собранная запись контейнера ABC
- * @return       результат перевода
  *
  * @warning Дорога эта прежде не была заведена вовсе: вид `format_t::ABC`
  *          объявлен перечнем и описан здесь же записью двоичной, а спрос его
  *          отвечался «вид мостом ещё не переводится». Потребитель, вид записи
  *          выбирающий настройкой, получал отказ на вид, мостом обещанный.
- *          Замерено 15.09.2026 аудитом
+ *          Замерено 15.09.2026 аудитом.
+ *
+ * @param value  дерево значений контейнера ABC
+ * @param result собранная запись контейнера ABC
+ * @return       результат перевода
  *
  */
 bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) noexcept {
@@ -754,7 +784,7 @@ bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) 
 		// Запоминаем код отказа перевода
 		this->_error = ((error == abc::error_t::DEPTH_EXCEEDED) ? error_t::DEEP_TREE : error_t::WRITING);
 		// Выводим сообщение об отказе сборки записи контейнера
-		awh::log::print("Запись контейнера ABC собрать не удалось: код отказа %u", awh::log::flag_t::WARNING, static_cast <uint16_t> (error));
+		log::print("Запись контейнера ABC собрать не удалось: код отказа %u", log::flag_t::WARNING, static_cast <uint16_t> (error));
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -763,7 +793,6 @@ bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) 
 	// Сообщаем, что перевод дерева выполнен
 	return true;
 }
-
 /**
  * @brief Метод перевода записи контейнера ABC в дерево ABC
  *
@@ -778,7 +807,7 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 		// Запоминаем код отказа перевода
 		this->_error = error_t::PARSING;
 		// Выводим сообщение о пустой записи контейнера
-		awh::log::print("Запись контейнера ABC подана пустою", awh::log::flag_t::WARNING);
+		log::print("Запись контейнера ABC подана пустою", log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -801,7 +830,7 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 		// Запоминаем код отказа перевода
 		this->_error = ((document.error() == abc::error_t::DEPTH_EXCEEDED) ? error_t::DEEP_TREE : error_t::PARSING);
 		// Выводим сообщение об отказе разбора записи контейнера
-		awh::log::print("Запись контейнера ABC разобрать не удалось", awh::log::flag_t::WARNING);
+		log::print("Запись контейнера ABC разобрать не удалось", log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -819,7 +848,6 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 	// Сообщаем, что перевод записи выполнен
 	return true;
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись JSON
  *
@@ -862,7 +890,6 @@ bool awh::codec::Bridge::encodeJSON(const abc::value_t & value, string & result)
 	// Сообщаем, что перевод выполнен
 	return true;
 }
-
 /**
  * @brief Метод перевода записи JSON в дерево ABC
  *
@@ -897,16 +924,15 @@ bool awh::codec::Bridge::decodeJSON(const string_view text, abc::value_t & resul
 	// Выполняем укладку разобранного дерева в значение контейнера ABC
 	return this->absorb(document.root(), result, 0);
 }
-
 /**
  * @brief Метод снятия отменяющей записи со звена пути
- *
- * @param link звено пути с отменяющими записями
- * @return     исходное имя потомка
  *
  * @warning Порядок снятия предписан RFC 6901 и обратным быть не может: снятие
  *          `~0` прежде `~1` обратило бы записанное `~01` в косую черту вместо
  *          записи `~1`. Тот же довод стоит у кодека JSON
+ *
+ * @param link звено пути с отменяющими записями
+ * @return     исходное имя потомка
  *
  */
 string awh::codec::Bridge::unescape(const string & link) const noexcept {
@@ -914,11 +940,15 @@ string awh::codec::Bridge::unescape(const string & link) const noexcept {
 	string result = "";
 	// Выполняем резервирование памяти под исходное имя
 	result.reserve(link.size());
-	// Выполняем перебор всех знаков звена пути
+	/**
+	 * Выполняем перебор всех знаков звена пути
+	 */
 	for(size_t i = 0; i < link.size(); i++){
 		// Если знак является началом отменяющей записи
 		if((link[i] == '~') && ((i + 1) < link.size())){
-			// Определяем вид отменяющей записи
+			/**
+			 * Определяем вид отменяющей записи
+			 */
 			switch(link[i + 1]){
 				// Если записана косая черта
 				case '1': {
@@ -942,17 +972,16 @@ string awh::codec::Bridge::unescape(const string & link) const noexcept {
 	// Выводим собранное исходное имя потомка
 	return result;
 }
-
 /**
  * @brief Метод наложения отменяющей записи на имя потомка
- *
- * @param name исходное имя потомка
- * @return     звено пути с отменяющими записями
  *
  * @warning Порядок наложения предписан RFC 6901 и обратным быть не может:
  *          наложение на косую черту прежде наложения на тильду обратило бы
  *          имя `a~/b` в звено `a~01b`, при снятии дающее `a~/b` неверно.
  *          Тильда записывается ПЕРВОЙ
+ *
+ * @param name исходное имя потомка
+ * @return     звено пути с отменяющими записями
  *
  */
 string awh::codec::Bridge::escape(const string & name) const noexcept {
@@ -960,9 +989,13 @@ string awh::codec::Bridge::escape(const string & name) const noexcept {
 	string result = "";
 	// Выполняем резервирование памяти под звено пути
 	result.reserve(name.size());
-	// Выполняем перебор всех знаков имени потомка
+	/**
+	 * Выполняем перебор всех знаков имени потомка
+	 */
 	for(auto & letter : name){
-		// Определяем знак имени потомка
+		/**
+		 * Определяем знак имени потомка
+		 */
 		switch(letter){
 			// Если знаком оказалась тильда
 			case '~':
@@ -983,12 +1016,8 @@ string awh::codec::Bridge::escape(const string & name) const noexcept {
 	// Выводим собранное звено пути
 	return result;
 }
-
 /**
  * @brief Метод выдачи записи простого значения ABC
- *
- * @param value значение контейнера ABC
- * @return      запись простого значения
  *
  * @warning Ход `text()` у контейнера ABC отдаёт запись ЛИШЬ у последовательности
  *          знаков, а у числа, логического значения и пустоты ПУСТ - это не
@@ -998,6 +1027,9 @@ string awh::codec::Bridge::escape(const string & name) const noexcept {
  *          настроек, собранных из доводов запуска, где число приходит числом,
  *          а не строкой, - круговая проверка через сам кодек этого не ловила,
  *          ибо там всякое значение приходило из разбора уже строкою
+ *
+ * @param value значение контейнера ABC
+ * @return      запись простого значения
  *
  */
 string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
@@ -1042,7 +1074,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 			 *          обратным чтением дающую то же самое число, и чтение у моста
 			 *          идёт им же - дороги записи и чтения обязаны быть одной
 			 */
-			const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
+			const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
 			// Если запись числа дробного выполнить не удалось
 			if(!static_cast <bool> (output))
 				// Выводим запись значения, как её отдаёт контейнер
@@ -1085,7 +1117,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 		// Если значение извлекается целым без знака
 		if(value.value(digit))
 			// Выводим запись целого без знака
-			return std::to_string(digit);
+			return ::to_string(digit);
 	}
 	/**
 	 * Извлекаемое целое со знаком
@@ -1097,13 +1129,13 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 	// Если значение извлекается целым со знаком
 	if(value.value(number))
 		// Выводим запись целого со знаком
-		return std::to_string(number);
+		return ::to_string(number);
 	// Извлекаемое целое без знака
 	uint64_t digit = 0;
 	// Если значение извлекается целым без знака
 	if(value.value(digit))
 		// Выводим запись целого без знака
-		return std::to_string(digit);
+		return ::to_string(digit);
 	// Извлекаемое число дробное
 	double real = 0.;
 	// Если значение извлекается числом дробным
@@ -1117,7 +1149,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 		 *          дробного выше: `std::to_string` пишет шесть знаков после точки
 		 *          и теряет саму величину, а не разряды
 		 */
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
+		const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
 		// Если запись числа дробного выполнена
 		if(static_cast <bool> (output))
 			// Выводим собранную запись числа дробного
@@ -1126,12 +1158,8 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 	// Выводим запись значения, как её отдаёт контейнер
 	return value.text();
 }
-
 /**
  * @brief Метод вывода значения ABC из его записи
- *
- * @param text запись значения
- * @return     выведенное значение контейнера ABC
  *
  * @warning Порядок звеньев цепи значим: целое спрашивается ПРЕЖДЕ дробного,
  *          ибо запись `8080` отвечает обоим, а видом ей надлежит быть целым.
@@ -1154,6 +1182,9 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
  *          `18446744073709551615`, теряя единицу молча. Здесь же вопрос иной -
  *          «число ли это вовсе», - и запись, в родной вид не вместимая,
  *          остаётся последовательностью знаков целиком
+ *
+ * @param text запись значения
+ * @return     выведенное значение контейнера ABC
  *
  */
 awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const noexcept {
@@ -1178,7 +1209,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 	 */
 	string record = text;
 	// Выполняем очистку записи от обвязки пробелами
-	awh::fmk::transform(record, awh::fmk::transform_t::TRIM);
+	fmk::transform(record, fmk::transform_t::TRIM);
 	// Если запись пуста
 	if(record.empty())
 		// Выводим значение последовательностью знаков
@@ -1206,19 +1237,6 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 			return abc::value_t(text);
 		// Получаем конец записи числа
 		const char * end = record.data() + record.size();
-		/**
-		 * Целое спрашивается разбором, а НЕ проверкой каркаса
-		 *
-		 * @warning Проверка `awh::fmk::is` привратником здесь стояла и записи с
-		 *          указателем степени отбрасывала: замер 08.09.2026 - `1e-9` она
-		 *          признаёт, а `-2.5e3`, `1E5` и `1.7976931348623157e+308` уже нет,
-		 *          и такая запись выходила мостом ПОСЛЕДОВАТЕЛЬНОСТЬЮ ЗНАКОВ.
-		 *          Разбор `num/lexical` сам отвечает, разобрана ли запись ЦЕЛИКОМ
-		 *          (`res.ptr == end`), и привратник ему не нужен вовсе: запись
-		 *          `1.5` целым не разберётся - разбор встанет на точке. Расхождение
-		 *          самой проверки каркаса доложено по принадлежности отдельно,
-		 *          подпирать его здесь нельзя
-		 */
 		/**
 		 * Определяем запись ЦЕЛОГО: ни точки, ни указателя степени в ней нет
 		 *
@@ -1266,28 +1284,27 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		}
 	}
 	// Если запись означает истину
-	if(awh::fmk::compare("true", record))
+	if(fmk::compare("true", record))
 		// Выводим значение логическою истиной
 		return abc::value_t(true);
 	// Если запись означает ложь
-	if(awh::fmk::compare("false", record))
+	if(fmk::compare("false", record))
 		// Выводим значение логическою ложью
 		return abc::value_t(false);
 	// Выводим значение последовательностью знаков
 	return abc::value_t(text);
 }
-
 /**
  * @brief Метод подачи значения ABC значению YAML
+ *
+ * @warning Виды BLOB, TIME, UUID и CUSTOM записи YAML неведомы, и обращение с
+ *          ними решает настройка сужения: STRICT отвечает отказом, TEXT кладёт
+ *          их последовательностью знаков, SKIP пропускает вовсе
  *
  * @param value  значение контейнера ABC
  * @param result собираемое значение записи YAML
  * @param depth  глубина обхода дерева
  * @return       результат подачи
- *
- * @warning Виды BLOB, TIME, UUID и CUSTOM записи YAML неведомы, и обращение с
- *          ними решает настройка сужения: STRICT отвечает отказом, TEXT кладёт
- *          их последовательностью знаков, SKIP пропускает вовсе
  *
  */
 bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & result, const uint32_t depth) noexcept {
@@ -1304,7 +1321,9 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 	if(!value.valid())
 		// Выходим из метода, подавать нечего
 		return true;
-	// Определяем вид значения контейнера ABC
+	/**
+	 * Определяем вид значения контейнера ABC
+	 */
 	switch(static_cast <uint32_t> (value.type())){
 		/**
 		 * Если значение является пустым
@@ -1326,12 +1345,16 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 				return false;
 			// Выполняем заведение логического значения
 			result = yaml::Value(number);
-		} return true;
+			// Выходим из метода, пустое значение уже заведено
+			return true;
+		}
 		// Если значение является последовательностью знаков
 		case static_cast <uint32_t> (abc::type_t::STRING): {
 			// Выполняем заведение последовательности знаков
 			result = yaml::Value(value.text());
-		} return true;
+			// Выходим из метода, пустое значение уже заведено
+			return true;
+		}
 		// Если значение является вместимым
 		case static_cast <uint32_t> (abc::type_t::ARRAY): {
 			/**
@@ -1347,7 +1370,9 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			 *          09.09.2026 аудитом
 			 */
 			result = yaml::Value(yaml::kind_t::SEQUENCE);
-			// Выполняем перебор всех значений вместимого
+			/**
+			 * Выполняем перебор всех значений вместимого
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Собираемое значение перечня
 				yaml::Value item;
@@ -1369,6 +1394,8 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 		} return true;
 		// Если значение является отображением
 		case static_cast <uint32_t> (abc::type_t::MAP): {
+			// Имя поля отображения
+			string name = "";
 			/**
 			 * Выполняем заведение отображения ПУСТЫМ ещё до перебора полей
 			 *
@@ -1377,10 +1404,12 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			 *          `m:` - пустым значением наречия. Замерено 09.09.2026 аудитом
 			 */
 			result = yaml::Value(yaml::kind_t::MAPPING);
-			// Выполняем перебор всех полей отображения
+			/**
+			 * Выполняем перебор всех полей отображения
+			 */
 			for(size_t i = 0; i < value.size(); i++){
-				// Извлекаемое имя поля отображения
-				string name = "";
+				// Сбрасываем имя поля отображения
+				name.clear();
 				// Выполняем извлечение имени поля отображения
 				if(!value.key(i).value(name)){
 					// Если вид имени надлежит пропустить вовсе
@@ -1431,7 +1460,9 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			}
 			// Выполняем сброс признака: вместилище само пропущенным не бывает
 			this->_skipped = false;
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 	}
 	/**
 	 * Если значение является числом
@@ -1495,7 +1526,9 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			return true;
 		}
 	}
-	// Определяем правило обращения с видом, записи YAML неведомым
+	/**
+	 * Определяем правило обращения с видом, записи YAML неведомым
+	 */
 	switch(static_cast <uint8_t> (this->_settings.narrow)){
 		// Если вид надлежит пропустить вовсе
 		case static_cast <uint8_t> (narrow_t::SKIP):
@@ -1524,7 +1557,6 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 	// Выходим из метода, перевод отвечен отказом
 	return false;
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись YAML
  *
@@ -1567,7 +1599,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 	 * Выполняем посадку собранного значения в документ записи YAML
 	 *
 	 * @details Значение собирается ЦЕЛИКОМ и садится разом, а не пишется по путям
-	 * ходом `set()`, и доводов тому два, оба мостовые:
+	 *          ходом `set()`, и доводов тому два, оба мостовые:
 	 *
 	 *   * посадка разом НЕДЕЛИМА. Сборка отвечает отказом ДО всякого касания
 	 *     документа, и отказ перевода оставляет документ нетронутым. Пиши мост по
@@ -1619,19 +1651,18 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 	// Сообщаем, что перевод выполнен
 	return true;
 }
-
 /**
  * @brief Метод подачи значения ABC значению TOML
- *
- * @param value  значение контейнера ABC
- * @param result собираемое значение записи TOML
- * @param depth  глубина обхода дерева
- * @return       результат подачи
  *
  * @warning Пустого значения у записи TOML нет ВОВСЕ: запись `a = ` отвергается
  *          самим стандартом. Оттого вид NUL укладывается по правилу сужения, а
  *          не своим видом, и при умолчании TEXT ложится пустой строкой. Потеря
  *          вида здесь свойством формата вызвана
+ *
+ * @param value  значение контейнера ABC
+ * @param result собираемое значение записи TOML
+ * @param depth  глубина обхода дерева
+ * @return       результат подачи
  *
  */
 bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & result, const uint32_t depth) noexcept {
@@ -1662,7 +1693,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 		// Выходим из метода, подавать нечего
 		return true;
 	}
-	// Определяем вид значения контейнера ABC
+	/**
+	 * Определяем вид значения контейнера ABC
+	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является логическим
 		case static_cast <uint32_t> (abc::type_t::BOOL): {
@@ -1674,12 +1707,16 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				return false;
 			// Выполняем заведение логического значения
 			result = toml::Value(number);
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является последовательностью знаков
 		case static_cast <uint32_t> (abc::type_t::STRING): {
 			// Выполняем заведение последовательности знаков
 			result = toml::Value(value.text());
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является вместимым
 		case static_cast <uint32_t> (abc::type_t::ARRAY): {
 			/**
@@ -1694,7 +1731,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			 *          аудитом
 			 */
 			result = toml::Value(toml::type_t::ARRAY);
-			// Выполняем перебор всех значений вместимого
+			/**
+			 * Выполняем перебор всех значений вместимого
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Собираемое значение перечня
 				toml::Value item;
@@ -1713,7 +1752,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			}
 			// Выполняем сброс признака: вместилище само пропущенным не бывает
 			this->_skipped = false;
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является отображением
 		case static_cast <uint32_t> (abc::type_t::MAP): {
 			/**
@@ -1724,7 +1765,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			 *          дерево отвечалось отказом `WRITING`. Замерено 15.09.2026 аудитом
 			 */
 			result = toml::Value(toml::type_t::TABLE);
-			// Выполняем перебор всех полей отображения
+			/**
+			 * Выполняем перебор всех полей отображения
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Извлекаемое имя поля отображения
 				string name = "";
@@ -1779,7 +1822,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			}
 			// Выполняем сброс признака: вместилище само пропущенным не бывает
 			this->_skipped = false;
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 	}
 	/**
 	 * Если значение является числом
@@ -1870,7 +1915,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			return true;
 		}
 	}
-	// Определяем правило обращения с видом, записи TOML неведомым
+	/**
+	 * Определяем правило обращения с видом, записи TOML неведомым
+	 */
 	switch(static_cast <uint8_t> (this->_settings.narrow)){
 		// Если вид надлежит пропустить вовсе
 		case static_cast <uint8_t> (narrow_t::SKIP):
@@ -1899,7 +1946,6 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 	// Выходим из метода, перевод отвечен отказом
 	return false;
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись TOML
  *
@@ -1924,7 +1970,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 		// Запоминаем код отказа перевода
 		this->_error = error_t::STRUCTURE;
 		// Выводим сообщение о негодном строении дерева
-		awh::log::print("Запись TOML требует отображения корнем дерева", awh::log::flag_t::WARNING);
+		log::print("Запись TOML требует отображения корнем дерева", log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -1991,7 +2037,6 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	// Сообщаем, что перевод выполнен
 	return true;
 }
-
 /**
  * @brief Метод подачи значения ABC значению XML
  *
@@ -2046,7 +2091,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *       ли текст узла текстом либо тоже узлом
 		 */
 		const bool marked = (!this->_settings.array.empty() && value.contains(this->_settings.array));
-		// Выполняем перебор всех полей отображения
+		/**
+		 * Выполняем перебор всех полей отображения
+		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Извлекаемое имя поля отображения
 			string name = "";
@@ -2077,13 +2124,15 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				break;
 			}
 		}
+		// Число приставок у отобранного имени поля
+		size_t marks = 0;
 		/**
 		 * Отбираем поле, текст узла несущее
 		 *
 		 * @details Имя его есть имя настройки с приставками `_`, наложенными при
-		 * разборе ради обхода столкновения с одноимённым свойством. Отбирается поле
-		 * с НАИБОЛЬШИМ числом приставок: столкновение наращивало приставку всякий раз
-		 * заново, и последним, то есть самым длинным, вышло имя текста
+		 *          разборе ради обхода столкновения с одноимённым свойством. Отбирается поле
+		 *          с НАИБОЛЬШИМ числом приставок: столкновение наращивало приставку всякий раз
+		 *          заново, и последним, то есть самым длинным, вышло имя текста.
 		 *
 		 * @warning Отбор этот - не украшение. Беря первое же поле, чьё имя после
 		 *          снятия приставок совпадает с настройкою, мы у записи с ОБОИМИ
@@ -2092,9 +2141,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *          разбора
 		 */
 		string textual = "";
-		// Число приставок у отобранного имени поля
-		size_t marks = 0;
-		// Выполняем перебор всех полей отображения
+		/**
+		 * Выполняем перебор всех полей отображения
+		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Извлекаемое имя поля отображения
 			string name = "";
@@ -2104,7 +2153,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				continue;
 			// Число приставок у имени поля отображения
 			size_t count = 0;
-			// Выполняем счёт приставок имени поля
+			/**
+			 * Выполняем счёт приставок имени поля
+			 */
 			while((count < name.length()) && (name.at(count) == '_'))
 				// Увеличиваем счёт приставок имени поля
 				count++;
@@ -2114,27 +2165,12 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				continue;
 			// Если приставок у имени поля больше, чем у отобранного прежде
 			if(textual.empty() || (count > marks)){
-				// Запоминаем имя поля, текст узла несущего
-				textual = name;
 				// Запоминаем число приставок отобранного имени
 				marks = count;
+				// Запоминаем имя поля, текст узла несущего
+				textual = name;
 			}
 		}
-		/**
-		 * Выполняем проверку ЦЕПИ приставок у отобранного имени
-		 *
-		 * @details Приставка накладывается разбором лишь при столкновении, и всякий
-		 * раз по одной: имя `_value` означает, что свойство `value` у узла уже есть,
-		 * а имя `__value` - что есть и `value`, и `_value`. Цепь эта обязана быть
-		 * ПОЛНОЙ, иначе имя текстом не является вовсе
-		 *
-		 * @warning Без проверки цепи поле `__value`, стоящее в одиночку, принималось
-		 *          за текст узла, и круг перевода СБРАСЫВАЛ по уровню за проход:
-		 *          `<uijtb><__value>12515</__value></uijtb>` обращалось в
-		 *          `<uijtb>12515</uijtb>`, затем в свойство. Запись при этом
-		 *          оставалась годной, и ползла она медленно - оттого порок был вдвойне
-		 *          тих. Замерено 04.09.2026 ворошителем
-		 */
 		/**
 		 * Если поле текста стоит у отображения В ОДИНОЧКУ
 		 *
@@ -2148,6 +2184,21 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		if(value.size() < 2)
 			// Отменяем отбор имени, текст узла несущего
 			textual.clear();
+		/**
+		 * Выполняем проверку ЦЕПИ приставок у отобранного имени
+		 *
+		 * @details Приставка накладывается разбором лишь при столкновении, и всякий
+		 *          раз по одной: имя `_value` означает, что свойство `value` у узла уже есть,
+		 *          а имя `__value` - что есть и `value`, и `_value`. Цепь эта обязана быть
+		 *          ПОЛНОЙ, иначе имя текстом не является вовсе.
+		 *
+		 * @warning Без проверки цепи поле `__value`, стоящее в одиночку, принималось
+		 *          за текст узла, и круг перевода СБРАСЫВАЛ по уровню за проход:
+		 *          `<uijtb><__value>12515</__value></uijtb>` обращалось в
+		 *          `<uijtb>12515</uijtb>`, затем в свойство. Запись при этом
+		 *          оставалась годной, и ползла она медленно - оттого порок был вдвойне
+		 *          тих. Замерено 04.09.2026 ворошителем
+		 */
 		for(size_t i = 0; !textual.empty() && (i < marks); i++){
 			// Собираемое имя звена цепи приставок
 			string link = this->_settings.text;
@@ -2161,7 +2212,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				break;
 			}
 		}
-		// Выполняем перебор всех полей отображения
+		/**
+		 * Выполняем перебор всех полей отображения
+		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Извлекаемое имя поля отображения
 			string name = "";
@@ -2325,13 +2378,6 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			// Если отображение вложенных вместилищ не несёт
 			if(!nested){
 				/**
-				 * Определяем поле, текст узла несущее
-				 *
-				 * @note Имя его есть имя настройки с приставками `_`, наложенными
-				 *       при разборе ради обхода столкновения с одноимённым свойством.
-				 *       Приставки снимаются здесь же, ибо в записи их не было
-				 */
-				/**
 				 * Если поле несёт текст узла разметки
 				 *
 				 * @warning Текстом поле это ложится ЛИШЬ ТОГДА, когда узлу потомков не
@@ -2471,7 +2517,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *          перечней легли бы вперемешку. Оба случая уходят пометкою
 				 */
 				bool plain = (item.size() > 1);
-				// Выполняем перебор всех звеньев перечня
+				/**
+				 * Выполняем перебор всех звеньев перечня
+				 */
 				for(size_t j = 0; plain && (j < item.size()); j++){
 					// Если звеном перечня оказался перечень вложенный
 					if(item[j].is(abc::type_t::ARRAY))
@@ -2491,7 +2539,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *          молчаливая пропажа. Замерено 09.09.2026 аудитом
 				 */
 				if(item.empty() && this->_settings.array.empty()){
-					// Определяем правило обращения с видом, записи неведомым
+					/**
+					 * Определяем правило обращения с видом, записи неведомым
+					 */
 					switch(static_cast <uint8_t> (this->_settings.narrow)){
 						// Если вид надлежит пропустить вовсе
 						case static_cast <uint8_t> (narrow_t::SKIP):
@@ -2538,7 +2588,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 					// Продолжаем перебор полей отображения дальше
 					continue;
 				}
-				// Выполняем перебор всех значений вместимого
+				/**
+				 * Выполняем перебор всех значений вместимого
+				 */
 				for(size_t j = 0; j < item.size(); j++){
 					// Собираемый узел разметки
 					xml::Value node(name);
@@ -2599,9 +2651,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 	 * Если пометка перечня настройками разрешена
 	 *
 	 * @details Перечень, узлу значением ставший, повтором выражен быть не может -
-	 * повторять нечего, узел здесь один, - и выражается он пометкою при обносе
-	 * каждого звена. Ход этот общий: и перечень верхнего уровня, и перечень внутри
-	 * перечня, и перечень из одного звена приходят сюда
+	 *          повторять нечего, узел здесь один, - и выражается он пометкою при обносе
+	 *          каждого звена. Ход этот общий: и перечень верхнего уровня, и перечень внутри
+	 *          перечня, и перечень из одного звена приходят сюда.
 	 *
 	 * @warning Обнос звеньев обязателен и при звене простом: пометка велит
 	 *          обратному чтению собирать перечень из ПОТОМКОВ узла, а текст узла
@@ -2612,7 +2664,9 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		if(!result.attribute(this->_settings.array, "true"))
 			// Выходим из метода, запись отвечена отказом
 			return false;
-		// Выполняем перебор всех звеньев перечня
+		/**
+		 * Выполняем перебор всех звеньев перечня
+		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Собираемый узел звена перечня
 			xml::Value node(this->_settings.item);
@@ -2656,13 +2710,8 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 	// Выходим из метода, перевод отвечен отказом
 	return false;
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись XML
- *
- * @param value  дерево значений контейнера ABC
- * @param result собранная запись XML
- * @return       результат перевода
  *
  * @warning Дерево обносится корневым узлом, имя коему берётся настройкою:
  *          стандарт XML 1.0 требует у документа РОВНО ОДИН корневой элемент, и
@@ -2670,6 +2719,10 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
  *          указание обработчику корнем не бывают и отвечают отказом
  *          `MISSING_ROOT`. У дерева контейнера ABC корень безымянен, оттого имя
  *          и берётся снаружи
+ *
+ * @param value  дерево значений контейнера ABC
+ * @param result собранная запись XML
+ * @return       результат перевода
  *
  */
 bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) noexcept {
@@ -2706,17 +2759,6 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	string name = this->_settings.root;
 	// Значение, содержимым корневого узла становящееся
 	const abc::value_t * content = &value;
-	/**
-	 * Выполняем поиск готового корня среди полей дерева
-	 *
-	 * @warning Проверка эта не украшение, а условие ЗАМКНУТОСТИ круга. Разбор
-	 *          записи XML отдаёт дерево с ОДНИМ полем - корневым узлом записи, -
-	 *          и запись, обносящая его ещё одним корнем, вкладывала бы содержимое
-	 *          на уровень глубже с КАЖДЫМ проходом: `<config>` обращался бы в
-	 *          `<config><config>`, затем в три и так без конца. Круговой перевод
-	 *          перестал бы быть неподвижным, оставаясь при этом разбираемым, -
-	 *          то есть порок был бы тихим
-	 */
 	/**
 	 * Определяем, не роняет ли правило сужения содержимое единственного поля
 	 *
@@ -2782,6 +2824,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 			((sole.is(abc::type_t::MAP) || sole.is(abc::type_t::ARRAY)) && (sole.size() == 0))
 		);
 	}
+	// Проверяем, не единственным ли полем сокращается отображение
 	if(!dropped && value.is(abc::type_t::MAP) && (value.size() == 1)){
 		// Извлекаемое имя единственного поля отображения
 		string local = "";
@@ -2926,7 +2969,6 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	// Сообщаем, что перевод выполнен
 	return true;
 }
-
 /**
  * @brief Метод сборки записи значения, разметке годной
  *
@@ -2935,10 +2977,10 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
  * @return       результат сборки: истина, когда запись продолжима
  *
  * @details Разметка несёт в тексте не всякое кодовое значение: договор XML 1.0
- * допускает из управляющих знаков лишь табуляцию, перевод строки и возврат
- * каретки, а прочие запрещает ВОВСЕ - отменяющей записи для них нет, и обойти
- * запрет нечем. Значение такое разметкою невыразимо, и вести его надлежит
- * правилом сужения
+ *          допускает из управляющих знаков лишь табуляцию, перевод строки и возврат
+ *          каретки, а прочие запрещает ВОВСЕ - отменяющей записи для них нет, и обойти
+ *          запрет нечем. Значение такое разметкою невыразимо, и вести его надлежит
+ *          правилом сужения.
  *
  * @note Годность знака спрашивается ходом `xml::isChar()` - собственным ходом
  *       кодека, - а не перечнем запретов, у моста повторённым: повторённый
@@ -2988,14 +3030,16 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
 			// Выводим сообщение о виде, записи XML неведомом
-			awh::log::print("Вид значения записью XML не выражается", awh::log::flag_t::WARNING);
+			log::print("Вид значения записью XML не выражается", log::flag_t::WARNING);
 			// Выходим из метода, сборка отвечена отказом
 			return false;
 		}
 	}
 	// Выполняем сборку записи значения
 	result = this->record(value);
-	// Выполняем перебор всех знаков собранной записи
+	/**
+	 * Выполняем перебор всех знаков собранной записи
+	 */
 	for(size_t i = 0; i < result.size();){
 		// Длина записи знака в кодировке UTF-8
 		size_t length = 0;
@@ -3020,14 +3064,13 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
 		// Запоминаем код отказа перевода
 		this->_error = error_t::UNSUPPORTED;
 		// Выводим сообщение о значении, разметке невыразимом
-		awh::log::print("Значение записью XML не выражается: знак разметке негоден", awh::log::flag_t::WARNING);
+		log::print("Значение записью XML не выражается: знак разметке негоден", log::flag_t::WARNING);
 		// Выводим результат сборки, запись невозможна
 		return false;
 	}
 	// Выводим результат сборки, запись продолжима
 	return true;
 }
-
 /**
  * @brief Метод разбора отказа собирателя записи правилом сужения
  *
@@ -3035,10 +3078,10 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
  * @return     результат разбора: истина, когда запись продолжима
  *
  * @details Наречие INI принимает не всякое имя и не всякое значение: имя со
- * знаком равенства либо с пробелом на конце ему негодно, а значение с переводом
- * строки им не выражается вовсе - свойство наречия занимает ОДНУ строку. Отказ
- * такой есть отказ по НЕВЫРАЗИМОСТИ, и разбирать его надлежит правилом сужения,
- * а не выдачей наружу
+ *          знаком равенства либо с пробелом на конце ему негодно, а значение с переводом
+ *          строки им не выражается вовсе - свойство наречия занимает ОДНУ строку. Отказ
+ *          такой есть отказ по НЕВЫРАЗИМОСТИ, и разбирать его надлежит правилом сужения,
+ *          а не выдачей наружу.
  *
  * @note Спрос идёт у самого кодека - попыткою записи, - а не повтором правил его
  *       здесь: правила эти живут у разбора INI, и повторённые мостом разошлись бы
@@ -3061,19 +3104,12 @@ bool awh::codec::Bridge::narrowed(const string & name) noexcept {
 	// Запоминаем код отказа перевода
 	this->_error = error_t::UNSUPPORTED;
 	// Выводим сообщение о значении, записи INI невыразимом
-	awh::log::print("Имя «%s» записью INI не выражается", awh::log::flag_t::WARNING, name.c_str());
+	log::print("Имя «%s» записью INI не выражается", log::flag_t::WARNING, name.c_str());
 	// Выводим результат разбора, запись невозможна
 	return false;
 }
-
 /**
  * @brief Метод записи значения свойством раздела INI
- *
- * @param value    значение контейнера ABC
- * @param document собираемый документ записи INI
- * @param name     имя свойства
- * @param section  имя раздела
- * @return         результат записи
  *
  * @warning Перечень значений пишется ходом `push()`, а НЕ повторным `set()`:
  *          установка правит объявление, УЖЕ В РАЗДЕЛЕ СТОЯЩЕЕ, и перечня тем
@@ -3081,8 +3117,16 @@ bool awh::codec::Bridge::narrowed(const string & name) noexcept {
  *          всякий раз заводит НОВОЕ объявление того же имени, а перечень
  *          значений наречия INI и есть череда одноимённых свойств
  *
+ * @param value    значение контейнера ABC
+ * @param document собираемый документ записи INI
+ * @param name     имя свойства
+ * @param section  имя раздела
+ * @return         результат записи
+ *
  */
 bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & document, const string & name, const string & section, const uint32_t depth) noexcept {
+	// Выполняем сброс признака пропуска значения правилом сужения
+	this->_skipped = false;
 	/**
 	 * Если глубина обхода превысила предел перевода
 	 *
@@ -3092,8 +3136,6 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 	 *          04.09.2026 ворошителем при пределе в один уровень: запись
 	 *          собиралась, разбор отвечал отказом по глубине
 	 */
-	// Выполняем сброс признака пропуска значения правилом сужения
-	this->_skipped = false;
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
 		this->_error = error_t::DEEP_TREE;
@@ -3167,7 +3209,9 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
-		// Выполняем перебор всех значений перечня
+		/**
+		 * Выполняем перебор всех значений перечня
+		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Извлекаемое значение перечня
 			const abc::value_t & item = value[i];
@@ -3193,7 +3237,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 					// Запоминаем код отказа перевода
 					this->_error = error_t::UNSUPPORTED;
 					// Выводим сообщение о виде, записи INI неведомом
-					awh::log::print("Вид звена перечня «%s» записью INI не выражается", awh::log::flag_t::WARNING, name.c_str());
+					log::print("Вид звена перечня «%s» записью INI не выражается", log::flag_t::WARNING, name.c_str());
 					// Выходим из метода, перевод отвечен отказом
 					return false;
 				}
@@ -3236,7 +3280,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
 			// Выводим сообщение о виде, записи INI неведомом
-			awh::log::print("Вид значения «%s» записью INI не выражается", awh::log::flag_t::WARNING, name.c_str());
+			log::print("Вид значения «%s» записью INI не выражается", log::flag_t::WARNING, name.c_str());
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
@@ -3248,18 +3292,17 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 	// Выводим разбор отказа кодека правилом сужения
 	return this->narrowed(name);
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись INI
- *
- * @param value  дерево значений контейнера ABC
- * @param result собранная запись INI
- * @return       результат перевода
  *
  * @warning Глубина записи INI ограничена устройством наречия: раздел, свойство,
  *          и не более. Отображение, глубже второго уровня лежащее, наречием не
  *          выражается вовсе и укладывается по правилу сужения - это НЕ предел
  *          моста, а свойство формата
+ *
+ * @param value  дерево значений контейнера ABC
+ * @param result собранная запись INI
+ * @return       результат перевода
  *
  */
 bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) noexcept {
@@ -3270,7 +3313,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 		// Запоминаем код отказа перевода
 		this->_error = error_t::STRUCTURE;
 		// Выводим сообщение о негодном строении дерева
-		awh::log::print("Запись INI требует отображения корнем дерева", awh::log::flag_t::WARNING);
+		log::print("Запись INI требует отображения корнем дерева", log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -3320,7 +3363,9 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 				return false;
 		}
 	}
-	// Выполняем перебор всех полей отображения повторно
+	/**
+	 * Выполняем перебор всех полей отображения повторно
+	 */
 	for(size_t i = 0; i < value.size(); i++){
 		// Извлекаемое имя поля отображения
 		string name = "";
@@ -3355,7 +3400,9 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 			// Выходим из метода, заведение отвечено отказом
 			return false;
 		}
-		// Выполняем перебор всех свойств раздела
+		/**
+		 * Выполняем перебор всех свойств раздела
+		 */
 		for(size_t j = 0; j < node.size(); j++){
 			// Извлекаемое имя свойства раздела
 			string key = "";
@@ -3387,7 +3434,6 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 				return false;
 		}
 	}
-	// Выполняем изъятие собранной записи INI
 	/**
 	 * Выполняем изъятие собранной записи INI отменяющими записями
 	 *
@@ -3441,20 +3487,19 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	// Сообщаем, что перевод выполнен
 	return true;
 }
-
 /**
  * @brief Метод укладки значения YAML в значение ABC
+ *
+ * @warning Обход идёт ходом `at()`, а не ходом `get()`: при повторе имени
+ *          `get()` отдаёт ДЕЙСТВУЮЩЕЕ объявление по своей политике, тогда как
+ *          `at()` отдаёт ВСЕ объявления перечнем. Это не изъян кодека, а два
+ *          разных обещания, и мост, идущий за `get()`, терял бы данные молча
  *
  * @param document документ записи YAML
  * @param path     путь к укладываемому значению
  * @param result   укладываемое значение контейнера ABC
  * @param depth    глубина обхода дерева
  * @return         результат укладки
- *
- * @warning Обход идёт ходом `at()`, а не ходом `get()`: при повторе имени
- *          `get()` отдаёт ДЕЙСТВУЮЩЕЕ объявление по своей политике, тогда как
- *          `at()` отдаёт ВСЕ объявления перечнем. Это не изъян кодека, а два
- *          разных обещания, и мост, идущий за `get()`, терял бы данные молча
  *
  */
 bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept {
@@ -3473,13 +3518,17 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 	if(!value.valid())
 		// Выходим из метода, укладывать нечего
 		return true;
-	// Определяем вид значения документа YAML
+	/**
+	 * Определяем вид значения документа YAML
+	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является пустым
-		case static_cast <uint32_t> (yaml::type_t::NUL):
+		case static_cast <uint32_t> (yaml::type_t::NUL): {
 			// Выполняем укладку пустого значения
 			result = abc::value_t(abc::kind_t::NUL);
-		return true;
+			// Выводим признак уложенного пустого значения
+			return true;
+		}
 		// Если значение является логическим
 		case static_cast <uint32_t> (yaml::type_t::BOOL): {
 			// Извлекаемое логическое значение
@@ -3490,26 +3539,34 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 				return false;
 			// Выполняем укладку логического значения
 			result = abc::value_t(number);
-		} return true;
+			// Выводим признак уложенного пустого значения
+			return true;
+		}
 		// Если значение является перечнем значений
 		case static_cast <uint32_t> (yaml::type_t::SEQUENCE): {
 			// Выполняем заведение вместимого контейнера ABC
 			result = abc::value_t(abc::kind_t::ARRAY);
-			// Выполняем перебор всех значений перечня
+			/**
+			 * Выполняем перебор всех значений перечня
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Выполняем укладку значения перечня в значение вместимого
-				if(!this->absorbYAML(document, path + "/" + std::to_string(i), result[i], depth + 1))
+				if(!this->absorbYAML(document, path + "/" + ::to_string(i), result[i], depth + 1))
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 			}
-		} return true;
+			// Выводим признак уложенного пустого значения
+			return true;
+		}
 		// Если значение является отображением пар
 		case static_cast <uint32_t> (yaml::type_t::MAPPING): {
 			// Выполняем заведение отображения контейнера ABC
 			result = abc::value_t(abc::kind_t::MAP);
 			// Выполняем извлечение перечня звеньев пути отображения
 			const vector <string> & links = document.keys(path);
-			// Выполняем перебор всех звеньев пути отображения
+			/**
+			 * Выполняем перебор всех звеньев пути отображения
+			 */
 			for(auto & link : links){
 				/**
 				 * Выполняем укладку значения потомка в поле отображения
@@ -3524,7 +3581,9 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 			}
-		} return true;
+			// Выводим признак уложенного пустого значения
+			return true;
+		}
 	}
 	// Если значение является числом дробным
 	if(value.is(yaml::type_t::DOUBLE) || value.is(yaml::type_t::FLOAT)){
@@ -3576,7 +3635,6 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 	// Выводим результат укладки
 	return true;
 }
-
 /**
  * @brief Метод перевода записи YAML в дерево ABC
  *
@@ -3610,15 +3668,8 @@ bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & resul
 	// Выполняем укладку разобранного дерева в значение контейнера ABC
 	return this->absorbYAML(document, "", result, 0);
 }
-
 /**
  * @brief Метод укладки значения XML в значение ABC
- *
- * @param document документ записи XML
- * @param path     путь к укладываемому значению
- * @param result   укладываемое значение контейнера ABC
- * @param depth    глубина обхода дерева
- * @return         результат укладки
  *
  * @warning Признак простого значения берётся ПЕРЕЧНЕМ ЗВЕНЬЕВ, а не числом
  *          потомков узла: примечание разрывает содержимое на две части, а
@@ -3633,6 +3684,12 @@ bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & resul
  *          именем. Правило то же, что и у эталонного моста, и потеря здесь
  *          свойством СОЧЛЕНЕНИЯ вызвана, а не изъяном обхода: у настроек, ради
  *          коих мост писан, смешанного содержимого не бывает вовсе
+ *
+ * @param document документ записи XML
+ * @param path     путь к укладываемому значению
+ * @param result   укладываемое значение контейнера ABC
+ * @param depth    глубина обхода дерева
+ * @return         результат укладки
  *
  */
 bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth, const bool slot) noexcept {
@@ -3673,6 +3730,8 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	const vector <string> & links = document.keys(path);
 	// Собираемые звенья пути потомков, по именам их разложенные
 	vector <pair <string, vector <string>>> children;
+	// Признак нахождения имени среди уже разобранных
+	bool found = false;
 	/**
 	 * Выполняем разбор звеньев пути по именам потомков
 	 *
@@ -3692,11 +3751,13 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		if(child.kind() != xml::kind_t::ELEMENT)
 			// Пропускаем потомка, вместилищу он не принадлежит
 			continue;
+		// Выполняем сброс признака нахождения имени среди уже разобранных
+		found = false;
 		// Выполняем извлечение местного имени потомка, ограждение с него снявши
 		const string name(::restorable(string(child.name().local)));
-		// Признак нахождения имени среди уже разобранных
-		bool found = false;
-		// Выполняем перебор всех разобранных имён
+		/**
+		 * Выполняем перебор всех разобранных имён
+		 */
 		for(auto & child : children){
 			// Если имя потомка уже встречалось
 			if(child.first == name){
@@ -3740,7 +3801,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 			 *          `empty` до звена не достаёт. Поле `<NewEnabled/>` у настроек
 			 *          означает НАЛИЧИЕ без значения, оттого умолчанием и взята
 			 *          истина; звено же `<item></item>` места своего в перечне не
-			 *          выбирает и наличием быть не может — оно ровно пустое значение
+			 *          выбирает и наличием быть не может — оно ровно пустое значение.
 			 *
 			 * @note Решение от 06.09.2026: запись `<item></item>` есть пустое звено
 			 *       перечня, по сути пустая последовательность знаков. Правило это
@@ -3754,7 +3815,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 				// Выводим результат укладки
 				return true;
 			}
-			// Определяем правило укладки пустого узла разметки
+			/**
+			 * Определяем правило укладки пустого узла разметки
+			 */
 			switch(static_cast <uint8_t> (this->_settings.empty)){
 				// Если пустой узел ложится логическою истиной
 				case static_cast <uint8_t> (empty_t::BOOLEAN):
@@ -3798,12 +3861,14 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	bool marked = false;
 	// Если пометка перечня настройками разрешена
 	if(!this->_settings.array.empty() && !outer){
-		// Выполняем перебор всех свойств узла разметки
+		/**
+		 * Выполняем перебор всех свойств узла разметки
+		 */
 		for(auto & attribute : attributes){
 			// Если свойство несёт пометку перечня
-			if(awh::fmk::compare(this->_settings.array, string(attribute.name.local))){
+			if(fmk::compare(this->_settings.array, string(attribute.name.local))){
 				// Запоминаем нахождение пометки перечня
-				marked = awh::fmk::compare("true", string(attribute.value));
+				marked = fmk::compare("true", string(attribute.value));
 				// Выходим из перебора свойств узла
 				break;
 			}
@@ -3818,9 +3883,13 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	if(marked){
 		// Выполняем заведение перечня контейнера ABC
 		result = abc::value_t(abc::kind_t::ARRAY);
-		// Выполняем перебор всех имён потомков узла
+		/**
+		 * Выполняем перебор всех имён потомков узла
+		 */
 		for(auto & child : children){
-			// Выполняем перебор всех звеньев пути потомка
+			/**
+			 * Выполняем перебор всех звеньев пути потомка
+			 */
 			for(auto & link : child.second){
 				// Собираемое значение звена перечня
 				abc::value_t item;
@@ -3849,7 +3918,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 *          суть два написания одного и того же содержимого настроек
 	 */
 	if(!outer){
-		// Выполняем перебор всех свойств узла разметки
+		/**
+		 * Выполняем перебор всех свойств узла разметки
+		 */
 		for(auto & attribute : attributes){
 			// Извлекаемое имя свойства узла разметки
 			const string name(::restorable(string(attribute.name.local)));
@@ -3863,7 +3934,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 			 *          обратным чтением обращался в значение по настройке. Замерено
 			 *          04.09.2026 ворошителем
 			 */
-			if(marked && !this->_settings.array.empty() && awh::fmk::compare(this->_settings.array, name))
+			if(marked && !this->_settings.array.empty() && fmk::compare(this->_settings.array, name))
 				// Продолжаем перебор свойств узла дальше
 				continue;
 			// Выполняем укладку значения свойства узла
@@ -3885,7 +3956,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		if(!text.empty()){
 			// Собираемое имя поля текста узла
 			string name = this->_settings.text;
-			// Выполняем поиск свободного имени поля
+			/**
+			 * Выполняем поиск свободного имени поля
+			 */
 			while(result.contains(name))
 				// Выполняем наращивание имени приставкой
 				name.insert(name.begin(), '_');
@@ -3895,7 +3968,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		// Выводим результат укладки
 		return true;
 	}
-	// Выполняем перебор всех разобранных имён потомков
+	/**
+	 * Выполняем перебор всех разобранных имён потомков
+	 */
 	for(auto & child : children){
 		// Если имя потомка встретилось единожды
 		if(child.second.size() == 1){
@@ -3907,7 +3982,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		} else {
 			// Выполняем заведение вместимого контейнера ABC
 			result[child.first] = abc::value_t(abc::kind_t::ARRAY);
-			// Выполняем перебор всех звеньев пути одноимённых потомков
+			/**
+			 * Выполняем перебор всех звеньев пути одноимённых потомков
+			 */
 			for(size_t i = 0; i < child.second.size(); i++){
 				// Выполняем укладку значения потомка в значение вместимого
 				if(!this->absorbXML(document, path + "/" + child.second.at(i), result[child.first][i], depth + 1, true))
@@ -3919,7 +3996,6 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	// Выводим результат укладки
 	return true;
 }
-
 /**
  * @brief Метод перевода записи XML в дерево ABC
  *
@@ -3941,15 +4017,8 @@ bool awh::codec::Bridge::decodeXML(const string_view text, abc::value_t & result
 	// Выполняем укладку разобранного дерева в значение контейнера ABC
 	return this->absorbXML(document, "", result, 0);
 }
-
 /**
  * @brief Метод укладки значения TOML в значение ABC
- *
- * @param document документ записи TOML
- * @param path     путь к укладываемому значению
- * @param result   укладываемое значение контейнера ABC
- * @param depth    глубина обхода дерева
- * @return         результат укладки
  *
  * @warning Виды времени (OFFSET_DATETIME, LOCAL_DATETIME, LOCAL_DATE,
  *          LOCAL_TIME) укладываются последовательностью знаков, а не видом TIME
@@ -3957,6 +4026,12 @@ bool awh::codec::Bridge::decodeXML(const string_view text, abc::value_t & result
  *          суть РАЗНЫЕ виды стандарта, и сведение их к одному мгновению
  *          придумало бы смещение, в записи не стоявшее. Обратный перевод из
  *          текста восстановит запись дословно
+ *
+ * @param document документ записи TOML
+ * @param path     путь к укладываемому значению
+ * @param result   укладываемое значение контейнера ABC
+ * @param depth    глубина обхода дерева
+ * @return         результат укладки
  *
  */
 bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept {
@@ -3975,7 +4050,9 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 	if(!value.valid())
 		// Выходим из метода, укладывать нечего
 		return true;
-	// Определяем вид значения документа TOML
+	/**
+	 * Определяем вид значения документа TOML
+	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является логическим
 		case static_cast <uint32_t> (toml::type_t::BOOLEAN): {
@@ -3987,7 +4064,9 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 				return false;
 			// Выполняем укладку логического значения
 			result = abc::value_t(number);
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является целым
 		case static_cast <uint32_t> (toml::type_t::INTEGER): {
 			// Извлекаемое целое со знаком
@@ -3998,7 +4077,9 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 				return false;
 			// Выполняем укладку целого со знаком
 			result = abc::value_t(number);
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является дробным
 		case static_cast <uint32_t> (toml::type_t::FLOAT): {
 			// Извлекаемое число дробное
@@ -4009,33 +4090,43 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 				return false;
 			// Выполняем укладку числа дробного
 			result = abc::value_t(number);
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является перечнем значений
 		case static_cast <uint32_t> (toml::type_t::ARRAY): {
 			// Выполняем заведение вместимого контейнера ABC
 			result = abc::value_t(abc::kind_t::ARRAY);
-			// Выполняем перебор всех значений перечня
+			/**
+			 * Выполняем перебор всех значений перечня
+			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Выполняем укладку значения перечня в значение вместимого
-				if(!this->absorbTOML(document, path + "/" + std::to_string(i), result[i], depth + 1))
+				if(!this->absorbTOML(document, path + "/" + ::to_string(i), result[i], depth + 1))
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 			}
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 		// Если значение является таблицей
 		case static_cast <uint32_t> (toml::type_t::TABLE): {
 			// Выполняем заведение отображения контейнера ABC
 			result = abc::value_t(abc::kind_t::MAP);
 			// Выполняем извлечение перечня звеньев пути таблицы
 			const vector <string> & links = document.keys(path);
-			// Выполняем перебор всех звеньев пути таблицы
+			/**
+			 * Выполняем перебор всех звеньев пути таблицы
+			 */
 			for(auto & link : links){
 				// Выполняем укладку значения потомка в поле отображения
 				if(!this->absorbTOML(document, path + "/" + link, result[this->unescape(link)], depth + 1))
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 			}
-		} return true;
+			// Выходим из метода
+			return true;
+		}
 	}
 	/**
 	 * Если значение является отметкою времени
@@ -4077,12 +4168,20 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 			if(pos != string::npos){
 				// Начало начертания отметки времени
 				size_t begin = (pos + 1);
-				// Выполняем пропуск пробелов перед начертанием отметки
-				while((begin < record.size()) && ((record.at(begin) == ' ') || (record.at(begin) == '\t'))) begin++;
+				/**
+				 * Выполняем пропуск пробелов перед начертанием отметки
+				 */
+				while((begin < record.size()) && ((record.at(begin) == ' ') || (record.at(begin) == '\t')))
+					// Увличиваем начало начертания отметки времени
+					begin++;
 				// Конец начертания отметки времени
 				size_t end = record.size();
-				// Выполняем отсечение перевода строки за начертанием отметки
-				while((end > begin) && ((record.at(end - 1) == '\n') || (record.at(end - 1) == '\r'))) end--;
+				/**
+				 * Выполняем отсечение перевода строки за начертанием отметки
+				 */
+				while((end > begin) && ((record.at(end - 1) == '\n') || (record.at(end - 1) == '\r')))
+					// Уменьшаем конец начертания отметки времени
+					end--;
 				// Если начертание отметки времени собрано
 				if(end > begin){
 					// Выполняем укладку начертания отметки времени
@@ -4096,25 +4195,24 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 	/**
 	 * Выполняем укладку значения последовательностью знаков
 	 *
-	 * @warning Ход этот берёт на себя вид STRING и всякий иной, мостом не
-	 *          разобранный
+	 * @warning Ход этот берёт на себя вид STRING и всякий иной, мостом не разобранный
+	 *
 	 */
 	result = abc::value_t(string(value.text()));
 	// Выводим результат укладки
 	return true;
 }
-
 /**
  * @brief Метод перевода записи TOML в дерево ABC
- *
- * @param text   запись TOML для перевода
- * @param result собранное дерево значений контейнера ABC
- * @return       результат перевода
  *
  * @warning Обход начинается с набора одноимённых таблиц наравне с прочим: ход
  *          `keys()` выдаёт на них ЧИСЛОВЫЕ звенья, тогда как прежний плоский
  *          перечень дочерних имён на них законно молчит, ибо набор таблиц
  *          таблицею не является. Мост обязан звать общий вид, а не прежний
+ *
+ * @param text   запись TOML для перевода
+ * @param result собранное дерево значений контейнера ABC
+ * @return       результат перевода
  *
  */
 bool awh::codec::Bridge::decodeTOML(const string_view text, abc::value_t & result) noexcept {
@@ -4130,15 +4228,8 @@ bool awh::codec::Bridge::decodeTOML(const string_view text, abc::value_t & resul
 	// Выполняем укладку разобранного дерева в значение контейнера ABC
 	return this->absorbTOML(document, "", result, 0);
 }
-
 /**
  * @brief Метод укладки значения INI в значение ABC
- *
- * @param document документ записи INI
- * @param path     путь к укладываемому значению
- * @param result   укладываемое значение контейнера ABC
- * @param depth    глубина обхода дерева
- * @return         результат укладки
  *
  * @note Обход путей ведётся ходом `children()`, а НЕ `keys()`: у этого кодека
  *       имя `keys` несёт ДВА хода разом - прежний, разделом именованный, и общий,
@@ -4151,6 +4242,12 @@ bool awh::codec::Bridge::decodeTOML(const string_view text, abc::value_t & resul
  *          отдаёт ДЕЙСТВУЮЩЕЕ объявление по политике повторов, тогда как `at()`
  *          отдаёт ВСЕ объявления перечнем. Наречия Git и systemd задают
  *          перечень значений именно повтором свойства
+ *
+ * @param document документ записи INI
+ * @param path     путь к укладываемому значению
+ * @param result   укладываемое значение контейнера ABC
+ * @param depth    глубина обхода дерева
+ * @return         результат укладки
  *
  */
 bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept {
@@ -4167,15 +4264,6 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 	const vector <string> & links = document.children(path);
 	// Если звеньев пути не нашлось
 	if(links.empty()){
-		/**
-		 * Выполняем укладку значения выводом вида из записи
-		 *
-		 * @warning Вид выводится ЗДЕСЬ так же, как у разметки: своей системы видов
-		 *          у INI нет вовсе, и число, и логическое значение приходят записью
-		 *          знаков. Клади мост их строкою - одно и то же дерево давало бы
-		 *          число, пройдя через разметку, и строку, пройдя через INI.
-		 *          Замерено 04.09.2026: отметка времени возвращалась из INI строкою
-		 */
 		/**
 		 * Выполняем взятие записи свойства вместе с признаком кавычек
 		 *
@@ -4202,7 +4290,7 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 	 * Выполняем определение вида вместилища по ВСЕМ звеньям пути
 	 *
 	 * @details Повтор одноимённого свойства выдаёт звенья числовые и идущие ПОДРЯД
-	 * с нуля; всякое иное сочетание есть раздел либо корень
+	 *          с нуля; всякое иное сочетание есть раздел либо корень.
 	 *
 	 * @warning Судить по ОДНОМУ ЛИШЬ первому звену нельзя: имя свойства `0` у записи
 	 *          INI законно, и раздел `[s]` со свойствами `0` и `b` уходил перечнем -
@@ -4216,13 +4304,17 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 	 *       чем потерю ВСЯКОГО раздела, чьё первое свойство названо числом
 	 */
 	bool array = true;
-	// Выполняем перебор всех звеньев пути значения
+	/**
+	 * Выполняем перебор всех звеньев пути значения
+	 */
 	for(size_t i = 0; array && (i < links.size()); i++)
 		// Определяем звено числовым, по месту своему стоящим
-		array = (links.at(i) == std::to_string(i));
+		array = (links.at(i) == ::to_string(i));
 	// Выполняем заведение вместилища контейнера ABC
 	result = abc::value_t(array ? abc::kind_t::ARRAY : abc::kind_t::MAP);
-	// Выполняем перебор всех звеньев пути значения
+	/**
+	 * Выполняем перебор всех звеньев пути значения
+	 */
 	for(size_t i = 0; i < links.size(); i++){
 		// Собираемый путь к потомку
 		const string route = path + "/" + links.at(i);
@@ -4234,13 +4326,8 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 	// Выводим результат укладки
 	return true;
 }
-
 /**
  * @brief Метод перевода записи INI в дерево ABC
- *
- * @param text   запись INI для перевода
- * @param result собранное дерево значений контейнера ABC
- * @return       результат перевода
  *
  * @warning Имена разделов и свойств снимаются КОПИЕЙ прежде обращения к дереву,
  *          и это не расточительство: кодек выдаёт их видами в своё хранилище
@@ -4254,6 +4341,10 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
  *          кодека общего вида покуда нет. Оттого глубина здесь ограничена
  *          устройством наречия - раздел, свойство, - и это НЕ недоделка моста,
  *          а свойство формата: дерева произвольной глубины в INI не бывает
+ *
+ * @param text   запись INI для перевода
+ * @param result собранное дерево значений контейнера ABC
+ * @return       результат перевода
  *
  */
 bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result) noexcept {
@@ -4283,19 +4374,18 @@ bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result
 	// Выполняем укладку разобранного дерева в значение контейнера ABC
 	return this->absorbINI(document, string(""), result, 0);
 }
-
 /**
  * @brief Метод перевода дерева ABC в запись заданного вида
- *
- * @param value  дерево значений контейнера ABC
- * @param result собранная запись
- * @param format вид записи, в который переводится дерево
- * @return       результат перевода
  *
  * @warning Запись вида ABC ДВОИЧНА, а не текстова, и укладывается в строку
  *          восьмеричными знаками как есть. Строка здесь - вместилище байтов,
  *          а не текст: печатать её, мерить длину в знаках либо сличать с
  *          текстом прочих видов нельзя
+ *
+ * @param value  дерево значений контейнера ABC
+ * @param result собранная запись
+ * @param format вид записи, в который переводится дерево
+ * @return       результат перевода
  *
  */
 bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, const format_t format) noexcept {
@@ -4307,10 +4397,10 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 	 * @brief Заслон пустой записи при успешном переводе
 	 *
 	 * @details Кодек, запись собрать не сумевший, отдаёт её ПУСТОЙ, а признака
-	 * отказа при том не подаёт: отказ его остаётся внутри собирателя записи.
-	 * Замерено 04.09.2026 - дерево с полем, разметке негодным по имени,
-	 * переводилось признаком успеха и записью пустою, и потребитель сохранял
-	 * пустой файл вместо своих настроек
+	 *          отказа при том не подаёт: отказ его остаётся внутри собирателя записи.
+	 *          Замерено 04.09.2026 - дерево с полем, разметке негодным по имени,
+	 *          переводилось признаком успеха и записью пустою, и потребитель сохранял
+	 *          пустой файл вместо своих настроек.
 	 *
 	 * @warning Заслон стоит ЗДЕСЬ, а не у каждого перевода порознь, оттого что
 	 *          изъятие записи у всех кодеков одно и то же и всякий из них
@@ -4361,11 +4451,13 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		 */
 		this->_error = error_t::UNSUPPORTED;
 		// Выводим сообщение о пустой записи при непустом дереве
-		awh::log::print("Дерево значений не несёт ничего, записи выразимого", awh::log::flag_t::WARNING);
+		log::print("Дерево значений не несёт ничего, записи выразимого", log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	};
-	// Определяем вид записи, в который переводится дерево
+	/**
+	 * Определяем вид записи, в который переводится дерево
+	 */
 	switch(static_cast <uint8_t> (format)){
 		// Если запись переводится в вид самого контейнера ABC
 		case static_cast <uint8_t> (format_t::ABC):
@@ -4396,13 +4488,12 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
 			// Выводим сообщение о неведомом виде записи
-			awh::log::print("Кодек вида %u мостом ещё не переводится", awh::log::flag_t::WARNING, static_cast <uint16_t> (format));
+			log::print("Кодек вида %u мостом ещё не переводится", log::flag_t::WARNING, static_cast <uint16_t> (format));
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
 	}
 }
-
 /**
  * @brief Метод перевода записи заданного вида в дерево ABC
  *
@@ -4424,7 +4515,9 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 	 *          своим деревом как с новым
 	 */
 	result.clear();
-	// Определяем вид поданной записи
+	/**
+	 * Определяем вид поданной записи
+	 */
 	switch(static_cast <uint8_t> (format)){
 		// Если подана запись вида самого контейнера ABC
 		case static_cast <uint8_t> (format_t::ABC):
@@ -4455,13 +4548,12 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
 			// Выводим сообщение о неведомом виде записи
-			awh::log::print("Кодек вида %u мостом ещё не переводится", awh::log::flag_t::WARNING, static_cast <uint16_t> (format));
+			log::print("Кодек вида %u мостом ещё не переводится", log::flag_t::WARNING, static_cast <uint16_t> (format));
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
 	}
 }
-
 /**
  * @brief Метод извлечения кода отказа последнего перевода
  *
@@ -4472,7 +4564,6 @@ Bridge::error_t awh::codec::Bridge::error() const noexcept {
 	// Выводим код отказа последнего перевода
 	return this->_error;
 }
-
 /**
  * @brief Метод извлечения настроек перевода
  *
@@ -4483,7 +4574,6 @@ const Bridge::settings_t & awh::codec::Bridge::settings() const noexcept {
 	// Выводим настройки перевода
 	return this->_settings;
 }
-
 /**
  * @brief Метод установки настроек перевода
  *
@@ -4495,12 +4585,7 @@ void awh::codec::Bridge::settings(const settings_t & settings) noexcept {
 	this->_settings = settings;
 }
 /**
- * \~russian
  * @brief Конструктор
  *
- * \~english
- * @brief Constructor
- *
- * \~
  */
-awh::codec::Bridge::Bridge() noexcept : _error(error_t::NONE), _skipped(false) {}
+awh::codec::Bridge::Bridge() noexcept : _skipped(false), _error(error_t::NONE) {}
