@@ -1,6 +1,11 @@
 # Устанавливаем минимальную версию CMake
 cmake_minimum_required(VERSION 3.15)
 
+# Если политика CMP0144 доступна - учитываем переменные корня пакета верхнего регистра
+if(POLICY CMP0144)
+    cmake_policy(SET CMP0144 NEW)
+endif()
+
 # TODO: вписать рабочее название проекта
 project(awh LANGUAGES CXX)
 
