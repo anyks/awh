@@ -6477,14 +6477,14 @@ bool awh::regex::Parser::parse(string_view pattern, const uint32_t flags) noexce
  *
  */
 awh::regex::Parser::Parser() noexcept :
- _pos(0), _root(INVALID_NODE), _depth(0),
- _captures(0), _total(0), _stepLimit(~0u),
- _depthLimit(~0u), _heapLimit(~0u),
- _convention(newline_t::LF), _restricted(false),
- _flags(0), _options(0), _look(0),
- _error(error_t::NONE), _errorPos(0),
- _classCount(0), _kinds(0), _barrier(false),
- _counted(false), _begin(0), _resolving(false), _verbs(0) {
+ _barrier(false), _counted(false), _resolving(false),
+ _restricted(false), _pos(0), _errorPos(0),
+ _root(INVALID_NODE), _look(0), _depth(0),
+ _total(0), _flags(0), _begin(0),
+ _kinds(0), _verbs(0), _options(0),
+ _captures(0), _classCount(0), _stepLimit(~0u),
+ _heapLimit(~0u), _depthLimit(~0u),
+ _error(error_t::NONE), _convention(newline_t::LF) {
 	// Резервируем память под арену узлов синтаксического дерева
 	this->_nodes.reserve(64);
 }

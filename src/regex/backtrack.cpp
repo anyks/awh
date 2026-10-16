@@ -4320,26 +4320,28 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0),
- _saves(0), _checks(0), _points_spent(0), _frames_spent(0),
- _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS),
- _horizon(string_view::npos), _bounded(false),
- _onset(string_view::npos), _frontier(string_view::npos),
- _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION),
- _memory(numeric_limits <size_t>::max()), _control(0), _resume(0),
- _failing(string_view::npos), _nested(0), _identity(0),
- _current(string_view::npos), _error(error_t::NONE), _located(string_view::npos) {}
+ _bounded(false), _error(error_t::NONE), _control(0),
+ _start(0), _steps(0), _onset(string_view::npos),
+ _limit(MAX_STEPS), _budget(MAX_STEPS),
+ _memory(numeric_limits <size_t>::max()), _resume(0),
+ _nested(0), _failing(string_view::npos), _attempt(0),
+ _current(string_view::npos), _ceiling(MAX_STEPS),
+ _nesting(MAX_RECURSION), _deepest(MAX_RECURSION),
+ _located(string_view::npos), _horizon(string_view::npos),
+ _frontier(string_view::npos), _saves(0), _checks(0),
+ _rounds(0), _points_spent(0), _frames_spent(0),
+ _identity(0), _program(nullptr) {}
 
 /**
  * @brief Конструктор точки возврата
  *
  */
-awh::regex::Backtrack::Point::Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0), control(0), seek(0), cell(0) {}
+awh::regex::Backtrack::Point::Point() noexcept : frame(false), seek(0), control(0), pos(0), span(0), journal(0), pc(0), cell(0) {}
 /**
  * @brief Конструктор записи журнала
  *
  */
-awh::regex::Backtrack::Change::Change() noexcept : slot(0), value(0) {}
+awh::regex::Backtrack::Change::Change() noexcept : value(0), slot(0) {}
 /**
  * @brief Конструктор таблицы принадлежности значений байта классу символов
  *
@@ -4354,12 +4356,12 @@ awh::regex::Backtrack::Lookup::Lookup() noexcept : modes(0), bytes(nullptr) {}
  * @brief Конструктор записи отметки
  *
  */
-awh::regex::Backtrack::Remark::Remark() noexcept : cell(0), value(0) {}
+awh::regex::Backtrack::Remark::Remark() noexcept : value(0), cell(0) {}
 /**
  * @brief Конструктор записи кадра
  *
  */
-awh::regex::Backtrack::Frame::Frame() noexcept : back(0), number(0), journal(0), parent(0), depth(0), pos(0) {}
+awh::regex::Backtrack::Frame::Frame() noexcept : pos(0), depth(0), parent(0), journal(0), back(0), number(0) {}
 /**
  * @brief Деструктор модуля возвратов
  *

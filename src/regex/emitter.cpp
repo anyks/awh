@@ -548,7 +548,7 @@ bool awh::regex::Emitter::failed() const noexcept {
  * @brief Конструктор
  *
  */
-awh::regex::Emitter::Emitter() noexcept : _stamp(SIZE_MAX), _seats(0), _failed(false) {}
+awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE_MAX) {}
 
 /**
  * Если сборка выполняется для процессора с набором команд ARM64
@@ -1558,9 +1558,9 @@ awh::regex::Emitter::Emitter() noexcept : _stamp(SIZE_MAX), _seats(0), _failed(f
  *
  */
 awh::regex::Emitter::Stored::Stored(const reg_t source, const reg_t base, const uint32_t index) noexcept :
- source(source), base(base), index(index) {}
+ base(base), source(source), index(index) {}
 /**
  * @brief Конструктор отложенного перехода
  *
  */
-awh::regex::Emitter::Fixup::Fixup() noexcept : position(0), label(0), kind(kind_t::JUMP) {}
+awh::regex::Emitter::Fixup::Fixup() noexcept : kind(kind_t::JUMP), label(0), position(0) {}

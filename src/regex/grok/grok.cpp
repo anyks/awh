@@ -1923,9 +1923,8 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
  *
  */
 awh::Grok::Grok() noexcept :
- _regexp(), _storage(),
- _method(compressor::method_t::NONE),
- _error(error_t::NONE) {
+ _regexp(), _error(error_t::NONE), _storage(),
+ _method(compressor::method_t::NONE) {
 	// Выполняем размещение реестра шаблонов
 	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
 	/**

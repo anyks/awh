@@ -2507,8 +2507,8 @@ awh::regex::storage_error_t awh::regex::Storage::error() const noexcept {
  *
  */
 awh::regex::Storage::Storage() noexcept :
- _error(storage_error_t::NONE), _lifetime(0),
- _trusted(false), _method(compressor::method_t::NONE), _ciphered(false) {}
+ _trusted(false), _ciphered(false), _lifetime(0),
+ _method(compressor::method_t::NONE), _error(storage_error_t::NONE) {}
 /**
  * @brief Деструктор хранилища
  *

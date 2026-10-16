@@ -532,8 +532,8 @@ awh::regex::Assembly & awh::regex::Assembly::operator = (Assembly && assembly) n
  *
  */
 awh::regex::Assembly::Assembly(Assembly && assembly) noexcept :
- _address(assembly._address), _size(assembly._size),
- _length(assembly._length), _executable(assembly._executable) {
+ _executable(assembly._executable), _size(assembly._size),
+ _length(assembly._length), _address(assembly._address) {
 	// Выполняем сброс адреса участка памяти перемещаемого объекта
 	assembly._address = nullptr;
 	// Выполняем сброс размера участка памяти перемещаемого объекта
@@ -548,7 +548,7 @@ awh::regex::Assembly::Assembly(Assembly && assembly) noexcept :
  *
  */
 awh::regex::Assembly::Assembly() noexcept :
- _address(nullptr), _size(0), _length(0), _executable(false) {}
+ _executable(false), _size(0), _length(0), _address(nullptr) {}
 /**
  * @brief Деструктор
  *

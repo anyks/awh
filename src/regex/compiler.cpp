@@ -344,9 +344,9 @@ namespace {
  *
  */
 awh::regex::Compiler::Compiler() noexcept :
- _parser(nullptr), _arena(nullptr),
- _program(nullptr), _reverse(false), _full(false),
- _cells(0), _branch(~0u), _atomics(0), _error(error_t::NONE) {}
+ _full(false), _reverse(false), _cells(0),
+ _branch(~0u), _atomics(0), _error(error_t::NONE),
+ _arena(nullptr), _program(nullptr), _parser(nullptr) {}
 
 /**
  * @brief Метод извлечения кода ошибки компиляции
@@ -6037,7 +6037,7 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
  * @brief Конструктор записи отрезка выражения
  *
  */
-awh::regex::Compiler::Piece::Piece() noexcept : first(INVALID_NODE), count(0), length(0) {}
+awh::regex::Compiler::Piece::Piece() noexcept : length(0), count(0), first(INVALID_NODE) {}
 /**
  * @brief Деструктор разбора регулярного выражения
  *

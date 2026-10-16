@@ -8701,7 +8701,7 @@ bool awh::regex::Codegen::skipping() const noexcept {
  *
  */
 awh::regex::Codegen::Codegen() noexcept :
- _assembly(), _filter(filter_t::NONE),
  _feasible(false), _skipping(false),
- _captures(0), _frame(0), _levels(0),
- _identity(0), _matcher(nullptr) {}
+ _frame(0), _levels(0), _captures(0),
+ _identity(0), _filter(filter_t::NONE),
+ _matcher(nullptr), _assembly() {}

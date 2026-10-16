@@ -1138,7 +1138,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
  * @brief Конструктор выражения движка
  *
  */
-awh::regex::Expression::Expression() noexcept : backtracking(false), ready(false), reversible(false), automatic(false) {}
+awh::regex::Expression::Expression() noexcept : ready(false), automatic(false), reversible(false), backtracking(false) {}
 /**
  * @brief Деструктор движка регулярных выражений
  *

@@ -226,7 +226,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::regex::Dfa::Dfa() noexcept : _program(nullptr), _identity(0), _start(0), _backward(false), _stride(2), _count(1) {
+awh::regex::Dfa::Dfa() noexcept : _backward(false), _count(1), _stride(2), _start(0), _identity(0), _program(nullptr) {
 	// Выполняем сброс соответствия значений байтов классам эквивалентности
 	::memset(this->_classes, 0, sizeof(this->_classes));
 	// Выполняем сброс соответствия признаков положения исходным состояниям

@@ -738,8 +738,8 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
  *
  */
 awh::regex::Pike::Pike() noexcept :
- _program(nullptr), _start(0),
- _generation(0), _upcoming(0), _width(0) {}
+ _start(0), _width(0), _upcoming(0),
+ _generation(0), _program(nullptr) {}
 
 /**
  * @brief Конструктор нити исполнения

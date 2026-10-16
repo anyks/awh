@@ -41,11 +41,10 @@ namespace awh {
 		 *
 		 */
 		Program::Program() noexcept :
-		 id(0), captures(0), cells(0), flags(0),
-		 steps(~0u), depth(~0u), heap(~0u),
-		 newline(newline_t::LF), marker(~0u),
-		 plain(false), sweeping(false),
-		 anchored(false), startline(false) {}
+		 plain(false), sweeping(false), anchored(false),
+		 startline(false), id(0), heap(~0u), cells(0),
+		 flags(0), steps(~0u), depth(~0u), marker(~0u),
+		 captures(0), newline(newline_t::LF) {}
 
 		 /**
 		 * @brief Конструктор инструкции программы регулярного выражения
