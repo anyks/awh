@@ -38,10 +38,10 @@
 #include <algorithm>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <net/queue.hpp>
 #include <sys/log.hpp>
+#include <net/queue.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -240,13 +240,13 @@ void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcep
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, {pos, size}, awh::log::flag_t::WARNING);
+				log::debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, {pos, size}, log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("It is not possible to set the size of an individual record for TCP payload", awh::log::flag_t::WARNING);
+				log::print("It is not possible to set the size of an individual record for TCP payload", log::flag_t::WARNING);
 			#endif
 		} break;
 		// Если очередь для границ сообщений (например, UDP)
@@ -616,7 +616,7 @@ size_t awh::Network_Queue::push(const void * head, const size_t length, const vo
 		 */
 		if(result != size)
 			// Выводим сообщение об ошибке
-			awh::log::print("Network queue: a record of two parts has been torn, the head has been laid without its data", awh::log::flag_t::CRITICAL);
+			log::print("Network queue: a record of two parts has been torn, the head has been laid without its data", log::flag_t::CRITICAL);
 		// Возвращаем размер добавленных данных без учёта головы
 		return result;
 	}
