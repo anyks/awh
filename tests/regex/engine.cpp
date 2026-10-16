@@ -1998,8 +1998,8 @@ TEST(RegexEngine, FailureReachesTheLog) {
 		ASSERT_NE(engine.error(), regex::error_t::NONE);
 		// Выполняем проверку того, что отказ сборки дошёл до журнала
 		ASSERT_FALSE(caught.empty());
-		// Выполняем проверку того, что отказ выдан предупреждением
-		ASSERT_EQ(flag, awh::log::flag_t::WARNING);
+		// Выполняем проверку того, что отказ выдан критическим сообщением
+		ASSERT_EQ(flag, log::flag_t::CRITICAL);
 		// Выполняем проверку того, что сообщение несёт место отказа
 		ASSERT_NE(caught.find("offset"), string::npos);
 	}
@@ -2010,7 +2010,7 @@ TEST(RegexEngine, FailureReachesTheLog) {
 	 */
 	{
 		// Объект фасада регулярных выражений с журналом
-		awh::regexp_t regexp;
+		regexp_t regexp;
 		// Выполняем сборку заведомо неверного выражения
 		ASSERT_FALSE(regexp.build("(?:[a-z"));
 		// Выполняем проверку того, что отказ сборки дошёл до журнала

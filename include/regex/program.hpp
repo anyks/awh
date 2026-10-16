@@ -657,30 +657,6 @@ namespace awh {
 				struct {
 					/**
 					 * \~russian
-					 * Флаг отсечения точек возврата, накопленных телом проверки
-					 *
-					 * @details Проверка окружения обыкновенная атомарна: точки возврата,
-					 *          телом её накопленные, отсекаются выполнением проверки,
-					 *          отчего отказ последующего текста тела не пересопоставляет.
-					 *          Проверка не отсекающая точки сохраняет, отчего отказ
-					 *          последующего текста продолжается перебором тела.
-					 *          Хранится байтом по той же причине, что и признак отрицания
-					 *
-					 * \~english
-					 * Flag of cutting off the backtracking points accumulated by the body of the check
-					 *
-					 * @details An ordinary lookaround check is atomic: the backtracking points
-					 *          accumulated by its body are cut off by the fulfilment of the check,
-					 *          whereby a failure of the following text does not rematch the body.
-					 *          A non-atomic check keeps the points, whereby a failure
-					 *          of the following text continues with a walk over the body.
-					 *          Stored as a byte for the same reason as the negation indication
-					 *
-					 * \~
-					 */
-					uint8_t atomic = 0;
-					/**
-					 * \~russian
 					 * Флаг отрицания результата проверки окружения
 					 *
 					 * @note Хранится байтом, а не логическим значением: набор инструкций
@@ -763,6 +739,30 @@ namespace awh {
 					 * \~
 					 */
 					address_t alternate = 0;
+					/**
+					 * \~russian
+					 * Флаг отсечения точек возврата, накопленных телом проверки
+					 *
+					 * @details Проверка окружения обыкновенная атомарна: точки возврата,
+					 *          телом её накопленные, отсекаются выполнением проверки,
+					 *          отчего отказ последующего текста тела не пересопоставляет.
+					 *          Проверка не отсекающая точки сохраняет, отчего отказ
+					 *          последующего текста продолжается перебором тела.
+					 *          Хранится байтом по той же причине, что и признак отрицания
+					 *
+					 * \~english
+					 * Flag of cutting off the backtracking points accumulated by the body of the check
+					 *
+					 * @details An ordinary lookaround check is atomic: the backtracking points
+					 *          accumulated by its body are cut off by the fulfilment of the check,
+					 *          whereby a failure of the following text does not rematch the body.
+					 *          A non-atomic check keeps the points, whereby a failure
+					 *          of the following text continues with a walk over the body.
+					 *          Stored as a byte for the same reason as the negation indication
+					 *
+					 * \~
+					 */
+					uint8_t atomic = 0;
 				} look;
 				/**
 				 * \~russian

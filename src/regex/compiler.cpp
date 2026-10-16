@@ -4794,7 +4794,7 @@ void awh::regex::Compiler::series() noexcept {
  *
  */
 static_assert(sizeof(awh::regex::instruction_t::letter) <= sizeof(awh::regex::instruction_t::look),
- "regex::Instruction: пометка литерала вышла за зазор объединения операндов");
+ "regex::Instruction: the literal marker extended beyond the gap between the operands");
 /**
  * @brief Метод продления литералов, байтами дословно сличаемых, размещённым символом
  *
