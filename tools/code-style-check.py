@@ -356,6 +356,13 @@ def template_above(code, n):
 DEF_OPEN = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable)\s+|&\s*|\*\s*)*\{")
 DECL_OPEN = re.compile(r"^(?:namespace\b|(?:extern\s+\"[^\"]*\"\s*)?(?:typedef\s+)?(?:class|struct|union|enum)\b)|\b(?:class|struct|union)\s+\w+\s*(?:final\s*)?\{$")
 STMT_OPEN = re.compile(r"^(?:if|for|while|switch|else|try|catch|do)\b|\b(?:if|for|while|switch)\s*\(")
+# Конструктор со списком инициализации: «) modifiers :» — скобка тела стоит за списком
+INIT_COLON = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable|final)\s+|&\s*|\*\s*)*:")
+
+# Модули без файла реализации по архитектуре — §5.5.1 (перечислены в своде).
+# Запись с '/' на конце — префикс каталога, прочее — точное имя под include/.
+HEADER_ONLY = ("sys/callback.hpp", "sys/threadpool.hpp", "net/callback.hpp",
+    "net/engine.hpp", "alloc/capture.hpp", "codec/value.hpp", "num/lexical/")
 
 
 HEADER_TAGS = ["file", "date", "license", "author", "telegram", "phone", "email", "site", "brief", "copyright"]
@@ -432,6 +439,18 @@ def project_root(path):
         d = os.path.dirname(d)
     return None
 
+def header_only(path):
+    """Модуль без реализации в .cpp по архитектуре — освобождение §5.5.1.
+
+    Освобождение объявлено списком в своде, а не выводится из дерева: отсутствие
+    парного .cpp само по себе ничего не доказывает — у `regex/grok/common.hpp`
+    парного файла тоже нет, а перенести тело есть куда (`src/regex/grok/`).
+    Новый модуль вписывается в список только по решению владельца.
+    """
+    root = project_root(path)
+    rel = os.path.relpath(os.path.abspath(path), os.path.join(root or "", "include")).replace(os.sep, "/")
+    return any(rel == x or rel.startswith(x) for x in HEADER_ONLY)
+
 def build_impl_index(files):
     """Заголовки, которым есть куда переносить тело: парная .cpp или .cpp, его подключающий."""
     roots = []
@@ -482,10 +501,12 @@ def has_implementation(path, impl):
 def check_header_bodies(path, lines, report, impl=None, waived=None):
     """Тело определения в заголовке допустимо только с явной пометкой inline (§5.5).
 
-    Заголовки без файла реализации правило не снимает целиком, а молчит: переносить
-    тело некуда (§5.5.1).
+    Освобождение §5.5.1 — за объявленным списком header-only модулей, а не по
+    одному отсутствию парного .cpp: у объявленного модуля переносить тело некуда,
+    у необъявленного — есть куда (хотя бы в .cpp своего модуля). Как только у
+    объявленного модуля появляется .cpp, правило на него включается само.
     """
-    if impl is not None and not has_implementation(path, impl):
+    if header_only(path) and (impl is None or not has_implementation(path, impl)):
         if waived is not None:
             waived.append(path)
         return
@@ -514,6 +535,15 @@ def check_header_bodies(path, lines, report, impl=None, waived=None):
             m = DEF_OPEN.search(s)
             if m and (not stack or stack[-1] == "decl"):
                 opener = m.start()
+            elif not stack or stack[-1] == "decl":
+                # Конструктор со списком инициализации: между `)` и скобкой тела стоит
+                # список (`noexcept : modes(0), bytes{} {}`), и DEF_OPEN её не видит.
+                # Многострочный список покрыт первым случаем: там `) {}` на последней строке.
+                cm = INIT_COLON.search(s)
+                body = s.rfind("{")
+                if cm is not None and body > cm.end() and "(" in s[:cm.end()] \
+                        and "?" not in s[:cm.end()] and "=" not in s[:cm.end()]:
+                    opener = body
         declarator = ""
         if opener is not None:
             declarator = s[:opener].strip()
@@ -1021,7 +1051,7 @@ def main():
         else: warns += 1
         print(f"{path}:{n}: {level} [{rule}] {msg}")
     if waived:
-        print(f"§5.5 молчит на {len(waived)} заголовках без файла реализации: {', '.join(sorted(set(waived))[:24])}" + (" …" if len(set(waived)) > 24 else ""))
+        print(f"§5.5 молчит на {len(waived)} header-only заголовках (свод §5.5.1): {', '.join(sorted(set(waived))[:24])}" + (" …" if len(set(waived)) > 24 else ""))
     print(f"\n{len(files)} файлов: ERROR={errors} WARN={warns}")
     if unreadable:
         return 2
