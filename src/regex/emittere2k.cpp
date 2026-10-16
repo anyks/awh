@@ -550,6 +550,15 @@ namespace {
 };
 
 /**
+ * @brief Конструктор широкой команды, слоги её обнуляющий
+ *
+ */
+awh::regex::Emitter::Packed::Packed() noexcept :
+ first(false), second(false), opened(false), stubbed(false), extended(false),
+ literals(0), predicates(0), ales(0), cs0(0), cs1(0), stub(0), writes(0),
+ has{}, als{}, lts{} {}
+
+/**
  * @brief Метод выдачи широкой команды, к выдаче отложенной
  *
  */

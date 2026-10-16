@@ -2139,6 +2139,8 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 	if(alts.empty() || (alts.front().size() < 2))
 		// Выходим признаком отсутствия совпадения
 		return size;
+	// Устанавливаем начальную позицию сканирования, общую всем путям поиска
+	size_t at = pos;
 	/**
 	 * Сканируем текст по объединению первых байтов альтернатив
 	 */
@@ -2153,8 +2155,6 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 		for(size_t i = 0; i < alts.size(); i++)
 			// Выполняем размножение очередного первого байта по вектору
 			wanted[i] = ::vdupq_n_u8(static_cast <uint8_t> (alts[i][0]));
-		// Устанавливаем начальную позицию сканирования
-		size_t at = pos;
 		/**
 		 * Сканируем участки по 16 байтов
 		 */
@@ -2218,8 +2218,6 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 		for(size_t i = 0; i < alts.size(); i++)
 			// Выполняем размножение очередного первого байта по вектору
 			wanted[i] = ::_mm_set1_epi8(static_cast <char> (alts[i][0]));
-		// Устанавливаем начальную позицию сканирования
-		size_t at = pos;
 		/**
 		 * Сканируем участки по 16 байтов
 		 */
@@ -2269,12 +2267,6 @@ size_t awh::regex::alternating(const char * text, const size_t size, const size_
 			// Переходим к следующему участку текста
 			at += 16;
 		}
-	/**
-	 * Для остальных архитектур
-	 */
-	#else
-		// Выводим признак отсутствия совпадения
-		return size;
 	#endif
 	// Выполняем поиск в хвосте текста скалярным проходом
 	const size_t from = (at < size ? at : size);
