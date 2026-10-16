@@ -56,6 +56,11 @@ using namespace std;
  */
 namespace options {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Метод применения сетевой оптимизации операционной системы
 	 *
 	 */
@@ -64,10 +69,8 @@ namespace options {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем инициализацию объекта работы с операционной системы
-			awh::os_t os;
 			// Выполняем инициализацию объекта работы с файловыми дескрипторами
-			awh::fds_t fds;
+			fds_t fds;
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
@@ -83,6 +86,8 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if defined(AWH_BOOSTING_NET)
+				// Выполняем инициализацию объекта работы с операционной системы
+				os_t os;
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
 				if(!os.isAdmin()){
 					/**
@@ -90,13 +95,13 @@ namespace options {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+						log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Root privileges are required to apply network optimizations", awh::log::flag_t::WARNING);
+						log::print("Root privileges are required to apply network optimizations", log::flag_t::WARNING);
 					#endif
 				// Если права суперпользователя получены
 				} else {
@@ -188,11 +193,11 @@ namespace options {
 						// Если выбран лучший доступны алгоритм
 						if(!algorithm.empty()){
 							// Если найден алгоритм cubic
-							if(awh::fmk::exists("cubic", algorithm))
+							if(fmk::exists("cubic", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.cc.algorithm", "cubic");
 							// Если же найден алгоритм htcp
-							else if(awh::fmk::exists("htcp", algorithm))
+							else if(fmk::exists("htcp", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.cc.algorithm", "htcp");
 						}
@@ -221,11 +226,11 @@ namespace options {
 						// Если перечень доступных источников времени получен
 						if(!timecounter.empty()){
 							// Если доступен счётчик тактов с пониженной частотой
-							if(awh::fmk::exists("TSC-low", timecounter))
+							if(fmk::exists("TSC-low", timecounter))
 								// Выполняем выбор счётчика тактов с пониженной частотой
 								os.sysctl("kern.timecounter.hardware", "TSC-low");
 							// Если же доступен счётчик тактов
-							else if(awh::fmk::exists("TSC", timecounter))
+							else if(fmk::exists("TSC", timecounter))
 								// Выполняем выбор счётчика тактов
 								os.sysctl("kern.timecounter.hardware", "TSC");
 						}
@@ -269,11 +274,11 @@ namespace options {
 						// Если выбран лучший доступны алгоритм
 						if(!algorithm.empty()){
 							// Если найден алгоритм cubic
-							if(awh::fmk::exists("cubic", algorithm))
+							if(fmk::exists("cubic", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.congctl.selected", "cubic");
 							// Если же найден алгоритм newreno
-							else if(awh::fmk::exists("newreno", algorithm))
+							else if(fmk::exists("newreno", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.congctl.selected", "newreno");
 						}
@@ -301,7 +306,7 @@ namespace options {
 						 */
 						const string & timecounter = os.sysctl <string> ("kern.timecounter.choice");
 						// Если перечень доступных источников времени получен и счётчик тактов доступен
-						if(!timecounter.empty() && awh::fmk::exists("TSC", timecounter))
+						if(!timecounter.empty() && fmk::exists("TSC", timecounter))
 							// Выполняем выбор счётчика тактов
 							os.sysctl("kern.timecounter.hardware", "TSC");
 					/**
@@ -351,13 +356,13 @@ namespace options {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}

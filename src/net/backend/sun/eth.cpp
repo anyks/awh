@@ -44,9 +44,9 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
+#include <sys/log.hpp>
 #include <net/fds.hpp>
 #include <net/eth/eth.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -58,6 +58,11 @@ using namespace std;
  *
  */
 namespace options {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Метод применения сетевой оптимизации операционной системы
 	 *
@@ -85,10 +90,8 @@ namespace options {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем инициализацию объекта работы с операционной системы
-			awh::os_t os;
 			// Выполняем инициализацию объекта работы с файловыми дескрипторами
-			awh::fds_t fds;
+			fds_t fds;
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
@@ -104,6 +107,8 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if defined(AWH_BOOSTING_NET)
+				// Выполняем инициализацию объекта работы с операционной системы
+				os_t os;
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
 				if(!os.isAdmin()){
 					/**
@@ -111,13 +116,13 @@ namespace options {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+						log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Root privileges are required to apply network optimizations", awh::log::flag_t::WARNING);
+						log::print("Root privileges are required to apply network optimizations", log::flag_t::WARNING);
 					#endif
 				// Если права суперпользователя получены
 				} else {
@@ -157,13 +162,13 @@ namespace options {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}

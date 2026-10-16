@@ -46,10 +46,10 @@
 #include <sys/macro/win32.hpp>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <net/eth/eth.hpp>
 #include <sys/log.hpp>
+#include <net/eth/eth.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -73,8 +73,6 @@ using namespace std;
  *
  */
 namespace {
-	// Режим безопасности работы потоков
-
 	/**
 	 * @brief Заголовок сегмента TCP в наименьшем виде
 	 *
@@ -243,13 +241,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				 */
 				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
-					awh::log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
+					log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					awh::log::print("%s: unsupported protocol for checksum calculation", awh::log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
+					log::print("%s: unsupported protocol for checksum calculation", log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
 				#endif
 				// Выводим пустой результат
 				return result;
@@ -331,13 +329,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
+				log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s: unsupported address family for checksum calculation", awh::log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
+				log::print("%s: unsupported address family for checksum calculation", log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
 			#endif
 			// Выводим пустой результат
 			return result;
@@ -380,13 +378,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__, error.what());
+			log::print("%s: %s", log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__, error.what());
 		#endif
 	}
 	// Возвращаем результат
