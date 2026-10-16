@@ -254,6 +254,29 @@ def is_snake_name(s):
         return False
     return bool(re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+", s))
 
+def c_abi_lines(lines):
+    """Строки внутри extern "C" { }: поверхность C сохраняет соглашение имени C (§4.11)."""
+    held = set()
+    depth = 0
+    inside = False
+    in_block = False
+    for n, raw in enumerate(lines, 1):
+        code, in_block = strip_comments_strings(raw.rstrip("\n"), in_block)
+        if not inside:
+            if re.search(r'extern\s+"C"', raw) and "{" in code:
+                inside = True
+                depth = code.count("{") - code.count("}")
+                held.add(n)
+            else:
+                continue
+        else:
+            depth += code.count("{") - code.count("}")
+            held.add(n)
+        if depth <= 0:
+            inside = False
+            depth = 0
+    return held
+
 def collect_members(files):
     """Собирает имена членов вида _name из объявлений в заголовках/источниках."""
     pat = re.compile(r"^\s*(?:const\s+)?[\w:<>]+(?:\s*[*&]\s*|\s+)(_\w+)\s*(?:=[^;]+)?;")
@@ -740,6 +763,7 @@ def check_file(path, lines, members, report, fixes=None):
     is_hdr = path.endswith((".hpp", ".h")) and "/include/" in path
     in_block = False
     bodies = find_bodies(lines)
+    c_abi = c_abi_lines(lines)
     blank_ctx = None
     prev_code = ""
     static_names = set(re.findall(r"^\s*(?:\[\[.*?\]\]\s*)?static\s+(?:[\w:<>]+\s+)+?[*&]?\s*(\w+)\s*\(", "\n".join(lines), re.M))
@@ -829,7 +853,7 @@ def check_file(path, lines, members, report, fixes=None):
             call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast)\b[^;]*$", head))
             if call_kw or fname in STD_CALLS:
                 pass
-            elif is_snake_name(fname) and "__awh" not in fm.group(1):
+            elif is_snake_name(fname) and "__awh" not in fm.group(1) and n not in c_abi:
                 report(path, n, "ERROR", "§4.2", f"snake_case в имени функции/метода '{fname}' — требуется camelCase")
         # snake_case в объявлениях переменных и параметров (§4.3)
         for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]\w*)\s*(?==[^=]|;|,|\)|\()", code):
@@ -844,6 +868,8 @@ def check_file(path, lines, members, report, fixes=None):
             if headtok == "const" or re.fullmatch(r"(?:const\s+)?(?:struct|union|enum)\s*", headtok):
                 continue
             if re.search(r"(?:__awh_\w*__|::|\b(?:return|offsetof|sizeof|static_cast|awh_cast|co_return|struct|union|enum|reinterpret_cast|const_cast))$", before.rstrip()) or re.search(r"(offsetof|sizeof)\s*\($", before.rstrip()) or re.search(r"<[^>]*$", before):
+                continue
+            if n in c_abi:
                 continue
             report(path, n, "ERROR", "§4.3", f"snake_case '{name}' в объявлении — требуется camelCase")
         # m_/s_ префиксы
