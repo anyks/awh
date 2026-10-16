@@ -40,7 +40,7 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include "../../sys/macro/global.hpp"
 
@@ -50,12 +50,10 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include "../../sys/macro/suppress.hpp"
-#include <sys/fmk.hpp>
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -71,7 +69,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -230,17 +227,6 @@ namespace awh {
 		namespace cef {
 			/**
 			 * \~russian
-			 * @brief Наибольшая допустимая длина имени ключа расширения в байтах
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the name of a key of an extension in bytes
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_NAME = 1024;
-
-			/**
-			 * \~russian
 			 * @brief Наивысшая редакция описания записи, разбору ведомая
 			 *
 			 * @details Описание ArcSight знает редакцию 0, живые устройства пишут и 1.
@@ -259,24 +245,16 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_VERSION = 1;
-
 			/**
 			 * \~russian
-			 * @brief Наибольшее допустимое значение важности события
-			 *
-			 * @details Описание дозволяет числа от нуля до десяти, где десять означает
-			 *          событие наибольшей важности.
+			 * @brief Наибольшая допустимая длина имени ключа расширения в байтах
 			 *
 			 * \~english
-			 * @brief Largest admissible value of the severity of an event
-			 *
-			 * @details The specification allows the numbers from zero to ten, where ten means
-			 *          an event of the greatest importance.
+			 * @brief Largest admissible length of the name of a key of an extension in bytes
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_SEVERITY = 10;
-
+			constexpr uint32_t MAX_NAME = 1024;
 			/**
 			 * \~russian
 			 * @brief Количество полей заголовка записи CEF
@@ -295,7 +273,22 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t HEADER_FIELDS = 7;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшее допустимое значение важности события
+			 *
+			 * @details Описание дозволяет числа от нуля до десяти, где десять означает
+			 *          событие наибольшей важности.
+			 *
+			 * \~english
+			 * @brief Largest admissible value of the severity of an event
+			 *
+			 * @details The specification allows the numbers from zero to ten, where ten means
+			 *          an event of the greatest importance.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_SEVERITY = 10;
 			/**
 			 * \~russian
 			 * @brief Количество пар расширения, начиная с какого заводится указатель имён
@@ -322,7 +315,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t INDEX_THRESHOLD = 16;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшая допустимая длина одной записи CEF в байтах
@@ -339,7 +331,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_RECORD = 0x100000;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое количество пар расширения у одной записи
@@ -350,7 +341,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_EXTENSIONS = 0x10000;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшая допустимая длина одного поля заголовка в байтах
@@ -361,7 +351,16 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_HEADER_FIELD = 0x4000;
-
+			/**
+			 * \~russian
+			 * @brief Обозначение отсутствующей записи разобранного текста
+			 *
+			 * \~english
+			 * @brief Designation of an absent record of the parsed text
+			 *
+			 * \~
+			 */
+			constexpr uint32_t NO_RECORD = static_cast <uint32_t> (~0u);
 			/**
 			 * \~russian
 			 * @brief Обозначение отсутствующего положения в исходном тексте
@@ -375,17 +374,6 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Обозначение отсутствующей записи разобранного текста
-			 *
-			 * \~english
-			 * @brief Designation of an absent record of the parsed text
-			 *
-			 * \~
-			 */
-			constexpr uint32_t NO_RECORD = static_cast <uint32_t> (~0u);
-
-			/**
-			 * \~russian
 			 * @brief Слово, открывающее заголовок записи
 			 *
 			 * \~english
@@ -394,7 +382,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr string_view SIGNATURE = "CEF:";
-
 			/**
 			 * \~russian
 			 * @brief Окончание имени ключа, несущего имя парного ему поля
@@ -413,7 +400,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr string_view LABEL_SUFFIX = "Label";
-
 			/**
 			 * \~russian
 			 * @brief Запись даты, описанием ArcSight назначенная меткам времени
@@ -434,7 +420,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr string_view TIMESTAMP_FORMAT = "%b %d %Y %H:%M:%S %Z";
-
 			/**
 			 * \~russian
 			 * @brief Запись даты БЕЗ пояса времени
@@ -474,7 +459,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr string_view TIMESTAMP_ZONELESS_FORMAT = "%b %d %Y %H:%M:%S";
-
 			/**
 			 * \~russian
 			 * @brief Запись даты с долей секунды и БЕЗ пояса времени
@@ -493,7 +477,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr string_view TIMESTAMP_ZONELESS_FRACTION_FORMAT = "%b %d %Y %H:%M:%S.%s";
-
 			/**
 			 * \~russian
 			 * @brief Запись даты, метку времени с долей секунды несущую
@@ -547,6 +530,188 @@ namespace awh {
 			 */
 			constexpr string_view TIMESTAMP_FRACTION_FORMAT = "%b %d %Y %H:%M:%S.%s %Z";
 
+			/**
+			 * \~russian
+			 * @brief Правила обращения с вложенностью при записи дерева в запись CEF
+			 *
+			 * @details Дерева произвольной глубины запись CEF не несёт, и значение
+			 *          вложенное выразить ей нечем. Выбор исхода принадлежит не кодеку, а тому,
+			 *          кто пишет: молчаливое обращение в знаки оставляло бы потребителя с
+			 *          записью, которая разбирается, но означает иное.
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of a nesting at the writing of a tree into a CEF record
+			 *
+			 * @details The CEF format does not support trees of arbitrary depth, nor does it
+			 *          provide a way to express nested values. The choice of how to handle this
+			 *          falls not on the codec, but on the writer: silently converting the data
+			 *          into tokens would leave the consumer with a record that is parsable but
+			 *          conveys a different meaning.
+			 *
+			 * \~
+			 */
+			enum class nested_t : uint8_t {
+				STRICT = 0x00, // Отвечать отказом с кодом NESTED_VALUE
+				TEXT   = 0x01, // Обращать в последовательность знаков
+				SKIP   = 0x02  // Пропускать значение вовсе
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обращения с пустым значением расширения
+			 *
+			 * @details Запись «cs3=» описанием ArcSight не оговорена вовсе - ни разрешена,
+			 *          ни запрещена, - но в живых журналах обычна и образует пару с меткой
+			 *          «cs3Label=CVEID». Умолчанием берётся пустая последовательность знаков:
+			 *          обращение её в логическую истину отдавало бы потребителю утверждение,
+			 *          какого в записи не было.
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of an empty value of an extension
+			 *
+			 * @details The "cs3=" entry is not defined at all in the ArcSight specification—neither
+			 *          permitted nor prohibited—yet it is common in actual logs, where it pairs
+			 *          with the "cs3Label=CVEID" tag. It defaults to an empty string; treating
+			 *          this as logically true would convey an assertion to the consumer that
+			 *          was not present in the record.
+			 *
+			 * \~
+			 */
+			enum class empty_t : uint8_t {
+				STRING  = 0x00, // Пустая последовательность знаков
+				BOOLEAN = 0x01, // Логическая истина: ключ признаком присутствия
+				NUL     = 0x02, // Значение, означающее пустоту
+				SKIP    = 0x03  // Пара в дерево не заносится вовсе
+			};
+			/**
+			 * \~russian
+			 * @brief Области записи CEF
+			 *
+			 * @details Области разделены не для удобства обхода, а по существу: правила
+			 *          отмены знаков у них РАЗНЫЕ. В заголовке отменяются прямая черта и обратная
+			 *          косая, а знак равенства отмены не требует; в расширении же отменяется знак
+			 *          равенства, а черта и косая отмены не требуют.
+			 *
+			 * \~english
+			 * @brief Areas of a CEF record
+			 *
+			 * @details The regions are distinguished not merely for the sake of traversal,
+			 *          but fundamentally: the rules for cancelling their signs differ.
+			 *          In the header, the forward slash and backslash are cancelled,
+			 *          whereas the equals sign requires no cancellation; in the extension,
+			 *          however, the equals sign is cancelled, while the forward slash
+			 *          and backslash do not require cancellation.
+			 *
+			 * \~
+			 */
+			enum class area_t : uint8_t {
+				NONE      = 0x00, // Область не определена
+				SYSLOG    = 0x01, // Приставка syslog: отмены знаков не имеет вовсе
+				HEADER    = 0x02, // Заголовок: отменяются «\|» и «\\»
+				EXTENSION = 0x03  // Расширение: отменяются «\=», «\\», «\n» и «\r»
+			};
+			/**
+			 * \~russian
+			 * @brief Строгость сличения ключей расширения со словарём
+			 *
+			 * @details Словарь расширений задаёт и человеческие имена ключам, и виды их
+			 *          значений. Строгость сличения выбирается настройкой, а не зашита: журналы
+			 *          живых устройств несут ключи, словарю неизвестные, и отказ на них
+			 *          потребителю, собирающему записи с чужого оборудования, мешал бы.
+			 *
+			 * \~english
+			 * @brief Strictness of the matching of the keys of an extension against the dictionary
+			 *
+			 * @details The dictionary of the extensions gives both the human-readable names to the keys and the kinds of their
+			 *          values. The strictness of the matching is chosen by a setting rather than being hardwired:
+			 *          the journals of the live devices carry the keys unknown to the dictionary, and a refusal
+			 *          on them would hinder the consumer gathering the records from somebody else's equipment.
+			 *
+			 * \~
+			 */
+			enum class mode_t : uint8_t {
+				NONE   = 0x00, // Сличения не ведётся вовсе: всякий ключ принимается, значение выдаётся знаками
+				LOW    = 0x01, // Сличаются одни имена ключей, вид значения не проверяется
+				MEDIUM = 0x02, // Сличаются имена ключей и простые виды значений: числа и логические значения
+				STRONG = 0x03  // Сличаются имена ключей и все виды значений, включая адреса сети и метки времени
+			};
+			/**
+			 * \~russian
+			 * @brief Виды событий чтения записи CEF
+			 *
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a CEF record
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE      = 0x00, // Событие не определено
+				SYSLOG    = 0x01, // Приставка syslog, заголовку предшествующая
+				HEADER    = 0x02, // Поле заголовка записи
+				EXTENSION = 0x03, // Пара расширения «ключ=значение»
+				RECORD    = 0x04, // Запись разобрана до конца, следующая начинается заново
+				FINISH    = 0x05  // Текст разобран до конца, событие видно после цикла разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Поля заголовка записи CEF
+			 *
+			 * @details Порядок членов отвечает порядку полей в записи и служит их
+			 *          указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
+			 *          заголовка запись не несёт вовсе.
+			 *
+			 * \~english
+			 * @brief Fields of the header of a CEF record
+			 *
+			 * @details The order of the members corresponds to the order of the fields in a record and serves as their
+			 *          index: a field is parsed by the count rather than by the name, for the record does not carry
+			 *          the names of the fields of the header at all.
+			 *
+			 * \~
+			 */
+			enum class field_t : uint8_t {
+				VERSION   = 0x00, // Номер редакции записи, следующий за словом «CEF:»
+				VENDOR    = 0x01, // Поставщик устройства
+				PRODUCT   = 0x02, // Изделие поставщика
+				RELEASE   = 0x03, // Редакция изделия
+				SIGNATURE = 0x04, // Опознаватель вида события
+				NAME      = 0x05, // Имя события, человеку понятное
+				SEVERITY  = 0x06  // Важность события
+			};
+			/**
+			 * \~russian
+			 * @brief Виды значений словаря расширений
+			 *
+			 * @details Вид берётся из словаря по ключу, а не угадывается по виду знаков:
+			 *          угадывание порождает разночтения - «011» разбирается то восьмеричным, то
+			 *          десятичным, а «1.10» числом теряет разряд.
+			 *
+			 * \~english
+			 * @brief Kinds of the values of the dictionary of the extensions
+			 *
+			 * @details The kind is taken from the dictionary by the key rather than
+			 *          guessed by the appearance of the characters: a guessing produces
+			 *          misreadings - «011» is parsed now as octal, now as decimal, and
+			 *          «1.10» as a number loses a digit.
+			 *
+			 * \~
+			 */
+			enum class type_t : uint8_t {
+				NONE      = 0x00, // Вид не установлен: значение выдаётся знаками
+				STRING    = 0x01, // Последовательность знаков
+				INTEGER   = 0x02, // Целое число со знаком
+				UNSIGNED  = 0x03, // Целое число без знака
+				DOUBLE    = 0x04, // Число дробное
+				BOOLEAN   = 0x05, // Логическое значение
+				MAC       = 0x06, // Адрес устройства сети
+				IPV4      = 0x07, // Адрес IPv4
+				IPV6      = 0x08, // Адрес IPv6
+				ADDRESS   = 0x09, // Адрес сети любого из двух видов
+				TIMESTAMP = 0x0A  // Метка времени
+			};
 			/**
 			 * \~russian
 			 * @brief Коды отказов разбора и записи
@@ -622,193 +787,6 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Виды событий чтения записи CEF
-			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
-			 *
-			 * \~english
-			 * @brief Kinds of the events of the reading of a CEF record
-			 *
-			 * @details The reading issues the events as the text is parsed without holding it in full.
-			 *
-			 * \~
-			 */
-			enum class event_t : uint8_t {
-				NONE      = 0x00, // Событие не определено
-				SYSLOG    = 0x01, // Приставка syslog, заголовку предшествующая
-				HEADER    = 0x02, // Поле заголовка записи
-				EXTENSION = 0x03, // Пара расширения «ключ=значение»
-				RECORD    = 0x04, // Запись разобрана до конца, следующая начинается заново
-				FINISH    = 0x05  // Текст разобран до конца, событие видно после цикла разбора
-			};
-
-			/**
-			 * \~russian
-			 * @brief Области записи CEF
-			 *
-			 * @details Области разделены не для удобства обхода, а по существу: правила
-			 *          отмены знаков у них РАЗНЫЕ. В заголовке отменяются прямая черта и обратная
-			 *          косая, а знак равенства отмены не требует; в расширении же отменяется знак
-			 *          равенства, а черта и косая отмены не требуют.
-			 *
-			 * \~english
-			 * @brief Areas of a CEF record
-			 *
-			 * @details The regions are distinguished not merely for the sake of traversal,
-			 *          but fundamentally: the rules for cancelling their signs differ.
-			 *          In the header, the forward slash and backslash are cancelled,
-			 *          whereas the equals sign requires no cancellation; in the extension,
-			 *          however, the equals sign is cancelled, while the forward slash
-			 *          and backslash do not require cancellation.
-			 *
-			 * \~
-			 */
-			enum class area_t : uint8_t {
-				NONE      = 0x00, // Область не определена
-				SYSLOG    = 0x01, // Приставка syslog: отмены знаков не имеет вовсе
-				HEADER    = 0x02, // Заголовок: отменяются «\|» и «\\»
-				EXTENSION = 0x03  // Расширение: отменяются «\=», «\\», «\n» и «\r»
-			};
-
-			/**
-			 * \~russian
-			 * @brief Поля заголовка записи CEF
-			 *
-			 * @details Порядок членов отвечает порядку полей в записи и служит их
-			 *          указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
-			 *          заголовка запись не несёт вовсе.
-			 *
-			 * \~english
-			 * @brief Fields of the header of a CEF record
-			 *
-			 * @details The order of the members corresponds to the order of the fields in a record and serves as their
-			 *          index: a field is parsed by the count rather than by the name, for the record does not carry
-			 *          the names of the fields of the header at all.
-			 *
-			 * \~
-			 */
-			enum class field_t : uint8_t {
-				VERSION   = 0x00, // Номер редакции записи, следующий за словом «CEF:»
-				VENDOR    = 0x01, // Поставщик устройства
-				PRODUCT   = 0x02, // Изделие поставщика
-				RELEASE   = 0x03, // Редакция изделия
-				SIGNATURE = 0x04, // Опознаватель вида события
-				NAME      = 0x05, // Имя события, человеку понятное
-				SEVERITY  = 0x06  // Важность события
-			};
-
-			/**
-			 * \~russian
-			 * @brief Строгость сличения ключей расширения со словарём
-			 *
-			 * @details Словарь расширений задаёт и человеческие имена ключам, и виды их
-			 *          значений. Строгость сличения выбирается настройкой, а не зашита: журналы
-			 *          живых устройств несут ключи, словарю неизвестные, и отказ на них
-			 *          потребителю, собирающему записи с чужого оборудования, мешал бы.
-			 *
-			 * \~english
-			 * @brief Strictness of the matching of the keys of an extension against the dictionary
-			 *
-			 * @details The dictionary of the extensions gives both the human-readable names to the keys and the kinds of their
-			 *          values. The strictness of the matching is chosen by a setting rather than being hardwired.
-			 *
-			 * \~
-			 */
-			enum class mode_t : uint8_t {
-				NONE   = 0x00, // Сличения не ведётся вовсе: всякий ключ принимается, значение выдаётся знаками
-				LOW    = 0x01, // Сличаются одни имена ключей, вид значения не проверяется
-				MEDIUM = 0x02, // Сличаются имена ключей и простые виды значений: числа и логические значения
-				STRONG = 0x03  // Сличаются имена ключей и все виды значений, включая адреса сети и метки времени
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды значений словаря расширений
-			 *
-			 * @details Вид берётся из словаря по ключу, а не угадывается по виду знаков:
-			 *          угадывание порождает разночтения - «011» разбирается то восьмеричным, то
-			 *          десятичным, а «1.10» числом теряет разряд.
-			 *
-			 * \~english
-			 * @brief Kinds of the values of the dictionary of the extensions
-			 *
-			 * @details The kind is taken from the dictionary by the key rather than
-			 *          guessed by the appearance of the characters: a guessing produces
-			 *          misreadings - «011» is parsed now as octal, now as decimal, and
-			 *          «1.10» as a number loses a digit.
-			 *
-			 * \~
-			 */
-			enum class type_t : uint8_t {
-				NONE      = 0x00, // Вид не установлен: значение выдаётся знаками
-				STRING    = 0x01, // Последовательность знаков
-				INTEGER   = 0x02, // Целое число со знаком
-				UNSIGNED  = 0x03, // Целое число без знака
-				DOUBLE    = 0x04, // Число дробное
-				BOOLEAN   = 0x05, // Логическое значение
-				MAC       = 0x06, // Адрес устройства сети
-				IPV4      = 0x07, // Адрес IPv4
-				IPV6      = 0x08, // Адрес IPv6
-				ADDRESS   = 0x09, // Адрес сети любого из двух видов
-				TIMESTAMP = 0x0A  // Метка времени
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с пустым значением расширения
-			 *
-			 * @details Запись «cs3=» описанием ArcSight не оговорена вовсе - ни разрешена,
-			 *          ни запрещена, - но в живых журналах обычна и образует пару с меткой
-			 *          «cs3Label=CVEID». Умолчанием берётся пустая последовательность знаков:
-			 *          обращение её в логическую истину отдавало бы потребителю утверждение,
-			 *          какого в записи не было.
-			 *
-			 * \~english
-			 * @brief Rules of the treatment of an empty value of an extension
-			 *
-			 * @details The "cs3=" entry is not defined at all in the ArcSight specification—neither
-			 *          permitted nor prohibited—yet it is common in actual logs, where it pairs
-			 *          with the "cs3Label=CVEID" tag. It defaults to an empty string; treating
-			 *          this as logically true would convey an assertion to the consumer that
-			 *          was not present in the record.
-			 *
-			 * \~
-			 */
-			enum class empty_t : uint8_t {
-				STRING  = 0x00, // Пустая последовательность знаков
-				BOOLEAN = 0x01, // Логическая истина: ключ признаком присутствия
-				NUL     = 0x02, // Значение, означающее пустоту
-				SKIP    = 0x03  // Пара в дерево не заносится вовсе
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с вложенностью при записи дерева в запись CEF
-			 *
-			 * @details Дерева произвольной глубины запись CEF не несёт, и значение
-			 *          вложенное выразить ей нечем. Выбор исхода принадлежит не кодеку, а тому,
-			 *          кто пишет: молчаливое обращение в знаки оставляло бы потребителя с
-			 *          записью, которая разбирается, но означает иное.
-			 *
-			 * \~english
-			 * @brief Rules of the treatment of a nesting at the writing of a tree into a CEF record
-			 *
-			 * @details The CEF format does not support trees of arbitrary depth, nor does it
-			 *          provide a way to express nested values. The choice of how to handle this
-			 *          falls not on the codec, but on the writer: silently converting the data
-			 *          into tokens would leave the consumer with a record that is parsable but
-			 *          conveys a different meaning.
-			 *
-			 * \~
-			 */
-			enum class nested_t : uint8_t {
-				STRICT = 0x00, // Отвечать отказом с кодом NESTED_VALUE
-				TEXT   = 0x01, // Обращать в последовательность знаков
-				SKIP   = 0x02  // Пропускать значение вовсе
-			};
-
-			/**
-			 * \~russian
 			 * @brief Положение в исходном тексте
 			 *
 			 * @details Положение несёт и смещение в байтах от начала текста, и номер
@@ -836,7 +814,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
@@ -847,7 +824,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод получения текста сообщения об ошибке разбора
+			 * @brief Функция получения текста сообщения об ошибке разбора
 			 *
 			 * @details Текст выдаётся на английском языке и предназначен журналу, а не
 			 *          потребителю: разбирать отказы надлежит по коду, а не по тексту.
@@ -856,7 +833,7 @@ namespace awh {
 			 * @return      текст сообщения об ошибке разбора
 			 *
 			 * \~english
-			 * @brief Method of getting the text of the message about an error of the parsing
+			 * @brief Function of getting the text of the message about an error of the parsing
 			 *
 			 * @details The text is issued in the English language and is intended for the log rather than for the
 			 *          consumer: the refusals ought to be discerned by the code rather than by the text.
@@ -868,8 +845,8 @@ namespace awh {
 			 */
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
 		}
-	}
-}
+	};
+};
 
 /**
  * Возвращаем имена, системными макросами занятые

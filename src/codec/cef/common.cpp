@@ -19,7 +19,7 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <codec/cef/common.hpp>
 
@@ -37,7 +37,6 @@ using namespace std;
  * \~russian
  * @brief Конструктор
  *
- *
  * \~english
  * @brief Constructor
  *
@@ -47,7 +46,7 @@ awh::codec::cef::Position::Position() noexcept :
  line(1), column(1), offset(0) {}
 
 /**
- * @brief Метод получения текста сообщения об ошибке разбора
+ * @brief Функция получения текста сообщения об ошибке разбора
  *
  * @param error код ошибки разбора
  * @return      текст сообщения об ошибке разбора

@@ -36,14 +36,13 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -70,7 +69,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера CEF
-		 *
 		 *
 		 * \~english
 		 * @brief CEF container namespace
@@ -102,14 +100,24 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Entry {
-				// Ключ расширения, в записи стоящий
-				string_view key;
-				// Полное имя ключа расширения
-				string_view name;
 				// Вид значения ключа расширения
 				type_t type;
 				// Предел длины значения в байтах, нулём отсутствующий
 				uint32_t limit;
+				// Ключ расширения, в записи стоящий
+				string_view key;
+				// Полное имя ключа расширения
+				string_view name;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Entry() noexcept;
 			} entry_t;
 
 			/**
@@ -153,50 +161,12 @@ namespace awh {
 			namespace dictionary {
 				/**
 				 * \~russian
-				 * @brief Метод розыска записи словаря по ключу расширения
-				 *
-				 * @param key ключ расширения, в записи стоящий
-				 * @return    запись словаря либо ничто, если ключ словарю неизвестен
-				 *
-				 * \~english
-				 * @brief Method of the search for a record of the dictionary by a key of an extension
-				 *
-				 * @param key key of an extension standing in a record
-				 * @return    record of the dictionary or nothing if the key is unknown to the dictionary
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ const entry_t * find(const string_view key) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод розыска записи словаря по полному имени ключа
-				 *
-				 * @details Ход этот и есть второй ход к сведённому именованию: обход
-				 *          дерева выдаёт ключи сырыми, а полное имя разыскивается им.
-				 *
-				 * @param name полное имя ключа расширения
-				 * @return     запись словаря либо ничто, если имя словарю неизвестно
-				 *
-				 * \~english
-				 * @brief Method of the search for a record of the dictionary by the full name of a key
-				 *
-				 * @details This method is the very second way to the reduced naming: a traversal of the tree issues
-				 *          the keys raw, while the full name is searched for by it.
-				 *
-				 * @param name full name of a key of an extension
-				 * @return     record of the dictionary or nothing if the name is unknown to the dictionary
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ const entry_t * search(const string_view name) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения количества ключей расширения в словаре
+				 * @brief Функция получения количества ключей расширения в словаре
 				 *
 				 * @return количество ключей расширения в словаре
 				 *
 				 * \~english
-				 * @brief Method of getting the number of the keys of the extensions in the dictionary
+				 * @brief Function of getting the number of the keys of the extensions in the dictionary
 				 *
 				 * @return number of the keys of the extensions in the dictionary
 				 *
@@ -205,7 +175,7 @@ namespace awh {
 				__AWH_SHARED_EXPORT__ size_t size() noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод получения записи словаря по её порядковому номеру
+				 * @brief Функция получения записи словаря по её порядковому номеру
 				 *
 				 * @details Обход словаря целиком нужен справке о применении и проверке
 				 *          упорядоченности таблицы, розыском же пользоваться надлежит ходами
@@ -215,7 +185,7 @@ namespace awh {
 				 * @return      запись словаря либо ничто, если номер за таблицу выходит
 				 *
 				 * \~english
-				 * @brief Method of getting a record of the dictionary by its ordinal number
+				 * @brief Function of getting a record of the dictionary by its ordinal number
 				 *
 				 * @details The traversal of the dictionary in full is needed by a reference on the application and by
 				 *          a check of the sortedness of the table, while the search itself is to be conducted by the
@@ -227,7 +197,45 @@ namespace awh {
 				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ const entry_t * at(const size_t index) noexcept;
-			}
-		}
-	}
-}
+				/**
+				 * \~russian
+				 * @brief Функция розыска записи словаря по ключу расширения
+				 *
+				 * @param key ключ расширения, в записи стоящий
+				 * @return    запись словаря либо ничто, если ключ словарю неизвестен
+				 *
+				 * \~english
+				 * @brief Function of the search for a record of the dictionary by a key of an extension
+				 *
+				 * @param key key of an extension standing in a record
+				 * @return    record of the dictionary or nothing if the key is unknown to the dictionary
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ const entry_t * find(const string_view key) noexcept;
+				/**
+				 * \~russian
+				 * @brief Функция розыска записи словаря по полному имени ключа
+				 *
+				 * @details Ход этот и есть второй ход к сведённому именованию: обход
+				 *          дерева выдаёт ключи сырыми, а полное имя разыскивается им.
+				 *
+				 * @param name полное имя ключа расширения
+				 * @return     запись словаря либо ничто, если имя словарю неизвестно
+				 *
+				 * \~english
+				 * @brief Function of the search for a record of the dictionary by the full name of a key
+				 *
+				 * @details This method is the very second way to the reduced naming: a traversal of the tree issues
+				 *          the keys raw, while the full name is searched for by it.
+				 *
+				 * @param name full name of a key of an extension
+				 * @return     record of the dictionary or nothing if the name is unknown to the dictionary
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ const entry_t * search(const string_view name) noexcept;
+			};
+		};
+	};
+};
