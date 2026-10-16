@@ -53,10 +53,10 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
-#include <net/fds.hpp>
-#include <net/eth/eth.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/fds.hpp>
+#include <net/eth/eth.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -68,6 +68,11 @@ using namespace std;
  *
  */
 namespace options {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Метод применения сетевой оптимизации операционной системы
 	 *
@@ -85,9 +90,7 @@ namespace options {
 		 */
 		try {
 			// Выполняем инициализацию объекта работы с операционной системы
-			awh::os_t os;
-			// Выполняем инициализацию объекта работы с файловыми дескрипторами
-			awh::fds_t fds;
+			os_t os;
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
@@ -103,6 +106,8 @@ namespace options {
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
 			#if defined(AWH_BOOSTING_NET)
+				// Выполняем инициализацию объекта работы с файловыми дескрипторами
+				fds_t fds;
 				/**
 				 * Задаём правила освобождения памяти: обмен ведётся буферами, и переход на
 				 * отображение памяти при каждом крупном запросе обходится дороже удержания
@@ -132,13 +137,13 @@ namespace options {
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
+						log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						awh::log::print("Root privileges are required to apply network optimizations", awh::log::flag_t::WARNING);
+						log::print("Root privileges are required to apply network optimizations", log::flag_t::WARNING);
 					#endif
 				// Если права суперпользователя получены
 				} else {
@@ -200,15 +205,15 @@ namespace options {
 					// Если выбран лучший доступны алгоритм
 					if(!algorithm.empty()){
 						// Если найден алгоритм bbr
-						if(awh::fmk::exists("bbr", algorithm))
+						if(fmk::exists("bbr", algorithm))
 							// Активируем выбранный нами алгоритм
 							os.sysctl("net.ipv4.tcp_congestion_control", "bbr");
 						// Если же найден алгоритм cubic
-						else if(awh::fmk::exists("cubic", algorithm))
+						else if(fmk::exists("cubic", algorithm))
 							// Активируем выбранный нами алгоритм
 							os.sysctl("net.ipv4.tcp_congestion_control", "cubic");
 						// Если же найден алгоритм htcp
-						else if(awh::fmk::exists("htcp", algorithm))
+						else if(fmk::exists("htcp", algorithm))
 							// Активируем выбранный нами алгоритм
 							os.sysctl("net.ipv4.tcp_congestion_control", "htcp");
 					}
@@ -223,13 +228,13 @@ namespace options {
 			 */
 			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
-				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
