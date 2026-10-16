@@ -794,8 +794,10 @@ namespace rival {
 			#endif
 			// Разрешаем повторное использование адреса
 			::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
-			// Разрешаем повторное использование порта
-			::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
+			// Разрешаем повторное использование порта, где он поддержан
+			#if defined(SO_REUSEPORT)
+				::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
+			#endif
 			// Отключаем алгоритм Нейгла
 			::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
 			// Переводим сокет в неблокирующий режим
