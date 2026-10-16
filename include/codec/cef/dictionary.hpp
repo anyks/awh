@@ -112,12 +112,23 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * @param type  вид значения ключа расширения
+				 * @param limit предел длины значения в байтах, нулём отсутствующий
+				 * @param key   ключ расширения, в записи стоящий
+				 * @param name  полное имя ключа расширения
+				 *
 				 * \~english
 				 * @brief Constructor
 				 *
+				 * @param type  kind of the value of the key of an extension
+				 * @param limit limit of the length of the value in bytes, zero standing for its absence
+				 * @param key   key of an extension standing in a record
+				 * @param name  full name of the key of an extension
+				 *
 				 * \~
 				 */
-				explicit Entry() noexcept;
+				constexpr Entry(const type_t type, const uint32_t limit, const string_view key, const string_view name) noexcept :
+				 type(type), limit(limit), key(key), name(name) {}
 			} entry_t;
 
 			/**
