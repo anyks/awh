@@ -1407,17 +1407,19 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод перевода дерева ABC в запись JSON
+				 * @brief Метод перевода дерева ABC в запись указанном формате
 				 *
 				 * @param value  дерево значений контейнера ABC
-				 * @param result собранная запись JSON
+				 * @param result собранная запись в указанном формате
+				 * @param format вид записи, в который переводится дерево
 				 * @return       результат перевода
 				 *
 				 * \~english
-				 * @brief Method of the translation of a tree of ABC into a record of JSON
+				 * @brief Method for converting an ABC tree into a record in a specified format
 				 *
 				 * @param value  tree of the values of the container ABC
-				 * @param result assembled record of JSON
+				 * @param result a record assembled in the specified format
+				 * @param format a type of record into which a tree is converted
 				 * @return       result of the translation
 				 *
 				 * \~
@@ -1425,17 +1427,19 @@ namespace awh {
 				[[nodiscard]] bool encode(const abc::value_t & value, string & result, const format_t format) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод перевода записи JSON в дерево ABC
+				 * @brief Метод перевода записи в указанном формате в дерево ABC
 				 *
-				 * @param text   запись JSON для перевода
+				 * @param text   запись в указанном формате для перевода
 				 * @param result собранное дерево значений контейнера ABC
+				 * @param format вид записи, из которого переводится дерево
 				 * @return       результат перевода
 				 *
 				 * \~english
-				 * @brief Method of the translation of a record of JSON into a tree of ABC
+				 * @brief A method for converting a record in the specified format into an ABC tree
 				 *
-				 * @param text   record of JSON for the translation
+				 * @param text   entry in the specified format for translation
 				 * @param result assembled tree of the values of the container ABC
+				 * @param format a type of record from which a tree is translated
 				 * @return       result of the translation
 				 *
 				 * \~

@@ -4375,7 +4375,7 @@ bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result
 	return this->absorbINI(document, string(""), result, 0);
 }
 /**
- * @brief Метод перевода дерева ABC в запись заданного вида
+ * @brief Метод перевода дерева ABC в запись указанном формате
  *
  * @warning Запись вида ABC ДВОИЧНА, а не текстова, и укладывается в строку
  *          восьмеричными знаками как есть. Строка здесь - вместилище байтов,
@@ -4383,7 +4383,7 @@ bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result
  *          текстом прочих видов нельзя
  *
  * @param value  дерево значений контейнера ABC
- * @param result собранная запись
+ * @param result собранная запись в указанном формате
  * @param format вид записи, в который переводится дерево
  * @return       результат перевода
  *
@@ -4495,9 +4495,9 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 	}
 }
 /**
- * @brief Метод перевода записи заданного вида в дерево ABC
+ * @brief Метод перевода записи в указанном формате в дерево ABC
  *
- * @param text   запись для перевода
+ * @param text   запись в указанном формате для перевода
  * @param result собранное дерево значений контейнера ABC
  * @param format вид поданной записи
  * @return       результат перевода
