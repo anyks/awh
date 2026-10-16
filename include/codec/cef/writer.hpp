@@ -37,7 +37,7 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -45,12 +45,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../abc/value.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -67,7 +66,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -77,7 +75,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера CEF
-		 *
 		 *
 		 * \~english
 		 * @brief CEF container namespace
@@ -95,8 +92,8 @@ namespace awh {
 			 *
 			 * @par Намеренные решения
 			 *
-			 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-			 * задачи, и каждое из решений закреплено проверочным испытанием
+			 *       Перечисленное ниже не является пробелом реализации: это очерченные границы
+			 *       задачи, и каждое из решений закреплено проверочным испытанием
 			 *
 			 * @li **Отмена знаков ставится порознь по областям.** В заголовке отменяются
 			 *     прямая черта и обратная косая, а знак равенства НЕ отменяется; в
@@ -126,8 +123,8 @@ namespace awh {
 			 *
 			 * @par Deliberate decisions
 			 *
-			 * The list below is not a gap of the implementation: these are the outlined boundaries of the task,
-			 * and each of the decisions is fixed by a verifying test
+			 *      The list below is not a gap of the implementation: these are the outlined boundaries of the task,
+			 *      and each of the decisions is fixed by a verifying test
 			 *
 			 * @li **The escaping of the signs is put separately by the areas.** In the header the vertical bar and
 			 *     the backslash are escaped, while the equals sign is NOT escaped; in the extension the equals sign
@@ -154,42 +151,39 @@ namespace awh {
 					 * \~russian
 					 * @brief Настройки записи событий
 					 *
-					 *
 					 * \~english
 					 * @brief Settings of the writing of the events
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Обращение с вложенным значением, записи CEF неведомым
-						nested_t nested;
 						// Признак записи приставки syslog перед словом «CEF:»
 						bool syslog;
-						// Признак записи знака конца строки за записью
-						bool terminate;
 						// Признак постановки отмены знаков в значениях
 						bool escape;
+						// Признак записи знака конца строки за записью
+						bool terminate;
+						// Обращение с вложенным значением, записи CEF неведомым
+						nested_t nested;
 						// Номер редакции записи, словом «CEF:» объявляемый
 						uint32_t version;
 						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept :
-						 nested(nested_t::STRICT), syslog(true), terminate(true), escape(true), version(0) {}
+						explicit Settings() noexcept;
 					} settings_t;
-				private:
-					// Настройки записи событий
-					settings_t _settings;
 				private:
 					// Код ошибки последней операции записи
 					error_t _error;
+				private:
+					// Настройки записи событий
+					settings_t _settings;
 				private:
 					/**
 					 * \~russian
@@ -224,7 +218,8 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the placing of the escaping of the characters in a value
 					 *
-					 * @details The rules of the escaping of the areas of a record are DIFFERENT.
+					 * @details The rules of the escaping of the areas of a record are DIFFERENT,
+					 *          and the area is passed by an argument exactly because of that.
 					 *
 					 * @param text   value requiring the escaping of the characters
 					 * @param area   area of the record the value is placed into
@@ -332,19 +327,18 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Writer() noexcept {}
+					~Writer() noexcept = default;
 			} writer_t;
-		}
-	}
-}
+		};
+	};
+};

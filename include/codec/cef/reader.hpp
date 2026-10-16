@@ -41,17 +41,15 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "common.hpp"
-#include <sys/fmk.hpp>
-#include <sys/macro/global.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -68,7 +66,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -78,7 +75,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера CEF
-		 *
 		 *
 		 * \~english
 		 * @brief CEF container namespace
@@ -243,77 +239,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
-				public:
-					/**
-					 * \~russian
-					 * @brief Настройки разбора записей CEF
-					 *
-					 *
-					 * \~english
-					 * @brief Settings of the parsing of the CEF records
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Строгость сличения ключей расширения со словарём
-						mode_t mode;
-						// Обращение с пустым значением расширения
-						empty_t empty;
-						// Запись даты, меткам времени назначенная
-						string timestamp;
-						// Запись даты, меткам времени с долей секунды назначенная
-						string fraction;
-						// Признак признания приставки syslog перед словом «CEF:»
-						bool syslog;
-						// Признак снятия отмены знаков со значений
-						bool unescape;
-						// Наибольшая допустимая длина одной записи в байтах
-						uint32_t maxRecord;
-						// Наибольшее допустимое количество пар расширения у одной записи
-						uint32_t maxExtensions;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Settings() noexcept :
-						 mode(mode_t::NONE), empty(empty_t::STRING),
-						 timestamp(TIMESTAMP_FORMAT), fraction(TIMESTAMP_FRACTION_FORMAT),
-						 syslog(true), unescape(true),
-						 maxRecord(MAX_RECORD), maxExtensions(MAX_EXTENSIONS) {}
-					} settings_t;
-				private:
-					// Настройки разбора записей
-					settings_t _settings;
-				private:
-					// Текущее состояние чтения
-					state_t _state;
-					// Вид текущего события разбора
-					event_t _event;
-					// Код ошибки последней операции разбора
-					error_t _error;
-				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					pos_t _errorLocation;
-					// Положение начала текущего события в исходном тексте
-					pos_t _position;
-					// Положение начала хранилища в исходном тексте
-					pos_t _origin;
-				private:
-					// Хранилище подаваемого текста
-					string _buffer;
-					// Смещение разбора в хранилище
-					size_t _offset;
-					// Смещение начала неразобранного остатка записи
-					size_t _record;
-				private:
-					// Признак того, что подан последний кусок текста
-					bool _end;
 				private:
 					/**
 					 * \~russian
@@ -338,28 +263,92 @@ namespace awh {
 						EXTENSION = 0x03, // Выдача пар расширения событиями порознь
 						FINISH    = 0x04  // Выдача знака окончания записи событием
 					};
+				public:
+					/**
+					 * \~russian
+					 * @brief Структура настройки разбора записей CEF
+					 *
+					 * \~english
+					 * @brief Structure for configuring CEF log parsing
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Признак признания приставки syslog перед словом «CEF:»
+						bool syslog;
+						// Признак снятия отмены знаков со значений
+						bool unescape;
+						// Строгость сличения ключей расширения со словарём
+						mode_t mode;
+						// Обращение с пустым значением расширения
+						empty_t empty;
+						// Наибольшая допустимая длина одной записи в байтах
+						uint32_t maxRecord;
+						// Наибольшее допустимое количество пар расширения у одной записи
+						uint32_t maxExtensions;
+						// Запись даты, меткам времени с долей секунды назначенная
+						string fraction;
+						// Запись даты, меткам времени назначенная
+						string timestamp;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Settings() noexcept;
+					} settings_t;
 				private:
-					// Этап разбора текущей записи
-					stage_t _stage;
-					// Номер поля заголовка, выдаваемого текущим событием
-					field_t _field;
+					// Признак того, что подан последний кусок текста
+					bool _end;
+				private:
 					// Указатель выдачи полей заголовка либо пар расширения
 					size_t _index;
 				private:
-					// Поля заголовка текущей записи со снятой отменой знаков
-					vector <string> _fields;
-					// Пары расширения текущей записи со снятой отменой знаков
-					vector <pair <string, string>> _pairs;
-				private:
+					// Смещение разбора в хранилище
+					size_t _offset;
+					// Смещение начала неразобранного остатка записи
+					size_t _record;
 					// Номер редакции записи, словом «CEF:» объявленный
 					uint32_t _version;
 					// Важность события, заголовком объявленная
 					uint32_t _severity;
 				private:
+					// Текущее состояние чтения
+					state_t _state;
+					// Вид текущего события разбора
+					event_t _event;
+					// Код ошибки последней операции разбора
+					error_t _error;
+					// Этап разбора текущей записи
+					stage_t _stage;
+					// Номер поля заголовка, выдаваемого текущим событием
+					field_t _field;
+				private:
+					// Положение начала текущего события в исходном тексте
+					pos_t _position;
+					// Положение начала хранилища в исходном тексте
+					pos_t _origin;
+					// Положение обнаруженной ошибки в исходном тексте
+					pos_t _errorLocation;
+				private:
+					// Настройки разбора записей
+					settings_t _settings;
+				private:
 					// Содержимое текущего события: имя ключа расширения
 					string _key;
 					// Содержимое текущего события: значение
 					string _value;
+					// Хранилище подаваемого текста
+					string _buffer;
+				private:
+					// Поля заголовка текущей записи со снятой отменой знаков
+					vector <string> _fields;
+					// Пары расширения текущей записи со снятой отменой знаков
+					vector <pair <string, string>> _pairs;
 				private:
 					/**
 					 * \~russian
@@ -850,10 +839,10 @@ namespace awh {
 					 *          label and with the long name of the dictionary is a translation, and it is conducted not by
 					 *          the reading but by the tree.
 					 *
+					 * @return name of the key issued by the current event
+					 *
 					 * @warning The view lives ONLY up to the next event: its content is replaced by the parsing
 					 *          of the next pair. A copy is to be kept, and not a view
-					 *
-					 * @return name of the key issued by the current event
 					 *
 					 * \~
 					 */
@@ -876,10 +865,10 @@ namespace awh {
 					 * @details Suitable for the events of the syslog prefix, of a field of the header and of a pair
 					 *          of an extension.
 					 *
+					 * @return value issued by the current event
+					 *
 					 * @warning The view lives ONLY up to the next event: its content is replaced by the next
 					 *          parsing. A copy is to be kept, and not a view
-					 *
-					 * @return value issued by the current event
 					 *
 					 * \~
 					 */
@@ -933,19 +922,18 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Reader() noexcept {}
+					~Reader() noexcept = default;
 			} reader_t;
-		}
-	}
-}
+		};
+	};
+};

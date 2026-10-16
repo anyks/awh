@@ -59,7 +59,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -74,7 +73,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -101,8 +99,10 @@ namespace awh {
 			 *          отвечает устройству самой записи:
 			 *
 			 * @li `/syslog` - приставка syslog, записи предшествующая, знаками;
+			 *
 			 * @li `/header` - поля заголовка отображением с именами `version`,
 			 *     `vendor`, `product`, `release`, `signature`, `name`, `severity`;
+			 *
 			 * @li `/extension` - пары расширения отображением по СЫРЫМ ключам записи
 			 *
 			 * @par Намеренные решения
@@ -209,8 +209,10 @@ namespace awh {
 			 *          The shape of the tree answers the shape of the record itself:
 			 *
 			 * @li `/syslog` - the syslog prefix preceding the record, as characters;
+			 *
 			 * @li `/header` - the fields of the header as a mapping with the names
 			 *     `version`, `vendor`, `product`, `release`, `signature`, `name`, `severity`;
+			 *
 			 * @li `/extension` - the extension pairs as a mapping by the RAW keys of the record
 			 *
 			 * @par Deliberate decisions
@@ -325,38 +327,6 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:
-					// Дерево разобранного события контейнером ABC
-					abc::value_t _root;
-					/**
-					 * \~russian
-					 * @brief Кеш ссылки на вместилище пар расширения
-					 *
-					 * @details Заводится лениво при первом обращении к `"/" + EXTENSION`,
-					 *          обнуляется в начале каждого `parse()`. Ссылка валидна до конца
-					 *          `parse()` - `reserve(3)` не даёт `_root._items` перераспределиться
-					 *
-					 * \~english
-					 * @brief Cached reference to the extension pairs container
-					 *
-					 * @details Initialized lazily on the first access to `"/" + EXTENSION`,
-					 *          reset at the start of each `parse()` call. The reference remains
-					 *          valid until the end of `parse()` - `reserve(3)` prevents
-					 *          `_root._items` from being reallocated
-					 *
-					 * \~
-					 */
-					abc::value_t * _extension;
-				private:
-					// Объект потокового чтения записей
-					reader_t _reader;
-					// Объект записи событий
-					writer_t _writer;
-				private:
-					// Объект работы с адресами сети
-					mutable net_addr_t _net;
-					// Объект работы с датой и временем
-					mutable chrono_t _chrono;
-				private:
 					/**
 					 * \~russian
 					 * @brief Объект работы с файловой системой
@@ -376,6 +346,11 @@ namespace awh {
 					 * \~
 					 */
 					fs_t _fs;
+				private:
+					// Объект потокового чтения записей
+					reader_t _reader;
+					// Объект записи событий
+					writer_t _writer;
 				private:
 					/**
 					 * \~russian
@@ -398,6 +373,33 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error;
+				private:
+					// Объект работы с адресами сети
+					mutable net_addr_t _net;
+					// Объект работы с датой и временем
+					mutable chrono_t _chrono;
+				private:
+					// Дерево разобранного события контейнером ABC
+					abc::value_t _root;
+					/**
+					 * \~russian
+					 * @brief Кеш ссылки на вместилище пар расширения
+					 *
+					 * @details Заводится лениво при первом обращении к `"/" + EXTENSION`,
+					 *          обнуляется в начале каждого `parse()`. Ссылка валидна до конца
+					 *          `parse()` - `reserve(3)` не даёт `_root._items` перераспределиться.
+					 *
+					 * \~english
+					 * @brief Cached reference to the extension pairs container
+					 *
+					 * @details Initialized lazily on the first access to `"/" + EXTENSION`,
+					 *          reset at the start of each `parse()` call. The reference remains
+					 *          valid until the end of `parse()` - `reserve(3)` prevents
+					 *          `_root._items` from being reallocated.
+					 *
+					 * \~
+					 */
+					abc::value_t * _extension;
 				private:
 					/**
 					 * \~russian
@@ -703,7 +705,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -936,7 +938,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
@@ -944,6 +945,6 @@ namespace awh {
 					 */
 					~Document() noexcept = default;
 			} document_t;
-		}
-	}
-}
+		};
+	};
+};

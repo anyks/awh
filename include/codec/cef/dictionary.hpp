@@ -99,7 +99,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Entry {
+			typedef struct Entry {
 				// Вид значения ключа расширения
 				type_t type;
 				// Предел длины значения в байтах, нулём отсутствующий
