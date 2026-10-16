@@ -69,7 +69,7 @@ TEST(Regex, StaticSequenceEmptyCopy) {
 	 */
 	for(uint32_t i = 0; i < 64; i++)
 		// Выполняем добавление очередной записи набора
-		source.pushBack(i);
+		source.push(i);
 	// Выполняем проверку наполнения набора записей
 	ASSERT_EQ(source.size(), static_cast <size_t> (64));
 	// Выполняем сброс набора записей с сохранением размещения
@@ -93,7 +93,7 @@ TEST(Regex, StaticSequenceEmptyCopy) {
 	 */
 	for(uint32_t i = 0; i < 8; i++)
 		// Выполняем добавление очередной записи набора
-		assigned.pushBack(i);
+		assigned.push(i);
 	// Выполняем присваивание набора записей копированием
 	assigned = source;
 	// Выполняем проверку опустошения набора-копии
@@ -111,7 +111,7 @@ TEST(Regex, StaticSequenceEmptyCopy) {
 	 */
 	for(uint32_t i = 0; i < 16; i++)
 		// Выполняем добавление очередной записи набора
-		assigned.pushBack(i * 3);
+		assigned.push(i * 3);
 	// Выполняем проверку наполнения набора-копии
 	ASSERT_EQ(assigned.size(), static_cast <size_t> (16));
 	/**
@@ -145,7 +145,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 	// Выполняем проверку обзора участка, местом не владеющего
 	ASSERT_FALSE(viewing.owned());
 	// Выполняем добавление записи в набор обозревающий
-	viewing.pushBack(10);
+	viewing.push(10);
 	// Выполняем проверку обращения набора обозревающего во владеющий
 	EXPECT_TRUE(viewing.owned());
 	// Выполняем проверку ухода набора с участка обозреваемого
@@ -171,7 +171,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 	// Выполняем установку обзора участка пустого
 	empty.attach(source, 0);
 	// Выполняем размещение записи в наборе, обозревающем участок пустой
-	uint32_t * const placed = empty.emplaceBack(11u);
+	uint32_t * const placed = empty.emplace(11u);
 	// Выполняем проверку указания, выданного медленным путём размещения
 	ASSERT_NE(placed, static_cast <uint32_t *> (nullptr));
 	// Выполняем проверку указания на запись, размещённую последней
@@ -189,7 +189,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 	// Заводим набор записей, место отводящий
 	regex::Sequence <uint32_t> filled;
 	// Выполняем добавление первой записи набора
-	filled.pushBack(0);
+	filled.push(0);
 	// Получаем указание на место, отведённое первой записью
 	const uint32_t * const first = filled.data();
 	// Количество записей, помещающихся в место, отведённое первой записью
@@ -206,7 +206,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 		// Выполняем проверку предела наполнения набора
 		ASSERT_LT(room, static_cast <size_t> (1024));
 		// Выполняем добавление очередной записи набора
-		filled.pushBack(static_cast <uint32_t> (room));
+		filled.push(static_cast <uint32_t> (room));
 		// Выполняем учёт записей, в место прежнее поместившихся
 		room += ((filled.data() == first) ? 1 : 0);
 	}
@@ -231,7 +231,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 	 */
 	for(size_t i = 0; i <= room; i++)
 		// Выполняем добавление очередной записи набора
-		filled.pushBack(static_cast <uint32_t> (i * 5));
+		filled.push(static_cast <uint32_t> (i * 5));
 	// Выполняем проверку удержания места сброшенным набором
 	EXPECT_EQ(filled.data(), moved);
 	// Выполняем проверку количества записей набора
@@ -250,7 +250,7 @@ TEST(Regex, StaticSequenceAppendPaths) {
 	 *          размещённую последней, а не на иную запись набора.
 	 *
 	 */
-	uint32_t * const fast = filled.emplaceBack(77u);
+	uint32_t * const fast = filled.emplace(77u);
 	// Выполняем проверку указания, выданного быстрым путём размещения
 	ASSERT_NE(fast, static_cast <uint32_t *> (nullptr));
 	// Выполняем проверку указания на запись, размещённую последней
