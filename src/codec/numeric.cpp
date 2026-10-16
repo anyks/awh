@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация общего для всех кодеков рамки извлечения числа из записи
- *
- * \~english
- * @brief Implementation of the extraction of a number from a text common for all the codecs of the framework
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -34,8 +28,13 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <num/lexical/lexical.hpp>
 #include <codec/numeric.hpp>
+#include <num/lexical/lexical.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
 
 /**
  * @brief Безымянное пространство имён вспомогательных объявлений извлечения числа
@@ -51,13 +50,13 @@ namespace {
 	 * @brief Функция отбрасывания пробельной обвязки записи
 	 *
 	 * @details Обвязка отбрасывается у всех кодеков рамки: запись числа приходит из
-	 * текста, а текст почти всегда несёт отступ записи либо перевод строки
+	 *          текста, а текст почти всегда несёт отступ записи либо перевод строки.
 	 *
 	 * @param text разбираемая запись
 	 * @return     запись без пробельной обвязки
 	 *
 	 */
-	string_view trim(const string_view text) noexcept {
+	static string_view trim(const string_view text) noexcept {
 		// Начало значащей части записи
 		size_t begin = 0;
 		// Конец значащей части записи
@@ -78,14 +77,21 @@ namespace {
 		return text.substr(begin, end - begin);
 	}
 	/**
-	 * @brief Шаблонная функция приведения дробного числа к затребованному виду
+	 * @brief Шаблон функции приведения дробного числа к затребованному виду
+	 *
+	 * @tparam T затребованный вид числа
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция приведения дробного числа к затребованному виду
 	 *
 	 * @details Приведение отвечает языку ВЕЗДЕ, где у языка ответ определён: целое, в
-	 * затребованный вид не помещающееся, ЗАВОРАЧИВАЕТСЯ по кругу, и туда же отнесено
-	 * дробное с нулевой дробной частью - `300.0` извлекается ровно как `300`. Разница
-	 * с `static_cast` одна - дробное, у которого дробная часть есть на деле, а целая
-	 * лежит за пределами затребованного вида, выдаётся пределом этого вида, ибо у языка
-	 * там поведение неопределено
+	 *          затребованный вид не помещающееся, ЗАВОРАЧИВАЕТСЯ по кругу, и туда же отнесено
+	 *          дробное с нулевой дробной частью - `300.0` извлекается ровно как `300`. Разница
+	 *          с `static_cast` одна - дробное, у которого дробная часть есть на деле, а целая
+	 *          лежит за пределами затребованного вида, выдаётся пределом этого вида, ибо у языка
+	 *          там поведение неопределено.
 	 *
 	 * @note Дробная часть ОКРУГЛЯЕТСЯ с уводом половины от нуля, а не отбрасывается
 	 *       усечением к нулю: усечение заменено округлением решением от
@@ -107,17 +113,15 @@ namespace {
 	 *       расходиться им нельзя: договор извлечения общий у всех кодеков рамки, и
 	 *       расхождение здесь стало бы расхождением поведения кодеков между собой
 	 *
-	 * @tparam T     затребованный вид числа
-	 * @param  value приводимое дробное число
-	 * @return       приведённое число
+	 * @param value приводимое дробное число
+	 * @return      приведённое число
 	 *
 	 */
-	template <typename T>
-	T convert(const double value) noexcept {
+	static T convert(const double value) noexcept {
 		/**
 		 * Если затребован дробный вид
 		 */
-		if(std::is_floating_point <T>::value)
+		if(is_floating_point <T>::value)
 			// Выводим приведённое число как оно есть
 			return static_cast <T> (value);
 		/**
@@ -137,10 +141,10 @@ namespace {
 		 * Если дробной части у числа нет вовсе
 		 *
 		 * @details Запись числа ответа менять не должна: `300.0` обязано извлекаться ровно
-		 * так же, как `300`, - решение от 30.08.2026. Оттого число с нулевой
-		 * дробной частью уходит на путь ЦЕЛОГО и заворачивается по кругу языком, а не
-		 * выдаётся пределом вида. Предел остаётся лишь у чисел, дробная часть у которых
-		 * есть на деле: там записи целой числу этому не отвечает вовсе, и сличать нечего
+		 *          так же, как `300`, - решение от 30.08.2026. Оттого число с нулевой
+		 *          дробной частью уходит на путь ЦЕЛОГО и заворачивается по кругу языком, а не
+		 *          выдаётся пределом вида. Предел остаётся лишь у чисел, дробная часть у которых
+		 *          есть на деле: там записи целой числу этому не отвечает вовсе, и сличать нечего.
 		 *
 		 * @note Ход этот берётся, лишь пока число укладывается в разрядность хранимого
 		 *       целого: путь целого держит `int64_t` со знаком и `uint64_t` без него, и
@@ -168,21 +172,22 @@ namespace {
 		/**
 		 * Если целая часть числа лежит ниже предела затребованного вида
 		 */
-		if(value <= static_cast <double> (std::numeric_limits <T>::lowest()))
+		if(value <= static_cast <double> (numeric_limits <T>::lowest()))
 			// Выводим нижний предел затребованного вида
-			return std::numeric_limits <T>::lowest();
+			return numeric_limits <T>::lowest();
 		/**
 		 * Если целая часть числа лежит выше предела затребованного вида
 		 */
-		if(value >= static_cast <double> (std::numeric_limits <T>::max()))
+		if(value >= static_cast <double> (numeric_limits <T>::max()))
 			// Выводим верхний предел затребованного вида
-			return std::numeric_limits <T>::max();
+			return numeric_limits <T>::max();
 		/**
 		 * Выводим приведённое число, округлив дробную часть
 		 *
 		 * @note Округление ведётся по правилам математики с уводом половины ОТ НУЛЯ:
 		 *       «1.5» даёт 2, «-1.5» даёт -2, «1.4» даёт 1. Усечение к нулю, стоявшее
 		 *       здесь прежде, отдавало «1.5» единицей, расходясь с обиходным счётом
+		 *
 		 * @warning Округление стоит ПОСЛЕ сличения с пределами вида нарочно: округлить
 		 *          прежде значило бы приводить к целому виду число, ему не отвечающее,
 		 *          а это поведение неопределённое
@@ -190,30 +195,35 @@ namespace {
 		return static_cast <T> (::round(value));
 	}
 	/**
-	 * @brief Шаблонная функция извлечения записи числа дробным
+	 * @brief Шаблон функции извлечения записи числа дробным
+	 *
+	 * @tparam T затребованный вид числа
+	 *
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция извлечения записи числа дробным
 	 *
 	 * @details Отказ разбора по нехватке разрядности отказом извлечения не считается:
-	 * запись, в родной вид не вместимая, числом быть не перестаёт, и `strtod` отвечает
-	 * ей бесконечностью либо нулём. Договор этот общий у кодеков рамки - у JSON и YAML
-	 * запись такая извлекается тем же самым порядком, - и расхождение здесь стало бы
-	 * расхождением поведения кодеков между собой
+	 *          запись, в родной вид не вместимая, числом быть не перестаёт, и `strtod` отвечает
+	 *          ей бесконечностью либо нулём. Договор этот общий у кодеков рамки - у JSON и YAML
+	 *          запись такая извлекается тем же самым порядком, - и расхождение здесь стало бы
+	 *          расхождением поведения кодеков между собой.
 	 *
 	 * @note Различать отказ по разрядности и отказ по составу записи обязательно:
 	 *       первый значит «число, да велико», второй - «не число вовсе»
 	 *
-	 * @tparam T      затребованный вид числа
 	 * @param  begin  начало записи числа
 	 * @param  end    конец записи числа
 	 * @param  result переменная, куда помещается извлечённое значение
 	 * @return        признак успешности извлечения
 	 *
 	 */
-	template <typename T>
 	static bool extend(const char * begin, const char * end, T & result) noexcept {
 		// Разбираемое дробное число
 		double number = 0.;
 		// Выполняем разбор записи числа
-		const awh::lexical_t::result_t <char> res = awh::lexical_t::fromChars(begin, end, number);
+		const lexical_t::result_t <char> res = lexical_t::fromChars(begin, end, number);
 		/**
 		 * Если запись дробным числом не разбирается вовсе
 		 */
@@ -240,37 +250,86 @@ namespace {
 		// Выводим признак успешного извлечения
 		return true;
 	}
+};
+
+/**
+ * @brief Шаблон функции приведения дробного числа к затребованному виду
+ *
+ * @tparam T затребованный вид числа
+ *
+ */
+template <typename T>
+/**
+ * @brief Функция приведения дробного числа к затребованному виду
+ *
+ * @details Тело приведения лежит в безымянном пространстве этого же файла, а метод
+ *          этот отдаёт его наружу: приведением пользуются и кодеки, число при чтении уже
+ *          разобравшие, - у них разбирать нечего, и извлечение приведением исчерпывается.
+ *
+ * @param value приводимое дробное число
+ * @return      приведённое число
+ *
+ */
+T awh::codec::convert(const double value) noexcept {
+	// Выводим приведённое число общим для кодеков телом приведения
+	return ::convert <T> (value);
 }
 /**
- * @brief Шаблонный метод извлечения числа из записи затребованным видом
+ * Выполняем явное создание тел приведения числа по всем поддерживаемым видам
+ *
+ * @note Перечень этот обязан совпадать с перечнем разбора выше буква в букву: извлечение
+ *       числа кодеком идёт через оба тела, и вид, у одного из них отсутствующий, откажет
+ *       связыванием ровно так же
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::convert <bool> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ char awh::codec::convert <char> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ signed char awh::codec::convert <signed char> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned char awh::codec::convert <unsigned char> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ short awh::codec::convert <short> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned short awh::codec::convert <unsigned short> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ int awh::codec::convert <int> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned int awh::codec::convert <unsigned int> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ long awh::codec::convert <long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned long awh::codec::convert <unsigned long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ long long awh::codec::convert <long long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned long long awh::codec::convert <unsigned long long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ float awh::codec::convert <float> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ double awh::codec::convert <double> (const double) noexcept;
+/**
+ * @brief Шаблон функции извлечения числа из записи затребованным видом
+ *
+ * @tparam T затребованный вид числа
+ *
+ */
+template <typename T>
+/**
+ * @brief Функция извлечения числа из записи затребованным видом
  *
  * @details Место это общее у всех кодеков рамки, и всякий из них приходит сюда. Прежде разбор был написан
- * дважды, и написания расходились по четырём правилам разом: обвязка пробелами,
- * записи `nan` и `inf`, показатель степени при извлечении целым и переполнение
- * разрядности. Расхождение снято решением от 01.09.2026 сведением обеих
- * дверей к одному разбору, и правила взяты такие:
+ *          дважды, и написания расходились по четырём правилам разом: обвязка пробелами,
+ *          записи `nan` и `inf`, показатель степени при извлечении целым и переполнение
+ *          разрядности. Расхождение снято решением от 01.09.2026 сведением обеих
+ *          дверей к одному разбору, и правила взяты такие:
  *
- * 1. Пробельная обвязка отбрасывается: `whiteSpace` у числовых видов XML Schema
- *    задан значением `collapse`, а текстовый узел разметки почти всегда приходит с
- *    переводом строки и отступом.
- * 2. Записи `nan` и `inf` числом не считаются: у прочих кодеков рамки их нет вовсе,
- *    а принимала их прежде лишь одна дверь и не нарочно - подробностью `strtod`.
- * 3. Вид разбора решается ЗАПИСЬЮ, а не затребованным видом: `1e2` и `300.5`
- *    извлекаются целым, округляясь по правилам приведения.
- * 4. Запись, в разрядность не вмещающаяся, числом быть не перестаёт и выдаётся
- *    пределом затребованного вида.
+ *          1. Пробельная обвязка отбрасывается: `whiteSpace` у числовых видов XML Schema
+ *             задан значением `collapse`, а текстовый узел разметки почти всегда приходит с
+ *             переводом строки и отступом.
+ *          2. Записи `nan` и `inf` числом не считаются: у прочих кодеков рамки их нет вовсе,
+ *             а принимала их прежде лишь одна дверь и не нарочно - подробностью `strtod`.
+ *          3. Вид разбора решается ЗАПИСЬЮ, а не затребованным видом: `1e2` и `300.5`
+ *             извлекаются целым, округляясь по правилам приведения.
+ *          4. Запись, в разрядность не вмещающаяся, числом быть не перестаёт и выдаётся
+ *             пределом затребованного вида.
  *
  * @note Правила 3 и 4 повторяют договор извлечения кодека JSON знак в знак: договор
  *       этот общий у всех кодеков рамки, и расхождение здесь стало бы расхождением
  *       поведения кодеков между собой
  *
- * @tparam T      затребованный вид числа
- * @param  text   разбираемое содержимое
- * @param  result ссылка на результат разбора
- * @return        признак успешного разбора
+ * @param text   разбираемое содержимое
+ * @param result ссылка на результат разбора
+ * @return       признак успешного разбора
  *
  */
-template <typename T>
 bool awh::codec::numeric(const string_view text, T & result) noexcept {
 	/**
 	 * Если затребовано логическое значение
@@ -301,6 +360,9 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		}
 		// Выводим признак неудачного извлечения
 		return false;
+	/**
+	 * Если затребовано строковое значение
+	 */
 	} else {
 		// Получаем содержимое без пробельной обвязки
 		const string_view source = ::trim(text);
@@ -314,9 +376,9 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		 * Запись числа без ведущего знака плюса
 		 *
 		 * @details Договор XSD (W3C XML Schema Part 2) дозволяет ведущий плюс всякому
-		 * числовому виду - `[\-+]?[0-9]+` у целого и то же у дробного, - а разбор
-		 * `fromChars` следует правилам языка и плюса не принимает вовсе. Оттого плюс
-		 * снимается здесь, и разбору достаётся остаток
+		 *          числовому виду - `[\-+]?[0-9]+` у целого и то же у дробного, - а разбор
+		 *          `fromChars` следует правилам языка и плюса не принимает вовсе. Оттого плюс
+		 *          снимается здесь, и разбору достаётся остаток.
 		 *
 		 * @warning Прежде плюс отвергался заслоном наравне с буквами, и запись `+5`
 		 *          числом не извлекалась ВОВСЕ. Расхождение вскрылось 16.09.2026
@@ -337,10 +399,10 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		 * Если запись начата знаком, началу числа не отвечающим
 		 *
 		 * @details Заслон этот отсекает записи `nan` и `inf` со всеми их написаниями:
-		 * числами у кодеков рамки они не считаются, а разбор дробного их принимает.
-		 * Прежде отсекались они побочно - опознанием вида записи, - и стоило дробному
-		 * виду пойти дробным разбором, как они прошли за числа. Правило записано здесь
-		 * намеренным заслоном, а не побочным следствием чужого хода
+		 *          числами у кодеков рамки они не считаются, а разбор дробного их принимает.
+		 *          Прежде отсекались они побочно - опознанием вида записи, - и стоило дробному
+		 *          виду пойти дробным разбором, как они прошли за числа. Правило записано здесь
+		 *          намеренным заслоном, а не побочным следствием чужого хода.
 		 *
 		 * @note Число начинается цифрой, знаком минуса либо точкой: знак плюса записью
 		 *       числа не принимается, и заслон его отвергает вместе с буквами
@@ -481,41 +543,3 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <long long> (const strin
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <float> (const string_view, float &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <double> (const string_view, double &) noexcept;
-/**
- * @brief Шаблонный метод приведения дробного числа к затребованному виду
- *
- * @details Тело приведения лежит в безымянном пространстве этого же файла, а метод
- * этот отдаёт его наружу: приведением пользуются и кодеки, число при чтении уже
- * разобравшие, - у них разбирать нечего, и извлечение приведением исчерпывается
- *
- * @tparam T     затребованный вид числа
- * @param  value приводимое дробное число
- * @return       приведённое число
- *
- */
-template <typename T>
-T awh::codec::convert(const double value) noexcept {
-	// Выводим приведённое число общим для кодеков телом приведения
-	return ::convert <T> (value);
-}
-/**
- * Выполняем явное создание тел приведения числа по всем поддерживаемым видам
- *
- * @note Перечень этот обязан совпадать с перечнем разбора выше буква в букву: извлечение
- *       числа кодеком идёт через оба тела, и вид, у одного из них отсутствующий, откажет
- *       связыванием ровно так же
- */
-template __AWH_SHARED_EXPORT__ bool awh::codec::convert <bool> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ char awh::codec::convert <char> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ signed char awh::codec::convert <signed char> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned char awh::codec::convert <unsigned char> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ short awh::codec::convert <short> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned short awh::codec::convert <unsigned short> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ int awh::codec::convert <int> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned int awh::codec::convert <unsigned int> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ long awh::codec::convert <long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned long awh::codec::convert <unsigned long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ long long awh::codec::convert <long long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ unsigned long long awh::codec::convert <unsigned long long> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ float awh::codec::convert <float> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ double awh::codec::convert <double> (const double) noexcept;

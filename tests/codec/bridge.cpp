@@ -41,7 +41,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён фреймворка
+ */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**
@@ -49,32 +55,52 @@ using namespace awh::codec;
  *
  */
 TEST(CodecBridge, ABCDepthMatchesTheTreeLevels) {
-	// Перебираем скаляры, пустые контейнеры и деревья разной глубины
+	/**
+	 * Перебираем скаляры, пустые контейнеры и деревья разной глубины
+	 */
 	for(const string & sample : vector <string> {"7", "null", "{}", "[]", "[1]", "[[]]", "[[1]]", "{\"a\":{}}", "{\"a\":{\"b\":{\"c\":1}}}"}){
+		// Мост, собирающий эталонную запись ABC
 		bridge_t original;
+		// Дерево значений, собранное из образца
 		abc::value_t tree;
+		// Разбираем образец JSON в дерево значений
 		ASSERT_TRUE(original.decode(sample, tree, bridge_t::format_t::JSON));
+		// Запись ABC, несущая дерево образца
 		string record = "";
+		// Укладываем дерево в эталонную запись ABC
 		ASSERT_TRUE(original.encode(tree, record, bridge_t::format_t::ABC));
+		/**
+		 * Прогоняем обе дороги на каждом пределе глубины
+		 */
 		for(uint32_t depth = 0; depth < 5; depth++){
 			// Назначаем одинаковое ограничение обеим дорогам
 			bridge_t bridge;
+			// Снимаем настройки моста для правки предела
 			auto settings = bridge.settings();
+			// Назначаем очередной предел глубины
 			settings.depth = depth;
+			// Возвращаем настройки мосту
 			bridge.settings(settings);
+			// Эталон записи и заведомо непустой результат отказа
 			string reference = "", result = "previous";
+			// Прогоняем эталонную дорогу JSON и запоминаем её приём
 			const bool accepted = bridge.encode(tree, reference, bridge_t::format_t::JSON);
 			// Проверяем запись и отсутствие частичного результата при отказе
 			ASSERT_EQ(bridge.encode(tree, result, bridge_t::format_t::ABC), accepted) << sample << " depth=" << depth;
 			ASSERT_EQ(bridge.error(), (accepted ? bridge_t::error_t::NONE : bridge_t::error_t::DEEP_TREE));
+			// При удавшейся записи сверяем результат, при отказе — его пустоту
 			if(accepted)
+				// Сверяем запись ABC с эталоном
 				ASSERT_EQ(result, record);
 			else ASSERT_TRUE(result.empty());
 			// Проверяем чтение и очистку прежнего результата при отказе
 			abc::value_t decoded(string("previous"));
+			// Сверяем разбор записи с тем же признаком удавшейся дороги
 			ASSERT_EQ(bridge.decode(record, decoded, bridge_t::format_t::ABC), accepted) << sample << " depth=" << depth;
 			ASSERT_EQ(bridge.error(), (accepted ? bridge_t::error_t::NONE : bridge_t::error_t::DEEP_TREE));
+			// При удавшемся разборе сверяем дерево, при отказе — признак недействительности
 			if(accepted)
+				// Сверяем разобранное дерево с исходным
 				ASSERT_EQ(decoded, tree);
 			else ASSERT_FALSE(decoded.valid());
 		}
@@ -86,25 +112,41 @@ TEST(CodecBridge, ABCDepthMatchesTheTreeLevels) {
  *
  */
 TEST(CodecBridge, ABCDepthStopsBeforeTheDeeperBody) {
+	// Мост с тесным пределом глубины
 	bridge_t bridge;
+	// Дерево глубины в три уровня
 	abc::value_t tree;
+	// Разбираем глубоко вложенный образец в дерево
 	ASSERT_TRUE(bridge.decode("[[[1]]]", tree, bridge_t::format_t::JSON));
+	// Запись ABC, несущая глубокое дерево
 	string record = "";
+	// Укладываем дерево в запись ABC
 	ASSERT_TRUE(bridge.encode(tree, record, bridge_t::format_t::ABC));
+	// Проверяем, что запись не пуста перед обрывом
 	ASSERT_FALSE(record.empty());
 	// Удаляем лист: неограниченный разбор дошёл бы до обрыва записи
 	record.pop_back();
+	// Снимаем настройки моста для тесного предела
 	auto settings = bridge.settings();
+	// Назначаем предел глубины в один уровень
 	settings.depth = 1;
+	// Возвращаем настройки мосту
 	bridge.settings(settings);
+	// Значение, заведомо непустое до разбора
 	abc::value_t result(string("previous"));
+	// Проверяем отказ разбора обрывка при тесном пределе
 	ASSERT_FALSE(bridge.decode(record, result, bridge_t::format_t::ABC));
+	// Проверяем, что отказ назван превышением глубины
 	ASSERT_EQ(bridge.error(), bridge_t::error_t::DEEP_TREE);
+	// Проверяем, что прежнее значение вычищено
 	ASSERT_FALSE(result.valid());
 	// Без тесного ограничения тот же обрыв должен быть ошибкой записи
 	settings.depth = 3;
+	// Возвращаем настройки мосту
 	bridge.settings(settings);
+	// Проверяем, что тот же обрыв всё равно отвергнут
 	ASSERT_FALSE(bridge.decode(record, result, bridge_t::format_t::ABC));
+	// Проверяем, что отказ назван ошибкой разбора
 	ASSERT_EQ(bridge.error(), bridge_t::error_t::PARSING);
 }
 
@@ -127,21 +169,33 @@ TEST(CodecBridge, JSONArraysIgnoreTheIndexGrowthLimit) {
 	} guard;
 	// Проверяем пустой, плоский и вложенный массивы
 	bridge_t bridge;
+	/**
+	 * Прогоняем пустой, плоский и вложенный массивы
+	 */
 	for(const string & record : vector <string> {"[]", "[1,2,3,4]", "{\"list\":[[1,2,3],{\"nested\":[true,false,null,\"x\"]},[],5]}"}){
 		// Получаем контрольное дерево без ограничения индексного роста
 		abc::value_t::limit(0);
+		// Контрольное дерево, разобранное без предела
 		abc::value_t expected;
+		// Разбираем запись без ограничения индексного роста
 		ASSERT_TRUE(bridge.decode(record, expected, bridge_t::format_t::JSON));
+		// Эталонная запись ABC контрольного дерева
 		string before = "";
+		// Укладываем контрольное дерево в эталонную запись
 		ASSERT_TRUE(bridge.encode(expected, before, bridge_t::format_t::ABC));
 		// Загружаем ту же запись с пределом меньше длины её массивов
 		abc::value_t::limit(2);
+		// Дерево, разбираемое с тесным пределом
 		abc::value_t actual;
+		// Разбираем ту же запись с пределом индексного роста в два
 		ASSERT_TRUE(bridge.decode(record, actual, bridge_t::format_t::JSON));
+		// Проверяем, что разбор прошёл без отказа
 		ASSERT_EQ(bridge.error(), bridge_t::error_t::NONE);
 		// Сравниваем всё дерево, включая виды и элементы вложенных массивов
 		string after = "";
+		// Укладываем пережившее предел дерево в запись
 		ASSERT_TRUE(bridge.encode(actual, after, bridge_t::format_t::ABC));
+		// Сверяем запись с эталоном дословно
 		ASSERT_EQ(after, before) << record;
 	}
 }
@@ -259,7 +313,9 @@ TEST(CodecBridge, RoundTripValues) {
 		"{\"a\":\"\\/\"}",
 		"{\"name\":\"value\",\"count\":17,\"rate\":1.5,\"flag\":true,\"empty\":null,\"list\":[1,2,3],\"nested\":{\"port\":8080}}"
 	};
-	// Выполняем перебор всех образцов записи JSON
+	/**
+	 * Выполняем перебор всех образцов записи JSON
+	 */
 	for(const char * sample : samples){
 		// Дерево значений, собранное первым переводом
 		abc::value_t first;
@@ -363,7 +419,9 @@ TEST(CodecBridge, Normalisation) {
 		{"{\"a\":0.30000000000000004440892098500626}", "{\"a\":0.30000000000000004}"},
 		{"{\"a\":0.1000000000000000055511151231257827}", "{\"a\":0.1}"}
 	};
-	// Выполняем перебор всех образцов записи JSON
+	/**
+	 * Выполняем перебор всех образцов записи JSON
+	 */
 	for(const auto & sample : samples){
 		// Собираемое дерево значений контейнера ABC
 		abc::value_t value;
@@ -468,7 +526,9 @@ TEST(CodecBridge, NarrowingRules) {
 	ASSERT_EQ(result, "{\"port\":8080}");
 	// Выполняем перебор всех видов записи, правило сужения спрашивающих
 	const bridge_t::format_t formats[] = {bridge_t::format_t::JSON, bridge_t::format_t::YAML, bridge_t::format_t::TOML};
-	// Выполняем перебор всех видов записи
+	/**
+	 * Выполняем перебор всех видов записи
+	 */
 	for(uint8_t i = 0; i < 3; i++){
 		// Собираемая запись настроек
 		string text = "";
@@ -635,6 +695,7 @@ TEST(CodecBridge, DecodeXML){
 	 *       здесь их три, и узел лёг бы вместилищем
 	 */
 	ASSERT_TRUE(root.contains("split"));
+	// Проверяем, что узел split, разорванный примечанием, не признан вместилищем
 	ASSERT_FALSE(root["split"].is(abc::type_t::MAP)) << "узел, разорванный примечанием, принят вместилищем: признак взят числом потомков вместо перечня звеньев";
 	/**
 	 * Выполняем проверку узла с разделом дословного текста
@@ -643,6 +704,7 @@ TEST(CodecBridge, DecodeXML){
 	 *       внутри тоже обязан лечь простым значением
 	 */
 	ASSERT_TRUE(root.contains("verbatim"));
+	// Проверяем, что узел verbatim с разделом дословного текста не признан вместилищем
 	ASSERT_FALSE(root["verbatim"].is(abc::type_t::MAP)) << "узел с разделом дословного текста принят вместилищем";
 	// Выполняем проверку вложенного узла разметки
 	ASSERT_TRUE(root.contains("net"));
@@ -712,6 +774,7 @@ TEST(CodecBridge, DecodeTOML){
 	ASSERT_EQ(value["srv"]["host"].text(), "localhost");
 	// Выполняем проверку перечня значений
 	ASSERT_TRUE(value["srv"]["list"].is(abc::type_t::ARRAY));
+	// Считаем звенья перечня list: их три — 1, 2 и 3
 	ASSERT_EQ(value["srv"]["list"].size(), 3u);
 	// Выполняем проверку имени с кириллицей
 	ASSERT_TRUE(value["srv"].contains("имя"));
@@ -731,6 +794,7 @@ TEST(CodecBridge, DecodeTOML){
 	 */
 	ASSERT_TRUE(value.contains("fruit"));
 	ASSERT_TRUE(value["fruit"].is(abc::type_t::ARRAY)) << "набор одноимённых таблиц не лёг перечнем: обход идёт прежним ходом вместо общего";
+	// Считаем таблицы набора fruit: их две — apple и pear
 	ASSERT_EQ(value["fruit"].size(), 2u);
 	// Выполняем проверку содержимого таблиц набора
 	ASSERT_EQ(value["fruit"][0]["name"].text(), "apple");
@@ -789,6 +853,7 @@ TEST(CodecBridge, DecodeINI){
 	 */
 	ASSERT_TRUE(value["net"].contains("port"));
 	ASSERT_TRUE(value["net"]["port"].is(abc::type_t::ARRAY)) << "повтор свойства не лёг перечнем: обход идёт ходом get() вместо values()";
+	// Считаем объявления повторённого свойства port: их два — 80 и 443
 	ASSERT_EQ(value["net"]["port"].size(), 2u);
 	/**
 	 * Выполняем проверку обоих объявлений повторённого свойства
@@ -798,9 +863,13 @@ TEST(CodecBridge, DecodeINI){
 	 *       `text()` отдаёт содержимое лишь у строковых значений
 	 */
 	uint64_t port = 0;
+	// Извлекаем первое объявление свойства port величиной числа
 	ASSERT_TRUE(value["net"]["port"][0].value(port)) << "вид значения не выведен из записи";
+	// Сверяем первое объявление со значением 80
 	ASSERT_EQ(port, 80u);
+	// Извлекаем второе объявление свойства port величиной числа
 	ASSERT_TRUE(value["net"]["port"][1].value(port));
+	// Сверяем второе объявление со значением 443
 	ASSERT_EQ(port, 443u);
 }
 
@@ -870,6 +939,7 @@ TEST(CodecBridge, RoundTripYAML){
 	// Выполняем проверку сохранности перечня значений
 	ASSERT_TRUE(second.contains("list"));
 	ASSERT_TRUE(second["list"].is(abc::type_t::ARRAY)) << "перечень значений не сохранился; собрано: " << once;
+	// Считаем звенья перечня list: через круг обязано уцелеть два
 	ASSERT_EQ(second["list"].size(), 2u);
 	// Выполняем проверку сохранности последовательности знаков
 	ASSERT_EQ(second["name"].text(), "значение");
@@ -930,6 +1000,7 @@ TEST(CodecBridge, RoundTripTOML){
 	ASSERT_TRUE(second["srv"].contains("a/b")) << "имя с косой чертой потеряно; собрано: " << once;
 	// Выполняем проверку сохранности перечня значений
 	ASSERT_TRUE(second["srv"]["list"].is(abc::type_t::ARRAY)) << "перечень значений не сохранился; собрано: " << once;
+	// Считаем звенья перечня list: через круг обязаны уцелеть все три
 	ASSERT_EQ(second["srv"]["list"].size(), 3u);
 	// Выполняем проверку сохранности числа
 	ASSERT_TRUE(second["srv"]["port"].is(abc::type_t::NUMBER));
@@ -990,6 +1061,7 @@ TEST(CodecBridge, RoundTripXML){
 	ASSERT_EQ(root["name"].text(), "значение");
 	// Выполняем проверку сохранности вложенного узла
 	ASSERT_TRUE(root.contains("net"));
+	// Сверяем содержимое вложенного узла net со значением localhost
 	ASSERT_EQ(root["net"]["host"].text(), "localhost");
 	/**
 	 * Выполняем проверку сохранности числа записью
@@ -1015,6 +1087,7 @@ TEST(CodecBridge, RoundTripXML){
 	// Выполняем проверку сохранности одноимённых узлов
 	ASSERT_TRUE(root.contains("item"));
 	ASSERT_TRUE(root["item"].is(abc::type_t::ARRAY)) << "одноимённые узлы не легли перечнем; собрано: " << once;
+	// Считаем одноимённые узлы item: через круг обязано уцелеть два
 	ASSERT_EQ(root["item"].size(), 2u);
 	// Выполняем проверку содержимого одноимённых узлов
 	ASSERT_EQ(root["item"][0].text(), "первый");
@@ -1075,13 +1148,18 @@ TEST(CodecBridge, RoundTripINI){
 	 *          строит - уцелело бы одно последнее значение «443»
 	 */
 	ASSERT_TRUE(second["net"]["port"].is(abc::type_t::ARRAY)) << "перечень значений не сохранился: запись идёт ходом set() вместо push(); собрано: " << once;
+	// Считаем объявления перечня port: через круг обязано уцелеть два
 	ASSERT_EQ(second["net"]["port"].size(), 2u);
 	// Выполняем проверку обоих объявлений повторённого свойства
 	// Извлекаемая величина объявления повторённого свойства
 	uint64_t port = 0;
+	// Извлекаем первое объявление свойства port величиной числа
 	ASSERT_TRUE(second["net"]["port"][0].value(port)) << "собрано: " << once;
+	// Сверяем первое объявление со значением 80
 	ASSERT_EQ(port, 80u) << "собрано: " << once;
+	// Извлекаем второе объявление свойства port величиной числа
 	ASSERT_TRUE(second["net"]["port"][1].value(port)) << "собрано: " << once;
+	// Сверяем второе объявление со значением 443
 	ASSERT_EQ(port, 443u) << "собрано: " << once;
 }
 
@@ -1128,6 +1206,7 @@ TEST(CodecBridge, MarkupJoint){
 	 *          разбиралась, дерево собиралось, а `host` и `port` не доходили
 	 */
 	ASSERT_TRUE(root["net"].contains("host")) << "свойство узла потеряно";
+	// Сверяем свойство host узла net со значением localhost
 	ASSERT_EQ(root["net"]["host"].text(), "localhost");
 	// Выполняем проверку вывода вида у свойства числового
 	ASSERT_TRUE(root["net"]["port"].is(abc::type_t::NUMBER)) << "вид свойства не выведен из записи";
@@ -1140,6 +1219,7 @@ TEST(CodecBridge, MarkupJoint){
 	 *       отображением свойств, - оттого текст ложится отдельным полем
 	 */
 	ASSERT_TRUE(root["net"].contains("value")) << "собственный текст узла со свойствами потерян";
+	// Сверяем собственный текст узла net со словом «содержимое»
 	ASSERT_EQ(root["net"]["value"].text(), "содержимое");
 	// Выполняем проверку узла пустого
 	ASSERT_TRUE(root.contains("empty"));
@@ -1156,6 +1236,7 @@ TEST(CodecBridge, MarkupJoint){
 	 *          запуска, дабы два хода одного набора не расходились
 	 */
 	ASSERT_TRUE(root["code"].is(abc::type_t::STRING)) << "запись с ведущим нулём принята числом";
+	// Сверяем запись code: 007 уцелела с ведущим нулём, не числом семью
 	ASSERT_EQ(root["code"].text(), "007");
 	// Собираемая запись первого прохода
 	string once = "";
@@ -1175,9 +1256,11 @@ TEST(CodecBridge, MarkupJoint){
 	 *          круг остался бы разбираемым, но неподвижным быть перестал бы
 	 */
 	ASSERT_TRUE(repeat["net"].contains("host")) << "свойство не пережило круга; собрано: " << once;
+	// Сверяем свойство host второго прохода со значением localhost
 	ASSERT_EQ(repeat["net"]["host"].text(), "localhost") << "собрано: " << once;
 	// Выполняем проверку сохранности собственного текста узла
 	ASSERT_TRUE(repeat["net"].contains("value")) << "текст узла не пережил круга; собрано: " << once;
+	// Сверяем собственный текст узла net второго прохода со словом «содержимое»
 	ASSERT_EQ(repeat["net"]["value"].text(), "содержимое") << "собрано: " << once;
 	// Выполняем проверку сохранности записи с ведущим нулём
 	ASSERT_EQ(repeat["code"].text(), "007") << "собрано: " << once;
@@ -1218,13 +1301,17 @@ TEST(CodecBridge, NumberEdges){
 	ASSERT_TRUE(root["top"].is(abc::type_t::UNSIGNED)) << "предел разрядности числом не признан";
 	// Извлекаемое целое без знака
 	uint64_t natural = 0;
+	// Извлекаем значение узла top величиной целого без знака
 	ASSERT_TRUE(root["top"].value(natural));
+	// Сверяем извлечённое целое с пределом разрядности 18446744073709551615
 	ASSERT_EQ(natural, 18446744073709551615ULL);
 	// Выполняем проверку предела разрядности целого со знаком
 	ASSERT_TRUE(root["bottom"].is(abc::type_t::SIGNED)) << "предел разрядности числом не признан";
 	// Извлекаемое целое со знаком
 	int64_t integer = 0;
+	// Извлекаем значение узла bottom величиной целого со знаком
 	ASSERT_TRUE(root["bottom"].value(integer));
+	// Сверяем извлечённое целое с наименьшим допустимым значением -9223372036854775808
 	ASSERT_EQ(integer, (- 9223372036854775807LL) - 1LL);
 	/**
 	 * Выполняем проверку записей, разрядность превысивших
@@ -1235,11 +1322,15 @@ TEST(CodecBridge, NumberEdges){
 	 *          Здесь же извлечение отвечает отказом, и запись остаётся собою
 	 */
 	EXPECT_TRUE(root["over"].is(abc::type_t::STRING)) << "запись сверх разрядности принята числом";
+	// Сверяем запись over: 18446744073709551616 уцелела целиком, без усечения до предела
 	EXPECT_EQ(root["over"].text(), "18446744073709551616");
+	// Проверяем, что запись under сверх разрядности со знаком легла последовательностью знаков
 	EXPECT_TRUE(root["under"].is(abc::type_t::STRING)) << "запись сверх разрядности принята числом";
+	// Сверяем запись under: -9223372036854775809 уцелела целиком, без усечения до предела
 	EXPECT_EQ(root["under"].text(), "-9223372036854775809");
 	// Выполняем проверку записи, разрядность дробного превысившей
 	EXPECT_TRUE(root["huge"].is(abc::type_t::STRING)) << "запись сверх разрядности принята числом";
+	// Сверяем запись huge: 1e400 уцелела целиком, без усечения до предела
 	EXPECT_EQ(root["huge"].text(), "1e400");
 }
 
@@ -1328,9 +1419,13 @@ TEST(CodecBridge, MarkupContainers){
 	 *       отображением с полем обноса
 	 */
 	ASSERT_TRUE(repeat["config"]["a"].is(abc::type_t::ARRAY)) << "помеченный перечень обратным чтением не признан; собрано: " << text;
+	// Считаем звенья помеченного перечня a — их одно
 	ASSERT_EQ(repeat["config"]["a"].size(), 1u) << "собрано: " << text;
+	// Проверяем, что звено перечня a само осталось вложенным перечнем
 	ASSERT_TRUE(repeat["config"]["a"][0].is(abc::type_t::ARRAY)) << "вложенный перечень обратным чтением не признан; собрано: " << text;
+	// Считаем звенья вложенного перечня — их два
 	ASSERT_EQ(repeat["config"]["a"][0].size(), 2u) << "собрано: " << text;
+	// Проверяем, что поле «3» с ведущей цифрой вернулось собою, без приставки
 	ASSERT_TRUE(repeat["config"].contains("3")) << "поле, с цифры начатое, обратным чтением собою не вернулось; собрано: " << text;
 	// Собираемое дерево значений содержимого смешанного
 	abc::value_t mixed;
@@ -1344,7 +1439,9 @@ TEST(CodecBridge, MarkupContainers){
 	 *       бы неотличимо от потомка. Правило взято у эталонного моста
 	 */
 	ASSERT_TRUE(mixed["a"].is(abc::type_t::MAP)) << "узел со смешанным содержимым не лёг отображением";
+	// Считаем поля узла a: текст смешанного содержимого потерян, уцелел лишь потомок
 	ASSERT_EQ(mixed["a"].size(), 1u) << "у узла со смешанным содержимым появилось поле сверх потомка";
+	// Проверяем, что потомок b узла со смешанным содержимым уцелел
 	ASSERT_TRUE(mixed["a"].contains("b"));
 }
 
@@ -1375,6 +1472,7 @@ TEST(CodecBridge, MarkupRootAttributes){
 	 *          есть то же свойство, уложенное вторично
 	 */
 	ASSERT_FALSE(value.contains("port")) << "свойство корневого узла уложено дважды";
+	// Считаем поля верхнего уровня: обязан уцелеть лишь корневой узел config
 	ASSERT_EQ(value.size(), 1u) << "у верхнего уровня появились поля сверх корневого узла";
 	// Собираемая запись первого прохода
 	string once = "";
@@ -1567,8 +1665,11 @@ TEST(CodecBridge, MarkupJointEdges){
 		 *       ВТОРОГО прохода, а первый даёт имя
 		 */
 		ASSERT_TRUE(back["config"].is(abc::type_t::ARRAY)) << "перечень обратным чтением не признан; собрано: " << text;
+		// Считаем звенья перечня верхнего уровня: их два
 		ASSERT_EQ(back["config"].size(), 2u) << "собрано: " << text;
+		// Проверяем, что первое звено перечня читается вложенным перечнем
 		ASSERT_TRUE(back["config"][0].is(abc::type_t::ARRAY)) << "вложенный перечень обратным чтением не признан; собрано: " << text;
+		// Сверяем второе звено вложенного перечня со словом «название»
 		ASSERT_EQ(back["config"][0][1].text(), "название") << "собрано: " << text;
 		// Собираемая запись второго прохода
 		string twice = "";
@@ -1604,7 +1705,9 @@ TEST(CodecBridge, UnsignedLimitSurvivesEveryFormat){
 	const bridge_t::format_t formats[] = {
 		bridge_t::format_t::JSON, bridge_t::format_t::YAML
 	};
-	// Выполняем перебор всех видов записи
+	/**
+	 * Выполняем перебор всех видов записи
+	 */
 	for(const bridge_t::format_t format : formats){
 		// Собираемое дерево значений контейнера ABC
 		abc::value_t value;
@@ -1624,6 +1727,7 @@ TEST(CodecBridge, UnsignedLimitSurvivesEveryFormat){
 		uint64_t number = 0;
 		// Выполняем проверку сохранности значения
 		ASSERT_TRUE(back["top"].value(number)) << "собрано: " << text;
+		// Сверяем извлечённое целое с пределом разрядности 18446744073709551615 — величина уцелела
 		ASSERT_EQ(number, 18446744073709551615ULL) << "собрано: " << text;
 	}
 	// Собираемое дерево значений контейнера ABC
@@ -1641,6 +1745,7 @@ TEST(CodecBridge, UnsignedLimitSurvivesEveryFormat){
 	 *          виду, разбирается без отказа и неверна по величине
 	 */
 	ASSERT_EQ(text.find("-1"), string::npos) << "предел разрядности завёрнут при записи; собрано: " << text;
+	// Ищем в записи саму величину 18446744073709551615 — она обязана уйти дословно
 	ASSERT_NE(text.find("18446744073709551615"), string::npos) << "величина потеряна; собрано: " << text;
 	// Настройки перевода моста
 	bridge_t::settings_t settings;
@@ -1730,7 +1835,9 @@ TEST(CodecBridge, EveryRoadAgreesOnUnknownKinds){
 	abc::value_t value;
 	// Устанавливаем отметку времени полем дерева
 	value["stamp"] = abc::value_t(abc::kind_t::TIME);
-	// Выполняем перебор всех видов записи
+	/**
+	 * Выполняем перебор всех видов записи
+	 */
 	for(const bridge_t::format_t format : formats){
 		// Собираемая запись перевода
 		string text = "";
@@ -1752,6 +1859,7 @@ TEST(CodecBridge, EveryRoadAgreesOnUnknownKinds){
 		int64_t stamp = -1;
 		// Выполняем проверку сохранности величины отметки времени
 		ASSERT_TRUE(item.value(stamp)) << "собрано: " << text;
+		// Сверяем величину обратного хода с нулём — отметка времени пережила круг без заворачивания
 		ASSERT_EQ(stamp, 0) << "собрано: " << text;
 	}
 }
@@ -1782,7 +1890,9 @@ TEST(CodecBridge, SpecialNamesSurviveTheCircle){
 		// Имя обноса перечня обычным полем
 		"<config><node><item>значение</item></node></config>"
 	};
-	// Выполняем перебор всех записей
+	/**
+	 * Выполняем перебор всех записей
+	 */
 	for(const string & text : samples){
 		// Собираемое дерево значений первого прохода
 		abc::value_t first;
@@ -1832,17 +1942,17 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 	const vector <pair <string, string>> samples = {
 		// Образец 1
 		{R"AWH({
-    "story": {
-        "storyinfo": {
-            "author": "John Fleck",
+	"story": {
+		"storyinfo": {
+			"author": "John Fleck",
             "datewritten": "June 2, 2002",
             "keyword": "example keyword"
         },
         "body": {
-            "headline": "This is the headline",
+			"headline": "This is the headline",
             "para": "This is the body text."
         }
-    }
+	}
 })AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE story>
 <story>
@@ -1851,64 +1961,64 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 </story>)AWH"},
 		// Образец 2
 		{R"AWH({
-    "Event": {
-        "test": "24dsdsf",
+	"Event": {
+		"test": "24dsdsf",
         "System": {
-            "Provider": {
-                "Name": "Service Control Manager",
+			"Provider": {
+				"Name": "Service Control Manager",
                 "Guid": "{555908d1-a6d7-4695-8e1e-26931d2012f4}",
                 "EventSourceName": "Service Control Manager"
             },
             "EventID": {
-                "Qualifiers": 16384,
+				"Qualifiers": 16384,
                 "value": 7045
-            },
+			},
             "Version": 0,
             "Level": 4,
             "Task": 0,
             "Opcode": 0,
             "Keywords": "0x8080000000000000",
             "TimeCreated": {
-                "SystemTime": "2024-07-23T21:04:52.445801+00:00"
+				"SystemTime": "2024-07-23T21:04:52.445801+00:00"
             },
             "EventRecordID": 5513,
             "Correlation": true,
             "Execution": {
-                "ProcessID": 612,
+				"ProcessID": 612,
                 "ThreadID": 3748
-            },
+			},
             "Channel": "System",
             "Computer": "img-win2019",
             "Security": {
-                "UserID": "S-1-333056-21-4289332999-2345533736-3613513034-500"
+				"UserID": "S-1-333056-21-4289332999-2345533736-3613513034-500"
             }
-        },
+		},
         "EventData": {
-            "Data": [
-                {
-                    "Name": "ServiceName",
+			"Data": [
+				{
+					"Name": "ServiceName",
                     "value": "GoogleUpdater InternalService 128.0.6597.0 (GoogleUpdaterInternalService128.0.6597.0)"
                 },
                 {
-                    "Name": "ImagePath",
+					"Name": "ImagePath",
                     "value": "Goga",
                     "_value": "\"C:\\Program Files (x86)\\Google\\GoogleUpdater\\128.0.6597.0\\updater.exe\" --system --windows-service --service=update-internal"
                 },
                 {
-                    "Name": "ServiceType",
+					"Name": "ServiceType",
                     "value": "user mode service"
                 },
                 {
-                    "Name": "StartType",
+					"Name": "StartType",
                     "value": "auto start"
                 },
                 {
-                    "Name": "AccountName",
+					"Name": "AccountName",
                     "value": "LocalSystem"
                 }
-            ]
-        }
-    }
+			]
+		}
+	}
 })AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE Event>
 <Event>
@@ -1939,38 +2049,38 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 </Event>)AWH"},
 		// Образец 3
 		{R"AWH({
-    "recipe": {
-        "name": "хлеб",
+	"recipe": {
+		"name": "хлеб",
         "preptime": "5min",
         "cooktime": "180min",
         "title": "Простой хлеб",
         "composition": {
-            "ingredient": [
-                {
-                    "amount": 3,
+			"ingredient": [
+				{
+					"amount": 3,
                     "unit": "стакан",
                     "value": "Мука"
                 },
                 {
-                    "amount": 0.25,
+					"amount": 0.25,
                     "unit": "грамм",
                     "value": "Дрожжи"
                 },
                 {
-                    "amount": 1.5,
+					"amount": 1.5,
                     "unit": "стакан",
                     "value": "Тёплая вода"
                 }
-            ]
-        },
+			]
+		},
         "instructions": {
-            "step": [
-                "Смешать все ингредиенты и тщательно замесить. ",
+			"step": [
+				"Смешать все ингредиенты и тщательно замесить. ",
                 "Закрыть тканью и оставить на один час в тёплом помещении.",
                 "Замесить ещё раз, положить на противень и поставить в духовку."
             ]
-        }
-    }
+		}
+	}
 })AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE recipe>
 <recipe>
@@ -1991,60 +2101,60 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 </recipe>)AWH"},
 		// Образец 4
 		{R"AWH({
-    "root": {
-        "item": {
-            "item": [
-                {
-                    "name": "Ogre",
+	"root": {
+		"item": {
+			"item": [
+				{
+					"name": "Ogre",
                     "position": [
-                        0,
+						0,
                         5,
                         0
-                    ],
+					],
                     "powers": [
-                        {
-                            "damage": 10,
+						{
+							"damage": 10,
                             "name": "Club"
                         },
                         {
-                            "damage": 8,
+							"damage": 8,
                             "name": "Fist"
                         }
-                    ]
-                },
+					]
+				},
                 {
-                    "name": "Dragon",
+					"name": "Dragon",
                     "position": [
-                        1,
+						1,
                         0,
                         10
-                    ],
+					],
                     "powers": [
-                        {
-                            "damage": 25,
+						{
+							"damage": 25,
                             "name": "Fire Breath"
                         },
                         {
-                            "damage": 15,
+							"damage": 15,
                             "name": "Claws"
                         }
-                    ]
-                },
+					]
+				},
                 {
-                    "name": "Wizard",
+					"name": "Wizard",
                     "position": [
-                        5,
+						5,
                         -3,
                         0
-                    ],
+					],
                     "powers": [
-                        "damage",
+						"damage",
                         8
-                    ]
-                }
-            ]
-        }
-    }
+					]
+				}
+			]
+		}
+	}
 })AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE root>
 <root>
@@ -2077,64 +2187,64 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 </root>)AWH"},
 		// Образец 5
 		{R"AWH({
-    "root": {
-        "id": "test",
+	"root": {
+		"id": "test",
         "item": {
-            "item": [
-                {
-                    "name": "Ogre",
+			"item": [
+				{
+					"name": "Ogre",
                     "position": [
-                        0,
+						0,
                         5,
                         0
-                    ],
+					],
                     "powers": [
-                        {
-                            "damage": 10,
+						{
+							"damage": 10,
                             "name": "Club"
                         },
                         {
-                            "damage": 8,
+							"damage": 8,
                             "name": "Fist"
                         }
-                    ],
+					],
                     "id": "a"
                 },
                 {
-                    "name": "Dragon",
+					"name": "Dragon",
                     "position": [
-                        1,
+						1,
                         0,
                         10
-                    ],
+					],
                     "powers": [
-                        {
-                            "damage": 25,
+						{
+							"damage": 25,
                             "name": "Fire Breath"
                         },
                         {
-                            "damage": 15,
+							"damage": 15,
                             "name": "Claws"
                         }
-                    ],
+					],
                     "id": "b"
                 },
                 {
-                    "name": "Wizard",
+					"name": "Wizard",
                     "position": [
-                        5,
+						5,
                         -3,
                         0
-                    ],
+					],
                     "powers": [
-                        "damage",
+						"damage",
                         10
-                    ],
+					],
                     "id": "c"
                 }
-            ]
-        }
-    }
+			]
+		}
+	}
 })AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE root>
 <root>
@@ -2171,14 +2281,14 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 </root>)AWH"},
 		// Образец 6
 		{R"AWH({
-    "Hello": "World!!!"
+	"Hello": "World!!!"
 })AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE Hello>
 <Hello>World!!!</Hello>)AWH"},
 		// Образец 7
 		{R"AWH({
-    "Hello": {
-        "id": "name",
+	"Hello": {
+		"id": "name",
         "data": "test",
         "value": "World!!!"
     }
@@ -2188,7 +2298,9 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
 	};
 	// Порядковый номер сличаемого образца
 	size_t number = 0;
-	// Выполняем перебор всех образцов сличения
+	/**
+	 * Выполняем перебор всех образцов сличения
+	 */
 	for(auto & sample : samples){
 		// Увеличиваем порядковый номер образца
 		number++;
@@ -2249,126 +2361,126 @@ TEST(CodecBridge, AnonymousArraysCloseFromSecondPass){
 	bridge_t bridge;
 	// Запись JSON образца
 	const string sample = R"AWH([
-    [
-        [
-            "год",
+	[
+		[
+			"год",
             "название",
             "описание",
             "параметры",
             "стоимость"
         ],
         [
-            "год",
+			"год",
             "название",
             "описание",
             "параметры",
             "стоимость"
         ],
         [
-            "год",
+			"год",
             "название",
             "описание",
             "параметры",
             "стоимость"
         ],
         [
-            "год",
+			"год",
             "название",
             "описание",
             "параметры",
             "стоимость"
         ],
         [
-            "год",
+			"год",
             "название",
             "описание",
             "параметры",
             "стоимость"
         ]
-    ],
+	],
     [
-        "1965",
+		"1965",
         "Пиксель",
         "E240 – формальдегид (опасный консервант)!",
         "красный, зелёный, битый",
         "3000,00"
     ],
     [
-        {
-            "a": "1965",
+		{
+			"a": "1965",
             "b": "Пиксель",
             "c": "E240 – формальдегид (опасный консервант)!",
             "d": "красный, зелёный, битый",
             "e": "3000.00"
         }
-    ],
+	],
     [
-        {
-            "a": "1965",
+		{
+			"a": "1965",
             "b": "Пиксель",
             "c": "E240 – формальдегид (опасный консервант)!",
             "d": "красный, зелёный, битый",
             "e": "3000.00"
         },
         {
-            "a": "1965",
+			"a": "1965",
             "b": "Пиксель",
             "c": "E240 – формальдегид (опасный консервант)!",
             "d": "красный, зелёный, битый",
             "e": "3000.00"
         },
         {
-            "a": "1965",
+			"a": "1965",
             "b": "Пиксель",
             "c": "E240 – формальдегид (опасный консервант)!",
             "d": "красный, зелёный, битый",
             "e": "3000.00"
         }
-    ],
+	],
     [
-        "Н/д",
+		"Н/д",
         "Кнопка",
         "Сочетания клавиш",
         "MUST USE! Ctrl, Alt, Shift",
         "4799,00"
     ],
     [
-        "677",
+		"677",
         "Дата \"test\"",
         "возможности",
         "",
         "4222.43"
     ],
     [
-        "А правильней использовать \"Ёлочки\"",
+		"А правильней использовать \"Ёлочки\"",
         "1965",
         "Мышка",
         "MUST USE! Ctrl, Alt, Shift",
         "4799,00"
     ],
     [
-        "\"Hello\" World",
+		"\"Hello\" World",
         "1965",
         "Мышка",
         "MUST USE! \"Ctrl\", \"Alt\", \"Shift\"",
         "4799,00"
     ],
     [
-        "1997",
+		"1997",
         "Ford",
         "E350",
         "ac, abs, moon",
         "3000.00"
     ],
     [
-        "1999",
+		"1999",
         "Chevy",
         "Venture \"Extended Edition\"",
         "",
         "4900.00"
     ],
     [
-        "1996",
+		"1996",
         "Jeep",
         "Grand Cherokee",
         "MUST SELL! air, moon roof, loaded",
@@ -2556,7 +2668,9 @@ TEST(CodecBridge, AnonymousArraysCloseFromSecondPass){
 	 *          настоящие настройки вида `{"item": [..]}`, где поле так и зовётся
 	 */
 	ASSERT_EQ(fromXML["root"].kind(), abc::kind_t::MAP);
+	// Проверяем, что корень ручной разметки несёт поле item
 	ASSERT_TRUE(fromXML["root"].contains("item"));
+	// Проверяем, что поле item ручной разметки лежит перечнем звеньев
 	ASSERT_EQ(fromXML["root"]["item"].kind(), abc::kind_t::ARRAY);
 	/**
 	 * Выполняем проверку того, что дорога JSON пометку кладёт и читает
@@ -2649,7 +2763,9 @@ TEST(CodecBridge, RealSurvivesTypelessRoundTrip){
 	// Создаём объект работы с логами
 	// Создаём мост между контейнером и кодеками
 	bridge_t bridge;
-	// Выполняем перебор всех сторожких величин
+	/**
+	 * Выполняем перебор всех сторожких величин
+	 */
 	for(const double number : {0.1234567890123, 1e-9, 3.0000001, 1.7976931348623157e308, 5e-324}){
 		// Собираемое дерево значений
 		abc::value_t tree(abc::kind_t::MAP);
@@ -2802,7 +2918,9 @@ TEST(CodecBridge, NarrowRuleAppliesToFieldNames) {
 		bridge_t::format_t::JSON, bridge_t::format_t::YAML,
 		bridge_t::format_t::XML, bridge_t::format_t::TOML, bridge_t::format_t::INI
 	};
-	// Выполняем перебор всех видов записи
+	/**
+	 * Выполняем перебор всех видов записи
+	 */
 	for(auto format : formats){
 		// Собираемая запись перевода
 		string record = "";
@@ -2993,7 +3111,9 @@ TEST(CodecBridge, InvalidMarkupSettingsAreNamedHonestly) {
 		{"имя звена негодно",      "config",  "a~b"},
 		{"имя звена начато цифрой", "config", "1item"}
 	};
-	// Выполняем перебор всех негодных настроек
+	/**
+	 * Выполняем перебор всех негодных настроек
+	 */
 	for(auto & item : cases){
 		// Создаём мост между контейнером ABC и текстовыми кодеками
 		bridge_t bridge;
@@ -3140,7 +3260,9 @@ TEST(CodecBridge, TOMLRootMustBeAMap) {
 	roots[2] = abc::value_t(abc::kind_t::ARRAY);
 	// Выполняем добавление звена перечня
 	ASSERT_TRUE(roots[2].push(abc::value_t(static_cast <int64_t> (5)))) << "заведение звена перечня отвечено отказом";
-	// Выполняем перебор всех корней
+	/**
+	 * Выполняем перебор всех корней
+	 */
 	for(uint8_t i = 0; i < 3; i++){
 		// Собираемая запись настроек
 		string text = "";
@@ -3177,7 +3299,9 @@ TEST(CodecBridge, TOMLRootMustBeAMap) {
 TEST(CodecBridge, UnwritableINIPropertyFollowsTheNarrowRule) {
 	// Перечень имён, наречию INI негодных
 	const string names[] = {string("y="), string("y ")};
-	// Выполняем перебор всех имён
+	/**
+	 * Выполняем перебор всех имён
+	 */
 	for(uint8_t i = 0; i < 2; i++){
 		// Собираемое дерево значений контейнера ABC
 		abc::value_t tree(abc::kind_t::MAP);
@@ -3285,7 +3409,9 @@ TEST(CodecBridge, EscapedINIValuesSurviveTheCircle) {
 TEST(CodecBridge, TheSingleFieldRootNameFollowsTheNarrowRule) {
 	// Перечень имён, разметке негодных
 	const string names[] = {string("~z"), string("z=")};
-	// Выполняем перебор всех имён
+	/**
+	 * Выполняем перебор всех имён
+	 */
 	for(uint8_t i = 0; i < 2; i++){
 		// Создаём мост между контейнером ABC и текстовыми кодеками
 		bridge_t bridge;
@@ -3351,7 +3477,9 @@ TEST(CodecBridge, UncarryableMarkupValuesFollowTheNarrowRule) {
 	values[0] = abc::value_t(string("a\x01" "b"));
 	// Выполняем заведение опознавателя, чья запись есть шестнадцать нулей
 	values[1] = abc::value_t(abc::kind_t::UUID);
-	// Выполняем перебор всех значений
+	/**
+	 * Выполняем перебор всех значений
+	 */
 	for(uint8_t i = 0; i < 2; i++){
 		// Создаём мост между контейнером ABC и текстовыми кодеками
 		bridge_t bridge;
@@ -3411,7 +3539,9 @@ TEST(CodecBridge, UncarryableMarkupValuesFollowTheNarrowRule) {
 TEST(CodecBridge, AnUnexpressibleTreeNamesTheTreeNotTheCodec) {
 	// Перечень видов записи, заслон пустой записи спрашивающих
 	const bridge_t::format_t formats[] = {bridge_t::format_t::TOML, bridge_t::format_t::INI};
-	// Выполняем перебор всех видов записи
+	/**
+	 * Выполняем перебор всех видов записи
+	 */
 	for(uint8_t i = 0; i < 2; i++){
 		// Создаём мост между контейнером ABC и текстовыми кодеками
 		bridge_t bridge;
@@ -3450,7 +3580,9 @@ TEST(CodecBridge, AnUnexpressibleTreeNamesTheTreeNotTheCodec) {
 TEST(CodecBridge, UnwritableINISectionFollowsTheNarrowRule) {
 	// Перечень имён разделов, наречию INI негодных
 	const string names[] = {string("раздел "), string("раздел\""), string("раздел]")};
-	// Выполняем перебор всех имён
+	/**
+	 * Выполняем перебор всех имён
+	 */
 	for(uint8_t i = 0; i < 3; i++){
 		// Создаём мост между контейнером ABC и текстовыми кодеками
 		bridge_t bridge;
@@ -3510,7 +3642,9 @@ TEST(CodecBridge, UnwritableINISectionFollowsTheNarrowRule) {
  *
  */
 TEST(CodecBridge, AnEmptyMapInMarkupIsRuledByTheEmptyNodeSetting) {
-	// Выполняем перебор соседства: без соседа-вместилища и с ним
+	/**
+	 * Выполняем перебор соседства: без соседа-вместилища и с ним
+	 */
 	for(uint8_t s = 0; s < 2; s++){
 		// Собираемое дерево значений контейнера ABC
 		abc::value_t tree(abc::kind_t::MAP);
@@ -3637,7 +3771,9 @@ TEST(CodecBridge, TOMLTimestampsSurviveTheReading) {
 		string("1979-05-27"),
 		string("07:32:00")
 	};
-	// Выполняем перебор всех записей
+	/**
+	 * Выполняем перебор всех записей
+	 */
 	for(uint8_t i = 0; i < 4; i++){
 		// Создаём мост между контейнером ABC и текстовыми кодеками
 		bridge_t bridge;
@@ -3675,7 +3811,9 @@ TEST(CodecBridge, TOMLTimestampsSurviveTheReading) {
 TEST(CodecBridge, TheSurroundingSpacesDoNotChangeTheKind){
 	// Создаём мост перевода записей
 	codec::Bridge bridge;
-	// Выполняем перебор образцов записи с обвязкой пробелами и без неё
+	/**
+	 * Выполняем перебор образцов записи с обвязкой пробелами и без неё
+	 */
 	for(auto & sample : vector <pair <string, string>> {
 		// Ведущий нуль числом не признаётся ни с обвязкой, ни без неё
 		{"007", "\"007\""}, {" 007", "\" 007\""},
@@ -3736,7 +3874,9 @@ TEST(CodecBridge, TheContainerRecordIsARoadOfItsOwn){
 	ASSERT_EQ(before, after) << "круг через запись контейнера значения изменил";
 	// Выполняем проверку того, что пустая запись контейнера отвечена отказом
 	codec::abc::value_t empty;
+	// Проверяем, что пустая запись контейнера отвергнута разбором
 	ASSERT_FALSE(bridge.decode("", empty, codec::Bridge::format_t::ABC)) << "пустая запись контейнера принята разбором";
+	// Проверяем, что отказ по пустой записи назван разбором, а не причиною иною
 	ASSERT_EQ(bridge.error(), codec::Bridge::error_t::PARSING) << "отказ разбора пустой записи назван причиной иною";
 	// Выполняем проверку того, что запись негодная отвечена отказом
 	ASSERT_FALSE(bridge.decode(string("\x7F\x7F\x7F\x7F", 4), empty, codec::Bridge::format_t::ABC)) << "негодная запись контейнера принята разбором";
@@ -3752,8 +3892,11 @@ TEST(CodecBridge, TheContainerRecordIsARoadOfItsOwn){
  *
  */
 TEST(CodecBridge, ADigitLeadingNameIsJudgedTheSameAtTheRoot){
-	// Выполняем перебор всех правил сужения
+	/**
+	 * Выполняем перебор всех правил сужения
+	 */
 	for(auto & narrow : vector <codec::Bridge::narrow_t> {
+		// Перечисляем правила сужения: строгое, текстом и пропуск
 		codec::Bridge::narrow_t::STRICT, codec::Bridge::narrow_t::TEXT, codec::Bridge::narrow_t::SKIP
 	}){
 		// Создаём мост перевода записей
@@ -3809,8 +3952,11 @@ TEST(CodecBridge, TheNarrowingRuleIsAskedByTheMarkupRoadByKindToo){
 	 writer.text("port") && writer.number(static_cast <uint64_t> (8080)) && writer.mapEnd());
 	// Собранная запись контейнера ABC
 	const string record(reinterpret_cast <const char *> (writer.record().data()), writer.record().size());
-	// Выполняем перебор всех правил сужения
+	/**
+	 * Выполняем перебор всех правил сужения
+	 */
 	for(auto & narrow : vector <codec::Bridge::narrow_t> {
+		// Перечисляем правила сужения: строгое и пропуск
 		codec::Bridge::narrow_t::STRICT, codec::Bridge::narrow_t::SKIP
 	}){
 		// Создаём мост перевода записей
@@ -3864,8 +4010,11 @@ TEST(CodecBridge, TheNarrowingRuleIsAskedByTheINIRoadToo){
 	 writer.text("port") && writer.number(static_cast <uint64_t> (8080)) && writer.mapEnd());
 	// Собранная запись контейнера ABC
 	const string record(reinterpret_cast <const char *> (writer.record().data()), writer.record().size());
-	// Выполняем перебор всех правил сужения
+	/**
+	 * Выполняем перебор всех правил сужения
+	 */
 	for(auto & narrow : vector <codec::Bridge::narrow_t> {
+		// Перечисляем правила сужения: строгое, текстом и пропуск
 		codec::Bridge::narrow_t::STRICT, codec::Bridge::narrow_t::TEXT, codec::Bridge::narrow_t::SKIP
 	}){
 		// Создаём мост перевода записей
@@ -3884,7 +4033,9 @@ TEST(CodecBridge, TheNarrowingRuleIsAskedByTheINIRoadToo){
 		string result = "";
 		// Выполняем перевод дерева в запись INI
 		const bool ok = bridge.encode(value, result, codec::Bridge::format_t::INI);
-		// Определяем правило обращения с видами, записи неведомыми
+		/**
+		 * Определяем правило обращения с видами, записи неведомыми
+		 */
 		switch(static_cast <uint8_t> (narrow)){
 			// Если сужение велит отвечать отказом
 			case static_cast <uint8_t> (codec::Bridge::narrow_t::STRICT): {
@@ -3963,14 +4114,19 @@ TEST(CodecBridge, ASkippedSoleFieldLeavesNoHusk){
  *
  */
 TEST(CodecBridge, TheFormatSettingIsHeardByEveryRoadThatHasOne){
-	// Выполняем перебор всех видов записи, оформление несущих
+	/**
+	 * Выполняем перебор всех видов записи, оформление несущих
+	 */
 	for(auto & format : vector <codec::Bridge::format_t> {
+		// Перечисляем виды записи, оформление несущие: JSON, разметка, TOML и INI
 		codec::Bridge::format_t::JSON, codec::Bridge::format_t::XML,
 		codec::Bridge::format_t::TOML, codec::Bridge::format_t::INI
 	}){
 		// Собранные записи плотного и нарядного вида
 		string compact = "", pretty = "";
-		// Выполняем перебор обоих видов оформления
+		/**
+		 * Выполняем перебор обоих видов оформления
+		 */
 		for(size_t i = 0; i < 2; i++){
 			// Создаём мост перевода записей
 			codec::Bridge bridge;
@@ -4012,7 +4168,9 @@ TEST(CodecBridge, TheDepthOfZeroForbidsRatherThanUnlocks){
 	abc::value_t tree(abc::kind_t::MAP);
 	// Укладываем значение третьего уровня дерева
 	tree.place("a/b/c") = abc::value_t(string("x"));
-	// Выполняем перебор глубин от нуля до потребной
+	/**
+	 * Выполняем перебор глубин от нуля до потребной
+	 */
 	for(uint32_t depth = 0; depth < 4; depth++){
 		// Извлекаем настройки моста кодеков
 		bridge_t::settings_t settings = bridge.settings();
@@ -4074,7 +4232,9 @@ TEST(CodecBridge, TheNameCircleClosesOnTheMarkupRoadToo){
 		"prosto", "s probelom", "s/kosoj", "s~tildoj", "8080nachalo",
 		"с-кириллицей", "a_x20_b", "_x41_", "просто_x20_"
 	};
-	// Выполняем перебор всех проверяемых имён
+	/**
+	 * Выполняем перебор всех проверяемых имён
+	 */
 	for(auto & name : names){
 		// Собираемое дерево значений
 		abc::value_t tree(abc::kind_t::MAP);
@@ -4103,6 +4263,7 @@ TEST(CodecBridge, TheNameCircleClosesOnTheMarkupRoadToo){
 	abc::value_t pair(abc::kind_t::MAP);
 	// Укладываем два поля, ограждением сводимые к одному
 	pair["a b"] = abc::value_t(string("первое"));
+	// Укладываем поле a_x20_b, похожее на ограждённое имя «a b», но обязанное остаться иным
 	pair["a_x20_b"] = abc::value_t(string("второе"));
 	// Собираемая запись разметки
 	string record = "";
@@ -4209,9 +4370,13 @@ TEST(CodecBridge, TheRootWrapperKeepsTheEmptinessOfTheSoleField){
 TEST(CodecBridge, TheNeighbourNeverDecidesTheShapeOfAnEmptyValue){
 	// Перечень правил сужения записи
 	const vector <bridge_t::narrow_t> rules = {bridge_t::narrow_t::STRICT, bridge_t::narrow_t::TEXT, bridge_t::narrow_t::SKIP};
-	// Выполняем перебор всех правил сужения
+	/**
+	 * Выполняем перебор всех правил сужения
+	 */
 	for(auto rule : rules){
-		// Выполняем перебор всех видов пустого значения
+		/**
+		 * Выполняем перебор всех видов пустого значения
+		 */
 		for(uint8_t kind = 0; kind < 5; kind++){
 			// Создаём мост кодеков
 			bridge_t bridge;
@@ -4223,7 +4388,9 @@ TEST(CodecBridge, TheNeighbourNeverDecidesTheShapeOfAnEmptyValue){
 			bridge.settings(settings);
 			// Собираемое пустое значение проверяемого вида
 			abc::value_t sole;
-			// Определяем вид собираемого пустого значения
+			/**
+			 * Определяем вид собираемого пустого значения
+			 */
 			switch(kind){
 				// Собираем пустую последовательность знаков
 				case 0: sole = abc::value_t(string("")); break;
@@ -4250,6 +4417,7 @@ TEST(CodecBridge, TheNeighbourNeverDecidesTheShapeOfAnEmptyValue){
 			string single = "", record = "";
 			// Выполняем перевод обоих деревьев в запись разметки
 			const bool one = bridge.encode(alone, single, bridge_t::format_t::XML);
+			// Переводим в запись разметки дерево с соседом и запоминаем ответ дороги
 			const bool two = bridge.encode(paired, record, bridge_t::format_t::XML);
 			/**
 			 * Выполняем проверку того, что ответ у обоих деревьев ОДИН
@@ -4271,6 +4439,7 @@ TEST(CodecBridge, TheNeighbourNeverDecidesTheShapeOfAnEmptyValue){
 			ASSERT_TRUE(bridge.decode(record, repeat, bridge_t::format_t::XML)) << record;
 			// Получаем содержимое обноса корня у обеих записей
 			const abc::value_t & first = (back.contains(settings.root) ? back[settings.root] : back);
+			// Берём содержимое обноса корня второй записи, либо корень целиком, если обноса нет
 			const abc::value_t & second = (repeat.contains(settings.root) ? repeat[settings.root] : repeat);
 			// Выполняем проверку того, что поле уцелело либо пропало у обоих разом
 			ASSERT_EQ(first.contains("k"), second.contains("k")) << "вид " << static_cast <uint32_t> (kind) << " при правиле " << static_cast <uint32_t> (rule) << ": сосед решил судьбу поля; один: " << single << " с соседом: " << record;
@@ -4382,7 +4551,9 @@ TEST(CodecBridge, TheNullKindIsJudgedTheSameByEveryRoad){
 	 *       отказом - одним и тем же
 	 */
 	const vector <bridge_t::format_t> narrowed = {bridge_t::format_t::TOML, bridge_t::format_t::INI, bridge_t::format_t::XML};
-	// Выполняем перебор дорог, своей системы видов не несущих
+	/**
+	 * Выполняем перебор дорог, своей системы видов не несущих
+	 */
 	for(auto format : narrowed){
 		// Создаём мост кодеков
 		bridge_t bridge;
@@ -4418,7 +4589,9 @@ TEST(CodecBridge, TheNullKindIsJudgedTheSameByEveryRoad){
 	 * @note Им вид никакой родной, и круг его обязан замыкаться при всяком правиле
 	 */
 	const vector <bridge_t::format_t> whole = {bridge_t::format_t::ABC, bridge_t::format_t::JSON, bridge_t::format_t::YAML};
-	// Выполняем перебор дорог, свою систему видов несущих
+	/**
+	 * Выполняем перебор дорог, свою систему видов несущих
+	 */
 	for(auto format : whole){
 		// Создаём мост кодеков
 		bridge_t bridge;
@@ -4454,7 +4627,9 @@ TEST(CodecBridge, TheNullKindIsJudgedTheSameByEveryRoad){
 TEST(CodecBridge, TheNonFiniteRealIsJudgedByTheNarrowingRule){
 	// Перечень неконечных чисел дробных
 	const vector <double> values = {std::nan(""), std::numeric_limits <double>::infinity(), -std::numeric_limits <double>::infinity()};
-	// Выполняем перебор всех неконечных чисел
+	/**
+	 * Выполняем перебор всех неконечных чисел
+	 */
 	for(auto number : values){
 		// Собираемое дерево с неконечным числом
 		abc::value_t tree(abc::kind_t::MAP);
