@@ -751,7 +751,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -1048,126 +1047,6 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Точка возврата исполнения программы
-				 *
-				 * \~english
-				 * @brief Backtracking point of the execution of the program
-				 *
-				 * \~
-				 */
-				typedef struct Point {
-					/**
-					 * \~russian
-					 * Флаг восстановления кадра рекурсивного вызова
-					 *
-					 * @details Точка возврата с установленным флагом не продолжает
-					 *          исполнения, а восстанавливает исполняемый рекурсивный
-					 *          вызов, после чего возврат продолжается далее.
-					 *
-					 * \~english
-					 * Flag of restoring a recursive call frame
-					 *
-					 * @details A backtracking point with the flag set does not continue
-					 *          the execution but restores the executed recursive
-					 *          call, after which the backtracking continues further.
-					 *
-					 * \~
-					 */
-					bool frame;
-					// Адрес инструкции, с которой продолжается исполнение
-					address_t pc;
-					// Позиция в тексте, с которой продолжается исполнение
-					size_t pos;
-					// Размер журнала изменений ячеек захвата на момент сохранения
-					size_t journal;
-					// Размер журнала изменений отметок атомарных групп на момент сохранения
-					size_t remarks;
-					/**
-					 * \~russian
-					 * Количество оставшихся позиций ряда повторения одиночного символа
-					 *
-					 * @details Повторение одиночного символа шириной в один байт даёт
-					 *          ряд точек возврата, отличающихся лишь позицией, убывающей
-					 *          на единицу. Такой ряд хранится единственной точкой,
-					 *          отчего проход ряда длиной в текст размещает одну точку
-					 *          взамен точки на каждый байт текста.
-					 *
-					 * \~english
-					 * Number of the remaining positions of a run of a repetition of a single character
-					 *
-					 * @details A repetition of a single character one byte wide yields
-					 *          a run of backtracking points differing only by the position, decreasing
-					 *          by one. Such a run is kept as a single point,
-					 *          which is why walking a run as long as the text places one point
-					 *          instead of a point per every byte of the text.
-					 *
-					 * \~
-					 */
-					size_t span;
-					/**
-					 * \~russian
-					 * Вид глагола управления, точку разместившего
-					 *
-					 * @details Значение выводится увеличенным на единицу, а нуль
-					 *          означает точку обыкновенную: глаголы управления
-					 *          размещают точку, исполнения не продолжающую, - возврат
-					 *          в неё прекращает попытку сопоставления, а вид глагола
-					 *          указывает, как её продолжать.
-					 *
-					 * \~english
-					 * Kind of the control verb that placed the point
-					 *
-					 * @details The value is yielded increased by one, whereas zero
-					 *          means an ordinary point: the control verbs place a point
-					 *          that does not continue the execution — backtracking into it
-					 *          terminates the matching attempt, and the kind of the verb
-					 *          tells how to continue it.
-					 *
-					 * \~
-					 */
-					uint8_t control;
-					/**
-					 * \~russian
-					 * Флаг перебора длин не отсекающей ретроспективной проверки
-					 *
-					 * @details Проверка ретроспективная сопоставляется отступом назад
-					 *          на длину проверяемой последовательности, и длины её
-					 *          перебираются от наибольшей. Проверка обыкновенная
-					 *          перебирает их запуском вложенным, тогда как проверка
-					 *          не отсекающая обязана держать перебор живым и после
-					 *          выполнения своего: точка с установленным флагом
-					 *          длину очередную и несёт - в поле ряда позиций
-					 *
-					 * \~english
-					 * Flag of the walk over the lengths of a non-atomic lookbehind check
-					 *
-					 * @details A lookbehind check is matched at an offset backwards
-					 *          by the length of the checked sequence, and its lengths
-					 *          are walked from the largest. An ordinary check
-					 *          walks them by a nested run, whereas a non-atomic
-					 *          check must keep the walk alive even after
-					 *          its own fulfilment: a point with the flag set
-					 *          carries the current length — in the field of the run of positions
-					 *
-					 * \~
-					 */
-					uint8_t seek;
-					// Номер ячейки отметки ветви охватывающей группы глагола перехода
-					uint32_t cell;
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					Point() noexcept;
-				} point_t;
-			private:
-				/**
-				 * \~russian
 				 * @brief Запись журнала изменений ячеек захвата
 				 *
 				 * @details Журнал сохраняет прежние значения изменённых ячеек, благодаря
@@ -1184,10 +1063,10 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct Change {
-					// Номер изменённой ячейки захвата
-					uint32_t slot;
 					// Прежнее значение изменённой ячейки захвата
 					size_t value;
+					// Номер изменённой ячейки захвата
+					uint32_t slot;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1197,9 +1076,8 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Change() noexcept;
+					explicit Change() noexcept;
 				} change_t;
-			private:
 				/**
 				 * \~russian
 				 * @brief Таблица принадлежности значений байта классу символов
@@ -1231,7 +1109,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Table() noexcept : modes(0), bytes{} {}
+					explicit Table() noexcept;
 				} table_t;
 				/**
 				 * \~russian
@@ -1272,18 +1150,341 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Lookup() noexcept;
+					explicit Lookup() noexcept;
 				} lookup_t;
+				/**
+				 * \~russian
+				 * @brief Изменение отметки атомарной группы
+				 *
+				 * @details Ячейка отметки одна на всю программу, а рекурсивный
+				 *          вызов входит в ту же атомарную группу заново
+				 *          и ячейку перезаписывает. Оттого отсечение уровня
+				 *          внешнего брало глубину уровня внутреннего и точек
+				 *          возврата не отсекало вовсе. Изменения ведутся
+				 *          журналом наравне с ячейками захвата: кадр вызова
+				 *          и точка возврата держат отсечку журнала, а возврат
+				 *          восстанавливает прежние значения отметок.
+				 *
+				 * \~english
+				 * @brief Change of an atomic group mark
+				 *
+				 * @details The mark cell is a single one for the whole program, while
+				 *          a recursive call enters the same atomic group anew
+				 *          and overwrites the cell. Because of that the cut of an outer level
+				 *          took the depth of an inner level and cut no backtracking
+				 *          points at all. Changes are kept in a journal alongside
+				 *          the capture cells: the call frame and the backtracking point
+				 *          keep the journal watermark, and backtracking
+				 *          restores the previous values of the marks.
+				 *
+				 * \~
+				 */
+				typedef struct Remark {
+					// Прежнее значение отметки
+					size_t value;
+					// Номер ячейки изменённой отметки
+					uint32_t cell;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Remark() noexcept;
+				} remark_t;
+				/**
+				 * \~russian
+				 * @brief Кадр исполняемого рекурсивного вызова подвыражения
+				 *
+				 * \~english
+				 * @brief Frame of an executed recursive call of a subexpression
+				 *
+				 * \~
+				 */
+				typedef struct Frame {
+					/**
+					 * \~russian
+					 * Позиция текста, в какой рекурсивный вызов начат
+					 *
+					 * @details Позиция служит распознаванию вызова, вошедшего заново
+					 *          в той же позиции текста: такой вызов повторяет уже
+					 *          выполняемое и завершиться не может.
+					 *
+					 * \~english
+					 * Position of the text at which the recursive call was started
+					 *
+					 * @details The position serves to recognise a call that has entered anew
+					 *          at the same position of the text: such a call repeats what is
+					 *          already being executed and cannot complete.
+					 *
+					 * \~
+					 */
+					size_t pos;
+					// Глубина рекурсивного вызова, отсчитываемая с единицы
+					size_t depth;
+					// Номер кадра вызова, из которого выполнен рекурсивный вызов
+					size_t parent;
+					// Размер журнала изменений отметок атомарных групп на момент вызова
+					size_t remarks;
+					// Размер журнала изменений ячеек захвата на момент вызова
+					size_t journal;
+					// Адрес инструкции, к которой возвращается исполнение
+					address_t back;
+					// Номер группы, рекурсивный вызов которой исполняется
+					uint32_t number;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Frame() noexcept;
+				} frame_t;
+				/**
+				 * \~russian
+				 * @brief Точка возврата исполнения программы
+				 *
+				 * \~english
+				 * @brief Backtracking point of the execution of the program
+				 *
+				 * \~
+				 */
+				typedef struct Point {
+					/**
+					 * \~russian
+					 * Флаг восстановления кадра рекурсивного вызова
+					 *
+					 * @details Точка возврата с установленным флагом не продолжает
+					 *          исполнения, а восстанавливает исполняемый рекурсивный
+					 *          вызов, после чего возврат продолжается далее.
+					 *
+					 * \~english
+					 * Flag of restoring a recursive call frame
+					 *
+					 * @details A backtracking point with the flag set does not continue
+					 *          the execution but restores the executed recursive
+					 *          call, after which the backtracking continues further.
+					 *
+					 * \~
+					 */
+					bool frame;
+					/**
+					 * \~russian
+					 * Флаг перебора длин не отсекающей ретроспективной проверки
+					 *
+					 * @details Проверка ретроспективная сопоставляется отступом назад
+					 *          на длину проверяемой последовательности, и длины её
+					 *          перебираются от наибольшей. Проверка обыкновенная
+					 *          перебирает их запуском вложенным, тогда как проверка
+					 *          не отсекающая обязана держать перебор живым и после
+					 *          выполнения своего: точка с установленным флагом
+					 *          длину очередную и несёт - в поле ряда позиций
+					 *
+					 * \~english
+					 * Flag of the walk over the lengths of a non-atomic lookbehind check
+					 *
+					 * @details A lookbehind check is matched at an offset backwards
+					 *          by the length of the checked sequence, and its lengths
+					 *          are walked from the largest. An ordinary check
+					 *          walks them by a nested run, whereas a non-atomic
+					 *          check must keep the walk alive even after
+					 *          its own fulfilment: a point with the flag set
+					 *          carries the current length — in the field of the run of positions
+					 *
+					 * \~
+					 */
+					uint8_t seek;
+					/**
+					 * \~russian
+					 * Вид глагола управления, точку разместившего
+					 *
+					 * @details Значение выводится увеличенным на единицу, а нуль
+					 *          означает точку обыкновенную: глаголы управления
+					 *          размещают точку, исполнения не продолжающую, - возврат
+					 *          в неё прекращает попытку сопоставления, а вид глагола
+					 *          указывает, как её продолжать.
+					 *
+					 * \~english
+					 * Kind of the control verb that placed the point
+					 *
+					 * @details The value is yielded increased by one, whereas zero
+					 *          means an ordinary point: the control verbs place a point
+					 *          that does not continue the execution — backtracking into it
+					 *          terminates the matching attempt, and the kind of the verb
+					 *          tells how to continue it.
+					 *
+					 * \~
+					 */
+					uint8_t control;
+					// Позиция в тексте, с которой продолжается исполнение
+					size_t pos;
+					/**
+					 * \~russian
+					 * Количество оставшихся позиций ряда повторения одиночного символа
+					 *
+					 * @details Повторение одиночного символа шириной в один байт даёт
+					 *          ряд точек возврата, отличающихся лишь позицией, убывающей
+					 *          на единицу. Такой ряд хранится единственной точкой,
+					 *          отчего проход ряда длиной в текст размещает одну точку
+					 *          взамен точки на каждый байт текста.
+					 *
+					 * \~english
+					 * Number of the remaining positions of a run of a repetition of a single character
+					 *
+					 * @details A repetition of a single character one byte wide yields
+					 *          a run of backtracking points differing only by the position, decreasing
+					 *          by one. Such a run is kept as a single point,
+					 *          which is why walking a run as long as the text places one point
+					 *          instead of a point per every byte of the text.
+					 *
+					 * \~
+					 */
+					size_t span;
+					// Размер журнала изменений ячеек захвата на момент сохранения
+					size_t journal;
+					// Размер журнала изменений отметок атомарных групп на момент сохранения
+					size_t remarks;
+					// Адрес инструкции, с которой продолжается исполнение
+					address_t pc;
+					// Номер ячейки отметки ветви охватывающей группы глагола перехода
+					uint32_t cell;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Point() noexcept;
+				} point_t;
 			private:
-				// Исполняемая программа регулярного выражения
-				const program_t * _program;
+				// Признак прекращения сопоставления пределом числа попыток
+				bool _bounded;
 			private:
-				// Текст, по которому выполняется сопоставление
-				string_view _text;
+				// Код ошибки последней операции сопоставления
+				error_t _error;
+			private:
+				/**
+				 * \~russian
+				 * Вид глагола управления, попытку сопоставления прекратившего
+				 *
+				 * @details Значение выводится увеличенным на единицу наравне с точкой
+				 *          возврата, а нуль означает прекращение обыкновенное. Внешний
+				 *          обход позиций начала читает его и решает, продолжать ли
+				 *          попытки: глагол отказа целиком их прекращает, а глаголы
+				 *          переноса задают позицию продолжения.
+				 *
+				 * \~english
+				 * Kind of the control verb that terminated the matching attempt
+				 *
+				 * @details The value is yielded increased by one along with the backtracking point,
+				 *          whereas zero means an ordinary termination. The outer walk over the starting
+				 *          positions reads it and decides whether to continue the attempts:
+				 *          the verb of the whole refusal terminates them, whereas the verbs of moving
+				 *          set the position of continuation.
+				 *
+				 * \~
+				 */
+				uint8_t _control;
 			private:
 				// Позиция начала текущей попытки сопоставления
 				size_t _start;
-			private:
+				// Количество выполненных шагов сопоставления
+				size_t _steps;
+				/**
+				 * \~russian
+				 * Позиция первой попытки сопоставления
+				 *
+				 * @details Позиция действует на одно последующее сопоставление и служит
+				 *          вызывающей стороне, знающей, что левее неё совпадение не
+				 *          начинается: попытки там уже сделаны и окончательно отказали.
+				 *          Начала поиска она не меняет - привязка «\G» и признак
+				 *          «ATSTART» по-прежнему судят о нём.
+				 *
+				 * \~english
+				 * Position of the first matching attempt
+				 *
+				 * @details The position acts on one subsequent match and serves a calling side
+				 *          that knows no match starts to the left of it: the attempts there have
+				 *          already been made and have failed conclusively. It does not change
+				 *          the start of the search - the «\G» anchor and the «ATSTART» flag
+				 *          still judge by the latter.
+				 *
+				 * \~
+				 */
+				size_t _onset;
+				// Действующий объём работы текущего сопоставления
+				size_t _limit;
+				/**
+				 * \~russian
+				 * Допустимое количество шагов сопоставления
+				 *
+				 * @details Объём действует на одно сопоставление и восстанавливается
+				 *          предельным по его завершении.
+				 *
+				 * \~english
+				 * Admissible number of matching steps
+				 *
+				 * @details The amount acts on one match and is restored to
+				 *          the limiting one on its completion.
+				 *
+				 * \~
+				 */
+				size_t _budget;
+				/**
+				 * \~russian
+				 * Действующий наибольший объём памяти сопоставления в байтах
+				 *
+				 * @details Объём задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
+				 *          и считается по наборам точек возврата, кадров вызовов
+				 *          и записей журнала наравне с прочими пределами их размеров.
+				 *
+				 * \~english
+				 * Effective largest amount of the matching memory in bytes
+				 *
+				 * @details The amount is set by the expression itself by the «(*LIMIT_HEAP=N)» option
+				 *          and is counted over the sets of the backtracking points, the call frames
+				 *          and the journal entries along with the other limits of their sizes.
+				 *
+				 * \~
+				 */
+				size_t _memory;
+				// Позиция продолжения попытки сопоставления глаголом переноса
+				size_t _resume;
+				// Действующая вложенность исполнений программы
+				size_t _nested;
+				/**
+				 * \~russian
+				 * Адрес глагола отметки, попыткою последней пройденного
+				 *
+				 * @details Ячейка отметки возвратом отменяется, отчего по отказу
+				 *          сопоставления в ней ничего не остаётся. Эталонная же
+				 *          реализация имя отметки выводит и при отказе - отметку
+				 *          последнюю попытки последней, - и адрес ведётся потому
+				 *          отдельно: возвратом он не отменяется, началом попытки
+				 *          очищается, а глаголом отсечения снимается.
+				 *
+				 * \~english
+				 * Address of the mark verb passed by the last attempt
+				 *
+				 * @details The mark cell is undone by backtracking, whereby nothing remains in it
+				 *          upon a failure of the matching. The reference implementation, however,
+				 *          yields the name of the mark upon a failure as well — the last mark
+				 *          of the last attempt — and the address is therefore maintained
+				 *          separately: it is not undone by backtracking, is cleared at the start
+				 *          of an attempt and is removed by a cutting verb.
+				 *
+				 * \~
+				 */
+				size_t _failing;
 				/**
 				 * \~russian
 				 * Позиция, с которой начата попытка сопоставления нынешняя
@@ -1304,10 +1505,86 @@ namespace awh {
 				 * \~
 				 */
 				size_t _attempt;
-
-			private:
-				// Количество выполненных шагов сопоставления
-				size_t _steps;
+				// Номер кадра исполняемого рекурсивного вызова
+				size_t _current;
+				/**
+				 * \~russian
+				 * Наибольший допустимый объём работы сопоставления
+				 *
+				 * @details Потолок обрезает объём, вычисленный вызывающей стороною, и
+				 *          устанавливается ею же: умолчанием служит «MAX_STEPS».
+				 *
+				 * \~english
+				 * Largest admissible amount of work of the matching
+				 *
+				 * @details The ceiling truncates the amount computed by the calling side and
+				 *          is set by it as well: «MAX_STEPS» serves as the default.
+				 *
+				 * \~
+				 */
+				size_t _ceiling;
+				// Наибольшая допустимая глубина рекурсивных вызовов подвыражений
+				size_t _nesting;
+				/**
+				 * \~russian
+				 * Действующая наибольшая глубина рекурсивных вызовов сопоставления
+				 *
+				 * @details Глубина берётся наименьшей из заданной вызывающей стороной
+				 *          и заданной самим выражением указанием «(*LIMIT_DEPTH=N)»:
+				 *          предел выражения понижает предел вызывающей стороны,
+				 *          но не повышает его.
+				 *
+				 * \~english
+				 * Effective largest depth of the recursive calls of the matching
+				 *
+				 * @details The depth is taken as the smallest of the one set by the calling side
+				 *          and the one set by the expression itself by the «(*LIMIT_DEPTH=N)» option:
+				 *          the limit of the expression lowers the limit of the calling side
+				 *          but never raises it.
+				 *
+				 * \~
+				 */
+				size_t _deepest;
+				/**
+				 * \~russian
+				 * Позиция вхождения обязательного литерала, вызывающей стороной найденная
+				 *
+				 * @details Позиция действует на одно последующее сопоставление, как и
+				 *          позиция первой попытки. Поле стоит последним намеренно:
+				 *          смещения полей, читаемых циклом исполнения, оно не сдвигает.
+				 *
+				 * \~english
+				 * Position of the occurrence of the mandatory literal found by the calling side
+				 *
+				 * @details The position acts on one subsequent match, as the position of the
+				 *          first attempt does. The field stands last deliberately: it does not shift
+				 *          the offsets of the fields read by the execution loop.
+				 *
+				 * \~
+				 */
+				size_t _located;
+				/**
+				 * \~russian
+				 * Наибольшее число попыток сопоставления
+				 *
+				 * @details Предел действует на одно последующее сопоставление и служит
+				 *          вызывающей стороне, располагающей запасным способом: поиск,
+				 *          предел исчерпавший, прекращается, а отказ отмечается особо -
+				 *          отсутствием совпадения он не является.
+				 *
+				 * \~english
+				 * Largest number of matching attempts
+				 *
+				 * @details The limit acts on one subsequent match and serves
+				 *          a calling side that has a fallback way at its disposal: the search
+				 *          that has exhausted the limit is stopped, while the failure is marked specially —
+				 *          it is not an absence of a match.
+				 *
+				 * \~
+				 */
+				size_t _horizon;
+				// Позиция попытки, на которой сопоставление прекращено пределом
+				size_t _frontier;
 			private:
 				/**
 				 * \~russian
@@ -1347,199 +1624,39 @@ namespace awh {
 				AWH_REGEX_PROBED size_t _saves;
 				// Количество выполненных проверок принадлежности байта классу символов
 				AWH_REGEX_PROBED size_t _checks;
+				// Количество обходов цикла исполнения с возвратом
+				AWH_REGEX_PROBED size_t _rounds;
 				// Количество размещённых точек возврата
 				AWH_REGEX_PROBED size_t _points_spent;
 				// Количество заведённых кадров вызова подвыражения
 				AWH_REGEX_PROBED size_t _frames_spent;
-				// Количество обходов цикла исполнения с возвратом
-				AWH_REGEX_PROBED size_t _rounds;
-			private:
-				/**
-				 * \~russian
-				 * Допустимое количество шагов сопоставления
-				 *
-				 * @details Объём действует на одно сопоставление и восстанавливается
-				 *          предельным по его завершении.
-				 *
-				 * \~english
-				 * Admissible number of matching steps
-				 *
-				 * @details The amount acts on one match and is restored to
-				 *          the limiting one on its completion.
-				 *
-				 * \~
-				 */
-				size_t _budget;
-			private:
-				/**
-				 * \~russian
-				 * Наибольший допустимый объём работы сопоставления
-				 *
-				 * @details Потолок обрезает объём, вычисленный вызывающей стороною, и
-				 *          устанавливается ею же: умолчанием служит «MAX_STEPS».
-				 *
-				 * \~english
-				 * Largest admissible amount of work of the matching
-				 *
-				 * @details The ceiling truncates the amount computed by the calling side and
-				 *          is set by it as well: «MAX_STEPS» serves as the default.
-				 *
-				 * \~
-				 */
-				size_t _ceiling;
-			private:
-				/**
-				 * \~russian
-				 * Наибольшее число попыток сопоставления
-				 *
-				 * @details Предел действует на одно последующее сопоставление и служит
-				 *          вызывающей стороне, располагающей запасным способом: поиск,
-				 *          предел исчерпавший, прекращается, а отказ отмечается особо -
-				 *          отсутствием совпадения он не является.
-				 *
-				 * \~english
-				 * Largest number of matching attempts
-				 *
-				 * @details The limit acts on one subsequent match and serves
-				 *          a calling side that has a fallback way at its disposal: the search
-				 *          that has exhausted the limit is stopped, while the failure is marked specially —
-				 *          it is not an absence of a match.
-				 *
-				 * \~
-				 */
-				size_t _horizon;
-			private:
-				// Признак прекращения сопоставления пределом числа попыток
-				bool _bounded;
-			private:
-				/**
-				 * \~russian
-				 * Позиция первой попытки сопоставления
-				 *
-				 * @details Позиция действует на одно последующее сопоставление и служит
-				 *          вызывающей стороне, знающей, что левее неё совпадение не
-				 *          начинается: попытки там уже сделаны и окончательно отказали.
-				 *          Начала поиска она не меняет - привязка «\G» и признак
-				 *          «ATSTART» по-прежнему судят о нём.
-				 *
-				 * \~english
-				 * Position of the first matching attempt
-				 *
-				 * @details The position acts on one subsequent match and serves a calling side
-				 *          that knows no match starts to the left of it: the attempts there have
-				 *          already been made and have failed conclusively. It does not change
-				 *          the start of the search - the «\G» anchor and the «ATSTART» flag
-				 *          still judge by the latter.
-				 *
-				 * \~
-				 */
-				size_t _onset;
-			private:
-				// Позиция попытки, на которой сопоставление прекращено пределом
-				size_t _frontier;
-			private:
-				// Действующий объём работы текущего сопоставления
-				size_t _limit;
-			private:
-				// Наибольшая допустимая глубина рекурсивных вызовов подвыражений
-				size_t _nesting;
-			private:
-				/**
-				 * \~russian
-				 * Действующая наибольшая глубина рекурсивных вызовов сопоставления
-				 *
-				 * @details Глубина берётся наименьшей из заданной вызывающей стороной
-				 *          и заданной самим выражением указанием «(*LIMIT_DEPTH=N)»:
-				 *          предел выражения понижает предел вызывающей стороны,
-				 *          но не повышает его.
-				 *
-				 * \~english
-				 * Effective largest depth of the recursive calls of the matching
-				 *
-				 * @details The depth is taken as the smallest of the one set by the calling side
-				 *          and the one set by the expression itself by the «(*LIMIT_DEPTH=N)» option:
-				 *          the limit of the expression lowers the limit of the calling side
-				 *          but never raises it.
-				 *
-				 * \~
-				 */
-				size_t _deepest;
-			private:
-				/**
-				 * \~russian
-				 * Действующий наибольший объём памяти сопоставления в байтах
-				 *
-				 * @details Объём задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
-				 *          и считается по наборам точек возврата, кадров вызовов
-				 *          и записей журнала наравне с прочими пределами их размеров.
-				 *
-				 * \~english
-				 * Effective largest amount of the matching memory in bytes
-				 *
-				 * @details The amount is set by the expression itself by the «(*LIMIT_HEAP=N)» option
-				 *          and is counted over the sets of the backtracking points, the call frames
-				 *          and the journal entries along with the other limits of their sizes.
-				 *
-				 * \~
-				 */
-				size_t _memory;
-			private:
-				/**
-				 * \~russian
-				 * Вид глагола управления, попытку сопоставления прекратившего
-				 *
-				 * @details Значение выводится увеличенным на единицу наравне с точкой
-				 *          возврата, а нуль означает прекращение обыкновенное. Внешний
-				 *          обход позиций начала читает его и решает, продолжать ли
-				 *          попытки: глагол отказа целиком их прекращает, а глаголы
-				 *          переноса задают позицию продолжения.
-				 *
-				 * \~english
-				 * Kind of the control verb that terminated the matching attempt
-				 *
-				 * @details The value is yielded increased by one along with the backtracking point,
-				 *          whereas zero means an ordinary termination. The outer walk over the starting
-				 *          positions reads it and decides whether to continue the attempts:
-				 *          the verb of the whole refusal terminates them, whereas the verbs of moving
-				 *          set the position of continuation.
-				 *
-				 * \~
-				 */
-				uint8_t _control;
-			private:
-				// Позиция продолжения попытки сопоставления глаголом переноса
-				size_t _resume;
-			private:
-				/**
-				 * \~russian
-				 * Адрес глагола отметки, попыткою последней пройденного
-				 *
-				 * @details Ячейка отметки возвратом отменяется, отчего по отказу
-				 *          сопоставления в ней ничего не остаётся. Эталонная же
-				 *          реализация имя отметки выводит и при отказе - отметку
-				 *          последнюю попытки последней, - и адрес ведётся потому
-				 *          отдельно: возвратом он не отменяется, началом попытки
-				 *          очищается, а глаголом отсечения снимается.
-				 *
-				 * \~english
-				 * Address of the mark verb passed by the last attempt
-				 *
-				 * @details The mark cell is undone by backtracking, whereby nothing remains in it
-				 *          upon a failure of the matching. The reference implementation, however,
-				 *          yields the name of the mark upon a failure as well — the last mark
-				 *          of the last attempt — and the address is therefore maintained
-				 *          separately: it is not undone by backtracking, is cleared at the start
-				 *          of an attempt and is removed by a cutting verb.
-				 *
-				 * \~
-				 */
-				size_t _failing;
-			private:
-				// Действующая вложенность исполнений программы
-				size_t _nested;
 			private:
 				// Опознание программы, для какой построены таблицы принадлежности байтов
 				uint64_t _identity;
+			private:
+				// Текст, по которому выполняется сопоставление
+				string_view _text;
+			private:
+				// Набор позиций захвата групп и ячеек состояния исполнения
+				vector <size_t> _slots;
+				/**
+				 * \~russian
+				 * Набор отметок состояния возврата атомарных конструкций
+				 *
+				 * @details Отметка сохраняет глубину набора точек возврата на входе
+				 *          в атомарную конструкцию, благодаря чему её завершение
+				 *          отказывается от точек возврата, накопленных внутри неё.
+				 *
+				 * \~english
+				 * Set of the marks of the backtracking state of the atomic constructs
+				 *
+				 * @details A mark keeps the depth of the set of backtracking points at the entry
+				 *          into an atomic construct, thanks to which its completion
+				 *          gives up the backtracking points accumulated inside it.
+				 *
+				 * \~
+				 */
+				vector <size_t> _marks;
 			private:
 				/**
 				 * \~russian
@@ -1562,6 +1679,12 @@ namespace awh {
 				 */
 				vector <uint32_t> _indexes;
 			private:
+				// Набор изменений ячеек захвата, отменяемых возвратом из вызова
+				vector <change_t> _undo;
+				// Набор кадров рекурсивных вызовов подвыражений
+				vector <frame_t> _frames;
+				// Набор точек возврата исполнения программы
+				vector <point_t> _points;
 				/**
 				 * \~russian
 				 * Таблицы принадлежности байтов классам, пройденным повторением
@@ -1592,7 +1715,10 @@ namespace awh {
 				 * \~
 				 */
 				vector <table_t> _tables;
-			private:
+				// Журнал изменений отметок атомарных групп
+				vector <remark_t> _remarks;
+				// Журнал изменений ячеек захвата групп
+				vector <change_t> _journal;
 				/**
 				 * \~russian
 				 * Разрешения таблиц принадлежности байтов по номерам классов
@@ -1614,163 +1740,8 @@ namespace awh {
 				 */
 				vector <lookup_t> _lookup;
 			private:
-				// Набор точек возврата исполнения программы
-				vector <point_t> _points;
-			private:
-				// Журнал изменений ячеек захвата групп
-				vector <change_t> _journal;
-			private:
-				// Набор позиций захвата групп и ячеек состояния исполнения
-				vector <size_t> _slots;
-			private:
-				/**
-				 * \~russian
-				 * Набор отметок состояния возврата атомарных конструкций
-				 *
-				 * @details Отметка сохраняет глубину набора точек возврата на входе
-				 *          в атомарную конструкцию, благодаря чему её завершение
-				 *          отказывается от точек возврата, накопленных внутри неё.
-				 *
-				 * \~english
-				 * Set of the marks of the backtracking state of the atomic constructs
-				 *
-				 * @details A mark keeps the depth of the set of backtracking points at the entry
-				 *          into an atomic construct, thanks to which its completion
-				 *          gives up the backtracking points accumulated inside it.
-				 *
-				 * \~
-				 */
-				vector <size_t> _marks;
-			private:
-				/**
-				 * \~russian
-				 * @brief Изменение отметки атомарной группы
-				 *
-				 * @details Ячейка отметки одна на всю программу, а рекурсивный
-				 *          вызов входит в ту же атомарную группу заново
-				 *          и ячейку перезаписывает. Оттого отсечение уровня
-				 *          внешнего брало глубину уровня внутреннего и точек
-				 *          возврата не отсекало вовсе. Изменения ведутся
-				 *          журналом наравне с ячейками захвата: кадр вызова
-				 *          и точка возврата держат отсечку журнала, а возврат
-				 *          восстанавливает прежние значения отметок.
-				 *
-				 * \~english
-				 * @brief Change of an atomic group mark
-				 *
-				 * @details The mark cell is a single one for the whole program, while
-				 *          a recursive call enters the same atomic group anew
-				 *          and overwrites the cell. Because of that the cut of an outer level
-				 *          took the depth of an inner level and cut no backtracking
-				 *          points at all. Changes are kept in a journal alongside
-				 *          the capture cells: the call frame and the backtracking point
-				 *          keep the journal watermark, and backtracking
-				 *          restores the previous values of the marks.
-				 *
-				 * \~
-				 */
-				typedef struct Remark {
-					// Номер ячейки изменённой отметки
-					uint32_t cell;
-					// Прежнее значение отметки
-					size_t value;
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					Remark() noexcept;
-				} remark_t;
-			private:
-				// Журнал изменений отметок атомарных групп
-				vector <remark_t> _remarks;
-			private:
-				/**
-				 * \~russian
-				 * @brief Кадр исполняемого рекурсивного вызова подвыражения
-				 *
-				 * \~english
-				 * @brief Frame of an executed recursive call of a subexpression
-				 *
-				 * \~
-				 */
-				typedef struct Frame {
-					// Адрес инструкции, к которой возвращается исполнение
-					address_t back;
-					// Номер группы, рекурсивный вызов которой исполняется
-					uint32_t number;
-					// Размер журнала изменений ячеек захвата на момент вызова
-					size_t journal;
-					// Размер журнала изменений отметок атомарных групп на момент вызова
-					size_t remarks;
-					// Номер кадра вызова, из которого выполнен рекурсивный вызов
-					size_t parent;
-					// Глубина рекурсивного вызова, отсчитываемая с единицы
-					size_t depth;
-					/**
-					 * \~russian
-					 * Позиция текста, в какой рекурсивный вызов начат
-					 *
-					 * @details Позиция служит распознаванию вызова, вошедшего заново
-					 *          в той же позиции текста: такой вызов повторяет уже
-					 *          выполняемое и завершиться не может.
-					 *
-					 * \~english
-					 * Position of the text at which the recursive call was started
-					 *
-					 * @details The position serves to recognise a call that has entered anew
-					 *          at the same position of the text: such a call repeats what is
-					 *          already being executed and cannot complete.
-					 *
-					 * \~
-					 */
-					size_t pos;
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					Frame() noexcept;
-				} frame_t;
-			private:
-				// Набор кадров рекурсивных вызовов подвыражений
-				vector <frame_t> _frames;
-			private:
-				// Номер кадра исполняемого рекурсивного вызова
-				size_t _current;
-			private:
-				// Набор изменений ячеек захвата, отменяемых возвратом из вызова
-				vector <change_t> _undo;
-			private:
-				// Код ошибки последней операции сопоставления
-				error_t _error;
-			private:
-				/**
-				 * \~russian
-				 * Позиция вхождения обязательного литерала, вызывающей стороной найденная
-				 *
-				 * @details Позиция действует на одно последующее сопоставление, как и
-				 *          позиция первой попытки. Поле стоит последним намеренно:
-				 *          смещения полей, читаемых циклом исполнения, оно не сдвигает.
-				 *
-				 * \~english
-				 * Position of the occurrence of the mandatory literal found by the calling side
-				 *
-				 * @details The position acts on one subsequent match, as the position of the
-				 *          first attempt does. The field stands last deliberately: it does not shift
-				 *          the offsets of the fields read by the execution loop.
-				 *
-				 * \~
-				 */
-				size_t _located;
+				// Исполняемая программа регулярного выражения
+				const program_t * _program;
 			public:
 				/**
 				 * \~russian
@@ -2601,7 +2572,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Backtrack() noexcept;
+				explicit Backtrack() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

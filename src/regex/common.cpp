@@ -40,7 +40,14 @@ namespace awh {
 		/**
 		 * Конструктор по умолчанию
 		 */
-		Range::Range() noexcept : begin(0), end(0) {}
+		ClassRef::ClassRef() noexcept :
+		 negative(false), ranges(0),
+		 rangeCount(0), properties(0), propertyCount(0) {}
+
+		/**
+		 * Конструктор по умолчанию
+		 */
+		Range::Range() noexcept : end(0), begin(0) {}
 
 		/**
 		 * Конструктор по нижней и верхней границам
@@ -48,7 +55,7 @@ namespace awh {
 		 * @param begin нижняя граница диапазона включительно
 		 * @param end   верхняя граница диапазона включительно
 		 */
-		Range::Range(const uint32_t begin, const uint32_t end) noexcept : begin(begin), end(end) {}
+		Range::Range(const uint32_t begin, const uint32_t end) noexcept : end(end), begin(begin) {}
 
 		/**
 		 * Конструктор по умолчанию
@@ -67,11 +74,6 @@ namespace awh {
 		 * Конструктор по умолчанию
 		 */
 		Class::Class() noexcept : negative(false) {}
-
-		/**
-		 * Конструктор по умолчанию
-		 */
-		ClassRef::ClassRef() noexcept : negative(false), ranges(0), rangeCount(0), properties(0), propertyCount(0) {}
 
 		/**
 		 * Конструктор по умолчанию

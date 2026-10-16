@@ -42,9 +42,13 @@
 #include <cstdint>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл модуля
  */
 #include "../regex.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include "../../codec/json/json.hpp"
 
 /**
@@ -81,6 +85,32 @@ namespace awh {
 	namespace grok {
 		/**
 		 * \~russian
+		 * @brief Виды значений полей шаблона Grok
+		 *
+		 * @details Вид задаётся третьей частью ссылки: «%{INT:code:int}». Модуль
+		 *          вид запоминает, но приведением значения не занимается: захват
+		 *          выдаётся текстом, а истолкование его остаётся за потребителем,
+		 *          - кодеку JSON вид нужен для выбора представления значения, а
+		 *          выводу в поток не нужен вовсе.
+		 *
+		 * \~english
+		 * @brief Kinds of the field values of a Grok pattern
+		 *
+		 * @details The kind is set by the third part of a reference: «%{INT:code:int}». The module
+		 *          remembers the kind but does not convert the value: the capture
+		 *          is yielded as text, and interpreting it is left to the consumer —
+		 *          the JSON codec needs the kind to choose the representation of the value, and
+		 *          the output to a stream does not need it at all.
+		 *
+		 * \~
+		 */
+		enum class kind_t : uint8_t {
+			TEXT     = 0x00, // Значение поля выдаётся текстом
+			INTEGER  = 0x01, // Значение поля прочитано числом целым
+			FLOATING = 0x02  // Значение поля прочитано числом дробным
+		};
+		/**
+		 * \~russian
 		 * @brief Коды ошибок разбора шаблона Grok
 		 *
 		 * \~english
@@ -110,95 +140,6 @@ namespace awh {
 			STORAGE_PACKING     = 0x12, // Сжатие либо разбор сжатого содержимого записи не выполнены
 			STORAGE_CHECKSUM    = 0x13  // Контрольная сумма содержимого записи не совпадает
 		};
-
-		/**
-		 * \~russian
-		 * @brief Виды значений полей шаблона Grok
-		 *
-		 * @details Вид задаётся третьей частью ссылки: «%{INT:code:int}». Модуль
-		 *          вид запоминает, но приведением значения не занимается: захват
-		 *          выдаётся текстом, а истолкование его остаётся за потребителем,
-		 *          - кодеку JSON вид нужен для выбора представления значения, а
-		 *          выводу в поток не нужен вовсе.
-		 *
-		 * \~english
-		 * @brief Kinds of the field values of a Grok pattern
-		 *
-		 * @details The kind is set by the third part of a reference: «%{INT:code:int}». The module
-		 *          remembers the kind but does not convert the value: the capture
-		 *          is yielded as text, and interpreting it is left to the consumer —
-		 *          the JSON codec needs the kind to choose the representation of the value, and
-		 *          the output to a stream does not need it at all.
-		 *
-		 * \~
-		 */
-		enum class kind_t : uint8_t {
-			TEXT     = 0x00, // Значение поля выдаётся текстом
-			INTEGER  = 0x01, // Значение поля прочитано числом целым
-			FLOATING = 0x02  // Значение поля прочитано числом дробным
-		};
-
-		/**
-		 * \~russian
-		 * @brief Описание поля шаблона Grok
-		 *
-		 * \~english
-		 * @brief Description of a field of a Grok pattern
-		 *
-		 * \~
-		 */
-		typedef struct __AWH_SHARED_EXPORT__ Field {
-			// Номер группы захвата развёрнутого выражения
-			uint32_t number;
-			// Вид значения поля
-			kind_t kind;
-			// Название поля
-			string name;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			Field() noexcept : number(0), kind(kind_t::TEXT) {}
-		} field_t;
-
-		/**
-		 * \~russian
-		 * @brief Извлечённое значение поля шаблона Grok
-		 *
-		 * @details Значение выдаётся текстом всегда: вид его нужен потребителю
-		 *          для выбора представления, а не модулю для разбора.
-		 *
-		 * \~english
-		 * @brief Extracted value of a field of a Grok pattern
-		 *
-		 * @details The value is always yielded as text: its kind is needed by the consumer
-		 *          to choose the representation rather than by the module for parsing.
-		 *
-		 * \~
-		 */
-		typedef struct __AWH_SHARED_EXPORT__ Value {
-			// Вид значения поля
-			kind_t kind;
-			// Название поля
-			string name;
-			// Извлечённое значение поля
-			string value;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			Value() noexcept : kind(kind_t::TEXT) {}
-		} value_t;
 
 		/**
 		 * \~russian
@@ -238,13 +179,73 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Собранный шаблон Grok
+		 * @brief Структура описания поля шаблона Grok
+		 *
+		 * \~english
+		 * @brief Grok template field description structure
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Field {
+			// Номер группы захвата развёрнутого выражения
+			uint32_t number;
+			// Вид значения поля
+			kind_t kind;
+			// Название поля
+			string name;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit Field() noexcept;
+		} field_t;
+		/**
+		 * \~russian
+		 * @brief Структура извлечённого значения поля шаблона Grok
+		 *
+		 * @details Значение выдаётся текстом всегда: вид его нужен потребителю
+		 *          для выбора представления, а не модулю для разбора.
+		 *
+		 * \~english
+		 * @brief Structure of the extracted Grok template field value
+		 *
+		 * @details The value is always yielded as text: its kind is needed by the consumer
+		 *          to choose the representation rather than by the module for parsing.
+		 *
+		 * \~
+		 */
+		typedef struct __AWH_SHARED_EXPORT__ Value {
+			// Вид значения поля
+			kind_t kind;
+			// Название поля
+			string name;
+			// Извлечённое значение поля
+			string value;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit Value() noexcept;
+		} value_t;
+		/**
+		 * \~russian
+		 * @brief Структура собранного шаблона Grok
 		 *
 		 * @details Собранный шаблон после сборки не изменяется и разделяется
 		 *          потоками исполнения без согласования доступа.
 		 *
 		 * \~english
-		 * @brief Built Grok pattern
+		 * @brief Structure of a assembled Grok template
 		 *
 		 * @details A built pattern is not changed after building and is shared
 		 *          by the threads of execution without coordinating the access.
@@ -252,17 +253,27 @@ namespace awh {
 		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Expression {
-			// Собранное регулярное выражение развёрнутого текста
-			regexp_t::exp_t exp;
-			// Набор полей шаблона в порядке объявления
-			vector <field_t> fields;
 			// Исходный текст шаблона со ссылками
 			string pattern;
 			// Развёрнутый текст регулярного выражения
 			string expression;
+			// Собранное регулярное выражение развёрнутого текста
+			regexp_t::exp_t exp;
+			// Набор полей шаблона в порядке объявления
+			vector <field_t> fields;
+			/**
+			 * \~russian
+			 * @brief Конструктор
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
+			 */
+			explicit Expression() noexcept;
 		} expression_t;
-	}
-}
+	};
+};
 
 /**
  * Возвращаем системные макросы потребителю библиотеки:

@@ -100,10 +100,14 @@
 #include <cstdint>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
-#include <sys/macro/global.hpp>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../sys/macro/global.hpp"
 
 /**
  * \~russian
@@ -120,7 +124,6 @@ namespace awh {
 	 * Используем стандартное пространство имён
 	 */
 	using namespace std;
-
 
 	/**
 	 * \~russian
@@ -153,17 +156,16 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Assembly {
 			private:
-				// Адрес размещённого участка исполняемой памяти
-				void * _address;
+				// Флаг разрешения исполнения размещённого участка памяти
+				bool _executable;
 			private:
 				// Размер размещённого участка исполняемой памяти в байтах
 				size_t _size;
-			private:
 				// Количество байт, занятых порождённым машинным кодом
 				size_t _length;
 			private:
-				// Флаг разрешения исполнения размещённого участка памяти
-				bool _executable;
+				// Адрес размещённого участка исполняемой памяти
+				void * _address;
 			public:
 				/**
 				 * \~russian
@@ -383,7 +385,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Assembly(Assembly && assembly) noexcept;
+				explicit Assembly(Assembly && assembly) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор копирования

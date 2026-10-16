@@ -242,7 +242,16 @@ namespace awh {
 			 * \~
 			 */
 			ATTEMPTS = 0x06,
-			COUNT  = 0x07  // Количество учитываемых мер работы
+			/**
+			 * \~russian
+			 * Количество учитываемых мер работы
+			 *
+			 * \~english
+			 * Number of work measures taken into account
+			 *
+			 * \~
+			 */
+			COUNT = 0x07
 		};
 		/**
 		 * \~russian

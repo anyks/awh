@@ -47,6 +47,12 @@ namespace awh {
 		 plain(false), sweeping(false),
 		 anchored(false), startline(false) {}
 
+		 /**
+		 * @brief Конструктор инструкции программы регулярного выражения
+		 *
+		 */
+		Instruction::Instruction() noexcept : type(opcode_t::MATCH), repeat(1), flags(0), letter{} {}
+
 		/**
 		 * @brief Метод извлечения обзора класса символов программы
 		 *

@@ -72,9 +72,9 @@ namespace awh {
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Entry {
 			// Название шаблона
-			const char * name;
+			const char * name = nullptr;
 			// Текст шаблона, допускающий ссылки вида «%{NAME}»
-			const char * body;
+			const char * body = nullptr;
 		} entry_t;
 
 		/**
@@ -112,5 +112,5 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ extern const entry_t PATTERNS[];
-	}
-}
+	};
+};

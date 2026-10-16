@@ -292,10 +292,10 @@
  */
 #include "dfa.hpp"
 #include "pike.hpp"
-#include "backtrack.hpp"
 #include "parser.hpp"
 #include "compiler.hpp"
 #include "codegen.hpp"
+#include "backtrack.hpp"
 
 /**
  * \~russian
@@ -488,52 +488,8 @@ namespace awh {
 		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Expression {
-			// Программа сопоставления в прямом направлении
-			program_t forward;
-			// Программа сопоставления в обратном направлении
-			program_t backward;
-			/**
-			 * \~russian
-			 * Соответствие имён именованных групп наборам их номеров
-			 *
-			 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
-			 *          поэтому имени отвечает набор их номеров в порядке объявления.
-			 *
-			 * \~english
-			 * Mapping of the names of the named groups to the sets of their numbers
-			 *
-			 * @details In the «DUPNAMES» mode one name is declared by several groups,
-			 *          therefore a name corresponds to a set of their numbers in declaration order.
-			 *
-			 * \~
-			 */
-			unordered_map <string, vector <uint32_t>> names;
-			/**
-			 * \~russian
-			 * Флаг исполнения выражения с возвратом
-			 *
-			 * @details Флаг установлен, если выражение содержит конструкции вне
-			 *          регулярного подмножества синтаксиса, недостижимые исполнением
-			 *          без возврата: ссылки на захваченные группы, рекурсивные вызовы,
-			 *          условные выражения, проверки окружения, атомарные группы,
-			 *          захватывающие кванторы и графемные кластеры.
-			 *
-			 * \~english
-			 * Flag of executing the expression with backtracking
-			 *
-			 * @details The flag is set if the expression holds constructs outside
-			 *          the regular subset of the syntax, unreachable by execution
-			 *          without backtracking: references to captured groups, recursive calls,
-			 *          conditional expressions, lookarounds, atomic groups,
-			 *          possessive quantifiers and grapheme clusters.
-			 *
-			 * \~
-			 */
-			bool backtracking;
 			// Флаг готовности выражения к сопоставлению
 			bool ready;
-			// Флаг применимости поиска позиции начала совпадения
-			bool reversible;
 			/**
 			 * \~russian
 			 * Флаг применимости детерминированного исполнения к прямой программе
@@ -556,6 +512,34 @@ namespace awh {
 			 * \~
 			 */
 			bool automatic;
+			// Флаг применимости поиска позиции начала совпадения
+			bool reversible;
+			/**
+			 * \~russian
+			 * Флаг исполнения выражения с возвратом
+			 *
+			 * @details Флаг установлен, если выражение содержит конструкции вне
+			 *          регулярного подмножества синтаксиса, недостижимые исполнением
+			 *          без возврата: ссылки на захваченные группы, рекурсивные вызовы,
+			 *          условные выражения, проверки окружения, атомарные группы,
+			 *          захватывающие кванторы и графемные кластеры.
+			 *
+			 * \~english
+			 * Flag of executing the expression with backtracking
+			 *
+			 * @details The flag is set if the expression holds constructs outside
+			 *          the regular subset of the syntax, unreachable by execution
+			 *          without backtracking: references to captured groups, recursive calls,
+			 *          conditional expressions, lookarounds, atomic groups,
+			 *          possessive quantifiers and grapheme clusters.
+			 *
+			 * \~
+			 */
+			bool backtracking;
+			// Программа сопоставления в прямом направлении
+			program_t forward;
+			// Программа сопоставления в обратном направлении
+			program_t backward;
 			/**
 			 * \~russian
 			 * Сопоставитель выражения в виде порождённого машинного кода
@@ -580,6 +564,22 @@ namespace awh {
 			shared_ptr <codegen_t> machine;
 			/**
 			 * \~russian
+			 * Соответствие имён именованных групп наборам их номеров
+			 *
+			 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
+			 *          поэтому имени отвечает набор их номеров в порядке объявления.
+			 *
+			 * \~english
+			 * Mapping of the names of the named groups to the sets of their numbers
+			 *
+			 * @details In the «DUPNAMES» mode one name is declared by several groups,
+			 *          therefore a name corresponds to a set of their numbers in declaration order.
+			 *
+			 * \~
+			 */
+			unordered_map <string, vector <uint32_t>> names;
+			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * \~english
@@ -587,9 +587,8 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Expression() noexcept;
+			explicit Expression() noexcept;
 		} expression_t;
-
 		/**
 		 * \~russian
 		 * @brief Класс движка регулярных выражений
@@ -615,26 +614,76 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Engine {
 			private:
+				// Объект исполнения без возврата
+				pike_t _pike;
+			private:
+				// Объект детерминированного исполнения в прямом направлении
+				dfa_t _dfa;
+				// Объект детерминированного исполнения в обратном направлении
+				dfa_t _reverse;
+			private:
+				// Код ошибки последней операции движка
+				error_t _error;
+			private:
 				// Объект разбора регулярного выражения
-				Parser _parser;
+				parser_t _parser;
 			private:
 				// Объект компиляции регулярного выражения
-				Compiler _compiler;
+				compiler_t _compiler;
+			private:
+				// Объект исполнения с возвратом
+				backtrack_t _backtrack;
 			private:
 				// Собственное скомпилированное регулярное выражение движка
 				expression_t _expression;
 			private:
-				// Объект детерминированного исполнения в прямом направлении
-				Dfa _dfa;
+				/**
+				 * \~russian
+				 * Имя отметки, совпадением последним оставленной
+				 *
+				 * @details Имя выводится глаголом «(*MARK:имя)», отметившим путь,
+				 *          совпадение давший. Совпадение, глаголов отметки
+				 *          не прошедшее, имя оставляет пустым.
+				 *
+				 * \~english
+				 * Name of the mark left by the last match
+				 *
+				 * @details The name is yielded by the «(*MARK:name)» verb that marked the path
+				 *          which produced the match. A match that passed no mark verbs
+				 *          leaves the name empty.
+				 *
+				 * \~
+				 */
+				string _marker;
 			private:
-				// Объект детерминированного исполнения в обратном направлении
-				Dfa _reverse;
-			private:
-				// Объект исполнения без возврата
-				Pike _pike;
-			private:
-				// Объект исполнения с возвратом
-				Backtrack _backtrack;
+				/**
+				 * \~russian
+				 * Набор границ, отбрасываемый проверкой наличия совпадения
+				 *
+				 * @details Проверка наличия совпадения границ захвата не выдаёт,
+				 *          но исполнение их записывает, и набор под них требуется
+				 *          всякому вызову. Набор заведён полем, а не переменной
+				 *          вызова, затем, чтобы размещение его выполнялось однажды:
+				 *          проверка вызывается на каждой позиции текста, и
+				 *          размещение обходилось дороже самой проверки. Движок
+				 *          принадлежит потоку исполнения, поэтому поле общим
+				 *          для потоков не становится.
+				 *
+				 * \~english
+				 * Set of boundaries discarded by the check of the presence of a match
+				 *
+				 * @details The check of the presence of a match yields no capture boundaries,
+				 *          but execution writes them, and a set for them is required by
+				 *          every call. The set is introduced as a field rather than as a variable of
+				 *          the call so that its allocation is performed once:
+				 *          the check is called at every position of the text, and
+				 *          the allocation cost more than the check itself. The engine
+				 *          belongs to the thread of execution, therefore the field does not become common
+				 *          to the threads.
+				 *
+				 * \~
+				 */
+				vector <pair <size_t, size_t>> _spare;
 			private:
 				/**
 				 * \~russian
@@ -684,57 +733,27 @@ namespace awh {
 				 * \~
 				 */
 				bool probe(const expression_t & expression, string_view text, const size_t start, const size_t located, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept;
-			private:
+			public:
 				/**
 				 * \~russian
-				 * Набор границ, отбрасываемый проверкой наличия совпадения
+				 * @brief Метод сброса отметки совпадения последнего
 				 *
-				 * @details Проверка наличия совпадения границ захвата не выдаёт,
-				 *          но исполнение их записывает, и набор под них требуется
-				 *          всякому вызову. Набор заведён полем, а не переменной
-				 *          вызова, затем, чтобы размещение его выполнялось однажды:
-				 *          проверка вызывается на каждой позиции текста, и
-				 *          размещение обходилось дороже самой проверки. Движок
-				 *          принадлежит потоку исполнения, поэтому поле общим
-				 *          для потоков не становится.
+				 * @details Отметка чистится началом всякого сопоставления: имя,
+				 *          прошлым совпадением оставленное, за отметку нынешнего
+				 *          принято быть не должно. Готовый путь исполнения вызывает
+				 *          сброс напрямую, минуя полный разбор «exec».
 				 *
 				 * \~english
-				 * Set of boundaries discarded by the check of the presence of a match
+				 * @brief Method of resetting the mark of the last match
 				 *
-				 * @details The check of the presence of a match yields no capture boundaries,
-				 *          but execution writes them, and a set for them is required by
-				 *          every call. The set is introduced as a field rather than as a variable of
-				 *          the call so that its allocation is performed once:
-				 *          the check is called at every position of the text, and
-				 *          the allocation cost more than the check itself. The engine
-				 *          belongs to the thread of execution, therefore the field does not become common
-				 *          to the threads.
+				 * @details The mark is cleared at the start of every match: a name left
+				 *          by a previous match must not be taken for the mark of the
+				 *          current one. The ready path of execution calls the reset
+				 *          directly, bypassing the full «exec».
 				 *
 				 * \~
 				 */
-				vector <pair <size_t, size_t>> _spare;
-			private:
-				// Код ошибки последней операции движка
-				error_t _error;
-			private:
-				/**
-				 * \~russian
-				 * Имя отметки, совпадением последним оставленной
-				 *
-				 * @details Имя выводится глаголом «(*MARK:имя)», отметившим путь,
-				 *          совпадение давший. Совпадение, глаголов отметки
-				 *          не прошедшее, имя оставляет пустым.
-				 *
-				 * \~english
-				 * Name of the mark left by the last match
-				 *
-				 * @details The name is yielded by the «(*MARK:name)» verb that marked the path
-				 *          which produced the match. A match that passed no mark verbs
-				 *          leaves the name empty.
-				 *
-				 * \~
-				 */
-				string _marker;
+				void reset() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -811,27 +830,6 @@ namespace awh {
 				bool test(string_view text, const size_t start = 0) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод сопоставления регулярного выражения с текстом
-				 *
-				 * @param text     текст для сопоставления
-				 * @param start    позиция начала поиска совпадения
-				 * @param captures набор границ совпадения и захваченных групп
-				 * @return         результат поиска совпадения
-				 *
-				 * \~english
-				 * @brief Method of matching a regular expression against the text
-				 *
-				 * @param text     text to match
-				 * @param start    position to start the search for a match from
-				 * @param captures set of the boundaries of the match and of the captured groups
-				 * @return         result of searching for a match
-				 *
-				 * \~
-				 */
-				bool exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept;
-			public:
-				/**
-				 * \~russian
 				 * @brief Метод проверки наличия совпадения отдельного выражения
 				 *
 				 * @param expression исполняемое регулярное выражение
@@ -850,6 +848,27 @@ namespace awh {
 				 * \~
 				 */
 				bool test(const expression_t & expression, string_view text, const size_t start = 0) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод сопоставления регулярного выражения с текстом
+				 *
+				 * @param text     текст для сопоставления
+				 * @param start    позиция начала поиска совпадения
+				 * @param captures набор границ совпадения и захваченных групп
+				 * @return         результат поиска совпадения
+				 *
+				 * \~english
+				 * @brief Method of matching a regular expression against the text
+				 *
+				 * @param text     text to match
+				 * @param start    position to start the search for a match from
+				 * @param captures set of the boundaries of the match and of the captured groups
+				 * @return         result of searching for a match
+				 *
+				 * \~
+				 */
+				bool exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод сопоставления отдельного выражения с текстом

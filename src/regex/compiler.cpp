@@ -404,7 +404,7 @@ AWH_REGEX_PLACING awh::regex::address_t awh::regex::Compiler::emit(const opcode_
 	 *          завершения записей, и ждало оно дважды на всякую инструкцию.
 	 *
 	 */
-	instruction_t * const instruction = this->_program->instructions.emplaceBack();
+	instruction_t * const instruction = this->_program->instructions.emplace();
 	/**
 	 * Если размещение инструкции не выполнено
 	 *
@@ -548,7 +548,7 @@ uint32_t awh::regex::Compiler::store(const class_t & value, const uint32_t flags
 	// Выполняем перенос свойств класса в сплошной набор программы
 	this->_program->properties.append(value.properties.data(), value.properties.size());
 	// Выполняем размещение ссылки на класс символов в хранилище
-	this->_program->classes.pushBack(record);
+	this->_program->classes.push(record);
 	// Выполняем учёт режимов, с какими класс символов размещён
 	this->_modes.push_back(flags);
 	// Выводим индекс класса символов в хранилище классов
@@ -2409,7 +2409,7 @@ awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const
 	 */
 	for(uint32_t index = 0; index < length; index++)
 		// Выполняем добавление очередного октета имени отметки
-		this->_program->markers.pushBack(this->_parser->markers().at(static_cast <size_t> (offset) + static_cast <size_t> (index)));
+		this->_program->markers.push(this->_parser->markers().at(static_cast <size_t> (offset) + static_cast <size_t> (index)));
 	// Выполняем размещение инструкции глагола управления возвратом
 	const address_t result = this->emit(opcode_t::CONTROL, flags);
 	/**

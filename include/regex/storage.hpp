@@ -206,9 +206,13 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "engine.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include "../compressor/types.hpp"
 
 /**
@@ -238,17 +242,6 @@ namespace awh {
 	namespace regex {
 		/**
 		 * \~russian
-		 * @brief Опознание записи хранилища собранных выражений
-		 *
-		 * \~english
-		 * @brief Identification of the record of the storage of built expressions
-		 *
-		 * \~
-		 */
-		constexpr uint64_t STORAGE_MAGIC = 0x5847455241485741ull;
-
-		/**
-		 * \~russian
 		 * @brief Версия устройства записи хранилища собранных выражений
 		 *
 		 * @details Версия увеличивается при всякой правке устройства записи:
@@ -267,6 +260,16 @@ namespace awh {
 		 * \~
 		 */
 		constexpr uint16_t STORAGE_VERSION = 0x000F;
+		/**
+		 * \~russian
+		 * @brief Опознание записи хранилища собранных выражений
+		 *
+		 * \~english
+		 * @brief Identification of the record of the storage of built expressions
+		 *
+		 * \~
+		 */
+		constexpr uint64_t STORAGE_MAGIC = 0x5847455241485741ull;
 
 		/**
 		 * \~russian
@@ -371,24 +374,6 @@ namespace awh {
 				 */
 				using cipher_t = function <bool (string_view, string &)>;
 			private:
-				// Код ошибки хранилища собранных выражений
-				mutable storage_error_t _error;
-			private:
-				/**
-				 * \~russian
-				 * Срок годности записи в секундах
-				 *
-				 * @details Нулевой срок означает годность бессрочную.
-				 *
-				 * \~english
-				 * Lifetime of the record in seconds
-				 *
-				 * @details A zero lifetime means unlimited validity.
-				 *
-				 * \~
-				 */
-				uint64_t _lifetime;
-			private:
 				/**
 				 * \~russian
 				 * Признак доверия порождённому коду, записью несомому
@@ -411,22 +396,39 @@ namespace awh {
 				 * \~
 				 */
 				bool _trusted;
+				// Признак шифрования записи хранилища
+				bool _ciphered;
 			private:
-				// Метод сжатия записи хранилища
-				compressor::method_t _method;
+				/**
+				 * \~russian
+				 * Срок годности записи в секундах
+				 *
+				 * @details Нулевой срок означает годность бессрочную.
+				 *
+				 * \~english
+				 * Lifetime of the record in seconds
+				 *
+				 * @details A zero lifetime means unlimited validity.
+				 *
+				 * \~
+				 */
+				uint64_t _lifetime;
 			private:
 				// Обработчик сжатия записи хранилища
 				packer_t _pack;
 				// Обработчик разжатия записи хранилища
 				packer_t _unpack;
 			private:
-				// Признак шифрования записи хранилища
-				bool _ciphered;
-			private:
 				// Обработчик зашифрования записи хранилища
 				cipher_t _encrypt;
 				// Обработчик расшифрования записи хранилища
 				cipher_t _decrypt;
+			private:
+				// Метод сжатия записи хранилища
+				compressor::method_t _method;
+			private:
+				// Код ошибки хранилища собранных выражений
+				mutable storage_error_t _error;
 			private:
 				/**
 				 * \~russian
@@ -769,5 +771,5 @@ namespace awh {
 				 */
 				~Storage() noexcept;
 		} storage_t;
-	}
-}
+	};
+};

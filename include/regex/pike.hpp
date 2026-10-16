@@ -163,7 +163,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Thread() noexcept;
+					explicit Thread() noexcept;
 				} thread_t;
 			private:
 				/**
@@ -187,21 +187,21 @@ namespace awh {
 				 */
 				dfa_t _dfa;
 			private:
-				// Исполняемая программа регулярного выражения
-				const program_t * _program;
+				// Позиция начала текущей попытки сопоставления
+				size_t _start;
+				// Количество позиций захвата групп в наборе
+				size_t _width;
+			private:
+				// Номер поколения отметок посещения следующей позиции
+				uint32_t _upcoming;
+				// Номер поколения отметок посещения текущей позиции
+				uint32_t _generation;
 			private:
 				// Текст, по которому выполняется сопоставление
 				string_view _text;
 			private:
-				// Позиция начала текущей попытки сопоставления
-				size_t _start;
-			private:
-				// Набор состояний, исполняемых в текущей позиции
-				vector <thread_t> _current;
-			private:
 				// Набор состояний, исполняемых в следующей позиции
 				vector <thread_t> _next;
-			private:
 				/**
 				 * \~russian
 				 * Стек замыкания состояния по инструкциям без сопоставления символов
@@ -220,7 +220,11 @@ namespace awh {
 				 * \~
 				 */
 				vector <thread_t> _stack;
+				// Набор состояний, исполняемых в текущей позиции
+				vector <thread_t> _current;
 			private:
+				// Набор количеств состояний, удерживающих наборы позиций захвата групп
+				vector <uint32_t> _refs;
 				/**
 				 * \~russian
 				 * Набор отметок посещения инструкций для состояний текущей позиции
@@ -239,18 +243,10 @@ namespace awh {
 				 * \~
 				 */
 				vector <uint32_t> _marks;
-			private:
+				// Набор номеров освобождённых наборов позиций захвата групп
+				vector <uint32_t> _vacant;
 				// Набор отметок посещения инструкций для состояний следующей позиции
 				vector <uint32_t> _pending;
-			private:
-				// Номер поколения отметок посещения текущей позиции
-				uint32_t _generation;
-			private:
-				// Номер поколения отметок посещения следующей позиции
-				uint32_t _upcoming;
-			private:
-				// Количество позиций захвата групп в наборе
-				size_t _width;
 			private:
 				/**
 				 * \~russian
@@ -286,11 +282,8 @@ namespace awh {
 				 */
 				vector <size_t> _storage;
 			private:
-				// Набор количеств состояний, удерживающих наборы позиций захвата групп
-				vector <uint32_t> _refs;
-			private:
-				// Набор номеров освобождённых наборов позиций захвата групп
-				vector <uint32_t> _vacant;
+				// Исполняемая программа регулярного выражения
+				const program_t * _program;
 			public:
 				/**
 				 * \~russian
@@ -510,7 +503,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Pike() noexcept;
+				explicit Pike() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

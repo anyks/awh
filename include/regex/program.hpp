@@ -85,39 +85,6 @@ namespace awh {
 
 		/**
 		 * \~russian
-		 * @brief Значение адреса отсутствующей инструкции программы
-		 *
-		 * \~english
-		 * @brief Address value of a missing program instruction
-		 *
-		 * \~
-		 */
-		constexpr address_t INVALID_ADDRESS = static_cast <address_t> (~0u);
-
-		/**
-		 * \~russian
-		 * @brief Значение номера отсутствующего класса символов программы
-		 *
-		 * \~english
-		 * @brief Index value of a missing character class of the program
-		 *
-		 * \~
-		 */
-		constexpr uint32_t INVALID_CLASS = static_cast <uint32_t> (~0u);
-
-		/**
-		 * \~russian
-		 * @brief Наибольшее допустимое количество инструкций программы
-		 *
-		 * \~english
-		 * @brief Largest admissible number of program instructions
-		 *
-		 * \~
-		 */
-		constexpr size_t MAX_PROGRAM = 0x40000;
-
-		/**
-		 * \~russian
 		 * @brief Наибольшая длина литерала, пометкой одной инструкции выразимая
 		 *
 		 * @details Байты литерала лежат в зазоре операндов одиночного символа:
@@ -138,7 +105,52 @@ namespace awh {
 		 * \~
 		 */
 		constexpr size_t MAX_LITERAL = 27;
+		/**
+		 * \~russian
+		 * @brief Наибольшее допустимое количество инструкций программы
+		 *
+		 * \~english
+		 * @brief Largest admissible number of program instructions
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_PROGRAM = 0x40000;
+		/**
+		 * \~russian
+		 * @brief Значение номера отсутствующего класса символов программы
+		 *
+		 * \~english
+		 * @brief Index value of a missing character class of the program
+		 *
+		 * \~
+		 */
+		constexpr uint32_t INVALID_CLASS = static_cast <uint32_t> (~0u);
+		/**
+		 * \~russian
+		 * @brief Значение адреса отсутствующей инструкции программы
+		 *
+		 * \~english
+		 * @brief Address value of a missing program instruction
+		 *
+		 * \~
+		 */
+		constexpr address_t INVALID_ADDRESS = static_cast <address_t> (~0u);
 
+		/**
+		 * \~russian
+		 * @brief Тип условия условного выражения
+		 *
+		 * \~english
+		 * @brief Type of the condition of a conditional expression
+		 *
+		 * \~
+		 */
+		enum class test_t : uint8_t {
+			CAPTURED  = 0x00, // Условием является выполнение захвата группой
+			RECURSING = 0x01, // Условием является нахождение в рекурсивном вызове
+			ASSERTED  = 0x02, // Условием является выполнение проверки окружения
+			ALWAYS    = 0x03  // Условие выполняется всегда
+		};
 		/**
 		 * \~russian
 		 * @brief Код операции инструкции программы
@@ -173,22 +185,6 @@ namespace awh {
 			CONTROL   = 0x16, // Размещение точки возврата глагола управления
 			RESET     = 0x17, // Восстановление позиции сопоставления из ячейки
 			SCRIPT    = 0x18  // Проверка прогона письменности от позиции из ячейки
-		};
-
-		/**
-		 * \~russian
-		 * @brief Тип условия условного выражения
-		 *
-		 * \~english
-		 * @brief Type of the condition of a conditional expression
-		 *
-		 * \~
-		 */
-		enum class test_t : uint8_t {
-			CAPTURED  = 0x00, // Условием является выполнение захвата группой
-			RECURSING = 0x01, // Условием является нахождение в рекурсивном вызове
-			ASSERTED  = 0x02, // Условием является выполнение проверки окружения
-			ALWAYS    = 0x03  // Условие выполняется всегда
 		};
 
 		/**
@@ -276,7 +272,7 @@ namespace awh {
 				 */
 				struct {
 					// Кодовое значение сопоставляемого символа
-					uint32_t code;
+					uint32_t code = 0;
 					/**
 					 * \~russian
 					 * Длина литерала, с этой инструкции начинающегося, в символах
@@ -316,7 +312,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint8_t length;
+					uint8_t length = 0;
 					/**
 					 * \~russian
 					 * Байты литерала, с этой инструкции начинающегося
@@ -341,7 +337,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					char bytes[MAX_LITERAL];
+					char bytes[MAX_LITERAL] = {0};
 				} letter;
 				/**
 				 * \~russian
@@ -354,7 +350,7 @@ namespace awh {
 				 */
 				struct {
 					// Индекс класса символов в хранилище классов
-					uint32_t index;
+					uint32_t index = 0;
 				} charclass;
 				/**
 				 * \~russian
@@ -366,50 +362,6 @@ namespace awh {
 				 * \~
 				 */
 				struct {
-					// Адрес ветви с наибольшим приоритетом
-					address_t first;
-					// Адрес ветви с наименьшим приоритетом
-					address_t second;
-					/**
-					 * \~russian
-					 * Адрес тела повторения одиночного символа
-					 *
-					 * @details Повторение одиночного символа либо класса символов
-					 *          компилируется в переход по двум ветвям, тело повторения
-					 *          и переход к его началу, отчего проход ряда подходящих
-					 *          символов обходится в три инструкции на каждый символ.
-					 *          Адрес помечает переход, ветвь повторения которого
-					 *          устроена именно так, благодаря чему исполнение проходит
-					 *          ряд одним ходом взамен исполнения трёх инструкций на
-					 *          символ. Прочие переходы помечены недействительным
-					 *          адресом. Пометка размещена в самой инструкции взамен
-					 *          отдельного набора длиною во всю программу намеренно:
-					 *          набор тот занимал по четыре байта на каждую инструкцию
-					 *          программы, тогда как переходов в ней единицы, а
-					 *          размещение его при восстановлении записи обходилось
-					 *          дороже разбора всех прочих полей программы.
-					 *
-					 * \~english
-					 * Address of the body of a single character repetition
-					 *
-					 * @details A repetition of a single character or of a character class
-					 *          is compiled into a two-branch jump, the body of the repetition
-					 *          and a jump to its beginning, which is why walking a run of matching
-					 *          characters costs three instructions per character.
-					 *          The address marks the jump whose repetition branch
-					 *          is arranged exactly like that, thanks to which execution walks
-					 *          the run in one move instead of executing three instructions per
-					 *          character. The other jumps are marked with an invalid
-					 *          address. The mark is placed in the instruction itself instead of
-					 *          a separate array as long as the whole program deliberately:
-					 *          that array occupied four bytes per every instruction of
-					 *          the program, whereas there are only a handful of jumps in it, and
-					 *          allocating it when restoring a record cost
-					 *          more than parsing all the other fields of the program.
-					 *
-					 * \~
-					 */
-					address_t run;
 					/**
 					 * \~russian
 					 * Признак ленивости повторения одиночного символа
@@ -444,7 +396,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint8_t lazily;
+					uint8_t lazily = 0;
 					/**
 					 * \~russian
 					 * Признак бесплодности возврата в ряд повторения
@@ -475,7 +427,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint8_t solid;
+					uint8_t solid = 0;
 					/**
 					 * \~russian
 					 * Количество копий ограниченного повторения одиночного символа
@@ -526,7 +478,51 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint16_t most;
+					uint16_t most = 0;
+					// Адрес ветви с наибольшим приоритетом
+					address_t first = 0;
+					// Адрес ветви с наименьшим приоритетом
+					address_t second = 0;
+					/**
+					 * \~russian
+					 * Адрес тела повторения одиночного символа
+					 *
+					 * @details Повторение одиночного символа либо класса символов
+					 *          компилируется в переход по двум ветвям, тело повторения
+					 *          и переход к его началу, отчего проход ряда подходящих
+					 *          символов обходится в три инструкции на каждый символ.
+					 *          Адрес помечает переход, ветвь повторения которого
+					 *          устроена именно так, благодаря чему исполнение проходит
+					 *          ряд одним ходом взамен исполнения трёх инструкций на
+					 *          символ. Прочие переходы помечены недействительным
+					 *          адресом. Пометка размещена в самой инструкции взамен
+					 *          отдельного набора длиною во всю программу намеренно:
+					 *          набор тот занимал по четыре байта на каждую инструкцию
+					 *          программы, тогда как переходов в ней единицы, а
+					 *          размещение его при восстановлении записи обходилось
+					 *          дороже разбора всех прочих полей программы.
+					 *
+					 * \~english
+					 * Address of the body of a single character repetition
+					 *
+					 * @details A repetition of a single character or of a character class
+					 *          is compiled into a two-branch jump, the body of the repetition
+					 *          and a jump to its beginning, which is why walking a run of matching
+					 *          characters costs three instructions per character.
+					 *          The address marks the jump whose repetition branch
+					 *          is arranged exactly like that, thanks to which execution walks
+					 *          the run in one move instead of executing three instructions per
+					 *          character. The other jumps are marked with an invalid
+					 *          address. The mark is placed in the instruction itself instead of
+					 *          a separate array as long as the whole program deliberately:
+					 *          that array occupied four bytes per every instruction of
+					 *          the program, whereas there are only a handful of jumps in it, and
+					 *          allocating it when restoring a record cost
+					 *          more than parsing all the other fields of the program.
+					 *
+					 * \~
+					 */
+					address_t run = 0;
 				} split;
 				/**
 				 * \~russian
@@ -539,7 +535,7 @@ namespace awh {
 				 */
 				struct {
 					// Адрес инструкции перехода
-					address_t target;
+					address_t target = 0;
 				} jump;
 				/**
 				 * \~russian
@@ -552,7 +548,7 @@ namespace awh {
 				 */
 				struct {
 					// Номер ячейки захвата
-					uint32_t slot;
+					uint32_t slot = 0;
 				} save;
 				/**
 				 * \~russian
@@ -565,7 +561,7 @@ namespace awh {
 				 */
 				struct {
 					// Тип привязки к позиции в тексте
-					anchor_t type;
+					anchor_t type = anchor_t::TEXT_BEGIN;
 				} assertion;
 				/**
 				 * \~russian
@@ -578,7 +574,7 @@ namespace awh {
 				 */
 				struct {
 					// Номер ячейки отметки состояния возврата
-					uint32_t cell;
+					uint32_t cell = 0;
 				} atomic;
 				/**
 				 * \~russian
@@ -591,7 +587,7 @@ namespace awh {
 				 */
 				struct {
 					// Номер группы, захваченный текст которой сопоставляется
-					uint32_t number;
+					uint32_t number = 0;
 				} backref;
 				/**
 				 * \~russian
@@ -604,7 +600,7 @@ namespace awh {
 				 */
 				struct {
 					// Вид глагола управления возвратом
-					control_t type;
+					control_t type = control_t::ACCEPT;
 					/**
 					 * \~russian
 					 * Номер ячейки отметки ветви охватывающей группы
@@ -628,11 +624,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint32_t cell;
+					uint32_t cell = 0;
 					// Смещение имени отметки в хранилище имён
-					uint32_t offset;
+					uint32_t offset = 0;
 					// Длина имени отметки в октетах
-					uint32_t length;
+					uint32_t length = 0;
 				} control;
 				/**
 				 * \~russian
@@ -645,9 +641,9 @@ namespace awh {
 				 */
 				struct {
 					// Номер ячейки позиции начала повторения
-					uint32_t cell;
+					uint32_t cell = 0;
 					// Адрес инструкции завершения повторения
-					address_t target;
+					address_t target = 0;
 				} progress;
 				/**
 				 * \~russian
@@ -659,70 +655,6 @@ namespace awh {
 				 * \~
 				 */
 				struct {
-					// Адрес тела проверки окружения
-					address_t body;
-					// Адрес инструкции, следующей за проверкой окружения
-					address_t target;
-					// Наименьшая длина сопоставляемого проверкой текста
-					uint32_t least;
-					// Наибольшая длина сопоставляемого проверкой текста
-					uint32_t most;
-					/**
-					 * \~russian
-					 * Флаг отрицания результата проверки окружения
-					 *
-					 * @note Хранится байтом, а не логическим значением: набор инструкций
-					 *       восстанавливается обзором образа памяти записи хранилища,
-					 *       а запись приходит извне - подделанный байт дал бы значению
-					 *       логического типа состояние, языком не отведённое, и всякое
-					 *       обращение к нему стало бы неопределённым поведением
-					 *
-					 * \~english
-					 * Negation flag of the result of the lookaround check
-					 *
-					 * @note Stored as a byte rather than as a boolean value: the instruction set
-					 *       is restored by viewing the memory image of the storage record,
-					 *       and the record comes from the outside — a forged byte would give a value of
-					 *       the boolean type a state that the language does not provide for, and every
-					 *       reference to it would become undefined behaviour
-					 *
-					 * \~
-					 */
-					uint8_t negative;
-					/**
-					 * \~russian
-					 * Флаг проверки текста, предшествующего позиции сопоставления
-					 *
-					 * @note Хранится байтом по той же причине, что и признак отрицания
-					 *
-					 * \~english
-					 * Flag of checking the text preceding the matching position
-					 *
-					 * @note Stored as a byte for the same reason as the negation indication
-					 *
-					 * \~
-					 */
-					uint8_t backward;
-					/**
-					 * \~russian
-					 * Адрес ветви, исполняемой при невыполнении проверки
-					 *
-					 * @details Адрес установлен, если проверка окружения задаёт условие
-					 *          условного выражения: невыполнение проверки при этом
-					 *          передаёт исполнение ветви невыполненного условия,
-					 *          а не отказывает в сопоставлении.
-					 *
-					 * \~english
-					 * Address of the branch executed when the check does not hold
-					 *
-					 * @details The address is set if the lookaround check defines the condition
-					 *          of a conditional expression: failure of the check then
-					 *          passes execution to the branch of the unsatisfied condition
-					 *          rather than refusing the match.
-					 *
-					 * \~
-					 */
-					address_t alternate;
 					/**
 					 * \~russian
 					 * Флаг отсечения точек возврата, накопленных телом проверки
@@ -746,7 +678,43 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint8_t atomic;
+					uint8_t atomic = 0;
+					/**
+					 * \~russian
+					 * Флаг отрицания результата проверки окружения
+					 *
+					 * @note Хранится байтом, а не логическим значением: набор инструкций
+					 *       восстанавливается обзором образа памяти записи хранилища,
+					 *       а запись приходит извне - подделанный байт дал бы значению
+					 *       логического типа состояние, языком не отведённое, и всякое
+					 *       обращение к нему стало бы неопределённым поведением
+					 *
+					 * \~english
+					 * Negation flag of the result of the lookaround check
+					 *
+					 * @note Stored as a byte rather than as a boolean value: the instruction set
+					 *       is restored by viewing the memory image of the storage record,
+					 *       and the record comes from the outside — a forged byte would give a value of
+					 *       the boolean type a state that the language does not provide for, and every
+					 *       reference to it would become undefined behaviour
+					 *
+					 * \~
+					 */
+					uint8_t negative = 0;
+					/**
+					 * \~russian
+					 * Флаг проверки текста, предшествующего позиции сопоставления
+					 *
+					 * @note Хранится байтом по той же причине, что и признак отрицания
+					 *
+					 * \~english
+					 * Flag of checking the text preceding the matching position
+					 *
+					 * @note Stored as a byte for the same reason as the negation indication
+					 *
+					 * \~
+					 */
+					uint8_t backward = 0;
 					/**
 					 * \~russian
 					 * Номер ячейки позиции начала не отсекающей проверки
@@ -766,7 +734,35 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint32_t cell;
+					uint32_t cell = 0;
+					// Наибольшая длина сопоставляемого проверкой текста
+					uint32_t most = 0;
+					// Наименьшая длина сопоставляемого проверкой текста
+					uint32_t least = 0;
+					// Адрес тела проверки окружения
+					address_t body = 0;
+					// Адрес инструкции, следующей за проверкой окружения
+					address_t target = 0;
+					/**
+					 * \~russian
+					 * Адрес ветви, исполняемой при невыполнении проверки
+					 *
+					 * @details Адрес установлен, если проверка окружения задаёт условие
+					 *          условного выражения: невыполнение проверки при этом
+					 *          передаёт исполнение ветви невыполненного условия,
+					 *          а не отказывает в сопоставлении.
+					 *
+					 * \~english
+					 * Address of the branch executed when the check does not hold
+					 *
+					 * @details The address is set if the lookaround check defines the condition
+					 *          of a conditional expression: failure of the check then
+					 *          passes execution to the branch of the unsatisfied condition
+					 *          rather than refusing the match.
+					 *
+					 * \~
+					 */
+					address_t alternate = 0;
 				} look;
 				/**
 				 * \~russian
@@ -779,9 +775,9 @@ namespace awh {
 				 */
 				struct {
 					// Адрес тела вызываемого подвыражения
-					address_t body;
+					address_t body = 0;
 					// Номер группы вызываемого подвыражения
-					uint32_t number;
+					uint32_t number = 0;
 				} call;
 				/**
 				 * \~russian
@@ -793,10 +789,6 @@ namespace awh {
 				 * \~
 				 */
 				struct {
-					// Номер ячейки позиции начала не отсекающей проверки
-					uint32_t cell;
-					// Адрес инструкции, следующей за проверкой окружения
-					address_t target;
 					/**
 					 * \~russian
 					 * Флаг проверки текста, предшествующего позиции сопоставления
@@ -816,7 +808,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint8_t backward;
+					uint8_t backward = 0;
+					// Номер ячейки позиции начала не отсекающей проверки
+					uint32_t cell = 0;
+					// Адрес инструкции, следующей за проверкой окружения
+					address_t target = 0;
 				} reset;
 				/**
 				 * \~russian
@@ -829,13 +825,13 @@ namespace awh {
 				 */
 				struct {
 					// Тип условия условного выражения
-					test_t type;
+					test_t type = test_t::CAPTURED;
 					// Номер проверяемой группы условного выражения
-					uint32_t number;
+					uint32_t number = 0;
 					// Адрес ветви, исполняемой при выполнении условия
-					address_t positive;
+					address_t positive = 0;
 					// Адрес ветви, исполняемой при невыполнении условия
-					address_t negative;
+					address_t negative = 0;
 				} condition;
 			};
 			/**
@@ -847,7 +843,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Instruction() noexcept : type(opcode_t::MATCH), repeat(1), flags(0), letter{} {}
+			explicit Instruction() noexcept;
 		} instruction_t;
 
 		/**
@@ -931,7 +927,6 @@ namespace awh {
 			// Инструкция прочая ряду неподвластна
 			return false;
 		}
-
 		/**
 		 * \~russian
 		 * @brief Функция проверки сопоставления инструкцией байта текста дословно
@@ -972,8 +967,10 @@ namespace awh {
 		 */
 		AWH_REGEX_INLINE bool verbatim(const instruction_t & instruction) noexcept {
 			// Выводим результат проверки сопоставления байта дословно
-			return ((instruction.type == opcode_t::CHAR) && (instruction.letter.code < 0x80) &&
-			 ((instruction.flags & static_cast <uint32_t> (flag_t::CASELESS)) == 0));
+			return (
+				(instruction.type == opcode_t::CHAR) && (instruction.letter.code < 0x80) &&
+				((instruction.flags & static_cast <uint32_t> (flag_t::CASELESS)) == 0)
+			);
 		}
 
 		/**
@@ -998,215 +995,6 @@ namespace awh {
 		typedef struct __AWH_SHARED_EXPORT__ Program {
 			/**
 			 * \~russian
-			 * Опознание программы регулярного выражения
-			 *
-			 * @details Опознание присваивается компиляцией и различает содержимое
-			 *          программы. Кэш состояний детерминированного исполнения
-			 *          сохраняется между сопоставлениями и отличает программы
-			 *          по опознанию, а не по расположению в памяти, поскольку
-			 *          пересобранная программа занимает прежнее расположение.
-			 *
-			 * \~english
-			 * Identification of the program of a regular expression
-			 *
-			 * @details The identification is assigned by compilation and distinguishes the content
-			 *          of the program. The state cache of deterministic execution
-			 *          is kept between matches and tells the programs apart
-			 *          by identification rather than by their placement in memory, since
-			 *          a rebuilt program occupies the former placement.
-			 *
-			 * \~
-			 */
-			uint64_t id;
-			// Количество захватывающих групп регулярного выражения
-			uint32_t captures;
-			// Количество ячеек состояния, требуемых исполнением с возвратом
-			uint32_t cells;
-			// Набор режимов компиляции регулярного выражения
-			uint32_t flags;
-			/**
-			 * \~russian
-			 * Наибольшее допустимое количество шагов сопоставления выражения
-			 *
-			 * @details Предел задаётся самим выражением указанием «(*LIMIT_MATCH=N)»
-			 *          и предел вызывающей стороны понижает, но не повышает.
-			 *          Отсутствие предела выражается предельным значением
-			 *          разрядности, а не нулём: нуль есть предел действующий,
-			 *          сопоставление отвергающий первым же шагом, - «(*LIMIT_MATCH=0)»
-			 *          эталон принимает и отвечает исчерпанием предела.
-			 *
-			 * \~english
-			 * Largest admissible number of matching steps of the expression
-			 *
-			 * @details The limit is set by the expression itself by the «(*LIMIT_MATCH=N)» option
-			 *          and lowers the limit of the calling side but never raises it.
-			 *          The absence of a limit is expressed by the largest value of the type
-			 *          rather than by zero: zero is an effective limit that refuses the matching
-			 *          at the very first step — «(*LIMIT_MATCH=0)» is accepted by the reference
-			 *          and answers with the exhaustion of the limit.
-			 *
-			 * \~
-			 */
-			uint32_t steps;
-			/**
-			 * \~russian
-			 * Наибольшая допустимая глубина рекурсивных вызовов выражения
-			 *
-			 * @details Предел задаётся самим выражением указанием «(*LIMIT_DEPTH=N)»
-			 *          и предел вызывающей стороны понижает, но не повышает.
-			 *          Отсутствие предела выражается предельным значением разрядности
-			 *          наравне с пределом шагов сопоставления.
-			 *
-			 * \~english
-			 * Largest admissible depth of the recursive calls of the expression
-			 *
-			 * @details The limit is set by the expression itself by the «(*LIMIT_DEPTH=N)» option
-			 *          and lowers the limit of the calling side but never raises it.
-			 *          The absence of a limit is expressed by the largest value of the type
-			 *          along with the limit of the matching steps.
-			 *
-			 * \~
-			 */
-			uint32_t depth;
-			/**
-			 * \~russian
-			 * Наибольший допустимый объём памяти сопоставления выражения в килобайтах
-			 *
-			 * @details Предел задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
-			 *          и считается по наборам точек возврата, кадров вызовов и записей
-			 *          журнала - тому, что сопоставление и размещает. Отсутствие
-			 *          предела выражается предельным значением разрядности.
-			 *
-			 * \~english
-			 * Largest admissible amount of the matching memory of the expression in kibibytes
-			 *
-			 * @details The limit is set by the expression itself by the «(*LIMIT_HEAP=N)» option
-			 *          and is counted over the sets of the backtracking points, the call frames and the journal
-			 *          entries — over what the matching actually allocates. The absence
-			 *          of a limit is expressed by the largest value of the type.
-			 *
-			 * \~
-			 */
-			uint32_t heap;
-			/**
-			 * \~russian
-			 * Соглашение о переводе строки выражения
-			 *
-			 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале выражения
-			 *          и правит точкой, привязками к границам строк и привязкой конца
-			 *          текста. Соглашением умолчания выступает перевод строки.
-			 *
-			 * \~english
-			 * Newline convention of the expression
-			 *
-			 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
-			 *          and governs the dot, the anchors to the line boundaries and the anchor of the end
-			 *          of the text. The default convention is the line feed.
-			 *
-			 * \~
-			 */
-			newline_t newline;
-			/**
-			 * \~russian
-			 * Номер ячейки состояния, отметку последнюю хранящей
-			 *
-			 * @details Ячейка ведётся наравне с ячейками захвата: глагол отметки
-			 *          пишет в неё адрес свой, а возврат запись отменяет, отчего
-			 *          по совпадении в ней остаётся отметка пути, совпадение
-			 *          давшего. Значение недостижимое означает выражение,
-			 *          глаголов отметки не несущее вовсе.
-			 *
-			 * \~english
-			 * Number of the state cell that holds the last mark
-			 *
-			 * @details The cell is maintained along with the capture cells: the mark verb
-			 *          writes its own address into it, whereas backtracking undoes the write, whereby
-			 *          upon a match it holds the mark of the path that produced the match.
-			 *          An unreachable value means an expression that carries no mark verbs at all.
-			 *
-			 * \~
-			 */
-			uint32_t marker;
-			// Набор инструкций программы
-			Sequence <instruction_t> instructions;
-			/**
-			 * \~russian
-			 * Хранилище ссылок на классы символов
-			 *
-			 * @details Диапазоны и свойства всех классов программы хранятся
-			 *          сплошными наборами, а класс задаётся ссылкой на участки
-			 *          этих наборов. Устройство это заведено взамен набора
-			 *          классов, где каждый нёс свои наборы: классов в программе
-			 *          бывают десятки тысяч, и размещение под каждый двух
-			 *          наборов отдельных обходилось дороже, нежели вся прочая
-			 *          сборка программы.
-			 *
-			 * \~english
-			 * Storage of the references to character classes
-			 *
-			 * @details The ranges and properties of all the classes of the program are kept
-			 *          as contiguous sequences, and a class is defined by a reference to spans
-			 *          of those sequences. This arrangement was introduced in place of a set of
-			 *          classes where each one carried its own sequences: there can be tens of thousands
-			 *          of classes in a program, and allocating two separate sequences for
-			 *          each one cost more than all the rest of
-			 *          building the program.
-			 *
-			 * \~
-			 */
-			Sequence <classref_t> classes;
-			// Сплошной набор диапазонов кодовых значений всех классов символов
-			Sequence <range_t> ranges;
-			// Сплошной набор ссылок на свойства Юникода всех классов символов
-			Sequence <property_t> properties;
-			// Хранилище последовательностей символов
-			Sequence <uint32_t> strings;
-			/**
-			 * \~russian
-			 * Хранилище имён отметок глаголов управления
-			 *
-			 * @details Имена всех отметок программы лежат сплошным набором октетов,
-			 *          а инструкция глагола ссылается на участок его смещением
-			 *          и длиною наравне с классами символов. Имя выводится наружу
-			 *          по совпадении и указывает ветвь, совпадение давшую.
-			 *
-			 * \~english
-			 * Storage of the names of the marks of the control verbs
-			 *
-			 * @details The names of all the marks of the program lie in a contiguous set of octets,
-			 *          whereas the instruction of a verb refers to a span of it by an offset
-			 *          and a length, along with the character classes. The name is yielded outward
-			 *          upon a match and tells which branch produced the match.
-			 *
-			 * \~
-			 */
-			Sequence <uint8_t> markers;
-			/**
-			 * \~russian
-			 * Держатель записи хранилища, обозреваемой наборами программы
-			 *
-			 * @details Программа, восстановленная из хранилища, содержимого
-			 *          наборов своих не имеет: наборы обозревают участки записи,
-			 *          лежащей в памяти целиком. Держатель продлевает жизнь этой
-			 *          записи на срок жизни программы и всех её копий. Программа,
-			 *          собранная компиляцией, держателя не имеет вовсе.
-			 *
-			 * \~english
-			 * Holder of the storage record viewed by the sequences of the program
-			 *
-			 * @details A program restored from the storage has no content of
-			 *          its own sequences: the sequences view spans of the record
-			 *          that lies in memory as a whole. The holder extends the life of that
-			 *          record for the lifetime of the program and of all its copies. A program
-			 *          built by compilation has no holder at all.
-			 *
-			 * \~
-			 */
-			shared_ptr <const string> blob;
-			// Предварительный отбор позиций сопоставления
-			prefilter_t prefilter;
-			/**
-			 * \~russian
 			 * Признак выражения, сопоставляемого одним литералом
 			 *
 			 * @details Выражение, состоящее из одной последовательности символов,
@@ -1223,8 +1011,6 @@ namespace awh {
 			 * \~
 			 */
 			bool plain;
-			// Последовательность символов выражения, сопоставляемого литералом
-			string text;
 			/**
 			 * \~russian
 			 * Признак выражения, проходящего текст единственной попыткой
@@ -1308,6 +1094,217 @@ namespace awh {
 			bool startline;
 			/**
 			 * \~russian
+			 * Опознание программы регулярного выражения
+			 *
+			 * @details Опознание присваивается компиляцией и различает содержимое
+			 *          программы. Кэш состояний детерминированного исполнения
+			 *          сохраняется между сопоставлениями и отличает программы
+			 *          по опознанию, а не по расположению в памяти, поскольку
+			 *          пересобранная программа занимает прежнее расположение.
+			 *
+			 * \~english
+			 * Identification of the program of a regular expression
+			 *
+			 * @details The identification is assigned by compilation and distinguishes the content
+			 *          of the program. The state cache of deterministic execution
+			 *          is kept between matches and tells the programs apart
+			 *          by identification rather than by their placement in memory, since
+			 *          a rebuilt program occupies the former placement.
+			 *
+			 * \~
+			 */
+			uint64_t id;
+			/**
+			 * \~russian
+			 * Наибольший допустимый объём памяти сопоставления выражения в килобайтах
+			 *
+			 * @details Предел задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
+			 *          и считается по наборам точек возврата, кадров вызовов и записей
+			 *          журнала - тому, что сопоставление и размещает. Отсутствие
+			 *          предела выражается предельным значением разрядности.
+			 *
+			 * \~english
+			 * Largest admissible amount of the matching memory of the expression in kibibytes
+			 *
+			 * @details The limit is set by the expression itself by the «(*LIMIT_HEAP=N)» option
+			 *          and is counted over the sets of the backtracking points, the call frames and the journal
+			 *          entries — over what the matching actually allocates. The absence
+			 *          of a limit is expressed by the largest value of the type.
+			 *
+			 * \~
+			 */
+			uint32_t heap;
+			// Количество ячеек состояния, требуемых исполнением с возвратом
+			uint32_t cells;
+			// Набор режимов компиляции регулярного выражения
+			uint32_t flags;
+			/**
+			 * \~russian
+			 * Наибольшее допустимое количество шагов сопоставления выражения
+			 *
+			 * @details Предел задаётся самим выражением указанием «(*LIMIT_MATCH=N)»
+			 *          и предел вызывающей стороны понижает, но не повышает.
+			 *          Отсутствие предела выражается предельным значением
+			 *          разрядности, а не нулём: нуль есть предел действующий,
+			 *          сопоставление отвергающий первым же шагом, - «(*LIMIT_MATCH=0)»
+			 *          эталон принимает и отвечает исчерпанием предела.
+			 *
+			 * \~english
+			 * Largest admissible number of matching steps of the expression
+			 *
+			 * @details The limit is set by the expression itself by the «(*LIMIT_MATCH=N)» option
+			 *          and lowers the limit of the calling side but never raises it.
+			 *          The absence of a limit is expressed by the largest value of the type
+			 *          rather than by zero: zero is an effective limit that refuses the matching
+			 *          at the very first step — «(*LIMIT_MATCH=0)» is accepted by the reference
+			 *          and answers with the exhaustion of the limit.
+			 *
+			 * \~
+			 */
+			uint32_t steps;
+			/**
+			 * \~russian
+			 * Наибольшая допустимая глубина рекурсивных вызовов выражения
+			 *
+			 * @details Предел задаётся самим выражением указанием «(*LIMIT_DEPTH=N)»
+			 *          и предел вызывающей стороны понижает, но не повышает.
+			 *          Отсутствие предела выражается предельным значением разрядности
+			 *          наравне с пределом шагов сопоставления.
+			 *
+			 * \~english
+			 * Largest admissible depth of the recursive calls of the expression
+			 *
+			 * @details The limit is set by the expression itself by the «(*LIMIT_DEPTH=N)» option
+			 *          and lowers the limit of the calling side but never raises it.
+			 *          The absence of a limit is expressed by the largest value of the type
+			 *          along with the limit of the matching steps.
+			 *
+			 * \~
+			 */
+			uint32_t depth;
+			/**
+			 * \~russian
+			 * Номер ячейки состояния, отметку последнюю хранящей
+			 *
+			 * @details Ячейка ведётся наравне с ячейками захвата: глагол отметки
+			 *          пишет в неё адрес свой, а возврат запись отменяет, отчего
+			 *          по совпадении в ней остаётся отметка пути, совпадение
+			 *          давшего. Значение недостижимое означает выражение,
+			 *          глаголов отметки не несущее вовсе.
+			 *
+			 * \~english
+			 * Number of the state cell that holds the last mark
+			 *
+			 * @details The cell is maintained along with the capture cells: the mark verb
+			 *          writes its own address into it, whereas backtracking undoes the write, whereby
+			 *          upon a match it holds the mark of the path that produced the match.
+			 *          An unreachable value means an expression that carries no mark verbs at all.
+			 *
+			 * \~
+			 */
+			uint32_t marker;
+			// Количество захватывающих групп регулярного выражения
+			uint32_t captures;
+			// Последовательность символов выражения, сопоставляемого литералом
+			string text;
+			/**
+			 * \~russian
+			 * Соглашение о переводе строки выражения
+			 *
+			 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале выражения
+			 *          и правит точкой, привязками к границам строк и привязкой конца
+			 *          текста. Соглашением умолчания выступает перевод строки.
+			 *
+			 * \~english
+			 * Newline convention of the expression
+			 *
+			 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
+			 *          and governs the dot, the anchors to the line boundaries and the anchor of the end
+			 *          of the text. The default convention is the line feed.
+			 *
+			 * \~
+			 */
+			newline_t newline;
+			// Предварительный отбор позиций сопоставления
+			prefilter_t prefilter;
+			// Сплошной набор диапазонов кодовых значений всех классов символов
+			Sequence <range_t> ranges;
+			/**
+			 * \~russian
+			 * Хранилище имён отметок глаголов управления
+			 *
+			 * @details Имена всех отметок программы лежат сплошным набором октетов,
+			 *          а инструкция глагола ссылается на участок его смещением
+			 *          и длиною наравне с классами символов. Имя выводится наружу
+			 *          по совпадении и указывает ветвь, совпадение давшую.
+			 *
+			 * \~english
+			 * Storage of the names of the marks of the control verbs
+			 *
+			 * @details The names of all the marks of the program lie in a contiguous set of octets,
+			 *          whereas the instruction of a verb refers to a span of it by an offset
+			 *          and a length, along with the character classes. The name is yielded outward
+			 *          upon a match and tells which branch produced the match.
+			 *
+			 * \~
+			 */
+			Sequence <uint8_t> markers;
+			// Хранилище последовательностей символов
+			Sequence <uint32_t> strings;
+			/**
+			 * \~russian
+			 * Хранилище ссылок на классы символов
+			 *
+			 * @details Диапазоны и свойства всех классов программы хранятся
+			 *          сплошными наборами, а класс задаётся ссылкой на участки
+			 *          этих наборов. Устройство это заведено взамен набора
+			 *          классов, где каждый нёс свои наборы: классов в программе
+			 *          бывают десятки тысяч, и размещение под каждый двух
+			 *          наборов отдельных обходилось дороже, нежели вся прочая
+			 *          сборка программы.
+			 *
+			 * \~english
+			 * Storage of the references to character classes
+			 *
+			 * @details The ranges and properties of all the classes of the program are kept
+			 *          as contiguous sequences, and a class is defined by a reference to spans
+			 *          of those sequences. This arrangement was introduced in place of a set of
+			 *          classes where each one carried its own sequences: there can be tens of thousands
+			 *          of classes in a program, and allocating two separate sequences for
+			 *          each one cost more than all the rest of
+			 *          building the program.
+			 *
+			 * \~
+			 */
+			Sequence <classref_t> classes;
+			// Сплошной набор ссылок на свойства Юникода всех классов символов
+			Sequence <property_t> properties;
+			// Набор инструкций программы
+			Sequence <instruction_t> instructions;
+			/**
+			 * \~russian
+			 * Держатель записи хранилища, обозреваемой наборами программы
+			 *
+			 * @details Программа, восстановленная из хранилища, содержимого
+			 *          наборов своих не имеет: наборы обозревают участки записи,
+			 *          лежащей в памяти целиком. Держатель продлевает жизнь этой
+			 *          записи на срок жизни программы и всех её копий. Программа,
+			 *          собранная компиляцией, держателя не имеет вовсе.
+			 *
+			 * \~english
+			 * Holder of the storage record viewed by the sequences of the program
+			 *
+			 * @details A program restored from the storage has no content of
+			 *          its own sequences: the sequences view spans of the record
+			 *          that lies in memory as a whole. The holder extends the life of that
+			 *          record for the lifetime of the program and of all its copies. A program
+			 *          built by compilation has no holder at all.
+			 *
+			 * \~
+			 */
+			shared_ptr <const string> blob;
+			/**
+			 * \~russian
 			 * @brief Метод извлечения обзора класса символов программы
 			 *
 			 * @param index номер класса символов в хранилище ссылок
@@ -1372,7 +1369,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Program() noexcept;
+			explicit Program() noexcept;
 		} program_t;
 	};
 };

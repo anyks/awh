@@ -714,12 +714,12 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct Piece {
-					// Индекс первого узла литерала в арене узлов
-					node_id_t first;
-					// Количество смежных узлов литерала в цепочке
-					uint32_t count;
 					// Длина литерала в байтах
 					size_t length;
+					// Количество смежных узлов литерала в цепочке
+					uint32_t count;
+					// Индекс первого узла литерала в арене узлов
+					node_id_t first;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -729,36 +729,57 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Piece() noexcept;
+					explicit Piece() noexcept;
 				} piece_t;
-			private:
-				// Объект разбора, предоставляющий синтаксическое дерево
-				const Parser * _parser;
 			private:
 				/**
 				 * \~russian
-				 * @brief Арена узлов синтаксического дерева объекта разбора
+				 * Флаг компиляции выражения целиком
 				 *
-				 * @details Арена сберегается указателем потому, что извлечение
-				 *          узла по индексу происходит на каждом шаге построения,
-				 *          а метод извлечения объекта разбора лежит в единице
-				 *          трансляции чужой и подстановке не поддаётся. Обращение
-				 *          через сбережённый указатель встраивается целиком, и
-				 *          вызов подпрограммы на месте каждого обращения исчезает.
+				 * @details Компиляция выражения целиком размещает инструкции конструкций,
+				 *          не принадлежащих регулярному подмножеству синтаксиса, исполнение
+				 *          которых доступно только способу исполнения с возвратом.
 				 *
 				 * \~english
-				 * @brief Arena of the syntax tree nodes of the parser object
+				 * Flag of compiling the expression as a whole
 				 *
-				 * @details The arena is kept as a pointer because getting a node by
-				 *          index happens at every step of the compilation, while the
-				 *          getter of the parser object lies in a foreign translation
-				 *          unit and cannot be inlined. Access through the kept pointer
-				 *          is inlined entirely, and the subroutine call at the place
-				 *          of every access disappears.
+				 * @details Compiling the expression as a whole places the instructions of the constructs
+				 *          that do not belong to the regular subset of the syntax, whose execution
+				 *          is available only to the way of execution with backtracking.
 				 *
 				 * \~
 				 */
-				const vector <node_data_t> * _arena;
+				bool _full;
+				// Флаг компиляции развёрнутого регулярного выражения
+				bool _reverse;
+			private:
+				// Количество ячеек состояния, размещённых компиляцией
+				uint32_t _cells;
+				/**
+				 * \~russian
+				 * Номер ячейки отметки ветви, компилируемой ныне
+				 *
+				 * @details Ячейка отводится ветви выбора, глагол перехода несущей,
+				 *          и достаётся глаголам её: возврат в глагол отсекает
+				 *          точки до отметки начала ветви. Значение недостижимое
+				 *          означает отсутствие ветви охватывающей вовсе.
+				 *
+				 * \~english
+				 * Number of the mark cell of the branch being compiled now
+				 *
+				 * @details The cell is allotted to a branch of an alternation that carries the verb
+				 *          of moving, and is inherited by its verbs: backtracking into a verb cuts off
+				 *          the points down to the mark of the beginning of the branch. An unreachable value
+				 *          means the absence of an enclosing branch at all.
+				 *
+				 * \~
+				 */
+				uint32_t _branch;
+				// Количество ячеек отметки состояния возврата
+				uint32_t _atomics;
+			private:
+				// Код ошибки последней операции компиляции
+				error_t _error;
 			private:
 				/**
 				 * \~russian
@@ -804,230 +825,6 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * @brief Сберегательный ряд стека обхода инструкций
-				 *
-				 * \~english
-				 * @brief Scratch sequence of the traversal stack of the instructions
-				 *
-				 * \~
-				 */
-				vector <address_t> _stack;
-			private:
-				// Компилируемая программа регулярного выражения
-				program_t * _program;
-			private:
-				// Флаг компиляции развёрнутого регулярного выражения
-				bool _reverse;
-			private:
-				/**
-				 * \~russian
-				 * Флаг компиляции выражения целиком
-				 *
-				 * @details Компиляция выражения целиком размещает инструкции конструкций,
-				 *          не принадлежащих регулярному подмножеству синтаксиса, исполнение
-				 *          которых доступно только способу исполнения с возвратом.
-				 *
-				 * \~english
-				 * Flag of compiling the expression as a whole
-				 *
-				 * @details Compiling the expression as a whole places the instructions of the constructs
-				 *          that do not belong to the regular subset of the syntax, whose execution
-				 *          is available only to the way of execution with backtracking.
-				 *
-				 * \~
-				 */
-				bool _full;
-			private:
-				// Количество ячеек состояния, размещённых компиляцией
-				uint32_t _cells;
-			private:
-				/**
-				 * \~russian
-				 * Номер ячейки отметки ветви, компилируемой ныне
-				 *
-				 * @details Ячейка отводится ветви выбора, глагол перехода несущей,
-				 *          и достаётся глаголам её: возврат в глагол отсекает
-				 *          точки до отметки начала ветви. Значение недостижимое
-				 *          означает отсутствие ветви охватывающей вовсе.
-				 *
-				 * \~english
-				 * Number of the mark cell of the branch being compiled now
-				 *
-				 * @details The cell is allotted to a branch of an alternation that carries the verb
-				 *          of moving, and is inherited by its verbs: backtracking into a verb cuts off
-				 *          the points down to the mark of the beginning of the branch. An unreachable value
-				 *          means the absence of an enclosing branch at all.
-				 *
-				 * \~
-				 */
-				uint32_t _branch;
-			private:
-				// Количество ячеек отметки состояния возврата
-				uint32_t _atomics;
-			private:
-				/**
-				 * \~russian
-				 * Соответствие имён отметок номерам ячеек их положения
-				 *
-				 * @details Ячейка отводится единожды на имя, а не на глагол отметки:
-				 *          отметки одного имени пишут в неё положение своё, отчего
-				 *          розыск глаголом переноса находит отметку живую последнюю
-				 *          того имени.
-				 *
-				 * \~english
-				 * Correspondence of mark names to the numbers of their position cells
-				 *
-				 * @details The cell is allotted once per name, not per mark verb: the marks
-				 *          of one name write their position into it, whereby the lookup
-				 *          by the moving verb finds the last live mark of that name.
-				 *
-				 * \~
-				 */
-				map <string, uint32_t> _named;
-			private:
-				// Набор адресов инструкций рекурсивного вызова и номеров вызываемых групп
-				vector <pair <address_t, uint32_t>> _calls;
-			private:
-				/**
-				 * \~russian
-				 * @brief Соответствие номеров групп адресам их рекурсивно вызываемых тел
-				 *
-				 * @details Соответствие держится плотным рядом, а не отображением
-				 *          упорядоченным: номера захватывающих групп идут подряд
-				 *          от единицы, и число их известно разбором. Отображение
-				 *          размещало узел на каждую запись и уравновешивало
-				 *          дерево, тогда как ряд берётся номером прямо, а место
-				 *          под него отводится однажды и построения переживает.
-				 *
-				 *          Отсутствие записи означено приметою `INVALID_ADDRESS`.
-				 *
-				 * \~english
-				 * @brief Correspondence of the group numbers to the addresses of their recursively called bodies
-				 *
-				 * @details The correspondence is held by a dense sequence rather than an ordered map:
-				 *          the numbers of the capturing groups run consecutively from one,
-				 *          and their count is known from the parsing. A map would allocate
-				 *          a node for every entry and balance the tree, while a sequence
-				 *          is taken by the number directly, and the room for it is allocated
-				 *          once and outlives the build.
-				 *
-				 *          The absence of an entry is marked by the flag `INVALID_ADDRESS`.
-				 *
-				 * \~
-				 */
-				vector <address_t> _sections;
-			private:
-				/**
-				 * \~russian
-				 * Соответствие номеров групп индексам их узлов синтаксического дерева
-				 *
-				 * @details Держится плотным рядом по тем же доводам, что и
-				 *          соответствие адресов тел. Отсутствие записи означено
-				 *          приметою `INVALID_NODE`.
-				 *
-				 * \~english
-				 * Correspondence of the group numbers to the indices of their nodes of the syntax tree
-				 *
-				 * @details It maintains a contiguous layout based on the same logic
-				 *          as the body address mapping. The absence of an entry
-				 *          is indicated by the `INVALID_NODE` marker.
-				 *
-				 * \~
-				 */
-				vector <node_id_t> _groups;
-			private:
-				/**
-				 * \~russian
-				 * @brief Сберегательный ряд адресов переходов, построением накапливаемых
-				 *
-				 * @details Выбор одной из ветвей и повторение с границами копят
-				 *          адреса переходов прежде, чем разрешить их: число
-				 *          ветвей и проходов заранее не известно. Ряд для того
-				 *          заводился на каждый узел, а узлов таких в выражении
-				 *          столько же, сколько чередований и повторителей.
-				 *
-				 *          Ряд ныне общий, а вложенность держится отметкою
-				 *          основания: построение помнит длину ряда при входе,
-				 *          копит поверх неё и усекает ряд обратно, разрешив
-				 *          переходы. Место, однажды отведённое, переживает
-				 *          и узлы, и построения.
-				 *
-				 * \~english
-				 * @brief Scratch sequence of the jump addresses accumulated by the building
-				 *
-				 * @details Alternation and bounded repetition accumulate the addresses
-				 *          of the jumps before resolving them: the number of branches
-				 *          and passes is not known in advance. The sequence was kept
-				 *          for every node, and such nodes in an expression are as many
-				 *          as there are alternations and bounded repetitions.
-				 *
-				 *          The sequence is now common, and the nesting is kept by
-				 *          the mark of the base: the build remembers the length of the
-				 *          sequence at the entry, accumulates on top of it, and truncates
-				 *          the sequence back when the jumps are resolved. The room
-				 *          allocated once outlives both the nodes and the builds.
-				 *
-				 * \~
-				 */
-				vector <address_t> _exits;
-			private:
-				/**
-				 * \~russian
-				 * Сберегательный след узлов при проверке продвижения по тексту
-				 *
-				 * @details Проверка обязательного продвижения обходит дерево
-				 *          со следом, вызовы рекурсивные различающим, и след
-				 *          этот заводился на каждую проверку. Проверка зовётся
-				 *          на всякое повторение неограниченное, а вложенности
-				 *          не знает - оттого достаточно очистки, а не отметки.
-				 *
-				 * \~english
-				 * Scratch trace of the nodes for the check of advancing over the text
-				 *
-				 * @details The mandatory-propagation check traverses the tree
-				 *          while maintaining a trace; recursive calls are
-				 *          distinguished, and a fresh trace is initialized for
-				 *          each check. The check is invoked for every unbounded
-				 *          iteration and is unaware of nesting levels—hence,
-				 *          clearing the trace suffices, rather than marking nodes.
-				 *
-				 * \~
-				 */
-				mutable vector <node_id_t> _visited;
-			private:
-				/**
-				 * \~russian
-				 * @brief Сберегательный ряд узлов цепочки при построении развёрнутом
-				 *
-				 * @details Развёрнутое выражение сопоставляет последовательность
-				 *          элементов в обратном порядке, отчего узлы цепочки
-				 *          строятся с конца, а связка узлов ведёт лишь вперёд -
-				 *          цепочку приходится накапливать. Ряд для того
-				 *          заводился на каждый уровень вложенности.
-				 *
-				 *          Ряд ныне общий, а вложенность держится отметкою
-				 *          основания - тем же порядком, каким живут прочие
-				 *          сберегательные ряды разбора и построения.
-				 *
-				 * \~english
-				 * @brief Scratch sequence of the nodes of a chain for the reversed building
-				 *
-				 * @details A reversed expression matches the sequence of the elements
-				 *          in the reverse order, which is why the nodes of a chain
-				 *          are built from the end, while the linking of the nodes leads
-				 *          only forward — the chain has to be accumulated. The sequence
-				 *          was kept for every nesting level.
-				 *
-				 *          The sequence is now common, and the nesting is kept by
-				 *          the mark of the base — in the same way as the other scratch
-				 *          sequences of the parsing and the building live.
-				 *
-				 * \~
-				 */
-				vector <node_id_t> _chain;
-			private:
-				/**
-				 * \~russian
 				 * Набор режимов, с какими размещался всякий класс символов
 				 *
 				 * @details Набор ведётся ради отсева повторов классов и живёт
@@ -1063,6 +860,204 @@ namespace awh {
 				 */
 				vector <uint32_t> _modes;
 			private:
+				/**
+				 * \~russian
+				 * @brief Сберегательный ряд узлов цепочки при построении развёрнутом
+				 *
+				 * @details Развёрнутое выражение сопоставляет последовательность
+				 *          элементов в обратном порядке, отчего узлы цепочки
+				 *          строятся с конца, а связка узлов ведёт лишь вперёд -
+				 *          цепочку приходится накапливать. Ряд для того
+				 *          заводился на каждый уровень вложенности.
+				 *
+				 *          Ряд ныне общий, а вложенность держится отметкою
+				 *          основания - тем же порядком, каким живут прочие
+				 *          сберегательные ряды разбора и построения.
+				 *
+				 * \~english
+				 * @brief Scratch sequence of the nodes of a chain for the reversed building
+				 *
+				 * @details A reversed expression matches the sequence of the elements
+				 *          in the reverse order, which is why the nodes of a chain
+				 *          are built from the end, while the linking of the nodes leads
+				 *          only forward — the chain has to be accumulated. The sequence
+				 *          was kept for every nesting level.
+				 *
+				 *          The sequence is now common, and the nesting is kept by
+				 *          the mark of the base — in the same way as the other scratch
+				 *          sequences of the parsing and the building live.
+				 *
+				 * \~
+				 */
+				vector <node_id_t> _chain;
+				/**
+				 * \~russian
+				 * Соответствие номеров групп индексам их узлов синтаксического дерева
+				 *
+				 * @details Держится плотным рядом по тем же доводам, что и
+				 *          соответствие адресов тел. Отсутствие записи означено
+				 *          приметою `INVALID_NODE`.
+				 *
+				 * \~english
+				 * Correspondence of the group numbers to the indices of their nodes of the syntax tree
+				 *
+				 * @details It maintains a contiguous layout based on the same logic
+				 *          as the body address mapping. The absence of an entry
+				 *          is indicated by the `INVALID_NODE` marker.
+				 *
+				 * \~
+				 */
+				vector <node_id_t> _groups;
+				/**
+				 * \~russian
+				 * Сберегательный след узлов при проверке продвижения по тексту
+				 *
+				 * @details Проверка обязательного продвижения обходит дерево
+				 *          со следом, вызовы рекурсивные различающим, и след
+				 *          этот заводился на каждую проверку. Проверка зовётся
+				 *          на всякое повторение неограниченное, а вложенности
+				 *          не знает - оттого достаточно очистки, а не отметки.
+				 *
+				 * \~english
+				 * Scratch trace of the nodes for the check of advancing over the text
+				 *
+				 * @details The mandatory-propagation check traverses the tree
+				 *          while maintaining a trace; recursive calls are
+				 *          distinguished, and a fresh trace is initialized for
+				 *          each check. The check is invoked for every unbounded
+				 *          iteration and is unaware of nesting levels—hence,
+				 *          clearing the trace suffices, rather than marking nodes.
+				 *
+				 * \~
+				 */
+				mutable vector <node_id_t> _visited;
+			private:
+				/**
+				 * \~russian
+				 * @brief Сберегательный ряд стека обхода инструкций
+				 *
+				 * \~english
+				 * @brief Scratch sequence of the traversal stack of the instructions
+				 *
+				 * \~
+				 */
+				vector <address_t> _stack;
+				/**
+				 * \~russian
+				 * @brief Сберегательный ряд адресов переходов, построением накапливаемых
+				 *
+				 * @details Выбор одной из ветвей и повторение с границами копят
+				 *          адреса переходов прежде, чем разрешить их: число
+				 *          ветвей и проходов заранее не известно. Ряд для того
+				 *          заводился на каждый узел, а узлов таких в выражении
+				 *          столько же, сколько чередований и повторителей.
+				 *
+				 *          Ряд ныне общий, а вложенность держится отметкою
+				 *          основания: построение помнит длину ряда при входе,
+				 *          копит поверх неё и усекает ряд обратно, разрешив
+				 *          переходы. Место, однажды отведённое, переживает
+				 *          и узлы, и построения.
+				 *
+				 * \~english
+				 * @brief Scratch sequence of the jump addresses accumulated by the building
+				 *
+				 * @details Alternation and bounded repetition accumulate the addresses
+				 *          of the jumps before resolving them: the number of branches
+				 *          and passes is not known in advance. The sequence was kept
+				 *          for every node, and such nodes in an expression are as many
+				 *          as there are alternations and bounded repetitions.
+				 *
+				 *          The sequence is now common, and the nesting is kept by
+				 *          the mark of the base: the build remembers the length of the
+				 *          sequence at the entry, accumulates on top of it, and truncates
+				 *          the sequence back when the jumps are resolved. The room
+				 *          allocated once outlives both the nodes and the builds.
+				 *
+				 * \~
+				 */
+				vector <address_t> _exits;
+				/**
+				 * \~russian
+				 * @brief Соответствие номеров групп адресам их рекурсивно вызываемых тел
+				 *
+				 * @details Соответствие держится плотным рядом, а не отображением
+				 *          упорядоченным: номера захватывающих групп идут подряд
+				 *          от единицы, и число их известно разбором. Отображение
+				 *          размещало узел на каждую запись и уравновешивало
+				 *          дерево, тогда как ряд берётся номером прямо, а место
+				 *          под него отводится однажды и построения переживает.
+				 *
+				 *          Отсутствие записи означено приметою `INVALID_ADDRESS`.
+				 *
+				 * \~english
+				 * @brief Correspondence of the group numbers to the addresses of their recursively called bodies
+				 *
+				 * @details The correspondence is held by a dense sequence rather than an ordered map:
+				 *          the numbers of the capturing groups run consecutively from one,
+				 *          and their count is known from the parsing. A map would allocate
+				 *          a node for every entry and balance the tree, while a sequence
+				 *          is taken by the number directly, and the room for it is allocated
+				 *          once and outlives the build.
+				 *
+				 *          The absence of an entry is marked by the flag `INVALID_ADDRESS`.
+				 *
+				 * \~
+				 */
+				vector <address_t> _sections;
+			private:
+				/**
+				 * \~russian
+				 * @brief Арена узлов синтаксического дерева объекта разбора
+				 *
+				 * @details Арена сберегается указателем потому, что извлечение
+				 *          узла по индексу происходит на каждом шаге построения,
+				 *          а метод извлечения объекта разбора лежит в единице
+				 *          трансляции чужой и подстановке не поддаётся. Обращение
+				 *          через сбережённый указатель встраивается целиком, и
+				 *          вызов подпрограммы на месте каждого обращения исчезает.
+				 *
+				 * \~english
+				 * @brief Arena of the syntax tree nodes of the parser object
+				 *
+				 * @details The arena is kept as a pointer because getting a node by
+				 *          index happens at every step of the compilation, while the
+				 *          getter of the parser object lies in a foreign translation
+				 *          unit and cannot be inlined. Access through the kept pointer
+				 *          is inlined entirely, and the subroutine call at the place
+				 *          of every access disappears.
+				 *
+				 * \~
+				 */
+				const vector <node_data_t> * _arena;
+			private:
+				// Компилируемая программа регулярного выражения
+				program_t * _program;
+			private:
+				// Объект разбора, предоставляющий синтаксическое дерево
+				const parser_t * _parser;
+			private:
+				/**
+				 * \~russian
+				 * Соответствие имён отметок номерам ячеек их положения
+				 *
+				 * @details Ячейка отводится единожды на имя, а не на глагол отметки:
+				 *          отметки одного имени пишут в неё положение своё, отчего
+				 *          розыск глаголом переноса находит отметку живую последнюю
+				 *          того имени.
+				 *
+				 * \~english
+				 * Correspondence of mark names to the numbers of their position cells
+				 *
+				 * @details The cell is allotted once per name, not per mark verb: the marks
+				 *          of one name write their position into it, whereby the lookup
+				 *          by the moving verb finds the last live mark of that name.
+				 *
+				 * \~
+				 */
+				std::map <string, uint32_t> _named;
+			private:
+				// Набор адресов инструкций рекурсивного вызова и номеров вызываемых групп
+				vector <pair <address_t, uint32_t>> _calls;
 				/**
 				 * \~russian
 				 * Соответствие номеров классов разбора номерам классов программы
@@ -1103,9 +1098,6 @@ namespace awh {
 				 * \~
 				 */
 				vector <pair <uint32_t, uint32_t>> _stored;
-			private:
-				// Код ошибки последней операции компиляции
-				error_t _error;
 			public:
 				/**
 				 * \~russian
@@ -1337,34 +1329,34 @@ namespace awh {
 				 * \~
 				 */
 				bool merging(const node_id_t id) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод свёртки повторения над необязательными частями в ряд символов
-			 *
-			 * @details Повторение вида «(?:A* B?)*», всякая часть тела какого необязательна,
-			 *          принимает ровно те же строки, что и ряд «[A∪B]*»: тело набирает любую
-			 *          часть по одной, а внешнее повторение повторяет это без счёта. Ряд же
-			 *          проходится таблицей байтов одним ходом, тогда как повторение над
-			 *          областью идёт записью кадра на всякий проход.
-			 *
-			 * @param id индекс узла повторения в арене узлов
-			 * @return   результат выполнения свёртки повторения
-			 *
-			 * \~english
-			 * @brief Method of folding a repetition over optional parts into a run of characters
-			 *
-			 * @details A repetition of the form «(?:A* B?)*», every part of whose body is optional,
-			 *          accepts exactly the same strings as the run «[A∪B]*»: the body takes any
-			 *          part one at a time, and the outer repetition repeats this without count. The run
-			 *          is passed by a table of bytes in one go, whereas a repetition over a region
-			 *          goes by a frame record on every pass.
-			 *
-			 * @param id index of the repetition node in the arena of nodes
-			 * @return   result of performing the folding of the repetition
-			 *
-			 * \~
-			 */
-			bool flattening(const node_id_t id) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод свёртки повторения над необязательными частями в ряд символов
+				 *
+				 * @details Повторение вида «(?:A* B?)*», всякая часть тела какого необязательна,
+				 *          принимает ровно те же строки, что и ряд «[A∪B]*»: тело набирает любую
+				 *          часть по одной, а внешнее повторение повторяет это без счёта. Ряд же
+				 *          проходится таблицей байтов одним ходом, тогда как повторение над
+				 *          областью идёт записью кадра на всякий проход.
+				 *
+				 * @param id индекс узла повторения в арене узлов
+				 * @return   результат выполнения свёртки повторения
+				 *
+				 * \~english
+				 * @brief Method of folding a repetition over optional parts into a run of characters
+				 *
+				 * @details A repetition of the form «(?:A* B?)*», every part of whose body is optional,
+				 *          accepts exactly the same strings as the run «[A∪B]*»: the body takes any
+				 *          part one at a time, and the outer repetition repeats this without count. The run
+				 *          is passed by a table of bytes in one go, whereas a repetition over a region
+				 *          goes by a frame record on every pass.
+				 *
+				 * @param id index of the repetition node in the arena of nodes
+				 * @return   result of performing the folding of the repetition
+				 *
+				 * \~
+				 */
+				bool flattening(const node_id_t id) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод компиляции узла выбора одной из ветвей
@@ -2448,7 +2440,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Compiler() noexcept;
+				explicit Compiler() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

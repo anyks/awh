@@ -148,7 +148,7 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -187,7 +187,6 @@ namespace awh {
 		 * \~
 		 */
 		constexpr uint32_t MAX_NESTING = 250;
-
 		/**
 		 * \~russian
 		 * @brief Наибольшее допустимое значение границы кванта повторения
@@ -255,204 +254,9 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Deferred() noexcept;
+					explicit Deferred() noexcept;
 				} deferred_t;
-			private:
-				// Текст разбираемого регулярного выражения
-				string_view _pattern;
-			private:
-				// Текущая позиция разбора в тексте регулярного выражения
-				size_t _pos;
-			private:
-				// Индекс корневого узла синтаксического дерева
-				node_id_t _root;
-			private:
-				// Текущая глубина вложенности групп
-				uint32_t _depth;
-			private:
-				// Количество захватывающих групп, обнаруженных к текущей позиции разбора
-				uint32_t _captures;
-			private:
-				// Общее количество захватывающих групп, определённое предварительным проходом по требованию
-				uint32_t _total;
-			private:
-				/**
-				 * \~russian
-				 * Пределы шагов сопоставления и глубины вызовов, выражением заданные
-				 *
-				 * @details Пределы задаются указаниями «(*LIMIT_MATCH=N)»
-				 *          и «(*LIMIT_DEPTH=N)» в начале выражения, а нуль означает,
-				 *          что выражение предела своего не задаёт вовсе.
-				 *
-				 * \~english
-				 * Limits of the matching steps and of the call depth set by the expression
-				 *
-				 * @details The limits are set by the «(*LIMIT_MATCH=N)» and «(*LIMIT_DEPTH=N)»
-				 *          options at the start of an expression, whereas zero means
-				 *          that the expression sets no limit of its own at all.
-				 *
-				 * \~
-				 */
-				uint32_t _stepLimit, _depthLimit, _heapLimit;
-			private:
-				/**
-				 * \~russian
-				 * Соглашение о переводе строки и охват последовательности «\\R»
-				 *
-				 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале
-				 *          выражения и правит точкой и привязками, а охват «\\R»
-				 *          правится указаниями «(*BSR_ANYCRLF)» и «(*BSR_UNICODE)»
-				 *          отдельно от соглашения.
-				 *
-				 * \~english
-				 * Newline convention and the coverage of the «\\R» sequence
-				 *
-				 * @details The convention is set by an option of the «(*CRLF)» kind at the start
-				 *          of an expression and governs the dot and the anchors, whereas the coverage of «\\R»
-				 *          is governed by the «(*BSR_ANYCRLF)» and «(*BSR_UNICODE)» options
-				 *          separately from the convention.
-				 *
-				 * \~
-				 */
-				newline_t _convention;
-				// Признак включения ограничений разбора
-				bool _restricted;
-			private:
-				/**
-				 * \~russian
-				 * Хранилище имён отметок глаголов управления
-				 *
-				 * @details Имена всех отметок выражения лежат сплошным набором
-				 *          октетов, а узел глагола ссылается на участок его
-				 *          смещением и длиною наравне с классами символов.
-				 *
-				 * \~english
-				 * Storage of the names of the marks of the control verbs
-				 *
-				 * @details The names of all the marks of an expression lie in a contiguous set
-				 *          of octets, whereas the node of a verb refers to a span of it
-				 *          by an offset and a length, along with the character classes.
-				 *
-				 * \~
-				 */
-				vector <uint8_t> _markers;
-			private:
-				// Набор режимов компиляции, действующих в текущей позиции разбора
-				uint32_t _flags;
-			private:
-				// Исходный набор режимов компиляции, переданный при разборе
-				uint32_t _options;
-			private:
-				// Текущая глубина вложенности проверок окружения
-				uint32_t _look;
-			private:
-				// Код ошибки последней операции разбора
-				error_t _error;
-			private:
-				// Смещение ошибки в тексте регулярного выражения
-				size_t _errorPos;
-			private:
-				// Арена узлов синтаксического дерева
-				vector <node_data_t> _nodes;
-			private:
-				/**
-				 * \~russian
-				 * @brief Сберегательный ряд составов узлов, разбором накапливаемых
-				 *
-				 * @details Разбор последовательности и разбор выбора ветвей
-				 *          накапливают состав узла прежде, чем связать его:
-				 *          число элементов заранее не известно. Ряд для того
-				 *          заводился на каждый вызов, а вызовы эти приходятся
-				 *          на всякую группу и всякую ветвь выражения - и
-				 *          всякий раз размещался заново.
-				 *
-				 *          Ряд ныне общий, а вложенность держится отметкою
-				 *          основания: вызов помнит длину ряда при входе,
-				 *          накапливает поверх неё и усекает ряд обратно,
-				 *          связав состав. Место, однажды отведённое,
-				 *          переживает и вызовы, и разборы.
-				 *
-				 * \~english
-				 * @brief Scratch sequence of the node contents accumulated by the parsing
-				 *
-				 * @details Parsing a concatenation and parsing an alternation
-				 *          accumulate the content of a node before linking it:
-				 *          the number of elements is not known in advance. The sequence
-				 *          was kept for every call, and the calls occur for every group
-				 *          and every branch of the expression — and each time it was
-				 *          allocated anew.
-				 *
-				 *          The sequence is now common, and the nesting is kept by
-				 *          the mark of the base: the call remembers the length of the
-				 *          sequence at the entry, accumulates on top of it, and truncates
-				 *          the sequence back when the content is linked. The room
-				 *          allocated once outlives both the calls and the parsings.
-				 *
-				 * \~
-				 */
-				vector <node_id_t> _items;
-			private:
-				/**
-				 * \~russian
-				 * @brief Хранилище классов символов
-				 *
-				 * @details Хранилище разборы переживает: сброс обнуляет лишь счёт
-				 *          классов, а записи с их рядами остаются на месте, и класс
-				 *          разбора следующего формируется в записи прежней, место
-				 *          её рядов наследуя. Записи за счётом - остатки разборов
-				 *          прежних, классами разбора текущего не являющиеся.
-				 *
-				 * \~english
-				 * @brief Storage of the character classes
-				 *
-				 * @details The storage outlives parsings: a reset zeroes only the count
-				 *          of the classes, while the records with their sequences stay
-				 *          in place, and a class of the next parsing is formed in a former
-				 *          record, inheriting the room of its sequences. The records past
-				 *          the count are leftovers of former parsings and are not classes
-				 *          of the current parsing.
-				 *
-				 * \~
-				 */
-				vector <class_t> _classes;
-			private:
-				// Количество классов символов текущего разбора
-				uint32_t _classCount;
-				/**
-				 * \~russian
-				 * @brief Набор видов узлов, разбором заведённых
-				 *
-				 * @details Разряд набора отвечает виду узла: номер разряда есть значение
-				 *          вида. Разряд выставляет заведение узла, и разрешение ссылок
-				 *          обходит узлы дерева в поисках условий, ссылок и вызовов по
-				 *          номеру лишь тогда, когда узел такого вида разбором заводился.
-				 *
-				 * @note Поле лежит в зазоре за счётом классов намеренно: размер объекта
-				 *       и смещения прочих полей прежние - смотрите поле «_verbs».
-				 *
-				 * \~english
-				 * @brief Set of the kinds of nodes created by the parsing
-				 *
-				 * @details A bit of the set answers a kind of node: the number of the bit is
-				 *          the value of the kind. Creating a node sets the bit, and the
-				 *          resolution of references walks the nodes of the tree in search of
-				 *          conditions, references and calls by number only when a node of such
-				 *          a kind was created by the parsing.
-				 *
-				 * @note The field lies in the gap after the count of the classes deliberately:
-				 *       the size of the object and the offsets of the other fields stay as
-				 *       before - see the «_verbs» field.
-				 *
-				 * \~
-				 */
-				uint32_t _kinds;
-			private:
-				// Хранилище имён именованных групп
-				vector <string> _names;
-			private:
-				// Хранилище последовательностей символов узлов типа «STRING»
-				vector <uint32_t> _strings;
-			private:
+			public:
 				/**
 				 * \~russian
 				 * @brief Признак разрыва связи квантора встроенными настройками
@@ -511,41 +315,57 @@ namespace awh {
 				 * \~
 				 */
 				bool _counted;
+				// Признак вычисления длины с разрешением вызовов подпрограмм
+				bool _resolving;
+				// Признак включения ограничений разбора
+				bool _restricted;
+			private:
+				// Текущая позиция разбора в тексте регулярного выражения
+				size_t _pos;
+				// Смещение ошибки в тексте регулярного выражения
+				size_t _errorPos;
+			private:
+				// Индекс корневого узла синтаксического дерева
+				node_id_t _root;
+			private:
+				// Текущая глубина вложенности проверок окружения
+				uint32_t _look;
+				// Текущая глубина вложенности групп
+				uint32_t _depth;
+				// Общее количество захватывающих групп, определённое предварительным проходом по требованию
+				uint32_t _total;
+				// Набор режимов компиляции, действующих в текущей позиции разбора
+				uint32_t _flags;
 				// Позиция начала предварительного прохода: за начальными указаниями выражения
 				uint32_t _begin;
-			private:
-				// Набор отложенных ссылок на именованные группы
-				vector <deferred_t> _deferred;
-			private:
 				/**
 				 * \~russian
-				 * Набор ретроспективных проверок, длину коих даёт вызов подпрограммы
+				 * @brief Набор видов узлов, разбором заведённых
 				 *
-				 * @details Длина вызова берётся длиною вызываемой группы, а группа
-				 *          вправе объявляться и позже проверки: длина таких проверок
-				 *          вычисляется по завершении разбора наравне со ссылками
-				 *          отложенными. Хранится индекс узла проверки и смещение
-				 *          её в выражении - им отказ и выводится.
+				 * @details Разряд набора отвечает виду узла: номер разряда есть значение
+				 *          вида. Разряд выставляет заведение узла, и разрешение ссылок
+				 *          обходит узлы дерева в поисках условий, ссылок и вызовов по
+				 *          номеру лишь тогда, когда узел такого вида разбором заводился.
+				 *
+				 * @note Поле лежит в зазоре за счётом классов намеренно: размер объекта
+				 *       и смещения прочих полей прежние - смотрите поле «_verbs».
 				 *
 				 * \~english
-				 * Set of lookbehinds whose length is given by a subroutine call
+				 * @brief Set of the kinds of nodes created by the parsing
 				 *
-				 * @details The length of a call is taken as the length of the called group,
-				 *          and the group may be declared later than the lookbehind: the length
-				 *          of such lookbehinds is computed after parsing completes, on a par with
-				 *          deferred references. The node index of the lookbehind and its offset
-				 *          in the pattern are stored — the refusal is reported with it.
+				 * @details A bit of the set answers a kind of node: the number of the bit is
+				 *          the value of the kind. Creating a node sets the bit, and the
+				 *          resolution of references walks the nodes of the tree in search of
+				 *          conditions, references and calls by number only when a node of such
+				 *          a kind was created by the parsing.
+				 *
+				 * @note The field lies in the gap after the count of the classes deliberately:
+				 *       the size of the object and the offsets of the other fields stay as
+				 *       before - see the «_verbs» field.
 				 *
 				 * \~
 				 */
-				vector <pair <node_id_t, size_t>> _behinds;
-			private:
-				// Набор номеров групп, длина каких вычисляется ныне
-				mutable unordered_set <uint32_t> _calling;
-			private:
-				// Признак вычисления длины с разрешением вызовов подпрограмм
-				bool _resolving;
-			private:
+				uint32_t _kinds;
 				/**
 				 * \~russian
 				 * Набор видов глаголов управления, разбором заведённых
@@ -584,6 +404,192 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t _verbs;
+				// Исходный набор режимов компиляции, переданный при разборе
+				uint32_t _options;
+				// Количество захватывающих групп, обнаруженных к текущей позиции разбора
+				uint32_t _captures;
+				// Количество классов символов текущего разбора
+				uint32_t _classCount;
+			private:
+				/**
+				 * \~russian
+				 * Пределы шагов сопоставления и глубины вызовов, выражением заданные
+				 *
+				 * @details Пределы задаются указаниями «(*LIMIT_MATCH=N)»
+				 *          и «(*LIMIT_DEPTH=N)» в начале выражения, а нуль означает,
+				 *          что выражение предела своего не задаёт вовсе.
+				 *
+				 * \~english
+				 * Limits of the matching steps and of the call depth set by the expression
+				 *
+				 * @details The limits are set by the «(*LIMIT_MATCH=N)» and «(*LIMIT_DEPTH=N)»
+				 *          options at the start of an expression, whereas zero means
+				 *          that the expression sets no limit of its own at all.
+				 *
+				 * \~
+				 */
+				uint32_t _stepLimit;
+				/**
+				 * \~russian
+				 * Пределы кучи сопоставления
+				 *
+				 * \~english
+				 * Matching heap limits
+				 *
+				 * \~
+				 */
+				uint32_t _heapLimit;
+				/**
+				 * \~russian
+				 * Пределы глубины вызовов
+				 *
+				 * \~english
+				 * Call depth limits
+				 *
+				 * \~
+				 */
+				uint32_t _depthLimit;
+			private:
+				// Код ошибки последней операции разбора
+				error_t _error;
+			private:
+				/**
+				 * \~russian
+				 * Соглашение о переводе строки и охват последовательности «\\R»
+				 *
+				 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале
+				 *          выражения и правит точкой и привязками, а охват «\\R»
+				 *          правится указаниями «(*BSR_ANYCRLF)» и «(*BSR_UNICODE)»
+				 *          отдельно от соглашения.
+				 *
+				 * \~english
+				 * Newline convention and the coverage of the «\\R» sequence
+				 *
+				 * @details The convention is set by an option of the «(*CRLF)» kind at the start
+				 *          of an expression and governs the dot and the anchors, whereas the coverage of «\\R»
+				 *          is governed by the «(*BSR_ANYCRLF)» and «(*BSR_UNICODE)» options
+				 *          separately from the convention.
+				 *
+				 * \~
+				 */
+				newline_t _convention;
+			private:
+				// Текст разбираемого регулярного выражения
+				string_view _pattern;
+			private:
+				// Хранилище имён именованных групп
+				vector <string> _names;
+			private:
+				/**
+				 * \~russian
+				 * Хранилище имён отметок глаголов управления
+				 *
+				 * @details Имена всех отметок выражения лежат сплошным набором
+				 *          октетов, а узел глагола ссылается на участок его
+				 *          смещением и длиною наравне с классами символов.
+				 *
+				 * \~english
+				 * Storage of the names of the marks of the control verbs
+				 *
+				 * @details The names of all the marks of an expression lie in a contiguous set
+				 *          of octets, whereas the node of a verb refers to a span of it
+				 *          by an offset and a length, along with the character classes.
+				 *
+				 * \~
+				 */
+				vector <uint8_t> _markers;
+				// Хранилище последовательностей символов узлов типа «STRING»
+				vector <uint32_t> _strings;
+			private:
+				/**
+				 * \~russian
+				 * @brief Сберегательный ряд составов узлов, разбором накапливаемых
+				 *
+				 * @details Разбор последовательности и разбор выбора ветвей
+				 *          накапливают состав узла прежде, чем связать его:
+				 *          число элементов заранее не известно. Ряд для того
+				 *          заводился на каждый вызов, а вызовы эти приходятся
+				 *          на всякую группу и всякую ветвь выражения - и
+				 *          всякий раз размещался заново.
+				 *
+				 *          Ряд ныне общий, а вложенность держится отметкою
+				 *          основания: вызов помнит длину ряда при входе,
+				 *          накапливает поверх неё и усекает ряд обратно,
+				 *          связав состав. Место, однажды отведённое,
+				 *          переживает и вызовы, и разборы.
+				 *
+				 * \~english
+				 * @brief Scratch sequence of the node contents accumulated by the parsing
+				 *
+				 * @details Parsing a concatenation and parsing an alternation
+				 *          accumulate the content of a node before linking it:
+				 *          the number of elements is not known in advance. The sequence
+				 *          was kept for every call, and the calls occur for every group
+				 *          and every branch of the expression — and each time it was
+				 *          allocated anew.
+				 *
+				 *          The sequence is now common, and the nesting is kept by
+				 *          the mark of the base: the call remembers the length of the
+				 *          sequence at the entry, accumulates on top of it, and truncates
+				 *          the sequence back when the content is linked. The room
+				 *          allocated once outlives both the calls and the parsings.
+				 *
+				 * \~
+				 */
+				vector <node_id_t> _items;
+				/**
+				 * \~russian
+				 * @brief Хранилище классов символов
+				 *
+				 * @details Хранилище разборы переживает: сброс обнуляет лишь счёт
+				 *          классов, а записи с их рядами остаются на месте, и класс
+				 *          разбора следующего формируется в записи прежней, место
+				 *          её рядов наследуя. Записи за счётом - остатки разборов
+				 *          прежних, классами разбора текущего не являющиеся.
+				 *
+				 * \~english
+				 * @brief Storage of the character classes
+				 *
+				 * @details The storage outlives parsings: a reset zeroes only the count
+				 *          of the classes, while the records with their sequences stay
+				 *          in place, and a class of the next parsing is formed in a former
+				 *          record, inheriting the room of its sequences. The records past
+				 *          the count are leftovers of former parsings and are not classes
+				 *          of the current parsing.
+				 *
+				 * \~
+				 */
+				vector <class_t> _classes;
+				// Арена узлов синтаксического дерева
+				vector <node_data_t> _nodes;
+				// Набор отложенных ссылок на именованные группы
+				vector <deferred_t> _deferred;
+			private:
+				/**
+				 * \~russian
+				 * Набор ретроспективных проверок, длину коих даёт вызов подпрограммы
+				 *
+				 * @details Длина вызова берётся длиною вызываемой группы, а группа
+				 *          вправе объявляться и позже проверки: длина таких проверок
+				 *          вычисляется по завершении разбора наравне со ссылками
+				 *          отложенными. Хранится индекс узла проверки и смещение
+				 *          её в выражении - им отказ и выводится.
+				 *
+				 * \~english
+				 * Set of lookbehinds whose length is given by a subroutine call
+				 *
+				 * @details The length of a call is taken as the length of the called group,
+				 *          and the group may be declared later than the lookbehind: the length
+				 *          of such lookbehinds is computed after parsing completes, on a par with
+				 *          deferred references. The node index of the lookbehind and its offset
+				 *          in the pattern are stored — the refusal is reported with it.
+				 *
+				 * \~
+				 */
+				vector <pair <node_id_t, size_t>> _behinds;
+			private:
+				// Набор номеров групп, длина каких вычисляется ныне
+				mutable unordered_set <uint32_t> _calling;
 			private:
 				// Соответствие имён групп их номерам
 				unordered_map <string, vector <uint32_t>> _groups;
@@ -1866,7 +1872,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Parser() noexcept;
+				explicit Parser() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

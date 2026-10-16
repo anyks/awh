@@ -330,26 +330,25 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					State() noexcept;
+					explicit State() noexcept;
 				} state_t;
 			private:
-				// Исполняемая программа регулярного выражения
-				const program_t * _program;
+				// Флаг прохода по тексту в обратном направлении
+				bool _backward;
+			private:
+				// Количество классов эквивалентности байтов
+				uint32_t _count;
+				// Длина участка таблицы переходов, отвечающего одному состоянию
+				uint32_t _stride;
+			private:
+				// Позиция начала текущей попытки сопоставления
+				size_t _start;
 			private:
 				// Опознание исполняемой программы регулярного выражения
 				uint64_t _identity;
 			private:
 				// Текст, по которому выполняется сопоставление
 				string_view _text;
-			private:
-				// Позиция начала текущей попытки сопоставления
-				size_t _start;
-			private:
-				// Флаг прохода по тексту в обратном направлении
-				bool _backward;
-			private:
-				// Набор построенных состояний детерминированного автомата
-				vector <state_t> _states;
 			private:
 				/**
 				 * \~russian
@@ -369,7 +368,6 @@ namespace awh {
 				 * \~
 				 */
 				vector <uint8_t> _marks;
-			private:
 				/**
 				 * \~russian
 				 * Непрерывная таблица переходов всех состояний автомата
@@ -392,12 +390,8 @@ namespace awh {
 				 * \~
 				 */
 				vector <uint32_t> _table;
-			private:
-				// Длина участка таблицы переходов, отвечающего одному состоянию
-				uint32_t _stride;
-			private:
-				// Количество классов эквивалентности байтов
-				uint32_t _count;
+				// Набор построенных состояний детерминированного автомата
+				vector <state_t> _states;
 			private:
 				/**
 				 * \~russian
@@ -419,7 +413,6 @@ namespace awh {
 				 * \~
 				 */
 				uint8_t _classes[0x100];
-			private:
 				/**
 				 * \~russian
 				 * Соответствие признаков положения индексам исходных состояний
@@ -451,6 +444,9 @@ namespace awh {
 			private:
 				// Соответствие наборов состояний их индексам
 				unordered_map <string, uint32_t> _cache;
+			private:
+				// Исполняемая программа регулярного выражения
+				const program_t * _program;
 			public:
 				/**
 				 * \~russian
@@ -780,7 +776,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Dfa() noexcept;
+				explicit Dfa() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

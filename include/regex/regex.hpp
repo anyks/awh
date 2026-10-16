@@ -160,7 +160,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using flag_t = awh::regex::flag_t;
+			using flag_t = regex::flag_t;
 			/**
 			 * \~russian
 			 * @brief Код ошибки сборки регулярного выражения
@@ -170,7 +170,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using error_t = awh::regex::error_t;
+			using error_t = regex::error_t;
 			/**
 			 * \~russian
 			 * @brief Собранное регулярное выражение
@@ -180,7 +180,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using exp_t = shared_ptr <const awh::regex::expression_t>;
+			using exp_t = shared_ptr <const regex::expression_t>;
 		private:
 			/**
 			 * \~russian
@@ -345,7 +345,7 @@ namespace awh {
 			mutable regex::engine_t _engine;
 		private:
 			// Кэш собранных регулярных выражений
-			mutable unordered_map <key_t, weak_ptr <const awh::regex::expression_t>, Hash> _cache;
+			mutable unordered_map <key_t, weak_ptr <const regex::expression_t>, Hash> _cache;
 		public:
 			/**
 			 * \~russian

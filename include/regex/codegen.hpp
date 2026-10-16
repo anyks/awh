@@ -1190,73 +1190,6 @@ namespace awh {
 				 */
 				typedef bool (* matcher_t) (const char *, size_t, size_t, size_t *, const void *);
 			private:
-				// Исполняемая память порождённого сопоставителя
-				assembly_t _assembly;
-			private:
-				/**
-				 * \~russian
-				 * Хранилище значений, к каким обращается порождённый код
-				 *
-				 * @details Хранилище несёт таблицы принадлежности значений байта
-				 *          сопоставляемым символам по двести пятьдесят шесть байт
-				 *          на каждую и приметы привязок к позиции в тексте
-				 *          по восьми байтов на каждую, размещённые одно за другим.
-				 *          Единое хранилище взамен раздельных заведено затем, чтобы
-				 *          набор адресов обстановки восстанавливался единообразно:
-				 *          размещение значения перемещает хранилище в памяти,
-				 *          отчего адреса собираются заново по завершении порождения.
-				 *
-				 * \~english
-				 * Storage of the values the generated code refers to
-				 *
-				 * @details The storage carries the tables of the belonging of the byte values to
-				 *          the matched characters, two hundred and fifty-six bytes
-				 *          for each, and the descriptors of the anchors to a position in the text,
-				 *          eight bytes for each, placed one after another.
-				 *          A single storage instead of separate ones was introduced so that
-				 *          the set of the context addresses is restored uniformly:
-				 *          placing a value moves the storage in memory,
-				 *          which is why the addresses are collected anew when the generation has finished.
-				 *
-				 * \~
-				 */
-				vector <uint8_t> _members;
-			private:
-				// Смещения значений хранилища, отвечающие местам обстановки
-				vector <size_t> _offsets;
-			private:
-				/**
-				 * \~russian
-				 * Предварительный отбор позиций начала попытки сопоставления
-				 *
-				 * @details Отбор копируется из программы, а не берётся по ссылке
-				 *          на неё: порождённый код обращается к нему при каждой
-				 *          попытке сопоставления и переживает программу,
-				 *          для какой порождён.
-				 *
-				 * \~english
-				 * Preliminary selection of the positions where a match attempt begins
-				 *
-				 * @details The selection is copied from the program rather than taken by a reference
-				 *          to it: the generated code refers to it at every
-				 *          match attempt and outlives the program
-				 *          it was generated for.
-				 *
-				 * \~
-				 */
-				prefilter_t _prefilter;
-			private:
-				/**
-				 * \~russian
-				 * Способ отбора позиций, порождением избранный
-				 *
-				 * \~english
-				 * Way of selecting the positions chosen by the generation
-				 *
-				 * \~
-				 */
-				filter_t _filter;
-			private:
 				/**
 				 * \~russian
 				 * Признак проверки возможности совпадения перед сопоставлением
@@ -1284,7 +1217,6 @@ namespace awh {
 				 * \~
 				 */
 				bool _feasible;
-			private:
 				/**
 				 * \~russian
 				 * @brief Признак отодвигания начала поиска обязательным литералом
@@ -1327,12 +1259,6 @@ namespace awh {
 				 */
 				bool _skipping;
 			private:
-				// Набор адресов обстановки исполнения порождённого кода
-				vector <const void *> _context;
-			private:
-				// Количество захватывающих групп выражения порождённого сопоставителя
-				uint32_t _captures;
-			private:
 				/**
 				 * \~russian
 				 * Размер записи кадра порождённого сопоставителя в байтах
@@ -1355,7 +1281,6 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t _frame;
-			private:
 				/**
 				 * \~russian
 				 * Наибольшее количество записей кадра порождённого сопоставителя
@@ -1374,12 +1299,79 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t _levels;
+				// Количество захватывающих групп выражения порождённого сопоставителя
+				uint32_t _captures;
 			private:
 				// Опознание программы, для какой порождён сопоставитель
 				uint64_t _identity;
 			private:
+				/**
+				 * \~russian
+				 * Способ отбора позиций, порождением избранный
+				 *
+				 * \~english
+				 * Way of selecting the positions chosen by the generation
+				 *
+				 * \~
+				 */
+				filter_t _filter;
 				// Вызов порождённого сопоставителя
 				matcher_t _matcher;
+				// Исполняемая память порождённого сопоставителя
+				assembly_t _assembly;
+				/**
+				 * \~russian
+				 * Предварительный отбор позиций начала попытки сопоставления
+				 *
+				 * @details Отбор копируется из программы, а не берётся по ссылке
+				 *          на неё: порождённый код обращается к нему при каждой
+				 *          попытке сопоставления и переживает программу,
+				 *          для какой порождён.
+				 *
+				 * \~english
+				 * Preliminary selection of the positions where a match attempt begins
+				 *
+				 * @details The selection is copied from the program rather than taken by a reference
+				 *          to it: the generated code refers to it at every
+				 *          match attempt and outlives the program
+				 *          it was generated for.
+				 *
+				 * \~
+				 */
+				prefilter_t _prefilter;
+			private:
+				// Смещения значений хранилища, отвечающие местам обстановки
+				vector <size_t> _offsets;
+				/**
+				 * \~russian
+				 * Хранилище значений, к каким обращается порождённый код
+				 *
+				 * @details Хранилище несёт таблицы принадлежности значений байта
+				 *          сопоставляемым символам по двести пятьдесят шесть байт
+				 *          на каждую и приметы привязок к позиции в тексте
+				 *          по восьми байтов на каждую, размещённые одно за другим.
+				 *          Единое хранилище взамен раздельных заведено затем, чтобы
+				 *          набор адресов обстановки восстанавливался единообразно:
+				 *          размещение значения перемещает хранилище в памяти,
+				 *          отчего адреса собираются заново по завершении порождения.
+				 *
+				 * \~english
+				 * Storage of the values the generated code refers to
+				 *
+				 * @details The storage carries the tables of the belonging of the byte values to
+				 *          the matched characters, two hundred and fifty-six bytes
+				 *          for each, and the descriptors of the anchors to a position in the text,
+				 *          eight bytes for each, placed one after another.
+				 *          A single storage instead of separate ones was introduced so that
+				 *          the set of the context addresses is restored uniformly:
+				 *          placing a value moves the storage in memory,
+				 *          which is why the addresses are collected anew when the generation has finished.
+				 *
+				 * \~
+				 */
+				vector <uint8_t> _members;
+				// Набор адресов обстановки исполнения порождённого кода
+				vector <const void *> _context;
 			private:
 				/**
 				 * \~russian

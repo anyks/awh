@@ -500,25 +500,6 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
-				 * Порождаемая последовательность команд процессора
-				 *
-				 * @details Последовательность ведётся байтами, а не словами: набор
-				 *          команд ARM64 несёт команды шириною постоянной, а x86-64 -
-				 *          переменной, и байтовый вид пригоден обоим.
-				 *
-				 * \~english
-				 * Generated sequence of processor instructions
-				 *
-				 * @details The sequence is kept in bytes rather than in words: the ARM64 instruction
-				 *          set carries instructions of a constant width, and x86-64 of a
-				 *          variable one, and the byte form is fit for both.
-				 *
-				 * \~
-				 */
-				vector <uint8_t> _code;
-			private:
-				/**
-				 * \~russian
 				 * @brief Запись значения регистра в память, только что размещённая
 				 *
 				 * \~english
@@ -527,10 +508,10 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct Stored {
-					// Регистр записанного значения
-					reg_t source;
 					// Регистр адреса начала области записи
 					reg_t base;
+					// Регистр записанного значения
+					reg_t source;
 					// Номер записанного значения в области
 					uint32_t index;
 					/**
@@ -552,91 +533,6 @@ namespace awh {
 					 */
 					Stored(const reg_t source, const reg_t base, const uint32_t index) noexcept;
 				} stored_t;
-			private:
-				/**
-				 * \~russian
-				 * Ряд записей в память, подряд размещённых
-				 *
-				 * @details Ряд ведётся ради снятия чтения избыточного: порождение
-				 *          кладёт значение в место кадра и тут же читает его оттуда
-				 *          обратно, тогда как оно ещё цело в регистре. Опыт назвал
-				 *          цену такого чтения прямо - оно стоит пересылки из буфера
-				 *          записи, а не обращения к памяти, и стоит её на всяком
-				 *          проходе повторения.
-				 *
-				 *          Ряд ведётся лишь покуда идут записи подряд: запись
-				 *          регистров не меняет, отчего значение, в ряду записанное,
-				 *          заведомо цело. Всякая иная команда ряд обрывает -
-				 *          обрыв опознаётся несовпадением длины кода с меткой ряда,
-				 *          отчего править всякий метод размещения не требуется.
-				 *
-				 * \~english
-				 * A row of writes to memory placed one after another
-				 *
-				 * @details The row is kept to remove a redundant read: the generation
-				 *          puts the value into a place of the frame and at once reads it
-				 *          back from there, whereas it is still intact in the register.
-				 *          The experience named the price of such a read directly - it
-				 *          costs a transfer from the buffer of the write rather than a
-				 *          memory access, and costs it on every trip of the repetition.
-				 *
-				 *          The row is kept only while the writes go one after another: a
-				 *          write of registers changes nothing, hence the value written
-				 *          into the row is known to be intact. Any other command breaks
-				 *          the row - the break is recognised by the length of the code
-				 *          mismatching the mark of the row, so that no method of placing
-				 *          has to be amended.
-				 *
-				 * \~
-				 */
-				vector <stored_t> _stored;
-			private:
-				/**
-				 * \~russian
-				 * Длина кода на миг завершения ряда записей
-				 *
-				 * @details Значение `SIZE_MAX` означает ряд оборванный: его кладут
-				 *          расстановка метки и размещение цели перехода по адресу
-				 *          в регистре - через них проходит управление со стороны,
-				 *          и содержимое регистров ряду более не известно.
-				 *
-				 * \~english
-				 * The length of the code at the moment the row of writes ended
-				 *
-				 * @details The value `SIZE_MAX` means a broken row: it is put by laying
-				 *          out a mark and by placing the target of a jump to an address in
-				 *          a register - through them the control passes from the outside,
-				 *          and the contents of the registers are no longer known to the row.
-				 *
-				 * \~
-				 */
-				size_t _stamp;
-			private:
-				/**
-				 * \~russian
-				 * Количество мест кадра вызова, входом отведённых
-				 *
-				 * @details Место кадра адресуется номером, а размер кадра
-				 *          вычисляется порождением по числу мест, каким оно
-				 *          пользуется. Связи между ними не было никакой:
-				 *          номер, размер кадра превышающий, писался бы за
-				 *          кадр молча, портя стек вызывающего. Ограждение
-				 *          обращает такую запись отказом порождения.
-				 *          Нулевое количество мест ограждения не выполняет -
-				 *          так стоит до размещения входа.
-				 *
-				 * \~english
-				 * The number of the slots of the call frame allocated by the prologue
-				 *
-				 * @details A slot of the frame is addressed by number, and the size of
-				 *          the frame is computed by the generation from the number of slots
-				 *          it uses. There was no tie between them: a number exceeding
-				 *          the size of the frame would be written past the frame silently,
-				 *          corrupting the stack of the caller.
-				 *
-				 * \~
-				 */
-				size_t _seats;
 			/**
 			 * \~russian
 			 * Если процессор принадлежит к E2K
@@ -676,50 +572,51 @@ namespace awh {
 				 * \~
 				 */
 				typedef struct Packed {
-					// Слоги арифметико-логических каналов и признаки их наличия
-					uint32_t als[6];
-					// Признаки наличия слогов каналов
-					bool has[6];
-					// Слог расширения канала нулевого и признак его наличия
-					uint16_t ales;
-					// Признак наличия слога расширения
-					bool extended;
-					// Слог коротких операций и признак его наличия
-					uint32_t stub;
-					// Признак наличия слога коротких операций
-					bool stubbed;
-					// Слоги управления и признаки их наличия
-					uint32_t cs0, cs1;
-					// Признаки наличия слогов управления
-					bool first, second;
-					// Слоги литералов, младший первым
-					uint32_t lts[2];
-					// Количество слогов литералов
-					uint8_t literals;
-					// Маска регистров, командою записываемых
-					uint32_t writes;
-					// Маска предикатов, командою записываемых
-					uint8_t predicates;
+					// Признаки наличия начального слога управления
+					bool first;
+					// Признаки наличия конечного слога управления
+					bool second;
 					// Признак наличия отложенной команды
 					bool opened;
+					// Признак наличия слога коротких операций
+					bool stubbed;
+					// Признак наличия слога расширения
+					bool extended;
+					// Количество слогов литералов
+					uint8_t literals;
+					// Маска предикатов, командою записываемых
+					uint8_t predicates;
+					// Слог расширения канала нулевого и признак его наличия
+					uint16_t ales;
+					// Первый признак наличия слога управления
+					uint32_t cs0;
+					// Второй признак наличия слога управления
+					uint32_t cs1;
+					// Слог коротких операций и признак его наличия
+					uint32_t stub;
+					// Маска регистров, командою записываемых
+					uint32_t writes;
+					// Признаки наличия слогов каналов
+					bool has[6];
+					// Слоги арифметико-логических каналов и признаки их наличия
+					uint32_t als[6];
+					// Слоги литералов, младший первым
+					uint32_t lts[2];
 					/**
-						 * \~russian
-						 * @brief Конструктор широкой команды
-						 *
-						 * \~english
-						 * @brief Constructor of a wide command
-						 *
-						 * \~
-						 */
-						Packed() noexcept;
+					 * \~russian
+					 * @brief Конструктор широкой команды
+					 *
+					 * \~english
+					 * @brief Constructor of a wide command
+					 *
+					 * \~
+					 */
+					explicit Packed() noexcept;
 				} packed_t;
 			private:
 				// Широкая команда процессора, к выдаче отложенная
 				packed_t _packed;
 			#endif
-			private:
-				// Положения меток в порождаемой последовательности команд
-				vector <size_t> _labels;
 			private:
 				/**
 				 * \~russian
@@ -745,12 +642,12 @@ namespace awh {
 						BRANCH  = 0x01, // Переход по условию
 						ADDRESS = 0x02  // Вычисление адреса метки
 					};
-					// Положение команды в последовательности
-					size_t position;
-					// Номер метки, к какой выполняется переход
-					size_t label;
 					// Вид команды, смещение к метке несущей
 					kind_t kind;
+					// Номер метки, к какой выполняется переход
+					size_t label;
+					// Положение команды в последовательности
+					size_t position;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -760,14 +657,118 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Fixup() noexcept;
+					explicit Fixup() noexcept;
 				} fixup_t;
 			private:
 				// Флаг отказа порождения машинного кода
 				bool _failed;
 			private:
+				/**
+				 * \~russian
+				 * Количество мест кадра вызова, входом отведённых
+				 *
+				 * @details Место кадра адресуется номером, а размер кадра
+				 *          вычисляется порождением по числу мест, каким оно
+				 *          пользуется. Связи между ними не было никакой:
+				 *          номер, размер кадра превышающий, писался бы за
+				 *          кадр молча, портя стек вызывающего. Ограждение
+				 *          обращает такую запись отказом порождения.
+				 *          Нулевое количество мест ограждения не выполняет -
+				 *          так стоит до размещения входа.
+				 *
+				 * \~english
+				 * The number of the slots of the call frame allocated by the prologue
+				 *
+				 * @details A slot of the frame is addressed by number, and the size of
+				 *          the frame is computed by the generation from the number of slots
+				 *          it uses. There was no tie between them: a number exceeding
+				 *          the size of the frame would be written past the frame silently,
+				 *          corrupting the stack of the caller.
+				 *
+				 * \~
+				 */
+				size_t _seats;
+				/**
+				 * \~russian
+				 * Длина кода на миг завершения ряда записей
+				 *
+				 * @details Значение `SIZE_MAX` означает ряд оборванный: его кладут
+				 *          расстановка метки и размещение цели перехода по адресу
+				 *          в регистре - через них проходит управление со стороны,
+				 *          и содержимое регистров ряду более не известно.
+				 *
+				 * \~english
+				 * The length of the code at the moment the row of writes ended
+				 *
+				 * @details The value `SIZE_MAX` means a broken row: it is put by laying
+				 *          out a mark and by placing the target of a jump to an address in
+				 *          a register - through them the control passes from the outside,
+				 *          and the contents of the registers are no longer known to the row.
+				 *
+				 * \~
+				 */
+				size_t _stamp;
+			private:
+				/**
+				 * \~russian
+				 * Порождаемая последовательность команд процессора
+				 *
+				 * @details Последовательность ведётся байтами, а не словами: набор
+				 *          команд ARM64 несёт команды шириною постоянной, а x86-64 -
+				 *          переменной, и байтовый вид пригоден обоим.
+				 *
+				 * \~english
+				 * Generated sequence of processor instructions
+				 *
+				 * @details The sequence is kept in bytes rather than in words: the ARM64 instruction
+				 *          set carries instructions of a constant width, and x86-64 of a
+				 *          variable one, and the byte form is fit for both.
+				 *
+				 * \~
+				 */
+				vector <uint8_t> _code;
+				// Положения меток в порождаемой последовательности команд
+				vector <size_t> _labels;
 				// Набор отложенных переходов, подлежащих разрешению
 				vector <fixup_t> _fixups;
+				/**
+				 * \~russian
+				 * Ряд записей в память, подряд размещённых
+				 *
+				 * @details Ряд ведётся ради снятия чтения избыточного: порождение
+				 *          кладёт значение в место кадра и тут же читает его оттуда
+				 *          обратно, тогда как оно ещё цело в регистре. Опыт назвал
+				 *          цену такого чтения прямо - оно стоит пересылки из буфера
+				 *          записи, а не обращения к памяти, и стоит её на всяком
+				 *          проходе повторения.
+				 *
+				 *          Ряд ведётся лишь покуда идут записи подряд: запись
+				 *          регистров не меняет, отчего значение, в ряду записанное,
+				 *          заведомо цело. Всякая иная команда ряд обрывает -
+				 *          обрыв опознаётся несовпадением длины кода с меткой ряда,
+				 *          отчего править всякий метод размещения не требуется.
+				 *
+				 * \~english
+				 * A row of writes to memory placed one after another
+				 *
+				 * @details The row is kept to remove a redundant read: the generation
+				 *          puts the value into a place of the frame and at once reads it
+				 *          back from there, whereas it is still intact in the register.
+				 *          The experience named the price of such a read directly - it
+				 *          costs a transfer from the buffer of the write rather than a
+				 *          memory access, and costs it on every trip of the repetition.
+				 *
+				 *          The row is kept only while the writes go one after another: a
+				 *          write of registers changes nothing, hence the value written
+				 *          into the row is known to be intact. Any other command breaks
+				 *          the row - the break is recognised by the length of the code
+				 *          mismatching the mark of the row, so that no method of placing
+				 *          has to be amended.
+				 *
+				 * \~
+				 */
+				vector <stored_t> _stored;
+			private:
 			/**
 			 * \~russian
 			 * Если процессор принадлежит к E2K
@@ -848,33 +849,6 @@ namespace awh {
 				 */
 				uint8_t reserve(const uint8_t channels, const uint32_t reads, const uint32_t writes) noexcept;
 			#endif
-			private:
-				/**
-				 * \~russian
-				 * @brief Объект журнала событий
-				 *
-				 * @details Журналом сообщается лишь ОДНА беда - переход к метке,
-				 *          заведению не подвергшейся. Она означает несогласованность
-				 *          самого порождения, а не свойство выражения, и молчать
-				 *          о ней нельзя: наружу она выходит неотличимой от отказа
-				 *          законного - от числа, в поле команды не помещающегося, -
-				 *          и потребитель получает «кодогенерация неприменима» там,
-				 *          где на деле изъян
-				 *
-				 * \~english
-				 * @brief The event log object
-				 *
-				 * @details Only ONE trouble is reported through the log — a jump to
-				 *          a label that has not been declared. It means an inconsistency
-				 *          of the generation itself rather than a property of the expression,
-				 *          and it cannot be kept silent: outwardly it surfaces indistinguishable
-				 *          from a legitimate failure — from a number that does not fit into
-				 *          the instruction field, — and the consumer receives the message
-				 *          «code generation is not applicable» where in fact the defect
-				 *          is the generation itself.
-				 *
-				 * \~
-				 */
 			public:
 				/**
 				 * \~russian
@@ -1425,7 +1399,6 @@ namespace awh {
 				 * \~
 				 */
 				void store(const reg_t source, const reg_t base, const uint32_t index) noexcept;
-
 				/**
 				 * \~russian
 				 * @brief Метод размещения чтения значения из памяти по адресу в регистре
@@ -1466,7 +1439,6 @@ namespace awh {
 				 * \~
 				 */
 				void fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept;
-
 				/**
 				 * \~russian
 				 * @brief Метод размещения записи значения регистра в память по адресу в регистре

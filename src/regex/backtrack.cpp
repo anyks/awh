@@ -4341,6 +4341,11 @@ awh::regex::Backtrack::Point::Point() noexcept : frame(false), pc(0), pos(0), jo
  */
 awh::regex::Backtrack::Change::Change() noexcept : slot(0), value(0) {}
 /**
+ * @brief Конструктор таблицы принадлежности значений байта классу символов
+ *
+ */
+awh::regex::Backtrack::Table::Table() noexcept : modes(0), bytes{0} {}
+/**
  * @brief Конструктор записи розыска
  *
  */

@@ -359,7 +359,7 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		Chain() noexcept : join(regex::INVALID_ADDRESS) {}
+		explicit Chain() noexcept : join(regex::INVALID_ADDRESS) {}
 	} chain_t;
 
 	/**

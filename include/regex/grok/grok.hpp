@@ -283,7 +283,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using error_t = awh::grok::error_t;
+			using error_t = grok::error_t;
 			/**
 			 * \~russian
 			 * @brief Вид значения поля шаблона
@@ -293,7 +293,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using kind_t = awh::grok::kind_t;
+			using kind_t = grok::kind_t;
 			/**
 			 * \~russian
 			 * @brief Описание поля шаблона
@@ -303,7 +303,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using field_t = awh::grok::field_t;
+			using field_t = grok::field_t;
 			/**
 			 * \~russian
 			 * @brief Режим сборки регулярного выражения
@@ -313,7 +313,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using flag_t = awh::regex::flag_t;
+			using flag_t = regex::flag_t;
 			/**
 			 * \~russian
 			 * @brief Извлечённое значение поля шаблона
@@ -323,7 +323,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using value_t = awh::grok::value_t;
+			using value_t = grok::value_t;
 			/**
 			 * \~russian
 			 * @brief Собранный шаблон Grok
@@ -333,7 +333,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using exp_t = shared_ptr <const awh::grok::expression_t>;
+			using exp_t = shared_ptr <const grok::expression_t>;
 			/**
 			 * \~russian
 			 * @brief Обработчик сжатия либо разжатия записи собранных шаблонов
@@ -343,7 +343,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using packer_t = awh::regex::storage_t::packer_t;
+			using packer_t = regex::storage_t::packer_t;
 		private:
 			/**
 			 * \~russian
@@ -384,11 +384,19 @@ namespace awh {
 				size_t operator () (const key_t & key) const noexcept;
 			};
 		private:
+			// Обработчик сжатия части записи, шаблоны описывающей
+			packer_t _pack;
+			// Обработчик разбора сжатой части записи, шаблоны описывающей
+			packer_t _unpack;
+		private:
 			// Объект работы с регулярными выражениями
-			awh::RegularExpression _regexp;
+			regexp_t _regexp;
+		private:
+			// Код ошибки разбора шаблона
+			mutable error_t _error;
 		private:
 			// Объект хранилища собранных регулярных выражений
-			awh::regex::storage_t _storage;
+			regex::storage_t _storage;
 		private:
 			/**
 			 * \~russian
@@ -414,19 +422,12 @@ namespace awh {
 			 * \~
 			 */
 			compressor::method_t _method;
-			// Обработчик сжатия части записи, шаблоны описывающей
-			packer_t _pack;
-			// Обработчик разбора сжатой части записи, шаблоны описывающей
-			packer_t _unpack;
-		private:
-			// Код ошибки разбора шаблона
-			mutable error_t _error;
 		private:
 			// Реестр именованных шаблонов
 			unordered_map <string, string> _patterns;
 		private:
 			// Кэш собранных шаблонов Grok
-			mutable unordered_map <key_t, weak_ptr <const awh::grok::expression_t>, Hash> _cache;
+			mutable unordered_map <key_t, weak_ptr <const grok::expression_t>, Hash> _cache;
 		private:
 			/**
 			 * \~russian
@@ -994,4 +995,4 @@ namespace awh {
 			 */
 			~Grok() noexcept;
 	} grok_t;
-}
+};
