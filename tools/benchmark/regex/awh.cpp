@@ -92,8 +92,13 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		 *          и сличение без признака мерило бы не то, ради чего заведено.
 		 *
 		 */
-		const auto expression = regexp.build(scenario.pattern,
-		 static_cast <uint32_t> (awh::regex::flag_t::JIT));
+		// Сборка выражения: машинным кодом, а при AWH_REGEX_INTERPRETER — толкователем
+		#if defined(AWH_REGEX_INTERPRETER)
+			const auto expression = regexp.build(scenario.pattern, 0);
+		#else
+			const auto expression = regexp.build(scenario.pattern,
+			 static_cast <uint32_t> (awh::regex::flag_t::JIT));
+		#endif
 		/**
 		 * Если сборка регулярного выражения не выполнена
 		 */

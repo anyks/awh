@@ -56,9 +56,15 @@ STAND_SOURCES="src/regex src/encoding/unicode src/codec/json src/num/lexical
 #          в «benchmark/regex/COMPARISON.md»
 ##
 stand_sources() {
-	find src/regex src/encoding/unicode src/codec/json src/num/lexical \
-		src/encoding/charset src/alloc src/alloc/capture \
-		-maxdepth 1 -name '*.cpp' ! -name 'obsd.cpp' | LC_ALL=C sort
+	for dir in src/regex src/encoding/unicode src/codec/json src/num/lexical \
+		src/encoding/charset src/alloc src/alloc/capture; do
+		for f in "$dir"/*.cpp; do
+			case "$f" in
+				*/obsd.cpp) ;;
+				*) [ -f "$f" ] && echo "$f" ;;
+			esac
+		done
+	done | LC_ALL=C sort
 	echo src/sys/log.cpp
 	echo src/sys/chrono.cpp
 	echo src/sys/fmk.cpp
