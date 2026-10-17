@@ -56,7 +56,7 @@
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы модуля
  */
 #include "spin.hpp"
 #include "pages.hpp"
