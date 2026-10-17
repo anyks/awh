@@ -31,8 +31,9 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <encoding/ascii.hpp>
-#include <num/lexical/lexical.hpp>
 #include <codec/ini/common.hpp>
+#include <num/lexical/lexical.hpp>
+
 /**
  * Подключаем общее приведение чисел кодеков
  *
@@ -52,38 +53,36 @@ using namespace std;
  */
 namespace {
 	/**
-	 * @brief Тождественный разрядный вид той же ширины и той же знаковости
-	 *
-	 * @tparam T вид языка, коему ищется разрядное соответствие
-	 *
-	 * @details Виды языка и виды разрядные равными не являются: у macOS int64_t есть
-	 * long long, а у Linux - long. Обращение общее awh::codec::convert порождено
-	 * перечнем видов РАЗРЯДНЫХ, потому разбор видом языка ведётся через вид разрядный
-	 * той же ширины и знаковости - перенос этот точен и разряда не теряет
-	 *
-	 */
-	template <typename T>
-	using fixed_t = typename ::std::conditional <::std::is_signed <T>::value,
-		typename ::std::conditional <sizeof(T) == 1, int8_t, typename ::std::conditional <sizeof(T) == 2, int16_t, typename ::std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
-		typename ::std::conditional <sizeof(T) == 1, uint8_t, typename ::std::conditional <sizeof(T) == 2, uint16_t, typename ::std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
-	/**
 	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
 
 	/**
-	 * @note Приведение дробного числа к затребованному виду держалось здесь СВОЕЙ копией,
-	 *       тело в тело равной общей `awh::codec::convert` из `src/codec/numeric.cpp`.
-	 *       Копий тех вынос 01.09.2026 оставил семь по всем кодекам, и расходятся они
-	 *       молча: правка края округления в одном месте оставляет прочие с прежним изъяном
+	 * @brief Шаблон тождественного разрядного вида той же ширины и той же знаковости
+	 *
+	 * @tparam T вид языка, коему ищется разрядное соответствие
+	 *
 	 */
+	template <typename T>
+	/**
+	 * @brief Тождественный разрядный вид той же ширины и той же знаковости
+	 *
+	 * @details Виды языка и виды разрядные равными не являются: у macOS int64_t есть
+	 *          long long, а у Linux - long. Обращение общее awh::codec::convert порождено
+	 *          перечнем видов РАЗРЯДНЫХ, потому разбор видом языка ведётся через вид разрядный
+	 *          той же ширины и знаковости - перенос этот точен и разряда не теряет.
+	 *
+	 */
+	using fixed_t = typename ::std::conditional <::std::is_signed <T>::value,
+		typename ::std::conditional <sizeof(T) == 1, int8_t, typename ::std::conditional <sizeof(T) == 2, int16_t, typename ::std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
+		typename ::std::conditional <sizeof(T) == 1, uint8_t, typename ::std::conditional <sizeof(T) == 2, uint16_t, typename ::std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
 
 	/**
-	 * @brief Метод сличения последовательностей знаков без учёта регистра
+	 * @brief Функция сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
-	 * Названия кодировок и записи логического значения знаками US-ASCII ограничены, и
-	 * привлекать сюда правила местности незачем
+	 *          Названия кодировок и записи логического значения знаками US-ASCII ограничены, и
+	 *          привлекать сюда правила местности незачем.
 	 *
 	 * @param first  первая последовательность знаков для сличения
 	 * @param second вторая последовательность знаков для сличения
@@ -112,11 +111,11 @@ namespace {
 		return true;
 	}
 	/**
-	 * @brief Метод отбрасывания пробельной обвязки значения свойства
+	 * @brief Функция отбрасывания пробельной обвязки значения свойства
 	 *
 	 * @details Пробельными считаются пробел, знак табуляции, возврат каретки и перевод
-	 * строки. Обвязка в значении появляется сама собой при записи с выравниванием, и
-	 * отбрасывать её приходится всегда
+	 *          строки. Обвязка в значении появляется сама собой при записи с выравниванием, и
+	 *          отбрасывать её приходится всегда
 	 *
 	 * @param text обрабатываемое значение свойства
 	 * @return     значение без пробельной обвязки по краям
@@ -143,6 +142,28 @@ namespace {
 		return text.substr(begin, end - begin);
 	}
 };
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Location::Location() noexcept :
+ line(0), column(0), offset(NO_OFFSET) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Span::Span() noexcept : offset(0), length(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение начала отрезка в хранилище знаков
+ * @param length длина отрезка в байтах
+ *
+ */
+awh::codec::ini::Span::Span(const uint32_t offset, const uint32_t length) noexcept :
+ offset(offset), length(length) {}
 
 /**
  * @brief Метод проверки совпадения имени
@@ -178,6 +199,26 @@ bool awh::codec::ini::Name::operator != (const Name & name) const noexcept {
 	// Выводим обратный результат сличения имён
 	return !this->is(name.section, name.subsection);
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Name::Name() noexcept : section{""}, subsection{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Property::Property() noexcept :
+ quoted(false), append(false), valueless(false), key{""}, value{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Comment::Comment() noexcept :
+ marker(';'), text{""}, placement(placement_t::OWN) {}
+
 /**
  * @brief Метод получения описания кода ошибки разбора
  *
@@ -839,8 +880,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 					// Выводим признак успешного разбора
 					return true;
 				}
-			}
-			{
+			}{
 				// Значение целого числа без знака наибольшей разрядности
 				uint64_t value = 0;
 				/**
@@ -877,7 +917,6 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 		}
 	}
 }
-
 /**
  * Выполняем порождение метода разбора числа для всех поддерживаемых типов
  *

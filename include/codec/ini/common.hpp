@@ -40,7 +40,7 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include "../../sys/macro/global.hpp"
 
@@ -54,7 +54,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -70,7 +69,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -191,6 +189,26 @@ namespace awh {
 		namespace ini {
 			/**
 			 * \~russian
+			 * @brief Наибольшая допустимая глубина вложенности подразделов
+			 *
+			 * \~english
+			 * @brief Largest admissible depth of the nesting of the subsections
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_DEPTH = 64;
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина имени раздела или свойства в байтах
+			 *
+			 * \~english
+			 * @brief Largest admissible length of the name of a section or of a property in bytes
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_NAME = 4096;
+			/**
+			 * \~russian
 			 * @brief Наибольшая допустимая длина логической строки в байтах
 			 *
 			 * @details Предел считается на строку целиком - вместе со всеми её
@@ -205,29 +223,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_LINE = 0x10000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина имени раздела или свойства в байтах
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the name of a section or of a property in bytes
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_NAME = 4096;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая глубина вложенности подразделов
-			 *
-			 * \~english
-			 * @brief Largest admissible depth of the nesting of the subsections
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_DEPTH = 64;
-
 			/**
 			 * \~russian
 			 * @brief Количество пар вместилища, начиная с какого заводится указатель имён
@@ -256,8 +251,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t INDEX_THRESHOLD = 16;
-
-
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое количество строк продолжения у одной записи
@@ -268,7 +261,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_CONTINUATION = 1024;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшая допустимая глубина вложенности обращений к значениям
@@ -279,7 +271,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_REFERENCE_DEPTH = 32;
-
 			/**
 			 * \~russian
 			 * @brief Наибольший допустимый общий объём подстановки значений в байтах
@@ -306,18 +297,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint64_t MAX_EXPANSION = 0x100000;
-
-			/**
-			 * \~russian
-			 * @brief Обозначение отсутствующего положения в исходном тексте
-			 *
-			 * \~english
-			 * @brief Designation of an absent position in the source text
-			 *
-			 * \~
-			 */
-			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (~0ull);
-
 			/**
 			 * \~russian
 			 * @brief Обозначение отсутствующей записи разобранного текста
@@ -328,6 +307,16 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t NO_RECORD = static_cast <uint32_t> (~0u);
+			/**
+			 * \~russian
+			 * @brief Обозначение отсутствующего положения в исходном тексте
+			 *
+			 * \~english
+			 * @brief Designation of an absent position in the source text
+			 *
+			 * \~
+			 */
+			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (~0ull);
 
 			/**
 			 * \~russian
@@ -414,6 +403,290 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			
+			/**
+			 * \~russian
+			 * @brief Обращение с кавычками вокруг значения свойства
+			 *
+			 * \~english
+			 * @brief Treatment of the quotes around the value of a property
+			 *
+			 * \~
+			 */
+			enum class quote_t : uint8_t {
+				KEEP  = 0x00, // Кавычки считаются частью значения
+				STRIP = 0x01  // Кавычки снимаются, а обвязка внутри них сохраняется
+			};
+			/**
+			 * \~russian
+			 * @brief Признаваемая запись логического значения
+			 *
+			 * \~english
+			 * @brief Recognized notation of a logical value
+			 *
+			 * \~
+			 */
+			enum class boolean_t : uint8_t {
+				STRICT   = 0x00, // Признаются лишь «true», «false», «1» и «0»
+				EXTENDED = 0x01  // Признаются сверх того «yes», «no», «on», «off» в любом регистре
+			};
+			/**
+			 * \~russian
+			 * @brief Знак конца строки собираемого текста настроек
+			 *
+			 * \~english
+			 * @brief Line ending character of the settings text being assembled
+			 *
+			 * \~
+			 */
+			enum class newline_t : uint8_t {
+				LF   = 0x00, // Перевод строки, принятый в системах семейства UNIX
+				CRLF = 0x01, // Возврат каретки с переводом строки, принятый в MS Windows
+				CR   = 0x02  // Одиночный возврат каретки
+			};
+			/**
+			 * \~russian
+			 * @brief Расположение примечания в тексте настроек
+			 *
+			 * \~english
+			 * @brief Placement of a comment in a settings text
+			 *
+			 * \~
+			 */
+			enum class placement_t : uint8_t {
+				OWN    = 0x00, // Примечание занимает строку целиком
+				TAIL   = 0x01, // Примечание записано в конце строки свойства
+				HEADER = 0x02  // Примечание записано в конце строки объявления раздела
+			};
+			/**
+			 * \~russian
+			 * @brief Знаки, разделяющие имя свойства и его значение
+			 *
+			 * @details Разбор языка Python признаёт наравне со знаком равенства двоеточие,
+			 *          прочие наречия - только знак равенства.
+			 *
+			 * \~english
+			 * @brief Characters separating the name of a property and its value
+			 *
+			 * @details The parsing of the Python language recognizes the colon on a par with the equals sign,
+			 *          the other dialects — only the equals sign.
+			 *
+			 * \~
+			 */
+			enum class separator_t : uint8_t {
+				EQUALS = 0x00, // Имя и значение разделяет знак равенства
+				COLON  = 0x01, // Имя и значение разделяет двоеточие
+				BOTH   = 0x02  // Имя и значение разделяет любой из двух знаков
+			};
+			/**
+			 * \~russian
+			 * @brief Построение обращения к значению другого свойства
+			 *
+			 * \~english
+			 * @brief Construction of a reference to the value of another property
+			 *
+			 * \~
+			 */
+			enum class reference_t : uint8_t {
+				NONE   = 0x00, // Обращения к значениям не подставляются
+				SHELL  = 0x01, // Обращение записывается видом «${имя}» либо «${раздел:имя}»
+				PYTHON = 0x02  // Обращение записывается видом «%(имя)s» по образцу configparser
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обхождения с негодной последовательностью UTF-8 при записи
+			 *
+			 * @details Читающий байты, кодировке не отвечающие, отвергает - того требует
+			 *          описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
+			 *          прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
+			 *          сетевых сообщений, битые байты несут делом обычным.
+			 *
+			 * @details Замена, а не отказ, взята правилом по умолчанию. Отказ записи режет
+			 *          ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
+			 *          бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
+			 *          выданном тексте виден глазом, а не проглатывается молча.
+			 *
+			 * @note Правило это положено одинаковым у всех кодеков
+			 *
+			 * @note Единого описания у настроек INI нет, и кодировка их задаётся окружением.
+			 *       Правило `PASS` здесь потому не выводит за пределы описания, а лишь
+			 *       выдаёт байты такими, какими их подали
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
+			 *
+			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
+			 *          requires that. The writing, however, passed them through, and the codec gave away a text which it itself
+			 *          could not read. This case is not invented: the values taken from the logs and
+			 *          the network messages carry the broken bytes as a usual matter.
+			 *
+			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
+			 *          cuts off the **whole** text rather than a single value, and one broken byte in one
+			 *          message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
+			 *          and is visible to the eye in the given text rather than being swallowed silently.
+			 *
+			 * @note This rule is decided by the owner to be identical for all the codecs
+			 *
+			 * @note The settings INI have no single specification, and their encoding is set by the
+			 *       environment. The `PASS` rule here therefore does not lead beyond the specification,
+			 *       but only gives the bytes such as they were fed
+			 *
+			 * \~
+			 */
+			enum class malformed_t : uint8_t {
+				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
+				REFUSE  = 0x01, // Запись отвергается, ничего не записав
+				PASS    = 0x02  // Байты пропускаются как есть
+			};
+			/**
+			 * \~russian
+			 * @brief Построение имени подраздела
+			 *
+			 * \~english
+			 * @brief Construction of the name of a subsection
+			 *
+			 * \~
+			 */
+			enum class subsection_t : uint8_t {
+				NONE      = 0x00, // Подразделы не выделяются, имя раздела берётся целиком
+				DELIMITED = 0x01, // Подраздел отделяется знаком-разделителем: «[раздел.подраздел]»
+				QUOTED    = 0x02, // Подраздел заключается в кавычки: «[раздел "подраздел"]»
+				BOTH      = 0x03  // Признаются оба построения разом, а запись ведётся кавычками
+			};
+			/**
+			 * \~russian
+			 * @brief Обращение с повторным объявлением свойства в разделе
+			 *
+			 * @details Наречия расходятся и здесь: MS Windows берёт первое объявление,
+			 *          разбор языка Python - последнее, а Git и systemd собирают перечень значений.
+			 *
+			 * \~english
+			 * @brief Treatment of a repeated declaration of a property in a section
+			 *
+			 * @details The dialects diverge here as well: MS Windows takes the first declaration,
+			 *          the parsing of the Python language — the last one, while Git and systemd assemble a list of the values.
+			 *
+			 * \~
+			 */
+			enum class duplicate_t : uint8_t {
+				FIRST = 0x00, // Сохраняется первое объявленное значение
+				LAST  = 0x01, // Сохраняется последнее объявленное значение
+				MERGE = 0x02, // Значения собираются в перечень в порядке объявления
+				ERROR = 0x03  // Повторное объявление прекращает разбор ошибкой
+			};
+			/**
+			 * \~russian
+			 * @brief Знаки, начинающие примечание
+			 *
+			 * @details Наречия расходятся: MS Windows и PHP признают лишь точку с запятой,
+			 *          а Git и systemd - оба знака.
+			 *
+			 * \~english
+			 * @brief Characters beginning a comment
+			 *
+			 * @details The dialects diverge: MS Windows and PHP recognize only the semicolon,
+			 *          while Git and systemd — both characters.
+			 *
+			 * \~
+			 */
+			enum class marker_t : uint8_t {
+				NONE      = 0x00, // Примечания не признаются вовсе
+				SEMICOLON = 0x01, // Примечание начинает точка с запятой
+				HASH      = 0x02, // Примечание начинает знак решётки
+				BOTH      = 0x03  // Примечание начинает любой из двух знаков
+			};
+			/**
+			 * \~russian
+			 * @brief Виды значения владеющего типа
+			 *
+			 * @details Своих видов значения у наречия INI нет вовсе: значение свойства
+			 *          есть последовательность знаков, а число ли это, логическое значение либо
+			 *          запись как она есть - решает извлечение. Перечисление это описывает не вид
+			 *          записи, а устройство владеющего значения: простое оно, перечнем является
+			 *          либо вместилищем пар.
+			 *
+			 * @note Перечисление заведено ради владеющего значения из `value.hpp` и им
+			 *       одним употребляется: разбор, запись и дерево настроек видов значения
+			 *       не различают вовсе, и вводить их туда незачем
+			 *
+			 * \~english
+			 * @brief Kinds of the value of the owning type
+			 *
+			 * @details The INI dialect has no kinds of a value of its own at all: the value of a property
+			 *          is a sequence of characters, while whether this is a number, a logical value or
+			 *          a record as it is — is decided by the extraction. This enumeration describes not the kind of
+			 *          the record but the arrangement of the owning value: whether it is a simple one, an array
+			 *          or a container of the pairs.
+			 *
+			 * @note The enumeration is created for the sake of the owning value from `value.hpp` and is used
+			 *       by it alone: the parsing, the writing and the settings tree do not distinguish the kinds
+			 *       of a value at all, and there is no point in introducing them there
+			 *
+			 * \~
+			 */
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Значение не определено
+				STRING = 0x01, // Значение свойства последовательностью знаков
+				ARRAY  = 0x02, // Перечень значений одноимённого свойства
+				TABLE  = 0x03  // Вместилище пар: раздел, подраздел либо корень настроек
+			};
+			/**
+			 * \~russian
+			 * @brief Виды событий чтения текста настроек
+			 *
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a settings text
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE     = 0x00, // Событие не определено
+				SECTION  = 0x01, // Объявление раздела
+				PROPERTY = 0x02, // Свойство со значением
+				COMMENT  = 0x03, // Примечание
+				BLANK    = 0x04, // Пустая строка
+				FINISH   = 0x05  // Текст разобран до конца, событие видно после цикла разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста настроек
+			 *
+			 * @details Текст настроек кодировку не объявляет, и определяется она по метке
+			 *          порядка байтов в начале текста; при её отсутствии текст считается записанным
+			 *          в UTF-8.
+			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
+			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 *       только навязанными извне
+			 *
+			 * \~english
+			 * @brief Encodings of the source settings text
+			 *
+			 * @details A settings text does not announce its encoding, and it is determined by the byte
+			 *          order mark at the beginning of the text; in its absence the text is considered written
+			 *          in UTF-8.
+			 *
+			 * @note The single-byte encodings - ISO-8859-1, US-ASCII and Windows-1252 - have no byte
+			 *       order mark at all and cannot be recognized: they are accepted only when imposed
+			 *       from outside
+			 *
+			 * \~
+			 */
+			enum class encoding_t : uint8_t {
+				NONE    = 0x00, // Кодировка не определена
+				UTF8    = 0x01, // Кодировка UTF-8
+				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
+				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
+				LATIN1  = 0x04, // Кодировка ISO-8859-1
+				ASCII   = 0x05, // Кодировка US-ASCII
+				CP1252  = 0x06, // Кодировка Windows-1252
+				UTF32LE = 0x07, // Кодировка UTF-32 с обратным порядком байтов
+				UTF32BE = 0x08  // Кодировка UTF-32 с прямым порядком байтов
+			};
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора текста настроек
@@ -511,303 +784,46 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Виды событий чтения текста настроек
+			 * @brief Структура положения в исходном тексте настроек
 			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 * @details Служит для указания места ошибки и для привязки записей к исходному
+			 *          тексту.
+			 *
+			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
+			 *       смещение - в байтах исходного текста до перекодирования
 			 *
 			 * \~english
-			 * @brief Kinds of the events of the reading of a settings text
+			 * @brief Structure of the setting's position in the source configuration text
 			 *
-			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 * @details Serves for indicating the place of an error and for binding the records to the source
+			 *          text.
+			 *
+			 * @note The line number and the position in the line are counted in Unicode characters, while
+			 *       the offset — in the bytes of the source text before the transcoding
 			 *
 			 * \~
 			 */
-			enum class event_t : uint8_t {
-				NONE     = 0x00, // Событие не определено
-				SECTION  = 0x01, // Объявление раздела
-				PROPERTY = 0x02, // Свойство со значением
-				COMMENT  = 0x03, // Примечание
-				BLANK    = 0x04, // Пустая строка
-				FINISH   = 0x05  // Текст разобран до конца, событие видно после цикла разбора
-			};
-
+			typedef struct __AWH_SHARED_EXPORT__ Location {
+				// Номер строки, считая с единицы
+				uint32_t line;
+				// Положение в строке, считая с единицы
+				uint32_t column;
+				// Смещение от начала текста в байтах
+				uint64_t offset;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Location() noexcept;
+			} location_t;
 			/**
 			 * \~russian
-			 * @brief Кодировки исходного текста настроек
-			 *
-			 * @details Текст настроек кодировку не объявляет, и определяется она по метке
-			 *          порядка байтов в начале текста; при её отсутствии текст считается записанным
-			 *          в UTF-8.
-			 *
-			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
-			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
-			 *       только навязанными извне
-			 *
-			 * \~english
-			 * @brief Encodings of the source settings text
-			 *
-			 * @details A settings text does not announce its encoding, and it is determined by the byte
-			 *          order mark at the beginning of the text; in its absence the text is considered written
-			 *          in UTF-8.
-			 *
-			 * @note The single-byte encodings - ISO-8859-1, US-ASCII and Windows-1252 - have no byte
-			 *       order mark at all and cannot be recognized: they are accepted only when imposed
-			 *       from outside
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06, // Кодировка Windows-1252
-				UTF32LE = 0x07, // Кодировка UTF-32 с обратным порядком байтов
-				UTF32BE = 0x08  // Кодировка UTF-32 с прямым порядком байтов
-			};
-
-			/**
-			 * \~russian
-			 * @brief Знаки, начинающие примечание
-			 *
-			 * @details Наречия расходятся: MS Windows и PHP признают лишь точку с запятой,
-			 *          а Git и systemd - оба знака.
-			 *
-			 * \~english
-			 * @brief Characters beginning a comment
-			 *
-			 * @details The dialects diverge: MS Windows and PHP recognize only the semicolon,
-			 *          while Git and systemd — both characters.
-			 *
-			 * \~
-			 */
-			enum class marker_t : uint8_t {
-				NONE      = 0x00, // Примечания не признаются вовсе
-				SEMICOLON = 0x01, // Примечание начинает точка с запятой
-				HASH      = 0x02, // Примечание начинает знак решётки
-				BOTH      = 0x03  // Примечание начинает любой из двух знаков
-			};
-
-			/**
-			 * \~russian
-			 * @brief Знаки, разделяющие имя свойства и его значение
-			 *
-			 * @details Разбор языка Python признаёт наравне со знаком равенства двоеточие,
-			 *          прочие наречия - только знак равенства.
-			 *
-			 * \~english
-			 * @brief Characters separating the name of a property and its value
-			 *
-			 * @details The parsing of the Python language recognizes the colon on a par with the equals sign,
-			 *          the other dialects — only the equals sign.
-			 *
-			 * \~
-			 */
-			enum class separator_t : uint8_t {
-				EQUALS = 0x00, // Имя и значение разделяет знак равенства
-				COLON  = 0x01, // Имя и значение разделяет двоеточие
-				BOTH   = 0x02  // Имя и значение разделяет любой из двух знаков
-			};
-
-			/**
-			 * \~russian
-			 * @brief Обращение с повторным объявлением свойства в разделе
-			 *
-			 * @details Наречия расходятся и здесь: MS Windows берёт первое объявление,
-			 *          разбор языка Python - последнее, а Git и systemd собирают перечень значений.
-			 *
-			 * \~english
-			 * @brief Treatment of a repeated declaration of a property in a section
-			 *
-			 * @details The dialects diverge here as well: MS Windows takes the first declaration,
-			 *          the parsing of the Python language — the last one, while Git and systemd assemble a list of the values.
-			 *
-			 * \~
-			 */
-			enum class duplicate_t : uint8_t {
-				FIRST = 0x00, // Сохраняется первое объявленное значение
-				LAST  = 0x01, // Сохраняется последнее объявленное значение
-				MERGE = 0x02, // Значения собираются в перечень в порядке объявления
-				ERROR = 0x03  // Повторное объявление прекращает разбор ошибкой
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды значения владеющего типа
-			 *
-			 * @details Своих видов значения у наречия INI нет вовсе: значение свойства
-			 *          есть последовательность знаков, а число ли это, логическое значение либо
-			 *          запись как она есть - решает извлечение. Перечисление это описывает не вид
-			 *          записи, а устройство владеющего значения: простое оно, перечнем является
-			 *          либо вместилищем пар.
-			 *
-			 * @note Перечисление заведено ради владеющего значения из `value.hpp` и им
-			 *       одним употребляется: разбор, запись и дерево настроек видов значения
-			 *       не различают вовсе, и вводить их туда незачем
-			 *
-			 * \~english
-			 * @brief Kinds of the value of the owning type
-			 *
-			 * @details The INI dialect has no kinds of a value of its own at all: the value of a property
-			 *          is a sequence of characters, while whether this is a number, a logical value or
-			 *          a record as it is — is decided by the extraction. This enumeration describes not the kind of
-			 *          the record but the arrangement of the owning value: whether it is a simple one, an array
-			 *          or a container of the pairs.
-			 *
-			 * @note The enumeration is created for the sake of the owning value from `value.hpp` and is used
-			 *       by it alone: the parsing, the writing and the settings tree do not distinguish the kinds
-			 *       of a value at all, and there is no point in introducing them there
-			 *
-			 * \~
-			 */
-			enum class type_t : uint8_t {
-				NONE   = 0x00, // Значение не определено
-				STRING = 0x01, // Значение свойства последовательностью знаков
-				ARRAY  = 0x02, // Перечень значений одноимённого свойства
-				TABLE  = 0x03  // Вместилище пар: раздел, подраздел либо корень настроек
-			};
-
-			/**
-			 * \~russian
-			 * @brief Обращение с кавычками вокруг значения свойства
-			 *
-			 * \~english
-			 * @brief Treatment of the quotes around the value of a property
-			 *
-			 * \~
-			 */
-			enum class quote_t : uint8_t {
-				KEEP  = 0x00, // Кавычки считаются частью значения
-				STRIP = 0x01  // Кавычки снимаются, а обвязка внутри них сохраняется
-			};
-
-			/**
-			 * \~russian
-			 * @brief Построение имени подраздела
-			 *
-			 * \~english
-			 * @brief Construction of the name of a subsection
-			 *
-			 * \~
-			 */
-			enum class subsection_t : uint8_t {
-				NONE      = 0x00, // Подразделы не выделяются, имя раздела берётся целиком
-				DELIMITED = 0x01, // Подраздел отделяется знаком-разделителем: «[раздел.подраздел]»
-				QUOTED    = 0x02, // Подраздел заключается в кавычки: «[раздел "подраздел"]»
-				BOTH      = 0x03  // Признаются оба построения разом, а запись ведётся кавычками
-			};
-
-			/**
-			 * \~russian
-			 * @brief Расположение примечания в тексте настроек
-			 *
-			 * \~english
-			 * @brief Placement of a comment in a settings text
-			 *
-			 * \~
-			 */
-			enum class placement_t : uint8_t {
-				OWN    = 0x00, // Примечание занимает строку целиком
-				TAIL   = 0x01, // Примечание записано в конце строки свойства
-				HEADER = 0x02  // Примечание записано в конце строки объявления раздела
-			};
-
-			/**
-			 * \~russian
-			 * @brief Признаваемая запись логического значения
-			 *
-			 * \~english
-			 * @brief Recognized notation of a logical value
-			 *
-			 * \~
-			 */
-			enum class boolean_t : uint8_t {
-				STRICT   = 0x00, // Признаются лишь «true», «false», «1» и «0»
-				EXTENDED = 0x01  // Признаются сверх того «yes», «no», «on», «off» в любом регистре
-			};
-
-			/**
-			 * \~russian
-			 * @brief Знак конца строки собираемого текста настроек
-			 *
-			 * \~english
-			 * @brief Line ending character of the settings text being assembled
-			 *
-			 * \~
-			 */
-			enum class newline_t : uint8_t {
-				LF   = 0x00, // Перевод строки, принятый в системах семейства UNIX
-				CRLF = 0x01, // Возврат каретки с переводом строки, принятый в MS Windows
-				CR   = 0x02  // Одиночный возврат каретки
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обхождения с негодной последовательностью UTF-8 при записи
-			 *
-			 * @details Читающий байты, кодировке не отвечающие, отвергает - того требует
-			 *          описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
-			 *          прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
-			 *          сетевых сообщений, битые байты несут делом обычным.
-			 *
-			 * @details Замена, а не отказ, взята правилом по умолчанию. Отказ записи режет
-			 *          ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
-			 *          бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
-			 *          выданном тексте виден глазом, а не проглатывается молча.
-			 *
-			 * @note Правило это положено одинаковым у всех кодеков
-			 *
-			 * @note Единого описания у настроек INI нет, и кодировка их задаётся окружением.
-			 *       Правило `PASS` здесь потому не выводит за пределы описания, а лишь
-			 *       выдаёт байты такими, какими их подали
-			 *
-			 * \~english
-			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
-			 *
-			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
-			 *          requires that. The writing, however, passed them through, and the codec gave away a text which it itself
-			 *          could not read. This case is not invented: the values taken from the logs and
-			 *          the network messages carry the broken bytes as a usual matter.
-			 *
-			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
-			 *          cuts off the **whole** text rather than a single value, and one broken byte in one
-			 *          message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
-			 *          and is visible to the eye in the given text rather than being swallowed silently.
-			 *
-			 * @note This rule is decided by the owner to be identical for all the codecs
-			 *
-			 * @note The settings INI have no single specification, and their encoding is set by the
-			 *       environment. The `PASS` rule here therefore does not lead beyond the specification,
-			 *       but only gives the bytes such as they were fed
-			 *
-			 * \~
-			 */
-			enum class malformed_t : uint8_t {
-				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
-				REFUSE  = 0x01, // Запись отвергается, ничего не записав
-				PASS    = 0x02  // Байты пропускаются как есть
-			};
-
-			/**
-			 * \~russian
-			 * @brief Построение обращения к значению другого свойства
-			 *
-			 * \~english
-			 * @brief Construction of a reference to the value of another property
-			 *
-			 * \~
-			 */
-			enum class reference_t : uint8_t {
-				NONE   = 0x00, // Обращения к значениям не подставляются
-				SHELL  = 0x01, // Обращение записывается видом «${имя}» либо «${раздел:имя}»
-				PYTHON = 0x02  // Обращение записывается видом «%(имя)s» по образцу configparser
-			};
-
-			/**
-			 * \~russian
-			 * @brief Отрезок общего хранилища знаков
+			 * @brief Структура отрезка общего хранилища знаков
 			 *
 			 * @details Хранилища знаков дописываются по мере разбора и при росте
 			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
@@ -815,7 +831,7 @@ namespace awh {
 			 *          перемещение.
 			 *
 			 * \~english
-			 * @brief Segment of the common storage of the characters
+			 * @brief Structure of a segment of the shared character storage
 			 *
 			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
 			 *          are moved, invalidating the references to their content. To keep the position of a
@@ -833,13 +849,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Span() noexcept : offset(0), length(0) {}
+				explicit Span() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -855,53 +870,11 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+				Span(const uint32_t offset, const uint32_t length) noexcept;
 			} span_t;
-
 			/**
 			 * \~russian
-			 * @brief Положение в исходном тексте настроек
-			 *
-			 * @details Служит для указания места ошибки и для привязки записей к исходному
-			 *          тексту.
-			 *
-			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 *       смещение - в байтах исходного текста до перекодирования
-			 *
-			 * \~english
-			 * @brief Position in the source settings text
-			 *
-			 * @details Serves for indicating the place of an error and for binding the records to the source
-			 *          text.
-			 *
-			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 *       the offset — in the bytes of the source text before the transcoding
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Смещение от начала текста в байтах
-				uint64_t offset;
-				// Номер строки, считая с единицы
-				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
-			} location_t;
-
-			/**
-			 * \~russian
-			 * @brief Имя раздела текста настроек
+			 * @brief Класс имени раздела текста настроек
 			 *
 			 * @details Имя состоит из имени раздела и необязательного имени подраздела.
 			 *          Разделены они бывают знаком-разделителем либо кавычками - в зависимости от
@@ -925,7 +898,7 @@ namespace awh {
 			 *          же ответ правдоподобен, и оттого беда хуже. Держать надлежит копию, а не вид
 			 *
 			 * \~english
-			 * @brief Name of a section of a settings text
+			 * @brief Class of a settings section name
 			 *
 			 * @details The name consists of the name of the section and of an optional name of a subsection.
 			 *          They happen to be separated by a separator character or by quotes — depending on the
@@ -951,66 +924,79 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Name {
-				// Имя раздела без имени подраздела
-				string_view section;
-				// Имя подраздела, пустое при его отсутствии
-				string_view subsection;
-				/**
-				 * \~russian
-				 * @brief Метод проверки совпадения имени
-				 *
-				 * @param section    имя раздела для сличения
-				 * @param subsection имя подраздела для сличения
-				 * @return           результат проверки
-				 *
-				 * \~english
-				 * @brief Method of checking the coincidence of a name
-				 *
-				 * @param section    name of the section for the comparison
-				 * @param subsection name of the subsection for the comparison
-				 * @return           result of the check
-				 *
-				 * \~
-				 */
-				bool is(const string_view section, const string_view subsection = "") const noexcept;
-				/**
-				 * \~russian
-				 * @brief Оператор сравнения
-				 *
-				 * @param name имя для сравнения
-				 * @return     результат сравнения
-				 *
-				 * \~english
-				 * @brief Comparison operator
-				 *
-				 * @param name name for the comparison
-				 * @return     result of the comparison
-				 *
-				 * \~
-				 */
-				bool operator == (const Name & name) const noexcept;
-				/**
-				 * \~russian
-				 * @brief Оператор сравнения
-				 *
-				 * @param name имя для сравнения
-				 * @return     результат сравнения
-				 *
-				 * \~english
-				 * @brief Comparison operator
-				 *
-				 * @param name name for the comparison
-				 * @return     result of the comparison
-				 *
-				 * \~
-				 */
-				bool operator != (const Name & name) const noexcept;
+			typedef class __AWH_SHARED_EXPORT__ Name {
+				public:
+					// Имя раздела без имени подраздела
+					string_view section;
+					// Имя подраздела, пустое при его отсутствии
+					string_view subsection;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод проверки совпадения имени
+					 *
+					 * @param section    имя раздела для сличения
+					 * @param subsection имя подраздела для сличения
+					 * @return           результат проверки
+					 *
+					 * \~english
+					 * @brief Method of checking the coincidence of a name
+					 *
+					 * @param section    name of the section for the comparison
+					 * @param subsection name of the subsection for the comparison
+					 * @return           result of the check
+					 *
+					 * \~
+					 */
+					bool is(const string_view section, const string_view subsection = "") const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Оператор сравнения
+					 *
+					 * @param name имя для сравнения
+					 * @return     результат сравнения
+					 *
+					 * \~english
+					 * @brief Comparison operator
+					 *
+					 * @param name name for the comparison
+					 * @return     result of the comparison
+					 *
+					 * \~
+					 */
+					bool operator == (const Name & name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор сравнения
+					 *
+					 * @param name имя для сравнения
+					 * @return     результат сравнения
+					 *
+					 * \~english
+					 * @brief Comparison operator
+					 *
+					 * @param name name for the comparison
+					 * @return     result of the comparison
+					 *
+					 * \~
+					 */
+					bool operator != (const Name & name) const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Name() noexcept;
 			} name_t;
-
 			/**
 			 * \~russian
-			 * @brief Свойство раздела текста настроек
+			 * @brief Структура свойства раздела текста настроек
 			 *
 			 * @details Значение выдаётся уже приведённым к окончательному виду: кавычки
 			 *          сняты, управляющие последовательности разобраны, строки продолжения склеены,
@@ -1026,7 +1012,7 @@ namespace awh {
 			 *          содержимое. Держать надлежит копию, а не вид
 			 *
 			 * \~english
-			 * @brief Property of a section of a settings text
+			 * @brief Structure of a text section property in the settings
 			 *
 			 * @details The value is issued already brought to its final form: the quotes are
 			 *          removed, the escape sequences are parsed, the continuation lines are glued together,
@@ -1044,34 +1030,8 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Property {
-				// Имя свойства
-				string_view key;
-				// Значение свойства, приведённое к окончательному виду
-				string_view value;
-				// Положение свойства в исходном тексте
-				location_t location;
 				// Признак того, что значение было заключено в кавычки
 				bool quoted;
-				/**
-				 * \~russian
-				 * Признак того, что свойство записано без разделителя и значения
-				 *
-				 * @note Наречие Git признаёт такую запись за истину, прочие наречия
-				 *       отвечают на неё отказом. Значение такого свойства пусто, и
-				 *       отличить его от свойства с пустым значением можно лишь настоящим
-				 *       признаком
-				 *
-				 * \~english
-				 * Flag of the property having been written without a separator and a value
-				 *
-				 * @note The Git dialect recognizes such a record as truth, the other dialects
-				 *       answer it with a refusal. The value of such a property is empty, and
-				 *       it can be distinguished from a property with an empty value only by the present
-				 *       flag
-				 *
-				 * \~
-				 */
-				bool valueless;
 				/**
 				 * \~russian
 				 * Признак того, что свойство записано добавлением к перечню
@@ -1094,20 +1054,44 @@ namespace awh {
 				bool append;
 				/**
 				 * \~russian
-				 * @brief Конструктор
+				 * Признак того, что свойство записано без разделителя и значения
 				 *
+				 * @note Наречие Git признаёт такую запись за истину, прочие наречия
+				 *       отвечают на неё отказом. Значение такого свойства пусто, и
+				 *       отличить его от свойства с пустым значением можно лишь настоящим
+				 *       признаком
+				 *
+				 * \~english
+				 * Flag of the property having been written without a separator and a value
+				 *
+				 * @note The Git dialect recognizes such a record as truth, the other dialects
+				 *       answer it with a refusal. The value of such a property is empty, and
+				 *       it can be distinguished from a property with an empty value only by the present
+				 *       flag
+				 *
+				 * \~
+				 */
+				bool valueless;
+				// Имя свойства
+				string_view key;
+				// Значение свойства, приведённое к окончательному виду
+				string_view value;
+				// Положение свойства в исходном тексте
+				location_t location;
+				/**
+				 * \~russian
+				 * @brief Конструктор
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Property() noexcept : quoted(false), valueless(false), append(false) {}
+				explicit Property() noexcept;
 			} property_t;
-
 			/**
 			 * \~russian
-			 * @brief Примечание текста настроек
+			 * @brief Структура примечания текста настроек
 			 *
 			 * @details Примечания в тексте настроек пишет человек, и при перезаписи файла
 			 *          их надлежит сохранять: файл настроек без примечаний своему хозяину
@@ -1125,7 +1109,7 @@ namespace awh {
 			 *          же ответ правдоподобен, и оттого беда хуже. Держать надлежит копию, а не вид
 			 *
 			 * \~english
-			 * @brief Comment of a settings text
+			 * @brief Structure of the settings text note
 			 *
 			 * @details The comments in a settings text are written by a human, and at a rewriting of the file
 			 *          they ought to be preserved: a settings file without the comments is incomprehensible to its
@@ -1146,36 +1130,35 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Comment {
-				// Содержимое примечания без начального знака и без пробельной обвязки
-				string_view text;
 				// Знак, которым примечание начато
 				char marker;
-				// Расположение примечания в тексте настроек
-				placement_t placement;
+				// Содержимое примечания без начального знака и без пробельной обвязки
+				string_view text;
 				// Положение примечания в исходном тексте
 				location_t location;
+				// Расположение примечания в тексте настроек
+				placement_t placement;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Comment() noexcept : marker(';'), placement(placement_t::OWN) {}
+				explicit Comment() noexcept;
 			} comment_t;
 
 			/**
 			 * \~russian
-			 * @brief Метод получения описания кода ошибки разбора
+			 * @brief Функция получения описания кода ошибки разбора
 			 *
 			 * @param error код ошибки разбора
 			 * @return      описание кода ошибки на английском языке
 			 *
 			 * \~english
-			 * @brief Method of getting the description of an error code of the parsing
+			 * @brief Function of getting the description of an error code of the parsing
 			 *
 			 * @param error error code of the parsing
 			 * @return      description of the error code in the English language
@@ -1183,16 +1166,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод получения названия кодировки
+			 * @brief Функция получения названия кодировки
 			 *
 			 * @param encoding кодировка исходного текста
 			 * @return         общепринятое название кодировки
 			 *
 			 * \~english
-			 * @brief Method of getting the name of an encoding
+			 * @brief Function of getting the name of an encoding
 			 *
 			 * @param encoding encoding of the source text
 			 * @return         commonly accepted name of the encoding
@@ -1200,16 +1182,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод определения кодировки по её названию
+			 * @brief Функция определения кодировки по её названию
 			 *
 			 * @param text название кодировки в любом регистре
 			 * @return     определённая кодировка исходного текста
 			 *
 			 * \~english
-			 * @brief Method of determining an encoding by its name
+			 * @brief Function of determining an encoding by its name
 			 *
 			 * @param text name of the encoding in any case
 			 * @return     determined encoding of the source text
@@ -1217,14 +1198,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ encoding_t encoding(const string_view text) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на признак начала примечания
-			 *
-			 * @param letter проверяемый знак
-			 * @param marker признаваемые знаки начала примечания
-			 * @return       результат проверки
+			 * @brief Функция проверки знака на признак начала примечания
 			 *
 			 * @warning Приговор здесь один: ПРИНАДЛЕЖИТ ли знак набору признаваемых.
 			 *          Начинает ли он примечание в разбираемом тексте, посредник не знает и
@@ -1238,12 +1214,12 @@ namespace awh {
 			 *          `inlineComments` - «a». Приговор посредника и приговор кодека совпали
 			 *          в одном случае из четырёх
 			 *
-			 * \~english
-			 * @brief Method of checking a character for being the beginning of a comment
+			 * @param letter проверяемый знак
+			 * @param marker признаваемые знаки начала примечания
+			 * @return       результат проверки
 			 *
-			 * @param letter character being checked
-			 * @param marker recognized characters of the beginning of a comment
-			 * @return       result of the check
+			 * \~english
+			 * @brief Function of checking a character for being the beginning of a comment
 			 *
 			 * @warning The verdict here is one: whether the character BELONGS to the set of recognized
 			 *          ones. Whether it begins a comment in the text being parsed, the intermediary neither
@@ -1257,17 +1233,16 @@ namespace awh {
 			 *          under `inlineComments` - «a». The verdict of the intermediary and the verdict of the
 			 *          codec coincided in one case out of four
 			 *
+			 * @param letter character being checked
+			 * @param marker recognized characters of the beginning of a comment
+			 * @return       result of the check
+			 *
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool commented(const char letter, const marker_t marker) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на признак разделителя имени и значения
-			 *
-			 * @param letter    проверяемый знак
-			 * @param separator признаваемые знаки разделителя имени и значения
-			 * @return          результат проверки
+			 * @brief Функция проверки знака на признак разделителя имени и значения
 			 *
 			 * @warning Приговор здесь один: ПРИНАДЛЕЖИТ ли знак набору признаваемых.
 			 *          Отделяет ли он имя от значения в разбираемом тексте, посредник не знает:
@@ -1275,12 +1250,12 @@ namespace awh {
 			 *          значение. Замер: `separated('=')` истинен всегда, а строка «k = a = b»
 			 *          даёт свойству «k» значение «a = b» - второй знак есть данные
 			 *
-			 * \~english
-			 * @brief Method of checking a character for being a separator of a name and a value
+			 * @param letter    проверяемый знак
+			 * @param separator признаваемые знаки разделителя имени и значения
+			 * @return          результат проверки
 			 *
-			 * @param letter    character being checked
-			 * @param separator recognized characters of the separator of a name and a value
-			 * @return          result of the check
+			 * \~english
+			 * @brief Function of checking a character for being a separator of a name and a value
 			 *
 			 * @warning The verdict here is one: whether the character BELONGS to the set of recognized
 			 *          ones. Whether it separates the name from the value in the text being parsed, the
@@ -1289,19 +1264,22 @@ namespace awh {
 			 *          always, and the line «k = a = b» gives the property «k» the value «a = b» - the
 			 *          second character is data
 			 *
+			 * @param letter    character being checked
+			 * @param separator recognized characters of the separator of a name and a value
+			 * @return          result of the check
+			 *
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool separated(const char letter, const separator_t separator) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод получения знака конца строки
+			 * @brief Функция получения знака конца строки
 			 *
 			 * @param newline вид знака конца строки
 			 * @return        последовательность знаков конца строки
 			 *
 			 * \~english
-			 * @brief Method of getting the line ending character
+			 * @brief Function of getting the line ending character
 			 *
 			 * @param newline kind of the line ending character
 			 * @return        sequence of the line ending characters
@@ -1309,10 +1287,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view newline(const newline_t newline) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора целого числа со знаком из значения свойства
+			 * @brief Функция разбора целого числа со знаком из значения свойства
 			 *
 			 * @details Пробельная обвязка по краям отбрасывается, а разобрано обязано быть
 			 *          всё значение целиком: остаток за числом считается отказом. Разбор ведётся
@@ -1323,7 +1300,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a signed integer from the value of a property
+			 * @brief Function of parsing a signed integer from the value of a property
 			 *
 			 * @details The whitespace padding at the edges is discarded, while the whole value as a whole is obliged to be
 			 *          parsed: a remainder after the number is considered a refusal. The parsing is conducted
@@ -1336,17 +1313,16 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool integer(const string_view text, int64_t & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора целого числа без знака из значения свойства
+			 * @brief Функция разбора целого числа без знака из значения свойства
 			 *
 			 * @param text   разбираемое значение свойства
 			 * @param result ссылка на результат разбора
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing an unsigned integer from the value of a property
+			 * @brief Function of parsing an unsigned integer from the value of a property
 			 *
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
@@ -1355,10 +1331,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool integer(const string_view text, uint64_t & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора числа с плавающей точкой из значения свойства
+			 * @brief Функция разбора числа с плавающей точкой из значения свойства
 			 *
 			 * @details Разбор совпадает с разбором функции strtod в местности «C» вплоть до
 			 *          последнего бита мантиссы.
@@ -1368,7 +1343,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a floating-point number from the value of a property
+			 * @brief Function of parsing a floating-point number from the value of a property
 			 *
 			 * @details The parsing coincides with the parsing of the strtod function in the «C» locale down to
 			 *          the last bit of the mantissa.
@@ -1380,10 +1355,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool real(const string_view text, double & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора логического значения из значения свойства
+			 * @brief Функция разбора логического значения из значения свойства
 			 *
 			 * @details Записи «yes», «no», «on» и «off» признаются наравне с «true» и
 			 *          «false», пока не запрошена строгая запись. Расширенная запись взята
@@ -1396,7 +1370,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a logical value from the value of a property
+			 * @brief Function of parsing a logical value from the value of a property
 			 *
 			 * @details The records «yes», «no», «on» and «off» are recognized on a par with «true» and
 			 *          «false» until the strict notation is requested. The extended notation has been taken as the
@@ -1411,16 +1385,14 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool boolean(const string_view text, bool & result, const boolean_t forms = boolean_t::EXTENDED) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Шаблон типа числа результата разбора
+			 * @brief Шаблон Функции разбора числа из значения свойства
 			 *
 			 * @tparam T тип числа результата разбора
 			 *
-			 *
 			 * \~english
-			 * @brief Template of the number type of the parsing result
+			 * @brief Template for functions that parse a number from a property value
 			 *
 			 * @tparam T number type of the parsing result
 			 *
@@ -1429,7 +1401,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * \~russian
-			 * @brief Метод разбора числа из значения свойства
+			 * @brief Функция разбора числа из значения свойства
 			 *
 			 * @details Отказом разбор завершается лишь тогда, когда значение числом не
 			 *          является вовсе. Запись значения разбору не указ: дробная запись извлекается
@@ -1448,19 +1420,19 @@ namespace awh {
 			 *       20.08.2026: договор извлечения общий у всех кодеков рамки, а приведение
 			 *       языка не отказывает нигде
 			 *
-			 * @param text   разбираемое значение свойства
-			 * @param result ссылка на результат разбора
-			 * @param forms  признаваемая запись логического значения
-			 * @return       признак успешного разбора
-			 *
 			 * @note Перечень поддерживаемых типов задан заранее и порождается явно в
 			 *       файле реализации: логический тип, целые числа со знаком и без знака
 			 *       разрядностью от восьми до шестидесяти четырёх, а также числа с плавающей
 			 *       точкой одинарной и двойной точности. Запрос иного типа отвечает отказом
 			 *       сборки, а не молчаливым приведением
 			 *
+			 * @param text   разбираемое значение свойства
+			 * @param result ссылка на результат разбора
+			 * @param forms  признаваемая запись логического значения
+			 * @return       признак успешного разбора
+			 *
 			 * \~english
-			 * @brief Method of parsing a number from the value of a property
+			 * @brief Function of parsing a number from the value of a property
 			 *
 			 * @details The parsing ends with a refusal only when the value is not a number at all.
 			 *          The notation of the value is not a directive to the parsing: a fractional notation is extracted
@@ -1478,16 +1450,16 @@ namespace awh {
 			 *       by a decision of 2026-08-20: the contract of extraction is common to all the codecs of
 			 *       the framework, and a conversion by the language refuses nowhere
 			 *
-			 * @param text   value of the property being parsed
-			 * @param result reference to the result of the parsing
-			 * @param forms  recognized notation of a logical value
-			 * @return       flag of a successful parsing
-			 *
 			 * @note The list of the supported types is given beforehand and is generated explicitly in
 			 *       the implementation file: the logical type, the signed and unsigned integers
 			 *       of a width from eight to sixty-four bits, and also the floating-point
 			 *       numbers of a single and a double precision. A request of another type answers with a refusal
 			 *       of the build rather than with a silent conversion
+			 *
+			 * @param text   value of the property being parsed
+			 * @param result reference to the result of the parsing
+			 * @param forms  recognized notation of a logical value
+			 * @return       flag of a successful parsing
 			 *
 			 * \~
 			 */
