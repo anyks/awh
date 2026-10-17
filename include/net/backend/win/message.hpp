@@ -460,8 +460,8 @@ namespace awh {
 #undef CMSG_DATA
 #undef CMSG_LEN
 #undef CMSG_SPACE
-#define CMSG_FIRSTHDR(msg) ::awh::win::message::first(msg)
-#define CMSG_NXTHDR(msg, cmsg) ::awh::win::message::next(msg, cmsg)
-#define CMSG_DATA(cmsg) ::awh::win::message::data(cmsg)
-#define CMSG_LEN(size) (::awh::win::message::align(sizeof(cmsghdr)) + (size))
-#define CMSG_SPACE(size) (::awh::win::message::align(sizeof(cmsghdr)) + ::awh::win::message::align(size))
+#define CMSG_FIRSTHDR(msg) win::message::first(msg)
+#define CMSG_NXTHDR(msg, cmsg) win::message::next(msg, cmsg)
+#define CMSG_DATA(cmsg) win::message::data(cmsg)
+#define CMSG_LEN(size) (win::message::align(sizeof(cmsghdr)) + (size))
+#define CMSG_SPACE(size) (win::message::align(sizeof(cmsghdr)) + win::message::align(size))

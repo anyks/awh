@@ -684,7 +684,7 @@ void awh::http::Parser_HTTP3::Ring::drop(const uint64_t value) noexcept {
  */
 void awh::http::Parser_HTTP3::Ring::clear() noexcept {
 	// Освобождаем все ячейки кольца
-	::std::fill(this->items.begin(), this->items.end(), UINT64_MAX);
+	std::fill(this->items.begin(), this->items.end(), UINT64_MAX);
 	// Сбрасываем позицию записи в кольце
 	this->cursor = 0;
 }
@@ -762,7 +762,7 @@ void awh::http::Parser_HTTP3::Ratelim::update(const uint64_t stamp) noexcept {
 	// Вычисляем пополнение корзины
 	const uint64_t refill = (elapsed * this->rate);
 	// Наполняем корзину, не превышая предела
-	this->value = ((refill > (this->burst - ::std::min(this->value, this->burst))) ? this->burst : (this->value + refill));
+	this->value = ((refill > (this->burst - ::min(this->value, this->burst))) ? this->burst : (this->value + refill));
 }
 /**
  * @brief Метод списания токенов
@@ -1489,7 +1489,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseRequest(const uint64_t sid
 			continue;
 		}
 		// Вычисляем размер доступной части нагрузки кадра
-		const size_t chunk = static_cast <size_t> (::std::min <uint64_t> (static_cast <uint64_t> (size - offset), framing.remain));
+		const size_t chunk = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size - offset), framing.remain));
 		// Признак того, что нагрузка кадра завершается и поток закрывается пиром
 		const bool last = (fin && ((offset + chunk) == size) && (chunk == framing.remain));
 		/**
@@ -2311,7 +2311,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::parseControl(const uint64_t sid
 			continue;
 		}
 		// Вычисляем размер доступной части нагрузки кадра
-		const size_t chunk = static_cast <size_t> (::std::min <uint64_t> (static_cast <uint64_t> (size - offset), framing.remain));
+		const size_t chunk = static_cast <size_t> (::min <uint64_t> (static_cast <uint64_t> (size - offset), framing.remain));
 		// Если накопление нагрузки только начинается
 		if(framing.buffer.empty())
 			// Забираем ёмкость накопителя нагрузки
@@ -2641,7 +2641,7 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::applySettings(const vector <h3:
 	 * Ёмкость таблицы кодера ограничена и анонсом пира, и нашим собственным
 	 * выбором: держать таблицу больше, чем нужно нам, незачем
 	 */
-	this->_encoder.maxCapacity(::std::min <uint64_t> (this->_remote.qpackMaxTableCapacity, h3::proto::QPACK_TABLE_CAPACITY));
+	this->_encoder.maxCapacity(::min <uint64_t> (this->_remote.qpackMaxTableCapacity, h3::proto::QPACK_TABLE_CAPACITY));
 	// Устанавливаем число потоков, которым пир разрешил ожидание пополнения таблицы
 	this->_encoder.maxBlocked(this->_remote.qpackBlockedStreams);
 	// Выгружаем накопленные инструкции кодека
@@ -2709,9 +2709,9 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 		 * и представление указывало бы в освобождённую память. Если секция окажется
 		 * заблокированной снова, оба возвращаются на место
 		 */
-		string section = ::std::move(stream->blocked);
+		string section = ::move(stream->blocked);
 		// Забираем неразобранный хвост потока, накопленный за время блокировки
-		string tail = ::std::move(stream->blockedTail);
+		string tail = ::move(stream->blockedTail);
 		// Запоминаем тип кадра отложенной секции
 		const uint64_t type = stream->blockedType;
 		// Запоминаем идентификатор отложенного обещания
@@ -2732,9 +2732,9 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::retryBlocked() noexcept {
 			// Если поток не закрыт
 			if(stream != nullptr){
 				// Возвращаем отложенную секцию: поток по-прежнему ждёт вставок
-				stream->blocked = ::std::move(section);
+				stream->blocked = ::move(section);
 				// Возвращаем неразобранный хвост потока
-				stream->blockedTail = ::std::move(tail);
+				stream->blockedTail = ::move(tail);
 			}
 			// Переходим к следующему потоку
 			continue;
@@ -3406,11 +3406,11 @@ awh::http::h3::status_t awh::http::Parser_HTTP3::checkPromise(const uint64_t pus
 		// Подмешиваем длину названия поля в отпечаток
 		digest = (digest * 31 + field.name.size());
 		// Подмешиваем название поля в отпечаток
-		digest = (digest * 31 + ::std::hash <string_view> {}(field.name));
+		digest = (digest * 31 + std::hash <string_view> {}(field.name));
 		// Подмешиваем длину значения поля в отпечаток
 		digest = (digest * 31 + field.value.size());
 		// Подмешиваем значение поля в отпечаток
-		digest = (digest * 31 + ::std::hash <string_view> {}(field.value));
+		digest = (digest * 31 + std::hash <string_view> {}(field.value));
 	}
 	/**
 	 * Выполняем поиск обещания в кольце
@@ -4017,7 +4017,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP3::buildProvider(const 
 					provider->protocol = field.value;
 			}
 			// Устанавливаем собранный провайдер как результат
-			result = ::std::move(provider);
+			result = ::move(provider);
 		// Если собирается ответ сервера
 		} else {
 			// Создаём объект провайдера ответа сервера
@@ -4042,7 +4042,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP3::buildProvider(const 
 				}
 			}
 			// Устанавливаем собранный провайдер как результат
-			result = ::std::move(provider);
+			result = ::move(provider);
 		}
 	/**
 	 * Если возникает ошибка
@@ -4343,7 +4343,7 @@ void awh::http::Parser_HTTP3::reset() noexcept {
 	// Очищаем кольцо приоритетов обещаний push
 	this->_pushPriorities.clear();
 	// Очищаем кольцо отпечатков секций обещаний push
-	::std::fill(this->_promisedPush.begin(), this->_promisedPush.end(), promise_t());
+	std::fill(this->_promisedPush.begin(), this->_promisedPush.end(), promise_t());
 	// Сбрасываем позицию записи в кольце обещаний push
 	this->_promisedCursor = 0;
 	// Сбрасываем идентификатор, объявленный нами в GOAWAY
@@ -4683,7 +4683,7 @@ void awh::http::Parser_HTTP3::sendSettings() noexcept {
 		 */
 		if(this->_limits.maxHeadersTotal > 0)
 			// Урезаем анонс до соблюдаемого лимита распакованного списка
-			item.value = ::std::min(item.value, static_cast <uint64_t> (this->_limits.maxHeadersTotal));
+			item.value = ::min(item.value, static_cast <uint64_t> (this->_limits.maxHeadersTotal));
 		// Если анонс пришлось урезать до соблюдаемого лимита
 		if(item.value != this->_settings.maxFieldSectionSize)
 			// Записываем сообщение об урезании анонса в лог
@@ -5108,7 +5108,7 @@ size_t awh::http::Parser_HTTP3::sendData(const uint64_t sid, const void * buffer
 	// Вычисляем свободное место в буфере отправки до верхней метки
 	const size_t room = ((stream->pending() < this->_sendHighWater) ? (this->_sendHighWater - stream->pending()) : 0);
 	// Принимаем столько байт, сколько влезает (частичный приём)
-	result = ::std::min(size, room);
+	result = ::min(size, room);
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -5183,7 +5183,7 @@ void awh::http::Parser_HTTP3::sendWaterMarks(const size_t high, const size_t low
 	// Ёмкость буфера отправки не может быть нулевой: приём тела встал бы совсем
 	this->_sendHighWater = ((high > 0) ? high : SEND_HIGH_WATER);
 	// Порог сигнала готовности не может превышать ёмкость буфера
-	this->_sendLowWater = ::std::min(low, this->_sendHighWater);
+	this->_sendLowWater = ::min(low, this->_sendHighWater);
 }
 /**
  * @brief Метод настройки порога накопленных исходящих данных потока
@@ -5390,7 +5390,7 @@ void awh::http::Parser_HTTP3::refillFromSource(const uint64_t sid, stream_t & st
 	 */
 	while((sp->pending() < this->_sendHighWater) && !sp->sourceEof){
 		// Вычисляем ёмкость запрашиваемой порции
-		const size_t cap = ::std::min(SOURCE_CHUNK, (this->_sendHighWater - sp->pending()));
+		const size_t cap = ::min(SOURCE_CHUNK, (this->_sendHighWater - sp->pending()));
 		// Запоминаем текущий размер буфера отправки
 		const size_t offset = sp->sendBuffer.size();
 		// Резервируем место под порцию данных прямо в буфере отправки (без промежуточной копии)
@@ -5524,7 +5524,7 @@ void awh::http::Parser_HTTP3::pumpStream(const uint64_t sid) noexcept {
 			return;
 		}
 		// Вычисляем размер выдаваемого фрагмента тела
-		const size_t size = ::std::min(remaining, SOURCE_CHUNK);
+		const size_t size = ::min(remaining, SOURCE_CHUNK);
 		// Выполняем очистку буфера сборки кадра
 		this->_frame.clear();
 		// Собираем кадр данных тела из буфера отправки потока
@@ -5776,7 +5776,7 @@ void awh::http::Parser_HTTP3::sendPriority(const uint64_t sid, const uint8_t urg
 	// Формируем срочность потока в синтаксисе структурированных полей
 	value.append("u=");
 	// Дописываем значение срочности потока
-	value.push_back(static_cast <char> ('0' + ::std::min <uint8_t> (urgency, h3::proto::MAX_URGENCY)));
+	value.push_back(static_cast <char> ('0' + ::min <uint8_t> (urgency, h3::proto::MAX_URGENCY)));
 	// Если поток объявляется инкрементальным
 	if(incremental)
 		// Дописываем признак инкрементального потока
@@ -5824,7 +5824,7 @@ void awh::http::Parser_HTTP3::sendPushPriority(const uint64_t pushId, const uint
 	// Формируем срочность обещания в синтаксисе структурированных полей
 	value.append("u=");
 	// Дописываем значение срочности обещания
-	value.push_back(static_cast <char> ('0' + ::std::min <uint8_t> (urgency, h3::proto::MAX_URGENCY)));
+	value.push_back(static_cast <char> ('0' + ::min <uint8_t> (urgency, h3::proto::MAX_URGENCY)));
 	// Если обещание объявляется инкрементальным
 	if(incremental)
 		// Дописываем признак инкрементальной доставки
@@ -5967,7 +5967,7 @@ void awh::http::Parser_HTTP3::consumePending(const uint64_t sid, const size_t si
 		// Выходим из метода
 		return;
 	// Наращиваем количество выданных наружу октетов
-	i->second.consumed += ::std::min(size, (i->second.buffer.size() - i->second.consumed));
+	i->second.consumed += ::min(size, (i->second.buffer.size() - i->second.consumed));
 	// Если буфер выдан наружу целиком
 	if(i->second.consumed >= i->second.buffer.size()){
 		// Выполняем очистку буфера исходящих данных
@@ -6011,7 +6011,7 @@ bool awh::http::Parser_HTTP3::finished(const uint64_t sid) noexcept {
  */
 void awh::http::Parser_HTTP3::on(open_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова открытия однонаправленного потока
-	this->_callbacks.open = ::std::move(callback);
+	this->_callbacks.open = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова записи исходящих байтов
@@ -6021,7 +6021,7 @@ void awh::http::Parser_HTTP3::on(open_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(write_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова записи исходящих байтов
-	this->_callbacks.write = ::std::move(callback);
+	this->_callbacks.write = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова обрыва потока
@@ -6031,7 +6031,7 @@ void awh::http::Parser_HTTP3::on(write_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(abort_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова обрыва потока
-	this->_callbacks.abort = ::std::move(callback);
+	this->_callbacks.abort = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова применённого SETTINGS пира
@@ -6041,7 +6041,7 @@ void awh::http::Parser_HTTP3::on(abort_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(settings_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова применённых параметров пира
-	this->_callbacks.settings = ::std::move(callback);
+	this->_callbacks.settings = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова открытия нового потока
@@ -6051,7 +6051,7 @@ void awh::http::Parser_HTTP3::on(settings_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(begin_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова открытия нового потока
-	this->_callbacks.begin = ::std::move(callback);
+	this->_callbacks.begin = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова закрытия потока
@@ -6061,7 +6061,7 @@ void awh::http::Parser_HTTP3::on(begin_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(close_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова закрытия потока
-	this->_callbacks.close = ::std::move(callback);
+	this->_callbacks.close = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова ошибки уровня соединения
@@ -6071,7 +6071,7 @@ void awh::http::Parser_HTTP3::on(close_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(error_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова ошибки уровня соединения
-	this->_callbacks.error = ::std::move(callback);
+	this->_callbacks.error = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова полученного GOAWAY
@@ -6081,7 +6081,7 @@ void awh::http::Parser_HTTP3::on(error_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(goaway_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова завершения соединения пиром
-	this->_callbacks.goaway = ::std::move(callback);
+	this->_callbacks.goaway = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова анонса server push
@@ -6091,7 +6091,7 @@ void awh::http::Parser_HTTP3::on(goaway_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(push_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова анонса server push
-	this->_callbacks.push = ::std::move(callback);
+	this->_callbacks.push = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова фазы приёма сообщения потока
@@ -6101,7 +6101,7 @@ void awh::http::Parser_HTTP3::on(push_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(phase_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова фазы приёма сообщения потока
-	this->_callbacks.phase = ::std::move(callback);
+	this->_callbacks.phase = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова провайдера полей потока
@@ -6111,7 +6111,7 @@ void awh::http::Parser_HTTP3::on(phase_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(provider_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова провайдера полей потока
-	this->_callbacks.provider = ::std::move(callback);
+	this->_callbacks.provider = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова поля секции
@@ -6121,7 +6121,7 @@ void awh::http::Parser_HTTP3::on(provider_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(header_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова поля секции
-	this->_callbacks.header = ::std::move(callback);
+	this->_callbacks.header = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова фрагмента тела потока
@@ -6131,7 +6131,7 @@ void awh::http::Parser_HTTP3::on(header_callback_t callback) noexcept {
  */
 void awh::http::Parser_HTTP3::on(data_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова фрагмента тела потока
-	this->_callbacks.data = ::std::move(callback);
+	this->_callbacks.data = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова готовности потока принимать данные

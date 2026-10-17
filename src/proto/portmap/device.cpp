@@ -328,7 +328,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 					// Выполняем переход к следующей службе устройства
 					continue;
 				// Выполняем добавление собранной службы к описанию устройства
-				description.services.push_back(::std::move(service));
+				description.services.push_back(::move(service));
 			}
 		}
 		// Получаем перечень вложенных устройств

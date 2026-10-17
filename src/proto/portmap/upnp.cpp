@@ -179,13 +179,13 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
 	// Собираемый перечень доводов вызова действия
 	const vector <soap_t::argument_t> arguments = {
 		soap_t::argument_t("NewRemoteHost", mapping.remoteHost),
-		soap_t::argument_t("NewExternalPort", ::std::to_string(mapping.externalPort)),
+		soap_t::argument_t("NewExternalPort", ::to_string(mapping.externalPort)),
 		soap_t::argument_t("NewProtocol", name(mapping.proto)),
-		soap_t::argument_t("NewInternalPort", ::std::to_string(mapping.internalPort)),
+		soap_t::argument_t("NewInternalPort", ::to_string(mapping.internalPort)),
 		soap_t::argument_t("NewInternalClient", mapping.internalClient),
 		soap_t::argument_t("NewEnabled", (mapping.enabled ? "1" : "0")),
 		soap_t::argument_t("NewPortMappingDescription", description),
-		soap_t::argument_t("NewLeaseDuration", ::std::to_string(mapping.lifeTime))
+		soap_t::argument_t("NewLeaseDuration", ::to_string(mapping.lifeTime))
 	};
 	// Запоминаем название вызываемого действия службы
 	result.action.assign(::name(action_t::ADD));
@@ -232,7 +232,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::remove(const str
 	// Собираемый перечень доводов вызова действия
 	const vector <soap_t::argument_t> arguments = {
 		soap_t::argument_t("NewRemoteHost", remoteHost),
-		soap_t::argument_t("NewExternalPort", ::std::to_string(externalPort)),
+		soap_t::argument_t("NewExternalPort", ::to_string(externalPort)),
 		soap_t::argument_t("NewProtocol", name(proto))
 	};
 	// Запоминаем название вызываемого действия службы
@@ -276,7 +276,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::entry(const stri
 	request_t result;
 	// Собираемый перечень доводов вызова действия
 	const vector <soap_t::argument_t> arguments = {
-		soap_t::argument_t("NewPortMappingIndex", ::std::to_string(index))
+		soap_t::argument_t("NewPortMappingIndex", ::to_string(index))
 	};
 	// Запоминаем название вызываемого действия службы
 	result.action.assign(::name(action_t::ENTRY));
@@ -323,7 +323,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::specific(const s
 	// Собираемый перечень доводов вызова действия
 	const vector <soap_t::argument_t> arguments = {
 		soap_t::argument_t("NewRemoteHost", remoteHost),
-		soap_t::argument_t("NewExternalPort", ::std::to_string(externalPort)),
+		soap_t::argument_t("NewExternalPort", ::to_string(externalPort)),
 		soap_t::argument_t("NewProtocol", name(proto))
 	};
 	// Запоминаем название вызываемого действия службы
@@ -447,11 +447,11 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 	 */
 	const vector <soap_t::argument_t> arguments = {
 		soap_t::argument_t("RemoteHost", pinhole.remoteHost),
-		soap_t::argument_t("RemotePort", ::std::to_string(pinhole.remotePort)),
+		soap_t::argument_t("RemotePort", ::to_string(pinhole.remotePort)),
 		soap_t::argument_t("InternalClient", pinhole.internalClient),
-		soap_t::argument_t("InternalPort", ::std::to_string(pinhole.internalPort)),
-		soap_t::argument_t("Protocol", ::std::to_string((pinhole.proto == proto_t::TCP) ? 6 : 17)),
-		soap_t::argument_t("LeaseTime", ::std::to_string(pinhole.lifeTime))
+		soap_t::argument_t("InternalPort", ::to_string(pinhole.internalPort)),
+		soap_t::argument_t("Protocol", ::to_string((pinhole.proto == proto_t::TCP) ? 6 : 17)),
+		soap_t::argument_t("LeaseTime", ::to_string(pinhole.lifeTime))
 	};
 	// Запоминаем название вызываемого действия службы
 	result.action.assign(::name(action_t::PINHOLE));
@@ -478,7 +478,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::unpinhole(const 
 	request_t result;
 	// Собираемый перечень доводов вызова действия
 	const vector <soap_t::argument_t> arguments = {
-		soap_t::argument_t("UniqueID", ::std::to_string(unique))
+		soap_t::argument_t("UniqueID", ::to_string(unique))
 	};
 	// Запоминаем название вызываемого действия службы
 	result.action.assign(::name(action_t::UNPINHOLE));
@@ -540,8 +540,8 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const 
 	 *          службы, и без неё устройство срока попросту не увидит
 	 */
 	const vector <soap_t::argument_t> arguments = {
-		soap_t::argument_t("UniqueID", ::std::to_string(unique)),
-		soap_t::argument_t("NewLeaseTime", ::std::to_string(lifeTime))
+		soap_t::argument_t("UniqueID", ::to_string(unique)),
+		soap_t::argument_t("NewLeaseTime", ::to_string(lifeTime))
 	};
 	// Запоминаем название вызываемого действия службы
 	result.action.assign(::name(action_t::REPINHOLE));

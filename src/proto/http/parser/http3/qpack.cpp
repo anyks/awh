@@ -208,7 +208,7 @@ namespace {
 			 * Выполняем группировку индексов по названию поля: сортировка устойчивая,
 			 * поэтому внутри группы индексы остаются возрастающими
 			 */
-			::std::stable_sort(result.order.begin(), result.order.end(), [](const uint16_t first, const uint16_t second) noexcept -> bool {
+			std::stable_sort(result.order.begin(), result.order.end(), [](const uint16_t first, const uint16_t second) noexcept -> bool {
 				// Выполняем сравнение названий записей
 				return (STATIC_TABLE[first].name < STATIC_TABLE[second].name);
 			});
@@ -223,7 +223,7 @@ namespace {
 				 */
 				if((i == result.order.size()) || (STATIC_TABLE[result.order[i]].name != STATIC_TABLE[result.order[begin]].name)){
 					// Вычисляем хеш названия группы
-					const size_t hash = ::std::hash <string_view> {}(STATIC_TABLE[result.order[begin]].name);
+					const size_t hash = std::hash <string_view> {}(STATIC_TABLE[result.order[begin]].name);
 					// Запоминаем отрезок группы
 					result.ranges.emplace(hash, static_range_t{static_cast <uint32_t> (begin), static_cast <uint32_t> (i - begin)});
 					// Переходим к следующей группе
@@ -263,7 +263,7 @@ namespace {
 	 */
 	size_t pairHash(const size_t name, string_view value) noexcept {
 		// Выводим хеш пары название-значение
-		return ((name * 31) ^ ::std::hash <string_view> {}(value));
+		return ((name * 31) ^ std::hash <string_view> {}(value));
 	}
 }
 
@@ -298,7 +298,7 @@ bool awh::http::h3::qpack::stat::find(string_view name, string_view value, size_
 	// Получаем индекс статической таблицы по названию поля
 	const static_index_t & names = ::staticNames();
 	// Выполняем поиск группы записей с искомым названием
-	auto i = names.ranges.find(::std::hash <string_view> {}(name));
+	auto i = names.ranges.find(std::hash <string_view> {}(name));
 	// Если группа записей с искомым названием не найдена
 	if(i == names.ranges.end())
 		// Выводим признак отсутствия совпадения
@@ -473,7 +473,7 @@ void awh::http::h3::qpack::DynamicTable::evict(const uint64_t room) noexcept {
 		// Если сопровождение индекса записей включено
 		if(this->_indexing){
 			// Вычисляем хеш названия вытесняемой записи
-			const size_t hashName = ::std::hash <string_view> {}(entry.name);
+			const size_t hashName = std::hash <string_view> {}(entry.name);
 			// Вычисляем хеш пары название-значение вытесняемой записи
 			const size_t hashPair = ::pairHash(hashName, entry.value);
 			/**
@@ -578,14 +578,14 @@ bool awh::http::h3::qpack::DynamicTable::add(string_view name, string_view value
 	// Если сопровождение индекса записей включено
 	if(this->_indexing){
 		// Вычисляем хеш названия вставляемой записи
-		const size_t hashName = ::std::hash <string_view> {}(name);
+		const size_t hashName = std::hash <string_view> {}(name);
 		// Дописываем запись в индекс по паре название-значение
 		this->_index.emplace(::pairHash(hashName, value), this->_inserts);
 		// Дописываем запись в индекс по названию как самую свежую
 		this->_names[hashName] = this->_inserts;
 	}
 	// Дописываем запись в таблицу
-	this->_entries.emplace_back(::std::string(name), ::std::string(value));
+	this->_entries.emplace_back(string(name), string(value));
 	// Наращиваем суммарный размер таблицы
 	this->_size += required;
 	// Наращиваем общее количество вставок
@@ -626,7 +626,7 @@ bool awh::http::h3::qpack::DynamicTable::find(string_view name, string_view valu
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Вычисляем хеш названия искомого поля
-	const size_t hashName = ::std::hash <string_view> {}(name);
+	const size_t hashName = std::hash <string_view> {}(name);
 	// Выполняем поиск совпадения только по названию
 	auto j = this->_names.find(hashName);
 	// Если совпадение только по названию найдено
@@ -689,7 +689,7 @@ bool awh::http::h3::qpack::DynamicTable::findName(string_view name, uint64_t & a
 		// Выводим признак отсутствия совпадения
 		return false;
 	// Выполняем поиск совпадения по хешу названия
-	auto i = this->_names.find(::std::hash <string_view> {}(name));
+	auto i = this->_names.find(std::hash <string_view> {}(name));
 	// Если совпадение не найдено
 	if(i == this->_names.end())
 		// Выводим признак отсутствия совпадения
@@ -1755,7 +1755,7 @@ string_view awh::http::h3::qpack::Decoder::pending() const noexcept {
  */
 void awh::http::h3::qpack::Decoder::consumePending(const size_t size) noexcept {
 	// Наращиваем количество выданных наружу октетов
-	this->_consumed += ::std::min(size, (this->_output.size() - this->_consumed));
+	this->_consumed += ::min(size, (this->_output.size() - this->_consumed));
 	// Если буфер инструкций выдан наружу целиком
 	if(this->_consumed >= this->_output.size()){
 		// Выполняем очистку буфера инструкций
@@ -1907,7 +1907,7 @@ bool awh::http::h3::qpack::Encoder::indexable(string_view name, string_view valu
 		// Поле подлежит индексации
 		return true;
 	// Вычисляем хеш пары название-значение
-	const uint32_t hash = static_cast <uint32_t> (::pairHash(::std::hash <string_view> {}(name), value));
+	const uint32_t hash = static_cast <uint32_t> (::pairHash(std::hash <string_view> {}(name), value));
 	/**
 	 * Ёмкость кольца на единицу меньше выделенного места: последняя ячейка
 	 * отведена под ограничитель перебора и в историю не входит
@@ -2344,7 +2344,7 @@ void awh::http::h3::qpack::Encoder::adaptiveIndexing(const bool mode) noexcept {
 	 * из таблицы давно вытеснены. Последняя ячейка отведена под ограничитель
 	 * перебора и в ёмкость не входит
 	 */
-	const size_t capacity = static_cast <size_t> (::std::max <uint64_t> (1, (this->_maxCapacity / (ENTRY_OVERHEAD * 3))));
+	const size_t capacity = static_cast <size_t> (::max <uint64_t> (1, (this->_maxCapacity / (ENTRY_OVERHEAD * 3))));
 	// Выделяем место под кольцо хешей с ограничителем перебора
 	this->_history.assign(capacity + 1, 0);
 }
@@ -2606,7 +2606,7 @@ string_view awh::http::h3::qpack::Encoder::pending() const noexcept {
  */
 void awh::http::h3::qpack::Encoder::consumePending(const size_t size) noexcept {
 	// Наращиваем количество выданных наружу октетов
-	this->_consumed += ::std::min(size, (this->_output.size() - this->_consumed));
+	this->_consumed += ::min(size, (this->_output.size() - this->_consumed));
 	// Если буфер инструкций выдан наружу целиком
 	if(this->_consumed >= this->_output.size()){
 		// Выполняем очистку буфера инструкций

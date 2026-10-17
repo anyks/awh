@@ -1148,7 +1148,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 		// Выполняем блокировку реестра заведённых устройств
 		const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем занесение устройства в реестр
-		::__awh_registry__.emplace(result, ::std::move(entry));
+		::__awh_registry__.emplace(result, ::move(entry));
 	} catch(const std::exception & error) {
 		// Выводим в журнал сообщение о невозможности занесения устройства
 		awh::log::print("%s: tunnel device could not be registered, %s", awh::log::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
@@ -1216,7 +1216,7 @@ bool awh::win::tunnel::destroy(const net::socket_t sock) noexcept {
 			i->second.pending = false;
 		}
 		// Снимаем запись устраняемого устройства
-		entry = ::std::move(i->second);
+		entry = ::move(i->second);
 		// Выполняем изъятие устройства из реестра
 		::__awh_registry__.erase(i);
 	}

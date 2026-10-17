@@ -542,7 +542,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 			// Запоминаем содержимое дополнения ответа
 			option.data.assign(data + offset + OPTION_HEADER_SIZE, data + offset + OPTION_HEADER_SIZE + length);
 		// Выполняем добавление разобранного дополнения к ответу
-		answer.options.push_back(::std::move(option));
+		answer.options.push_back(::move(option));
 		// Выполняем переход к следующему дополнению ответа
 		offset += padded;
 	}

@@ -160,7 +160,7 @@ awh::http::h3::status_t awh::http::h3::frame::parser::settings(const uint8_t * p
 	 *          процессорного времени, причём кадр в соединении единственный
 	 *          и лимитом частоты не сдерживается
 	 */
-	::std::unordered_set <uint64_t> seen;
+	unordered_set <uint64_t> seen;
 	/**
 	 * Выполняем чтение всех параметров набора
 	 */

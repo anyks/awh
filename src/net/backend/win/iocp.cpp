@@ -635,7 +635,7 @@ namespace {
 		// Код отказа приёма, если отказ случится
 		int32_t error = 0;
 		// Выполняем приём сообщения у системы
-		const int64_t result = ::awh::win::message::receive(static_cast <awh::net::socket_t> (sock), msg, flags, &error);
+		const int64_t result = win::message::receive(static_cast <awh::net::socket_t> (sock), msg, flags, &error);
 		// Если приём отказом завершился
 		if(result < 0){
 			// Переносим код отказа приёма в errno
@@ -1050,7 +1050,7 @@ namespace {
 		 */
 		::inflight::forsake(static_cast <awh::net::socket_t> (sock));
 		// Снимаем поток качества обслуживания закрываемого дескриптора
-		::awh::win::qos::release(static_cast <awh::net::socket_t> (sock));
+		win::qos::release(static_cast <awh::net::socket_t> (sock));
 		/**
 		 * Устраняем туннельное устройство, если дескриптор им и является
 		 *
@@ -1058,7 +1058,7 @@ namespace {
 		 *       закрывать больше нечего. Дескриптору не туннельному оно отвечает отказом
 		 *       по отсутствию записи в реестре, и обходится одним поиском
 		 */
-		if(::awh::win::tunnel::destroy(static_cast <awh::net::socket_t> (sock)))
+		if(win::tunnel::destroy(static_cast <awh::net::socket_t> (sock)))
 			// Выводим успешный результат закрытия
 			return 0;
 		// Выполняем закрытие дескриптора как сокета
@@ -1194,7 +1194,7 @@ namespace {
 		 */
 		if(result == 0)
 			// Выполняем применение запомненной отметки
-			::awh::win::qos::apply(sock);
+			win::qos::apply(sock);
 		// Если подключение сокета не удалось
 		if(result < 0){
 			// Получаем код отказа подключения сокета
@@ -10039,7 +10039,7 @@ namespace post {
 		// Если приём ведётся со служебными метаданными
 		if(!pipe && metadata){
 			// Получаем расширенный вызов приёма сообщения
-			LPFN_WSARECVMSG receive = ::awh::win::message::extended(sock);
+			LPFN_WSARECVMSG receive = win::message::extended(sock);
 			// Получаем буфер служебных метаданных
 			uint8_t * control = ::pool::control(bid);
 			// Если расширенный вызов либо буфер служебных метаданных не добыты
@@ -21987,11 +21987,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 													/**
 													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22029,7 +22029,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -22039,7 +22039,7 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22052,7 +22052,7 @@ namespace io {
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22070,7 +22070,7 @@ namespace io {
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
-																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (win::message::data(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
 																client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
@@ -22250,11 +22250,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												/**
 												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22292,7 +22292,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -22302,7 +22302,7 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22315,7 +22315,7 @@ namespace io {
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22333,7 +22333,7 @@ namespace io {
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
-															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (win::message::data(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
 															client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
@@ -22481,11 +22481,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 													/**
 													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22523,7 +22523,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -22533,7 +22533,7 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22546,7 +22546,7 @@ namespace io {
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22564,7 +22564,7 @@ namespace io {
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
-																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (win::message::data(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
 																client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
@@ -22757,11 +22757,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												/**
 												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22799,7 +22799,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -22809,7 +22809,7 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22822,7 +22822,7 @@ namespace io {
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22840,7 +22840,7 @@ namespace io {
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
-															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (win::message::data(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
 															client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
@@ -23556,11 +23556,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 													/**
 													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -23598,7 +23598,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -23608,7 +23608,7 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -23621,7 +23621,7 @@ namespace io {
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -23639,7 +23639,7 @@ namespace io {
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
-																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (win::message::data(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
 																server->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
@@ -23863,11 +23863,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 												/**
 												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -23905,7 +23905,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -23915,7 +23915,7 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -23928,7 +23928,7 @@ namespace io {
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -23946,7 +23946,7 @@ namespace io {
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
-															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (win::message::data(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
 															server->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
@@ -79343,7 +79343,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 */
 							if(completion.res >= 0)
 								// Выполняем применение запомненной отметки
-								::awh::win::qos::apply(sockOf);
+								win::qos::apply(sockOf);
 							// Получаем запись учёта подписки по дескриптору
 							signalData = ::kernel::subscription(sockOf);
 							// Если подписка по дескриптору заведена

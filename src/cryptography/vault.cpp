@@ -17,11 +17,6 @@
  */
 
 /**
- * Подключаем заголовочный файл
- */
-#include <cryptography/vault.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
@@ -31,7 +26,17 @@
  */
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <sys/log.hpp>
+#include <cryptography/vault.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
 
 /**
  * @brief Пространство имён вспомогательных средств
@@ -124,7 +129,7 @@ awh::Vault::Handle & awh::Vault::Handle::operator = (Handle && handle) noexcept 
 			// Затираем содержимое рукояти
 			::OPENSSL_cleanse(this->_plain.data(), this->_plain.size());
 		// Переносим открытый текст тайны
-		this->_plain = ::std::move(handle._plain);
+		this->_plain = ::move(handle._plain);
 		// Переносим признак удавшегося взятия
 		this->_valid = handle._valid;
 		// Отмечаем отданную рукоять негодной
@@ -146,7 +151,7 @@ awh::Vault::Handle::Handle() noexcept : _plain(), _valid(false) {}
  * @param handle переносимая рукоять
  *
  */
-awh::Vault::Handle::Handle(Handle && handle) noexcept : _plain(::std::move(handle._plain)), _valid(handle._valid) {
+awh::Vault::Handle::Handle(Handle && handle) noexcept : _plain(::move(handle._plain)), _valid(handle._valid) {
 	// Отмечаем отданную рукоять негодной
 	handle._valid = false;
 	// Очищаем отданную рукоять
@@ -158,7 +163,7 @@ awh::Vault::Handle::Handle(Handle && handle) noexcept : _plain(::std::move(handl
  * @param plain открытый текст тайны
  *
  */
-awh::Vault::Handle::Handle(buffer_t && plain) noexcept : _plain(::std::move(plain)), _valid(true) {}
+awh::Vault::Handle::Handle(buffer_t && plain) noexcept : _plain(::move(plain)), _valid(true) {}
 /**
  * @brief Деструктор
  *
@@ -252,7 +257,7 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
 		// Затираем прежний шифротекст тайны
 		::OPENSSL_cleanse(i->second.data(), i->second.size());
 	// Укладываем шифротекст тайны на склад
-	this->_secrets[name] = ::std::move(cipher);
+	this->_secrets[name] = ::move(cipher);
 	// Отвечаем успехом
 	return true;
 }
@@ -330,7 +335,7 @@ awh::Vault::Handle awh::Vault::borrow(const std::string & name) noexcept {
 		return Handle();
 	}
 	// Выводим рукоять тайны
-	return Handle(::std::move(plain));
+	return Handle(::move(plain));
 }
 /**
  * @brief Метод снятия тайны со склада

@@ -4924,7 +4924,7 @@ void awh::http::Parser_HTTP2::reset() noexcept {
 	// Сбрасываем наибольший принятый идентификатор потока
 	this->_transfer.lastStreamId = 0;
 	// Очищаем кольцо оборванных сбросом потоков
-	::std::fill(this->_transfer.resetStreams.begin(), this->_transfer.resetStreams.end(), reset_t());
+	std::fill(this->_transfer.resetStreams.begin(), this->_transfer.resetStreams.end(), reset_t());
 	// Сбрасываем позицию записи в кольце
 	this->_transfer.resetCursor = 0;
 	// Сбрасываем наибольший наш открытый идентификатор потока
@@ -5119,7 +5119,7 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 		 */
 		while(!this->_buffer.deferred.empty() && (this->_status != status_t::ERROR)){
 			// Забираем накопленные реентрантными вызовами байты
-			const string deferred(::std::move(this->_buffer.deferred));
+			const string deferred(::move(this->_buffer.deferred));
 			// Очищаем отложенный буфер
 			this->_buffer.deferred.clear();
 			// Выполняем разбор отложенных байтов

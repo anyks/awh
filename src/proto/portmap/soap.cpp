@@ -490,10 +490,10 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 	 * @note Приставка отбрасывается намеренно: так название в разобранном ответе
 	 *       совпадает с названием вызванного действия, и сличать их можно напрямую
 	 */
-	if((name.length() > ::std::char_traits <char>::length(::ANSWER_SUFFIX)) &&
-	   (name.compare(name.length() - ::std::char_traits <char>::length(::ANSWER_SUFFIX), ::std::char_traits <char>::length(::ANSWER_SUFFIX), ::ANSWER_SUFFIX) == 0))
+	if((name.length() > std::char_traits <char>::length(::ANSWER_SUFFIX)) &&
+	   (name.compare(name.length() - std::char_traits <char>::length(::ANSWER_SUFFIX), std::char_traits <char>::length(::ANSWER_SUFFIX), ::ANSWER_SUFFIX) == 0))
 		// Запоминаем название действия без приставки ответа
-		answer.action.assign(name.substr(0, name.length() - ::std::char_traits <char>::length(::ANSWER_SUFFIX)));
+		answer.action.assign(name.substr(0, name.length() - std::char_traits <char>::length(::ANSWER_SUFFIX)));
 	// Запоминаем название ответа службы как есть
 	else answer.action.assign(name);
 	/**

@@ -141,7 +141,7 @@ int64_t awh::win::message::receive(const net::socket_t sock, struct msghdr * msg
 		return -1;
 	}
 	// Получаем расширенный вызов приёма сообщения
-	LPFN_WSARECVMSG method = ::awh::win::message::extended(sock);
+	LPFN_WSARECVMSG method = win::message::extended(sock);
 	// Если вызов взять не удалось либо описание не передано
 	if((method == nullptr) || (msg == nullptr)){
 		// Если код отказа спрашивают

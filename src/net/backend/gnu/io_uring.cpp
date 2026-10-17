@@ -4349,7 +4349,7 @@ namespace ring {
 		 */
 		if(::ring::feature(IORING_FEAT_SINGLE_MMAP))
 			// Выравниваем размер отображения по наибольшему из колец
-			::ring::areaSize = ::ring::areaCqSize = ::std::max(::ring::areaSize, ::ring::areaCqSize);
+			::ring::areaSize = ::ring::areaCqSize = ::max(::ring::areaSize, ::ring::areaCqSize);
 		// Выполняем отображение кольца подачи
 		::ring::area = ::mmap(nullptr, ::ring::areaSize, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, ::ring::fd, IORING_OFF_SQ_RING);
 		// Если отображение кольца подачи не удалось
