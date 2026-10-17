@@ -217,7 +217,7 @@ namespace awh {
 				// Замок придержки, отдельный от замка кучи
 				spin_t _reserve;
 				// Центральные списки по разрядам
-				list_t _lists[Classes::LIMIT];
+				list_t _lists[classes_t::LIMIT];
 			private:
 				// Объём придержанного в байтах (читается без замка на быстрых путях, оттого атомарен)
 				atomic_size_t _keptBytes;
@@ -425,12 +425,12 @@ namespace awh {
 					if((this->_pages == nullptr) || (addr == nullptr))
 						// Разбирать нечего
 						return false;
-					// Адрес начала области
-					void * base = nullptr;
 					// Размер области в страницах кучи
 					size_t pages = 0;
 					// Метка владельца области
 					uint32_t tag = 0;
+					// Адрес начала области
+					void * base = nullptr;
 					/**
 					 * Описываем область, которой принадлежит адрес
 					 */
