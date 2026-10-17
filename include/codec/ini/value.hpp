@@ -40,11 +40,14 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
-#include <sys/fs.hpp>
-
 #include "document.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/fs.hpp"
 
 /**
  * \~russian
@@ -172,6 +175,28 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Признак значения, записанного в кавычках
+					 *
+					 * @details Держится он ради записи в текст: кавычки выбраны потребителем,
+					 *          и запись обязана их соблюдать. Содержимого признак не касается вовсе -
+					 *          кавычки обрамляющие в него не входят.
+					 *
+					 * \~english
+					 * Flag of a value written in quotes
+					 *
+					 * @details It is kept for the sake of the writing into a text: the quotes have been chosen
+					 *          by the consumer, and the writing is obliged to observe them. The flag does not concern
+					 *          the content at all — the enclosing quotes are not included into it.
+					 *
+					 * \~
+					 */
+					bool _quoted;
+				private:
+					// Тип хранимого значения
+					type_t _type;
+				private:
+					/**
+					 * \~russian
 					 * Код отказа последней работы над владеющим значением
 					 *
 					 * @details Держится он ради того, чтобы отказ НАЗЫВАЛ ПРИЧИНУ: запись
@@ -197,33 +222,13 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					mutable error_t _error = error_t::NONE;
-				private:
-					// Тип хранимого значения
-					type_t _type;
-				private:
-					/**
-					 * \~russian
-					 * Признак значения, записанного в кавычках
-					 *
-					 * @details Держится он ради записи в текст: кавычки выбраны потребителем,
-					 *          и запись обязана их соблюдать. Содержимого признак не касается вовсе -
-					 *          кавычки обрамляющие в него не входят.
-					 *
-					 * \~english
-					 * Flag of a value written in quotes
-					 *
-					 * @details It is kept for the sake of the writing into a text: the quotes have been chosen
-					 *          by the consumer, and the writing is obliged to observe them. The flag does not concern
-					 *          the content at all — the enclosing quotes are not included into it.
-					 *
-					 * \~
-					 */
-					bool _quoted;
+					mutable error_t _error;
 				private:
 					// Содержимое простого значения, хранимое собственной памятью
 					string _text;
 				private:
+					// Значения вместилища в порядке их следования
+					vector <Value> _items;
 					/**
 					 * \~russian
 					 * Имена пар вместилища
@@ -240,9 +245,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <string> _names;
-				private:
-					// Значения вместилища в порядке их следования
-					vector <Value> _items;
 				private:
 					/**
 					 * \~russian
@@ -266,8 +268,7 @@ namespace awh {
 					 * @details The search is conducted by the enumeration of the names while there are fewer
 					 *          pairs than the threshold, and by the index further on. Enumeration at thousands of
 					 *          pairs turns both the assembly and the reading into quadratic ones: measured on
-					 *          2026-08-21 - about three microseconds per access at 2500 pairs against twenty at
-					 *          20000.
+					 *          2026-08-21 - about three microseconds per access at 2500 pairs against twenty at 20000.
 					 *
 					 * @note The index is created LAZILY and is held by an optional value: a node of a small
 					 *       container pays neither memory nor allocation for it, and such nodes make up the
@@ -291,7 +292,7 @@ namespace awh {
 					 * @brief Method of the searching of a pair by a name
 					 *
 					 * @param name name of the pair being searched for
-					 * @return number of the pair, size of the container at the absence
+					 * @return     number of the pair, size of the container at the absence
 					 *
 					 * \~
 					 */
@@ -317,22 +318,33 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * @brief Шаблонный метод извлечения числа затребованным видом
+					 * @brief Шаблон метода извлечения числа затребованным видом
 					 *
-					 * @tparam T      затребованный вид числа
-					 * @param  result переменная, куда помещается извлечённое значение
-					 * @return        признак успешности извлечения
+					 * @tparam T затребованный вид числа
 					 *
 					 * \~english
-					 * @brief Template method of the extraction of a number by the demanded kind
+					 * @brief Method template for extracting a number in a requested format
 					 *
 					 * @tparam T demanded kind of the number
-					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод извлечения числа затребованным видом
+					 *
+					 * @param  result переменная, куда помещается извлечённое значение
+					 * @return        признак успешности извлечения
+					 *
+					 * \~english
+					 * @brief Method of the extraction of a number by the demanded kind
+					 *
+					 * @param result variable where the extracted value is placed
+					 * @return       sign of the success of the extraction
+					 *
+					 * \~
+					 */
 					bool extract(T & result) const noexcept;
 				private:
 					/**
@@ -479,7 +491,7 @@ namespace awh {
 					 * @brief Method of the check of the correspondence of the value to the demanded type
 					 *
 					 * @param type type of the value being compared
-					 * @return sign of the correspondence of the value to the demanded type
+					 * @return     sign of the correspondence of the value to the demanded type
 					 *
 					 * \~
 					 */
@@ -548,7 +560,7 @@ namespace awh {
 					 * @brief Method of the extraction of the name of a pair of a container by an index
 					 *
 					 * @param index ordinal index of the pair of the container
-					 * @return name of the pair of the container
+					 * @return      name of the pair of the container
 					 *
 					 * \~
 					 */
@@ -593,7 +605,7 @@ namespace awh {
 					 * @brief Method of the check of the presence of a pair of a container by a name
 					 *
 					 * @param name name of the pair of the container being sought
-					 * @return sign of the presence of the pair of the container
+					 * @return     sign of the presence of the pair of the container
 					 *
 					 * \~
 					 */
@@ -617,7 +629,8 @@ namespace awh {
 					 * @details The search is conducted by the index of the names when it is established: an enumeration
 					 *          would turn the assembling of a container by the calls into a quadratic one.
 					 *
-					 * @note The size of the container is issued when there is no pair with such a name
+					 * @note The size of the container is issued when there is no pair with such a name: this way
+					 *       is the same as the one `npos` of a string answers with
 					 *
 					 * @param name name of the pair being searched for
 					 * @return     number of the pair, size of the container at the absence
@@ -652,7 +665,7 @@ namespace awh {
 					 *       and it ought to be checked through `valid()`
 					 *
 					 * @param path path to the value being sought
-					 * @return found value
+					 * @return     found value
 					 *
 					 * \~
 					 */
@@ -668,7 +681,7 @@ namespace awh {
 					 * @brief Method of the creation of a nested value by a path
 					 *
 					 * @param path path to the value being created
-					 * @return created value
+					 * @return     created value
 					 *
 					 * \~
 					 */
@@ -685,7 +698,7 @@ namespace awh {
 					 * @brief Operator of the addressing to a pair of a container by a name
 					 *
 					 * @param name name of the pair of the container being sought
-					 * @return found value
+					 * @return     found value
 					 *
 					 * \~
 					 */
@@ -701,7 +714,7 @@ namespace awh {
 					 * @brief Operator of the addressing to a pair of a container by a name with a creation
 					 *
 					 * @param name name of the pair of the container being sought
-					 * @return found or created value
+					 * @return     found or created value
 					 *
 					 * \~
 					 */
@@ -717,7 +730,7 @@ namespace awh {
 					 * @brief Operator of the addressing to a value of an array by an index
 					 *
 					 * @param index ordinal index of the value of the array
-					 * @return found value
+					 * @return      found value
 					 *
 					 * \~
 					 */
@@ -733,7 +746,7 @@ namespace awh {
 					 * @brief Operator of the addressing to a value of an array by an index with a creation
 					 *
 					 * @param index ordinal index of the value of the array
-					 * @return found or created value
+					 * @return      found or created value
 					 *
 					 * \~
 					 */
@@ -750,7 +763,7 @@ namespace awh {
 					 * @brief Method of the addition of a value to the end of an array
 					 *
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -784,7 +797,7 @@ namespace awh {
 					 *
 					 * @param name  name of the pair being set
 					 * @param value value being set
-					 * @return sign of the success of the setting
+					 * @return      sign of the success of the setting
 					 *
 					 * \~
 					 */
@@ -808,7 +821,7 @@ namespace awh {
 					 *
 					 * @param name  name of the pair being added
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -824,7 +837,7 @@ namespace awh {
 					 * @brief Method of the removal of a pair of a container by a name
 					 *
 					 * @param name name of the pair being removed
-					 * @return sign of the success of the removal
+					 * @return     sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -840,7 +853,7 @@ namespace awh {
 					 * @brief Method of the removal of a value of a container by an index
 					 *
 					 * @param index ordinal index of the value being removed
-					 * @return sign of the success of the removal
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -865,7 +878,7 @@ namespace awh {
 					 *          of the record is not taken into account.
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -909,45 +922,99 @@ namespace awh {
 					 *       among themselves by `CodecContract.NumberExtraction`
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					bool value(int8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(float & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(double & result) const noexcept;
 					/**
@@ -961,7 +1028,7 @@ namespace awh {
 					 * @brief Method of the extraction of the content of a simple value
 					 *
 					 * @param result variable where the extracted content is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -978,7 +1045,7 @@ namespace awh {
 					 * @brief Method of the parsing of a settings text into an owning value
 					 *
 					 * @param text settings text being parsed
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -996,7 +1063,7 @@ namespace awh {
 					 *
 					 * @param text     settings text being parsed
 					 * @param settings settings of the parsing
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1012,7 +1079,7 @@ namespace awh {
 					 * @brief Method of the reading of a settings text from a file into an owning value
 					 *
 					 * @param filename name of the file being read
-					 * @return sign of the success of the reading
+					 * @return         sign of the success of the reading
 					 *
 					 * \~
 					 */
@@ -1030,7 +1097,7 @@ namespace awh {
 					 *
 					 * @param filename name of the file being read
 					 * @param settings settings of the parsing
-					 * @return sign of the success of the reading
+					 * @return         sign of the success of the reading
 					 *
 					 * \~
 					 */
@@ -1084,7 +1151,7 @@ namespace awh {
 					 * @brief Method of the writing of an owning value as a settings text with settings
 					 *
 					 * @param settings settings of the writing
-					 * @return written settings text
+					 * @return         written settings text
 					 *
 					 * \~
 					 */
@@ -1100,7 +1167,7 @@ namespace awh {
 					 * @brief Method of the writing of an owning value into a file
 					 *
 					 * @param filename name of the file being written
-					 * @return sign of the success of the writing
+					 * @return         sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -1142,7 +1209,7 @@ namespace awh {
 					 *       in the section and goes to the end of it
 					 *
 					 * @param document settings tree whereinto the value is grafted
-					 * @return sign of the success of the grafting
+					 * @return         sign of the success of the grafting
 					 *
 					 * \~
 					 */
@@ -1167,7 +1234,7 @@ namespace awh {
 					 *       the values, and the order of its writing is not a value
 					 *
 					 * @param value value being compared
-					 * @return sign of the coincidence of the values
+					 * @return      sign of the coincidence of the values
 					 *
 					 * \~
 					 */
@@ -1183,7 +1250,7 @@ namespace awh {
 					 * @brief Operator of the comparison of the values for a divergence
 					 *
 					 * @param value value being compared
-					 * @return sign of the divergence of the values
+					 * @return      sign of the divergence of the values
 					 *
 					 * \~
 					 */
@@ -1200,7 +1267,7 @@ namespace awh {
 					 * @brief Operator of the assignment of a value
 					 *
 					 * @param value value being assigned
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
@@ -1216,11 +1283,40 @@ namespace awh {
 					 * @brief Operator of the assignment of a value by a move
 					 *
 					 * @param value value being moved
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
 					Value & operator = (Value && value) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор копирования
+					 *
+					 * @param value копируемое значение
+					 *
+					 * \~english
+					 * @brief Copy constructor
+					 *
+					 * @param value value being copied
+					 *
+					 * \~
+					 */
+					Value(const Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор переноса
+					 *
+					 * @param value переносимое значение
+					 *
+					 * \~english
+					 * @brief Move constructor
+					 *
+					 * @param value value being moved
+					 *
+					 * \~
+					 */
+					Value(Value && value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1231,7 +1327,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value() noexcept;
+					explicit Value() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор вместилища затребованного типа
@@ -1300,34 +1396,7 @@ namespace awh {
 					 * \~
 					 */
 					explicit Value(const Document & document) noexcept;
-					/**
-					 * \~russian
-					 * @brief Конструктор копирования
-					 *
-					 * @param value копируемое значение
-					 *
-					 * \~english
-					 * @brief Copy constructor
-					 *
-					 * @param value value being copied
-					 *
-					 * \~
-					 */
-					Value(const Value & value) noexcept;
-					/**
-					 * \~russian
-					 * @brief Конструктор переноса
-					 *
-					 * @param value переносимое значение
-					 *
-					 * \~english
-					 * @brief Move constructor
-					 *
-					 * @param value value being moved
-					 *
-					 * \~
-					 */
-					Value(Value && value) noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1337,9 +1406,8 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Value() noexcept {}
+					~Value() noexcept = default;
 			} value_t;
-
 			/**
 			 * \~russian
 			 * @brief Потоковая сборка владеющего значения
@@ -1373,8 +1441,16 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
 				private:
+					// Признак того, что сборка завершена
+					bool _done;
+					// Признак того, что имя свойства назначено
+					bool _keyed;
+				private:
+					// Имя свойства, значения ожидающее
+					string _key;
+				private:
 					// Собираемое значение
-					Value _root;
+					value_t _root;
 				private:
 					/**
 					 * \~russian
@@ -1393,15 +1469,6 @@ namespace awh {
 					 */
 					vector <size_t> _path;
 				private:
-					// Имя свойства, значения ожидающее
-					string _key;
-				private:
-					// Признак того, что имя свойства назначено
-					bool _keyed;
-				private:
-					// Признак того, что сборка завершена
-					bool _done;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод получения вместилища, сборкой открытого
@@ -1415,7 +1482,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value & opened() noexcept;
+					value_t & opened() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод занесения собранного значения во вместилище
@@ -1427,11 +1494,11 @@ namespace awh {
 					 * @brief Method of the entering of an assembled value into the container
 					 *
 					 * @param value value being entered
-					 * @return index of the entered value in the container
+					 * @return      index of the entered value in the container
 					 *
 					 * \~
 					 */
-					size_t deposit(Value && value) noexcept;
+					size_t deposit(value_t && value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища затребованного типа
@@ -1443,11 +1510,11 @@ namespace awh {
 					 * @brief Method of the opening of a container of the demanded type
 					 *
 					 * @param value container being opened
-					 * @return sign of the success of the opening
+					 * @return      sign of the success of the opening
 					 *
 					 * \~
 					 */
-					bool expand(Value && value) noexcept;
+					bool expand(value_t && value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1508,7 +1575,7 @@ namespace awh {
 					 *       likewise: both the one and the other are a mistake of the consumer
 					 *
 					 * @param name name of the property being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -1525,11 +1592,11 @@ namespace awh {
 					 * @brief Method of the writing of a ready value
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
-					bool value(const Value & value) noexcept;
+					bool value(const value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи простого значения
@@ -1543,13 +1610,19 @@ namespace awh {
 					 *
 					 * @param value  content being written
 					 * @param quoted flag of a value written in quotes
-					 * @return sign of the success of the writing
+					 * @return       sign of the success of the writing
 					 *
 					 * \~
 					 */
 					bool value(const string & value, const bool quoted = false) noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::ini::Builder::value(const string &, const bool)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::ini::Builder::value(const string &, const bool)
+					 *
+					 * \~
 					 */
 					bool value(const char * value, const bool quoted = false) noexcept;
 				public:
@@ -1590,7 +1663,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value finish() noexcept;
+					value_t finish() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1601,7 +1674,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept;
+					explicit Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1611,7 +1684,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Builder() noexcept {}
+					~Builder() noexcept = default;
 			} builder_t;
 		};
 	};

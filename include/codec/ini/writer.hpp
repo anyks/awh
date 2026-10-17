@@ -47,7 +47,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -63,7 +62,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -73,7 +71,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера INI
-		 *
 		 *
 		 * \~english
 		 * @brief INI container namespace
@@ -156,553 +153,529 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод вывода сообщения об отказе в лог
-					 *
-					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 *          его не заменяет, а лишь оповещает о случившемся.
-					 *
-					 * \~english
-					 * @brief Method of the output of the message about a refusal into the log
-					 *
-					 * @details The code of the refusal remains available to the consumer through error():
-					 *          the log does not replace it but merely notifies about what has happened.
-					 *
-					 * \~
-					 */
-					void report() const noexcept;
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки записи текста настроек
+					 * @brief Класс настройки записи текста настроек
 					 *
 					 * @details Готовые наборы настроек для сложившихся наречий выдают
 					 *          методы @c windows(), @c python(), @c systemd() и @c git().
 					 *
 					 * \~english
-					 * @brief Settings of the writing of a settings text
+					 * @brief Configuration class for text-based settings
 					 *
 					 * @details The ready sets of the settings for the established dialects are issued by
 					 *          the @c windows(), @c python(), @c systemd() and @c git() methods.
 					 *
 					 * \~
 					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Знак, которым начинается примечание
-						char marker;
-						// Знак, разделяющий имя свойства и его значение
-						char separator;
-						// Знак, отделяющий имя подраздела при построении разделителем
-						char delimiter;
-						/**
-						 * \~russian
-						 * Признак того, что читающий признаёт свойства до первого раздела
-						 *
-						 * @note Свойство, записанное прежде объявления раздела, читающий,
-						 *       их не признающий, отвергает вовсе: собранный текст ему не
-						 *       прочитать. Признак взводят по наречию читающего, а не по желанию
-						 *       пишущего
-						 *
-						 * \~english
-						 * Flag of the reader recognizing the properties before the first section
-						 *
-						 * @note A property written before a section declaration is rejected altogether by a reader
-						 *       that does not recognize them: it cannot read the assembled text.
-						 *       The flag is raised by the dialect of the reader rather than by the wish of the
-						 *       writer
-						 *
-						 * \~
-						 */
-						bool global;
-						/**
-						 * \~russian
-						 * Признак того, что читающий признаёт добавление к перечню значений
-						 *
-						 * @note Запись «имя[] = значение» читающий, перечней не признающий,
-						 *       прочтёт именем со скобками и отвергнет его как ошибочно
-						 *       построенное. Признак взводят по наречию читающего: среди
-						 *       сложившихся наречий перечни этой записью не задаёт ни одно
-						 *
-						 * \~english
-						 * Flag of the reader recognizing an addition to a list of the values
-						 *
-						 * @note The record «name[] = value» a reader that does not recognize the lists
-						 *       will read as a name with the brackets and will reject it as erroneously
-						 *       constructed. The flag is raised by the dialect of the reader: among
-						 *       the established dialects not one gives the lists by this notation
-						 *
-						 * \~
-						 */
-						bool arrays;
-						/**
-						 * \~russian
-						 * Признак того, что читающий признаёт свойство без значения
-						 *
-						 * @note Свойство, записанное без разделителя и значения, читающий,
-						 *       таких не признающий, отвергает по отсутствию разделителя. Наречий
-						 *       с ним немного: из сложившихся его признаёт лишь Git
-						 *
-						 * \~english
-						 * Flag of the reader recognizing a property without a value
-						 *
-						 * @note A property written without a separator and a value a reader
-						 *       that does not recognize such ones rejects by the absence of a separator. There are not many dialects
-						 *       with it: of the established ones only Git recognizes it
-						 *
-						 * \~
-						 */
-						bool valueless;
-						/**
-						 * \~russian
-						 * Признак того, что читающий отбрасывает пробельную обвязку значения
-						 *
-						 * @note Задаёт обращение с пробелами в конце значения: отбрасывающему
-						 *       читающему они безразличны, а сохраняющий возьмёт их данными - и
-						 *       украшающий пробел, поставленный перед примечанием в конце строки,
-						 *       достался бы ему частью значения, отчего оно росло бы пробелом при
-						 *       каждом обороте «чтение - запись». Пробелы в начале значения
-						 *       отбрасываются всяким читающим, и признак их не касается
-						 *
-						 * \~english
-						 * Flag of the reader discarding the whitespace padding of a value
-						 *
-						 * @note Gives the treatment of the spaces at the end of a value: for a discarding
-						 *       reader they are indifferent, while a preserving one will take them as data — and
-						 *       an adorning space put before a comment at the end of the line would
-						 *       go to it as a part of the value, from which it would grow by a space at
-						 *       every «reading — writing» turn. The spaces at the beginning of a value
-						 *       are discarded by every reader, and the flag does not concern them
-						 *
-						 * \~
-						 */
-						bool trim;
-						/**
-						 * \~russian
-						 * Признак отбрасывания читающим пробельной обвязки имени раздела
-						 *
-						 * @note Задаёт не запись обвязки, а толкование её читающим. Читающий,
-						 *       обвязку отбрасывающий, прочтёт «[ раздел ]» именем «раздел», и
-						 *       записанное имя разошлось бы с прочитанным - оттого имя с обвязкой
-						 *       такой записи отвергается. Читающий же, обвязку сохраняющий (таково
-						 *       наречие python), прочтёт имя как записано, и отвергать его не за
-						 *       что: круг «чтение - запись» на нём рвался, хотя наречие текст
-						 *       принимало
-						 *
-						 * \~english
-						 * Flag of the reader discarding the whitespace padding of a name of a section
-						 *
-						 * @note Gives the treatment of the padding by the reader, not the writing of it. A reader
-						 *       discarding the padding would read «[ раздел ]» as the name «раздел», and the
-						 *       written name would diverge from the read one - which is why a name carrying the
-						 *       padding is refused by such a writing. A reader keeping the padding (the python
-						 *       dialect does) reads the name just as it is written, and there is nothing to refuse
-						 *       it for: the «reading - writing» round broke on it, although the dialect accepted
-						 *       the text
-						 *
-						 * \~
-						 */
-						bool trimSections;
-						/**
-						 * \~russian
-						 * Признак того, что читающий ищет закрывающую скобку объявления раздела до последней в строке
-						 *
-						 * @note Задаёт не запись скобок, а толкование их читающим. Читающий,
-						 *       берущий первую скобку, прочтёт «[x[]]» именем «x[» с лишним хвостом,
-						 *       и записанное имя разошлось бы с прочитанным - оттого имя со скобкой
-						 *       такой записи отвергается. Читающий же, берущий последнюю (таково
-						 *       наречие python), прочтёт имя «x[]» как записано, и отвергать его не
-						 *       за что: круг «чтение - запись» на нём рвался, хотя наречие текст
-						 *       принимало
-						 *
-						 * \~english
-						 * Flag of the reader searching for the closing bracket of a section declaration up to the last one in the line
-						 *
-						 * @note Gives the treatment of the brackets by the reader, not the writing of them. A reader
-						 *       taking the first bracket would read «[x[]]» as the name «x[» with a surplus tail,
-						 *       and the written name would diverge from the read one - which is why a name carrying
-						 *       a bracket is refused by such a writing. A reader taking the last one (the python
-						 *       dialect does) reads the name «x[]» just as it is written, and there is nothing to
-						 *       refuse it for: the «reading - writing» round broke on it, although the dialect
-						 *       accepted the text
-						 *
-						 * \~
-						 */
-						bool greedySections;
-						/**
-						 * \~russian
-						 * Признак того, что читающий поверяет имена строгою грамматикой наречия
-						 *
-						 * @note Задаёт не запись имён, а поверку их читающим. Наречие Git строит
-						 *       имя раздела из букв, цифр, черты и точки, а имя свойства - из буквы
-						 *       первым знаком да букв, цифр и черты далее; имена иные оно отвергает.
-						 *       Запись, зеркала этой настройки не имевшая, выдавала имя `[раздел]`
-						 *       кириллицей, а обратное чтение отвергало его отказом построения
-						 *       объявления - дерево выдавало текст, какого своё же чтение не
-						 *       принимает, и отказа при записи не было вовсе
-						 *
-						 * @note Имя подраздела грамматике не подлежит: в кавычках оно вольно, и
-						 *       читающий его не поверяет - зеркало держит то же правило
-						 *
-						 * \~english
-						 * Flag of the reader verifying the names by the strict grammar of the dialect
-						 *
-						 * @note Gives the verification of the names by the reader, not the writing of them. The
-						 *       dialect Git builds the name of a section from letters, digits, a dash and a dot, while
-						 *       the name of a property - from a letter as the first character and letters, digits and a
-						 *       dash further on; it rejects other names. The writing, having had no mirror of this
-						 *       setting, issued the name `[раздел]` in Cyrillic, and the reading back rejected it by a
-						 *       refusal of the construction of the declaration - the tree gave away a text which its
-						 *       own reading did not accept, and there was no refusal of the writing at all
-						 *
-						 * @note The name of a subsection is not subject to the grammar: in quotes it is free, and the
-						 *       reader does not verify it - the mirror holds the same rule
-						 *
-						 * \~
-						 */
-						bool strictNames;
-						/**
-						 * \~russian
-						 * Знаки, признаваемые читающим разделителем имени и значения
-						 *
-						 * @note Задаёт не запись разделителя, а толкование его читающим:
-						 *       пишется знак один - `separator`, - а признавать читающий вправе
-						 *       оба, и имя свойства, второй из них несущее, досталось бы ему
-						 *       разрезанным. Признак этот и `separator` расходятся намеренно
-						 *
-						 * \~english
-						 * Characters recognized by a reader as the separator of a name and a value
-						 *
-						 * @note Gives the treatment of the separator by the reader, not the writing of it: a single
-						 *       character is written - `separator`, - while the reader is entitled to recognize
-						 *       both of them, and a property name carrying the second one would fall to it cut in
-						 *       pieces. This flag and `separator` diverge on purpose
-						 *
-						 * \~
-						 */
-						separator_t separators;
-						/**
-						 * \~russian
-						 * Признак того, что читающий снимает кавычки со значения
-						 *
-						 * @note Задаёт не запись кавычек, а толкование их читающим: значение, кавычкой начинающееся, такой
-						 *       читающий прочтёт без неё, и записать её нужно управляющей последовательностью. Признак этот и
-						 *       @c quoting задают разное: первый - как прочтут, второй - как писать, и противоречие между
-						 *       ними запись обнаруживает сама. Настройки, отвечающие наречию разбора, выдаёт @c document_t по
-						 *       своим настройкам чтения
-						 *
-						 * \~english
-						 * Flag of the reader removing the quotes from a value
-						 *
-						 * @note Gives not the writing of the quotes but their interpretation by the reader: a value beginning
-						 *       with a quote such a reader will read without it, and it needs to be written with an escape
-						 *       sequence. This flag and @c quoting give different things: the first — how it will be read,
-						 *       the second — how to write, and the contradiction between them is detected by the writing
-						 *       itself. The settings corresponding to the dialect of the parsing are issued by @c document_t
-						 *       from its reading settings
-						 *
-						 * \~
-						 */
-						bool quotes;
-						/**
-						 * \~russian
-						 * Обращение с ограждением значения кавычками
-						 *
-						 * @note Запрет ограждения записи значения не отменяет: значение,
-						 *       которое читающий прочёл бы иначе - с пробельной обвязкой либо со
-						 *       знаком примечания внутри, - защищается тогда управляющими
-						 *       последовательностями, а при выключенной их записи отвергается.
-						 *       Молча выдать изменённое запись не вправе
-						 *
-						 * \~english
-						 * Treatment of the fencing of a value with quotes
-						 *
-						 * @note A prohibition of the fencing does not cancel the writing of a value: a value
-						 *       which the reader would read otherwise — with a whitespace padding or with
-						 *       a comment character inside — is then protected by escape
-						 *       sequences, while when their writing is disabled it is rejected.
-						 *       The writing has no right to issue what has been changed silently
-						 *
-						 * \~
-						 */
-						quoting_t quoting;
-						// Построение имени подраздела
-						subsection_t subsections;
-						// Вид знака конца строки собираемого текста
-						newline_t newline;
-						/**
-						 * \~russian
-						 * Правило обхождения с негодной последовательностью UTF-8
-						 *
-						 * @note `REPLACE` подменяет негодную последовательность знаком U+FFFD, `REFUSE`
-						 *       отвергает запись целиком, а `PASS` пропускает байты как есть
-						 *
-						 * \~english
-						 * Rule of the treatment of a malformed UTF-8 sequence
-						 *
-						 * @note `REPLACE` substitutes a malformed sequence by the U+FFFD character, `REFUSE`
-						 *       refuses the writing entirely, while `PASS` passes the bytes through as they are
-						 *
-						 * \~
-						 */
-						malformed_t malformed;
-						/**
-						 * \~russian
-						 * Флаг того, что читающий признаёт примечание в конце строки
-						 *
-						 * @note Задаёт не запись примечаний, а обращение со значением:
-						 *       знак примечания внутри значения требует ограждения лишь тогда,
-						 *       когда читающий его примечанием сочтёт. Наречия MS Windows и
-						 *       systemd такого примечания не признают, и точка с запятой в
-						 *       пути у них ограждения не требует
-						 *
-						 * \~english
-						 * Flag of the reader recognizing a comment at the end of a line
-						 *
-						 * @note Gives not the writing of the comments but the treatment of a value:
-						 *       a comment character inside a value requires a fencing only when
-						 *       the reader considers it a comment. The dialects of MS Windows and of
-						 *       systemd do not recognize such a comment, and a semicolon in
-						 *       a path requires no fencing with them
-						 *
-						 * \~
-						 */
-						bool inlineComments;
-						/**
-						 * \~russian
-						 * Признак того, что читающий требует пробела перед знаком примечания
-						 *
-						 * @note Задаёт не запись примечаний, а толкование их читающим: наречие
-						 *       Git пробела не требует, и знак примечания обрывает у него имя ГДЕ
-						 *       УГОДНО - имя `k#v` есть ему имя `k` с примечанием. Признак этот
-						 *       решает о допустимости знака примечания внутри имени
-						 *
-						 * \~english
-						 * Flag of the reader requiring a space before a comment character
-						 *
-						 * @note Gives the treatment of the comments by the reader, not the writing of them: the Git
-						 *       dialect asks for no space, and there a comment character cuts a name ANYWHERE -
-						 *       the name `k#v` is for it the name `k` with a comment. This flag decides on the
-						 *       admissibility of a comment character inside a name
-						 *
-						 * \~
-						 */
-						bool spacedComments;
-						/**
-						 * \~russian
-						 * Знаки, которые читающий признаёт началом примечания
-						 *
-						 * @note Задаёт не запись примечаний, а объём ограждения значений:
-						 *       писать примечания можно лишь одним знаком, а признавать читающий
-						 *       вправе оба. Наречие Git пишет примечания решёткой, но читает и
-						 *       точку с запятой - значение с нею оградить обязаны, иначе при
-						 *       обратном чтении оно обрежется
-						 *
-						 * \~english
-						 * Characters which the reader recognizes as the beginning of a comment
-						 *
-						 * @note Gives not the writing of the comments but the volume of the fencing of the values:
-						 *       the comments can be written with only one character, while the reader has the right to recognize
-						 *       both. The Git dialect writes the comments with a hash but reads
-						 *       the semicolon as well — a value with it must be fenced, otherwise at
-						 *       the reading back it will be cut off
-						 *
-						 * \~
-						 */
-						marker_t comments;
-						// Флаг записи пробелов вокруг разделителя имени и значения
-						bool spaces;
-						/**
-						 * \~russian
-						 * Признак того, что читающий разбирает управляющие последовательности
-						 *
-						 * @note Задаёт не одну лишь запись: обратная косая черта в значении
-						 *       требует записи последовательностью ровно тогда, когда читающий её
-						 *       последовательностью и сочтёт. Признак взводят по наречию читающего,
-						 *       а не по желанию пишущего - иначе значение с косой чертой достанется
-						 *       ему изменённым. Настройки, отвечающие наречию разбора, выдаёт
-						 *
-						 * @c document_t сам по своим настройкам чтения
-						 *
-						 * \~english
-						 * Flag of the reader parsing the escape sequences
-						 *
-						 * @note Gives not the writing alone: a backslash in a value
-						 *       requires a writing as a sequence exactly when the reader considers it
-						 *       a sequence as well. The flag is raised by the dialect of the reader
-						 *       rather than by the wish of the writer — otherwise a value with a backslash will go to
-						 *       it changed. The settings corresponding to the dialect of the parsing are issued by
-						 *
-						 * @c document_t itself from its reading settings
-						 *
-						 * \~
-						 */
-						bool escapes;
-						/**
-						 * \~russian
-						 * Признак того, что читающий склеивает строки по обратной косой черте
-						 *
-						 * @note Имя либо значение, оканчивающееся обратной косой чертой,
-						 *       при таком чтении слилось бы со следующей строкой. Записать
-						 *       его без потери можно лишь управляющей последовательностью,
-						 *       и при выключенной их записи такое имя отвергается
-						 *
-						 * \~english
-						 * Flag of the reader gluing the lines by a backslash
-						 *
-						 * @note A name or a value ending with a backslash,
-						 *       at such a reading would merge with the next line. It can be written
-						 *       without a loss only with an escape sequence,
-						 *       and when their writing is disabled such a name is rejected
-						 *
-						 * \~
-						 */
-						bool continuations;
-						/**
-						 * \~russian
-						 * Флаг записи отступа перед свойствами раздела
-						 *
-						 * @note Отступ этот украшающий, и при взведённом @c indents он не
-						 *       пишется вовсе: читающий, признающий продолжение отступом, принял
-						 *       бы строку с отступом за продолжение значения предыдущего свойства,
-						 *       и весь раздел слился бы в одно значение
-						 *
-						 * \~english
-						 * Flag of the writing of an indent before the properties of a section
-						 *
-						 * @note This indent is an adorning one, and when @c indents is raised it is not
-						 *       written at all: a reader that recognizes a continuation by an indent would take
-						 *       a line with an indent for a continuation of the value of the previous property,
-						 *       and the whole section would merge into a single value
-						 *
-						 * \~
-						 */
-						bool indent;
-						/**
-						 * \~russian
-						 * Флаг записи многострочного значения продолжением отступом
-						 *
-						 * @note Значение со знаком конца строки записать в одну строку
-						 *       нечем: наречие configparser записывает его строками продолжения
-						 *       с отступом, и лишь оно одно такое значение и порождает
-						 *
-						 * \~english
-						 * Flag of the writing of a multiline value as a continuation by an indent
-						 *
-						 * @note There is nothing to write a value with a line ending character in a single line
-						 *       with: the configparser dialect writes it as continuation lines
-						 *       with an indent, and it alone generates such a value
-						 *
-						 * \~
-						 */
-						bool indents;
-						// Флаг записи пустой строки перед объявлением раздела
-						bool separated;
-						/**
-						 * \~russian
-						 * Наибольшая допустимая длина имени раздела или свойства в байтах,
-						 * ноль - без предела
-						 *
-						 * @note Предел тот же, что и у разбора: имя длиннее записать значило
-						 *       бы собрать текст, который читающий отвергнет. Ноль его снимает - тем
-						 *       же образом, каким его снимает разбор
-						 *
-						 * \~english
-						 * Largest admissible length of the name of a section or of a property in bytes,
-						 * zero — without a limit
-						 *
-						 * @note The limit is the same as that of the parsing: to write a longer name would
-						 *       mean to assemble a text which the reader will reject. Zero removes it — in the
-						 *       same way in which the parsing removes it
-						 *
-						 * \~
-						 */
-						uint32_t maxName;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Settings() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия MS Windows
-						 *
-						 * @return настройки записи наречия MS Windows
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the MS Windows dialect
-						 *
-						 * @return settings of the writing of the MS Windows dialect
-						 *
-						 * \~
-						 */
-						static Settings windows() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия configparser языка Python
-						 *
-						 * @return настройки записи наречия configparser
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the configparser dialect of the Python language
-						 *
-						 * @return settings of the writing of the configparser dialect
-						 *
-						 * \~
-						 */
-						static Settings python() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия описания служб systemd
-						 *
-						 * @return настройки записи наречия systemd
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the dialect of the systemd unit files
-						 *
-						 * @return settings of the writing of the systemd dialect
-						 *
-						 * \~
-						 */
-						static Settings systemd() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия настроек Git
-						 *
-						 * @return настройки записи наречия Git
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the dialect of the Git settings
-						 *
-						 * @return settings of the writing of the Git dialect
-						 *
-						 * \~
-						 */
-						static Settings git() noexcept;
+					typedef class __AWH_SHARED_EXPORT__ Settings {
+						public:
+							/**
+							 * \~russian
+							 * Признак того, что читающий отбрасывает пробельную обвязку значения
+							 *
+							 * @note Задаёт обращение с пробелами в конце значения: отбрасывающему
+							 *       читающему они безразличны, а сохраняющий возьмёт их данными - и
+							 *       украшающий пробел, поставленный перед примечанием в конце строки,
+							 *       достался бы ему частью значения, отчего оно росло бы пробелом при
+							 *       каждом обороте «чтение - запись». Пробелы в начале значения
+							 *       отбрасываются всяким читающим, и признак их не касается
+							 *
+							 * \~english
+							 * Flag of the reader discarding the whitespace padding of a value
+							 *
+							 * @note Gives the treatment of the spaces at the end of a value: for a discarding
+							 *       reader they are indifferent, while a preserving one will take them as data — and
+							 *       an adorning space put before a comment at the end of the line would
+							 *       go to it as a part of the value, from which it would grow by a space at
+							 *       every «reading — writing» turn. The spaces at the beginning of a value
+							 *       are discarded by every reader, and the flag does not concern them
+							 *
+							 * \~
+							 */
+							bool trim;
+							// Флаг записи пробелов вокруг разделителя имени и значения
+							bool spaces;
+							/**
+							 * \~russian
+							 * Признак того, что читающий снимает кавычки со значения
+							 *
+							 * @note Задаёт не запись кавычек, а толкование их читающим: значение, кавычкой начинающееся, такой
+							 *       читающий прочтёт без неё, и записать её нужно управляющей последовательностью. Признак этот и
+							 *
+							 *       @c quoting задают разное: первый - как прочтут, второй - как писать, и противоречие между
+							 *       ними запись обнаруживает сама. Настройки, отвечающие наречию разбора, выдаёт @c document_t по
+							 *       своим настройкам чтения
+							 *
+							 * \~english
+							 * Flag of the reader removing the quotes from a value
+							 *
+							 * @note Gives not the writing of the quotes but their interpretation by the
+							 *       reader: a value beginning with a quote such a reader will read without
+							 *       it, and it needs to be written with an escape sequence
+							 *
+							 *       @c quoting give different things: the first - how it will be read, the
+							 *       second - how to write, and the contradiction between them is detected
+							 *       by the writing itself. The settings corresponding to the dialect of
+							 *       the parsing are issued by @c document_t from its reading settings
+							 *
+							 * \~
+							 */
+							bool quotes;
+							/**
+							 * \~russian
+							 * Признак того, что читающий признаёт свойства до первого раздела
+							 *
+							 * @note Свойство, записанное прежде объявления раздела, читающий,
+							 *       их не признающий, отвергает вовсе: собранный текст ему не
+							 *       прочитать. Признак взводят по наречию читающего, а не по желанию
+							 *       пишущего
+							 *
+							 * \~english
+							 * Flag of the reader recognizing the properties before the first section
+							 *
+							 * @note A property written before a section declaration is rejected altogether by a reader
+							 *       that does not recognize them: it cannot read the assembled text.
+							 *       The flag is raised by the dialect of the reader rather than by the wish of the
+							 *       writer
+							 *
+							 * \~
+							 */
+							bool global;
+							/**
+							 * \~russian
+							 * Признак того, что читающий признаёт добавление к перечню значений
+							 *
+							 * @note Запись «имя[] = значение» читающий, перечней не признающий,
+							 *       прочтёт именем со скобками и отвергнет его как ошибочно
+							 *       построенное. Признак взводят по наречию читающего: среди
+							 *       сложившихся наречий перечни этой записью не задаёт ни одно
+							 *
+							 * \~english
+							 * Flag of the reader recognizing an addition to a list of the values
+							 *
+							 * @note The record «name[] = value» a reader that does not recognize the lists
+							 *       will read as a name with the brackets and will reject it as erroneously
+							 *       constructed. The flag is raised by the dialect of the reader: among
+							 *       the established dialects not one gives the lists by this notation
+							 *
+							 * \~
+							 */
+							bool arrays;
+							/**
+							 * \~russian
+							 * Флаг записи отступа перед свойствами раздела
+							 *
+							 * @note Отступ этот украшающий, и при взведённом @c indents он не
+							 *       пишется вовсе: читающий, признающий продолжение отступом, принял
+							 *       бы строку с отступом за продолжение значения предыдущего свойства,
+							 *       и весь раздел слился бы в одно значение
+							 *
+							 * \~english
+							 * Flag of the writing of an indent before the properties of a section
+							 *
+							 * @note This indent is an adorning one, and when @c indents is raised it is not
+							 *       written at all: a reader that recognizes a continuation by an indent would take
+							 *       a line with an indent for a continuation of the value of the previous property,
+							 *       and the whole section would merge into a single value
+							 *
+							 * \~
+							 */
+							bool indent;
+							/**
+							 * \~russian
+							 * Признак того, что читающий разбирает управляющие последовательности
+							 *
+							 * @note Задаёт не одну лишь запись: обратная косая черта в значении
+							 *       требует записи последовательностью ровно тогда, когда читающий её
+							 *       последовательностью и сочтёт. Признак взводят по наречию читающего,
+							 *       а не по желанию пишущего - иначе значение с косой чертой достанется
+							 *       ему изменённым. Настройки, отвечающие наречию разбора, выдаёт
+							 *
+							 * @c document_t сам по своим настройкам чтения
+							 *
+							 * \~english
+							 * Flag of the reader parsing the escape sequences
+							 *
+							 * @note Gives not the writing alone: a backslash in a value
+							 *       requires a writing as a sequence exactly when the reader considers it
+							 *       a sequence as well. The flag is raised by the dialect of the reader
+							 *       rather than by the wish of the writer — otherwise a value with a backslash will go to
+							 *       it changed. The settings corresponding to the dialect of the parsing are issued by
+							 *
+							 * @c document_t itself from its reading settings
+							 *
+							 * \~
+							 */
+							bool escapes;
+							/**
+							 * \~russian
+							 * Флаг записи многострочного значения продолжением отступом
+							 *
+							 * @note Значение со знаком конца строки записать в одну строку
+							 *       нечем: наречие configparser записывает его строками продолжения
+							 *       с отступом, и лишь оно одно такое значение и порождает
+							 *
+							 * \~english
+							 * Flag of the writing of a multiline value as a continuation by an indent
+							 *
+							 * @note There is nothing to write a value with a line ending character in a single line
+							 *       with: the configparser dialect writes it as continuation lines
+							 *       with an indent, and it alone generates such a value
+							 *
+							 * \~
+							 */
+							bool indents;
+							/**
+							 * \~russian
+							 * Признак того, что читающий признаёт свойство без значения
+							 *
+							 * @note Свойство, записанное без разделителя и значения, читающий,
+							 *       таких не признающий, отвергает по отсутствию разделителя. Наречий
+							 *       с ним немного: из сложившихся его признаёт лишь Git
+							 *
+							 * \~english
+							 * Flag of the reader recognizing a property without a value
+							 *
+							 * @note A property written without a separator and a value a reader
+							 *       that does not recognize such ones rejects by the absence of a separator. There are not many dialects
+							 *       with it: of the established ones only Git recognizes it
+							 *
+							 * \~
+							 */
+							bool valueless;
+							// Флаг записи пустой строки перед объявлением раздела
+							bool separated;
+							/**
+							 * \~russian
+							 * Признак того, что читающий поверяет имена строгою грамматикой наречия
+							 *
+							 * @note Задаёт не запись имён, а поверку их читающим. Наречие Git строит
+							 *       имя раздела из букв, цифр, черты и точки, а имя свойства - из буквы
+							 *       первым знаком да букв, цифр и черты далее; имена иные оно отвергает.
+							 *       Запись, зеркала этой настройки не имевшая, выдавала имя `[раздел]`
+							 *       кириллицей, а обратное чтение отвергало его отказом построения
+							 *       объявления - дерево выдавало текст, какого своё же чтение не
+							 *       принимает, и отказа при записи не было вовсе
+							 *
+							 * @note Имя подраздела грамматике не подлежит: в кавычках оно вольно, и
+							 *       читающий его не поверяет - зеркало держит то же правило
+							 *
+							 * \~english
+							 * Flag of the reader verifying the names by the strict grammar of the dialect
+							 *
+							 * @note Gives the verification of the names by the reader, not the writing of them. The
+							 *       dialect Git builds the name of a section from letters, digits, a dash and a dot, while
+							 *       the name of a property - from a letter as the first character and letters, digits and a
+							 *       dash further on; it rejects other names. The writing, having had no mirror of this
+							 *       setting, issued the name `[раздел]` in Cyrillic, and the reading back rejected it by a
+							 *       refusal of the construction of the declaration - the tree gave away a text which its
+							 *       own reading did not accept, and there was no refusal of the writing at all
+							 *
+							 * @note The name of a subsection is not subject to the grammar: in quotes it is free, and the
+							 *       reader does not verify it - the mirror holds the same rule
+							 *
+							 * \~
+							 */
+							bool strictNames;
+							/**
+							 * \~russian
+							 * Признак отбрасывания читающим пробельной обвязки имени раздела
+							 *
+							 * @note Задаёт не запись обвязки, а толкование её читающим. Читающий,
+							 *       обвязку отбрасывающий, прочтёт «[ раздел ]» именем «раздел», и
+							 *       записанное имя разошлось бы с прочитанным - оттого имя с обвязкой
+							 *       такой записи отвергается. Читающий же, обвязку сохраняющий (таково
+							 *       наречие python), прочтёт имя как записано, и отвергать его не за
+							 *       что: круг «чтение - запись» на нём рвался, хотя наречие текст
+							 *       принимало
+							 *
+							 * \~english
+							 * Flag of the reader discarding the whitespace padding of a name of a section
+							 *
+							 * @note Gives the treatment of the padding by the reader, not the writing of it. A reader
+							 *       discarding the padding would read «[ раздел ]» as the name «раздел», and the
+							 *       written name would diverge from the read one - which is why a name carrying the
+							 *       padding is refused by such a writing. A reader keeping the padding (the python
+							 *       dialect does) reads the name just as it is written, and there is nothing to refuse
+							 *       it for: the «reading - writing» round broke on it, although the dialect accepted
+							 *       the text
+							 *
+							 * \~
+							 */
+							bool trimSections;
+							/**
+							 * \~russian
+							 * Признак того, что читающий склеивает строки по обратной косой черте
+							 *
+							 * @note Имя либо значение, оканчивающееся обратной косой чертой,
+							 *       при таком чтении слилось бы со следующей строкой. Записать
+							 *       его без потери можно лишь управляющей последовательностью,
+							 *       и при выключенной их записи такое имя отвергается
+							 *
+							 * \~english
+							 * Flag of the reader gluing the lines by a backslash
+							 *
+							 * @note A name or a value ending with a backslash,
+							 *       at such a reading would merge with the next line. It can be written
+							 *       without a loss only with an escape sequence,
+							 *       and when their writing is disabled such a name is rejected
+							 *
+							 * \~
+							 */
+							bool continuations;
+							/**
+							 * \~russian
+							 * Признак того, что читающий требует пробела перед знаком примечания
+							 *
+							 * @note Задаёт не запись примечаний, а толкование их читающим: наречие
+							 *       Git пробела не требует, и знак примечания обрывает у него имя ГДЕ
+							 *       УГОДНО - имя `k#v` есть ему имя `k` с примечанием. Признак этот
+							 *       решает о допустимости знака примечания внутри имени
+							 *
+							 * \~english
+							 * Flag of the reader requiring a space before a comment character
+							 *
+							 * @note Gives the treatment of the comments by the reader, not the writing of them: the Git
+							 *       dialect asks for no space, and there a comment character cuts a name ANYWHERE -
+							 *       the name `k#v` is for it the name `k` with a comment. This flag decides on the
+							 *       admissibility of a comment character inside a name
+							 *
+							 * \~
+							 */
+							bool spacedComments;
+							/**
+							 * \~russian
+							 * Признак того, что читающий ищет закрывающую скобку объявления раздела до последней в строке
+							 *
+							 * @note Задаёт не запись скобок, а толкование их читающим. Читающий,
+							 *       берущий первую скобку, прочтёт «[x[]]» именем «x[» с лишним хвостом,
+							 *       и записанное имя разошлось бы с прочитанным - оттого имя со скобкой
+							 *       такой записи отвергается. Читающий же, берущий последнюю (таково
+							 *       наречие python), прочтёт имя «x[]» как записано, и отвергать его не
+							 *       за что: круг «чтение - запись» на нём рвался, хотя наречие текст
+							 *       принимало
+							 *
+							 * \~english
+							 * Flag of the reader searching for the closing bracket of a section declaration up to the last one in the line
+							 *
+							 * @note Gives the treatment of the brackets by the reader, not the writing of them. A reader
+							 *       taking the first bracket would read «[x[]]» as the name «x[» with a surplus tail,
+							 *       and the written name would diverge from the read one - which is why a name carrying
+							 *       a bracket is refused by such a writing. A reader taking the last one (the python
+							 *       dialect does) reads the name «x[]» just as it is written, and there is nothing to
+							 *       refuse it for: the «reading - writing» round broke on it, although the dialect
+							 *       accepted the text
+							 *
+							 * \~
+							 */
+							bool greedySections;
+							/**
+							 * \~russian
+							 * Флаг того, что читающий признаёт примечание в конце строки
+							 *
+							 * @note Задаёт не запись примечаний, а обращение со значением:
+							 *       знак примечания внутри значения требует ограждения лишь тогда,
+							 *       когда читающий его примечанием сочтёт. Наречия MS Windows и
+							 *       systemd такого примечания не признают, и точка с запятой в
+							 *       пути у них ограждения не требует
+							 *
+							 * \~english
+							 * Flag of the reader recognizing a comment at the end of a line
+							 *
+							 * @note Gives not the writing of the comments but the treatment of a value:
+							 *       a comment character inside a value requires a fencing only when
+							 *       the reader considers it a comment. The dialects of MS Windows and of
+							 *       systemd do not recognize such a comment, and a semicolon in
+							 *       a path requires no fencing with them
+							 *
+							 * \~
+							 */
+							bool inlineComments;
+						public:
+							// Знак, которым начинается примечание
+							char marker;
+							// Знак, разделяющий имя свойства и его значение
+							char separator;
+							// Знак, отделяющий имя подраздела при построении разделителем
+							char delimiter;
+						public:
+							/**
+							 * \~russian
+							 * Наибольшая допустимая длина имени раздела или свойства в байтах,
+							 * ноль - без предела
+							 *
+							 * @note Предел тот же, что и у разбора: имя длиннее записать значило
+							 *       бы собрать текст, который читающий отвергнет. Ноль его снимает - тем
+							 *       же образом, каким его снимает разбор
+							 *
+							 * \~english
+							 * Largest admissible length of the name of a section or of a property in bytes,
+							 * zero — without a limit
+							 *
+							 * @note The limit is the same as that of the parsing: to write a longer name would
+							 *       mean to assemble a text which the reader will reject. Zero removes it — in the
+							 *       same way in which the parsing removes it
+							 *
+							 * \~
+							 */
+							uint32_t maxName;
+						public:
+							/**
+							 * \~russian
+							 * Обращение с ограждением значения кавычками
+							 *
+							 * @note Запрет ограждения записи значения не отменяет: значение,
+							 *       которое читающий прочёл бы иначе - с пробельной обвязкой либо со
+							 *       знаком примечания внутри, - защищается тогда управляющими
+							 *       последовательностями, а при выключенной их записи отвергается.
+							 *       Молча выдать изменённое запись не вправе
+							 *
+							 * \~english
+							 * Treatment of the fencing of a value with quotes
+							 *
+							 * @note A prohibition of the fencing does not cancel the writing of a value: a value
+							 *       which the reader would read otherwise — with a whitespace padding or with
+							 *       a comment character inside — is then protected by escape
+							 *       sequences, while when their writing is disabled it is rejected.
+							 *       The writing has no right to issue what has been changed silently
+							 *
+							 * \~
+							 */
+							quoting_t quoting;
+							// Вид знака конца строки собираемого текста
+							newline_t newline;
+							/**
+							 * \~russian
+							 * Знаки, которые читающий признаёт началом примечания
+							 *
+							 * @note Задаёт не запись примечаний, а объём ограждения значений:
+							 *       писать примечания можно лишь одним знаком, а признавать читающий
+							 *       вправе оба. Наречие Git пишет примечания решёткой, но читает и
+							 *       точку с запятой - значение с нею оградить обязаны, иначе при
+							 *       обратном чтении оно обрежется
+							 *
+							 * \~english
+							 * Characters which the reader recognizes as the beginning of a comment
+							 *
+							 * @note Gives not the writing of the comments but the volume of the fencing of the values:
+							 *       the comments can be written with only one character, while the reader has the right to recognize
+							 *       both. The Git dialect writes the comments with a hash but reads
+							 *       the semicolon as well — a value with it must be fenced, otherwise at
+							 *       the reading back it will be cut off
+							 *
+							 * \~
+							 */
+							marker_t comments;
+							/**
+							 * \~russian
+							 * Правило обхождения с негодной последовательностью UTF-8
+							 *
+							 * @note `REPLACE` подменяет негодную последовательность знаком U+FFFD, `REFUSE`
+							 *       отвергает запись целиком, а `PASS` пропускает байты как есть
+							 *
+							 * \~english
+							 * Rule of the treatment of a malformed UTF-8 sequence
+							 *
+							 * @note `REPLACE` substitutes a malformed sequence by the U+FFFD character, `REFUSE`
+							 *       refuses the writing entirely, while `PASS` passes the bytes through as they are
+							 *
+							 * \~
+							 */
+							malformed_t malformed;
+							/**
+							 * \~russian
+							 * Знаки, признаваемые читающим разделителем имени и значения
+							 *
+							 * @note Задаёт не запись разделителя, а толкование его читающим:
+							 *       пишется знак один - `separator`, - а признавать читающий вправе
+							 *       оба, и имя свойства, второй из них несущее, досталось бы ему
+							 *       разрезанным. Признак этот и `separator` расходятся намеренно
+							 *
+							 * \~english
+							 * Characters recognized by a reader as the separator of a name and a value
+							 *
+							 * @note Gives the treatment of the separator by the reader, not the writing of it: a single
+							 *       character is written - `separator`, - while the reader is entitled to recognize
+							 *       both of them, and a property name carrying the second one would fall to it cut in
+							 *       pieces. This flag and `separator` diverge on purpose
+							 *
+							 * \~
+							 */
+							separator_t separators;
+							// Построение имени подраздела
+							subsection_t subsections;
+						public:
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия настроек Git
+							 *
+							 * @return настройки записи наречия Git
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the dialect of the Git settings
+							 *
+							 * @return settings of the writing of the Git dialect
+							 *
+							 * \~
+							 */
+							static Settings git() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия MS Windows
+							 *
+							 * @return настройки записи наречия MS Windows
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the MS Windows dialect
+							 *
+							 * @return settings of the writing of the MS Windows dialect
+							 *
+							 * \~
+							 */
+							static Settings windows() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия configparser языка Python
+							 *
+							 * @return настройки записи наречия configparser
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the configparser dialect of the Python language
+							 *
+							 * @return settings of the writing of the configparser dialect
+							 *
+							 * \~
+							 */
+							static Settings python() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия описания служб systemd
+							 *
+							 * @return настройки записи наречия systemd
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the dialect of the systemd unit files
+							 *
+							 * @return settings of the writing of the systemd dialect
+							 *
+							 * \~
+							 */
+							static Settings systemd() noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							explicit Settings() noexcept;
 					} settings_t;
 				private:
-					// Код ошибки последней операции записи
-					error_t _error;
-				private:
-					// Признак того, что раздел текста настроек уже объявлен
-					bool _sectioned;
 					/**
 					 * \~russian
 					 * Признак того, что последней записанной строкой было свойство
@@ -763,11 +736,15 @@ namespace awh {
 					 * \~
 					 */
 					bool _guarded;
+					// Признак того, что раздел текста настроек уже объявлен
+					bool _sectioned;
+				private:
+					// Код ошибки последней операции записи
+					error_t _error;
 				private:
 					// Собираемый текст настроек
 					string _text;
 				private:
-					// Настройки записи текста настроек
 					/**
 					 * \~russian
 					 * @brief Разметка конца строки, ПОСЛЕДНЕЙ записью на деле применённая
@@ -802,8 +779,25 @@ namespace awh {
 					 * \~
 					 */
 					newline_t _written;
-				private:
+					// Настройки записи текста настроек
 					settings_t _settings;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод вывода сообщения об отказе в лог
+					 *
+					 * @details Код отказа остаётся доступен потребителю через error(): журнал
+					 *          его не заменяет, а лишь оповещает о случившемся.
+					 *
+					 * \~english
+					 * @brief Method of the output of the message about a refusal into the log
+					 *
+					 * @details The code of the refusal remains available to the consumer through error():
+					 *          the log does not replace it but merely notifies about what has happened.
+					 *
+					 * \~
+					 */
+					void report() const noexcept;
 				private:
 					/**
 					 * \~russian
@@ -932,7 +926,7 @@ namespace awh {
 					 *          склеил бы очередную строку с примечанием и потерял бы её содержимое.
 					 *
 					 * @param blank признак того, что очередной записью идёт пустая строка,
-					 *          ограждением служащая сама по себе
+					 *              ограждением служащая сама по себе
 					 *
 					 * \~english
 					 * @brief Method of fencing a comment ending with a continuation
@@ -942,7 +936,7 @@ namespace awh {
 					 *          would glue the next line with the comment and would lose its content.
 					 *
 					 * @param blank flag of the next record being an empty line,
-					 *          which serves as a fencing by itself
+					 *              which serves as a fencing by itself
 					 *
 					 * \~
 					 */
@@ -1248,6 +1242,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Writer & operator = (const Writer &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Writer & operator = (Writer &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Writer(const Writer &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Writer(Writer &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -1255,7 +1291,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1269,45 +1305,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer(const settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Ходы копии и переноса
-					 *
-					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
-					 *          поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
-					 *          по правилу языка неявный перенос у класса с деструктором объявленным не
-					 *          порождается вовсе, и перенос молча обращался копией.
-					 *
-					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
-					 *       освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
-					 *       перенос у него работал всё это время
-					 *
-					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 *          переноса подавило бы порождение копии
-					 *
-					 * \~english
-					 * @brief The calls of the copying and of the moving
-					 *
-					 * @details They are declared for the sake of the MOVE: formerly a destructor stood here,
-					 *          cleaning the fields by a call of `clear()`, and its declaration cancelled the
-					 *          generation of the moving calls - by the rule of the language an implicit move at a
-					 *          class with a declared destructor is not generated at all, and the move was silently
-					 *          turned into a copy.
-					 *
-					 * @note That destructor was SUPERFLUOUS: it cleaned strings and lists, which will be
-					 *       released by their own destructors themselves. The neighbor YAML has no destructor,
-					 *       and its move worked all this while
-					 *
-					 * @warning The FOUR calls are declared at once by the rule of five: a declaration of the move
-					 *          alone would have suppressed the generation of the copy
-					 *
-					 * \~
-					 */
-					Writer(const Writer &) = default;
-					Writer(Writer &&) noexcept = default;
-					Writer & operator = (const Writer &) = default;
-					Writer & operator = (Writer &&) noexcept = default;
+					explicit Writer(const settings_t & settings) noexcept;
 			} writer_t;
 		};
 	};

@@ -2394,7 +2394,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Document(const Document &) = default;
+					Document(const Document &) = default;
 					/**
 					 * \~russian
 					 * @brief Разрешаем конструктор перемещения
@@ -2404,7 +2404,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Document(Document &&) noexcept = default;
+					Document(Document &&) noexcept = default;
 				public:
 					/**
 					 * \~russian

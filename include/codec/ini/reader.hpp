@@ -59,7 +59,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -75,7 +74,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -85,7 +83,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера INI
-		 *
 		 *
 		 * \~english
 		 * @brief INI container namespace
@@ -262,20 +259,10 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки разбора текста настроек
+					 * @brief Класс настроек разбора текста настроек
 					 *
 					 * @details Задают наречие записи и пределы, ограничивающие расход памяти
 					 *          на подставном тексте. Готовые наборы настроек для сложившихся наречий
@@ -284,7 +271,7 @@ namespace awh {
 					 * @c strict()
 					 *
 					 * \~english
-					 * @brief Settings of the parsing of a settings text
+					 * @brief Class for text-based configuration settings
 					 *
 					 * @details They give the dialect of the notation and the limits restricting the expenditure of the memory
 					 *          on a planted text. The ready sets of the settings for the established dialects
@@ -294,461 +281,570 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Признаваемые знаки начала примечания
-						marker_t comments;
-						// Признаваемые знаки разделителя имени и значения
-						separator_t separators;
+					typedef class __AWH_SHARED_EXPORT__ Settings {
+						public:
+							// Флаг отбрасывания пробельной обвязки значения свойства
+							bool trim;
+							// Флаг признания свойств, объявленных до первого раздела
+							bool global;
+							// Флаг признания записи «имя[]» добавлением к перечню значений
+							bool arrays;
+							// Флаг склеивания строк, продолженных отступом по образцу configparser
+							bool indents;
+							// Флаг разбора управляющих последовательностей в значении свойства
+							bool escapes;
+							/**
+							 * \~russian
+							 * Признак дозволения подразделов
+							 *
+							 * @details Снятый признак отвергает всякое имя раздела со знаком-разделителем,
+							 *          оставляя разделы простые. Прежде мысль эта выражалась нулём у `maxDepth`, а ноль
+							 *          ныне значит «без предела» у всех кодеков рамки.
+							 *
+							 * @note Признак этот от настройки `subsections` отличен: та решает, ВЫДЕЛЯЮТСЯ ли
+							 *       подразделы вовсе, а этот - дозволены ли они, коль скоро выделяются. При
+							 *       `subsection_t::NONE` имя берётся целиком и отказа не выходит вовсе
+							 *
+							 * \~english
+							 * Sign of the permission of the subsections
+							 *
+							 * @details A cleared sign rejects every name of a section carrying a separator character,
+							 *          leaving the sections simple. Formerly this thought was expressed by a zero at
+							 *          `maxDepth`, while a zero now means «without a limit» for all the codecs of the
+							 *          framework.
+							 *
+							 * @note This sign is distinct from the `subsections` setting: that one decides whether the
+							 *       subsections are DISTINGUISHED at all, while this one - whether they are admissible,
+							 *       given that they are distinguished. At `subsection_t::NONE` the name is taken as a
+							 *       whole and no refusal comes out at all
+							 *
+							 * \~
+							 */
+							bool nesting;
+							// Флаг признания свойства, записанного без разделителя и значения
+							bool valueless;
+							// Флаг учёта регистра имён разделов и свойств при сличении
+							bool sensitive;
+							// Флаг выдачи пустых строк отдельным событием
+							bool emitBlanks;
+							/**
+							 * \~russian
+							 * Флаг поверки имён строгою грамматикой наречия
+							 *
+							 * @details Умолчанием имя раздела и имя свойства грамматикой не
+							 *          поверяются вовсе: наречия INI расходятся в них слишком широко.
+							 *          Наречие Git же строит имя раздела из букв, цифр, черты и точки, а
+							 *          имя свойства - из буквы первым знаком и далее из букв, цифр и
+							 *          черты. Записи «[a b]», «[a_b]», «k_2 = v» и «1k = v» средство
+							 *          «git config» отвергает, а чтение без поверки принимало их все.
+							 *
+							 * @warning Имя подраздела грамматике этой не подлежит: в кавычках
+							 *          оно вольно, и «[a "любое имя"]» средство принимает
+							 *
+							 * \~english
+							 * Flag of the verification of the names by the strict grammar of the dialect
+							 *
+							 * @details By default the name of a section and the name of a property are not verified
+							 *          by a grammar at all: the dialects of INI diverge in them too widely.
+							 *          The Git dialect however builds the name of a section out of the letters, the digits, the dash
+							 *          and the dot, while the name of a property — out of a letter as the first character and further
+							 *          out of the letters, the digits and the dash. The records «[a b]», «[a_b]», «k_2 = v» and «1k = v»
+							 *          the «git config» tool rejects while the reading without the verification accepted all of them.
+							 *
+							 * @warning The name of a subsection is not subject to this grammar: within the quotes
+							 *          it is free, and «[a "any name"]» the tool accepts
+							 *
+							 * \~
+							 */
+							bool strictNames;
+							/**
+							 * \~russian
+							 * Флаг отбрасывания пробельной обвязки имени раздела
+							 *
+							 * @details Умолчанием обвязка отбрасывается: запись «[ раздел ]» даёт имя
+							 *          «раздел». Разбор языка Python её сохраняет, и имя выходит с пробелами.
+							 *
+							 * @warning Сохранение обвязки значит, что «[a]» и «[ a ]» суть разные
+							 *          разделы: сличение имён ведётся знак в знак
+							 *
+							 * \~english
+							 * Flag of the discarding of the whitespace trimming of the name of a section
+							 *
+							 * @details By default the trimming is discarded: the record «[ section ]» gives the name
+							 *          «section». The parsing of the Python language preserves it, and the name comes out with the spaces.
+							 *
+							 * @warning The preservation of the trimming means that «[a]» and «[ a ]» are different
+							 *          sections: the comparison of the names is conducted character by character
+							 *
+							 * \~
+							 */
+							bool trimSections;
+							// Флаг выдачи примечаний отдельным событием
+							bool emitComments;
+							// Флаг склеивания строк, продолженных знаком обратной косой черты
+							bool continuations;
+							/**
+							 * \~russian
+							 * Флаг поиска закрывающей скобки объявления раздела до последней в строке
+							 *
+							 * @details Умолчанием берётся первая: запись «[x[]]» такому разбору есть
+							 *          имя «x[» с лишним хвостом. Разбор языка Python берёт последнюю, и
+							 *          имя выходит «x[]».
+							 *
+							 * \~english
+							 * Flag of the search for the closing bracket of a section declaration up to the last one in the line
+							 *
+							 * @details By default the first one is taken: the record «[x[]]» is for such a parsing
+							 *          the name «x[» with a superfluous tail. The parsing of the Python language takes the last one,
+							 *          and the name comes out as «x[]».
+							 *
+							 * \~
+							 */
+							bool greedySections;
+							/**
+							 * \~russian
+							 * Флаг требования пробельного знака перед началом примечания
+							 *
+							 * @details Без пробела знак примечания частью значения остаётся: запись
+							 *          «key = a#b» даёт значение «a#b» целиком. С ним - обрывает значение
+							 *          всякий раз, где бы ни стоял.
+							 *
+							 * @warning Требование это - защита пути и пароля, где точка с запятой и
+							 *          решётка стоят посреди значения. Снимать его следует лишь там, где
+							 *          наречие того требует: наречие Git примечание режет без пробела
+							 *
+							 * \~english
+							 * Flag of the requirement of a whitespace character before the beginning of a comment
+							 *
+							 * @details Without a space the character of a comment remains a part of the value: the record
+							 *          «key = a#b» gives the value «a#b» in full. With it the value is cut off
+							 *          every time, wherever the character stands.
+							 *
+							 * @warning This requirement is a protection of a path and of a password, where a semicolon and
+							 *          a hash stand in the middle of a value. It should be lifted only there, where
+							 *          the dialect requires it: the Git dialect cuts a comment without a space
+							 *
+							 * \~
+							 */
+							bool spacedComments;
+							/**
+							 * \~russian
+							 * Флаг признания примечания в конце строки свойства
+							 *
+							 * @warning Наречия MS Windows и systemd такого примечания не
+							 *          признают: точка с запятой остаётся частью значения. Включение
+							 *          этого флага молча отрезает у них часть значения - скажем, у пути
+							 *          с точкой с запятой либо у пароля
+							 *
+							 * \~english
+							 * Flag of the recognition of a comment at the end of a property line
+							 *
+							 * @warning The dialects of MS Windows and of systemd do not recognize such a comment:
+							 *          the semicolon remains a part of the value. The enabling of
+							 *          this flag silently cuts off a part of the value from them — say, from a path
+							 *          with a semicolon or from a password
+							 *
+							 * \~
+							 */
+							bool inlineComments;
+							/**
+							 * \~russian
+							 * Флаг учёта регистра имён разделов при сличении
+							 *
+							 * @note Заведён ради наречия configparser: имена свойств оно приводит
+							 *       к нижнему регистру, а имена разделов сличает как записаны. Флаг
+							 *       этот действует поверх общего: учёт регистра разделов включает
+							 *       любой из двух
+							 *
+							 * \~english
+							 * Flag of taking the case of the names of the sections into account at the comparison
+							 *
+							 * @note Established for the sake of the configparser dialect: it brings the names of the properties
+							 *       to the lower case while it compares the names of the sections as they are written. This flag
+							 *       acts on top of the common one: the taking into account of the case of the sections is enabled by
+							 *       either of the two
+							 *
+							 * \~
+							 */
+							bool sensitiveSections;
+						public:
+							// Знак, отделяющий имя подраздела при построении разделителем
+							char delimiter;
+						public:
+							// Обращение с кавычками вокруг значения свойства
+							quote_t quotes;
+							// Признаваемые знаки начала примечания
+							marker_t comments;
+							// Кодировка, навязанная извне вопреки метке порядка байтов
+							encoding_t encoding;
+							// Признаваемые знаки разделителя имени и значения
+							separator_t separators;
+							/**
+							 * \~russian
+							 * Обращение с повторным объявлением свойства в разделе
+							 *
+							 * @note Потокового чтения касается лишь значение @c ERROR: события выдаются по мере разбора, и какое
+							 *       из объявлений считать действующим, решает потребитель - выдать одно, отбросив прочие, чтение
+							 *       не вправе, не удерживая текст целиком. Значения @c FIRST, @c LAST и @c MERGE потому исполняет
+							 *       дерево настроек, решая, какое объявление выдаёт @c Document::get()
+							 *
+							 * \~english
+							 * Treatment of a repeated declaration of a property in a section
+							 *
+							 * @note Only the @c ERROR value concerns the streaming reading: the events are issued as the parsing
+							 *       goes on, and which of the declarations to consider the effective one is decided by the
+							 *       consumer — the reading has no right to issue one, discarding the rest, without holding the
+							 *       text in full. The @c FIRST, @c LAST and @c MERGE values are therefore executed by the
+							 *       settings tree, which decides which declaration @c Document::get() issues
+							 *
+							 * \~
+							 */
+							duplicate_t duplicates;
+							// Построение имени подраздела
+							subsection_t subsections;
+						public:
+							/**
+							 * \~russian
+							 * Наибольшая допустимая длина логической строки в байтах
+							 *
+							 * @note Значение в ноль значит «без предела»: длина не поверяется вовсе
+							 *
+							 * \~english
+							 * Largest admissible length of a logical line in bytes
+							 *
+							 * @note A value of zero means «without a limit»: the length is not verified at all
+							 *
+							 * \~
+							 */
+							uint32_t maxLine;
+							/**
+							 * \~russian
+							 * Наибольшая допустимая длина имени раздела или свойства в байтах
+							 *
+							 * @note Значение в ноль значит «без предела»: длина не поверяется вовсе.
+							 *       Уклад этот один у разбора, у правки дерева и у записи
+							 *
+							 * \~english
+							 * Largest admissible length of the name of a section or of a property in bytes
+							 *
+							 * @note A value of zero means «without a limit»: the length is not verified at all.
+							 *       This convention is one and the same for the parsing, for the editing of the tree and for the writing
+							 *
+							 * \~
+							 */
+							uint32_t maxName;
+							/**
+							 * \~russian
+							 * Наибольшая допустимая глубина вложенности подразделов
+							 *
+							 * @note Граница ВКЛЮЧАЮЩАЯ, и считается по числу знаков-разделителей в имени
+							 *       раздела: при значении в единицу «[a.b]» принимается, а «[a.b.c]» отвергается.
+							 *       Ноль значит «без предела» - уклад этот один у всех кодеков рамки
+							 *
+							 * @warning Граница прежде была ИСКЛЮЧАЮЩЕЙ, а ноль ЗАПРЕЩАЛ подразделы вовсе, и
+							 *          оба уклада расходились с прочими кодеками рамки. Хуже того, они
+							 *          расходились между собою: при исключающей границе единица значила ровно
+							 *          то же, что ноль, - «подразделов нельзя», - и запросить «допускаю один
+							 *          уровень» было нечем вовсе. Запрет получил своё выражение - признак
+							 *          `nesting`
+							 *
+							 * \~english
+							 * Largest admissible depth of the nesting of the subsections
+							 *
+							 * @note The boundary is an inclusive one and is counted by the number of the separator characters
+							 *       in the name of the section: at a value of one «[a.b]» is accepted while «[a.b.c]» is rejected.
+							 *       Zero means «without a limit» — this convention is one and the same for all the codecs of the framework
+							 *
+							 * @warning The boundary formerly was EXCLUSIVE, and a zero FORBADE the subsections
+							 *          altogether, and both conventions diverged from the other codecs of the framework.
+							 *          Worse still, they diverged from one another: at an exclusive boundary a one meant
+							 *          exactly the same as a zero - "no subsections" - and there was no means at all to
+							 *          request "I admit one level". The forbidding has got its own expression - the
+							 *          `nesting` sign
+							 *
+							 * \~
+							 */
+							uint32_t maxDepth;
+							/**
+							 * \~russian
+							 * Наибольшее допустимое количество строк продолжения у одной записи
+							 *
+							 * @warning Уклад нуля здесь ИНОЙ, нежели у `maxLine` и `maxName`: нуль
+							 *          значит не «без предела», а запрет продолжений вовсе - первая же
+							 *          склеенная строка отвергается. Уклад этот один с укладом `maxDepth`,
+							 *          где нуль запрещает подразделы: пределы, считающие вложенность,
+							 *          нулём запрещают её, а пределы длины нулём снимаются
+							 *
+							 * \~english
+							 * Largest admissible number of the lines of a continuation of one record
+							 *
+							 * @warning The convention of zero here is DIFFERENT from that of `maxLine` and `maxName`: zero
+							 *          means not «without a limit» but a prohibition of the continuations altogether - the very first
+							 *          glued line is rejected. This convention is one and the same with the convention of `maxDepth`,
+							 *          where zero prohibits the subsections: the limits that count the nesting prohibit it by zero,
+							 *          while the limits of the length are lifted by zero
+							 *
+							 * \~
+							 */
+							uint32_t maxContinuation;
+						public:
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия MS Windows
+							 *
+							 * @details Примечание начинает лишь точка с запятой и лишь в начале
+							 *          строки, разделителем служит знак равенства, кавычки частью
+							 *          значения остаются, повторное свойство берётся первым.
+							 *
+							 * @return настройки разбора наречия MS Windows
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the MS Windows dialect
+							 *
+							 * @details A comment is begun only by a semicolon and only at the beginning of a
+							 *          line, the equals sign serves as the separator, the quotes remain a part of the
+							 *          value, a repeated property is taken as the first one.
+							 *
+							 * @return settings of the parsing of the MS Windows dialect
+							 *
+							 * \~
+							 */
+							static Settings windows() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия configparser языка Python
+							 *
+							 * @details Разделителем служит знак равенства либо двоеточие,
+							 *          продолжение строки задаётся отступом, повторное свойство берётся
+							 *          последним.
+							 *
+							 * @return настройки разбора наречия configparser
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the configparser dialect of the Python language
+							 *
+							 * @details The equals sign or the colon serves as the separator,
+							 *          a continuation of a line is given by an indent, a repeated property is taken as
+							 *          the last one.
+							 *
+							 * @return settings of the parsing of the configparser dialect
+							 *
+							 * \~
+							 */
+							static Settings python() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия описания служб systemd
+							 *
+							 * @details Признаются оба знака примечания в начале строки,
+							 *          продолжение строки задаётся обратной косой чертой, повторное
+							 *          свойство добавляется к перечню значений.
+							 *
+							 * @return настройки разбора наречия systemd
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the dialect of the systemd unit files
+							 *
+							 * @details Both comment characters are recognized at the beginning of a line,
+							 *          a continuation of a line is given by a backslash, a repeated
+							 *          property is added to the list of the values.
+							 *
+							 * @return settings of the parsing of the systemd dialect
+							 *
+							 * \~
+							 */
+							static Settings systemd() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения настроек наречия настроек Git
+							 *
+							 * @details Подраздел заключается в кавычки и учитывает регистр,
+							 *          значение допускает управляющие последовательности, свойство без
+							 *          значения признаётся за истину, повторное свойство добавляется к
+							 *          перечню значений.
+							 *
+							 * @return настройки разбора наречия Git
+							 *
+							 * \~english
+							 * @brief Method of getting the settings of the dialect of the Git settings
+							 *
+							 * @details A subsection is enclosed in quotes and takes the case into account,
+							 *          a value admits the escape sequences, a property without
+							 *          a value is recognized as truth, a repeated property is added to
+							 *          the list of the values.
+							 *
+							 * @return settings of the parsing of the Git dialect
+							 *
+							 * \~
+							 */
+							static Settings git() noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод получения строгих настроек разбора
+							 *
+							 * @details Всякое расхождение прекращает разбор ошибкой: повторное
+							 *          свойство, свойство до первого раздела, отсутствие разделителя.
+							 *          Применимо там, где текст настроек собирается своими средствами и
+							 *          молчаливое разночтение недопустимо.
+							 *
+							 * @return строгие настройки разбора
+							 *
+							 * \~english
+							 * @brief Method of getting the strict settings of the parsing
+							 *
+							 * @details Every divergence terminates the parsing with an error: a repeated
+							 *          property, a property before the first section, an absence of a separator.
+							 *          Applicable where the settings text is assembled by one's own means and
+							 *          a silent discrepancy is inadmissible.
+							 *
+							 * @return strict settings of the parsing
+							 *
+							 * \~
+							 */
+							static Settings strict() noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * @details Умолчание берёт общее пересечение сложившихся наречий:
+							 *          признаются оба знака примечания, разделителем служит знак
+							 *          равенства, кавычки снимаются, примечание в конце строки значения
+							 *          не признаётся, подразделы не выделяются.
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * @details The default takes the common intersection of the established dialects:
+							 *          both comment characters are recognized, the equals sign serves as the
+							 *          separator, the quotes are removed, a comment at the end of a value line
+							 *          is not recognized, the subsections are not singled out.
+							 *
+							 * \~
+							 */
+							explicit Settings() noexcept;
+					} settings_t;
+				private:
+					/**
+					 * \~russian
+					 * @brief Структура отрезка собранной логической строки, взятый из исходного текста
+					 *
+					 * @details Отрезки записываются при сборке логической строки и служат
+					 *          обратному отображению: место знака собранной строки восстанавливается
+					 *          по ним в место того же знака в исходном тексте.
+					 *
+					 * @note Отображение это записывается при сборке, а не выводится
+					 *       повторным разбором правил склейки: два списка правил разошлись бы при
+					 *       первой же правке одного из них
+					 *
+					 * \~english
+					 * @brief The structure of a segment of a reconstructed logical line, taken from the source text
+					 *
+					 * @details The segments are recorded at the assembly of the logical line and serve the
+					 *          reverse mapping: the place of a character of the assembled line is restored by them
+					 *          into the place of the same character in the source text.
+					 *
+					 * @note This mapping is recorded at the assembly rather than derived by a repeated parsing
+					 *       of the gluing rules: two lists of the rules would diverge at the first editing of one of them
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Piece {
 						/**
 						 * \~russian
-						 * Обращение с повторным объявлением свойства в разделе
-						 *
-						 * @note Потокового чтения касается лишь значение @c ERROR: события выдаются по мере разбора, и какое
-						 *       из объявлений считать действующим, решает потребитель - выдать одно, отбросив прочие, чтение
-						 *       не вправе, не удерживая текст целиком. Значения @c FIRST, @c LAST и @c MERGE потому исполняет
-						 *       дерево настроек, решая, какое объявление выдаёт @c Document::get()
+						 * Длина отрезка в байтах
 						 *
 						 * \~english
-						 * Treatment of a repeated declaration of a property in a section
-						 *
-						 * @note Only the @c ERROR value concerns the streaming reading: the events are issued as the parsing
-						 *       goes on, and which of the declarations to consider the effective one is decided by the
-						 *       consumer — the reading has no right to issue one, discarding the rest, without holding the
-						 *       text in full. The @c FIRST, @c LAST and @c MERGE values are therefore executed by the
-						 *       settings tree, which decides which declaration @c Document::get() issues
+						 * Length of the segment in bytes
 						 *
 						 * \~
 						 */
-						duplicate_t duplicates;
-						// Обращение с кавычками вокруг значения свойства
-						quote_t quotes;
-						// Построение имени подраздела
-						subsection_t subsections;
-						// Знак, отделяющий имя подраздела при построении разделителем
-						char delimiter;
+						size_t length;
 						/**
 						 * \~russian
-						 * Флаг признания примечания в конце строки свойства
-						 *
-						 * @warning Наречия MS Windows и systemd такого примечания не
-						 *          признают: точка с запятой остаётся частью значения. Включение
-						 *          этого флага молча отрезает у них часть значения - скажем, у пути
-						 *          с точкой с запятой либо у пароля
+						 * Положение начала отрезка в приведённом исходном тексте
 						 *
 						 * \~english
-						 * Flag of the recognition of a comment at the end of a property line
-						 *
-						 * @warning The dialects of MS Windows and of systemd do not recognize such a comment:
-						 *          the semicolon remains a part of the value. The enabling of
-						 *          this flag silently cuts off a part of the value from them — say, from a path
-						 *          with a semicolon or from a password
+						 * Position of the beginning of the segment in the converted source text
 						 *
 						 * \~
 						 */
-						bool inlineComments;
+						size_t source;
 						/**
 						 * \~russian
-						 * Флаг требования пробельного знака перед началом примечания
-						 *
-						 * @details Без пробела знак примечания частью значения остаётся: запись
-						 *          «key = a#b» даёт значение «a#b» целиком. С ним - обрывает значение
-						 *          всякий раз, где бы ни стоял.
-						 *
-						 * @warning Требование это - защита пути и пароля, где точка с запятой и
-						 *          решётка стоят посреди значения. Снимать его следует лишь там, где
-						 *          наречие того требует: наречие Git примечание режет без пробела
+						 * Положение начала отрезка в собранной логической строке
 						 *
 						 * \~english
-						 * Flag of the requirement of a whitespace character before the beginning of a comment
-						 *
-						 * @details Without a space the character of a comment remains a part of the value: the record
-						 *          «key = a#b» gives the value «a#b» in full. With it the value is cut off
-						 *          every time, wherever the character stands.
-						 *
-						 * @warning This requirement is a protection of a path and of a password, where a semicolon and
-						 *          a hash stand in the middle of a value. It should be lifted only there, where
-						 *          the dialect requires it: the Git dialect cuts a comment without a space
+						 * Position of the beginning of the segment in the assembled logical line
 						 *
 						 * \~
 						 */
-						bool spacedComments;
-						/**
-						 * \~russian
-						 * Флаг поиска закрывающей скобки объявления раздела до последней в строке
-						 *
-						 * @details Умолчанием берётся первая: запись «[x[]]» такому разбору есть
-						 *          имя «x[» с лишним хвостом. Разбор языка Python берёт последнюю, и
-						 *          имя выходит «x[]».
-						 *
-						 * \~english
-						 * Flag of the search for the closing bracket of a section declaration up to the last one in the line
-						 *
-						 * @details By default the first one is taken: the record «[x[]]» is for such a parsing
-						 *          the name «x[» with a superfluous tail. The parsing of the Python language takes the last one,
-						 *          and the name comes out as «x[]».
-						 *
-						 * \~
-						 */
-						bool greedySections;
-						/**
-						 * \~russian
-						 * Флаг отбрасывания пробельной обвязки имени раздела
-						 *
-						 * @details Умолчанием обвязка отбрасывается: запись «[ раздел ]» даёт имя
-						 *          «раздел». Разбор языка Python её сохраняет, и имя выходит с пробелами.
-						 *
-						 * @warning Сохранение обвязки значит, что «[a]» и «[ a ]» суть разные
-						 *          разделы: сличение имён ведётся знак в знак
-						 *
-						 * \~english
-						 * Flag of the discarding of the whitespace trimming of the name of a section
-						 *
-						 * @details By default the trimming is discarded: the record «[ section ]» gives the name
-						 *          «section». The parsing of the Python language preserves it, and the name comes out with the spaces.
-						 *
-						 * @warning The preservation of the trimming means that «[a]» and «[ a ]» are different
-						 *          sections: the comparison of the names is conducted character by character
-						 *
-						 * \~
-						 */
-						bool trimSections;
-						/**
-						 * \~russian
-						 * Флаг поверки имён строгою грамматикой наречия
-						 *
-						 * @details Умолчанием имя раздела и имя свойства грамматикой не
-						 *          поверяются вовсе: наречия INI расходятся в них слишком широко.
-						 *          Наречие Git же строит имя раздела из букв, цифр, черты и точки, а
-						 *          имя свойства - из буквы первым знаком и далее из букв, цифр и
-						 *          черты. Записи «[a b]», «[a_b]», «k_2 = v» и «1k = v» средство
-						 *          «git config» отвергает, а чтение без поверки принимало их все.
-						 *
-						 * @warning Имя подраздела грамматике этой не подлежит: в кавычках
-						 *          оно вольно, и «[a "любое имя"]» средство принимает
-						 *
-						 * \~english
-						 * Flag of the verification of the names by the strict grammar of the dialect
-						 *
-						 * @details By default the name of a section and the name of a property are not verified
-						 *          by a grammar at all: the dialects of INI diverge in them too widely.
-						 *          The Git dialect however builds the name of a section out of the letters, the digits, the dash
-						 *          and the dot, while the name of a property — out of a letter as the first character and further
-						 *          out of the letters, the digits and the dash. The records «[a b]», «[a_b]», «k_2 = v» and «1k = v»
-						 *          the «git config» tool rejects while the reading without the verification accepted all of them.
-						 *
-						 * @warning The name of a subsection is not subject to this grammar: within the quotes
-						 *          it is free, and «[a "any name"]» the tool accepts
-						 *
-						 * \~
-						 */
-						bool strictNames;
-						// Флаг разбора управляющих последовательностей в значении свойства
-						bool escapes;
-						// Флаг склеивания строк, продолженных знаком обратной косой черты
-						bool continuations;
-						// Флаг склеивания строк, продолженных отступом по образцу configparser
-						bool indents;
-						// Флаг признания свойства, записанного без разделителя и значения
-						bool valueless;
-						// Флаг признания записи «имя[]» добавлением к перечню значений
-						bool arrays;
-						// Флаг учёта регистра имён разделов и свойств при сличении
-						bool sensitive;
-						/**
-						 * \~russian
-						 * Флаг учёта регистра имён разделов при сличении
-						 *
-						 * @note Заведён ради наречия configparser: имена свойств оно приводит
-						 *       к нижнему регистру, а имена разделов сличает как записаны. Флаг
-						 *       этот действует поверх общего: учёт регистра разделов включает
-						 *       любой из двух
-						 *
-						 * \~english
-						 * Flag of taking the case of the names of the sections into account at the comparison
-						 *
-						 * @note Established for the sake of the configparser dialect: it brings the names of the properties
-						 *       to the lower case while it compares the names of the sections as they are written. This flag
-						 *       acts on top of the common one: the taking into account of the case of the sections is enabled by
-						 *       either of the two
-						 *
-						 * \~
-						 */
-						bool sensitiveSections;
-						// Флаг отбрасывания пробельной обвязки значения свойства
-						bool trim;
-						// Флаг признания свойств, объявленных до первого раздела
-						bool global;
-						// Флаг выдачи примечаний отдельным событием
-						bool emitComments;
-						// Флаг выдачи пустых строк отдельным событием
-						bool emitBlanks;
-						/**
-						 * \~russian
-						 * Наибольшая допустимая длина логической строки в байтах
-						 *
-						 * @note Значение в ноль значит «без предела»: длина не поверяется вовсе
-						 *
-						 * \~english
-						 * Largest admissible length of a logical line in bytes
-						 *
-						 * @note A value of zero means «without a limit»: the length is not verified at all
-						 *
-						 * \~
-						 */
-						uint32_t maxLine;
-						/**
-						 * \~russian
-						 * Наибольшая допустимая длина имени раздела или свойства в байтах
-						 *
-						 * @note Значение в ноль значит «без предела»: длина не поверяется вовсе.
-						 *       Уклад этот один у разбора, у правки дерева и у записи
-						 *
-						 * \~english
-						 * Largest admissible length of the name of a section or of a property in bytes
-						 *
-						 * @note A value of zero means «without a limit»: the length is not verified at all.
-						 *       This convention is one and the same for the parsing, for the editing of the tree and for the writing
-						 *
-						 * \~
-						 */
-						uint32_t maxName;
-						/**
-						 * \~russian
-						 * Наибольшая допустимая глубина вложенности подразделов
-						 *
-						 * @note Граница ВКЛЮЧАЮЩАЯ, и считается по числу знаков-разделителей в имени
-						 *       раздела: при значении в единицу «[a.b]» принимается, а «[a.b.c]» отвергается.
-						 *       Ноль значит «без предела» - уклад этот один у всех кодеков рамки
-						 *
-						 * @warning Граница прежде была ИСКЛЮЧАЮЩЕЙ, а ноль ЗАПРЕЩАЛ подразделы вовсе, и
-						 *          оба уклада расходились с прочими кодеками рамки. Хуже того, они
-						 *          расходились между собою: при исключающей границе единица значила ровно
-						 *          то же, что ноль, - «подразделов нельзя», - и запросить «допускаю один
-						 *          уровень» было нечем вовсе. Запрет получил своё выражение - признак
-						 *          `nesting`
-						 *
-						 * \~english
-						 * Largest admissible depth of the nesting of the subsections
-						 *
-						 * @note The boundary is an inclusive one and is counted by the number of the separator characters
-						 *       in the name of the section: at a value of one «[a.b]» is accepted while «[a.b.c]» is rejected.
-						 *       Zero means «without a limit» — this convention is one and the same for all the codecs of the framework
-						 *
-						 * @warning The boundary formerly was EXCLUSIVE, and a zero FORBADE the subsections
-						 *          altogether, and both conventions diverged from the other codecs of the framework.
-						 *          Worse still, they diverged from one another: at an exclusive boundary a one meant
-						 *          exactly the same as a zero - "no subsections" - and there was no means at all to
-						 *          request "I admit one level". The forbidding has got its own expression - the
-						 *          `nesting` sign
-						 *
-						 * \~
-						 */
-						uint32_t maxDepth;
-						/**
-						 * \~russian
-						 * Признак дозволения подразделов
-						 *
-						 * @details Снятый признак отвергает всякое имя раздела со знаком-разделителем,
-						 *          оставляя разделы простые. Прежде мысль эта выражалась нулём у `maxDepth`, а ноль
-						 *          ныне значит «без предела» у всех кодеков рамки.
-						 *
-						 * @note Признак этот от настройки `subsections` отличен: та решает, ВЫДЕЛЯЮТСЯ ли
-						 *       подразделы вовсе, а этот - дозволены ли они, коль скоро выделяются. При
-						 *       `subsection_t::NONE` имя берётся целиком и отказа не выходит вовсе
-						 *
-						 * \~english
-						 * Sign of the permission of the subsections
-						 *
-						 * @details A cleared sign rejects every name of a section carrying a separator character,
-						 *          leaving the sections simple. Formerly this thought was expressed by a zero at
-						 *          `maxDepth`, while a zero now means «without a limit» for all the codecs of the
-						 *          framework.
-						 *
-						 * @note This sign is distinct from the `subsections` setting: that one decides whether the
-						 *       subsections are DISTINGUISHED at all, while this one - whether they are admissible,
-						 *       given that they are distinguished. At `subsection_t::NONE` the name is taken as a
-						 *       whole and no refusal comes out at all
-						 *
-						 * \~
-						 */
-						bool nesting;
-						/**
-						 * \~russian
-						 * Наибольшее допустимое количество строк продолжения у одной записи
-						 *
-						 * @warning Уклад нуля здесь ИНОЙ, нежели у `maxLine` и `maxName`: нуль
-						 *          значит не «без предела», а запрет продолжений вовсе - первая же
-						 *          склеенная строка отвергается. Уклад этот один с укладом `maxDepth`,
-						 *          где нуль запрещает подразделы: пределы, считающие вложенность,
-						 *          нулём запрещают её, а пределы длины нулём снимаются
-						 *
-						 * \~english
-						 * Largest admissible number of the lines of a continuation of one record
-						 *
-						 * @warning The convention of zero here is DIFFERENT from that of `maxLine` and `maxName`: zero
-						 *          means not «without a limit» but a prohibition of the continuations altogether - the very first
-						 *          glued line is rejected. This convention is one and the same with the convention of `maxDepth`,
-						 *          where zero prohibits the subsections: the limits that count the nesting prohibit it by zero,
-						 *          while the limits of the length are lifted by zero
-						 *
-						 * \~
-						 */
-						uint32_t maxContinuation;
-						// Кодировка, навязанная извне вопреки метке порядка байтов
-						encoding_t encoding;
+						size_t logical;
 						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 * @details Умолчание берёт общее пересечение сложившихся наречий:
-						 *          признаются оба знака примечания, разделителем служит знак
-						 *          равенства, кавычки снимаются, примечание в конце строки значения
-						 *          не признаётся, подразделы не выделяются.
+						 * @param logical положение начала отрезка в собранной логической строке
+						 * @param source  положение начала отрезка в приведённом исходном тексте
+						 * @param length  длина отрезка в байтах
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
-						 * @details The default takes the common intersection of the established dialects:
-						 *          both comment characters are recognized, the equals sign serves as the
-						 *          separator, the quotes are removed, a comment at the end of a value line
-						 *          is not recognized, the subsections are not singled out.
+						 * @param logical position of the beginning of the segment in the assembled logical line
+						 * @param source  position of the beginning of the segment in the converted source text
+						 * @param length  length of the segment in bytes
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия MS Windows
-						 *
-						 * @details Примечание начинает лишь точка с запятой и лишь в начале
-						 *          строки, разделителем служит знак равенства, кавычки частью
-						 *          значения остаются, повторное свойство берётся первым.
-						 *
-						 * @return настройки разбора наречия MS Windows
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the MS Windows dialect
-						 *
-						 * @details A comment is begun only by a semicolon and only at the beginning of a
-						 *          line, the equals sign serves as the separator, the quotes remain a part of the
-						 *          value, a repeated property is taken as the first one.
-						 *
-						 * @return settings of the parsing of the MS Windows dialect
-						 *
-						 * \~
-						 */
-						static Settings windows() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия configparser языка Python
-						 *
-						 * @details Разделителем служит знак равенства либо двоеточие,
-						 *          продолжение строки задаётся отступом, повторное свойство берётся
-						 *          последним.
-						 *
-						 * @return настройки разбора наречия configparser
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the configparser dialect of the Python language
-						 *
-						 * @details The equals sign or the colon serves as the separator,
-						 *          a continuation of a line is given by an indent, a repeated property is taken as
-						 *          the last one.
-						 *
-						 * @return settings of the parsing of the configparser dialect
-						 *
-						 * \~
-						 */
-						static Settings python() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия описания служб systemd
-						 *
-						 * @details Признаются оба знака примечания в начале строки,
-						 *          продолжение строки задаётся обратной косой чертой, повторное
-						 *          свойство добавляется к перечню значений.
-						 *
-						 * @return настройки разбора наречия systemd
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the dialect of the systemd unit files
-						 *
-						 * @details Both comment characters are recognized at the beginning of a line,
-						 *          a continuation of a line is given by a backslash, a repeated
-						 *          property is added to the list of the values.
-						 *
-						 * @return settings of the parsing of the systemd dialect
-						 *
-						 * \~
-						 */
-						static Settings systemd() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения настроек наречия настроек Git
-						 *
-						 * @details Подраздел заключается в кавычки и учитывает регистр,
-						 *          значение допускает управляющие последовательности, свойство без
-						 *          значения признаётся за истину, повторное свойство добавляется к
-						 *          перечню значений.
-						 *
-						 * @return настройки разбора наречия Git
-						 *
-						 * \~english
-						 * @brief Method of getting the settings of the dialect of the Git settings
-						 *
-						 * @details A subsection is enclosed in quotes and takes the case into account,
-						 *          a value admits the escape sequences, a property without
-						 *          a value is recognized as truth, a repeated property is added to
-						 *          the list of the values.
-						 *
-						 * @return settings of the parsing of the Git dialect
-						 *
-						 * \~
-						 */
-						static Settings git() noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод получения строгих настроек разбора
-						 *
-						 * @details Всякое расхождение прекращает разбор ошибкой: повторное
-						 *          свойство, свойство до первого раздела, отсутствие разделителя.
-						 *          Применимо там, где текст настроек собирается своими средствами и
-						 *          молчаливое разночтение недопустимо.
-						 *
-						 * @return строгие настройки разбора
-						 *
-						 * \~english
-						 * @brief Method of getting the strict settings of the parsing
-						 *
-						 * @details Every divergence terminates the parsing with an error: a repeated
-						 *          property, a property before the first section, an absence of a separator.
-						 *          Applicable where the settings text is assembled by one's own means and
-						 *          a silent discrepancy is inadmissible.
-						 *
-						 * @return strict settings of the parsing
-						 *
-						 * \~
-						 */
-						static Settings strict() noexcept;
-					} settings_t;
-				private:
-					// Объект приведения исходного текста к кодировке UTF-8
-					decoder_t _decoder;
+						explicit Piece(const size_t logical, const size_t source, const size_t length) noexcept;
+					} piece_t;
 				private:
 					// Признак получения последнего куска исходного текста
 					bool _final;
-				private:
+					/**
+					 * \~russian
+					 * Признак того, что примечание конца строки ждёт своей выдачи
+					 *
+					 * @note Строка свойства и строка объявления раздела несут за собою
+					 *       примечание, а событие выдаётся одно. Примечание такое удерживается
+					 *       и выдаётся следующим событием: иначе оно терялось бы, а вместе с
+					 *       ним и возможность переписать файл настроек, не обеднив его
+					 *
+					 * \~english
+					 * Flag of a line-ending comment waiting for its issuance
+					 *
+					 * @note A property line and a section declaration line carry a comment
+					 *       after them, while a single event is issued. Such a comment is held
+					 *       and issued by the next event: otherwise it would be lost, and along with
+					 *       it the possibility of rewriting the settings file without impoverishing it
+					 *
+					 * \~
+					 */
+					bool _pending;
 					// Признак того, что первый раздел текста настроек уже объявлен
 					bool _sectioned;
 				private:
+					// Имя текущего раздела текста настроек
+					name_t _name;
 					// Состояние чтения текста настроек
 					state_t _state;
-				private:
 					// Вид текущего события разбора
 					event_t _event;
-				private:
 					// Код ошибки последней операции разбора
 					error_t _error;
+				private:
+					// Удержанное примечание конца строки
+					comment_t _tail;
+					// Примечание текущего события разбора
+					comment_t _comment;
+				private:
+					// Объект приведения исходного текста к кодировке UTF-8
+					decoder_t _decoder;
+					// Настройки разбора текста настроек
+					settings_t _settings;
+					// Свойство текущего события разбора
+					property_t _property;
 				private:
 					/**
 					 * \~russian
@@ -771,17 +867,10 @@ namespace awh {
 					 */
 					error_t _decoding;
 				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					location_t _errorLocation;
-				private:
 					// Положение начала текущего события в исходном тексте
 					location_t _location;
-				private:
-					// Приведённый к кодировке UTF-8 исходный текст
-					string _buffer;
-				private:
-					// Положение разбираемого знака в приведённом тексте
-					size_t _offset;
+					// Положение обнаруженной ошибки в исходном тексте
+					location_t _errorLocation;
 				private:
 					/**
 					 * \~russian
@@ -809,27 +898,14 @@ namespace awh {
 					 * \~
 					 */
 					size_t _start;
-				private:
-					// Смещение начала приведённого текста от начала исходного в байтах
-					uint64_t _base;
+					// Положение разбираемого знака в приведённом тексте
+					size_t _offset;
 				private:
 					// Номер разбираемой строки исходного текста, считая с единицы
 					uint32_t _line;
 				private:
-					// Имя текущего раздела текста настроек
-					name_t _name;
-				private:
-					// Хранилище имени текущего раздела
-					string _section;
-				private:
-					// Хранилище имени текущего подраздела
-					string _subsection;
-				private:
-					// Свойство текущего события разбора
-					property_t _property;
-				private:
-					// Примечание текущего события разбора
-					comment_t _comment;
+					// Смещение начала приведённого текста от начала исходного в байтах
+					uint64_t _base;
 				private:
 					/**
 					 * \~russian
@@ -851,49 +927,8 @@ namespace awh {
 					 * \~
 					 */
 					string _value;
-				private:
-					// Значение свойства текущего события разбора
-					string_view _view;
-				private:
-					// Хранилище содержимого примечания текущего события
-					string _content;
-				private:
-					/**
-					 * \~russian
-					 * Перечень уже объявленных разделов текста настроек
-					 *
-					 * @note Заполняется лишь тогда, когда повторное объявление признано
-					 *       ошибкой: в прочих случаях удерживать имена незачем, а на большом
-					 *       тексте настроек перечень этот памяти стоит
-					 *
-					 * \~english
-					 * List of the already declared sections of the settings text
-					 *
-					 * @note Filled in only when a repeated declaration is recognized as
-					 *       an error: in the other cases there is no point in holding the names, while on a large
-					 *       settings text this list costs memory
-					 *
-					 * \~
-					 */
-					unordered_set <string> _sections;
-				private:
-					/**
-					 * \~russian
-					 * Перечень уже объявленных свойств текущего раздела
-					 *
-					 * @note Заполняется по тому же правилу, что и перечень разделов, и
-					 *       очищается при переходе к следующему разделу
-					 *
-					 * \~english
-					 * List of the already declared properties of the current section
-					 *
-					 * @note Filled in by the same rule as the list of the sections, and
-					 *       cleared at the transition to the next section
-					 *
-					 * \~
-					 */
-					unordered_set <string> _keys;
-				private:
+					// Приведённый к кодировке UTF-8 исходный текст
+					string _buffer;
 					/**
 					 * \~russian
 					 * Собранная логическая строка с разрешёнными продолжениями
@@ -912,100 +947,15 @@ namespace awh {
 					 * \~
 					 */
 					string _logical;
+					// Хранилище содержимого примечания текущего события
+					string _content;
+					// Хранилище имени текущего раздела
+					string _section;
+					// Хранилище имени текущего подраздела
+					string _subsection;
 				private:
-					/**
-					 * \~russian
-					 * @brief Отрезок собранной логической строки, взятый из исходного текста
-					 *
-					 * @details Отрезки записываются при сборке логической строки и служат
-					 *          обратному отображению: место знака собранной строки восстанавливается
-					 *          по ним в место того же знака в исходном тексте.
-					 *
-					 * @note Отображение это записывается при сборке, а не выводится
-					 *       повторным разбором правил склейки: два списка правил разошлись бы при
-					 *       первой же правке одного из них
-					 *
-					 * \~english
-					 * @brief Segment of the assembled logical line taken from the source text
-					 *
-					 * @details The segments are recorded at the assembly of the logical line and serve the
-					 *          reverse mapping: the place of a character of the assembled line is restored by them
-					 *          into the place of the same character in the source text.
-					 *
-					 * @note This mapping is recorded at the assembly rather than derived by a repeated parsing
-					 *       of the gluing rules: two lists of the rules would diverge at the first editing of one of them
-					 *
-					 * \~
-					 */
-					typedef struct Piece {
-						/**
-						 * \~russian
-						 * Положение начала отрезка в собранной логической строке
-						 *
-						 * \~english
-						 * Position of the beginning of the segment in the assembled logical line
-						 *
-						 * \~
-						 */
-						size_t logical;
-						/**
-						 * \~russian
-						 * Положение начала отрезка в приведённом исходном тексте
-						 *
-						 * \~english
-						 * Position of the beginning of the segment in the converted source text
-						 *
-						 * \~
-						 */
-						size_t source;
-						/**
-						 * \~russian
-						 * Длина отрезка в байтах
-						 *
-						 * \~english
-						 * Length of the segment in bytes
-						 *
-						 * \~
-						 */
-						size_t length;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * @param logical положение начала отрезка в собранной логической строке
-						 * @param source  положение начала отрезка в приведённом исходном тексте
-						 * @param length  длина отрезка в байтах
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * @param logical position of the beginning of the segment in the assembled logical line
-						 * @param source  position of the beginning of the segment in the converted source text
-						 * @param length  length of the segment in bytes
-						 *
-						 * \~
-						 */
-						Piece(const size_t logical, const size_t source, const size_t length) noexcept :
-						 logical(logical), source(source), length(length) {}
-					} piece_t;
-				private:
-					/**
-					 * \~russian
-					 * Отрезки собранной логической строки в исходном тексте
-					 *
-					 * @note Перечень пуст у строки без продолжений: такая строка лежит в
-					 *       исходном тексте непрерывным отрезком, и отображение ей тождественно
-					 *
-					 * \~english
-					 * Segments of the assembled logical line in the source text
-					 *
-					 * @note The list is empty for a line without the continuations: such a line lies in the
-					 *       source text as a continuous segment, and the mapping is an identity for it
-					 *
-					 * \~
-					 */
-					vector <piece_t> _pieces;
-				private:
+					// Значение свойства текущего события разбора
+					string_view _view;
 					/**
 					 * \~russian
 					 * Собранная логическая строка для разбора
@@ -1037,30 +987,55 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Признак того, что примечание конца строки ждёт своей выдачи
+					 * Отрезки собранной логической строки в исходном тексте
 					 *
-					 * @note Строка свойства и строка объявления раздела несут за собою
-					 *       примечание, а событие выдаётся одно. Примечание такое удерживается
-					 *       и выдаётся следующим событием: иначе оно терялось бы, а вместе с
-					 *       ним и возможность переписать файл настроек, не обеднив его
+					 * @note Перечень пуст у строки без продолжений: такая строка лежит в
+					 *       исходном тексте непрерывным отрезком, и отображение ей тождественно
 					 *
 					 * \~english
-					 * Flag of a line-ending comment waiting for its issuance
+					 * Segments of the assembled logical line in the source text
 					 *
-					 * @note A property line and a section declaration line carry a comment
-					 *       after them, while a single event is issued. Such a comment is held
-					 *       and issued by the next event: otherwise it would be lost, and along with
-					 *       it the possibility of rewriting the settings file without impoverishing it
+					 * @note The list is empty for a line without the continuations: such a line lies in the
+					 *       source text as a continuous segment, and the mapping is an identity for it
 					 *
 					 * \~
 					 */
-					bool _pending;
+					vector <piece_t> _pieces;
 				private:
-					// Удержанное примечание конца строки
-					comment_t _tail;
-				private:
-					// Настройки разбора текста настроек
-					settings_t _settings;
+					/**
+					 * \~russian
+					 * Перечень уже объявленных свойств текущего раздела
+					 *
+					 * @note Заполняется по тому же правилу, что и перечень разделов, и
+					 *       очищается при переходе к следующему разделу
+					 *
+					 * \~english
+					 * List of the already declared properties of the current section
+					 *
+					 * @note Filled in by the same rule as the list of the sections, and
+					 *       cleared at the transition to the next section
+					 *
+					 * \~
+					 */
+					unordered_set <string> _keys;
+					/**
+					 * \~russian
+					 * Перечень уже объявленных разделов текста настроек
+					 *
+					 * @note Заполняется лишь тогда, когда повторное объявление признано
+					 *       ошибкой: в прочих случаях удерживать имена незачем, а на большом
+					 *       тексте настроек перечень этот памяти стоит
+					 *
+					 * \~english
+					 * List of the already declared sections of the settings text
+					 *
+					 * @note Filled in only when a repeated declaration is recognized as
+					 *       an error: in the other cases there is no point in holding the names, while on a large
+					 *       settings text this list costs memory
+					 *
+					 * \~
+					 */
+					unordered_set <string> _sections;
 				private:
 					/**
 					 * \~russian
@@ -1321,10 +1296,6 @@ namespace awh {
 					 * @warning Настройки применяются к разбору целиком и смены посреди
 					 *          текста не допускают: устанавливать их следует до первого куска
 					 *
-					 * @param settings настройки разбора текста настроек
-					 *
-					 * @return признак того, что настройки приняты
-					 *
 					 * @warning Смена настроек посреди разбора НЕ ИСПОЛНЯЕТСЯ и отвечает ложью:
 					 *          применилась бы она к остатку текста, но не к разобранному началу, и один
 					 *          файл читался бы двумя наречиями сразу. Чтобы задать иные настройки, чтение
@@ -1333,6 +1304,9 @@ namespace awh {
 					 * @note Прежде тело было `void` и смену теряло МОЛЧА - потребитель узнать о
 					 *       том не мог ничем. Сведено с чтениями TOML и YAML, где отказ отвечался
 					 *       ложью изначально, решением о единообразии кодеков
+					 *
+					 * @param settings настройки разбора текста настроек
+					 * @return         признак того, что настройки приняты
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing
@@ -1345,10 +1319,6 @@ namespace awh {
 					 * @warning The settings are applied to the parsing as a whole and do not admit a change in the middle of
 					 *          a text: they should be set before the first chunk
 					 *
-					 * @param settings settings of the parsing of a settings text
-					 *
-					 * @return sign that the settings have been accepted
-					 *
 					 * @warning A change of the settings in the middle of the parsing is NOT EXECUTED and answers
 					 *          with a falsehood: it would have applied to the remainder of the text, but not to the
 					 *          parsed beginning, and one file would have been read with two dialects at once. To
@@ -1358,6 +1328,9 @@ namespace awh {
 					 *       of it by nothing. It was brought in line with the readings of TOML and YAML, where a
 					 *       refusal was answered with a falsehood from the very beginning, by the decision on the
 					 *       uniformity of codecs
+					 *
+					 * @param settings settings of the parsing of a settings text
+					 * @return         sign that the settings have been accepted
 					 *
 					 * \~
 					 */
@@ -1463,7 +1436,7 @@ namespace awh {
 					 *
 					 * @details Отрицательный итог означает, что событий больше нет: разбор
 					 *          либо исчерпал переданное и ждёт следующего куска, либо дошёл до конца
-					 *          текста, либо прекращён ошибкой. Что именно произошло, сообщает
+					 *          текста, либо прекращён ошибкой. Что именно произошло, сообщает.
 					 *          состояние чтения.
 					 *
 					 * @return признак наличия очередного события разбора
@@ -1551,8 +1524,6 @@ namespace awh {
 					 *          до объявления следующего. До первого объявления имя пусто: свойства,
 					 *          записанные раньше, принадлежат разделу без имени.
 					 *
-					 * @return имя текущего раздела текста настроек
-					 *
 					 * @warning Вид живёт ЛИШЬ до следующего события того же рода. Ссылается он не
 					 *          на буфер разбора, а на удержанную строку чтения, и оттого ОСТАЁТСЯ ЧИТАЕМЫМ
 					 *          после - но отдаёт содержимое ЧУЖОЙ записи, той, что пришла следом. Надзор за
@@ -1567,14 +1538,14 @@ namespace awh {
 					 * @warning Беда эта хуже освобождённой памяти: там отказ явен, а здесь ответ
 					 *          правдоподобен. Держать надлежит копию, а не вид
 					 *
+					 * @return имя текущего раздела текста настроек
+					 *
 					 * \~english
 					 * @brief Method of getting the name of the current section
 					 *
 					 * @details The name is set by the event of a section declaration and is kept
 					 *          until the next declaration. Before the first declaration the name is empty: the properties
 					 *          written earlier belong to the section without a name.
-					 *
-					 * @return name of the current section of the settings text
 					 *
 					 * @warning The view lives ONLY until the next event of the same kind. It refers not to the
 					 *          parsing buffer, but to the held line of the reading, and therefore REMAINS READABLE
@@ -1590,6 +1561,8 @@ namespace awh {
 					 * @warning This trouble is worse than freed memory: there a failure is plain, while here the
 					 *          answer is plausible. One ought to hold a copy, not a view
 					 *
+					 * @return name of the current section of the settings text
+					 *
 					 * \~
 					 */
 					const name_t & section() const noexcept;
@@ -1600,13 +1573,13 @@ namespace awh {
 					 * @details Пригодно лишь для события свойства; для прочих событий поля
 					 *          свойства пусты.
 					 *
-					 * @return свойство текущего события разбора
-					 *
 					 * @warning Вид живёт ЛИШЬ до следующего обращения к @c next() либо @c feed().
 					 *          Ссылается он на буфер разбора, и подача его перевыделяет: вид, удержанный
 					 *          прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит это
 					 *          настоящим обращением к освобождённому - замерено щупом на трёхстах записях.
 					 *          Держать надлежит копию, а не вид
+					 *
+					 * @return свойство текущего события разбора
 					 *
 					 * \~english
 					 * @brief Method of getting the property of the current event
@@ -1614,12 +1587,12 @@ namespace awh {
 					 * @details Suitable only for a property event; for the other events the fields
 					 *          of the property are empty.
 					 *
-					 * @return property of the current parsing event
-					 *
 					 * @warning The view lives ONLY until the next call to @c next() or @c feed(). It refers to
 					 *          the parsing buffer, and its feed reallocates it: a view kept before points to memory
 					 *          FREED. Memory supervision takes this for a genuine access to freed memory - measured
 					 *          by a probe on three hundred records. One ought to hold a copy, not a view
+					 *
+					 * @return property of the current parsing event
 					 *
 					 * \~
 					 */
@@ -1677,23 +1650,23 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения имени свойства текущего события
 					 *
-					 * @return имя свойства текущего события разбора
-					 *
 					 * @warning Вид живёт ЛИШЬ до следующего обращения к @c next() либо @c feed().
 					 *          Ссылается он на буфер разбора, и подача его перевыделяет: вид, удержанный
 					 *          прежде, указывает на память ОСВОБОЖДЁННУЮ. Надзор за памятью валит это
 					 *          настоящим обращением к освобождённому - замерено щупом на трёхстах записях.
 					 *          Держать надлежит копию, а не вид
 					 *
+					 * @return имя свойства текущего события разбора
+					 *
 					 * \~english
 					 * @brief Method of getting the name of the property of the current event
-					 *
-					 * @return name of the property of the current parsing event
 					 *
 					 * @warning The view lives ONLY until the next call to @c next() or @c feed(). It refers to
 					 *          the parsing buffer, and its feed reallocates it: a view kept before points to memory
 					 *          FREED. Memory supervision takes this for a genuine access to freed memory - measured
 					 *          by a probe on three hundred records. One ought to hold a copy, not a view
+					 *
+					 * @return name of the property of the current parsing event
 					 *
 					 * \~
 					 */
@@ -1741,13 +1714,13 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения значения текущего свойства числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
 					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template for a method to retrieve the current property value as a number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -1797,6 +1770,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Reader & operator = (const Reader &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Reader & operator = (Reader &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Reader(const Reader &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Reader(Reader &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -1804,7 +1819,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1818,45 +1833,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Ходы копии и переноса
-					 *
-					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
-					 *          поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
-					 *          по правилу языка неявный перенос у класса с деструктором объявленным не
-					 *          порождается вовсе, и перенос молча обращался копией.
-					 *
-					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
-					 *       освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
-					 *       перенос у него работал всё это время
-					 *
-					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 *          переноса подавило бы порождение копии
-					 *
-					 * \~english
-					 * @brief The calls of the copying and of the moving
-					 *
-					 * @details They are declared for the sake of the MOVE: formerly a destructor stood here,
-					 *          cleaning the fields by a call of `clear()`, and its declaration cancelled the
-					 *          generation of the moving calls - by the rule of the language an implicit move at a
-					 *          class with a declared destructor is not generated at all, and the move was silently
-					 *          turned into a copy.
-					 *
-					 * @note That destructor was SUPERFLUOUS: it cleaned strings and lists, which will be
-					 *       released by their own destructors themselves. The neighbor YAML has no destructor,
-					 *       and its move worked all this while
-					 *
-					 * @warning The FOUR calls are declared at once by the rule of five: a declaration of the move
-					 *          alone would have suppressed the generation of the copy
-					 *
-					 * \~
-					 */
-					Reader(const Reader &) = default;
-					Reader(Reader &&) noexcept = default;
-					Reader & operator = (const Reader &) = default;
-					Reader & operator = (Reader &&) noexcept = default;
+					explicit Reader(const settings_t & settings) noexcept;
 			} reader_t;
 		};
 	};
