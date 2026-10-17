@@ -2775,6 +2775,43 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 						}
 					}
 				}
+			/**
+			 * Если полный адрес получить не удалось. Оснастка отказывает на адресе длиннее своего
+			 * предела (замер на Windows: 12 000 знаков проходит, 40 000 даёт nullptr с errno==2),
+			 * и тогда остаётся адрес вызывающего - в его же разделителях и без единой строки в
+			 * журнале. На этом рубеже отказ перестает молчать, а разделители становятся родными:
+			 * обещание полного адреса в родной записи держится и при отказе. Не путать с POSIX:
+			 * там realpath отказывает и на несуществующем адресе, что норма, поэтому журнал
+			 * ведётся только здесь, где отказ случаен.
+			 */
+			} else {
+				// Если адрес непустой: пустой довод отказом не считается, для него результат и так остаётся текущим каталогом
+				if(!result.empty()){
+					// Хвост адреса для журнала: печатать отказавший адрес целиком значит залить журнал
+					const string tail = result.substr(result.size() > 64 ? (result.size() - 64) : 0);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем ошибку в лог
+						log::debug("Failed to get the canonical path of the address with %llu symbols, the tail is \"%s\"", __PRETTY_FUNCTION__, {addr, resolve}, log_t::flag_t::WARNING, static_cast <uint64_t> (result.size()), tail.c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log::print("Failed to get the canonical path of the address with %llu symbols, the tail is \"%s\"", log_t::flag_t::WARNING, static_cast <uint64_t> (result.size()), tail.c_str());
+					#endif
+					/**
+					 * Переходим по символам адреса, заменяя чужой разделитель на родной
+					 */
+					for(size_t i = 0; i < result.length(); ++i){
+						// Если встретился слэш
+						if(result[i] == '/')
+							// Устанавливаем родной разделитель
+							result[i] = AWH_FS_SEPARATOR[0];
+					}
+				}
 			}
 			// Выполняем перекодирование адреса
 			return result;

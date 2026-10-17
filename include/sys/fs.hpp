@@ -458,6 +458,10 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод извлечения реального адреса
 			 *
+			 * @details Если оснастка не смогла разобрать адрес (на Windows это предел длины),
+			 *          возвращается раскрытый адрес в родной записи разделителей, и отказ
+			 *          записывается в журнал.
+			 *
 			 * @note Под POSIX при resolve=true относительная цель разрешается от каталога ссылки,
 			 *       в том числе при отсутствии конечного файла. Цепочка ограничена 40 переходами.
 			 *       При отказе разрешения сохраняется прежний переход к абсолютному исходному пути.
@@ -468,6 +472,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the real address
+			 *
+			 * @details If the platform failed to resolve the address (on Windows that is the
+			 *          length limit), the expanded address in native separator notation is
+			 *          returned, and the refusal goes to the journal.
 			 *
 			 * @note On POSIX with resolve=true, a relative target is resolved from the link directory even
 			 *       if the final file is missing. Resolution is limited to 40 link transitions.
