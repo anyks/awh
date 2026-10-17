@@ -180,6 +180,23 @@ namespace awh {
 					size_t pages;
 					// Следующая придержанная область того же размера
 					struct Kept * next;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param pages размер области в страницах кучи
+					 * @param next  следующая придержанная область того же размера
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param pages size of the region in heap pages
+					 * @param next  next held region of the same size
+					 *
+					 * \~
+					 */
+					constexpr Kept(const size_t pages, struct Kept * next) noexcept :
+					 pages(pages), next(next) {}
 				} kept_t;
 				/**
 				 * @brief Структура центрального списка одного разряда
