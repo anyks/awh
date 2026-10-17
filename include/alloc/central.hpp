@@ -40,6 +40,8 @@
  * \~english
  * @brief Header file of the central free lists
  *
+ * \~
+ *
  * @copyright Copyright © 2026
  *
  */
