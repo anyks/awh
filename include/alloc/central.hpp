@@ -168,6 +168,29 @@ namespace awh {
 				} state_t;
 			private:
 				/**
+				 * @brief Структура центрального списка одного разряда
+				 *
+				 */
+				typedef struct List {
+					// Замок разряда
+					spin_t lock;
+					// Число блоков, выданных кэшам потоков
+					size_t live;
+					// Число свободных блоков в списке
+					size_t count;
+					// Число нарезанных под разряд областей
+					size_t regions;
+					// Голова списка свободных блоков
+					void * free;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit List() noexcept :
+					 live(0), count(0),
+					 regions(0), free(nullptr) {}
+				} list_t;
+				/**
 				 * @brief Структура записи придержанной области сверх разрядов
 				 *
 				 * @details Кладётся в САМУ придержанную область: та свободна, а держать под
@@ -198,29 +221,6 @@ namespace awh {
 					constexpr Kept(const size_t pages, struct Kept * next) noexcept :
 					 pages(pages), next(next) {}
 				} kept_t;
-				/**
-				 * @brief Структура центрального списка одного разряда
-				 *
-				 */
-				typedef struct List {
-					// Замок разряда
-					spin_t lock;
-					// Число блоков, выданных кэшам потоков
-					size_t live;
-					// Число свободных блоков в списке
-					size_t count;
-					// Число нарезанных под разряд областей
-					size_t regions;
-					// Голова списка свободных блоков
-					void * free;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit List() noexcept :
-					 live(0), count(0),
-					 regions(0), free(nullptr) {}
-				} list_t;
 			private:
 				// Замок страничной кучи
 				spin_t _heap;
