@@ -61,6 +61,10 @@
 #include "spin.hpp"
 #include "pages.hpp"
 #include "classes.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include "../sys/macro/global.hpp"
 
 /**
