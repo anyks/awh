@@ -1,0 +1,11 @@
+--- reference/local-send-adapter.inc
++++ fixed/local-send-adapter.inc
+@@ -113,6 +113,8 @@
+ 			::sendExperiment.owners[index] = reinterpret_cast <::io::node_t *> (state->udata);
+ 			::sendExperiment.sockets[index] = state->sock;
+ 			::sendExperiment.states[index] = state;
++			// Сохраняем идентификатор только явно допущенного живого участника
++			state->localOwner = (::sendExperiment.enabled ? ::sendExperiment.ids[index] : 0);
+ 			state->localSend = ::sendExperiment.enabled;
+ 			::fprintf(stdout, "local_send_setup index=%zu registered=%u attached=1 nonblocking=1 local=%u\n", index, static_cast <uint32_t> (state->registered), static_cast <uint32_t> (state->localSend));
+ 		}

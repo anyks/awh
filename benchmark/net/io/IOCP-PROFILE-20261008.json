@@ -86667,5 +86667,173 @@
     },
     "production_cpp_changed": false,
     "allocator_audit_new_performance_data": false
+  },
+  "local_send_read_callback_fix_20261017": {
+    "status": "PROTOTYPE_FIXED_DIAGNOSTIC_GATE_PASS",
+    "production_migrated": false,
+    "date": "2026-10-17",
+    "current_head_at_start": "bd5ac544c16071603e2da1b4005cea552cdb1b09",
+    "production_source_sha256_unchanged": "84f1b453db8874a057530d32e4f8494c59e1a87f0d4f1e6b1a641c2081efc111",
+    "base_prototype_sha256": "d9be7836b6c945a63efb1f0c1bd59530821714257479240b389ff11dbc8e63b5",
+    "fixed_prototype_sha256": "9daf582b002706af4675d3a0e2dcdbba9a3c8d0747057c70c72d0f898705f99b",
+    "fix": "Separate SEND eligibility from active READ wait. Cache explicit localOwner id, resolve live node before comparing udata, validate owner/socket/port/thread/lifecycle/transport/options, clear identity with opt-in on forget/owner change.",
+    "regression_source": "benchmark/net/io/experiments/local-send-fix-20261017/read-callback.cpp",
+    "patch": "benchmark/net/io/experiments/local-send-fix-20261017/iocp.cpp.patch",
+    "checks": {
+      "read-forget": {
+        "bytes": 0,
+        "queued": 1,
+        "delivered": 1,
+        "cancelled": 1
+      },
+      "read-generation": {
+        "bytes": 0,
+        "queued": 1,
+        "delivered": 0,
+        "cancelled": 0
+      },
+      "read-destroy": {
+        "bytes": 0,
+        "queued": 1,
+        "delivered": 1,
+        "cancelled": 0
+      },
+      "read-cancel": {
+        "bytes": 0,
+        "queued": 1,
+        "delivered": 1,
+        "cancelled": 1
+      },
+      "read-send": {
+        "bytes": 64,
+        "queued": 1,
+        "delivered": 1,
+        "cancelled": 0
+      },
+      "control-immediate4": "PASS",
+      "control-cancel": "PASS",
+      "control-teardown-batch": "PASS",
+      "control-teardown": "PASS",
+      "control-batch": "PASS",
+      "control-ownership": "PASS",
+      "control-terminal": "PASS",
+      "control-wouldblock": "PASS",
+      "control-generation": "PASS",
+      "control-destroy": "PASS",
+      "control-repeat-armed": "PASS",
+      "control-immediate6": "PASS",
+      "allocator": "OFF",
+      "echo-A0": {
+        "attempts": 0,
+        "full": 0,
+        "partial": 0,
+        "wouldblock": 0,
+        "errors": 0,
+        "fallback": 0,
+        "queued": 0,
+        "delivered": 0,
+        "cancelled": 0,
+        "released": 0,
+        "discarded": 0,
+        "fullQueue": 0,
+        "native": 500000
+      },
+      "echo-A1": {
+        "attempts": 0,
+        "full": 0,
+        "partial": 0,
+        "wouldblock": 0,
+        "errors": 0,
+        "fallback": 0,
+        "queued": 0,
+        "delivered": 0,
+        "cancelled": 0,
+        "released": 0,
+        "discarded": 0,
+        "fullQueue": 0,
+        "native": 500000
+      },
+      "echo-B1": {
+        "attempts": 500000,
+        "full": 500000,
+        "partial": 0,
+        "wouldblock": 0,
+        "errors": 0,
+        "fallback": 0,
+        "queued": 500000,
+        "delivered": 500000,
+        "cancelled": 0,
+        "released": 500000,
+        "discarded": 0,
+        "fullQueue": 0,
+        "native": 0
+      },
+      "archive-audit.json": {
+        "changed_members": [
+          "iocp.cpp_55.obj"
+        ],
+        "all_other_members_unchanged": true,
+        "before_sha256": "218d88cfa488c7d3226229a523b60600a3419ba6fd8562ea30ddb1dcbfdf89db",
+        "after_sha256": "47cd079bc0a177db359e365670411c04a7048e73d1be7031436b1357aaa5114b",
+        "object_sha256": "81df16526c07b043473e34d055b26c46c921d90141ff1312bcf325782219cfee"
+      },
+      "benchmark-archive-audit.json": {
+        "changed_members": [
+          "echo.cpp.obj"
+        ],
+        "all_other_members_unchanged": true,
+        "before_sha256": "c621647afb9bb6681b71a555ae3b1234664fa1901583b84cedc93a445fb44fce",
+        "after_sha256": "31c4881ea2330a4cf11de83e599c8d181a4e8b153a8e8c451a23a455fb296726",
+        "object_sha256": "03f98bf236056afac13995a2e4e54c6841a99f9fe454ff619cf788435e530713"
+      },
+      "public-baseline": "6/6 PASS",
+      "public-fixed": "6/6 PASS",
+      "build-identity": "all source/object/link evidence matches; final EXIT status independently verified 0"
+    },
+    "mutant": {
+      "change": "restore registered guard",
+      "exit_code": 1,
+      "timed_out": false,
+      "reason": "LOCAL_SEND_FAIL: read-callback-send-eligible"
+    },
+    "allocator": "OFF confirmed by runtime capture probe",
+    "performance_conclusion": null,
+    "timed_benchmark_run": false,
+    "native_diagnostic_processes": 22,
+    "style": {
+      "new_regression_errors": 0,
+      "new_regression_warnings": 0,
+      "changed_lines_errors": 0,
+      "inherited_full_file_errors": {
+        "iocp.cpp": 130,
+        "local-send-probe.cpp": 134,
+        "local-send-adapter.inc": 23
+      },
+      "production_style_ready": false
+    },
+    "limitations": [
+      "Frozen Oct 9 prototype and dependency snapshot, not current production integration.",
+      "Generation test reuses inflight slot index, not Windows socket number.",
+      "No new sanitizer, TLS or imported-socket acceptance.",
+      "delivered counts parser arrivals before cancellation, not public WRITE.",
+      "Direct-include fixture retains historical io::Origin Wsubobject-linkage warning."
+    ],
+    "evidence": {
+      "archive": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-17/awh-iocp-local-send-fix-20261017.tar.gz",
+      "sha256": "5c8499df41fc6cf49b5f359a8a2ff7a0498c99c53ee75e6f8c81afbc96e97e8b",
+      "bytes": 121323308,
+      "payload_files": 234,
+      "sealed_replay": "PASS, verify-final.py and selfcheck.py, all 234 payload hashes unchanged",
+      "native_stage": "C:/tmp/awh-iocp-20261008/local-send-fix-20261017",
+      "transport_sha256": "8c9d6a3da2373557ec272d212c3a59a24f3abf29ed1359ad28cca9aee4c93a88",
+      "verifier": "verify-final.py",
+      "selfcheck": "watchdog, wrong mutation reason and fake local counter rejected"
+    },
+    "history_notes": [
+      "First fixture compile failed because node table has no at(); fixed with find/end, original failure retained.",
+      "Initial offline verifier incorrectly expected delivered=0 on cancellation; corrected from parser semantics, original verifier retained.",
+      "Native build identity precedes EXIT trap: only build.exit changes from saved first failure 1 to final 0. All other identity hashes match; final manifest records completed state."
+    ]
   }
+
 }

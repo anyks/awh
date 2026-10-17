@@ -1,0 +1,79 @@
+--- reference/iocp.cpp
++++ fixed/iocp.cpp
+@@ -10965,6 +10965,8 @@
+ 		uint32_t oneshot;
+ 		// Явный допуск к локальной отправке только из диагностической проверки
+ 		bool localSend;
++		// Идентификатор явно допущенного узла для проверки его времени жизни
++		event::id_t localOwner;
+ 		// Признак того, что подписка заведена в очереди опроса
+ 		bool registered;
+ 		/**
+@@ -11051,7 +11053,7 @@
+ 		 */
+ 		Registry() noexcept :
+ 		 sock(net::invalid_socket_t), declared(0), enabled(0), edge(false), oneshot(0),
+-		 localSend(false), registered(false), attached(nullptr), pending(false), applied(0),
++		 localSend(false), localOwner(0), registered(false), attached(nullptr), pending(false), applied(0),
+ 		 token(::inflight::INVALID), udata(nullptr), attempts(0), capacity(::kernel::RECEIVE_MIN), small(0) {}
+ 	} registry_t;
+ 	/**
+@@ -11279,14 +11281,33 @@
+ 			// Чужой поток сохраняет прежний наложенный путь
+ 			return false;
+ 		// Выполняем поиск существующей подписки без создания нового состояния
+-		auto i = ::kernel::registry.find(sock);
++		const auto i = ::kernel::registry.find(sock);
+ 		// Проверяем явный допуск, владельца записи и привязку к действующему порту
+-		return (
+-			(i != ::kernel::registry.end()) && (&i->second == owner) &&
+-			i->second.localSend && i->second.registered &&
+-			(i->second.udata != nullptr) && (i->second.sock == sock) &&
+-			(::port::handle != nullptr) && (i->second.attached == ::port::handle)
+-		);
++		if((i == ::kernel::registry.end()) || (&i->second != owner) || !i->second.localSend || (i->second.localOwner == 0) || (i->second.sock != sock) || (::port::handle == nullptr) || (i->second.attached != ::port::handle))
++			// Запись без действующего допуска не участвует в локальной отправке
++			return false;
++		// Находим живой узел по сохранённому идентификатору без разыменования udata
++		const auto j = ::__awh_nodes__.find(i->second.localOwner);
++		// Сличаем адрес только после проверки наличия владельца в таблице событий
++		if((j == ::__awh_nodes__.end()) || (j->second == nullptr) || (j->second.get() != i->second.udata))
++			// Исчезнувший или заменённый узел не наследует допуск
++			return false;
++		// Получаем узел, время жизни которого подтверждено таблицей текущего потока
++		const ::io::node_t * node = j->second.get();
++		// Исключаем закрытие, неподходящий транспорт и изменение режима сокета
++		if((node->id != i->second.localOwner) || (node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE) || (node->state.status == event::status_t::CANCELLED) || (node->state.type != event::type_t::STREAM) || (node->state.protocol != event::protocol_t::TCP) || ((node->state.family != event::family_t::IPV4) && (node->state.family != event::family_t::IPV6)) || !(node->state.options & event::options::NO_IO_BLOCK) || (node->state.options & event::options::SM_IO_BLOCK))
++			// Неизменный неблокирующий режим является условием явного допуска
++			return false;
++		// Сличаем дескриптор исходящего соединения с записью подписки
++		if(node->state.node == event::node_t::CLIENT)
++			// Возвращаем принадлежность сокета живому клиенту
++			return (awh_cast <const ::io::client_t *> (node)->transfer.fd == sock);
++		// Сличаем дескриптор принятого соединения с записью подписки
++		if(node->state.node == event::node_t::PEER)
++			// Возвращаем принадлежность сокета живому принятому узлу
++			return (awh_cast <const ::io::peer_t *> (node)->transfer.fd == sock);
++		// Остальные разновидности узлов не получают локальную отправку
++		return false;
+ 	}
+ 	/**
+ 	 * @brief Функция забвения состояния учёта закрываемого дескриптора
+@@ -11411,6 +11432,8 @@
+ 		i->second.registered = false;
+ 		// Забываем диагностический допуск независимо от будущего переиспользования узла
+ 		i->second.localSend = false;
++		// Забываем идентификатор прежнего владельца вместе с допуском
++		i->second.localOwner = 0;
+ 		/**
+ 		 * Забываем привязку дескриптора к порту завершений
+ 		 *
+@@ -12516,6 +12539,8 @@
+ 		if(state.udata != previous){
+ 			// Новый владелец не наследует диагностический допуск
+ 			state.localSend = false;
++			// Снимаем идентификатор допуска при передаче подписки
++			state.localOwner = 0;
+ 			// Возвращаем начальную длину приёма
+ 			state.capacity = ::kernel::RECEIVE_MIN;
+ 			// Сбрасываем последовательность коротких завершений

@@ -1,0 +1,11 @@
+--- reference/local-send-probe.cpp
++++ fixed/local-send-probe.cpp
+@@ -172,6 +172,8 @@
+ 			::require(entry->second.attached == ::port::handle, "sender-registry-port");
+ 			// Только собственный проверенный сокет участвует в эксперименте
+ 			entry->second.localSend = true;
++			// Сохраняем идентификатор проверенного владельца сокета
++			entry->second.localOwner = this->sender;
+ 		}
+ 		/**
+ 		 * @brief Метод отправки через публичный интерфейс AWH
