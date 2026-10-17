@@ -46,16 +46,18 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <sys/fs.hpp>
-
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
 
 /**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/fs.hpp"
+
+/**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -72,7 +74,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -82,7 +83,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера INI
-		 *
 		 *
 		 * \~english
 		 * @brief INI container namespace
@@ -109,6 +109,17 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Предобъявление владеющего значения настроек
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value of the settings
+			 *
+			 * \~
+			 */
+			class Value;
+
+			/**
+			 * \~russian
 			 * @brief Класс дерева настроек
 			 *
 			 * @details Хранит разобранный текст настроек целиком - вместе с примечаниями,
@@ -117,10 +128,10 @@ namespace awh {
 			 *
 			 * @par Сохранение оформления
 			 *
-			 * Файл настроек правит человек, и переписать его, потеряв примечания либо
-			 * переставив разделы, значит отнять у хозяина то, ради чего файл этот
-			 * читаемым и заведён. Оттого дерево держит **все** записи исходного текста в
-			 * порядке их следования, а правка меняет лишь то, что ей велено
+			 *      Файл настроек правит человек, и переписать его, потеряв примечания либо
+			 *      переставив разделы, значит отнять у хозяина то, ради чего файл этот
+			 *      читаемым и заведён. Оттого дерево держит **все** записи исходного текста в
+			 *      порядке их следования, а правка меняет лишь то, что ей велено
 			 *
 			 * @par Порядок работы
 			 *
@@ -166,6 +177,7 @@ namespace awh {
 			 *     при внутристрочных примечаниях, перевод строки без продолжений и отмен, - деревом принимается, а
 			 *     отвергается выдачей текста. Дерево от того выходит незаписываемым целиком: @c dump() отвечает
 			 *     пустотою, и прежнее содержимое уходит вместе с нею. Решение это НАМЕРЕННОЕ и закреплено проверками
+			 *
 			 *     @c WriteFailure, @c UnquotableValues и @c WritingKeptQuotes. Заведение заставы на пути правки
 			 *     пробовалось 07.09.2026 пробною записью - решение бралось у самой записи, не заводя второго
 			 *     написания правил, - и было отвергнуто: правило это договор, а не оплошность. Заставы правки стоят
@@ -243,8 +255,9 @@ namespace awh {
 			 *     whitespace wrapping when it is dropped, a comment character with inline comments, a line ending
 			 *     without continuations and cancellations - is accepted by the tree, and rejected by the issuing of
 			 *     the text. The tree thereby turns unwritable as a whole: @c dump() answers with emptiness, and the
-			 *     previous content goes away together with it. This decision is DELIBERATE and is fixed by the
-			 *     checks @c WriteFailure, @c UnquotableValues and @c WritingKeptQuotes. The instituting of a guard
+			 *     previous content goes away together with it. This decision is DELIBERATE and is fixed by the checks
+			 *
+			 *     @c WriteFailure, @c UnquotableValues and @c WritingKeptQuotes. The instituting of a guard
 			 *     on the path of the editing was tried on 2026-09-07 by a trial writing - the decision was taken
 			 *     from the writing itself, without instituting a second rendition of the rules - and was rejected:
 			 *     this rule is a contract, and not an oversight. The guards of the editing stand only where the
@@ -270,16 +283,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			/**
-			 * \~russian
-			 * @brief Предобъявление владеющего значения настроек
-			 *
-			 * \~english
-			 * @brief Forward declaration of the owning value of the settings
-			 *
-			 * \~
-			 */
-			class Value;
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:
 					/**
@@ -301,134 +304,19 @@ namespace awh {
 					 * \~
 					 */
 					friend class Value;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод вывода сообщения об отказе в лог
-					 *
-					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 *          его не заменяет, а лишь оповещает о случившемся.
-					 *
-					 * \~english
-					 * @brief Method of the output of the message about a refusal into the log
-					 *
-					 * @details The code of the refusal remains available to the consumer through error():
-					 *          the log does not replace it but merely notifies about what has happened.
-					 *
-					 * \~
-					 */
-					void report() const noexcept;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод запоминания кода отказа работы над деревом
-					 *
-					 * @details Положение обнаруженной ошибки сбрасывается вместе с кодом намеренно:
-					 *          положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
-					 *          собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
-					 *          ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
-					 *          которого более нет.
-					 *
-					 * @note Разбор ПОТОЧНЫЙ через это тело не идёт: он ставит положение сам, следом
-					 *       за кодом
-					 *
-					 * @warning Прежде здесь стояло «разбор через это тело НЕ идёт» без оговорки, и
-					 *          это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
-					 *          у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
-					 *          приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
-					 *          подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
-					 *          прежде начала разбора
-					 *
-					 * @param error запоминаемый код отказа
-					 * @return      признак отказа для выхода из работы
-					 *
-					 * \~english
-					 * @brief Method of the remembering of the error code of an operation over the tree
-					 *
-					 * @details The location of the discovered error is reset together with the code deliberately:
-					 *          that location belongs to the PARSING of a text, while an operation over the tree has no
-					 *          text under it at all. Should it survive the code, the report would come out well-formed
-					 *          but false - "section not declared at line 1, column 5", pointing into a text which no
-					 *          longer exists.
-					 *
-					 * @note The STREAMING parsing does not pass through this body: it sets the position itself,
-					 *       following the code
-					 *
-					 * @warning Formerly there stood here "the parsing does NOT pass through this body" without the
-					 *          reservation, and that is false to the letter: measured on 2026-09-09 by the count of
-					 *          the callers through the enclosing call stacks - INI has one call from `parse()` and
-					 *          TOML has one. The essence does not break because of it, however, since both fall on
-					 *          the cases where the position DOES NOT EXIST at all: for INI this is the failure of the
-					 *          substitution of the references already after the clearing of the tree, for TOML - a
-					 *          refusal by the length of the text before the parsing has begun
-					 *
-					 * @param error error code being remembered
-					 * @return sign of the refusal for the exit from the operation
-					 *
-					 * \~
-					 */
-					bool fault(const error_t error) const noexcept;
-					/**
-					 * \~russian
-					 * Кодировка, какою текст настроек прочитан
-					 *
-					 * \~english
-					 * Encoding by which the text of the settings has been read
-					 *
-					 * \~
-					 */
-					encoding_t _encoding;
-					/**
-					 * \~russian
-					 * Объект фреймворка
-					 *
-					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
-					 *       широкую запись ходом `convert()`, и без неё кириллический путь у
-					 *       MS Windows лёг бы на диск мусором
-					 *
-					 * \~english
-					 * Object of the framework
-					 *
-					 * @note The frame is needed by the works with the file system: `fs_t` turns paths into the
-					 *       wide notation by the `convert()` method, and without it a Cyrillic path under MS
-					 *       Windows would land on the disk as rubbish
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * Объект работы с файловой системой
-					 *
-					 * \~english
-					 * Object of the work with the filesystem
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки дерева настроек
+					 * @brief Структура настроек дерева настроек
 					 *
 					 * \~english
-					 * @brief Settings of the settings tree
+					 * @brief Structure of the settings tree
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Настройки разбора текста настроек
-						reader_t::settings_t reader;
-						// Построение обращения к значению другого свойства
-						reference_t references;
+						// Наибольший допустимый общий объём подстановки значений в байтах
+						uint64_t maxExpansion;
 						/**
 						 * \~russian
 						 * Наибольшая допустимая глубина вложенности обращений
@@ -453,31 +341,75 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxReferenceDepth;
-						// Наибольший допустимый общий объём подстановки значений в байтах
-						uint64_t maxExpansion;
+						// Построение обращения к значению другого свойства
+						reference_t references;
+						// Настройки разбора текста настроек
+						reader_t::settings_t reader;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
 					 * \~russian
-					 * @brief Запись разобранного текста настроек
+					 * @brief Структура раздела разобранного текста настроек
+					 *
+					 * \~english
+					 * @brief Structure of the section containing the parsed settings text
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Section {
+						/**
+						 * \~russian
+						 * Признак того, что раздел объявлен в тексте настроек
+						 *
+						 * @note Раздел без имени заводится всегда: свойства, записанные до
+						 *       первого объявления, принадлежат ему. Объявленным он при этом не
+						 *       является и в перечень разделов не идёт
+						 *
+						 * \~english
+						 * Flag of the section having been declared in the settings text
+						 *
+						 * @note A section without a name is always created: the properties written before
+						 *       the first declaration belong to it. It is thereby not a declared one
+						 *       and does not go into the list of the sections
+						 *
+						 * \~
+						 */
+						bool declared;
+						// Место имени раздела в хранилище знаков
+						span_t name;
+						// Место имени подраздела в хранилище знаков
+						span_t subsection;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Section() noexcept;
+					} section_t;
+					/**
+					 * \~russian
+					 * @brief Структура записи разобранного текста настроек
 					 *
 					 * @details Место значений хранится отрезком общего хранилища знаков:
 					 *          хранилище при правке дописывается и перемещается, обесценивая
 					 *          ссылки на своё содержимое.
 					 *
 					 * \~english
-					 * @brief Record of the parsed settings text
+					 * @brief Structure of the entry for the parsed configuration text
 					 *
 					 * @details The place of the values is stored as a segment of the common storage of the characters:
 					 *          the storage is appended to at an editing and is moved, invalidating
@@ -485,37 +417,9 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Record {
-						// Вид записи текста настроек
-						kind_t kind;
-						// Порядковый номер раздела, которому запись принадлежит
-						uint32_t section;
-						// Место имени свойства в хранилище знаков
-						span_t key;
-						// Место значения свойства в хранилище знаков
-						span_t value;
-						/**
-						 * \~russian
-						 * Место значения свойства до подстановки обращений
-						 *
-						 * @note Держится ради обратной записи: записать подставленное
-						 *       значение значило бы разрешить обращение навсегда, а оно на то
-						 *       и записано, чтобы разрешаться заново при каждом чтении файла
-						 *
-						 * \~english
-						 * Place of the value of the property before the substitution of the references
-						 *
-						 * @note It is kept for the sake of the writing back: to write a substituted
-						 *       value would mean to resolve a reference forever, while it is written exactly
-						 *       so as to be resolved anew at every reading of the file
-						 *
-						 * \~
-						 */
-						span_t raw;
-						// Знак, которым начато примечание
-						char marker;
-						// Расположение примечания в тексте настроек
-						placement_t placement;
+					typedef struct __AWH_SHARED_EXPORT__ Record {
+						// Признак свойства, записанного добавлением к перечню значений
+						bool append;
 						/**
 						 * \~russian
 						 * Признак того, что значение было заключено в кавычки
@@ -536,88 +440,47 @@ namespace awh {
 						bool quoted;
 						// Признак свойства, записанного без разделителя и значения
 						bool valueless;
-						// Признак свойства, записанного добавлением к перечню значений
-						bool append;
+						// Знак, которым начато примечание
+						char marker;
+						/**
+						 * \~russian
+						 * Место значения свойства до подстановки обращений
+						 *
+						 * @note Держится ради обратной записи: записать подставленное
+						 *       значение значило бы разрешить обращение навсегда, а оно на то
+						 *       и записано, чтобы разрешаться заново при каждом чтении файла
+						 *
+						 * \~english
+						 * Place of the value of the property before the substitution of the references
+						 *
+						 * @note It is kept for the sake of the writing back: to write a substituted
+						 *       value would mean to resolve a reference forever, while it is written exactly
+						 *       so as to be resolved anew at every reading of the file
+						 *
+						 * \~
+						 */
+						span_t raw;
+						// Место имени свойства в хранилище знаков
+						span_t key;
+						// Место значения свойства в хранилище знаков
+						span_t value;
+						// Вид записи текста настроек
+						kind_t kind;
+						// Расположение примечания в тексте настроек
+						placement_t placement;
+						// Порядковый номер раздела, которому запись принадлежит
+						uint32_t section;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Record() noexcept :
-						 kind(kind_t::NONE), section(0), marker(';'), placement(placement_t::OWN),
-						 quoted(false), valueless(false), append(false) {}
+						explicit Record() noexcept;
 					} record_t;
-					/**
-					 * \~russian
-					 * @brief Раздел разобранного текста настроек
-					 *
-					 * \~english
-					 * @brief Section of the parsed settings text
-					 *
-					 * \~
-					 */
-					typedef struct Section {
-						// Место имени раздела в хранилище знаков
-						span_t name;
-						// Место имени подраздела в хранилище знаков
-						span_t subsection;
-						/**
-						 * \~russian
-						 * Признак того, что раздел объявлен в тексте настроек
-						 *
-						 * @note Раздел без имени заводится всегда: свойства, записанные до
-						 *       первого объявления, принадлежат ему. Объявленным он при этом не
-						 *       является и в перечень разделов не идёт
-						 *
-						 * \~english
-						 * Flag of the section having been declared in the settings text
-						 *
-						 * @note A section without a name is always created: the properties written before
-						 *       the first declaration belong to it. It is thereby not a declared one
-						 *       and does not go into the list of the sections
-						 *
-						 * \~
-						 */
-						bool declared;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Section() noexcept : declared(false) {}
-					} section_t;
-				private:
-					/**
-					 * \~russian
-					 * Код ошибки последней операции
-					 *
-					 * @note Помечен изменяемым: обратная запись дерева в текст его самого не
-					 *       меняет и потому объявлена постоянной, но отказ писателя сообщить
-					 *       потребителю обязана
-					 *
-					 * \~english
-					 * Error code of the last operation
-					 *
-					 * @note Marked as mutable: the writing back of the tree into a text does not change the tree itself
-					 *       and is therefore declared a constant one, but it is obliged to report a refusal of the writer
-					 *       to the consumer
-					 *
-					 * \~
-					 */
-					mutable error_t _error;
-				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					mutable location_t _errorLocation;
 				private:
 					/**
 					 * \~russian
@@ -681,18 +544,81 @@ namespace awh {
 					// Общее хранилище знаков имён и значений
 					string _store;
 				private:
+					/**
+					 * \~russian
+					 * Объект работы с файловой системой
+					 *
+					 * \~english
+					 * Object of the work with the filesystem
+					 *
+					 * \~
+					 */
+					fs_t _fs;
+				private:
+					/**
+					 * \~russian
+					 * Кодировка, какою текст настроек прочитан
+					 *
+					 * \~english
+					 * Encoding by which the text of the settings has been read
+					 *
+					 * \~
+					 */
+					encoding_t _encoding;
+					// Настройки дерева настроек
+					settings_t _settings;
+				private:
+					/**
+					 * \~russian
+					 * Код ошибки последней операции
+					 *
+					 * @note Помечен изменяемым: обратная запись дерева в текст его самого не
+					 *       меняет и потому объявлена постоянной, но отказ писателя сообщить
+					 *       потребителю обязана
+					 *
+					 * \~english
+					 * Error code of the last operation
+					 *
+					 * @note Marked as mutable: the writing back of the tree into a text does not change the tree itself
+					 *       and is therefore declared a constant one, but it is obliged to report a refusal of the writer
+					 *       to the consumer
+					 *
+					 * \~
+					 */
+					mutable error_t _error;
+					// Положение обнаруженной ошибки в исходном тексте
+					mutable location_t _errorLocation;
+				private:
+					/**
+					 * \~russian
+					 * Последняя запись каждого раздела в перечне записей
+					 *
+					 * @details Держит для каждого раздела порядковый номер последней его
+					 *          записи, объявлена та в тексте или снята пометкой удаления. Место
+					 *          вставки нового свойства находится по нему за одно обращение.
+					 *
+					 * @note Снятые пометкой записи учитываются наравне с прочими намеренно:
+					 *       в текст они не идут, и вставка за такой записью даёт тот же текст,
+					 *       что и вставка за последней оставшейся
+					 *
+					 * \~english
+					 * Last record of every section in the list of the records
+					 *
+					 * @details Keeps for every section the ordinal number of its last
+					 *          record, whether it is declared in the text or removed by a mark of a deletion. The place
+					 *          of the insertion of a new property is found by it in a single call.
+					 *
+					 * @note The records removed by a mark are taken into account on a par with the rest deliberately:
+					 *       they do not go into the text, and an insertion after such a record gives the same text
+					 *       as an insertion after the last remaining one
+					 *
+					 * \~
+					 */
+					vector <uint32_t> _last;
 					// Перечень записей разобранного текста в порядке их следования
 					vector <record_t> _records;
-				private:
 					// Перечень разделов разобранного текста в порядке их объявления
 					vector <section_t> _sections;
-				private:
-					// Указатель разделов по имени, приведённому к виду для сличения
-					unordered_map <string, uint32_t> _index;
-				private:
-					// Указатель свойств по разделу и имени, приведённым к виду для сличения
-					unordered_map <string, vector <uint32_t>> _properties;
-				private:
 					/**
 					 * \~russian
 					 * Порядок первых объявлений свойств по каждому разделу
@@ -724,35 +650,75 @@ namespace awh {
 					 */
 					vector <vector <uint32_t>> _order;
 				private:
+					// Указатель разделов по имени, приведённому к виду для сличения
+					unordered_map <string, uint32_t> _index;
+					// Указатель свойств по разделу и имени, приведённым к виду для сличения
+					unordered_map <string, vector <uint32_t>> _properties;
+				private:
 					/**
 					 * \~russian
-					 * Последняя запись каждого раздела в перечне записей
+					 * @brief Метод вывода сообщения об отказе в лог
 					 *
-					 * @details Держит для каждого раздела порядковый номер последней его
-					 *          записи, объявлена та в тексте или снята пометкой удаления. Место
-					 *          вставки нового свойства находится по нему за одно обращение.
-					 *
-					 * @note Снятые пометкой записи учитываются наравне с прочими намеренно:
-					 *       в текст они не идут, и вставка за такой записью даёт тот же текст,
-					 *       что и вставка за последней оставшейся
+					 * @details Код отказа остаётся доступен потребителю через error(): журнал
+					 *          его не заменяет, а лишь оповещает о случившемся.
 					 *
 					 * \~english
-					 * Last record of every section in the list of the records
+					 * @brief Method of the output of the message about a refusal into the log
 					 *
-					 * @details Keeps for every section the ordinal number of its last
-					 *          record, whether it is declared in the text or removed by a mark of a deletion. The place
-					 *          of the insertion of a new property is found by it in a single call.
-					 *
-					 * @note The records removed by a mark are taken into account on a par with the rest deliberately:
-					 *       they do not go into the text, and an insertion after such a record gives the same text
-					 *       as an insertion after the last remaining one
+					 * @details The code of the refusal remains available to the consumer through error():
+					 *          the log does not replace it but merely notifies about what has happened.
 					 *
 					 * \~
 					 */
-					vector <uint32_t> _last;
+					void report() const noexcept;
 				private:
-					// Настройки дерева настроек
-					settings_t _settings;
+					/**
+					 * \~russian
+					 * @brief Метод запоминания кода отказа работы над деревом
+					 *
+					 * @details Положение обнаруженной ошибки сбрасывается вместе с кодом намеренно:
+					 *          положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
+					 *          собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
+					 *          ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
+					 *          которого более нет.
+					 *
+					 * @note Разбор ПОТОЧНЫЙ через это тело не идёт: он ставит положение сам, следом за кодом
+					 *
+					 * @warning Прежде здесь стояло «разбор через это тело НЕ идёт» без оговорки, и
+					 *          это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
+					 *          у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
+					 *          приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
+					 *          подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
+					 *          прежде начала разбора
+					 *
+					 * @param error запоминаемый код отказа
+					 * @return      признак отказа для выхода из работы
+					 *
+					 * \~english
+					 * @brief Method of the remembering of the error code of an operation over the tree
+					 *
+					 * @details The location of the discovered error is reset together with the code deliberately:
+					 *          that location belongs to the PARSING of a text, while an operation over the tree has no
+					 *          text under it at all. Should it survive the code, the report would come out well-formed
+					 *          but false - "section not declared at line 1, column 5", pointing into a text which no
+					 *          longer exists.
+					 *
+					 * @note The STREAMING parsing does not pass through this body: it sets the position itself, following the code
+					 *
+					 * @warning Formerly there stood here "the parsing does NOT pass through this body" without the
+					 *          reservation, and that is false to the letter: measured on 2026-09-09 by the count of
+					 *          the callers through the enclosing call stacks - INI has one call from `parse()` and
+					 *          TOML has one. The essence does not break because of it, however, since both fall on
+					 *          the cases where the position DOES NOT EXIST at all: for INI this is the failure of the
+					 *          substitution of the references already after the clearing of the tree, for TOML - a
+					 *          refusal by the length of the text before the parsing has begun
+					 *
+					 * @param error error code being remembered
+					 * @return      sign of the refusal for the exit from the operation
+					 *
+					 * \~
+					 */
+					bool fault(const error_t error) const noexcept;
 				private:
 					/**
 					 * \~russian
@@ -1021,14 +987,13 @@ namespace awh {
 					 * @brief Метод подстановки обращений к значениям других свойств
 					 *
 					 * @param strict признак прекращения подстановки неразрешимым обращением
-					 *
-					 * @return результат выполнения операции
+					 * @return       результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of substituting the references to the values of the other properties
 					 *
 					 * @param strict flag of the termination of the substitution by an unresolvable reference
-					 * @return result of performing the operation
+					 * @return       result of performing the operation
 					 *
 					 * \~
 					 */
@@ -1115,6 +1080,11 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод разрешения обращений внутри значения свойства
 					 *
+					 * @note Перечень разрешаемых свойств служит обнаружению круговой
+					 *       ссылки: значение, к которому обращение вернулось, в нём уже лежит.
+					 *       Глубина же его сверх того ограничена пределом настроек - на случай
+					 *       связи хоть и не круговой, но неразумно длинной
+					 *
 					 * @param value   разрешаемое значение свойства
 					 * @param section порядковый номер раздела, которому значение принадлежит
 					 * @param stack   перечень свойств, разрешаемых в настоящее время
@@ -1122,13 +1092,13 @@ namespace awh {
 					 * @param result  значение с разрешёнными обращениями
 					 * @return        результат выполнения операции
 					 *
-					 * @note Перечень разрешаемых свойств служит обнаружению круговой
-					 *       ссылки: значение, к которому обращение вернулось, в нём уже лежит.
-					 *       Глубина же его сверх того ограничена пределом настроек - на случай
-					 *       связи хоть и не круговой, но неразумно длинной
-					 *
 					 * \~english
 					 * @brief Method of resolving the references inside the value of a property
+					 *
+					 * @note The list of the properties being resolved serves the detection of a circular
+					 *       reference: a value to which a reference has returned already lies in it.
+					 *       Its depth beyond that is limited by the limit of the settings — for the case of a
+					 *       linkage that is not circular but unreasonably long
 					 *
 					 * @param value   value of the property being resolved
 					 * @param section ordinal number of the section to which the value belongs
@@ -1136,11 +1106,6 @@ namespace awh {
 					 * @param budget  remainder of the admissible volume of the substitution in bytes
 					 * @param result  value with the resolved references
 					 * @return        result of performing the operation
-					 *
-					 * @note The list of the properties being resolved serves the detection of a circular
-					 *       reference: a value to which a reference has returned already lies in it.
-					 *       Its depth beyond that is limited by the limit of the settings — for the case of a
-					 *       linkage that is not circular but unreasonably long
 					 *
 					 * \~
 					 */
@@ -1230,7 +1195,6 @@ namespace awh {
 					 *
 					 * @return код ошибки последней операции разбора
 					 *
-					 *
 					 * \~english
 					 * @brief Method of getting the error code of the parsing
 					 *
@@ -1244,7 +1208,6 @@ namespace awh {
 					 * @brief Метод получения места обнаружения ошибки
 					 *
 					 * @return положение обнаруженной ошибки в исходном тексте
-					 *
 					 *
 					 * \~english
 					 * @brief Method of getting the place of the detection of an error
@@ -1261,8 +1224,6 @@ namespace awh {
 					 *
 					 * @details Разделы выдаются в порядке их объявления в исходном тексте.
 					 *
-					 * @return перечень объявленных разделов текста настроек
-					 *
 					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
 					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
 					 *          обращений считается по требованию: обращение к дереву, её
@@ -1270,18 +1231,20 @@ namespace awh {
 					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
 					 *          дольше - снимайте копию
 					 *
+					 * @return перечень объявленных разделов текста настроек
+					 *
 					 * \~english
 					 * @brief Method of getting the list of the declared sections
 					 *
 					 * @details The sections are issued in the order of their declaration in the source text.
-					 *
-					 * @return list of the declared sections of the settings text
 					 *
 					 * @warning The issued views live until the NEXT call to the tree. The tree
 					 *          issues the content by the views into its storage of the characters, while the substitution
 					 *          of the references is computed on demand: a call to the tree finding it stale
 					 *          recomputes the substitution and relocates the storage. A view taken before the
 					 *          recomputation dangles. Should a view be needed longer — take a copy
+					 *
+					 * @return list of the declared sections of the settings text
 					 *
 					 * \~
 					 */
@@ -1311,10 +1274,6 @@ namespace awh {
 					 * @details Имена выдаются в порядке их объявления и повторов не несут:
 					 *          свойство, объявленное несколько раз, выдаётся именем однажды.
 					 *
-					 * @param section    имя раздела
-					 * @param subsection имя подраздела
-					 * @return           перечень имён свойств раздела
-					 *
 					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
 					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
 					 *          обращений считается по требованию: обращение к дереву, её
@@ -1322,15 +1281,15 @@ namespace awh {
 					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
 					 *          дольше - снимайте копию
 					 *
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 * @return           перечень имён свойств раздела
+					 *
 					 * \~english
 					 * @brief Method of getting the list of the names of the properties of a section
 					 *
 					 * @details The names are issued in the order of their declaration and carry no repetitions:
 					 *          a property declared several times is issued by a name once.
-					 *
-					 * @param section    name of the section
-					 * @param subsection name of the subsection
-					 * @return           list of the names of the properties of the section
 					 *
 					 * @warning The issued views live until the NEXT call to the tree. The tree
 					 *          issues the content by the views into its storage of the characters, while the substitution
@@ -1338,9 +1297,27 @@ namespace awh {
 					 *          recomputes the substitution and relocates the storage. A view taken before the
 					 *          recomputation dangles. Should a view be needed longer — take a copy
 					 *
+					 * @param section    name of the section
+					 * @param subsection name of the subsection
+					 * @return           list of the names of the properties of the section
+					 *
 					 * \~
 					 */
 					vector <string_view> keys(const string_view section = "", const string_view subsection = "") const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон метода перечисления звеньев пути к детям значения
+					 *
+					 * @tparam T тип данных формируемого значения
+					 *
+					 * \~english
+					 * @brief Template for a method that enumerates the paths to a value's children
+					 *
+					 * @tparam T data type of the generated value
+					 *
+					 * \~
+					 */
+					template <class T>
 					/**
 					 * \~russian
 					 * @brief Метод перечисления звеньев пути к детям значения
@@ -1433,9 +1410,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_same <T, string>::value, vector <string>>::type
-					keys(const T & path) const noexcept {
+					typename std::enable_if <std::is_same <T, string>::value, vector <string>>::type keys(const T & path) const noexcept {
 						// Выводим перечень звеньев пути к детям значения
 						return this->children(string_view(path));
 					}
@@ -1493,7 +1468,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					::awh::codec::ini::Value at(const string & path) const noexcept;
+					codec::ini::Value at(const string & path) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки наличия свойства
@@ -1514,6 +1489,20 @@ namespace awh {
 					 * \~
 					 */
 					bool has(const string_view key, const string_view section = "", const string_view subsection = "") const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон метода проверки наличия значения по пути
+					 *
+					 * @tparam T тип данных формируемого значения
+					 *
+					 * \~english
+					 * @brief Method template for checking the existence of a value at a given path
+					 *
+					 * @tparam T data type of the generated value
+					 *
+					 * \~
+					 */
+					template <class T>
 					/**
 					 * \~russian
 					 * @brief Метод проверки наличия значения по пути
@@ -1557,9 +1546,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_same <T, string>::value, bool>::type
-					has(const T & path) const noexcept {
+					typename std::enable_if <std::is_same <T, string>::value, bool>::type has(const T & path) const noexcept {
 						// Выводим признак наличия значения по пути
 						return this->holds(string_view(path));
 					}
@@ -1591,17 +1578,17 @@ namespace awh {
 					 *          которое велит выдать настройка обращения с повторами: первое, либо
 					 *          последнее, либо - при собирании их в перечень - первое из перечня.
 					 *
-					 * @param key        имя искомого свойства
-					 * @param section    имя раздела
-					 * @param subsection имя подраздела
-					 * @return           значение найденного свойства либо пустая последовательность
-					 *
 					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
 					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
 					 *          обращений считается по требованию: обращение к дереву, её
 					 *          устаревшей заставшее, пересчитывает подстановку и хранилище
 					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
 					 *          дольше - снимайте копию
+					 *
+					 * @param key        имя искомого свойства
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 * @return           значение найденного свойства либо пустая последовательность
 					 *
 					 * \~english
 					 * @brief Method of getting the value of a property
@@ -1610,16 +1597,16 @@ namespace awh {
 					 *          which the setting of the treatment of the repetitions orders to issue: the first, or
 					 *          the last, or — at their assembling into a list — the first of the list.
 					 *
-					 * @param key        name of the property being sought
-					 * @param section    name of the section
-					 * @param subsection name of the subsection
-					 * @return           value of the found property or an empty sequence
-					 *
 					 * @warning The issued views live until the NEXT call to the tree. The tree
 					 *          issues the content by the views into its storage of the characters, while the substitution
 					 *          of the references is computed on demand: a call to the tree finding it stale
 					 *          recomputes the substitution and relocates the storage. A view taken before the
 					 *          recomputation dangles. Should a view be needed longer — take a copy
+					 *
+					 * @param key        name of the property being sought
+					 * @param section    name of the section
+					 * @param subsection name of the subsection
+					 * @return           value of the found property or an empty sequence
 					 *
 					 * \~
 					 */
@@ -1632,17 +1619,17 @@ namespace awh {
 					 *          Наречия Git и systemd повтором свойства задают перечень значений, и
 					 *          читать его следует именно так.
 					 *
-					 * @param key        имя искомого свойства
-					 * @param section    имя раздела
-					 * @param subsection имя подраздела
-					 * @return           перечень значений найденного свойства
-					 *
 					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
 					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
 					 *          обращений считается по требованию: обращение к дереву, её
 					 *          устаревшей заставшее, пересчитывает подстановку и хранилище
 					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
 					 *          дольше - снимайте копию
+					 *
+					 * @param key        имя искомого свойства
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 * @return           перечень значений найденного свойства
 					 *
 					 * \~english
 					 * @brief Method of getting the list of the values of a property
@@ -1651,16 +1638,16 @@ namespace awh {
 					 *          The Git and systemd dialects give a list of the values by a repetition of a property, and
 					 *          it should be read exactly that way.
 					 *
-					 * @param key        name of the property being sought
-					 * @param section    name of the section
-					 * @param subsection name of the subsection
-					 * @return           list of the values of the found property
-					 *
 					 * @warning The issued views live until the NEXT call to the tree. The tree
 					 *          issues the content by the views into its storage of the characters, while the substitution
 					 *          of the references is computed on demand: a call to the tree finding it stale
 					 *          recomputes the substitution and relocates the storage. A view taken before the
 					 *          recomputation dangles. Should a view be needed longer — take a copy
+					 *
+					 * @param key        name of the property being sought
+					 * @param section    name of the section
+					 * @param subsection name of the subsection
+					 * @return           list of the values of the found property
 					 *
 					 * \~
 					 */
@@ -1729,13 +1716,12 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения значения свойства числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
-					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template of a method for obtaining a property value by number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -1831,6 +1817,20 @@ namespace awh {
 					bool set(const string_view key, const string_view value, const string_view section = "", const string_view subsection = "") noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон метода постановки владеющего значения по пути
+					 *
+					 * @tparam V тип числа результата разбора
+					 *
+					 * \~english
+					 * @brief Pattern of a method for setting the owning value along a path
+					 *
+					 * @tparam V number type of the parsing result
+					 *
+					 * \~
+					 */
+					template <class V>
+					/**
+					 * \~russian
 					 * @brief Метод постановки владеющего значения по пути
 					 *
 					 * @details Ход этот заведён ради общего вида кодеков рамки: правка дерева
@@ -1867,9 +1867,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class V>
-					typename ::std::enable_if <::std::is_same <typename ::std::decay <V>::type, ::awh::codec::ini::Value>::value, bool>::type
-					set(const string & path, const V & value) noexcept {
+					typename std::enable_if <std::is_same <typename std::decay <V>::type, codec::ini::Value>::value, bool>::type set(const string & path, const V & value) noexcept {
 						// Выводим результат переноса владеющего значения в дерево настроек
 						return this->graft(path, value);
 					}
@@ -1906,7 +1904,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool graft(const string & path, const ::awh::codec::ini::Value & value) noexcept;
+					bool graft(const string & path, const codec::ini::Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки пустого значения по пути к нему
@@ -2010,6 +2008,20 @@ namespace awh {
 					bool erase(const string_view key, const string_view section = "", const string_view subsection = "") noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон метода снятия значения по пути
+					 *
+					 * @tparam T тип числа результата разбора
+					 *
+					 * \~english
+					 * @brief Pattern of a method for removing a value along a path
+					 *
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
+					 */
+					template <class T>
+					/**
+					 * \~russian
 					 * @brief Метод снятия значения по пути
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки: снос по пути, строкою
@@ -2064,9 +2076,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_same <T, string>::value, bool>::type
-					erase(const T & path) noexcept {
+					typename std::enable_if <std::is_same <T, string>::value, bool>::type erase(const T & path) noexcept {
 						// Выводим результат снятия значения по пути
 						return this->prune(path);
 					}
@@ -2160,7 +2170,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2356,6 +2366,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					explicit Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					explicit Document(Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -2363,7 +2415,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2377,50 +2429,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Ходы копии и переноса дерева
-					 *
-					 * @details Объявлены они здесь ради ПЕРЕНОСА: прежде тут стоял деструктор,
-					 *          освобождавший дерево зовом `clear()`, и объявление его отменяло порождение
-					 *          переносящих ходов - по правилу языка неявный перенос у класса с деструктором
-					 *          объявленным не порождается вовсе. Перенос при этом молча обращался копией:
-					 *          замер 17.09.2026 на дереве о двадцати тысячах таблиц дал перенос 4240 мкс
-					 *          против копии 4127 мкс, и источник сохранял всё содержимое.
-					 *
-					 * @note Деструктор тот был ИЗЛИШЕН: `clear()` сбрасывает поля, а поля эти -
-					 *       перечни да строки, и освободятся они деструкторами своими сами. Сосед YAML
-					 *       деструктора не имеет вовсе, и перенос у него работал всё это время
-					 *
-					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 *          переноса подавило бы порождение копии, и дерево перестало бы копироваться
-					 *
-					 * \~english
-					 * @brief The calls of the copying and of the moving of a tree
-					 *
-					 * @details They are declared here for the sake of the MOVE: formerly a destructor stood here
-					 *          releasing the tree by a call of `clear()`, and its declaration cancelled the
-					 *          generation of the moving calls - by the rule of the language an implicit move at a
-					 *          class with a declared destructor is not generated at all. The move at that was
-					 *          silently turned into a copy: a measurement of 2026-09-17 on a tree of twenty
-					 *          thousand tables gave a move of 4240 microseconds against a copy of 4127
-					 *          microseconds, and the source kept all of its content.
-					 *
-					 * @note That destructor was SUPERFLUOUS: `clear()` resets the fields, and those fields are
-					 *       lists and strings, and they will be released by their own destructors themselves. The
-					 *       neighbor YAML has no destructor at all, and its move worked all this while
-					 *
-					 * @warning The FOUR calls are declared at once by the rule of five: a declaration of the move
-					 *          alone would have suppressed the generation of the copy, and the tree would have
-					 *          stopped being copied
-					 *
-					 * \~
-					 */
-					Document(const Document &) = default;
-					Document(Document &&) noexcept = default;
-					Document & operator = (const Document &) = default;
-					Document & operator = (Document &&) noexcept = default;
+					explicit Document(const settings_t & settings) noexcept;
 			} document_t;
 		};
 	};
