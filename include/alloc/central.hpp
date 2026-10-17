@@ -209,11 +209,10 @@ namespace awh {
 			private:
 				// Замок страничной кучи
 				spin_t _heap;
-				// Центральные списки по разрядам
-				list_t _lists[Classes::LIMIT];
-			private:
 				// Замок придержки, отдельный от замка кучи
 				spin_t _reserve;
+				// Центральные списки по разрядам
+				list_t _lists[Classes::LIMIT];
 			private:
 				// Объём придержанного в байтах (читается без замка на быстрых путях, оттого атомарен)
 				std::atomic <size_t> _keptBytes;
