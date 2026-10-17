@@ -87,6 +87,11 @@
  */
 namespace awh {
 	/**
+	 * Используем стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
 	 * @brief Пространство имён распределителя памяти
 	 *
 	 */
@@ -215,9 +220,9 @@ namespace awh {
 				list_t _lists[Classes::LIMIT];
 			private:
 				// Объём придержанного в байтах (читается без замка на быстрых путях, оттого атомарен)
-				std::atomic <size_t> _keptBytes;
+				atomic_size_t _keptBytes;
 				// Потолок придержки в байтах (читается без замка на быстрых путях, оттого атомарен)
-				std::atomic <size_t> _keptCeiling;
+				atomic_size_t _keptCeiling;
 			private:
 				/**
 				 * \~russian
