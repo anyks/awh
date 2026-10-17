@@ -48,7 +48,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -63,7 +62,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -91,7 +89,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
-
 			/**
 			 * \~russian
 			 * @brief Обозначение кодового значения, полученного ошибочно
@@ -105,7 +102,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость в тексте настроек
+			 * @brief Функция проверки знака на допустимость в тексте настроек
 			 *
 			 * @details Из управляющих знаков допускаются лишь горизонтальная табуляция,
 			 *          перевод строки и возврат каретки: прочие в файле настроек означают либо
@@ -120,7 +117,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility in the text of the settings
+			 * @brief Function of checking a character for admissibility in the text of the settings
 			 *
 			 * @details Of the control characters only the horizontal tabulation,
 			 *          the line feed and the carriage return are admitted: the rest of them in a settings file mean either
@@ -137,10 +134,27 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool isChar(const uint32_t code) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+			 * @brief Функция записи кодового значения в кодировке UTF-8
+			 *
+			 * @param code   записываемое кодовое значение знака
+			 * @param result текст, к которому дописывается знак
+			 * @return       результат выполнения операции
+			 *
+			 * \~english
+			 * @brief Function of writing a code value in the UTF-8 encoding
+			 *
+			 * @param code   code value of the character being written
+			 * @param result text to which the character is appended
+			 * @return       result of performing the operation
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool encode(const uint32_t code, string & result) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @details Проверяется не только построение последовательности, но и её
 			 *          кратчайшесть: избыточно длинная запись кодового значения отвергается как
@@ -152,7 +166,7 @@ namespace awh {
 			 * @return       прочитанное кодовое значение знака
 			 *
 			 * \~english
-			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 * @brief Function of reading a code value from a text in the UTF-8 encoding
 			 *
 			 * @details Not only the construction of the sequence is checked but also its
 			 *          shortestness: an overlong record of a code value is rejected as
@@ -166,25 +180,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ uint32_t decode(const char * buffer, const size_t size, size_t & length) noexcept;
-
-			/**
-			 * \~russian
-			 * @brief Метод записи кодового значения в кодировке UTF-8
-			 *
-			 * @param code   записываемое кодовое значение знака
-			 * @param result текст, к которому дописывается знак
-			 * @return       результат выполнения операции
-			 *
-			 * \~english
-			 * @brief Method of writing a code value in the UTF-8 encoding
-			 *
-			 * @param code   code value of the character being written
-			 * @param result text to which the character is appended
-			 * @return       result of performing the operation
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool encode(const uint32_t code, string & result) noexcept;
 
 			/**
 			 * \~russian
@@ -234,45 +229,31 @@ namespace awh {
 					 */
 					void report() const noexcept;
 				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-				private:
-					// Определённая кодировка исходного текста
-					encoding_t _encoding;
-				private:
-					// Код ошибки последней операции приведения
-					error_t _error;
-				private:
 					// Признак того, что кодировка навязана извне
 					bool _forced;
-				private:
 					// Признак того, что метка порядка байтов уже обработана
 					bool _marked;
-				private:
 					// Признак обнаружения метки порядка байтов в начале исходного текста
 					bool _signed;
-				private:
 					// Признак того, что приведение текста уже началось
 					bool _started;
-				private:
-					// Байты начала текста, удержанные до определения кодировки
-					string _prolog;
 				private:
 					// Количество удержанных байтов незавершённой последовательности
 					uint8_t _length;
 				private:
-					// Удержанные байты незавершённой последовательности знака
-					char _pending[4];
-				private:
 					// Удержанная старшая половина суррогатной пары
 					uint32_t _surrogate;
+				private:
+					// Код ошибки последней операции приведения
+					error_t _error;
+					// Определённая кодировка исходного текста
+					encoding_t _encoding;
+				private:
+					// Байты начала текста, удержанные до определения кодировки
+					string _prolog;
+				private:
+					// Удержанные байты незавершённой последовательности знака
+					char _pending[4];
 				private:
 					/**
 					 * \~russian
@@ -441,7 +422,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Decoder() noexcept;
+					explicit Decoder() noexcept;
 			} decoder_t;
 		};
 	};

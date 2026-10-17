@@ -96,10 +96,19 @@ namespace awh {
 		 * \~english
 		 * @brief Central free lists class
 		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Central {
 			public:
-				// Наибольшее число блоков в одной передаваемой пачке
+				/**
+				 * \~russian
+				 * @brief Наибольшее число блоков в одной передаваемой пачке
+				 *
+				 * \~english
+				 * @brief Maximum number of blocks in a single transmitted burst
+				 *
+				 * \~
+				 */
 				static constexpr size_t BATCH = 64;
 			public:
 				/**
@@ -109,19 +118,21 @@ namespace awh {
 				 * \~english
 				 * @brief Central free lists state
 				 *
+				 * \~
 				 */
 				typedef struct State {
-					// Лежит в центральных списках в байтах
-					size_t cached;
 					// Выдано кэшам потоков в байтах
 					size_t live;
+					// Лежит в центральных списках в байтах
+					size_t cached;
 					// Нарезано областей под разряды
 					size_t regions;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					State() noexcept : cached(0), live(0), regions(0) {}
+					explicit State() noexcept :
+					 live(0), cached(0), regions(0) {}
 				} state_t;
 			private:
 				/**
@@ -131,19 +142,21 @@ namespace awh {
 				typedef struct List {
 					// Замок разряда
 					spin_t lock;
-					// Голова списка свободных блоков
-					void * free;
-					// Число свободных блоков в списке
-					size_t count;
 					// Число блоков, выданных кэшам потоков
 					size_t live;
+					// Число свободных блоков в списке
+					size_t count;
 					// Число нарезанных под разряд областей
 					size_t regions;
+					// Голова списка свободных блоков
+					void * free;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					List() noexcept : lock(), free(nullptr), count(0), live(0), regions(0) {}
+					explicit List() noexcept :
+					 live(0), count(0),
+					 regions(0), free(nullptr) {}
 				} list_t;
 			private:
 				// Страничная куча
@@ -152,31 +165,29 @@ namespace awh {
 				classes_t * _classes;
 			public:
 				/**
-				 * Потолок придержки областей сверх разрядов по умолчанию в байтах
+				 * @brief Потолок придержки областей сверх разрядов по умолчанию в байтах
 				 *
-				 * <b>Нуль: придержка ВЫКЛЮЧЕНА по умолчанию, и это решение замера.</b>
-				 * Она ускоряет круг «выдал - освободил» на областях сверх разрядов в
-				 * полтора раза (73 563 → 113 074 тысяч действий в секунду), но роняет
-				 * рост области перевыдачей вчетверо (18 050 → 3 913): растёт область за
-				 * счёт СВОБОДНЫХ соседей, а придержанная для кучи занята. По порогу
-				 * скорости обмен убыточен - «крупные блоки» не выигрываются и с нею
-				 * (у tcmalloc 115 315), а «рост перевыдачей» был единственным
-				 * сценарием, где порог держался на всех системах
+				 * @details <b>Нуль: придержка ВЫКЛЮЧЕНА по умолчанию, и это решение замера.</b>
+				 *          Она ускоряет круг «выдал - освободил» на областях сверх разрядов в
+				 *          полтора раза (73 563 → 113 074 тысяч действий в секунду), но роняет
+				 *          рост области перевыдачей вчетверо (18 050 → 3 913): растёт область за
+				 *          счёт СВОБОДНЫХ соседей, а придержанная для кучи занята. По порогу
+				 *          скорости обмен убыточен - «крупные блоки» не выигрываются и с нею
+				 *          (у tcmalloc 115 315), а «рост перевыдачей» был единственным
+				 *          сценарием, где порог держался на всех системах.
 				 *
-				 * Приложению, не растящему области перевыдачей, придержка даётся
-				 * настройкой: обмен этот - его выбор, а не наш
+				 * @note Приложению, не растящему области перевыдачей, придержка даётся
+				 *       настройкой: обмен этот - его выбор, а не наш
 				 */
-				// Потолок придержки областей сверх разрядов по умолчанию
 				static constexpr size_t DEFAULT_KEPT = 0;
 				/**
-				 * Наибольший размер придерживаемой области в страницах кучи
+				 * @brief Наибольший размер придерживаемой области в страницах кучи
 				 *
-				 * Придержка и рост области НА МЕСТЕ враждебны друг другу: растёт область
-				 * за счёт свободных соседей, а придержанная для кучи занята. Придержка
-				 * без предела роняла «рост перевыдачей» вчетверо, отбирая единственный
-				 * сценарий, где порог держался на всех системах
+				 * @details Придержка и рост области НА МЕСТЕ враждебны друг другу: растёт область
+				 *          за счёт свободных соседей, а придержанная для кучи занята. Придержка
+				 *          без предела роняла «рост перевыдачей» вчетверо, отбирая единственный
+				 *          сценарий, где порог держался на всех системах.
 				 */
-				// Наибольший размер придерживаемой области в страницах кучи
 				static constexpr size_t KEPT_PAGES = 8;
 			private:
 				/**
@@ -188,10 +199,10 @@ namespace awh {
 				 *
 				 */
 				typedef struct Kept {
-					// Следующая придержанная область того же размера
-					struct Kept * next;
 					// Размер области в страницах кучи
 					size_t pages;
+					// Следующая придержанная область того же размера
+					struct Kept * next;
 				} kept_t;
 			private:
 				// Замок страничной кучи
@@ -199,28 +210,37 @@ namespace awh {
 				// Центральные списки по разрядам
 				list_t _lists[Classes::LIMIT];
 			private:
-				/**
-				 * Придержка освобождённых областей сверх разрядов
-				 *
-				 * Ниже границы разрядов выдачу держит кэш потока, выше размера куска -
-				 * придержка слоя крупных выдач, а МЕЖДУ ними всякое действие ходило в
-				 * страничную кучу: поиск области, изъятие из списка, дробление, пометка
-				 * всех её страниц - и всё это под замком кучи. Счётчик показывал ровно один
-				 * вызов `Pages::alloc` и один `Pages::mark` на каждую выдачу
-				 *
-				 * Придержанная область куче НЕ возвращается: она остаётся выданной и ждёт
-				 * следующего запроса того же размера. Отдаётся - по просьбе отдачи памяти
-				 * либо сверх потолка, заданного настройкой; нулевой потолок возвращает
-				 * прежнее поведение дословно
-				 */
 				// Замок придержки, отдельный от замка кучи
 				spin_t _reserve;
-				// Придержанные области по числу страниц
-				kept_t * _kept[Pages::PAGES + 1];
+			private:
 				// Объём придержанного в байтах (читается без замка на быстрых путях, оттого атомарен)
 				std::atomic <size_t> _keptBytes;
 				// Потолок придержки в байтах (читается без замка на быстрых путях, оттого атомарен)
 				std::atomic <size_t> _keptCeiling;
+			private:
+				/**
+				 * \~russian
+				 * @brief Придержанные области по числу страниц
+				 *
+				 * @details Придержка освобождённых областей сверх разрядов.
+				 *
+				 * @note Ниже границы разрядов выдачу держит кэш потока, выше размера куска -
+				 *       придержка слоя крупных выдач, а МЕЖДУ ними всякое действие ходило в
+				 *       страничную кучу: поиск области, изъятие из списка, дробление, пометка
+				 *       всех её страниц - и всё это под замком кучи. Счётчик показывал ровно один
+				 *       вызов `Pages::alloc` и один `Pages::mark` на каждую выдачу
+				 *
+				 * @note Придержанная область куче НЕ возвращается: она остаётся выданной и ждёт
+				 *       следующего запроса того же размера. Отдаётся - по просьбе отдачи памяти
+				 *       либо сверх потолка, заданного настройкой; нулевой потолок возвращает
+				 *       прежнее поведение дословно
+				 *
+				 * \~english
+				 * @brief Held-back sections by page count
+				 *
+				 * \~
+				 */
+				kept_t * _kept[Pages::PAGES + 1];
 			private:
 				/**
 				 * \~russian
@@ -234,6 +254,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of carving a new region for a class
 				 *
+				 * \~
 				 */
 				bool carve(const size_t index) noexcept;
 			public:
@@ -248,6 +269,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of initializing the central free lists
 				 *
+				 * \~
 				 */
 				bool init(pages_t * pages, classes_t * classes) noexcept;
 				/**
@@ -259,6 +281,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of resetting the central free lists
 				 *
+				 * \~
 				 */
 				void reset() noexcept;
 			public:
@@ -275,6 +298,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of fetching a batch of blocks of a class
 				 *
+				 * \~
 				 */
 				size_t fetch(const size_t index, void ** head, void ** tail, const size_t count) noexcept;
 				/**
@@ -289,6 +313,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning a batch of blocks of a class
 				 *
+				 * \~
 				 */
 				void back(const size_t index, void * head, void * tail, const size_t count) noexcept;
 			public:
@@ -296,15 +321,14 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод выдачи памяти сверх разрядов
 				 *
-				 * @param size требуемый размер в байтах
-				 * @return     адрес выданной памяти либо nullptr
+				 * @param size   требуемый размер в байтах
+				 * @param served действительно выданный размер в байтах, либо nullptr
+				 * @return       адрес выданной памяти либо nullptr
 				 *
 				 * \~english
 				 * @brief Method of allocating memory beyond the size classes
 				 *
-				 */
-				/**
-				 * @param served действительно выданный размер в байтах, либо nullptr
+				 * \~
 				 */
 				void * alloc(const size_t size, size_t * served = nullptr) noexcept;
 				/**
@@ -321,6 +345,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of expanding an allocated region in place
 				 *
+				 * \~
 				 */
 				bool expand(void * addr, const size_t size) noexcept;
 				/**
@@ -334,23 +359,10 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning memory allocated beyond the size classes
 				 *
+				 * \~
 				 */
 				bool free(void * addr, const uint64_t now, const bool keeping = true) noexcept;
 			public:
-				/**
-				 * \~russian
-				 * @brief Метод определения разряда, которому принадлежит адрес
-				 *
-				 * @param addr  разбираемый адрес
-				 * @param index номер разряда, либо LIMIT если память выдана сверх разрядов
-				 * @param begin адрес начала области, которой принадлежит адрес
-				 * @param size  размер области в байтах
-				 * @return      признак того, что адрес выдан нами
-				 *
-				 * \~english
-				 * @brief Method of determining the class an address belongs to
-				 *
-				 */
 				/**
 				 * \~russian
 				 * @brief Метод быстрого опознания блока разряда
@@ -369,6 +381,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of quickly identifying a size class block
 				 *
+				 * \~
 				 */
 				AWH_CENTRAL_INLINE bool sorted(const void * addr, size_t * index, void ** hint = nullptr) noexcept {
 					// Если куча не заведена либо разбирать нечего
@@ -386,6 +399,21 @@ namespace awh {
 					// Отвечаем успехом
 					return true;
 				}
+				/**
+				 * \~russian
+				 * @brief Метод определения разряда, которому принадлежит адрес
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param index номер разряда, либо LIMIT если память выдана сверх разрядов
+				 * @param begin адрес начала области, которой принадлежит адрес
+				 * @param size  размер области в байтах
+				 * @return      признак того, что адрес выдан нами
+				 *
+				 * \~english
+				 * @brief Method of determining the class an address belongs to
+				 *
+				 * \~
+				 */
 				AWH_CENTRAL_INLINE bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept {
 					// Если куча не заведена либо адрес не задан
 					if((this->_pages == nullptr) || (addr == nullptr))
@@ -455,6 +483,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning free memory to the system
 				 *
+				 * \~
 				 */
 				size_t purge(const uint64_t now, const bool all) noexcept;
 				/**
@@ -467,6 +496,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the memory release policy
 				 *
+				 * \~
 				 */
 				void policy(const int64_t delay, const size_t block) noexcept;
 				/**
@@ -478,6 +508,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the ceiling of memory taken from the source
 				 *
+				 * \~
 				 */
 				void ceiling(const size_t limit) noexcept;
 				/**
@@ -491,6 +522,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of setting the ceiling of the span reserve
 				 *
+				 * \~
 				 */
 				void keeper(const size_t limit) noexcept;
 				/**
@@ -512,6 +544,7 @@ namespace awh {
 				 * @param confined ban on going to the source beyond what is occupied
 				 * @return         flag of the required area having been occupied
 				 *
+				 * \~
 				 */
 				bool occupy(const size_t arena, const bool confined) noexcept;
 			private:
@@ -535,6 +568,7 @@ namespace awh {
 				 * @param pages required number of heap pages
 				 * @return      address of the allocated span or nullptr
 				 *
+				 * \~
 				 */
 				void * take(const size_t pages, size_t * served = nullptr) noexcept;
 				/**
@@ -547,6 +581,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of taking a span from the reserve
 				 *
+				 * \~
 				 */
 				void * recall(const size_t pages) noexcept;
 				/**
@@ -564,6 +599,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of reserving a freed span
 				 *
+				 * \~
 				 */
 				bool keep(void * addr, const size_t pages) noexcept;
 				/**
@@ -576,6 +612,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of returning the reserved spans to the heap
 				 *
+				 * \~
 				 */
 				size_t unkeep(const bool all) noexcept;
 			public:
@@ -588,6 +625,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of determining whether the heap has hit its ceiling
 				 *
+				 * \~
 				 */
 				bool jammed() noexcept;
 				/**
@@ -612,6 +650,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of locating the heap region an address belongs to
 				 *
+				 * \~
 				 */
 				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) noexcept;
 			public:
@@ -624,6 +663,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the central free lists state
 				 *
+				 * \~
 				 */
 				state_t state() noexcept;
 				/**
@@ -635,6 +675,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of getting the page heap state
 				 *
+				 * \~
 				 */
 				Pages::state_t heap() noexcept;
 			public:
@@ -645,6 +686,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of acquiring all locks before forking
 				 *
+				 * \~
 				 */
 				void prepare() noexcept;
 				/**
@@ -654,6 +696,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of releasing all locks after forking
 				 *
+				 * \~
 				 */
 				void resume() noexcept;
 				/**
@@ -666,6 +709,7 @@ namespace awh {
 				 * \~english
 				 * @brief Method of forcibly releasing all locks in the forked child
 				 *
+				 * \~
 				 */
 				void adopt() noexcept;
 			public:
@@ -673,7 +717,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				Central() noexcept;
+				explicit Central() noexcept;
 		} central_t;
 	};
 };
