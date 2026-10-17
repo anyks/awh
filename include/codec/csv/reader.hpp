@@ -73,7 +73,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -83,7 +82,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера CSV
-		 *
 		 *
 		 * \~english
 		 * @brief CSV container namespace
@@ -194,262 +192,266 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки разбора текста
+					 * @brief Класс настроек разбора текста
 					 *
 					 * \~english
-					 * @brief Settings of the parsing of a text
+					 * @brief Text parsing settings class
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						/**
-						 * \~russian
-						 * Знак-разделитель полей, ноль - определять по содержимому
-						 *
-						 * @note Умолчанием берётся запятая, названная договором. Ноль
-						 *       включает определение по содержимому: разбор откладывает выдачу
-						 *       до тех пор, пока разделитель не определится
-						 *
-						 * \~english
-						 * Separator character of the fields, zero — determine by the content
-						 *
-						 * @note By default the comma named by the protocol is taken. Zero
-						 *       enables the determination by the content: the parsing postpones the issuance
-						 *       until the separator is determined
-						 *
-						 * \~
-						 */
-						char separator;
-						// Знак кавычек, обрамляющих поле
-						char quote;
-						/**
-						 * \~russian
-						 * Знак, начинающий строку примечания, ноль - примечаний нет
-						 *
-						 * @note Договор примечаний не описывает вовсе, потому умолчанием
-						 *       их нет: строка, начинающаяся с решётки, обыкновенная запись
-						 *
-						 * \~english
-						 * Character beginning a comment line, zero — there are no comments
-						 *
-						 * @note The protocol does not describe the comments at all, therefore by default
-						 *       there are none: a line beginning with a hash is an ordinary record
-						 *
-						 * \~
-						 */
-						char comment;
-						// Способ записи кавычки внутри поля, заключённого в кавычки
-						escape_t escape;
-						// Признак наличия заголовка в тексте
-						header_t header;
-						// Обращение с обвязкой вокруг поля
-						trim_t trim;
-						// Обращение с записью, число полей которой расходится с заголовком
-						ragged_t ragged;
-						// Кодировка, навязанная извне вопреки метке порядка байтов
-						encoding_t encoding;
-						/**
-						 * \~russian
-						 * Признак строгого следования RFC 4180
-						 *
-						 * @note Строгий разбор отвечает отказом на одиночную кавычку
-						 *       внутри поля без кавычек, на знаки за закрывающей кавычкой и на
-						 *       одиночный перевод строки в качестве конца записи. Обиход этого
-						 *       не соблюдает, потому умолчанием разбор нестрогий
-						 *
-						 * @note Всякое из трёх правил называет свою причину СВОИМ кодом:
-						 *       `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` и `BARE_LINE_BREAK`.
-						 *       Последний заведён 05.09.2026: прежде негодный конец записи -
-						 *       одиночный перевод строки и возврат каретки без пары - отвечал
-						 *       общим `INVALID_CHARACTER`, и потребитель не отличал нарушения
-						 *       грамматики от недопустимого знака в самом содержимом
-						 *
-						 * \~english
-						 * Flag of the strict following of RFC 4180
-						 *
-						 * @note The strict parsing answers with a refusal to a single quote
-						 *       inside a field without quotes, to the characters after a closing quote and to
-						 *       a single line feed as the end of a record. The custom does not
-						 *       observe this, therefore by default the parsing is a non-strict one
-						 *
-						 * @note Each of the three rules names its cause with its OWN code:
-						 *       `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` and `BARE_LINE_BREAK`. The last one was
-						 *       introduced on 2026-09-05: formerly an unfit end of a record - a single line feed and a
-						 *       carriage return without a pair - answered with the common `INVALID_CHARACTER`, and a
-						 *       consumer could not tell a breach of the grammar from an inadmissible character in the
-						 *       content itself
-						 *
-						 * \~
-						 */
-						bool strict;
-						/**
-						 * \~russian
-						 * Признак выдачи событий пустых строк
-						 *
-						 * @note Признак этот правит ПОТОКОМ СОБЫТИЙ, а не составом таблицы:
-						 *       контейнер `document_t` пустые строки содержимым не считает и в
-						 *       записи их не заносит НИ ПРИ КАКОМ его значении. Закреплено
-						 *       проверкою `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
-						 *
-						 * @note Толкование это расходится с обиходом иных средств - разбор
-						 *       таблиц у языка Python выдаёт пустую строку записью без полей, и
-						 *       грамматика RFC 4180 такому толкованию не противоречит, - и
-						 *       расхождение здесь описано нарочно. Сличено внешним судьёю 17.09.2026
-						 *
-						 * \~english
-						 * Flag of the issuance of the events of the blank lines
-						 *
-						 * @note This flag governs the STREAM OF EVENTS rather than the composition of the table:
-						 *       the container `document_t` does not consider the blank lines to be a content and does not
-						 *       put them into the records under ANY of its values. It is fixed by the check
-						 *       `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
-						 *
-						 * @note This interpretation diverges from the usage of other means - the parsing of tables in
-						 *       the Python language issues a blank line as a record without fields, and the grammar of
-						 *       RFC 4180 does not contradict such an interpretation, - and the divergence is described
-						 *       here on purpose. Compared by an external judge on 2026-09-17
-						 *
-						 * \~
-						 */
-						bool emitBlanks;
-						/**
-						 * \~russian
-						 * Признак выдачи событий примечаний
-						 *
-						 * @note Довод общий с `emitBlanks`: поток событий правится, состав
-						 *       таблицы - нет
-						 *
-						 * \~english
-						 * Flag of the issuance of the events of the comments
-						 *
-						 * @note The argument is common with `emitBlanks`: the stream of the events is governed,
-						 *       the composition of the table is not
-						 *
-						 * \~
-						 */
-						bool emitComments;
-						/**
-						 * \~russian
-						 * Признак проверки повторного объявления имён полей в заголовке
-						 *
-						 * @note Проверка стоит памяти - разбор удерживает имена, - и
-						 *       отключают её там, где заголовок заведомо свой
-						 *
-						 * @warning Отключение есть отказ от платы, а НЕ дозволение повтора: повтор,
-						 *          прошедший отключённую проверку, оставляет столбец недостижимым по имени.
-						 *          Обращение по имени доходит до ПЕРВОГО столбца с этим именем, прочие же
-						 *          достижимы одним лишь номером - молча, без отказа и без признака. Замер:
-						 *          заголовок «имя,имя,возраст» при отключённой проверке принимается, столбцов
-						 *          выходит три, а `has("имя")` истинен и указывает на нулевой
-						 *
-						 * @note Установка заголовка извне (`document_t::header`) повтор отвергает
-						 *       ВСЕГДА, признака этого не спрашивая: проверка там даровая - она
-						 *       следует из соответствия имён, строимого всё равно, - и платить за
-						 *       неё нечем. Расхождение это намеренное, а не упущение
-						 *
-						 * \~english
-						 * Flag of the check of a repeated declaration of the names of the fields in the header
-						 *
-						 * @note The check costs memory — the parsing holds the names — and
-						 *       it is disabled where the header is known to be one's own
-						 *
-						 * @warning The disabling is a refusal of the cost and NOT a permission of a repetition:
-						 *          a repetition which has passed the disabled check leaves a column unreachable by name.
-						 *          The addressing by name reaches the FIRST column with this name, while the others
-						 *          are reachable by the index alone — silently, without a refusal and without a sign.
-						 *          A measurement: the header «name,name,age» with the check disabled is accepted, three
-						 *          columns come out, and `has("name")` is true and points at the zero one
-						 *
-						 * @note The setting of the header from the outside (`document_t::header`) refuses a repetition
-						 *       ALWAYS, without asking this flag: the check there is free - it follows from the
-						 *       correspondence of the names, which is built anyway, - and there is nothing to pay for
-						 *       it. The divergence is deliberate, and not an omission
-						 *
-						 * \~
-						 */
-						bool duplicates;
-						// Наибольшая допустимая длина поля в байтах, ноль - без предела; отказ кодом FIELD_TOO_LONG
-						uint32_t maxField;
-						// Наибольшая допустимая длина записи в байтах, ноль - без предела; отказ кодом RECORD_TOO_LONG
-						uint32_t maxRecord;
-						// Наибольшее допустимое количество полей в записи, ноль - без предела; отказ кодом TOO_MANY_FIELDS
-						uint32_t maxFields;
-						/**
-						 * \~russian
-						 * Количество первых записей, по которым определяется разделитель
-						 *
-						 * @details Определение ведётся лишь тогда, когда разделитель не задан
-						 *          настройкою. Проверяются ЧЕТЫРЕ знака и только они: запятая, точка с
-						 *          запятой, знак табуляции и вертикальная черта. Прочие знаки
-						 *          разделителями не признаются вовсе - текст, разделённый двоеточием
-						 *          либо пробелом, выходит одним полем на запись, и отказа при этом не
-						 *          следует. Замер 01.09.2026 подтвердил всё перечисленное поимённо.
-						 *
-						 * @details Достоинством знака считается ПОСТОЯНСТВО количества полей в
-						 *          записях, а не частота самого знака: частота обманывается текстом, где
-						 *          запятых в значениях больше, чем настоящих разделителей. Побеждает
-						 *          знак, давший наибольшее число записей с одним и тем же количеством
-						 *          полей, а при равенстве - знак, давший полей больше. Замер: текст
-						 *          «"а,б,в";"г,д,е"» разбирается точкою с запятой, хотя запятых в нём
-						 *          втрое больше.
-						 *
-						 * @warning Ноль здесь означает НЕ «без предела», в отличие от соседних
-						 *          настроек этой же записи: `maxField`, `maxRecord` и `maxFields`
-						 *          нулём выключаются, а `detect` нулём сводится к ОДНОЙ записи -
-						 *          то есть к самому строгому просмотру, а не к самому широкому.
-						 *          Замер: текст «а,б\r\nв;г;д\r\n» при нуле и при единице
-						 *          разбирается запятой, а при двойке - точкою с запятой.
-						 *          Оговорено это здесь потому, что соседство трёх настроек с
-						 *          обратным укладом читается как общий уклад всей записи
-						 *
-						 * @note Умолчанием служит `DETECT_RECORDS`, объявленный величиною в
-						 *       общем заголовке кодека: договор этот воспроизводим снаружи
-						 *       целиком, без обращения к телу разбора
-						 *
-						 * \~english
-						 * Number of the first records by which the separator is determined
-						 *
-						 * @details The determination is conducted only when the separator is not set by a setting.
-						 *          FOUR characters and only they are checked: the comma, the semicolon, the tab and the
-						 *          vertical bar. The other characters are not recognised as separators at all - a text
-						 *          divided by a colon or by a space comes out as one field per record, and no refusal
-						 *          follows upon it. The measurement of 2026-09-01 confirmed all of the listed things
-						 *          by name.
-						 *
-						 * @details The merit of a character is the CONSTANCY of the number of the fields in the
-						 *          records rather than the frequency of the character itself: the frequency is deceived
-						 *          by a text where there are more commas in the values than real separators. The winner
-						 *          is the character that gave the greatest number of records with one and the same number
-						 *          of fields, and upon an equality - the character that gave more fields. A measurement:
-						 *          the text «"a,b,c";"d,e,f"» is parsed by the semicolon, though there are three times
-						 *          as many commas in it.
-						 *
-						 * @warning Zero here does NOT mean «no limit», unlike the neighbouring settings of this
-						 *          same record: `maxField`, `maxRecord` and `maxFields` are switched off by zero, while
-						 *          `detect` by zero is reduced to ONE record - that is, to the strictest examination
-						 *          rather than to the widest one. A measurement: the text «a,b\r\nc;d;e\r\n» at zero and
-						 *          at one is parsed by the comma, and at two - by the semicolon. It is reserved here
-						 *          because the neighbourhood of three settings with the reverse order reads as the common
-						 *          order of the whole record
-						 *
-						 * @note The default is `DETECT_RECORDS`, declared as a value in the common header of the codec:
-						 *       this contract is reproducible from the outside in full, without a recourse to the body
-						 *       of the parsing
-						 *
-						 * \~
-						 */
-						uint32_t detect;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Settings() noexcept;
+						public:
+							/**
+							 * \~russian
+							 * Признак строгого следования RFC 4180
+							 *
+							 * @note Строгий разбор отвечает отказом на одиночную кавычку
+							 *       внутри поля без кавычек, на знаки за закрывающей кавычкой и на
+							 *       одиночный перевод строки в качестве конца записи. Обиход этого
+							 *       не соблюдает, потому умолчанием разбор нестрогий
+							 *
+							 * @note Всякое из трёх правил называет свою причину СВОИМ кодом:
+							 *       `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` и `BARE_LINE_BREAK`.
+							 *       Последний заведён 05.09.2026: прежде негодный конец записи -
+							 *       одиночный перевод строки и возврат каретки без пары - отвечал
+							 *       общим `INVALID_CHARACTER`, и потребитель не отличал нарушения
+							 *       грамматики от недопустимого знака в самом содержимом
+							 *
+							 * \~english
+							 * Flag of the strict following of RFC 4180
+							 *
+							 * @note The strict parsing answers with a refusal to a single quote
+							 *       inside a field without quotes, to the characters after a closing quote and to
+							 *       a single line feed as the end of a record. The custom does not
+							 *       observe this, therefore by default the parsing is a non-strict one
+							 *
+							 * @note Each of the three rules names its cause with its OWN code:
+							 *       `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` and `BARE_LINE_BREAK`. The last one was
+							 *       introduced on 2026-09-05: formerly an unfit end of a record - a single line feed and a
+							 *       carriage return without a pair - answered with the common `INVALID_CHARACTER`, and a
+							 *       consumer could not tell a breach of the grammar from an inadmissible character in the
+							 *       content itself
+							 *
+							 * \~
+							 */
+							bool strict;
+							/**
+							 * \~russian
+							 * Признак проверки повторного объявления имён полей в заголовке
+							 *
+							 * @note Проверка стоит памяти - разбор удерживает имена, - и
+							 *       отключают её там, где заголовок заведомо свой
+							 *
+							 * @warning Отключение есть отказ от платы, а НЕ дозволение повтора: повтор,
+							 *          прошедший отключённую проверку, оставляет столбец недостижимым по имени.
+							 *          Обращение по имени доходит до ПЕРВОГО столбца с этим именем, прочие же
+							 *          достижимы одним лишь номером - молча, без отказа и без признака. Замер:
+							 *          заголовок «имя,имя,возраст» при отключённой проверке принимается, столбцов
+							 *          выходит три, а `has("имя")` истинен и указывает на нулевой
+							 *
+							 * @note Установка заголовка извне (`document_t::header`) повтор отвергает
+							 *       ВСЕГДА, признака этого не спрашивая: проверка там даровая - она
+							 *       следует из соответствия имён, строимого всё равно, - и платить за
+							 *       неё нечем. Расхождение это намеренное, а не упущение
+							 *
+							 * \~english
+							 * Flag of the check of a repeated declaration of the names of the fields in the header
+							 *
+							 * @note The check costs memory — the parsing holds the names — and
+							 *       it is disabled where the header is known to be one's own
+							 *
+							 * @warning The disabling is a refusal of the cost and NOT a permission of a repetition:
+							 *          a repetition which has passed the disabled check leaves a column unreachable by name.
+							 *          The addressing by name reaches the FIRST column with this name, while the others
+							 *          are reachable by the index alone — silently, without a refusal and without a sign.
+							 *          A measurement: the header «name,name,age» with the check disabled is accepted, three
+							 *          columns come out, and `has("name")` is true and points at the zero one
+							 *
+							 * @note The setting of the header from the outside (`document_t::header`) refuses a repetition
+							 *       ALWAYS, without asking this flag: the check there is free - it follows from the
+							 *       correspondence of the names, which is built anyway, - and there is nothing to pay for
+							 *       it. The divergence is deliberate, and not an omission
+							 *
+							 * \~
+							 */
+							bool duplicates;
+							/**
+							 * \~russian
+							 * Признак выдачи событий пустых строк
+							 *
+							 * @note Признак этот правит ПОТОКОМ СОБЫТИЙ, а не составом таблицы:
+							 *       контейнер `document_t` пустые строки содержимым не считает и в
+							 *       записи их не заносит НИ ПРИ КАКОМ его значении. Закреплено
+							 *       проверкою `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
+							 *
+							 * @note Толкование это расходится с обиходом иных средств - разбор
+							 *       таблиц у языка Python выдаёт пустую строку записью без полей, и
+							 *       грамматика RFC 4180 такому толкованию не противоречит, - и
+							 *       расхождение здесь описано нарочно. Сличено внешним судьёю 17.09.2026
+							 *
+							 * \~english
+							 * Flag of the issuance of the events of the blank lines
+							 *
+							 * @note This flag governs the STREAM OF EVENTS rather than the composition of the table:
+							 *       the container `document_t` does not consider the blank lines to be a content and does not
+							 *       put them into the records under ANY of its values. It is fixed by the check
+							 *       `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
+							 *
+							 * @note This interpretation diverges from the usage of other means - the parsing of tables in
+							 *       the Python language issues a blank line as a record without fields, and the grammar of
+							 *       RFC 4180 does not contradict such an interpretation, - and the divergence is described
+							 *       here on purpose. Compared by an external judge on 2026-09-17
+							 *
+							 * \~
+							 */
+							bool emitBlanks;
+							/**
+							 * \~russian
+							 * Признак выдачи событий примечаний
+							 *
+							 * @note Довод общий с `emitBlanks`: поток событий правится, состав
+							 *       таблицы - нет
+							 *
+							 * \~english
+							 * Flag of the issuance of the events of the comments
+							 *
+							 * @note The argument is common with `emitBlanks`: the stream of the events is governed,
+							 *       the composition of the table is not
+							 *
+							 * \~
+							 */
+							bool emitComments;
+						public:
+							// Знак кавычек, обрамляющих поле
+							char quote;
+							/**
+							 * \~russian
+							 * Знак, начинающий строку примечания, ноль - примечаний нет
+							 *
+							 * @note Договор примечаний не описывает вовсе, потому умолчанием
+							 *       их нет: строка, начинающаяся с решётки, обыкновенная запись
+							 *
+							 * \~english
+							 * Character beginning a comment line, zero — there are no comments
+							 *
+							 * @note The protocol does not describe the comments at all, therefore by default
+							 *       there are none: a line beginning with a hash is an ordinary record
+							 *
+							 * \~
+							 */
+							char comment;
+							/**
+							 * \~russian
+							 * Знак-разделитель полей, ноль - определять по содержимому
+							 *
+							 * @note Умолчанием берётся запятая, названная договором. Ноль
+							 *       включает определение по содержимому: разбор откладывает выдачу
+							 *       до тех пор, пока разделитель не определится
+							 *
+							 * \~english
+							 * Separator character of the fields, zero — determine by the content
+							 *
+							 * @note By default the comma named by the protocol is taken. Zero
+							 *       enables the determination by the content: the parsing postpones the issuance
+							 *       until the separator is determined
+							 *
+							 * \~
+							 */
+							char separator;
+						public:
+							/**
+							 * \~russian
+							 * Количество первых записей, по которым определяется разделитель
+							 *
+							 * @details Определение ведётся лишь тогда, когда разделитель не задан
+							 *          настройкою. Проверяются ЧЕТЫРЕ знака и только они: запятая, точка с
+							 *          запятой, знак табуляции и вертикальная черта. Прочие знаки
+							 *          разделителями не признаются вовсе - текст, разделённый двоеточием
+							 *          либо пробелом, выходит одним полем на запись, и отказа при этом не
+							 *          следует. Замер 01.09.2026 подтвердил всё перечисленное поимённо.
+							 *
+							 * @details Достоинством знака считается ПОСТОЯНСТВО количества полей в
+							 *          записях, а не частота самого знака: частота обманывается текстом, где
+							 *          запятых в значениях больше, чем настоящих разделителей. Побеждает
+							 *          знак, давший наибольшее число записей с одним и тем же количеством
+							 *          полей, а при равенстве - знак, давший полей больше. Замер: текст
+							 *          «"а,б,в";"г,д,е"» разбирается точкою с запятой, хотя запятых в нём
+							 *          втрое больше.
+							 *
+							 * @warning Ноль здесь означает НЕ «без предела», в отличие от соседних
+							 *          настроек этой же записи: `maxField`, `maxRecord` и `maxFields`
+							 *          нулём выключаются, а `detect` нулём сводится к ОДНОЙ записи -
+							 *          то есть к самому строгому просмотру, а не к самому широкому.
+							 *          Замер: текст «а,б\r\nв;г;д\r\n» при нуле и при единице
+							 *          разбирается запятой, а при двойке - точкою с запятой.
+							 *          Оговорено это здесь потому, что соседство трёх настроек с
+							 *          обратным укладом читается как общий уклад всей записи
+							 *
+							 * @note Умолчанием служит `DETECT_RECORDS`, объявленный величиною в
+							 *       общем заголовке кодека: договор этот воспроизводим снаружи
+							 *       целиком, без обращения к телу разбора
+							 *
+							 * \~english
+							 * Number of the first records by which the separator is determined
+							 *
+							 * @details The determination is conducted only when the separator is not set by a setting.
+							 *          FOUR characters and only they are checked: the comma, the semicolon, the tab and the
+							 *          vertical bar. The other characters are not recognised as separators at all - a text
+							 *          divided by a colon or by a space comes out as one field per record, and no refusal
+							 *          follows upon it. The measurement of 2026-09-01 confirmed all of the listed things
+							 *          by name.
+							 *
+							 * @details The merit of a character is the CONSTANCY of the number of the fields in the
+							 *          records rather than the frequency of the character itself: the frequency is deceived
+							 *          by a text where there are more commas in the values than real separators. The winner
+							 *          is the character that gave the greatest number of records with one and the same number
+							 *          of fields, and upon an equality - the character that gave more fields. A measurement:
+							 *          the text «"a,b,c";"d,e,f"» is parsed by the semicolon, though there are three times
+							 *          as many commas in it.
+							 *
+							 * @warning Zero here does NOT mean «no limit», unlike the neighbouring settings of this
+							 *          same record: `maxField`, `maxRecord` and `maxFields` are switched off by zero, while
+							 *          `detect` by zero is reduced to ONE record - that is, to the strictest examination
+							 *          rather than to the widest one. A measurement: the text «a,b\r\nc;d;e\r\n» at zero and
+							 *          at one is parsed by the comma, and at two - by the semicolon. It is reserved here
+							 *          because the neighbourhood of three settings with the reverse order reads as the common
+							 *          order of the whole record
+							 *
+							 * @note The default is `DETECT_RECORDS`, declared as a value in the common header of the codec:
+							 *       this contract is reproducible from the outside in full, without a recourse to the body
+							 *       of the parsing
+							 *
+							 * \~
+							 */
+							uint32_t detect;
+							// Наибольшая допустимая длина поля в байтах, ноль - без предела; отказ кодом FIELD_TOO_LONG
+							uint32_t maxField;
+							// Наибольшая допустимая длина записи в байтах, ноль - без предела; отказ кодом RECORD_TOO_LONG
+							uint32_t maxRecord;
+							// Наибольшее допустимое количество полей в записи, ноль - без предела; отказ кодом TOO_MANY_FIELDS
+							uint32_t maxFields;
+						public:
+							// Обращение с обвязкой вокруг поля
+							trim_t trim;
+							// Обращение с записью, число полей которой расходится с заголовком
+							ragged_t ragged;
+							// Способ записи кавычки внутри поля, заключённого в кавычки
+							escape_t escape;
+							// Признак наличия заголовка в тексте
+							header_t header;
+							// Кодировка, навязанная извне вопреки метке порядка байтов
+							encoding_t encoding;
+						public:
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
@@ -554,139 +556,61 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Item {
-						// Вид собранного события
-						event_t event;
-						// Указание на содержимое события в хранилище записи
-						span_t content;
-						// Указание на имя поля в хранилище заголовка
-						span_t name;
-						// Положение события в исходном тексте
-						location_t location;
+					typedef struct __AWH_SHARED_EXPORT__ Item {
 						// Признак того, что поле было заключено в кавычки
 						bool quoted;
 						// Признак того, что содержимое поля было изменено разбором
 						bool modified;
+						// Указание на имя поля в хранилище заголовка
+						span_t name;
+						// Вид собранного события
+						event_t event;
+						// Указание на содержимое события в хранилище записи
+						span_t content;
+						// Положение события в исходном тексте
+						location_t location;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Item() noexcept :
-						 event(event_t::NONE), quoted(false), modified(false) {}
+						explicit Item() noexcept;
 					} item_t;
 				private:
-					// Настройки разбора текста
-					settings_t _settings;
+					// Признак того, что текст подан целиком
+					bool _last;
+					// Признак того, что метка порядка байтов уже разобрана
+					bool _marked;
+					// Признак того, что заголовок уже разобран
+					bool _headed;
+					// Признак того, что текущее поле было заключено в кавычки
+					bool _quoted;
+					// Признак того, что запись содержит хотя бы одно поле
+					bool _started;
+					// Признак того, что разделитель определён или задан
+					bool _detected;
+					// Признак того, что содержимое текущего поля изменено разбором
+					bool _modified;
+				private:
+					// Знак-разделитель полей, определённый или заданный
+					char _separator;
 				private:
 					// Состояние разбора текста
 					phase_t _phase;
 					// Код ошибки разбора
 					error_t _error;
-					// Кодировка исходного текста
-					encoding_t _encoding;
-				private:
-					// Знак-разделитель полей, определённый или заданный
-					char _separator;
-				private:
-					/**
-					 * \~russian
-					 * Количество полей, каким надлежит обладать всякой записи
-					 *
-					 * @note Заводится лишь при сверке количества полей и без заголовка:
-					 *       назначает его первая запись, а ноль означает, что записей
-					 *       ещё не было и назначать количество нечему
-					 *
-					 * \~english
-					 * Number of the fields which every record ought to possess
-					 *
-					 * @note Established only at the check of the number of the fields and without a header:
-					 *       it is assigned by the first record, while zero means that there have been
-					 *       no records yet and there is nothing to assign the number by
-					 *
-					 * \~
-					 */
-					uint32_t _expected;
-				private:
-					// Признак того, что метка порядка байтов уже разобрана
-					bool _marked;
-					// Признак того, что текст подан целиком
-					bool _last;
-					// Признак того, что заголовок уже разобран
-					bool _headed;
-					// Признак того, что текущее поле было заключено в кавычки
-					bool _quoted;
-					// Признак того, что содержимое текущего поля изменено разбором
-					bool _modified;
-					// Признак того, что запись содержит хотя бы одно поле
-					bool _started;
-				private:
-					// Приведение исходного текста к кодировке UTF-8
-					decoder_t _decoder;
-				private:
-					// Хранилище знаков текущей записи
-					string _storage;
-					// Хранилище имён полей заголовка
-					string _names;
-					// Хранилище байтов, отложенных до определения разделителя
-					string _pending;
-					// Хранилище перекодированного куска текста
-					string _decoded;
-				private:
-					// Указания на имена полей заголовка в хранилище имён
-					vector <span_t> _header;
-					// Имена полей заголовка для проверки повторного объявления
-					unordered_set <string> _unique;
-				private:
-					// Очередь собранных событий разбора
-					/**
-					 * \~russian
-					 * Очередь собранных событий разбора
-					 *
-					 * @note Очередь заведена перечнем с указанием на голову, а не двусторонней
-					 *       очередью: последняя заводит по блоку памяти на каждые несколько
-					 *       десятков событий и освобождает его по опустошении, отчего разбор
-					 *       крупной таблицы стоил двадцати шести тысяч выделений памяти.
-					 *       Перечень же выделенное удерживает и переиспользует: после первой
-					 *       таблицы выделений не бывает вовсе
-					 *
-					 * \~english
-					 * Queue of the assembled parsing events
-					 *
-					 * @note The queue has been made a list with a pointer to the head rather than a deque:
-					 *       the latter creates a block of memory per every few
-					 *       dozen events and releases it upon the emptying, from which the parsing
-					 *       of a large table cost twenty-six thousand memory allocations.
-					 *       A list, however, holds and reuses what has been allocated: after the first
-					 *       table there are no allocations at all
-					 *
-					 * \~
-					 */
-					vector <item_t> _items;
-					/**
-					 * \~russian
-					 * Указание на первое невыданное событие в очереди
-					 *
-					 * @note По выдаче последнего события очередь очищается целиком, а
-					 *       выделенное под неё остаётся: тем и достигается переиспользование
-					 *
-					 * \~english
-					 * Pointer to the first unissued event in the queue
-					 *
-					 * @note Upon the issuance of the last event the queue is cleared in full, while
-					 *       what has been allocated for it remains: that is how the reuse is achieved
-					 *
-					 * \~
-					 */
-					size_t _head;
 					// Событие разбора, выданное последним
 					item_t _current;
-				private:
+					// Приведение исходного текста к кодировке UTF-8
+					decoder_t _decoder;
+					// Настройки разбора текста
+					settings_t _settings;
+					// Кодировка исходного текста
+					encoding_t _encoding;
 					// Положение начала текущего поля в исходном тексте
 					location_t _position;
 					/**
@@ -716,22 +640,24 @@ namespace awh {
 					 * \~
 					 */
 					location_t _errorLocation;
-					// Смещение от начала текста в байтах
-					uint64_t _offset;
-					// Номер текущей строки, считая с единицы
-					uint32_t _line;
-					// Положение в текущей строке, считая с единицы
-					uint32_t _column;
-					// Номер текущей записи, считая с единицы
-					uint32_t _record;
-					// Номер текущего поля в записи, считая с нуля
-					uint32_t _field;
-					// Количество полей, накопленное записью
-					uint32_t _count;
-					// Длина текущей записи в байтах
-					uint32_t _length;
-					// Смещение начала текущего поля в хранилище знаков записи
-					uint32_t _begin;
+				private:
+					/**
+					 * \~russian
+					 * Указание на первое невыданное событие в очереди
+					 *
+					 * @note По выдаче последнего события очередь очищается целиком, а
+					 *       выделенное под неё остаётся: тем и достигается переиспользование
+					 *
+					 * \~english
+					 * Pointer to the first unissued event in the queue
+					 *
+					 * @note Upon the issuance of the last event the queue is cleared in full, while
+					 *       what has been allocated for it remains: that is how the reuse is achieved
+					 *
+					 * \~
+					 */
+					size_t _head;
+				private:
 					/**
 					 * \~russian
 					 * Смещение первого значащего знака текущего поля в хранилище записи
@@ -768,10 +694,53 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _till;
+					// Номер текущей строки, считая с единицы
+					uint32_t _line;
+					// Номер текущего поля в записи, считая с нуля
+					uint32_t _field;
+					// Количество полей, накопленное записью
+					uint32_t _count;
+					// Смещение начала текущего поля в хранилище знаков записи
+					uint32_t _begin;
+					// Длина текущей записи в байтах
+					uint32_t _length;
+					// Положение в текущей строке, считая с единицы
+					uint32_t _column;
+					// Номер текущей записи, считая с единицы
+					uint32_t _record;
+					/**
+					 * \~russian
+					 * Количество полей, каким надлежит обладать всякой записи
+					 *
+					 * @note Заводится лишь при сверке количества полей и без заголовка:
+					 *       назначает его первая запись, а ноль означает, что записей
+					 *       ещё не было и назначать количество нечему
+					 *
+					 * \~english
+					 * Number of the fields which every record ought to possess
+					 *
+					 * @note Established only at the check of the number of the fields and without a header:
+					 *       it is assigned by the first record, while zero means that there have been
+					 *       no records yet and there is nothing to assign the number by
+					 *
+					 * \~
+					 */
+					uint32_t _expected;
 				private:
-					// Признак того, что разделитель определён или задан
-					bool _detected;
+					// Смещение от начала текста в байтах
+					uint64_t _offset;
 				private:
+					// Хранилище имён полей заголовка
+					string _names;
+					// Хранилище знаков текущей записи
+					string _storage;
+					// Хранилище байтов, отложенных до определения разделителя
+					string _pending;
+					// Хранилище перекодированного куска текста
+					string _decoded;
+				private:
+					// Разметка знаков, разбор поля в кавычках прерывающих
+					bool _breakQuoted[256];
 					/**
 					 * \~russian
 					 * Разметка знаков, разбор поля без кавычек прерывающих
@@ -800,8 +769,35 @@ namespace awh {
 					 * \~
 					 */
 					bool _breakUnquoted[256];
-					// Разметка знаков, разбор поля в кавычках прерывающих
-					bool _breakQuoted[256];
+				private:
+					/**
+					 * \~russian
+					 * Очередь собранных событий разбора
+					 *
+					 * @note Очередь заведена перечнем с указанием на голову, а не двусторонней
+					 *       очередью: последняя заводит по блоку памяти на каждые несколько
+					 *       десятков событий и освобождает его по опустошении, отчего разбор
+					 *       крупной таблицы стоил двадцати шести тысяч выделений памяти.
+					 *       Перечень же выделенное удерживает и переиспользует: после первой
+					 *       таблицы выделений не бывает вовсе
+					 *
+					 * \~english
+					 * Queue of the assembled parsing events
+					 *
+					 * @note The queue has been made a list with a pointer to the head rather than a deque:
+					 *       the latter creates a block of memory per every few
+					 *       dozen events and releases it upon the emptying, from which the parsing
+					 *       of a large table cost twenty-six thousand memory allocations.
+					 *       A list, however, holds and reuses what has been allocated: after the first
+					 *       table there are no allocations at all
+					 *
+					 * \~
+					 */
+					vector <item_t> _items;
+					// Указания на имена полей заголовка в хранилище имён
+					vector <span_t> _header;
+					// Имена полей заголовка для проверки повторного объявления
+					unordered_set <string> _unique;
 				private:
 					/**
 					 * \~russian
@@ -1506,7 +1502,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1521,22 +1517,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const settings_t & settings) noexcept;
+					explicit Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Reader() noexcept {}
+					~Reader() noexcept = default;
 			} reader_t;
-		}
-	}
-}
+		};
+	};
+};
 
 /**
  * Возвращаем системные макросы потребителю библиотеки:

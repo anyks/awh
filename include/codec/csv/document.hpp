@@ -47,12 +47,15 @@
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include "../../sys/fs.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -69,7 +72,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -79,7 +81,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера CSV
-		 *
 		 *
 		 * \~english
 		 * @brief CSV container namespace
@@ -168,14 +169,32 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept {}
+						explicit Settings() noexcept = default;
 					} settings_t;
+				private:
+					/**
+					 * \~russian
+					 * Признак того, что запись начата и ещё не завершена
+					 *
+					 * @note Признак держится членом, а не выводится из накопленного:
+					 *       события приходят кусками, и между двумя вызовами сбора
+					 *       запись вправе остаться незавершённой
+					 *
+					 * \~english
+					 * Flag of a record having been begun and not yet completed
+					 *
+					 * @note The flag is kept as a member rather than inferred from what has been accumulated:
+					 *       the events arrive by chunks, and between two calls of the assembly
+					 *       a record has the right to remain unfinished
+					 *
+					 * \~
+					 */
+					bool _opened;
 				private:
 					/**
 					 * \~russian
@@ -197,8 +216,33 @@ namespace awh {
 					 * \~
 					 */
 					fs_t _fs;
+				private:
+					/**
+					 * \~russian
+					 * Кодировка, какою исходный текст таблицы прочитан
+					 *
+					 * @note Хранится полем оттого, что чтение живёт лишь внутри разбора: спросить
+					 *       его после выхода нельзя, а потребителю кодировка нужна и после
+					 *
+					 * @warning Поле это обязано сбрасываться очисткой таблицы наравне с кодом
+					 *          отказа: пережившая очистку кодировка отвечала бы о прежнем тексте
+					 *
+					 * \~english
+					 * Encoding by which the source text of the table has been read
+					 *
+					 * @note It is kept as a field because the reading lives only inside the parsing: it cannot be
+					 *       asked after the exit, while a consumer needs the encoding after it as well
+					 *
+					 * @warning This field is obliged to be reset by the clearing of the table on a par with the code
+					 *          of the refusal: an encoding that has outlived the clearing would answer about a former
+					 *          text
+					 *
+					 * \~
+					 */
+					encoding_t _encoding = encoding_t::NONE;
 					// Настройки контейнера
 					settings_t _settings;
+				private:
 					/**
 					 * \~russian
 					 * @brief Код отказа последней работы над таблицей
@@ -241,59 +285,22 @@ namespace awh {
 					 * \~
 					 */
 					mutable location_t _location;
-					/**
-					 * \~russian
-					 * Кодировка, какою исходный текст таблицы прочитан
-					 *
-					 * @note Хранится полем оттого, что чтение живёт лишь внутри разбора: спросить
-					 *       его после выхода нельзя, а потребителю кодировка нужна и после
-					 *
-					 * @warning Поле это обязано сбрасываться очисткой таблицы наравне с кодом
-					 *          отказа: пережившая очистку кодировка отвечала бы о прежнем тексте
-					 *
-					 * \~english
-					 * Encoding by which the source text of the table has been read
-					 *
-					 * @note It is kept as a field because the reading lives only inside the parsing: it cannot be
-					 *       asked after the exit, while a consumer needs the encoding after it as well
-					 *
-					 * @warning This field is obliged to be reset by the clearing of the table on a par with the code
-					 *          of the refusal: an encoding that has outlived the clearing would answer about a former
-					 *          text
-					 *
-					 * \~
-					 */
-					encoding_t _encoding = encoding_t::NONE;
-					// Хранилище знаков полей таблицы
-					string _storage;
+				private:
 					// Хранилище имён столбцов
 					string _names;
+					// Хранилище знаков полей таблицы
+					string _storage;
+				private:
+					// Указания на имена столбцов в хранилище имён
+					vector <span_t> _header;
 					// Указания на поля таблицы в хранилище знаков
 					vector <span_t> _fields;
 					// Указания на начало каждой записи в перечне полей
 					vector <uint32_t> _records;
-					// Указания на имена столбцов в хранилище имён
-					vector <span_t> _header;
+				private:
 					// Соответствие имён столбцов их номерам
 					unordered_map <string_view, uint32_t> _columns;
-					/**
-					 * \~russian
-					 * Признак того, что запись начата и ещё не завершена
-					 *
-					 * @note Признак держится членом, а не выводится из накопленного:
-					 *       события приходят кусками, и между двумя вызовами сбора
-					 *       запись вправе остаться незавершённой
-					 *
-					 * \~english
-					 * Flag of a record having been begun and not yet completed
-					 *
-					 * @note The flag is kept as a member rather than inferred from what has been accumulated:
-					 *       the events arrive by chunks, and between two calls of the assembly
-					 *       a record has the right to remain unfinished
-					 *
-					 * \~
-					 */
-					bool _opened;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод вывода сообщения об отказе в лог
@@ -479,15 +486,15 @@ namespace awh {
 					 * @warning Поля живут лишь на время вызова обработчика: буфер записи
 					 *          переиспользуется, и сохранять ссылки на поля дольше вызова нельзя -
 					 *          содержимое, нужное дольше, следует копировать
-					 *
-					 * @param filename адрес файла таблицы для чтения
-					 * @param callback обработчик очередной записи, ложь прекращает чтение
-					 * @return         результат чтения
-					 *
+					  *
 					 * @note Имя оставлено отличным от `load()` нарочно: `load()` вбирает
 					 *       таблицу в контейнер, а чтение это лишь пропускает записи мимо,
 					 *       ничего не удерживая. Прочие кодеки зовут вбирающую пару
 					 *       `load()` и `save()`, и таблица тому договору отвечает
+					 *
+					 * @param filename адрес файла таблицы для чтения
+					 * @param callback обработчик очередной записи, ложь прекращает чтение
+					 * @return         результат чтения
 					 *
 					 * \~english
 					 * @brief Method of reading a table from a file by records
@@ -505,14 +512,14 @@ namespace awh {
 					 *          is reused, and the references to the fields cannot be preserved longer than the call —
 					 *          the content needed for longer should be copied
 					 *
-					 * @param filename address of the file of the table to be read
-					 * @param callback handler of the next record, false terminates the reading
-					 * @return         result of the reading
-					 *
 					 * @note The name has been kept different from `load()` on purpose: `load()` takes a table into
 					 *       the container, while this reading only lets the records pass by, holding nothing. The
 					 *       other codecs name the taking pair `load()` and `save()`, and the table answers that
 					 *       contract
+					 *
+					 * @param filename address of the file of the table to be read
+					 * @param callback handler of the next record, false terminates the reading
+					 * @return         result of the reading
 					 *
 					 * \~
 					 */
@@ -569,19 +576,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи таблицы в файл
 					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
+					 *      неделимость записи: отказ оставляет прежний файл нетронутым
+					 *
 					 * @param filename адрес файла таблицы для записи
 					 * @return         результат записи
 					 *
 					 * \~english
 					 * @brief Method of writing a table into a file
 					 *
+					 * @see This contract is enforced by the `CodecContract.SavingKeepsThePreviousFileOnWriteFailure` check:
+					 *      the write operation is atomic—a failure leaves the original file untouched.
+					 *
 					 * @param filename address of the file of the table to be written
 					 * @return         result of the writing
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
-					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
 					/**
@@ -630,22 +640,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения положения ошибки разбора
 					 *
-					 * @return положение ошибки в исходном тексте
-					 *
 					 * @note Имя названо явным нарочно: у чтения `location()` означает место
 					 *       ТЕКУЩЕГО события, а не отказа, и одно имя о двух значениях
 					 *       заводило потребителя в западню при переходе с уровня на уровень.
 					 *       Кодеки XML, TOML и INI зовут его так же
 					 *
+					 * @return положение ошибки в исходном тексте
+					 *
 					 * \~english
 					 * @brief Method of getting the position of a parsing error
-					 *
-					 * @return position of the error in the source text
 					 *
 					 * @note The name has been spelled out on purpose: at the reading `location()` means the place of
 					 *       the CURRENT event, and not of a refusal, and one name about two senses would lead a
 					 *       consumer into a trap upon a passage from one level onto another. The XML, TOML and INI
 					 *       codecs name it in the same way
+					 *
+					 * @return position of the error in the source text
 					 *
 					 * \~
 					 */
@@ -664,6 +674,9 @@ namespace awh {
 					 *
 					 * @warning До первого разбора выдаётся кодировка неопределённая
 					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
+					 *      распознавание метки порядка байтов да невхождение её в содержимое
+					 *
 					 * @return кодировка исходного текста таблицы
 					 *
 					 * \~english
@@ -679,12 +692,12 @@ namespace awh {
 					 *
 					 * @warning Before the first parsing an undefined encoding is issued
 					 *
+					 * @see This agreement is enforced by the `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent` check:
+					 *      the byte order mark is recognized and excluded from the content
+					 *
 					 * @return encoding of the source text of the table
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
-					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
 					/**
@@ -716,11 +729,14 @@ namespace awh {
 					 *          у таблицы детьми этими служат записи её. Без него потребитель, пишущий один
 					 *          обход на три кодека, у таблицы спотыкался бы на имени.
 					 *
-					 * @details Заголовок записью не считается, ровно как и у `rows()`
+					 * @details Заголовок записью не считается, ровно как и у `rows()`.
 					 *
 					 * @note Хода `nodes()` у таблицы нет вовсе и быть не может: арены узлов она не
 					 *       держит, а поля лежат нарезкой общего хранилища знаков. Заводить его
 					 *       посредником к чему бы то ни было значило бы выдумать величину
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
+					 *      счёт записей таблицы наравне с детьми корня у деревьев
 					 *
 					 * @return количество записей таблицы
 					 *
@@ -732,18 +748,18 @@ namespace awh {
 					 *          CHILDREN OF THE ROOT, and for a table those children are its records. Without it a
 					 *          consumer writing one walk for three codecs would stumble at the name of a table.
 					 *
-					 * @details A header is not counted as a record, exactly as at `rows()`
+					 * @details A header is not counted as a record, exactly as at `rows()`.
 					 *
 					 * @note There is no call `nodes()` for a table and there cannot be: it holds no arena of the
 					 *       nodes, while its fields lie as a cutting of the common storage of the characters. To
 					 *       introduce it as a mediator to anything whatever would mean inventing a quantity
 					 *
+					 * @see This contract is enforced by the `CodecContract.ChildCountIsSeparatedFromStorageCount` check:
+					 *      the count of table entries is treated on par with the count of a root node's children in trees
+					 *
 					 * @return number of the records of the table
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
-					 *      счёт записей таблицы наравне с детьми корня у деревьев
 					 */
 					size_t size() const noexcept;
 					/**
@@ -1026,13 +1042,21 @@ namespace awh {
 					vector <string_view> col(const string_view name) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод приведения содержимого поля к числу либо логическому значению
+					 * @brief Шаблон метода приведения содержимого поля к числу либо логическому значению
 					 *
 					 * @tparam T тип получаемого значения
-					 * @param result полученное значение
-					 * @param row    номер записи, считая с нуля
-					 * @param col    номер столбца, считая с нуля
-					 * @return       результат приведения
+					 *
+					 * \~english
+					 * @brief A method template for converting field content into a number or a boolean value
+					 *
+					 * @tparam T type of the value being obtained
+					 *
+					 * \~
+					 */
+					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод приведения содержимого поля к числу либо логическому значению
 					 *
 					 * @note Имя хода и порядок доводов приведены к общему виду 17.09.2026
 					 *       принятым решением. Прежде ход этот звался `numeric` и принимал
@@ -1078,14 +1102,13 @@ namespace awh {
 					 *       приёмник, не проверив признак успеха, всё равно нельзя - но
 					 *       читающий его увидит СВОЁ прежнее значение, а не полуснятое
 					 *
+					 * @param result полученное значение
+					 * @param row    номер записи, считая с нуля
+					 * @param col    номер столбца, считая с нуля
+					 * @return       результат приведения
+					 *
 					 * \~english
 					 * @brief Method of converting the content of a field to a number or to a logical value
-					 *
-					 * @tparam T type of the value being obtained
-					 * @param result obtained value
-					 * @param row    number of the record, counting from zero
-					 * @param col    number of the column, counting from zero
-					 * @return       result of the conversion
 					 *
 					 * @note The name of the method and the order of the arguments were brought to the common
 					 *       shape on 2026-09-17 by an adopted decision. Formerly this method was called `numeric` and
@@ -1127,19 +1150,31 @@ namespace awh {
 					 *       sign of success is still impossible - but the one reading it will see HIS OWN former
 					 *       value, and not a half-taken one
 					 *
+					 * @param result obtained value
+					 * @param row    number of the record, counting from zero
+					 * @param col    number of the column, counting from zero
+					 * @return       result of the conversion
+					 *
 					 * \~
 					 */
-					template <typename T>
 					bool value(T & result, const size_t row, const size_t col) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод приведения содержимого поля к числу либо логическому значению по имени столбца
+					 * @brief Шаблон метода приведения содержимого поля к числу либо логическому значению по имени столбца
 					 *
 					 * @tparam T тип получаемого значения
-					 * @param result полученное значение
-					 * @param row    номер записи, считая с нуля
-					 * @param name   имя столбца
-					 * @return       результат приведения
+					 *
+					 * \~english
+					 * @brief A method template for converting field content to a number or a boolean value, based on the column name
+					 *
+					 * @tparam T type of the value being obtained
+					 *
+					 * \~
+					 */
+					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод приведения содержимого поля к числу либо логическому значению по имени столбца
 					 *
 					 * @details Ход этот парен ходу `get(row, name)`: имя столбца отыскивается
 					 *          в заглавии таблицы, а найденный номер передаётся ходу по номеру. Всё, что
@@ -1156,14 +1191,13 @@ namespace awh {
 					 *          ним: таблица, прочтённая без заглавия, имён столбцов не знает
 					 *          вовсе, и ход этот ответит отказом на всякое имя
 					 *
+					 * @param result полученное значение
+					 * @param row    номер записи, считая с нуля
+					 * @param name   имя столбца
+					 * @return       результат приведения
+					 *
 					 * \~english
 					 * @brief Method of converting the content of a field to a number or to a logical value by the name of the column
-					 *
-					 * @tparam T type of the value being obtained
-					 * @param result obtained value
-					 * @param row    number of the record, counting from zero
-					 * @param name   name of the column
-					 * @return       result of the conversion
 					 *
 					 * @details This method is paired with `get(row, name)`: the name of a column is looked up in the
 					 *          header of the table, and the number found is passed to the method by a number.
@@ -1179,9 +1213,13 @@ namespace awh {
 					 *          table read without a header knows no names of the columns at all, and this method will
 					 *          answer with a refusal to any name
 					 *
+					 * @param result obtained value
+					 * @param row    number of the record, counting from zero
+					 * @param name   name of the column
+					 * @return       result of the conversion
+					 *
 					 * \~
 					 */
-					template <typename T>
 					bool value(T & result, const size_t row, const string_view name) const noexcept;
 					/**
 					 * \~russian
@@ -1328,7 +1366,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения настроек контейнера
@@ -1380,7 +1418,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1394,19 +1432,18 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const settings_t & settings) noexcept;
+					explicit Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Document() noexcept {}
+					~Document() noexcept = default;
 			} document_t;
-		}
-	}
-}
+		};
+	};
+};

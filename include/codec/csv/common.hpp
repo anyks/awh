@@ -40,7 +40,7 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include "../../sys/macro/global.hpp"
 
@@ -54,7 +54,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -70,7 +69,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -88,8 +86,8 @@ namespace awh {
 		 *
 		 * @par Намеренные решения
 		 *
-		 * Перечисленное ниже не является пробелом реализации: это очерченные границы
-		 * задачи, и каждое решение О ПОВЕДЕНИИ закреплено проверочным испытанием
+		 *      Перечисленное ниже не является пробелом реализации: это очерченные границы
+		 *      задачи, и каждое решение О ПОВЕДЕНИИ закреплено проверочным испытанием
 		 *
 		 * @warning Оговорка «о поведении» стоит по замеру 01.09.2026: решение «внешние
 		 *          файлы не подключаются и содержимое полей не исполняется» говорит об
@@ -194,6 +192,7 @@ namespace awh {
 		 *          the separator, and a line feed, and the quotes themselves.
 		 *
 		 * @par Deliberate decisions
+		 *
 		 *      What is listed below is not a gap of the implementation: these are the outlined
 		 *      boundaries of the task, and each of the decisions ON THE BEHAVIOUR is fixed by a
 		 *      verifying test
@@ -299,53 +298,6 @@ namespace awh {
 		namespace csv {
 			/**
 			 * \~russian
-			 * @brief Наибольшая допустимая длина поля в байтах
-			 *
-			 * @details Предел считается на поле целиком - вместе со всеми строками поля,
-			 *          заключённого в кавычки, - иначе перевод строки внутри поля давал бы обход
-			 *          предела.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of a field in bytes
-			 *
-			 * @details The limit is counted over the field as a whole — together with all the lines of a field
-			 *          enclosed in quotes — otherwise a line feed inside a field would give a bypass
-			 *          of the limit.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_FIELD = 0x100000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина записи в байтах
-			 *
-			 * @details Записью считается строка целиком со всеми своими полями. Предел
-			 *          этот ограничивает объём, удерживаемый разбором в памяти на одну запись.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of a record in bytes
-			 *
-			 * @details A record is the whole line with all its fields. This limit
-			 *          limits the volume held by the parsing in the memory per record.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_RECORD = 0x1000000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшее допустимое количество полей в записи
-			 *
-			 * \~english
-			 * @brief Largest admissible number of the fields in a record
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_FIELDS = 0x10000;
-
-			/**
-			 * \~russian
 			 * @brief Количество первых записей, по которым определяется разделитель
 			 *
 			 * @details Просмотр ведётся до этого числа записей либо до конца текста -
@@ -362,7 +314,58 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t DETECT_RECORDS = 32;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшее допустимое количество полей в записи
+			 *
+			 * \~english
+			 * @brief Largest admissible number of the fields in a record
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_FIELDS = 0x10000;
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина поля в байтах
+			 *
+			 * @details Предел считается на поле целиком - вместе со всеми строками поля,
+			 *          заключённого в кавычки, - иначе перевод строки внутри поля давал бы обход предела.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of a field in bytes
+			 *
+			 * @details The limit is counted over the field as a whole — together with all the lines of a field
+			 *          enclosed in quotes — otherwise a line feed inside a field would give a bypass of the limit.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_FIELD = 0x100000;
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина записи в байтах
+			 *
+			 * @details Записью считается строка целиком со всеми своими полями. Предел
+			 *          этот ограничивает объём, удерживаемый разбором в памяти на одну запись.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of a record in bytes
+			 *
+			 * @details A record is the whole line with all its fields. This limit
+			 *          limits the volume held by the parsing in the memory per record.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_RECORD = 0x1000000;
+			/**
+			 * \~russian
+			 * @brief Обозначение отсутствующего номера поля или записи
+			 *
+			 * \~english
+			 * @brief Designation of an absent number of a field or of a record
+			 *
+			 * \~
+			 */
+			constexpr uint32_t NO_INDEX = static_cast <uint32_t> (~0u);
 			/**
 			 * \~russian
 			 * @brief Обозначение отсутствующего положения в исходном тексте
@@ -376,15 +379,260 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Обозначение отсутствующего номера поля или записи
+			 * @brief Признак наличия заголовка в тексте
+			 *
+			 * @details Положений ровно два, и «самостоятельного» среди них нет намеренно:
+			 *          файл из одних лишь строковых значений неотличим от файла с заголовком, и
+			 *          всякое угадывание здесь ошибается молча.
 			 *
 			 * \~english
-			 * @brief Designation of an absent number of a field or of a record
+			 * @brief Flag of the presence of a header in the text
+			 *
+			 * @details There are exactly two positions, and there is no «automatic» one among them deliberately:
+			 *          a file made of string values alone is indistinguishable from a file with a header, and
+			 *          every guessing here errs silently.
 			 *
 			 * \~
 			 */
-			constexpr uint32_t NO_INDEX = static_cast <uint32_t> (~0u);
-
+			enum class header_t : uint8_t {
+				NONE    = 0x00, // Заголовка нет, первая запись содержит значения
+				PRESENT = 0x01  // Первая запись содержит имена полей
+			};
+			/**
+			 * \~russian
+			 * @brief Обращение с записью, число полей которой расходится с заголовком
+			 *
+			 * \~english
+			 * @brief Treatment of a record the number of the fields of which diverges from the header
+			 *
+			 * \~
+			 */
+			enum class ragged_t : uint8_t {
+				ALLOW = 0x00, // Запись выдаётся как есть, числа полей не сверяются
+				FILL  = 0x01, // Недостающие поля дополняются пустыми, лишние выдаются как есть
+				ERROR = 0x02  // Расхождение прекращает разбор ошибкой
+			};
+			/**
+			 * \~russian
+			 * @brief Способ записи кавычки внутри поля, заключённого в кавычки
+			 *
+			 * \~english
+			 * @brief Way of writing a quote inside a field enclosed in quotes
+			 *
+			 * \~
+			 */
+			enum class escape_t : uint8_t {
+				DOUBLE    = 0x00, // Кавычка удваивается, как велит RFC 4180
+				BACKSLASH = 0x01, // Кавычка предваряется обратной косой чертой
+				BOTH      = 0x02  // Признаются оба способа, при записи берётся удвоение
+			};
+			/**
+			 * \~russian
+			 * @brief Обращение с обвязкой вокруг поля
+			 *
+			 * @details Договор велит хранить содержимое поля неизменным, потому умолчанием
+			 *          обвязка сохраняется.
+			 *
+			 * \~english
+			 * @brief Treatment of the padding around a field
+			 *
+			 * @details The protocol orders to keep the content of a field unchanged, therefore by default
+			 *          the padding is preserved.
+			 *
+			 * \~
+			 */
+			enum class trim_t : uint8_t {
+				NONE      = 0x00, // Обвязка сохраняется как записана
+				UNQUOTED  = 0x01, // Обвязка снимается лишь у полей без кавычек
+				ALL       = 0x02  // Обвязка снимается и вокруг кавычек, и внутри поля без кавычек
+			};
+			/**
+			 * \~russian
+			 * @brief Знак конца строки собираемого текста
+			 *
+			 * @warning Записанное всяким видом, кроме `CRLF`, читается ТОЛЬКО разбором
+			 *          нестрогим: договор знает концом записи одну лишь пару возврата каретки с
+			 *          переводом строки, и строгое чтение отвечает на одинокий знак отказом.
+			 *          Оговорка эта здесь потому, что виды эти заведены ради обихода, а не ради
+			 *          договора: собранное ими законно, но законно оно лишь за пределами договора
+			 *
+			 * \~english
+			 * @brief Line ending character of the text being assembled
+			 *
+			 * @warning What has been written by any kind other than `CRLF` is read ONLY by the non-strict
+			 *          parsing: the contract knows as the end of a record only the pair of the carriage return with
+			 *          the line feed, and the strict reading answers a lone character with a refusal.
+			 *          The reservation is here because these kinds are introduced for the sake of the custom,
+			 *          and not for the sake of the contract: what is assembled by them is lawful, but it is
+			 *          lawful only beyond the bounds of the contract
+			 *
+			 * \~
+			 */
+			enum class newline_t : uint8_t {
+				CRLF = 0x00, // Возврат каретки с переводом строки, как велит RFC 4180
+				LF   = 0x01, // Перевод строки, принятый в системах семейства UNIX
+				CR   = 0x02  // Одиночный возврат каретки
+			};
+			/**
+			 * \~russian
+			 * @brief Правило заключения поля в кавычки при записи
+			 *
+			 * @warning Записанное без кавычек (`NONE`) читается ТОЛЬКО при способе отмены
+			 *          `escape_t::BACKSLASH` либо `escape_t::BOTH`: кавычек нет, и единственным
+			 *          способом уберечь разделитель и знаки конца строки внутри поля остаётся знак
+			 *          отмены. Запись ставит его независимо от собственной настройки `escape` -
+			 *          настройка эта описывает отмену кавычки ВНУТРИ кавычек, а их тут нет вовсе.
+			 *          Чтение же снимало отмены лишь внутри кавычек, и записанное прочитывалось не
+			 *          тем, чем записано, причём молча: поле `a,b` уходило текстом `a\,b`, а читалось
+			 *          двумя полями `a\` и `b`. Так же поступает и обиход - `escapechar` модуля `csv`
+			 *          языка Python при чтении снимает особое значение со следующего знака
+			 *
+			 * \~english
+			 * @brief Rule of enclosing a field in quotes at the writing
+			 *
+			 * @warning What has been written without quotes (`NONE`) is read ONLY with the escaping method
+			 *          `escape_t::BACKSLASH` or `escape_t::BOTH`: there are no quotes, and the only way to protect
+			 *          the separator and the end-of-line characters inside a field is the escape character.
+			 *          The writing puts it independently of its own `escape` setting — that setting describes the escaping
+			 *          of a quote INSIDE quotes, and there are none here at all. The reading, however, removed the escapes
+			 *          only inside quotes, and what had been written was read back as something other than what was written,
+			 *          and silently at that: the field `a,b` went out as the text `a\,b` and was read as two fields `a\` and `b`.
+			 *          The custom does the same — the `escapechar` of the `csv` module of the Python language removes
+			 *          the special meaning from the following character at the reading
+			 *
+			 * \~
+			 */
+			enum class quoting_t : uint8_t {
+				/**
+				 * \~russian
+				 * В кавычки берутся лишь поля, обойтись без них не могущие
+				 *
+				 * @details Причин тому ШЕСТЬ, и все они здесь названы, ибо снаружи
+				 *          вывести их неоткуда. Четыре причины даёт само содержимое поля:
+				 *          знак-разделитель, знак кавычек, перевод строки и возврат каретки.
+				 *          Пятая - обвязка ПРОБЕЛЬНЫМ знаком по краям поля: пробел, табуляция
+				 *          и прочие, ибо читающие, снимающие обвязку сами, теряют её без кавычек.
+				 *          Пробельный знак ПОСРЕДИ поля причиною не является.
+				 *
+				 * @details Две последние причины зависят от МЕСТА поля, а не от его
+				 *          содержимого. Поле, первым в записи начатое знаком примечания,
+				 *          обрамляется, иначе разбор унёс бы всю запись примечанием, - и лишь
+				 *          тогда, когда знак примечания настройкою задан. Поле, начинающее весь
+				 *          текст меткою порядка байтов, обрамляется тогда, когда запись метки
+				 *          ВЫКЛЮЧЕНА: включённой метка принадлежит самому тексту, а выключенной
+				 *          она пришла бы из содержимого и была бы снята чтением как признак
+				 *          кодировки. Уклад этот обратен ожиданию, и оттого назван здесь прямо.
+				 *
+				 * @note Все шесть замерены 01.09.2026 и закреплены проверкой
+				 *       `CodecCsvWriter.MinimalQuotingHasSixCauses`
+				 *
+				 * @warning Открытый посредник `quotable` знает лишь ЧЕТЫРЕ первые причины
+				 *          и пятую: место поля ему не передаётся вовсе, и две последние
+				 *          причины он вывести не может. Предсказывать выдачу записи им
+				 *          нельзя - см. оговорку у самого посредника
+				 *
+				 * \~english
+				 * Only the fields that cannot do without them are enclosed in quotes
+				 *
+				 * @details There are SIX causes of them, and all of them are named here, for outside there is
+				 *          nowhere to derive them from. Four causes are given by the content of the field
+				 *          itself: the separator character, the quote character, the line feed and the carriage
+				 *          return. The fifth is a padding by a WHITESPACE character at the EDGES of the field: a
+				 *          space, a tabulation and the others, for the readers that strip the padding themselves
+				 *          lose it without quotes. A whitespace character IN THE MIDDLE of a field is not a
+				 *          cause.
+				 *
+				 * @details The two last causes depend on the PLACE of the field, and not on its content. A
+				 *          field begun by the comment character as the first in a record is enclosed, otherwise
+				 *          the parsing would carry the whole record away as a comment, - and only when the
+				 *          comment character is set by the settings. A field starting the whole text with the
+				 *          byte order mark is enclosed when the writing of the mark is switched OFF: when
+				 *          switched on the mark belongs to the text itself, while when switched off it would
+				 *          have come from the content and would be stripped by the reading as a sign of the
+				 *          encoding. The order is contrary to what is expected, and that is why it is named
+				 *          outright here.
+				 *
+				 * @note All six were measured on 2026-09-01 and are fixed by the check
+				 *       `CodecCsvWriter.MinimalQuotingHasSixCauses`
+				 *
+				 * @warning The open mediator `quotable` knows only the FOUR first causes and the fifth: the
+				 *          place of the field is not given to it at all, and the two last causes it cannot
+				 *          derive. Predicting the writing of a record by it is impossible - see the reservation
+				 *          at the mediator itself
+				 *
+				 * \~
+				 */
+				MINIMAL    = 0x00,
+				ALL        = 0x01, // В кавычки берутся все поля без разбора
+				NONNUMERIC = 0x02, // В кавычки берутся все поля, кроме записанных числом
+				NONE       = 0x03  // Кавычки не ставятся вовсе, а знак-разделитель в поле предваряется знаком отмены
+			};
+			/**
+			 * \~russian
+			 * @brief Виды событий чтения текста
+			 *
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 *
+			 * @note Поле выдаётся своим событием, а не в составе записи: запись из тысячи
+			 *       полей иначе удерживалась бы в памяти целиком прежде первой выдачи. Конец
+			 *       записи отмечается отдельным событием, и оно приходит и у записи пустой
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a text
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 *
+			 * @note A field is issued by its own event rather than as a part of a record: a record of a thousand
+			 *       fields would otherwise be held in the memory in full before the first issuance. The end
+			 *       of a record is marked by a separate event, and it comes for an empty record as well
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE    = 0x00, // Событие не определено
+				HEADER  = 0x01, // Поле заголовка, выдаётся лишь при включённом признаке заголовка
+				FIELD   = 0x02, // Поле записи
+				RECORD  = 0x03, // Запись окончена, полей её больше не будет
+				COMMENT = 0x04, // Строка примечания, выдаётся лишь при заданном знаке примечания
+				BLANK   = 0x05, // Пустая строка, выдаётся лишь по настройке
+				FINISH  = 0x06  // Текст разобран до конца, событие видно после цикла разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста
+			 *
+			 * @details Текст кодировку не объявляет, и определяется она по метке порядка
+			 *          байтов в начале текста; при её отсутствии текст считается записанным в UTF-8.
+			 *
+			 * @note Кодировка UTF-32 не поддерживается, но опознаётся: метка её
+			 *       начинается теми же байтами, что и метка UTF-16 с обратным порядком, и без
+			 *       такого опознания текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками
+			 *       между настоящими. Опознав её, разбор отвечает отказом, а не молчаливой
+			 *       бессмыслицей
+			 *
+			 * \~english
+			 * @brief Encodings of the source text
+			 *
+			 * @details A text does not announce its encoding, and it is determined by the byte order
+			 *          mark at the beginning of the text; in its absence the text is considered written in UTF-8.
+			 *
+			 * @note The UTF-32 encoding is not supported but is recognized: its mark
+			 *       begins with the same bytes as the mark of UTF-16 with the reverse order, and without
+			 *       such a recognition a text in UTF-32 would be parsed as UTF-16 with empty characters
+			 *       between the real ones. Having recognized it, the parsing answers with a refusal rather than with a silent
+			 *       nonsense
+			 *
+			 * \~
+			 */
+			enum class encoding_t : uint8_t {
+				NONE    = 0x00, // Кодировка не определена
+				UTF8    = 0x01, // Кодировка UTF-8
+				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
+				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
+				LATIN1  = 0x04, // Кодировка ISO-8859-1
+				ASCII   = 0x05, // Кодировка US-ASCII
+				CP1252  = 0x06  // Кодировка Windows-1252
+			};
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора текста
@@ -501,7 +749,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				UNREPRESENTABLE_VALUE   = 0x18, // Значение таблицею не является
+				UNREPRESENTABLE_VALUE = 0x18, // Значение таблицею не является
 				/**
 				 * \~russian
 				 * Обработчик записей не передан
@@ -538,271 +786,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				MISSING_CALLBACK        = 0x19 // Обработчик записей не передан
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды событий чтения текста
-			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
-			 *
-			 * @note Поле выдаётся своим событием, а не в составе записи: запись из тысячи
-			 *       полей иначе удерживалась бы в памяти целиком прежде первой выдачи. Конец
-			 *       записи отмечается отдельным событием, и оно приходит и у записи пустой
-			 *
-			 * \~english
-			 * @brief Kinds of the events of the reading of a text
-			 *
-			 * @details The reading issues the events as the text is parsed without holding it in full.
-			 *
-			 * @note A field is issued by its own event rather than as a part of a record: a record of a thousand
-			 *       fields would otherwise be held in the memory in full before the first issuance. The end
-			 *       of a record is marked by a separate event, and it comes for an empty record as well
-			 *
-			 * \~
-			 */
-			enum class event_t : uint8_t {
-				NONE    = 0x00, // Событие не определено
-				HEADER  = 0x01, // Поле заголовка, выдаётся лишь при включённом признаке заголовка
-				FIELD   = 0x02, // Поле записи
-				RECORD  = 0x03, // Запись окончена, полей её больше не будет
-				COMMENT = 0x04, // Строка примечания, выдаётся лишь при заданном знаке примечания
-				BLANK   = 0x05, // Пустая строка, выдаётся лишь по настройке
-				FINISH  = 0x06  // Текст разобран до конца, событие видно после цикла разбора
-			};
-
-			/**
-			 * \~russian
-			 * @brief Кодировки исходного текста
-			 *
-			 * @details Текст кодировку не объявляет, и определяется она по метке порядка
-			 *          байтов в начале текста; при её отсутствии текст считается записанным в UTF-8.
-			 *
-			 * @note Кодировка UTF-32 не поддерживается, но опознаётся: метка её
-			 *       начинается теми же байтами, что и метка UTF-16 с обратным порядком, и без
-			 *       такого опознания текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками
-			 *       между настоящими. Опознав её, разбор отвечает отказом, а не молчаливой
-			 *       бессмыслицей
-			 *
-			 * \~english
-			 * @brief Encodings of the source text
-			 *
-			 * @details A text does not announce its encoding, and it is determined by the byte order
-			 *          mark at the beginning of the text; in its absence the text is considered written in UTF-8.
-			 *
-			 * @note The UTF-32 encoding is not supported but is recognized: its mark
-			 *       begins with the same bytes as the mark of UTF-16 with the reverse order, and without
-			 *       such a recognition a text in UTF-32 would be parsed as UTF-16 with empty characters
-			 *       between the real ones. Having recognized it, the parsing answers with a refusal rather than with a silent
-			 *       nonsense
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06  // Кодировка Windows-1252
-			};
-
-			/**
-			 * \~russian
-			 * @brief Признак наличия заголовка в тексте
-			 *
-			 * @details Положений ровно два, и «самостоятельного» среди них нет намеренно:
-			 *          файл из одних лишь строковых значений неотличим от файла с заголовком, и
-			 *          всякое угадывание здесь ошибается молча.
-			 *
-			 * \~english
-			 * @brief Flag of the presence of a header in the text
-			 *
-			 * @details There are exactly two positions, and there is no «automatic» one among them deliberately:
-			 *          a file made of string values alone is indistinguishable from a file with a header, and
-			 *          every guessing here errs silently.
-			 *
-			 * \~
-			 */
-			enum class header_t : uint8_t {
-				NONE    = 0x00, // Заголовка нет, первая запись содержит значения
-				PRESENT = 0x01  // Первая запись содержит имена полей
-			};
-
-			/**
-			 * \~russian
-			 * @brief Способ записи кавычки внутри поля, заключённого в кавычки
-			 *
-			 * \~english
-			 * @brief Way of writing a quote inside a field enclosed in quotes
-			 *
-			 * \~
-			 */
-			enum class escape_t : uint8_t {
-				DOUBLE    = 0x00, // Кавычка удваивается, как велит RFC 4180
-				BACKSLASH = 0x01, // Кавычка предваряется обратной косой чертой
-				BOTH      = 0x02  // Признаются оба способа, при записи берётся удвоение
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правило заключения поля в кавычки при записи
-			 *
-			 * @warning Записанное без кавычек (`NONE`) читается ТОЛЬКО при способе отмены
-			 *          `escape_t::BACKSLASH` либо `escape_t::BOTH`: кавычек нет, и единственным
-			 *          способом уберечь разделитель и знаки конца строки внутри поля остаётся знак
-			 *          отмены. Запись ставит его независимо от собственной настройки `escape` -
-			 *          настройка эта описывает отмену кавычки ВНУТРИ кавычек, а их тут нет вовсе.
-			 *          Чтение же снимало отмены лишь внутри кавычек, и записанное прочитывалось не
-			 *          тем, чем записано, причём молча: поле `a,b` уходило текстом `a\,b`, а читалось
-			 *          двумя полями `a\` и `b`. Так же поступает и обиход - `escapechar` модуля `csv`
-			 *          языка Python при чтении снимает особое значение со следующего знака
-			 *
-			 * \~english
-			 * @brief Rule of enclosing a field in quotes at the writing
-			 *
-			 * @warning What has been written without quotes (`NONE`) is read ONLY with the escaping method
-			 *          `escape_t::BACKSLASH` or `escape_t::BOTH`: there are no quotes, and the only way to protect
-			 *          the separator and the end-of-line characters inside a field is the escape character.
-			 *          The writing puts it independently of its own `escape` setting — that setting describes the escaping
-			 *          of a quote INSIDE quotes, and there are none here at all. The reading, however, removed the escapes
-			 *          only inside quotes, and what had been written was read back as something other than what was written,
-			 *          and silently at that: the field `a,b` went out as the text `a\,b` and was read as two fields `a\` and `b`.
-			 *          The custom does the same — the `escapechar` of the `csv` module of the Python language removes
-			 *          the special meaning from the following character at the reading
-			 *
-			 * \~
-			 */
-			enum class quoting_t : uint8_t {
-				/**
-				 * \~russian
-				 * В кавычки берутся лишь поля, обойтись без них не могущие
-				 *
-				 * @details Причин тому ШЕСТЬ, и все они здесь названы, ибо снаружи
-				 *          вывести их неоткуда. Четыре причины даёт само содержимое поля:
-				 *          знак-разделитель, знак кавычек, перевод строки и возврат каретки.
-				 *          Пятая - обвязка ПРОБЕЛЬНЫМ знаком по краям поля: пробел, табуляция
-				 *          и прочие, ибо читающие, снимающие обвязку сами, теряют её без кавычек.
-				 *          Пробельный знак ПОСРЕДИ поля причиною не является.
-				 *
-				 * @details Две последние причины зависят от МЕСТА поля, а не от его
-				 *          содержимого. Поле, первым в записи начатое знаком примечания,
-				 *          обрамляется, иначе разбор унёс бы всю запись примечанием, - и лишь
-				 *          тогда, когда знак примечания настройкою задан. Поле, начинающее весь
-				 *          текст меткою порядка байтов, обрамляется тогда, когда запись метки
-				 *          ВЫКЛЮЧЕНА: включённой метка принадлежит самому тексту, а выключенной
-				 *          она пришла бы из содержимого и была бы снята чтением как признак
-				 *          кодировки. Уклад этот обратен ожиданию, и оттого назван здесь прямо.
-				 *
-				 * @note Все шесть замерены 01.09.2026 и закреплены проверкой
-				 *       `CodecCsvWriter.MinimalQuotingHasSixCauses`
-				 *
-				 * @warning Открытый посредник `quotable` знает лишь ЧЕТЫРЕ первые причины
-				 *          и пятую: место поля ему не передаётся вовсе, и две последние
-				 *          причины он вывести не может. Предсказывать выдачу записи им
-				 *          нельзя - см. оговорку у самого посредника
-				 *
-				 * \~english
-				 * Only the fields that cannot do without them are enclosed in quotes
-				 *
-				 * @details There are SIX causes of them, and all of them are named here, for outside there is
-				 *          nowhere to derive them from. Four causes are given by the content of the field
-				 *          itself: the separator character, the quote character, the line feed and the carriage
-				 *          return. The fifth is a padding by a WHITESPACE character at the EDGES of the field: a
-				 *          space, a tabulation and the others, for the readers that strip the padding themselves
-				 *          lose it without quotes. A whitespace character IN THE MIDDLE of a field is not a
-				 *          cause.
-				 *
-				 * @details The two last causes depend on the PLACE of the field, and not on its content. A
-				 *          field begun by the comment character as the first in a record is enclosed, otherwise
-				 *          the parsing would carry the whole record away as a comment, - and only when the
-				 *          comment character is set by the settings. A field starting the whole text with the
-				 *          byte order mark is enclosed when the writing of the mark is switched OFF: when
-				 *          switched on the mark belongs to the text itself, while when switched off it would
-				 *          have come from the content and would be stripped by the reading as a sign of the
-				 *          encoding. The order is contrary to what is expected, and that is why it is named
-				 *          outright here.
-				 *
-				 * @note All six were measured on 2026-09-01 and are fixed by the check
-				 *       `CodecCsvWriter.MinimalQuotingHasSixCauses`
-				 *
-				 * @warning The open mediator `quotable` knows only the FOUR first causes and the fifth: the
-				 *          place of the field is not given to it at all, and the two last causes it cannot
-				 *          derive. Predicting the writing of a record by it is impossible - see the reservation
-				 *          at the mediator itself
-				 *
-				 * \~
-				 */
-				MINIMAL    = 0x00,
-				ALL        = 0x01, // В кавычки берутся все поля без разбора
-				NONNUMERIC = 0x02, // В кавычки берутся все поля, кроме записанных числом
-				NONE       = 0x03  // Кавычки не ставятся вовсе, а знак-разделитель в поле предваряется знаком отмены
-			};
-
-			/**
-			 * \~russian
-			 * @brief Обращение с обвязкой вокруг поля
-			 *
-			 * @details Договор велит хранить содержимое поля неизменным, потому умолчанием
-			 *          обвязка сохраняется.
-			 *
-			 * \~english
-			 * @brief Treatment of the padding around a field
-			 *
-			 * @details The protocol orders to keep the content of a field unchanged, therefore by default
-			 *          the padding is preserved.
-			 *
-			 * \~
-			 */
-			enum class trim_t : uint8_t {
-				NONE      = 0x00, // Обвязка сохраняется как записана
-				UNQUOTED  = 0x01, // Обвязка снимается лишь у полей без кавычек
-				ALL       = 0x02  // Обвязка снимается и вокруг кавычек, и внутри поля без кавычек
-			};
-
-			/**
-			 * \~russian
-			 * @brief Обращение с записью, число полей которой расходится с заголовком
-			 *
-			 * \~english
-			 * @brief Treatment of a record the number of the fields of which diverges from the header
-			 *
-			 * \~
-			 */
-			enum class ragged_t : uint8_t {
-				ALLOW = 0x00, // Запись выдаётся как есть, числа полей не сверяются
-				FILL  = 0x01, // Недостающие поля дополняются пустыми, лишние выдаются как есть
-				ERROR = 0x02  // Расхождение прекращает разбор ошибкой
-			};
-
-			/**
-			 * \~russian
-			 * @brief Знак конца строки собираемого текста
-			 *
-			 * @warning Записанное всяким видом, кроме `CRLF`, читается ТОЛЬКО разбором
-			 *          нестрогим: договор знает концом записи одну лишь пару возврата каретки с
-			 *          переводом строки, и строгое чтение отвечает на одинокий знак отказом.
-			 *          Оговорка эта здесь потому, что виды эти заведены ради обихода, а не ради
-			 *          договора: собранное ими законно, но законно оно лишь за пределами договора
-			 *
-			 * \~english
-			 * @brief Line ending character of the text being assembled
-			 *
-			 * @warning What has been written by any kind other than `CRLF` is read ONLY by the non-strict
-			 *          parsing: the contract knows as the end of a record only the pair of the carriage return with
-			 *          the line feed, and the strict reading answers a lone character with a refusal.
-			 *          The reservation is here because these kinds are introduced for the sake of the custom,
-			 *          and not for the sake of the contract: what is assembled by them is lawful, but it is
-			 *          lawful only beyond the bounds of the contract
-			 *
-			 * \~
-			 */
-			enum class newline_t : uint8_t {
-				CRLF = 0x00, // Возврат каретки с переводом строки, как велит RFC 4180
-				LF   = 0x01, // Перевод строки, принятый в системах семейства UNIX
-				CR   = 0x02  // Одиночный возврат каретки
+				MISSING_CALLBACK = 0x19 // Обработчик записей не передан
 			};
 
 			/**
@@ -833,13 +817,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Span() noexcept : offset(0), length(0) {}
+				explicit Span() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -855,15 +838,13 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+				Span(const uint32_t offset, const uint32_t length) noexcept;
 			} span_t;
-
 			/**
 			 * \~russian
-			 * @brief Положение в исходном тексте
+			 * @brief Структура положения в исходном тексте
 			 *
-			 * @details Служит для указания места ошибки и для привязки полей к исходному
-			 *          тексту.
+			 * @details Служит для указания места ошибки и для привязки полей к исходному тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
 			 *       смещение - в байтах исходного текста до перекодирования. Строки при этом
@@ -871,10 +852,9 @@ namespace awh {
 			 *       строк, и номер строки внутри такого поля растёт
 			 *
 			 * \~english
-			 * @brief Position in the source text
+			 * @brief Structure of the provision in the source text
 			 *
-			 * @details Serves for indicating the place of an error and for binding the fields to the source
-			 *          text.
+			 * @details Serves for indicating the place of an error and for binding the fields to the source text.
 			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
 			 *       the offset — in the bytes of the source text before the transcoding. The lines are counted
@@ -884,6 +864,14 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Location {
+				// Номер строки, считая с единицы
+				uint32_t line;
+				// Номер поля в записи, считая с нуля
+				uint32_t field;
+				// Положение в строке, считая с единицы
+				uint32_t column;
+				// Номер записи, считая с единицы, заголовок номера не занимает
+				uint32_t record;
 				/**
 				 * \~russian
 				 * @brief Смещение от начала текста в байтах
@@ -909,32 +897,20 @@ namespace awh {
 				 * \~
 				 */
 				uint64_t offset;
-				// Номер строки, считая с единицы
-				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				// Номер записи, считая с единицы, заголовок номера не занимает
-				uint32_t record;
-				// Номер поля в записи, считая с нуля
-				uint32_t field;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Location() noexcept :
-				 offset(NO_OFFSET), line(0), column(0),
-				 record(0), field(NO_INDEX) {}
+				explicit Location() noexcept;
 			} location_t;
-
 			/**
 			 * \~russian
-			 * @brief Поле записи
+			 * @brief Структура поля записи
 			 *
 			 * @details Значение выдаётся уже приведённым к окончательному виду: кавычки
 			 *          сняты, удвоенные кавычки внутри поля сведены к одной, обвязка снята в объёме,
@@ -952,7 +928,7 @@ namespace awh {
 			 *       главное - одинаковая запись на разные сроки скрывала, что сроки разные
 			 *
 			 * \~english
-			 * @brief Field of a record
+			 * @brief Record field structure
 			 *
 			 * @details The value is issued already brought to its final form: the quotes are
 			 *          removed, the doubled quotes inside the field are reduced to one, the padding is removed in the volume
@@ -972,26 +948,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Field {
-				// Значение поля, приведённое к окончательному виду
-				string_view value;
-				/**
-				 * \~russian
-				 * Имя поля, взятое из заголовка
-				 *
-				 * @note Пусто при отключённом признаке заголовка, а равно и у полей, чей
-				 *       номер выходит за пределы заголовка
-				 *
-				 * \~english
-				 * Name of the field taken from the header
-				 *
-				 * @note Empty when the flag of the header is disabled, and likewise for the fields whose
-				 *       number goes beyond the limits of the header
-				 *
-				 * \~
-				 */
-				string_view name;
-				// Положение поля в исходном тексте
-				location_t location;
 				// Признак того, что поле было заключено в кавычки
 				bool quoted;
 				/**
@@ -1012,6 +968,26 @@ namespace awh {
 				 * \~
 				 */
 				bool modified;
+				// Положение поля в исходном тексте
+				location_t location;
+				// Значение поля, приведённое к окончательному виду
+				string_view value;
+				/**
+				 * \~russian
+				 * Имя поля, взятое из заголовка
+				 *
+				 * @note Пусто при отключённом признаке заголовка, а равно и у полей, чей
+				 *       номер выходит за пределы заголовка
+				 *
+				 * \~english
+				 * Name of the field taken from the header
+				 *
+				 * @note Empty when the flag of the header is disabled, and likewise for the fields whose
+				 *       number goes beyond the limits of the header
+				 *
+				 * \~
+				 */
+				string_view name;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -1022,18 +998,18 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Field() noexcept : quoted(false), modified(false) {}
+				explicit Field() noexcept;
 			} field_t;
 
 			/**
 			 * \~russian
-			 * @brief Метод получения сообщения об ошибке разбора
+			 * @brief Функция получения сообщения об ошибке разбора
 			 *
 			 * @param error код ошибки разбора
 			 * @return      сообщение об ошибке
 			 *
 			 * \~english
-			 * @brief Method of getting the message of a parsing error
+			 * @brief Function of getting the message of a parsing error
 			 *
 			 * @param error error code of the parsing
 			 * @return      error message
@@ -1041,16 +1017,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод получения названия кодировки
+			 * @brief Функция получения названия кодировки
 			 *
 			 * @param encoding кодировка исходного текста
 			 * @return         название кодировки
 			 *
 			 * \~english
-			 * @brief Method of getting the name of an encoding
+			 * @brief Function of getting the name of an encoding
 			 *
 			 * @param encoding encoding of the source text
 			 * @return         name of the encoding
@@ -1058,16 +1033,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод определения кодировки по метке порядка байтов
+			 * @brief Функция определения кодировки по метке порядка байтов
 			 *
 			 * @param text начало исходного текста
 			 * @return     определённая кодировка либо UTF-8 при отсутствии метки
 			 *
 			 * \~english
-			 * @brief Method of determining the encoding by the byte order mark
+			 * @brief Function of determining the encoding by the byte order mark
 			 *
 			 * @param text beginning of the source text
 			 * @return     determined encoding or UTF-8 in the absence of the mark
@@ -1075,16 +1049,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ encoding_t encoding(const string_view text) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод получения знака конца строки
+			 * @brief Функция получения знака конца строки
 			 *
 			 * @param newline вид знака конца строки
 			 * @return        последовательность знаков конца строки
 			 *
 			 * \~english
-			 * @brief Method of getting the line ending character
+			 * @brief Function of getting the line ending character
 			 *
 			 * @param newline kind of the line ending character
 			 * @return        sequence of the line ending characters
@@ -1092,10 +1065,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view newline(const newline_t newline) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод проверки пригодности знака в разделители полей
+			 * @brief Функция проверки пригодности знака в разделители полей
 			 *
 			 * @details Разделителем не бывают ни кавычка, ни знаки конца строки, ни знак
 			 *          отмены: всякий из них уже занят разбором, и совпадение с ним делает текст
@@ -1134,7 +1106,7 @@ namespace awh {
 			 * @return          результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking the suitability of a character as a separator of the fields
+			 * @brief Function of checking the suitability of a character as a separator of the fields
 			 *
 			 * @details Neither a quote, nor the line ending characters, nor the escape
 			 *          character are ever a separator: every one of them is already occupied by the parsing, and a coincidence with it makes the text
@@ -1175,10 +1147,162 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool suitable(const char separator, const char quote) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод проверки необходимости заключить поле в кавычки
+			 * @brief Функция приведения содержимого поля к числу с плавающей точкой
+			 *
+			 * @param text   содержимое поля
+			 * @param result полученное значение
+			 * @return       результат приведения
+			 *
+			 * \~english
+			 * @brief Function of converting the content of a field to a floating-point number
+			 *
+			 * @param text   content of the field
+			 * @param result obtained value
+			 * @return       result of the conversion
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool real(const string_view text, double & result) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция приведения содержимого поля к логическому значению
+			 *
+			 * @details Истиною читаются `true`, `yes`, `on` и `1`, ложью - `false`, `no`,
+			 *          `off` и `0`, причём РЕГИСТР НЕ ЗНАЧИМ: `TRUE` и `True` читаются наравне с
+			 *          `true`. Вольность эта намеренная и взята из обихода таблиц, где столбец
+			 *          признака заполняют как придётся.
+			 *
+			 * @note Кодек XML держится здесь строже - договор XSD знает ровно четыре
+			 *       записи строчными, - и расхождение это описано нарочно: договора о видах у
+			 *       таблиц нет вовсе, а число и дробное у обоих кодеков читаются одинаково
+			 *
+			 * @param text   содержимое поля
+			 * @param result полученное значение
+			 * @return       результат приведения
+			 *
+			 * \~english
+			 * @brief Function of converting the content of a field to a logical value
+			 *
+			 * @details Read as true are `true`, `yes`, `on` and `1`, as false - `false`, `no`, `off` and
+			 *          `0`, and THE CASE IS NOT SIGNIFICANT: `TRUE` and `True` are read on a par with `true`.
+			 *          This licence is deliberate and is taken from the usage of tables, where a column of a
+			 *          flag is filled as it comes.
+			 *
+			 * @note The XML codec holds itself stricter here - the XSD contract knows exactly four writings
+			 *       in lower case, - and this divergence is described on purpose: the tables have no contract
+			 *       about the kinds at all, while an integer and a fractional number are read alike by both
+			 *       codecs
+			 *
+			 * @param text   content of the field
+			 * @param result obtained value
+			 * @return       result of the conversion
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool boolean(const string_view text, bool & result) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция приведения содержимого поля к целому числу со знаком
+			 *
+			 * @details Судится НАПИСАНИЕ: годной признаётся запись целого числа и только
+			 *          она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
+			 *          с показателем степени «1e3», хотя оба означают число целое.
+			 *
+			 * @warning Предсказывать этим посредником извлечение `document_t::numeric`
+			 *          НЕЛЬЗЯ. Извлечение следует решению от 30.08.2026: два
+			 *          написания одного числа извлекаются одинаково, и «300.0» видом
+			 *          `int64_t` даёт 300 там, где посредник отвечает отказом. Замер
+			 *          01.09.2026: из шести написаний приговоры разошлись на двух - «300.0»
+			 *          и «1e3»
+			 *
+			 * @note Расхождение это НЕ дефект: у посредника и у извлечения разные вопросы.
+			 *       Посредник спрашивает «целым ли записано», извлечение - «целым ли
+			 *       представимо». Названо оно здесь затем, что молчание об области
+			 *       выглядит обещанием полноты
+			 *
+			 * @param text   содержимое поля
+			 * @param result полученное значение
+			 * @return       результат приведения
+			 *
+			 * \~english
+			 * @brief Function of converting the content of a field to a signed integer
+			 *
+			 * @details The SPELLING is judged: only the writing of an integer is found fit, and only
+			 *          it. The fractional writing of an integer - «300.0» - is refused, as is the writing with
+			 *          an exponent, «1e3», though both denote an integer number.
+			 *
+			 * @warning Predicting the extraction of `document_t::numeric` by this mediator is IMPOSSIBLE.
+			 *          The extraction follows the decision of 2026-08-30: two spellings of one number are
+			 *          extracted alike, and «300.0» by the kind `int64_t` gives 300 where the mediator
+			 *          answers with a refusal. The measurement of 2026-09-01: of six spellings the verdicts
+			 *          diverged on two - «300.0» and «1e3»
+			 *
+			 * @note This divergence is NOT a defect: the mediator and the extraction ask different
+			 *       questions. The mediator asks "is it written as an integer", the extraction - "is it
+			 *       representable as an integer". It is named here because a silence about the scope looks
+			 *       like a promise of completeness
+			 *
+			 * @param text   content of the field
+			 * @param result obtained value
+			 * @return       result of the conversion
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool integer(const string_view text, int64_t & result) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция приведения содержимого поля к целому числу без знака
+			 *
+			 * @details Судится НАПИСАНИЕ: годной признаётся запись целого числа и только
+			 *          она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
+			 *          с показателем степени «1e3», хотя оба означают число целое.
+			 *
+			 * @warning Предсказывать этим посредником извлечение `document_t::numeric`
+			 *          НЕЛЬЗЯ. Извлечение следует решению от 30.08.2026: два
+			 *          написания одного числа извлекаются одинаково, и «300.0» видом
+			 *          `int64_t` даёт 300 там, где посредник отвечает отказом. Замер
+			 *          01.09.2026: из шести написаний приговоры разошлись на двух - «300.0»
+			 *          и «1e3»
+			 *
+			 * @note Расхождение это НЕ дефект: у посредника и у извлечения разные вопросы.
+			 *       Посредник спрашивает «целым ли записано», извлечение - «целым ли
+			 *       представимо». Названо оно здесь затем, что молчание об области
+			 *       выглядит обещанием полноты
+			 *
+			 * @param text   содержимое поля
+			 * @param result полученное значение
+			 * @return       результат приведения
+			 *
+			 * \~english
+			 * @brief Function of converting the content of a field to an unsigned integer
+			 *
+			 * @details The SPELLING is judged: only the writing of an integer is found fit, and only
+			 *          it. The fractional writing of an integer - «300.0» - is refused, as is the writing with
+			 *          an exponent, «1e3», though both denote an integer number.
+			 *
+			 * @warning Predicting the extraction of `document_t::numeric` by this mediator is IMPOSSIBLE.
+			 *          The extraction follows the decision of 2026-08-30: two spellings of one number are
+			 *          extracted alike, and «300.0» by the kind `int64_t` gives 300 where the mediator
+			 *          answers with a refusal. The measurement of 2026-09-01: of six spellings the verdicts
+			 *          diverged on two - «300.0» and «1e3»
+			 *
+			 * @note This divergence is NOT a defect: the mediator and the extraction ask different
+			 *       questions. The mediator asks "is it written as an integer", the extraction - "is it
+			 *       representable as an integer". It is named here because a silence about the scope looks
+			 *       like a promise of completeness
+			 *
+			 * @param text   content of the field
+			 * @param result obtained value
+			 * @return       result of the conversion
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool integer(const string_view text, uint64_t & result) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция проверки необходимости заключить поле в кавычки
 			 *
 			 * @details Судится одно лишь СОДЕРЖИМОЕ поля: знак-разделитель, знак кавычек,
 			 *          знаки конца строки и пробельная обвязка по краям. Правила `ALL`, `NONE` и
@@ -1204,7 +1328,7 @@ namespace awh {
 			 * @return          результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking the necessity of enclosing a field in quotes
+			 * @brief Function of checking the necessity of enclosing a field in quotes
 			 *
 			 * @details Only the CONTENT of a field is judged: the separator character, the quote character,
 			 *          the line ending characters and the whitespace padding at the edges. The rules `ALL`,
@@ -1232,166 +1356,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool quotable(const string_view text, const char separator, const char quote, const quoting_t quoting) noexcept;
-
-			/**
-			 * \~russian
-			 * @brief Метод приведения содержимого поля к целому числу со знаком
-			 *
-			 * @details Судится НАПИСАНИЕ: годной признаётся запись целого числа и только
-			 *          она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
-			 *          с показателем степени «1e3», хотя оба означают число целое.
-			 *
-			 * @warning Предсказывать этим посредником извлечение `document_t::numeric`
-			 *          НЕЛЬЗЯ. Извлечение следует решению от 30.08.2026: два
-			 *          написания одного числа извлекаются одинаково, и «300.0» видом
-			 *          `int64_t` даёт 300 там, где посредник отвечает отказом. Замер
-			 *          01.09.2026: из шести написаний приговоры разошлись на двух - «300.0»
-			 *          и «1e3»
-			 *
-			 * @note Расхождение это НЕ дефект: у посредника и у извлечения разные вопросы.
-			 *       Посредник спрашивает «целым ли записано», извлечение - «целым ли
-			 *       представимо». Названо оно здесь затем, что молчание об области
-			 *       выглядит обещанием полноты
-			 *
-			 * @param text   содержимое поля
-			 * @param result полученное значение
-			 * @return       результат приведения
-			 *
-			 * \~english
-			 * @brief Method of converting the content of a field to a signed integer
-			 *
-			 * @details The SPELLING is judged: only the writing of an integer is found fit, and only
-			 *          it. The fractional writing of an integer - «300.0» - is refused, as is the writing with
-			 *          an exponent, «1e3», though both denote an integer number.
-			 *
-			 * @warning Predicting the extraction of `document_t::numeric` by this mediator is IMPOSSIBLE.
-			 *          The extraction follows the decision of 2026-08-30: two spellings of one number are
-			 *          extracted alike, and «300.0» by the kind `int64_t` gives 300 where the mediator
-			 *          answers with a refusal. The measurement of 2026-09-01: of six spellings the verdicts
-			 *          diverged on two - «300.0» and «1e3»
-			 *
-			 * @note This divergence is NOT a defect: the mediator and the extraction ask different
-			 *       questions. The mediator asks "is it written as an integer", the extraction - "is it
-			 *       representable as an integer". It is named here because a silence about the scope looks
-			 *       like a promise of completeness
-			 *
-			 * @param text   content of the field
-			 * @param result obtained value
-			 * @return       result of the conversion
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool integer(const string_view text, int64_t & result) noexcept;
-
-			/**
-			 * \~russian
-			 * @brief Метод приведения содержимого поля к целому числу без знака
-			 *
-			 * @details Судится НАПИСАНИЕ: годной признаётся запись целого числа и только
-			 *          она. Запись дробная целого числа - «300.0» - отвергается, равно как и запись
-			 *          с показателем степени «1e3», хотя оба означают число целое.
-			 *
-			 * @warning Предсказывать этим посредником извлечение `document_t::numeric`
-			 *          НЕЛЬЗЯ. Извлечение следует решению от 30.08.2026: два
-			 *          написания одного числа извлекаются одинаково, и «300.0» видом
-			 *          `int64_t` даёт 300 там, где посредник отвечает отказом. Замер
-			 *          01.09.2026: из шести написаний приговоры разошлись на двух - «300.0»
-			 *          и «1e3»
-			 *
-			 * @note Расхождение это НЕ дефект: у посредника и у извлечения разные вопросы.
-			 *       Посредник спрашивает «целым ли записано», извлечение - «целым ли
-			 *       представимо». Названо оно здесь затем, что молчание об области
-			 *       выглядит обещанием полноты
-			 *
-			 * @param text   содержимое поля
-			 * @param result полученное значение
-			 * @return       результат приведения
-			 *
-			 * \~english
-			 * @brief Method of converting the content of a field to an unsigned integer
-			 *
-			 * @details The SPELLING is judged: only the writing of an integer is found fit, and only
-			 *          it. The fractional writing of an integer - «300.0» - is refused, as is the writing with
-			 *          an exponent, «1e3», though both denote an integer number.
-			 *
-			 * @warning Predicting the extraction of `document_t::numeric` by this mediator is IMPOSSIBLE.
-			 *          The extraction follows the decision of 2026-08-30: two spellings of one number are
-			 *          extracted alike, and «300.0» by the kind `int64_t` gives 300 where the mediator
-			 *          answers with a refusal. The measurement of 2026-09-01: of six spellings the verdicts
-			 *          diverged on two - «300.0» and «1e3»
-			 *
-			 * @note This divergence is NOT a defect: the mediator and the extraction ask different
-			 *       questions. The mediator asks "is it written as an integer", the extraction - "is it
-			 *       representable as an integer". It is named here because a silence about the scope looks
-			 *       like a promise of completeness
-			 *
-			 * @param text   content of the field
-			 * @param result obtained value
-			 * @return       result of the conversion
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool integer(const string_view text, uint64_t & result) noexcept;
-
-			/**
-			 * \~russian
-			 * @brief Метод приведения содержимого поля к числу с плавающей точкой
-			 *
-			 * @param text   содержимое поля
-			 * @param result полученное значение
-			 * @return       результат приведения
-			 *
-			 * \~english
-			 * @brief Method of converting the content of a field to a floating-point number
-			 *
-			 * @param text   content of the field
-			 * @param result obtained value
-			 * @return       result of the conversion
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool real(const string_view text, double & result) noexcept;
-
-			/**
-			 * \~russian
-			 * @brief Метод приведения содержимого поля к логическому значению
-			 *
-			 * @details Истиною читаются `true`, `yes`, `on` и `1`, ложью - `false`, `no`,
-			 *          `off` и `0`, причём РЕГИСТР НЕ ЗНАЧИМ: `TRUE` и `True` читаются наравне с
-			 *          `true`. Вольность эта намеренная и взята из обихода таблиц, где столбец
-			 *          признака заполняют как придётся.
-			 *
-			 * @note Кодек XML держится здесь строже - договор XSD знает ровно четыре
-			 *       записи строчными, - и расхождение это описано нарочно: договора о видах у
-			 *       таблиц нет вовсе, а число и дробное у обоих кодеков читаются одинаково
-			 *
-			 * @param text   содержимое поля
-			 * @param result полученное значение
-			 * @return       результат приведения
-			 *
-			 * \~english
-			 * @brief Method of converting the content of a field to a logical value
-			 *
-			 * @details Read as true are `true`, `yes`, `on` and `1`, as false - `false`, `no`, `off` and
-			 *          `0`, and THE CASE IS NOT SIGNIFICANT: `TRUE` and `True` are read on a par with `true`.
-			 *          This licence is deliberate and is taken from the usage of tables, where a column of a
-			 *          flag is filled as it comes.
-			 *
-			 * @note The XML codec holds itself stricter here - the XSD contract knows exactly four writings
-			 *       in lower case, - and this divergence is described on purpose: the tables have no contract
-			 *       about the kinds at all, while an integer and a fractional number are read alike by both
-			 *       codecs
-			 *
-			 * @param text   content of the field
-			 * @param result obtained value
-			 * @return       result of the conversion
-			 *
-			 * \~
-			 */
-			__AWH_SHARED_EXPORT__ bool boolean(const string_view text, bool & result) noexcept;
-		}
-	}
-}
+		};
+	};
+};
 
 /**
  * Возвращаем системные макросы потребителю библиотеки:

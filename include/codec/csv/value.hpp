@@ -40,7 +40,7 @@
 #include <vector>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "document.hpp"
 
@@ -170,10 +170,10 @@ namespace awh {
 					type_t _type;
 					// Содержимое поля, значимое лишь у вида FIELD
 					string _text;
-					// Имена столбцов, значимые лишь у вида TABLE
-					vector <string> _header;
 					// Вложенные значения: записи у таблицы, поля у записи
 					vector <Value> _items;
+					// Имена столбцов, значимые лишь у вида TABLE
+					vector <string> _header;
 					// Код отказа последней работы над значением
 					mutable error_t _error;
 					// Место отказа последней работы над значением
@@ -239,6 +239,8 @@ namespace awh {
 					 *          размера и содержимого поля оставляют его как есть. Ставь мы код всякою
 					 *          работой, и донесение об отказе стиралось бы первым же чтением следом
 					 *
+					 * @see Договор этот закреплён проверкою CodecContract.ErrorAndItsLocationAreSetAnewByEveryCall
+					 *
 					 * @return код отказа последней работы
 					 *
 					 * \~english
@@ -256,10 +258,11 @@ namespace awh {
 					 *          the size and of the content of a field leave it as it is. Were every operation to set
 					 *          the code, the report of a refusal would be erased by the very first reading after it
 					 *
+					 * @see This contract is enforced by the CodecContract.ErrorAndItsLocationAreSetAnewByEveryCall check
+					 *
 					 * @return code of the refusal of the last operation
 					 *
 					 * \~
-					 * @see Договор этот закреплён проверкою CodecContract.ErrorAndItsLocationAreSetAnewByEveryCall
 					 */
 					error_t error() const noexcept;
 					/**
@@ -374,6 +377,8 @@ namespace awh {
 					 *          разделителя, а разделитель есть дело настроек записи, не
 					 *          значения
 					 *
+					 * @see Договор этот закреплён проверкою CodecContract.LongNumberRecord
+					 *
 					 * @return содержимое поля
 					 *
 					 * \~english
@@ -383,10 +388,11 @@ namespace awh {
 					 *          record is NOT done here on purpose, for any gluing would demand a separator, and a
 					 *          separator is a matter of the settings of the writing, and not of the value
 					 *
+					 * @see This agreement is enforced by the CodecContract.LongNumberRecord check.
+					 *
 					 * @return content of the field
 					 *
 					 * \~
-					 * @see Договор этот закреплён проверкою CodecContract.LongNumberRecord
 					 */
 					const string & text() const noexcept;
 					/**
@@ -442,6 +448,8 @@ namespace awh {
 					 *          бы отказ сборки в лучшем случае, а в худшем - попал бы у разметки в
 					 *          ход об ином предмете
 					 *
+					 * @see Договор этот закреплён проверкою CodecContract.PresenceOfANestedValueIsAskedByOneWord
+					 *
 					 * @param name имя столбца
 					 * @return     признак наличия столбца
 					 *
@@ -459,11 +467,12 @@ namespace awh {
 					 *          refusal of the build at best, and at worst would have landed, among the markup, upon
 					 *          a method about another subject
 					 *
+					 * @see This contract is enforced by the CodecContract.PresenceOfANestedValueIsAskedByOneWord check.
+					 *
 					 * @param name name of the column
 					 * @return     sign of the presence of the column
 					 *
 					 * \~
-					 * @see Договор этот закреплён проверкою CodecContract.PresenceOfANestedValueIsAskedByOneWord
 					 */
 					bool contains(const string & name) const noexcept;
 					/**
@@ -539,6 +548,8 @@ namespace awh {
 					 *          именем. Приравняй мы их, и одна и та же запись пути значила бы у
 					 *          кодеков разное
 					 *
+					 * @see Договор этот закреплён проверкою CodecContract.EnumerationAndLookupFormAClosedTraversal
+					 *
 					 * @param path путь к искомому значению
 					 * @return     найденное значение
 					 *
@@ -555,11 +566,12 @@ namespace awh {
 					 *          which a JSON document answers without a field with an empty name. Were we to equate
 					 *          them, one and the same writing of a path would mean different things among the codecs
 					 *
+					 * @see This contract is enforced by the CodecContract.EnumerationAndLookupFormAClosedTraversal check
+					 *
 					 * @param path path to the sought value
 					 * @return     value which is found
 					 *
 					 * \~
-					 * @see Договор этот закреплён проверкою CodecContract.EnumerationAndLookupFormAClosedTraversal
 					 */
 					const Value & at(const string & path) const noexcept;
 					/**
@@ -596,17 +608,18 @@ namespace awh {
 					bool erase(const size_t index) noexcept;
 					/**
 					 * \~russian
-					 * @brief Шаблон вида числа, к какому ведётся извлечение
+					 * @brief Шаблон метода извлечения числового значения поля
 					 *
 					 * @tparam T вид числа, к какому ведётся извлечение
 					 *
 					 * \~english
-					 * @brief Template of the type of a number to which the extraction is conducted
+					 * @brief Template for a method to extract the numeric value of a field
 					 *
 					 * @tparam T type of a number to which the extraction is conducted
 					 *
 					 * \~
 					 */
+					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числового значения поля
@@ -644,7 +657,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					bool extract(T & result) const noexcept;
 					/**
 					 * \~russian
@@ -978,6 +990,8 @@ namespace awh {
 					 *          пределом `RLIMIT_FSIZE` показал ровно это до правки: прежний файл
 					 *          пропадал целиком
 					 *
+					 * @see Договор этот закреплён проверкою CodecContract.SavingKeepsThePreviousFileOnWriteFailure
+					 *
 					 * @param filename адрес файла таблицы
 					 * @return         признак успешности сохранения
 					 *
@@ -994,11 +1008,12 @@ namespace awh {
 					 *          limit `RLIMIT_FSIZE` showed exactly this before the fix: the previous file was lost
 					 *          entirely
 					 *
+					 * @see This contract is enforced by the CodecContract.SavingKeepsThePreviousFileOnWriteFailure check.
+					 *
 					 * @param filename address of the file of the table
 					 * @return         sign of the success of the saving
 					 *
 					 * \~
-					 * @see Договор этот закреплён проверкою CodecContract.SavingKeepsThePreviousFileOnWriteFailure
 					 */
 					bool save(const string & filename) const noexcept;
 					/**
@@ -1056,7 +1071,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value() noexcept;
+					explicit Value() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор вида значения
@@ -1108,11 +1123,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Value() noexcept {}
+					~Value() noexcept = default;
 			} value_t;
 			/**
 			 * \~russian
-			 * @brief Потоковая сборка владеющего значения CSV
+			 * @brief Класс потоковой сборки владеющего значения CSV
 			 *
 			 * @details Сборщик этот повторяет договор потока записи слово в слово: подать
 			 *          поле, завершить запись, завершить таблицу. Оттого «пишу текстом» и «строю
@@ -1131,7 +1146,7 @@ namespace awh {
 			 *          таблицы, у которой первая запись есть данные
 			 *
 			 * \~english
-			 * @brief Streaming assembly of an owning value of CSV
+			 * @brief Streaming assembly class for an owned CSV value
 			 *
 			 * @details This builder repeats the contract of the writing stream word for word: to pass
 			 *          a field, to finish a record, to finish the table. Whereby "I write a text" and "I build
@@ -1154,12 +1169,13 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
 				private:
+					// Признак того, что запись открыта подачею поля
+					bool _opened;
+				private:
 					// Собираемое значение таблицы
 					Value _result;
 					// Собираемая запись таблицы
 					Value _record;
-					// Признак того, что запись открыта подачею поля
-					bool _opened;
 				public:
 					/**
 					 * \~russian
@@ -1332,7 +1348,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept;
+					explicit Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1342,7 +1358,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Builder() noexcept {}
+					~Builder() noexcept = default;
 			} builder_t;
 		};
 	};

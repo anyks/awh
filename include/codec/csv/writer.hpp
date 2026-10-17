@@ -40,14 +40,13 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -64,7 +63,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -74,7 +72,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера CSV
-		 *
 		 *
 		 * \~english
 		 * @brief CSV container namespace
@@ -197,8 +194,6 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Знак-разделитель полей
-						char separator;
 						// Знак кавычек, обрамляющих поле
 						char quote;
 						/**
@@ -221,12 +216,14 @@ namespace awh {
 						 * \~
 						 */
 						char comment;
-						// Правило заключения поля в кавычки
-						quoting_t quoting;
+						// Знак-разделитель полей
+						char separator;
 						// Способ записи кавычки внутри поля, заключённого в кавычки
 						escape_t escape;
 						// Знак конца строки
 						newline_t newline;
+						// Правило заключения поля в кавычки
+						quoting_t quoting;
 						/**
 						 * \~russian
 						 * Признак записи метки порядка байтов в начале текста
@@ -249,20 +246,18 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
-					// Настройки записи текста
-					settings_t _settings;
-				private:
-					// Собранный текст
-					string _text;
+					// Признак того, что метка порядка байтов уже записана
+					bool _marked;
+					// Признак того, что запись уже содержит поля
+					bool _started;
 				private:
 					/**
 					 * \~russian
@@ -283,13 +278,7 @@ namespace awh {
 					 * \~
 					 */
 					size_t _origin;
-					// Признак того, что запись уже содержит поля
-					bool _started;
-					// Признак того, что метка порядка байтов уже записана
-					bool _marked;
 				private:
-					// Код отказа записи текста
-					error_t _error;
 					/**
 					 * \~russian
 					 * @brief Счётчик занесённых отказов записи
@@ -316,6 +305,14 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _refusals;
+				private:
+					// Код отказа записи текста
+					error_t _error;
+					// Настройки записи текста
+					settings_t _settings;
+				private:
+					// Собранный текст
+					string _text;
 				private:
 					/**
 					 * \~russian
@@ -351,6 +348,26 @@ namespace awh {
 					bool refuse(const error_t error) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод возврата сборщика к прежнему виду
+					 *
+					 * @param size    размер собранного текста до начала операции
+					 * @param origin  положение начала записи до начала операции
+					 * @param started признак наличия полей у записи до начала операции
+					 * @param marked  признак записанной метки порядка байтов до начала операции
+					 *
+					 * \~english
+					 * @brief Method of the return of the collector to the previous state
+					 *
+					 * @param size    size of the collected text before the beginning of the operation
+					 * @param origin  position of the beginning of the record before the beginning of the operation
+					 * @param started flag of the presence of the fields at the record before the beginning of the operation
+					 * @param marked  flag of the written byte order mark before the beginning of the operation
+					 *
+					 * \~
+					 */
+					void revert(const size_t size, const size_t origin, const bool started, const bool marked) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод отката неудавшейся операции записи
 					 *
 					 * @details Отказ записи местный: объект остаётся годным, и записанное им
@@ -384,26 +401,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					/**
-					 * \~russian
-					 * @brief Метод возврата сборщика к прежнему виду
-					 *
-					 * @param size    размер собранного текста до начала операции
-					 * @param origin  положение начала записи до начала операции
-					 * @param started признак наличия полей у записи до начала операции
-					 * @param marked  признак записанной метки порядка байтов до начала операции
-					 *
-					 * \~english
-					 * @brief Method of the return of the collector to the previous state
-					 *
-					 * @param size    size of the collected text before the beginning of the operation
-					 * @param origin  position of the beginning of the record before the beginning of the operation
-					 * @param started flag of the presence of the fields at the record before the beginning of the operation
-					 * @param marked  flag of the written byte order mark before the beginning of the operation
-					 *
-					 * \~
-					 */
-					void revert(const size_t size, const size_t origin, const bool started, const bool marked) noexcept;
 					bool rollback(const size_t size, const size_t origin, const bool started, const bool marked, const error_t error) noexcept;
 					/**
 					 * \~russian
@@ -436,20 +433,31 @@ namespace awh {
 					bool field(const string_view text) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод записи числового поля записи
+					 * @brief Шаблон метода записи числового поля записи
 					 *
 					 * @tparam T тип записываемого значения
+					 *
+					 * \~english
+					 * @brief Record Numeric Field Write Method Template
+					 *
+					 * @tparam T type of the value being written
+					 *
+					 * \~
+					 */
+					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод записи числового поля записи
+					 *
 					 * @param value записываемое значение
 					 *
 					 * \~english
 					 * @brief Method of writing a numeric field of a record
 					 *
-					 * @tparam T type of the value being written
 					 * @param value value being written
 					 *
 					 * \~
 					 */
-					template <typename T>
 					bool number(const T value) noexcept;
 				public:
 					/**
@@ -512,8 +520,7 @@ namespace awh {
 					 * @brief Метод записи текста целиком
 					 *
 					 * @details Собранное прежде не отбрасывается: записи дописываются к
-					 *          нему, что позволяет предпослать таблице заголовок, собранный
-					 *          отдельно.
+					 *          нему, что позволяет предпослать таблице заголовок, собранный отдельно.
 					 *
 					 * @param records записываемые записи
 					 *
@@ -529,19 +536,6 @@ namespace awh {
 					 */
 					bool write(const vector <vector <string>> & records) noexcept;
 				public:
-					/**
-					 * \~russian
-					 * @brief Метод получения собранного текста
-					 *
-					 * @return собранный текст
-					 *
-					 * \~english
-					 * @brief Method of getting the assembled text
-					 *
-					 * @return assembled text
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Метод получения кода отказа записи
@@ -562,6 +556,19 @@ namespace awh {
 					 * \~
 					 */
 					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения собранного текста
+					 *
+					 * @return собранный текст
+					 *
+					 * \~english
+					 * @brief Method of getting the assembled text
+					 *
+					 * @return assembled text
+					 *
+					 * \~
+					 */
 					const string & text() const noexcept;
 					/**
 					 * \~russian
@@ -698,7 +705,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -713,19 +720,18 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer(const settings_t & settings) noexcept;
+					explicit Writer(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Writer() noexcept {}
+					~Writer() noexcept = default;
 			} writer_t;
-		}
-	}
-}
+		};
+	};
+};
