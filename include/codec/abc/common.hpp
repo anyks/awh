@@ -485,7 +485,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using kind_t = ::awh::codec::kind_t;
+			using kind_t = codec::kind_t;
 
 			/**
 			 * \~russian
