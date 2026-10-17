@@ -115,10 +115,10 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Состояние центральных списков
+				 * @brief Структура состояния центральных списков
 				 *
 				 * \~english
-				 * @brief Central free lists state
+				 * @brief Structure of the status of central lists
 				 *
 				 * \~
 				 */
@@ -138,7 +138,7 @@ namespace awh {
 				} state_t;
 			private:
 				/**
-				 * @brief Центральный список одного разряда
+				 * @brief Структура центрального списка одного разряда
 				 *
 				 */
 				typedef struct List {
