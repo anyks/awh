@@ -521,6 +521,46 @@ def has_implementation(path, impl):
             return True
     return False
 
+def is_lambda_open(code, pos):
+    """Стоит ли открывающая скобка сразу за списком захвата лямбды (`[](){`, `[&](){`)."""
+    depth = 0
+    i = pos
+    while i >= 0:
+        c = code[i]
+        if c == ")":
+            depth += 1
+        elif c == "(":
+            depth -= 1
+            if depth == 0:
+                return i > 0 and code[i - 1] == "]"
+        i -= 1
+    return False
+
+def enclosing_template(code, n):
+    """Есть ли над определением незакрытый шаблон — класс или функция.
+
+    Тело члена шаблонного класса и члена класса, объявленного внутри шаблонной
+    функции, в .cpp не выносится (§5.5), а `template` стоит над тем заголовком,
+    а не над самим членом — поэтому ищем по стеку открывающих скобок.
+    """
+    depth = 0
+    i = n - 2
+    while i >= 0:
+        s = code[i]
+        depth += s.count("}") - s.count("{")
+        if depth < 0:
+            j = i
+            while j >= 0:
+                t = code[j].strip()
+                if re.match(r"^template\b", t):
+                    return True
+                if t.startswith("#") or re.match(r"^namespace\b", t) or t.endswith((";", "}")):
+                    break
+                j -= 1
+            depth = 0
+        i -= 1
+    return False
+
 def check_header_bodies(path, lines, report, impl=None, waived=None):
     """Тело определения в заголовке допустимо только с явной пометкой inline (§5.5).
 
@@ -557,8 +597,11 @@ def check_header_bodies(path, lines, report, impl=None, waived=None):
         if not marked_decl and not marked_stmt:
             m = DEF_OPEN.search(s)
             if m and (not stack or stack[-1] == "decl"):
-                opener = m.start()
-            elif not stack or stack[-1] == "decl":
+                if is_lambda_open(s, m.start()):
+                    m = None
+                else:
+                    opener = m.start()
+            if m is None and (not stack or stack[-1] == "decl"):
                 # Конструктор со списком инициализации: между `)` и скобкой тела стоит
                 # список (`noexcept : modes(0), bytes{} {}`), и DEF_OPEN её не видит.
                 # Многострочный список покрыт первым случаем: там `) {}` на последней строке.
@@ -572,9 +615,9 @@ def check_header_bodies(path, lines, report, impl=None, waived=None):
             declarator = s[:opener].strip()
             if not re.match(r"^(?:template\b|(?:[\w:<>,*&\s]+)?(?:~?[A-Za-z_~][\w:<>]*|operator\s*[^\s(]+)\s*\()", declarator + "("):
                 opener = None
-            elif re.match(r"^(?:[\w:<>,*&\s]*\b(?:if|for|while|switch)\b)", declarator):
+            elif re.match(r"^(?:[\w:<>,*&\s]*\b(?:if|for|while|switch|static_assert|return|throw|sizeof|co_return)\b)", declarator):
                 opener = None
-        if opener is not None and not (tmpl_ctx or any(k == "tmpl" for k in stack)):
+        if opener is not None and not (tmpl_ctx or any(k == "tmpl" for k in stack) or enclosing_template(code, n)):
             acc = declarator
             j = n - 2
             while j >= 0:
