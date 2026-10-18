@@ -353,7 +353,7 @@ def check_class_order(lines, report, path):
             buf = (buf + " " + code).strip()
             opens, closes = code.count("{"), code.count("}")
             closes_all = bd + opens - closes
-            done = closes_all > 0 or buf.endswith(";") or (opens and closes_all == 0)
+            done = closes_all > 0 or buf.endswith(";") or (opens and closes_all == 0 and buf.endswith("}"))
             bd = closes_all
             if not done:
                 continue
