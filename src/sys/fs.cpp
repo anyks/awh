@@ -2794,13 +2794,13 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 					 */
 					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
-						log::debug("Failed to get the canonical path of the address with %llu symbols, the tail is \"%s\"", __PRETTY_FUNCTION__, {addr, resolve}, log_t::flag_t::WARNING, static_cast <uint64_t> (result.size()), tail.c_str());
+						log::debug("Failed to get the canonical path of the address with %llu symbols, the tail is \"%s\"", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::WARNING, static_cast <uint64_t> (result.size()), tail.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log::print("Failed to get the canonical path of the address with %llu symbols, the tail is \"%s\"", log_t::flag_t::WARNING, static_cast <uint64_t> (result.size()), tail.c_str());
+						log::print("Failed to get the canonical path of the address with %llu symbols, the tail is \"%s\"", log::flag_t::WARNING, static_cast <uint64_t> (result.size()), tail.c_str());
 					#endif
 					/**
 					 * Переходим по символам адреса, заменяя чужой разделитель на родной
