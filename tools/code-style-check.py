@@ -169,7 +169,7 @@ def check_lead_gap(path, start, block, report, fixes=None):
         report(path, start + k + 1, "ERROR", "§7.1", f"пустая строка сразу после {block[k].strip()[1:].strip()} лишняя — первым идёт тег (§7.1)")
         if fixes is not None:
             for d in range(k + 1, j):
-                fixes.add(start + d - 1)
+                fixes[start + d - 1] = None
 
 
 def check_doc_parity(path, lines, report, fixes=None):
@@ -196,6 +196,27 @@ def check_doc_parity(path, lines, report, fixes=None):
 					check_lead_gap(path, start, block, report, fixes)
 
 					ru, en = sec.get("russian"), sec.get("english")
+					closer = len(block) - 1
+					body = [x for x in block[1:closer] if x.strip()]
+					solo = bool(re.match(r"^\s*\*/\s*$", block[closer]))
+					tail = body[-1].strip() if body else ""
+					if body and re.search(r"^\s*\*\s*@\w+", "\n".join(block), re.M):
+						# §7.5: перед `*/` обязана стоять пустая ` *` линия; перед строкой
+						# `* \~`, закрывающей секции перевода, — та же отбивка
+						last = body[-1].strip()
+						tilde = bool(re.match(r"^\*\s*\\~\s*$", last))
+						if last != "*" and not tilde:
+							report(path, n, "ERROR", "§7.5", f"перед закрывающим `*/` нет пустой строки ` *` (§7.5): последняя линия «{last[:48]}»")
+							if fixes is not None and solo:
+								fixes[n - 1] = None
+						elif tilde and len(body) >= 2 and body[-2].strip() != "*":
+							report(path, n, "ERROR", "§7.5", f"перед закрывающей `* \\~` нет пустой строки ` *` (§7.5, §7.1): последняя линия «{body[-2].strip()[:44]}»")
+							if fixes is not None and solo:
+								fixes[start + closer - 2] = None
+					if (ru or en) and not any(re.match(r"^\s*\*\s*\\~\s*$", x) for x in block[1:]):
+						report(path, n, "ERROR", "§7.6.3", "в блоке с `\\~russian`/`\\~english` нет завершающей строки `* \\~` перед `*/` (§7.6.3)")
+						if fixes is not None and solo:
+							fixes[n - 1] = (["*"] if tail != "*" else []) + ["* \\~"]
 					for lang in ("russian", "english"):
 						gg = sec.get(lang) or []
 						for gi in range(1, len(gg)):
@@ -211,7 +232,7 @@ def check_doc_parity(path, lines, report, fixes=None):
 								if fixes is not None:
 									m = ln - 2
 									while m >= 0 and re.match(r"\s*\*\s*$", block[m].strip()):
-										fixes.add(start + m - 1)
+										fixes[start + m - 1] = None
 										m -= 1
 					if (ru or en) and not (ru and en):
 						have, miss = ("russian", "english") if ru else ("english", "russian")
@@ -229,7 +250,7 @@ def check_doc_parity(path, lines, report, fixes=None):
 								if br and not be:
 									report(path, lineno, "ERROR", "§7.6", f"английская секция: перед @{te} нет пустой строки ' *' (в русской есть)")
 									if fixes is not None:
-										fixes.add(lineno - 1)
+										fixes[lineno - 1] = None
 								elif be and not br:
 									report(path, lineno, "ERROR", "§7.6", f"английская секция: лишняя пустая строка перед @{te} (в русской нет)")
 								if cr > 0 and ce == 0:
@@ -821,7 +842,7 @@ def check_file(path, lines, members, report, fixes=None):
         if blank_ctx is not None:
             report(path, blank_ctx, "ERROR", "§1.3", "пустая строка внутри тела функции")
             if fixes is not None:
-                fixes.add(blank_ctx - 1)
+                fixes[blank_ctx - 1] = None
         blank_ctx = None
         # отступы табами
         indent = re.match(r"^([ \t]*)\S", line)
@@ -1085,7 +1106,7 @@ def main():
             lines = open(f, errors="ignore").read().split("\n")
         except OSError as e:
             print(f"{f}: не читаю ({e})", file=sys.stderr); unreadable += 1; continue
-        fixset = set() if do_fix else None
+        fixset = {} if do_fix else None
         check_file(f, lines, members, report, fixset)
         check_class_order(lines, report, f)
         check_file_header(f, lines, report)
@@ -1104,13 +1125,18 @@ def main():
             dele = 0
             for idx in sorted(idxs, reverse=True):
                 anchor = fl[idx] if idx < len(fl) else ""
-                if anchor.strip() in ("", "*"):
+                text = idxs[idx]
+                if anchor.strip() in ("", "*") and text is None:
                     del fl[idx]
                     dele += 1
                     continue
                 m = re.match(r"^(\s*)\*", anchor)
-                fl.insert(idx, (m.group(1) + "*") if m else anchor)
-                ins += 1
+                indent = m.group(1) if m else re.match(r"^(\s*)", anchor).group(1)
+                if text is None:
+                    text = "*"
+                for extra in reversed(text if isinstance(text, list) else [text]):
+                    fl.insert(idx, indent + extra)
+                ins += len(text) if isinstance(text, list) else 1
             open(f, "w").write("\n".join(fl))
             print(f"{f}: вставлено {ins}, удалено {dele}")
     results.sort()
