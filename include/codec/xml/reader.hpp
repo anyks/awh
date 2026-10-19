@@ -45,10 +45,6 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-
-/**
- * Подключаем заголовочные файлы модуля
- */
 #include "common.hpp"
 #include "encoding.hpp"
 
@@ -62,7 +58,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -79,7 +74,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -89,7 +83,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера XML
-		 *
 		 *
 		 * \~english
 		 * @brief XML container namespace
@@ -202,16 +195,56 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
+				private:
+					/**
+					 * \~russian
+					 * @brief Итог одного шага разбора
+					 *
+					 * \~english
+					 * @brief Result of a single step of the parsing
+					 *
+					 * \~
+					 */
+					enum class step_t : uint8_t {
+						DONE   = 0x00, // Событие разбора получено
+						HUNGRY = 0x01, // Для продолжения разбора требуется следующий кусок текста
+						FAILED = 0x02  // Разбор прекращён ошибкой
+					};
+					/**
+					 * \~russian
+					 * @brief Вид значения в кавычках внутреннего подмножества
+					 *
+					 * @details Договор задаёт четыре вида значений в кавычках, и допустимое
+					 *          внутри них содержимое у каждого своё: значение сущности не допускает
+					 *          одиноких знаков ссылки, значение атрибута - знака начала разметки,
+					 *          обозначение общедоступного источника - лишь ограниченного набора знаков.
+					 *
+					 * \~english
+					 * @brief Kind of a quoted value of the internal subset
+					 *
+					 * @details The protocol gives four kinds of the quoted values, and the content admissible
+					 *          inside them is its own for each of them: the value of an entity does not admit
+					 *          the lone characters of a reference, the value of an attribute — the character of the beginning of a markup,
+					 *          the designation of a public source — only a limited set of the characters.
+					 *
+					 * \~
+					 */
+					enum class literal_t : uint8_t {
+						ENTITY    = 0x01, // Значение объявляемой сущности
+						ATTRIBUTE = 0x02, // Объявленное по умолчанию значение атрибута
+						SYSTEM    = 0x03, // Обозначение размещения внешнего источника
+						PUBLIC    = 0x04  // Обозначение общедоступного внешнего источника
+					};
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки разбора текста разметки
+					 * @brief Структура настроек разбора текста разметки
 					 *
 					 * @details Задают строгость разбора и пределы, ограничивающие расход
 					 *          памяти на подставном тексте.
 					 *
 					 * \~english
-					 * @brief Settings of the parsing of a markup text
+					 * @brief Structure of markup text parsing settings
 					 *
 					 * @details They give the strictness of the parsing and the limits restricting the expenditure
 					 *          of the memory on a planted text.
@@ -219,16 +252,10 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Флаг разрешения префиксов по договору о пространствах имён
-						bool namespaces;
+						// Флаг подстановки значений атрибутов, объявленных по умолчанию
+						bool defaults;
 						// Флаг подстановки ссылок на объявленные сущности
 						bool entities;
-						// Флаг выдачи примечаний отдельным событием
-						bool emitComments;
-						// Флаг выдачи указаний обработчику отдельным событием
-						bool emitProcessing;
-						// Флаг отделения незначимого пробельного содержимого от текстового
-						bool separateSpaces;
 						/**
 						 * \~russian
 						 * Флаг склеивания подряд идущих кусков текстового содержимого в одно событие
@@ -312,47 +339,6 @@ namespace awh {
 						 * \~
 						 */
 						bool mergeText;
-						// Флаг подстановки значений атрибутов, объявленных по умолчанию
-						bool defaults;
-						/**
-						 * \~russian
-						 * @brief Флаг отказа разбора при ссылке на внешнюю сущность в содержимом
-						 *
-						 * @details Внешние сущности не загружаются никогда, и подставить такую
-						 *          ссылку нечем. Договор велит разбору, их не читающему, ссылку РАСПОЗНАТЬ
-						 *          и пропустить, а не отвергать текст: отказ здесь - строгость сверх
-						 *          договора, и оттого он вынесен в настройку, а по умолчанию снят.
-						 *
-						 * @note В значении атрибута ссылка на внешнюю сущность запрещена самим
-						 *       договором, и там отказ следует ВСЕГДА, независимо от этого флага
-						 *
-						 * @warning Пропущенная ссылка в дерево НЕ ЛОЖИТСЯ никак: перезапись
-						 *          разобранного даёт текст БЕЗ неё, и содержимое это теряется молча.
-						 *          Разбору договор велит ссылку лишь распознать, а вот круговой ход
-						 *          договором не описан вовсе - потому поведение это и оговорено здесь.
-						 *          Держать ссылку в дереве значило бы завести ей свой вид узла и своё
-						 *          событие разбора; решение это ещё не принято
-						 *
-						 * \~english
-						 * @brief Flag of the refusal of the parsing upon a reference to an external entity in a content
-						 *
-						 * @details External entities are never loaded, and there is nothing to substitute such
-						 *          a reference with. The standard orders a parser not reading them to RECOGNIZE the reference
-						 *          and skip it rather than to reject the text: a refusal here is a strictness beyond
-						 *          the standard, and therefore it is carried out into a setting, being removed by default.
-						 *
-						 * @note In an attribute value a reference to an external entity is forbidden by the standard
-						 *       itself, and a refusal there follows ALWAYS, independently of this flag
-						 *
-						 * @warning A skipped reference is NOT PUT into the tree in any way: a rewriting of what has
-						 *          been parsed gives a text WITHOUT it, and such a content is lost silently. The
-						 *          protocol orders a parsing to recognize a reference only, while a round trip is
-						 *          not described by the protocol at all - therefore this behaviour is stipulated
-						 *          here. To keep a reference in a tree would mean to make for it an own kind of a
-						 *          node and an own event of the parsing; that decision has not been taken yet
-						 *
-						 * \~
-						 */
 						/**
 						 * \~russian
 						 * @note Умолчание это (`false` - внешние ссылки НЕ отвергаются, а распознаются и
@@ -382,6 +368,16 @@ namespace awh {
 						 * \~
 						 */
 						bool externals;
+						// Флаг разрешения префиксов по договору о пространствах имён
+						bool namespaces;
+						// Флаг выдачи примечаний отдельным событием
+						bool emitComments;
+						// Флаг выдачи указаний обработчику отдельным событием
+						bool emitProcessing;
+						// Флаг отделения незначимого пробельного содержимого от текстового
+						bool separateSpaces;
+						// Наибольшая допустимая длина имени в знаках, ноль - без предела; отказ кодом NAME_TOO_LONG
+						uint32_t maxName;
 						/**
 						 * \~russian
 						 * @brief Наибольшая допустимая глубина вложенности узлов, ноль - без предела
@@ -410,10 +406,6 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxDepth;
-						// Наибольшая допустимая длина имени в знаках, ноль - без предела; отказ кодом NAME_TOO_LONG
-						uint32_t maxName;
-						// Наибольшее допустимое количество атрибутов у одного узла, ноль - без предела; отказ кодом TOO_MANY_ATTRIBUTES
-						uint32_t maxAttributes;
 						/**
 						 * \~russian
 						 * Наибольшее количество ОБЪЯВЛЕННЫХ сущностей, ноль - без предела; отказ кодом ENTITY_COUNT_EXCEEDED
@@ -435,44 +427,8 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxEntities;
-						/**
-						 * \~russian
-						 * Наибольший допустимый общий объём подстановки сущностей в байтах
-						 *
-						 * @warning Поднятие этого предела выше четырёх гигабайт упирается в
-						 *          разрядность отрезка хранилища: места значений записаны 32 разрядами,
-						 *          и за этим пределом разбор отвечает отказом `OVERFLOW_LIMIT`. Отказ
-						 *          заведён намеренно вместо расширения разрядности: без него смещение
-						 *          обращалось в младшие разряды, и значение атрибута молча выдавалось
-						 *          чужое - воспроизведено на 34 атрибутах по 128 мегабайт. Разметки,
-						 *          где значения одного узла превосходят четыре гигабайта, не бывает,
-						 *          а восьмибайтовое место удвоило бы объём перечня атрибутов у всех
-						 *
-						 * @note Ноль снимает предел вовсе - так же, как у прочих пределов кодека
-						 *       и у кодеков JSON и CSV. Прежде ноль означал предел В НОЛЬ, и разбор
-						 *       отвечал отказом на всякий текст: настройка, снятая по образцу
-						 *       соседнего кодека, валила разбор целиком
-						 *
-						 * \~english
-						 * Largest admissible total volume of the substitution of the entities in bytes
-						 *
-						 * @warning A raising of this limit above four gigabytes runs into the
-						 *          width of a segment of the storage: the places of the values are written with 32 bits,
-						 *          and beyond that limit the parsing answers with an `OVERFLOW_LIMIT` refusal. The refusal
-						 *          has been introduced deliberately instead of a widening of the width: without it the offset
-						 *          turned into the low bits, and the value of an attribute was silently issued as
-						 *          a foreign one — reproduced on 34 attributes of 128 megabytes each. There is no markup
-						 *          where the values of a single node exceed four gigabytes,
-						 *          while an eight-byte place would double the volume of the list of the attributes for everyone
-						 *
-						 * @note A zero removes the limit altogether - the same as at the other limits of the
-						 *       codec and at the codecs JSON and CSV. Before, a zero meant a limit OF ZERO, and the
-						 *       parsing answered with a refusal upon any text: a setting, removed by the pattern of
-						 *       the neighbouring codec, brought the whole parsing down
-						 *
-						 * \~
-						 */
-						uint64_t maxExpansion;
+						// Наибольшее допустимое количество атрибутов у одного узла, ноль - без предела; отказ кодом TOO_MANY_ATTRIBUTES
+						uint32_t maxAttributes;
 						/**
 						 * \~russian
 						 * Наибольший допустимый объём одного события в байтах, ноль снимает предел
@@ -527,35 +483,72 @@ namespace awh {
 						 * \~
 						 */
 						uint64_t maxEvent;
+						/**
+						 * \~russian
+						 * Наибольший допустимый общий объём подстановки сущностей в байтах
+						 *
+						 * @warning Поднятие этого предела выше четырёх гигабайт упирается в
+						 *          разрядность отрезка хранилища: места значений записаны 32 разрядами,
+						 *          и за этим пределом разбор отвечает отказом `OVERFLOW_LIMIT`. Отказ
+						 *          заведён намеренно вместо расширения разрядности: без него смещение
+						 *          обращалось в младшие разряды, и значение атрибута молча выдавалось
+						 *          чужое - воспроизведено на 34 атрибутах по 128 мегабайт. Разметки,
+						 *          где значения одного узла превосходят четыре гигабайта, не бывает,
+						 *          а восьмибайтовое место удвоило бы объём перечня атрибутов у всех
+						 *
+						 * @note Ноль снимает предел вовсе - так же, как у прочих пределов кодека
+						 *       и у кодеков JSON и CSV. Прежде ноль означал предел В НОЛЬ, и разбор
+						 *       отвечал отказом на всякий текст: настройка, снятая по образцу
+						 *       соседнего кодека, валила разбор целиком
+						 *
+						 * \~english
+						 * Largest admissible total volume of the substitution of the entities in bytes
+						 *
+						 * @warning A raising of this limit above four gigabytes runs into the
+						 *          width of a segment of the storage: the places of the values are written with 32 bits,
+						 *          and beyond that limit the parsing answers with an `OVERFLOW_LIMIT` refusal. The refusal
+						 *          has been introduced deliberately instead of a widening of the width: without it the offset
+						 *          turned into the low bits, and the value of an attribute was silently issued as
+						 *          a foreign one — reproduced on 34 attributes of 128 megabytes each. There is no markup
+						 *          where the values of a single node exceed four gigabytes,
+						 *          while an eight-byte place would double the volume of the list of the attributes for everyone
+						 *
+						 * @note A zero removes the limit altogether - the same as at the other limits of the
+						 *       codec and at the codecs JSON and CSV. Before, a zero meant a limit OF ZERO, and the
+						 *       parsing answered with a refusal upon any text: a setting, removed by the pattern of
+						 *       the neighbouring codec, brought the whole parsing down
+						 *
+						 * \~
+						 */
+						uint64_t maxExpansion;
 						// Кодировка, навязанная извне вопреки объявленной в тексте
 						encoding_t encoding;
 						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
 					 * \~russian
-					 * @brief Объявление сущности внутреннего подмножества описания типа
+					 * @brief Структура объявления сущности внутреннего подмножества описания типа
 					 *
 					 * \~english
-					 * @brief Entity declaration of the internal subset of a type definition
+					 * @brief Structure of an entity declaration within a subset of a type definition
 					 *
 					 * \~
 					 */
-					typedef struct Entity {
-						// Подставляемое значение сущности
-						string value;
-						// Флаг того, что сущность объявлена внешней
-						bool external;
+					typedef struct __AWH_SHARED_EXPORT__ Entity {
+						// Флаг того, что подстановка сущности выполняется в текущий миг
+						bool active;
+						// Флаг того, что значение сущности содержит разметку
+						bool markup;
 						/**
 						 * \~russian
 						 * Признак сущности, объявленной НЕРАЗБИРАЕМОЙ (словом «NDATA»)
@@ -574,38 +567,37 @@ namespace awh {
 						 * \~
 						 */
 						bool unparsed;
-						// Флаг того, что подстановка сущности выполняется в текущий миг
-						bool active;
-						// Флаг того, что значение сущности содержит разметку
-						bool markup;
+						// Флаг того, что сущность объявлена внешней
+						bool external;
+						// Подставляемое значение сущности
+						string value;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Entity() noexcept : external(false), unparsed(false), active(false), markup(false) {}
+						explicit Entity() noexcept;
 					} entity_t;
 					/**
 					 * \~russian
-					 * @brief Значение атрибута, объявленное по умолчанию
+					 * @brief Структура значения атрибута, объявленное по умолчанию
 					 *
 					 * @details Объявляется перечнем атрибутов в описании типа документа и
 					 *          подставляется тем узлам, где атрибут в тексте опущен.
 					 *
 					 * \~english
-					 * @brief Value of an attribute declared by default
+					 * @brief Structure of an attribute value declared by default
 					 *
 					 * @details Declared by a list of the attributes in a document type definition and
 					 *          substituted to those nodes where the attribute is omitted in the text.
 					 *
 					 * \~
 					 */
-					typedef struct Default {
+					typedef struct __AWH_SHARED_EXPORT__ Default {
 						/**
 						 * \~russian
 						 * Признак объявления атрибута видом, отличным от «CDATA»
@@ -642,27 +634,26 @@ namespace awh {
 						 * \~
 						 */
 						bool defaulted;
-						// Префикс имени атрибута
-						string prefix;
 						// Местное имя атрибута
 						string local;
 						// Значение атрибута по умолчанию
 						string value;
+						// Префикс имени атрибута
+						string prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Default() noexcept : tokenized(false), defaulted(false) {}
+						explicit Default() noexcept;
 					} default_t;
 					/**
 					 * \~russian
-					 * @brief Ход поиска конца описания типа документа
+					 * @brief Структура хода поиска конца описания типа документа
 					 *
 					 * @details Описание типа документа приходит кусками наравне с прочей разметкой,
 					 *          а конец его отыскивается перебором знаков: внутри описания стоят и значения в
@@ -677,7 +668,7 @@ namespace awh {
 					 *       а первое оставляет на месте
 					 *
 					 * \~english
-					 * @brief Course of the search of the end of a document type definition
+					 * @brief Structure of the process for locating the end of a document type description
 					 *
 					 * @details A document type definition arrives by chunks on a par with the rest of the markup,
 					 *          while its end is found by a traversal of the characters: inside a definition there stand both the values in
@@ -693,39 +684,38 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Survey {
-						// Достигнутое положение поиска от начала описания
-						size_t offset;
-						// Положение начала внутреннего подмножества от начала описания
-						size_t begin;
-						// Положение конца внутреннего подмножества от начала описания
-						size_t stop;
-						// Знак кавычки, которым заключено значение внутри описания
-						char quote;
+					typedef struct __AWH_SHARED_EXPORT__ Survey {
 						// Признак того, что поиск находится внутри внутреннего подмножества
 						bool inside;
+						// Знак кавычки, которым заключено значение внутри описания
+						char quote;
+						// Положение конца внутреннего подмножества от начала описания
+						size_t stop;
+						// Положение начала внутреннего подмножества от начала описания
+						size_t begin;
+						// Достигнутое положение поиска от начала описания
+						size_t offset;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Survey() noexcept : offset(9), begin(string::npos), stop(string::npos), quote(0), inside(false) {}
+						explicit Survey() noexcept;
 					} survey_t;
 					/**
 					 * \~russian
-					 * @brief Запись раскладки имени атрибута по свёртке
+					 * @brief Структура записи раскладки имени атрибута по свёртке
 					 *
 					 * @details Поиск повторов среди атрибутов узла сличает имена попарно, и число
 					 *          сличений растёт квадратом. Раскладка по свёртке имени сводит совпадающие имена
 					 *          в соседи, после чего сличать требуется лишь их.
 					 *
 					 * \~english
-					 * @brief Record of the layout of the name of an attribute by a hash
+					 * @brief Structure of an attribute name mapping entry based on a convolution
 					 *
 					 * @details The search of the repetitions among the attributes of a node compares the names pairwise, and the number
 					 *          of the comparisons grows as a square. The layout by the hash of a name brings the coinciding names
@@ -733,7 +723,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Digest {
+					typedef struct __AWH_SHARED_EXPORT__ Digest {
 						// Свёртка имени атрибута с учётом пространства имён
 						uint64_t hash;
 						// Положение атрибута в перечне узла
@@ -742,17 +732,16 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Digest() noexcept : hash(0), index(0) {}
+						explicit Digest() noexcept;
 					} digest_t;
 					/**
 					 * \~russian
-					 * @brief Область подставленной в текст сущности
+					 * @brief Структура области подставленной в текст сущности
 					 *
 					 * @details Сущность, значение которой содержит разметку, подставляется
 					 *          прямо в разбираемый текст: разметка внутри неё разбирается наравне с
@@ -761,7 +750,7 @@ namespace awh {
 					 *          заканчиваться в пределах одной сущности.
 					 *
 					 * \~english
-					 * @brief Region of an entity substituted into the text
+					 * @brief Structure of the region corresponding to an entity inserted into the text
 					 *
 					 * @details An entity the value of which contains a markup is substituted
 					 *          right into the text being parsed: the markup inside it is parsed on a par with the one
@@ -771,13 +760,13 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Splice {
+					typedef struct __AWH_SHARED_EXPORT__ Splice {
 						// Положение конца области подстановки в приведённом тексте
 						size_t end;
 						// Глубина стека открытых узлов на начало подстановки
 						size_t depth;
-						// Имя подставленной сущности
-						string name;
+						// Количество байтов, на которое подстановка удлинила разбираемый текст
+						int64_t delta;
 						// Положение ссылки на сущность в исходном тексте
 						location_t location;
 						/**
@@ -787,154 +776,164 @@ namespace awh {
 						 * отвечать исходному тексту: восстанавливаются они по закрытии области
 						 */
 						location_t resume;
-						// Количество байтов, на которое подстановка удлинила разбираемый текст
-						int64_t delta;
+						// Имя подставленной сущности
+						string name;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Splice() noexcept : end(0), depth(0), delta(0) {}
+						explicit Splice() noexcept;
 					} splice_t;
 					/**
 					 * \~russian
-					 * @brief Имя в хранилище знаков разбора
+					 * @brief Структура имени в хранилище знаков разбора
 					 *
 					 * \~english
-					 * @brief Name in the storage of the characters of the parsing
+					 * @brief Name structure in the parse-token repository
 					 *
 					 * \~
 					 */
 					typedef struct Title {
-						// Префикс пространства имён
-						span_t prefix;
-						// Местное имя без префикса
-						span_t local;
 						// Обозначение связанного пространства имён
 						span_t uri;
+						// Местное имя без префикса
+						span_t local;
+						// Префикс пространства имён
+						span_t prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Title() noexcept {}
+						explicit Title() noexcept = default;
 					} title_t;
 					/**
 					 * \~russian
-					 * @brief Открытый узел разметки
+					 * @brief Структура открытого узла разметки
 					 *
 					 * \~english
-					 * @brief Open markup node
+					 * @brief Structure of an open markup node
 					 *
 					 * \~
 					 */
-					typedef struct Element {
+					typedef struct __AWH_SHARED_EXPORT__ Element {
 						// Имя узла в хранилище знаков разбора
 						title_t name;
 						// Имя узла в записи, принятой в исходном тексте
 						span_t qname;
-						// Количество связываний префиксов, объявленных узлом
-						uint32_t bindings;
 						// Обращение с пробельным содержимым внутри узла
 						space_t space;
+						// Количество связываний префиксов, объявленных узлом
+						uint32_t bindings;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Element() noexcept : bindings(0), space(space_t::DEFAULT) {}
+						explicit Element() noexcept;
 					} element_t;
 					/**
 					 * \~russian
-					 * @brief Связывание префикса с пространством имён в области видимости
+					 * @brief Структура связывания префикса с пространством имён в области видимости
 					 *
 					 * \~english
-					 * @brief Binding of a prefix to a namespace in a scope
+					 * @brief Structure for binding a prefix to a namespace within a scope
 					 *
 					 * \~
 					 */
 					typedef struct Scope {
-						// Префикс в хранилище знаков разбора
-						span_t prefix;
 						// Обозначение пространства имён в хранилище знаков разбора
 						span_t uri;
+						// Префикс в хранилище знаков разбора
+						span_t prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Scope() noexcept {}
+						explicit Scope() noexcept = default;
 					} scope_t;
 					/**
 					 * \~russian
-					 * @brief Объявление пространства имён узла до разрешения
+					 * @brief Структура объявления пространства имён узла до разрешения
 					 *
 					 * \~english
-					 * @brief Declaration of the namespace of a node before the resolution
+					 * @brief Structure of a node namespace declaration prior to resolution
 					 *
 					 * \~
 					 */
-					typedef struct Record {
-						// Префикс атрибута в исходном тексте
-						string_view prefix;
-						// Местное имя атрибута в исходном тексте
-						string_view local;
-						// Значение атрибута в хранилище приведённых значений
-						span_t value;
-						// Обозначение пространства имён в хранилище знаков разбора
-						span_t uri;
-						// Положение атрибута в исходном тексте
-						location_t location;
+					typedef struct __AWH_SHARED_EXPORT__ Record {
 						// Признак того, что значение взято из объявления по умолчанию
 						bool defaulted;
+						// Обозначение пространства имён в хранилище знаков разбора
+						span_t uri;
+						// Значение атрибута в хранилище приведённых значений
+						span_t value;
+						// Положение атрибута в исходном тексте
+						location_t location;
+						// Местное имя атрибута в исходном тексте
+						string_view local;
+						// Префикс атрибута в исходном тексте
+						string_view prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Record() noexcept : defaulted(false) {}
+						explicit Record() noexcept;
 					} record_t;
-				private:
-					// Объект приведения исходного текста к кодировке UTF-8
-					decoder_t _decoder;
-				private:
-					// Признак получения последнего куска исходного текста
-					bool _final;
 				private:
 					// Признак того, что корневой узел разметки уже встречен
 					bool _root;
-				private:
-					// Признак того, что объявление разметки уже встречено
-					bool _declared;
-				private:
-					// Признак того, что описание типа документа уже встречено
-					bool _doctype;
-				private:
+					// Признак получения последнего куска исходного текста
+					bool _final;
+					// Признак того, что разбор находится внутри раздела дословного текста
+					bool _cdata;
+					// Признак того, что текущий узел записан самозакрывающейся меткой
+					bool _empty;
+					/**
+					 * \~russian
+					 * Признак того, что текущее содержимое узла уже выдано непробельной частью
+					 *
+					 * @note Незначимым пробельным содержимое считается лишь тогда, когда пробельным
+					 *       оказалось оно целиком, а выдаётся оно частями по мере поступления кусков
+					 *       исходного текста. Стоит хоть одной части оказаться непробельной, как остальные
+					 *       части того же содержимого незначимыми быть перестают, чем бы они ни были
+					 *       записаны: иначе вид события зависел бы от того, где легла граница куска
+					 *
+					 * \~english
+					 * Flag of the current content of a node having already been issued by a non-whitespace part
+					 *
+					 * @note A content is considered an insignificant whitespace one only when it has turned out to be
+					 *       a whitespace one in full, while it is issued by parts as the chunks of the source text
+					 *       arrive. It is enough for even one part to turn out non-whitespace for the remaining
+					 *       parts of the same content to cease being insignificant, however they may be
+					 *       written: otherwise the kind of the event would depend on where the boundary of a chunk has fallen
+					 *
+					 * \~
+					 */
+					bool _dirty;
 					/**
 					 * \~russian
 					 * Признак того, что объявления могут приходить извне разобранного
@@ -957,6 +956,109 @@ namespace awh {
 					 * \~
 					 */
 					bool _foreign;
+					// Признак того, что описание типа документа уже встречено
+					bool _doctype;
+					// Признак того, что следующим событием является конец текущего узла
+					bool _closing;
+					/**
+					 * \~russian
+					 * Признак того, что часть текущего раздела дословного текста уже выдана
+					 *
+					 * @note Раздел, разорванный границами кусков, выдаётся частями, и последняя
+					 *       из них оказывается пустой всякий раз, когда граница легла прямо перед
+					 *       завершением раздела. Пустое событие узлу ничего не добавляет, а дерево
+					 *       получает от него пустой узел содержимого, из-за которого запись перестаёт
+					 *       складываться самозакрывающейся меткой. Пустой хвост потому пропускается -
+					 *       но лишь у раздела, часть которого уже выдана: раздел, пустой сам по себе,
+					 *       своё единственное событие выдаёт наравне с прочими
+					 *
+					 * \~english
+					 * Flag of a part of the current literal text section having already been issued
+					 *
+					 * @note A section broken by the boundaries of the chunks is issued by parts, and the last
+					 *       of them turns out empty every time the boundary has fallen right before
+					 *       the termination of the section. An empty event adds nothing to a node, while the tree
+					 *       receives from it an empty content node, because of which the writing ceases
+					 *       to fold into a self-closing tag. An empty tail is therefore skipped —
+					 *       but only for a section a part of which has already been issued: a section empty
+					 *       in itself issues its single event on a par with the rest
+					 *
+					 * \~
+					 */
+					bool _partial;
+					/**
+					 * \~russian
+					 * Признак того, что начало содержимого перенесено с пропущенного шага
+					 *
+					 * @note Содержимое, целиком составленное ссылками на пустые сущности,
+					 *       события не выдаёт, а место разбора проходит вперёд. Начало содержимого
+					 *       потому переносится на следующий шаг: иначе место события зависело бы
+					 *       от того, где легла граница куска, - содержимое, пришедшее целиком,
+					 *       дало бы местом начало всего содержимого, а разорванное границей -
+					 *       начало своей непустой части
+					 *
+					 * \~english
+					 * Flag of the beginning of a content having been carried over from a skipped step
+					 *
+					 * @note A content composed entirely of the references to empty entities
+					 *       issues no event, while the place of the parsing moves forward. The beginning of the content
+					 *       is therefore carried over to the next step: otherwise the place of an event would depend
+					 *       on where the boundary of a chunk has fallen — a content that arrived in full
+					 *       would give as the place the beginning of the whole content, while one broken by a boundary —
+					 *       the beginning of its non-empty part
+					 *
+					 * \~
+					 */
+					bool _carried;
+					// Признак того, что объявление разметки уже встречено
+					bool _declared;
+					/**
+					 * \~russian
+					 * Признак того, что разобранное имя превысило предел, заданный настройками
+					 *
+					 * @details Отказ разбора имени выходит из двух разных поводов: имя построено
+					 *          ошибочно либо длина его превысила предел настроек. Поводы эти вызывающему
+					 *          следует различать: первый означает испорченную разметку, а второй - лишь
+					 *          то, что предел выставлен уже, чем разметка того требует.
+					 *
+					 * @note Признак сбрасывается при входе в разбор всякого имени: держится он
+					 *       ровно до выдачи отказа и на следующее имя не переходит
+					 *
+					 * \~english
+					 * Flag of the parsed name having exceeded the limit given by the settings
+					 *
+					 * @details A refusal of the parsing of a name comes out of two different causes: the name is constructed
+					 *          erroneously or its length has exceeded the limit of the settings. The caller should
+					 *          distinguish those causes: the first means a spoiled markup, while the second — only
+					 *          that the limit has been set narrower than the markup requires.
+					 *
+					 * @note The flag is reset at the entry into the parsing of every name: it is held
+					 *       exactly until the issuance of the refusal and does not pass over to the next name
+					 *
+					 * \~
+					 */
+					bool _overlong;
+					/**
+					 * \~russian
+					 * Признак объявления хотя бы одного атрибута видом, приведению подлежащим
+					 *
+					 * @details Приведение значений обходится в четверть скорости чтения документа
+					 *          с описанием типа, а описание, объявляющее одни лишь атрибуты вида «CDATA»,
+					 *          приводить нечего вовсе. Признак этот снимает с такого описания и розыск
+					 *          объявлений на всякий узел, и перебор их по всякому атрибуту.
+					 *
+					 * \~english
+					 * Flag of a declaration of at least one attribute by a kind subject to the normalization
+					 *
+					 * @details The normalization of the values costs a quarter of the speed of the reading
+					 *          of a document with a document type definition, while a definition declaring only
+					 *          the attributes of the kind «CDATA» has nothing to normalize at all. This flag removes
+					 *          from such a definition both the search of the declarations for every node and their
+					 *          enumeration for every attribute.
+					 *
+					 * \~
+					 */
+					bool _tokenized;
 					/**
 					 * \~russian
 					 * Признак встреченной ссылки на непрочитанную параметрическую сущность
@@ -985,97 +1087,112 @@ namespace awh {
 					 * \~
 					 */
 					bool _incomplete;
+				private:
+					// Текущий номер строки в исходном тексте
+					uint32_t _line;
+					// Глубина вложенности узла текущего события
+					uint32_t _depth;
+					// Текущее положение в строке исходного текста
+					uint32_t _column;
+				private:
+					// Положение разбора в приведённом исходном тексте
+					size_t _offset;
 					/**
 					 * \~russian
-					 * Признак того, что разобранное имя превысило предел, заданный настройками
+					 * Положение начала раздела дословного текста в приведённом тексте
 					 *
-					 * @details Отказ разбора имени выходит из двух разных поводов: имя построено
-					 *          ошибочно либо длина его превысила предел настроек. Поводы эти вызывающему
-					 *          следует различать: первый означает испорченную разметку, а второй - лишь
-					 *          то, что предел выставлен уже, чем разметка того требует.
-					 *
-					 * @note Признак сбрасывается при входе в разбор всякого имени: держится он
-					 *       ровно до выдачи отказа и на следующее имя не переходит
+					 * @note Держится ради проверки границы подстановки: раздел, начатый внутри
+					 *       подставленной сущности, обязан внутри неё и закончиться, а разбор его
+					 *       растянут по кускам исходного текста - начало к концу разбора уже пройдено
 					 *
 					 * \~english
-					 * Flag of the parsed name having exceeded the limit given by the settings
+					 * Position of the beginning of a literal text section in the converted text
 					 *
-					 * @details A refusal of the parsing of a name comes out of two different causes: the name is constructed
-					 *          erroneously or its length has exceeded the limit of the settings. The caller should
-					 *          distinguish those causes: the first means a spoiled markup, while the second — only
-					 *          that the limit has been set narrower than the markup requires.
-					 *
-					 * @note The flag is reset at the entry into the parsing of every name: it is held
-					 *       exactly until the issuance of the refusal and does not pass over to the next name
+					 * @note It is kept for the sake of the check of the boundary of a substitution: a section begun inside
+					 *       a substituted entity is obliged to end inside it as well, while its parsing
+					 *       is stretched over the chunks of the source text — the beginning by the end of the parsing has already been passed
 					 *
 					 * \~
 					 */
-					bool _overlong;
+					size_t _section;
+					// Смещение усечения хранилища знаков, отложенного до следующего события
+					size_t _truncate;
+					// Положение отложенного отказа разбора в исходном тексте
+					size_t _postponed;
 				private:
-					// Признак того, что текущий узел записан самозакрывающейся меткой
-					bool _empty;
+					// Количество байтов, изъятых из начала приведённого текста
+					uint64_t _consumed;
+					// Общий объём выполненной подстановки сущностей в байтах
+					uint64_t _expansion;
 				private:
-					// Признак того, что следующим событием является конец текущего узла
-					bool _closing;
+					// Отрезок хранилища с обозначением пространства имён, отведённого префиксу «xml»
+					span_t _xml;
+					// Имя узла либо цель указания обработчику текущего события
+					name_t _name;
+					// Обращение с пробельным содержимым в текущем узле
+					space_t _space;
+					// Текущее состояние чтения текста разметки
+					state_t _state;
+					// Вид текущего события разбора
+					event_t _event;
+					// Ход поиска конца описания типа документа между кусками текста
+					survey_t _survey;
+					// Объект приведения исходного текста к кодировке UTF-8
+					decoder_t _decoder;
+					// Определённая кодировка исходного текста
+					encoding_t _encoding;
+					// Настройки разбора текста разметки
+					settings_t _settings;
+					// Признак самодостаточности текста разметки
+					standalone_t _standalone;
 				private:
-					// Признак того, что разбор находится внутри раздела дословного текста
-					bool _cdata;
-				private:
+					// Код ошибки последней операции разбора
+					error_t _error;
 					/**
 					 * \~russian
-					 * Признак того, что часть текущего раздела дословного текста уже выдана
+					 * Отказ разбора, отложенный до выдачи накопленного содержимого
 					 *
-					 * @note Раздел, разорванный границами кусков, выдаётся частями, и последняя
-					 *       из них оказывается пустой всякий раз, когда граница легла прямо перед
-					 *       завершением раздела. Пустое событие узлу ничего не добавляет, а дерево
-					 *       получает от него пустой узел содержимого, из-за которого запись перестаёт
-					 *       складываться самозакрывающейся меткой. Пустой хвост потому пропускается -
-					 *       но лишь у раздела, часть которого уже выдана: раздел, пустой сам по себе,
-					 *       своё единственное событие выдаёт наравне с прочими
+					 * @details Ссылка на необъявленную сущность стоит посреди содержимого, и
+					 *          содержимое, разобранное до неё, отказом не отменяется: подача кусками
+					 *          успевала выдать его событием, а подача целиком выбрасывала - тот же текст
+					 *          давал разный набор событий. Отказ потому запоминается, накопленное
+					 *          выдаётся событием, и лишь следом за ним разбор отвечает отказом.
 					 *
 					 * \~english
-					 * Flag of a part of the current literal text section having already been issued
+					 * Refusal of the parsing deferred until the issuing of the accumulated content
 					 *
-					 * @note A section broken by the boundaries of the chunks is issued by parts, and the last
-					 *       of them turns out empty every time the boundary has fallen right before
-					 *       the termination of the section. An empty event adds nothing to a node, while the tree
-					 *       receives from it an empty content node, because of which the writing ceases
-					 *       to fold into a self-closing tag. An empty tail is therefore skipped —
-					 *       but only for a section a part of which has already been issued: a section empty
-					 *       in itself issues its single event on a par with the rest
+					 * @details A reference to an undeclared entity stands in the middle of a content, and the
+					 *          content parsed before it is not cancelled by the refusal: the feeding by chunks
+					 *          managed to issue it as an event, while the feeding in full discarded it — the same text
+					 *          gave a different set of events. The refusal is therefore remembered, what has been accumulated
+					 *          is issued as an event, and only after it does the parsing answer with a refusal.
 					 *
 					 * \~
 					 */
-					bool _partial;
-				private:
+					error_t _deferred;
 					/**
 					 * \~russian
-					 * Признак того, что начало содержимого перенесено с пропущенного шага
+					 * Отложенный код ошибки приведения исходного текста к кодировке UTF-8
 					 *
-					 * @note Содержимое, целиком составленное ссылками на пустые сущности,
-					 *       события не выдаёт, а место разбора проходит вперёд. Начало содержимого
-					 *       потому переносится на следующий шаг: иначе место события зависело бы
-					 *       от того, где легла граница куска, - содержимое, пришедшее целиком,
-					 *       дало бы местом начало всего содержимого, а разорванное границей -
-					 *       начало своей непустой части
+					 * @note Приведение переносит в хранилище всё, что успело проверить, и
+					 *       лишь затем отвечает отказом. Отказ выдаётся не сразу, а по
+					 *       исчерпании приведённого начала текста: иначе разбор одного и
+					 *       того же текста целиком и кусками расходился бы событиями
 					 *
 					 * \~english
-					 * Flag of the beginning of a content having been carried over from a skipped step
+					 * Postponed error code of the conversion of the source text to the UTF-8 encoding
 					 *
-					 * @note A content composed entirely of the references to empty entities
-					 *       issues no event, while the place of the parsing moves forward. The beginning of the content
-					 *       is therefore carried over to the next step: otherwise the place of an event would depend
-					 *       on where the boundary of a chunk has fallen — a content that arrived in full
-					 *       would give as the place the beginning of the whole content, while one broken by a boundary —
-					 *       the beginning of its non-empty part
+					 * @note The conversion transfers into the storage everything it has managed to check, and
+					 *       only then answers with a refusal. The refusal is issued not at once but upon
+					 *       the exhaustion of the converted beginning of the text: otherwise the parsing of one and
+					 *       the same text in full and by chunks would diverge in the events
 					 *
 					 * \~
 					 */
-					bool _carried;
+					error_t _decoding;
 				private:
 					// Перенесённое с пропущенного шага место начала содержимого
 					location_t _resumed;
-				private:
 					/**
 					 * \~russian
 					 * Место начала раздела дословного текста в исходном тексте
@@ -1096,76 +1213,19 @@ namespace awh {
 					 * \~
 					 */
 					location_t _opening;
-				private:
-					/**
-					 * \~russian
-					 * Положение начала раздела дословного текста в приведённом тексте
-					 *
-					 * @note Держится ради проверки границы подстановки: раздел, начатый внутри
-					 *       подставленной сущности, обязан внутри неё и закончиться, а разбор его
-					 *       растянут по кускам исходного текста - начало к концу разбора уже пройдено
-					 *
-					 * \~english
-					 * Position of the beginning of a literal text section in the converted text
-					 *
-					 * @note It is kept for the sake of the check of the boundary of a substitution: a section begun inside
-					 *       a substituted entity is obliged to end inside it as well, while its parsing
-					 *       is stretched over the chunks of the source text — the beginning by the end of the parsing has already been passed
-					 *
-					 * \~
-					 */
-					size_t _section;
-				private:
-					/**
-					 * \~russian
-					 * Признак того, что текущее содержимое узла уже выдано непробельной частью
-					 *
-					 * @note Незначимым пробельным содержимое считается лишь тогда, когда пробельным
-					 *       оказалось оно целиком, а выдаётся оно частями по мере поступления кусков
-					 *       исходного текста. Стоит хоть одной части оказаться непробельной, как остальные
-					 *       части того же содержимого незначимыми быть перестают, чем бы они ни были
-					 *       записаны: иначе вид события зависел бы от того, где легла граница куска
-					 *
-					 * \~english
-					 * Flag of the current content of a node having already been issued by a non-whitespace part
-					 *
-					 * @note A content is considered an insignificant whitespace one only when it has turned out to be
-					 *       a whitespace one in full, while it is issued by parts as the chunks of the source text
-					 *       arrive. It is enough for even one part to turn out non-whitespace for the remaining
-					 *       parts of the same content to cease being insignificant, however they may be
-					 *       written: otherwise the kind of the event would depend on where the boundary of a chunk has fallen
-					 *
-					 * \~
-					 */
-					bool _dirty;
-				private:
-					// Приведённый к кодировке UTF-8 исходный текст
-					string _buffer;
-				private:
-					// Положение разбора в приведённом исходном тексте
-					size_t _offset;
-				private:
-					// Количество байтов, изъятых из начала приведённого текста
-					uint64_t _consumed;
-				private:
-					// Текущий номер строки в исходном тексте
-					uint32_t _line;
-				private:
-					// Текущее положение в строке исходного текста
-					uint32_t _column;
-				private:
-					// Глубина вложенности узла текущего события
-					uint32_t _depth;
+					// Положение начала текущего события в исходном тексте
+					location_t _location;
+					// Положение обнаруженной ошибки в исходном тексте
+					location_t _errorLocation;
 				private:
 					// Хранилище знаков имён узлов и обозначений пространств имён
 					string _names;
-				private:
-					// Отрезок хранилища с обозначением пространства имён, отведённого префиксу «xml»
-					span_t _xml;
-				private:
-					// Смещение усечения хранилища знаков, отложенного до следующего события
-					size_t _truncate;
-				private:
+					// Приведённый к кодировке UTF-8 исходный текст
+					string _buffer;
+					// Хранилище приведённых значений атрибутов и содержимого узлов
+					string _scratch;
+					// Объявленное издание разметки
+					string _version;
 					/**
 					 * \~russian
 					 * Буфер ключа отыскания в хранилищах объявлений описания типа документа
@@ -1199,75 +1259,32 @@ namespace awh {
 					 */
 					mutable string _lookup;
 				private:
-					// Хранилище приведённых значений атрибутов и содержимого узлов
-					string _scratch;
-				private:
-					// Общий объём выполненной подстановки сущностей в байтах
-					uint64_t _expansion;
-				private:
-					// Стек открытых узлов разметки
-					vector <element_t> _stack;
-				private:
-					// Действующие связывания префиксов с пространствами имён
-					vector <scope_t> _scopes;
-				private:
-					// Объявления пространств имён текущего узла до разрешения
-					vector <record_t> _declares;
-				private:
-					// Отрезки значений атрибутов текущего узла в хранилище приведённых значений
-					vector <span_t> _values;
-				private:
-					// Открытые области подставленных в текст сущностей
-					vector <splice_t> _splices;
-				private:
-					// Ход поиска конца описания типа документа между кусками текста
-					survey_t _survey;
+					// Содержимое текущего события
+					string_view _text;
 				private:
 					// Ключи имён атрибутов текущего узла для поиска повторов
 					vector <uint64_t> _keys;
-				private:
+					// Отрезки значений атрибутов текущего узла в хранилище приведённых значений
+					vector <span_t> _values;
+					// Действующие связывания префиксов с пространствами имён
+					vector <scope_t> _scopes;
+					// Стек открытых узлов разметки
+					vector <element_t> _stack;
+					// Открытые области подставленных в текст сущностей
+					vector <splice_t> _splices;
 					// Раскладка имён атрибутов текущего узла по свёртке для поиска повторов
 					vector <digest_t> _digests;
+					// Объявления пространств имён текущего узла до разрешения
+					vector <record_t> _declares;
+					// Перечень объявлений пространств имён текущего узла
+					vector <binding_t> _bindings;
+					// Перечень атрибутов текущего узла
+					vector <attribute_t> _attributes;
 				private:
-					/**
-					 * \~russian
-					 * @brief Вид значения в кавычках внутреннего подмножества
-					 *
-					 * @details Договор задаёт четыре вида значений в кавычках, и допустимое
-					 *          внутри них содержимое у каждого своё: значение сущности не допускает
-					 *          одиноких знаков ссылки, значение атрибута - знака начала разметки,
-					 *          обозначение общедоступного источника - лишь ограниченного набора знаков.
-					 *
-					 * \~english
-					 * @brief Kind of a quoted value of the internal subset
-					 *
-					 * @details The protocol gives four kinds of the quoted values, and the content admissible
-					 *          inside them is its own for each of them: the value of an entity does not admit
-					 *          the lone characters of a reference, the value of an attribute — the character of the beginning of a markup,
-					 *          the designation of a public source — only a limited set of the characters.
-					 *
-					 * \~
-					 */
-					enum class literal_t : uint8_t {
-						ENTITY    = 0x01, // Значение объявляемой сущности
-						ATTRIBUTE = 0x02, // Объявленное по умолчанию значение атрибута
-						SYSTEM    = 0x03, // Обозначение размещения внешнего источника
-						PUBLIC    = 0x04  // Обозначение общедоступного внешнего источника
-					};
-					/**
-					 * \~russian
-					 * @brief Итог одного шага разбора
-					 *
-					 * \~english
-					 * @brief Result of a single step of the parsing
-					 *
-					 * \~
-					 */
-					enum class step_t : uint8_t {
-						DONE   = 0x00, // Событие разбора получено
-						HUNGRY = 0x01, // Для продолжения разбора требуется следующий кусок текста
-						FAILED = 0x02  // Разбор прекращён ошибкой
-					};
+					// Объявленные сущности внутреннего подмножества описания типа
+					unordered_map <string, entity_t> _entities;
+					// Объявленные по умолчанию значения атрибутов, разложенные по именам узлов
+					unordered_map <string, vector <default_t>> _attlists;
 				private:
 					/**
 					 * \~russian
@@ -1735,8 +1752,8 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод подстановки ссылки на сущность
 					 *
-					 * @param offset положение разбора в приведённом исходном тексте
-					 * @param end    положение конца разбираемой разметки
+					 * @param offset  положение разбора в приведённом исходном тексте
+					 * @param end     положение конца разбираемой разметки
 					 * @param result  текст, к которому дописывается подставленное значение
 					 * @param depth   текущая глубина вложенности ссылок на сущности
 					 * @param space   признак приведения пробельных знаков значения
@@ -1746,8 +1763,8 @@ namespace awh {
 					 * \~english
 					 * @brief Method of substituting a reference to an entity
 					 *
-					 * @param offset position of the parsing in the converted source text
-					 * @param end    position of the end of the markup being parsed
+					 * @param offset  position of the parsing in the converted source text
+					 * @param end     position of the end of the markup being parsed
 					 * @param result  text to which the substituted value is appended
 					 * @param depth   current depth of the nesting of the references to the entities
 					 * @param space   flag of the conversion of the whitespace characters of the value
@@ -2130,122 +2147,6 @@ namespace awh {
 					 * \~
 					 */
 					span_t lookup(const string_view prefix) const noexcept;
-				private:
-					// Настройки разбора текста разметки
-					settings_t _settings;
-				private:
-					// Текущее состояние чтения текста разметки
-					state_t _state;
-				private:
-					// Вид текущего события разбора
-					event_t _event;
-				private:
-					// Код ошибки последней операции разбора
-					error_t _error;
-				private:
-					/**
-					 * \~russian
-					 * Отложенный код ошибки приведения исходного текста к кодировке UTF-8
-					 *
-					 * @note Приведение переносит в хранилище всё, что успело проверить, и
-					 *       лишь затем отвечает отказом. Отказ выдаётся не сразу, а по
-					 *       исчерпании приведённого начала текста: иначе разбор одного и
-					 *       того же текста целиком и кусками расходился бы событиями
-					 *
-					 * \~english
-					 * Postponed error code of the conversion of the source text to the UTF-8 encoding
-					 *
-					 * @note The conversion transfers into the storage everything it has managed to check, and
-					 *       only then answers with a refusal. The refusal is issued not at once but upon
-					 *       the exhaustion of the converted beginning of the text: otherwise the parsing of one and
-					 *       the same text in full and by chunks would diverge in the events
-					 *
-					 * \~
-					 */
-					error_t _decoding;
-				private:
-					/**
-					 * \~russian
-					 * Отказ разбора, отложенный до выдачи накопленного содержимого
-					 *
-					 * @details Ссылка на необъявленную сущность стоит посреди содержимого, и
-					 *          содержимое, разобранное до неё, отказом не отменяется: подача кусками
-					 *          успевала выдать его событием, а подача целиком выбрасывала - тот же текст
-					 *          давал разный набор событий. Отказ потому запоминается, накопленное
-					 *          выдаётся событием, и лишь следом за ним разбор отвечает отказом.
-					 *
-					 * \~english
-					 * Refusal of the parsing deferred until the issuing of the accumulated content
-					 *
-					 * @details A reference to an undeclared entity stands in the middle of a content, and the
-					 *          content parsed before it is not cancelled by the refusal: the feeding by chunks
-					 *          managed to issue it as an event, while the feeding in full discarded it — the same text
-					 *          gave a different set of events. The refusal is therefore remembered, what has been accumulated
-					 *          is issued as an event, and only after it does the parsing answer with a refusal.
-					 *
-					 * \~
-					 */
-					error_t _deferred;
-				private:
-					// Положение отложенного отказа разбора в исходном тексте
-					size_t _postponed;
-				private:
-					// Определённая кодировка исходного текста
-					encoding_t _encoding;
-				private:
-					// Признак самодостаточности текста разметки
-					standalone_t _standalone;
-				private:
-					// Обращение с пробельным содержимым в текущем узле
-					space_t _space;
-				private:
-					// Имя узла либо цель указания обработчику текущего события
-					name_t _name;
-				private:
-					// Содержимое текущего события
-					string_view _text;
-				private:
-					// Положение начала текущего события в исходном тексте
-					location_t _location;
-				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					location_t _errorLocation;
-				private:
-					// Объявленное издание разметки
-					string _version;
-				private:
-					// Перечень атрибутов текущего узла
-					vector <attribute_t> _attributes;
-				private:
-					// Перечень объявлений пространств имён текущего узла
-					vector <binding_t> _bindings;
-				private:
-					// Объявленные сущности внутреннего подмножества описания типа
-					unordered_map <string, entity_t> _entities;
-				private:
-					// Объявленные по умолчанию значения атрибутов, разложенные по именам узлов
-					unordered_map <string, vector <default_t>> _attlists;
-					/**
-					 * \~russian
-					 * Признак объявления хотя бы одного атрибута видом, приведению подлежащим
-					 *
-					 * @details Приведение значений обходится в четверть скорости чтения документа
-					 *          с описанием типа, а описание, объявляющее одни лишь атрибуты вида «CDATA»,
-					 *          приводить нечего вовсе. Признак этот снимает с такого описания и розыск
-					 *          объявлений на всякий узел, и перебор их по всякому атрибуту.
-					 *
-					 * \~english
-					 * Flag of a declaration of at least one attribute by a kind subject to the normalization
-					 *
-					 * @details The normalization of the values costs a quarter of the speed of the reading
-					 *          of a document with a document type definition, while a definition declaring only
-					 *          the attributes of the kind «CDATA» has nothing to normalize at all. This flag removes
-					 *          from such a definition both the search of the declarations for every node and their
-					 *          enumeration for every attribute.
-					 *
-					 * \~
-					 */
-					bool _tokenized;
 				public:
 					/**
 					 * \~russian
@@ -2665,13 +2566,12 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения содержимого текущего события числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
-					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template of a method for obtaining the contents of the current event by number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -2713,13 +2613,12 @@ namespace awh {
 					}
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения значения атрибута текущего узла числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
-					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template for a method to retrieve the value of a current node's attribute as a number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -2910,7 +2809,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -2934,7 +2832,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor

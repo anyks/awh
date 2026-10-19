@@ -39,20 +39,19 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы модуля
- */
-#include <encoding/charset/charset.hpp>
-
-/**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
-#include <sys/macro/global.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../sys/macro/global.hpp"
+#include "../../encoding/charset/charset.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -69,7 +68,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -79,7 +77,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера XML
-		 *
 		 *
 		 * \~english
 		 * @brief XML container namespace
@@ -100,7 +97,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость в разметке
+			 * @brief Функция проверки знака на допустимость в разметке
 			 *
 			 * @details Договор допускает в тексте разметки лишь горизонтальную табуляцию,
 			 *          перевод строки и возврат каретки из числа управляющих знаков, а прочие
@@ -110,7 +107,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility in the markup
+			 * @brief Function of checking a character for admissibility in the markup
 			 *
 			 * @details The specification admits in the text of a markup only the horizontal tabulation,
 			 *          the line feed and the carriage return out of the control characters, while the other
@@ -124,7 +121,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool isChar(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на пробельность
+			 * @brief Функция проверки знака на пробельность
 			 *
 			 * @details Разметка считает пробельными лишь четыре знака, и правила местности
 			 *          к этому перечню отношения не имеют.
@@ -133,7 +130,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for being a whitespace one
+			 * @brief Function of checking a character for being a whitespace one
 			 *
 			 * @details A markup considers only four characters whitespace ones, and the rules of the locale
 			 *          have no relation to that list.
@@ -146,7 +143,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool isSpace(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость в начале имени
+			 * @brief Функция проверки знака на допустимость в начале имени
 			 *
 			 * @details Перечень допустимых знаков задан договором явными разрядами кодовых
 			 *          значений, а не разрядами Юникода: сличение ведётся по ним, и таблицы Юникода
@@ -156,7 +153,7 @@ namespace awh {
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility at the beginning of a name
+			 * @brief Function of checking a character for admissibility at the beginning of a name
 			 *
 			 * @details The list of the admissible characters is given by the specification as explicit ranges of the code
 			 *          values rather than as Unicode ranges: the comparison is conducted by them, and the Unicode tables
@@ -170,13 +167,13 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool isNameStart(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки знака на допустимость внутри имени
+			 * @brief Функция проверки знака на допустимость внутри имени
 			 *
 			 * @param code кодовое значение проверяемого знака
 			 * @return     результат проверки
 			 *
 			 * \~english
-			 * @brief Method of checking a character for admissibility inside a name
+			 * @brief Function of checking a character for admissibility inside a name
 			 *
 			 * @param code code value of the character being checked
 			 * @return     result of the check
@@ -186,7 +183,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ bool isName(const uint32_t code) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод проверки имени на правильность построения
+			 * @brief Функция проверки имени на правильность построения
 			 *
 			 * @details Записать имя, которое не удастся прочесть обратно, нельзя: такое
 			 *          указание отвергается, а не записывается с надеждой на снисходительность
@@ -200,7 +197,7 @@ namespace awh {
 			 * @return          результат проверки
 			 *
 			 * \~english
-			 * @brief Method of the checking of a name for the correctness of its construction
+			 * @brief Function of the checking of a name for the correctness of its construction
 			 *
 			 * @details A name that will not be read back cannot be written: such an instruction
 			 *          is rejected rather than written in the hope of the leniency of the reader. This judge
@@ -209,9 +206,9 @@ namespace awh {
 			 *          did not judge a name at all — an unfit name was accepted silently, and the writing then
 			 *          issued an empty string over the WHOLE tree without any refusal.
 			 *
-			 * @param name name being checked
+			 * @param name      name being checked
 			 * @param separator sign of the admissibility of the separator of a prefix in the name
-			 * @return result of the check
+			 * @return          result of the check
 			 *
 			 * \~
 			 */
@@ -219,7 +216,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
+			 * @brief Функция чтения кодового значения из текста в кодировке UTF-8
 			 *
 			 * @details Проверяется не только построение последовательности, но и её
 			 *          кратчайшесть: избыточно длинная запись кодового значения отвергается как
@@ -231,7 +228,7 @@ namespace awh {
 			 * @return       прочитанное кодовое значение знака
 			 *
 			 * \~english
-			 * @brief Method of reading a code value from a text in the UTF-8 encoding
+			 * @brief Function of reading a code value from a text in the UTF-8 encoding
 			 *
 			 * @details Not only the construction of the sequence is checked but also its
 			 *          shortestness: an overlong record of a code value is rejected as
@@ -247,7 +244,7 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ uint32_t decode(const char * buffer, const size_t size, size_t & length) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод записи кодового значения в кодировке UTF-8
+			 * @brief Функция записи кодового значения в кодировке UTF-8
 			 *
 			 * @param code   записываемое кодовое значение знака
 			 * @param result текст, к которому дописывается знак
@@ -255,7 +252,7 @@ namespace awh {
 			 *
 			 *
 			 * \~english
-			 * @brief Method of writing a code value in the UTF-8 encoding
+			 * @brief Function of writing a code value in the UTF-8 encoding
 			 *
 			 * @param code   code value of the character being written
 			 * @param result text to which the character is appended
@@ -294,11 +291,30 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Decoder {
 				private:
-					// Определённая кодировка исходного текста
-					encoding_t _encoding;
+					// Признак того, что кодировка навязана извне
+					bool _forced;
+					// Признак того, что метка порядка байтов уже обработана
+					bool _marked;
+					// Флаг обнаружения метки порядка байтов в начале исходного текста
+					bool _signed;
+					// Признак того, что приведение текста уже началось
+					bool _started;
+				private:
+					// Количество удержанных байтов незавершённой последовательности
+					uint8_t _length;
+					// Удержанная старшая половина суррогатной пары
+					uint32_t _surrogate;
 				private:
 					// Код ошибки последней операции приведения
 					error_t _error;
+					// Определённая кодировка исходного текста
+					encoding_t _encoding;
+				private:
+					// Байты начала текста, удержанные до определения кодировки
+					string _prolog;
+				private:
+					// Удержанные байты незавершённой последовательности знака
+					char _pending[4];
 				private:
 					/**
 					 * \~russian
@@ -343,30 +359,6 @@ namespace awh {
 					 * \~
 					 */
 					bool refuse(const error_t error) noexcept;
-				private:
-					// Признак того, что кодировка навязана извне
-					bool _forced;
-				private:
-					// Признак того, что метка порядка байтов уже обработана
-					bool _marked;
-				private:
-					// Флаг обнаружения метки порядка байтов в начале исходного текста
-					bool _signed;
-				private:
-					// Признак того, что приведение текста уже началось
-					bool _started;
-				private:
-					// Байты начала текста, удержанные до определения кодировки
-					string _prolog;
-				private:
-					// Количество удержанных байтов незавершённой последовательности
-					uint8_t _length;
-				private:
-					// Удержанные байты незавершённой последовательности знака
-					char _pending[4];
-				private:
-					// Удержанная старшая половина суррогатной пары
-					uint32_t _surrogate;
 				public:
 					/**
 					 * \~russian
@@ -503,7 +495,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor

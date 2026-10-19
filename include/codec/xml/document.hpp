@@ -41,9 +41,13 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "reader.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include "../../sys/fs.hpp"
 
 /**
@@ -56,7 +60,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -73,7 +76,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -83,7 +85,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера XML
-		 *
 		 *
 		 * \~english
 		 * @brief XML container namespace
@@ -152,17 +153,6 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Предварительное объявление класса дерева разметки
-			 *
-			 * \~english
-			 * @brief Forward declaration of the class of the markup tree
-			 *
-			 * \~
-			 */
-			class __AWH_SHARED_EXPORT__ Document;
-
-			/**
-			 * \~russian
 			 * @brief Предварительное объявление владеющего значения
 			 *
 			 * @details Объявление это заведено ради прививки: дерево прививаемое значение
@@ -177,6 +167,16 @@ namespace awh {
 			 * \~
 			 */
 			class __AWH_SHARED_EXPORT__ Value;
+			/**
+			 * \~russian
+			 * @brief Предварительное объявление класса дерева разметки
+			 *
+			 * \~english
+			 * @brief Forward declaration of the class of the markup tree
+			 *
+			 * \~
+			 */
+			class __AWH_SHARED_EXPORT__ Document;
 
 			/**
 			 * \~russian
@@ -205,11 +205,9 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Node {
 				private:
-					// Дерево разметки, которому принадлежит узел
-					const Document * _document;
-				private:
 					// Индекс узла в арене дерева разметки
 					node_id_t _id;
+				private:
 					/**
 					 * \~russian
 					 * Клеймо поколения дерева, при котором узел снят
@@ -254,6 +252,10 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _stamp;
+				private:
+					// Дерево разметки, которому принадлежит узел
+					const Document * _document;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод заведения отображения имён вложенных узлов родителя
@@ -652,14 +654,15 @@ namespace awh {
 					 * \~
 					 */
 					bool has(const string_view local, const string_view uri = "") const noexcept;
+				public:
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения содержимого узла числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template for a method to retrieve node content as a number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -702,12 +705,12 @@ namespace awh {
 					}
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения значения атрибута узла числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template for a method to retrieve a node attribute value as a number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -739,12 +742,12 @@ namespace awh {
 					}
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения содержимого узла числом со значением по умолчанию
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template of a method for getting the contents of a node by number with a default value
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -784,12 +787,12 @@ namespace awh {
 					}
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения значения атрибута узла числом со значением по умолчанию
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Template for a method to retrieve a node attribute value as a number, with a default value
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -823,6 +826,7 @@ namespace awh {
 						 */
 						return (this->value(result, local, uri) ? result : fallback);
 					}
+				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки узла на пригодность
@@ -906,17 +910,17 @@ namespace awh {
 					 * \~
 					 */
 					bool operator != (const Node & node) const noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Node() noexcept : _document(nullptr), _id(INVALID_NODE), _stamp(0) {}
+					explicit Node() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -932,9 +936,8 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Node(const Document * document, const node_id_t id) noexcept;
+					explicit Node(const Document * document, const node_id_t id) noexcept;
 			} node_t;
-
 			/**
 			 * \~russian
 			 * @brief Класс дерева разметки
@@ -983,72 +986,70 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * @brief Запись имени в арене дерева разметки
+					 * @brief Структура записи имени в арене дерева разметки
 					 *
 					 * \~english
-					 * @brief Record of a name in the arena of a markup tree
+					 * @brief Structure of a name entry in the markup tree arena
 					 *
 					 * \~
 					 */
 					typedef struct Title {
+						// Обозначение связанного пространства имён
+						span_t uri;
 						// Префикс пространства имён
 						span_t prefix;
 						// Местное имя без префикса
 						span_t local;
-						// Обозначение связанного пространства имён
-						span_t uri;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Title() noexcept {}
+						explicit Title() noexcept = default;
 					} title_t;
 					/**
 					 * \~russian
-					 * @brief Запись атрибута в арене дерева разметки
+					 * @brief Структура записи атрибута в арене дерева разметки
 					 *
 					 * \~english
-					 * @brief Record of an attribute in the arena of a markup tree
+					 * @brief Structure of an attribute record in the markup tree arena
 					 *
 					 * \~
 					 */
-					typedef struct Property {
+					typedef struct __AWH_SHARED_EXPORT__ Property {
+						// Признак того, что значение взято из объявления по умолчанию
+						bool defaulted;
 						// Имя атрибута с учётом пространства имён
 						title_t name;
 						// Значение атрибута, приведённое к окончательному виду
 						span_t value;
 						// Положение атрибута в исходном тексте
 						location_t location;
-						// Признак того, что значение взято из объявления по умолчанию
-						bool defaulted;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Property() noexcept : defaulted(false) {}
+						explicit Property() noexcept;
 					} property_t;
 					/**
 					 * \~russian
-					 * @brief Запись связывания префикса в арене дерева разметки
+					 * @brief Структура записи связывания префикса в арене дерева разметки
 					 *
 					 * @details Объявления пространств имён хранятся отдельно от узлов и привязываются
 					 *          к ним отдельным перечнем: объявляет их считанное число узлов, а место в записи
 					 *          узла заняли бы все.
 					 *
 					 * \~english
-					 * @brief Record of a binding of a prefix in the arena of a markup tree
+					 * @brief Structure of a prefix-binding record in the layout tree arena
 					 *
 					 * @details The declarations of the namespaces are stored separately from the nodes and
 					 *          are bound to them by a separate list: a mere few nodes declare them, while the
@@ -1057,28 +1058,27 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct Scope {
-						// Префикс без разделителя, пустой для объявления по умолчанию
-						span_t prefix;
 						// Обозначение объявляемого пространства имён
 						span_t uri;
+						// Префикс без разделителя, пустой для объявления по умолчанию
+						span_t prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Scope() noexcept {}
+						explicit Scope() noexcept = default;
 					} scope_t;
 					/**
 					 * \~russian
-					 * @brief Запись узла в арене дерева разметки
+					 * @brief Структура записи узла в арене дерева разметки
 					 *
 					 * \~english
-					 * @brief Record of a node in the arena of a markup tree
+					 * @brief Structure of a node entry in a markup tree arena
 					 *
 					 * \~
 					 */
@@ -1089,37 +1089,36 @@ namespace awh {
 						title_t name;
 						// Содержимое узла в хранилище знаков
 						span_t value;
-						// Индекс первого атрибута узла в хранилище атрибутов
-						uint32_t attribute;
-						// Количество атрибутов узла
-						uint32_t attributes;
-						// Индекс родительского узла
-						node_id_t parent;
-						// Индекс первого вложенного узла
-						node_id_t first;
 						// Индекс последнего вложенного узла
 						node_id_t last;
 						// Индекс следующего узла того же уровня
 						node_id_t next;
 						// Индекс предыдущего узла того же уровня
 						node_id_t prev;
+						// Индекс родительского узла
+						node_id_t parent;
+						// Индекс первого вложенного узла
+						node_id_t first;
 						// Положение начала узла в исходном тексте
 						location_t location;
+						// Индекс первого атрибута узла в хранилище атрибутов
+						uint32_t attribute;
+						// Количество атрибутов узла
+						uint32_t attributes;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Record() noexcept;
+						explicit Record() noexcept;
 					} record_t;
 					/**
 					 * \~russian
-					 * @brief Запись отображения имён: первый узел с именем и число одноимённых
+					 * @brief Структура записи отображения имён: первый узел с именем и число одноимённых
 					 *
 					 * @details Числа одноимённых довольно, чтобы выдать ВСЕХ совпавших без
 					 *          перебора там, где он всего дороже: у широкого родителя разных имён
@@ -1130,7 +1129,7 @@ namespace awh {
 					 *       тысячах детей одного имени он стоит семи наносекунд на выданный узел
 					 *
 					 * \~english
-					 * @brief Record of the mapping of the names: the first node with the name and the count of the namesakes
+					 * @brief Structure of a name-mapping entry: the first node containing the name, and the count of items with that same name
 					 *
 					 * @details The counts of the namesakes are enough to issue ALL the coincided ones without
 					 *          a traversal where it costs the most: at a wide parent with different names the
@@ -1144,7 +1143,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Entry {
+					typedef struct __AWH_SHARED_EXPORT__ Entry {
 						// Номер первого узла разметки с этим именем
 						node_id_t first;
 						// Количество узлов разметки с этим именем
@@ -1162,12 +1161,12 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Entry(const node_id_t first = 0) noexcept : first(first), count(1) {}
+						explicit Entry(const node_id_t first = 0) noexcept;
 					} entry_t;
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки дерева разметки
+					 * @brief Структура настроек дерева разметки
 					 *
 					 * @details Настройки разбора и записи держатся раздельно: прочитать разметку
 					 *          с одними пределами и записать её иным видом - обыкновенное дело, и
@@ -1181,7 +1180,7 @@ namespace awh {
 					 *          лишь на этот заход и хранимых настроек НЕ меняют
 					 *
 					 * \~english
-					 * @brief Settings of the markup tree
+					 * @brief Markup tree settings structure
 					 *
 					 * @details The settings of the parsing and of the writing are kept separately: to read
 					 *          the markup with one limits and to write it in another form is an ordinary
@@ -1197,10 +1196,10 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Настройки разбора текста разметки
-						reader_t::settings_t reader;
 						// Настройки записи текста разметки
 						writer_settings_t writer;
+						// Настройки разбора текста разметки
+						reader_t::settings_t reader;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -1210,34 +1209,35 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Settings() noexcept {}
+						explicit Settings() noexcept = default;
 					} settings_t;
 				private:
-				/**
-				 * Узел дерева обращается к арене и хранилищу знаков напрямую
-				 */
-				friend class Node;
-					// Настройки дерева разметки
-					settings_t _settings;
+					/**
+					 * Узел дерева обращается к арене и хранилищу знаков напрямую
+					 */
+					friend class Node;
+				private:
 					/**
 					 * \~russian
-					 * Код ошибки последней операции разбора
+					 * Клеймо поколения дерева разметки
 					 *
-					 * @note Изменяемым он объявлен ради записи: `dump()` есть ход постоянный -
-					 *       дерева он не меняет, - однако отказ записи обязан лечь в дерево,
-					 *       и спрашивается он тем же ходом `error()`, что и отказ разбора
+					 * @details Растёт всякий раз, как нумерация узлов перестраивается: разбором,
+					 *          чтением, очисткой и прививкой. Узлы хранят клеймо своего поколения и по
+					 *          несовпадению отвечают непригодностью - тем молчаливая подмена узла и
+					 *          обращается в честный отказ.
 					 *
 					 * \~english
-					 * Code of the error of the last operation of the parsing
+					 * Stamp of the generation of the markup tree
 					 *
-					 * @note It is declared mutable for the sake of the writing: `dump()` is a constant
-					 *       step - it does not change the tree, - yet a refusal of the writing must lie
-					 *       in the tree, and it is asked by the same `error()` step as a refusal of the
-					 *       parsing
+					 * @details Grows every time the numbering of the nodes is rebuilt: by the parsing, the
+					 *          reading, the clearing and the grafting. The nodes hold the stamp of their
+					 *          generation and answer with unfitness upon a mismatch - whereby the silent
+					 *          substitution of a node turns into an honest refusal.
 					 *
 					 * \~
 					 */
-					mutable error_t _error;
+					uint32_t _stamp;
+				private:
 					/**
 					 * \~russian
 					 * Объект для работы с файловой системой
@@ -1256,25 +1256,9 @@ namespace awh {
 					 * \~
 					 */
 					fs_t _fs;
-					/**
-					 * \~russian
-					 * Положение обнаруженной ошибки в исходном тексте
-					 *
-					 * @note Изменчиво оно намеренно: запись дерева константна, а сброс положения
-					 *       прежней работы обязателен и ей - код от новой работы складывался бы
-					 *       со старым местом в донесение стройное, но ложное
-					 *
-					 * \~english
-					 * Position of the detected error in the source text
-					 *
-					 * @note Its variability is deliberate: the writing of a tree is constant, while the
-					 *       reset of the position of the former work is mandatory for it too - a code
-					 *       from a new work would else compose with an old place into a shapely but
-					 *       false report
-					 *
-					 * \~
-					 */
-					mutable location_t _errorLocation;
+				private:
+					// Настройки дерева разметки
+					settings_t _settings;
 					/**
 					 * \~russian
 					 * Кодировка, какою исходный текст разметки прочитан
@@ -1298,53 +1282,57 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					encoding_t _encoding = encoding_t::NONE;
+					encoding_t _encoding;
+				private:
 					/**
 					 * \~russian
-					 * Клеймо поколения дерева разметки
+					 * Код ошибки последней операции разбора
 					 *
-					 * @details Растёт всякий раз, как нумерация узлов перестраивается: разбором,
-					 *          чтением, очисткой и прививкой. Узлы хранят клеймо своего поколения и по
-					 *          несовпадению отвечают непригодностью - тем молчаливая подмена узла и
-					 *          обращается в честный отказ.
+					 * @note Изменяемым он объявлен ради записи: `dump()` есть ход постоянный -
+					 *       дерева он не меняет, - однако отказ записи обязан лечь в дерево,
+					 *       и спрашивается он тем же ходом `error()`, что и отказ разбора
 					 *
 					 * \~english
-					 * Stamp of the generation of the markup tree
+					 * Code of the error of the last operation of the parsing
 					 *
-					 * @details Grows every time the numbering of the nodes is rebuilt: by the parsing, the
-					 *          reading, the clearing and the grafting. The nodes hold the stamp of their
-					 *          generation and answer with unfitness upon a mismatch - whereby the silent
-					 *          substitution of a node turns into an honest refusal.
+					 * @note It is declared mutable for the sake of the writing: `dump()` is a constant
+					 *       step - it does not change the tree, - yet a refusal of the writing must lie
+					 *       in the tree, and it is asked by the same `error()` step as a refusal of the
+					 *       parsing
 					 *
 					 * \~
 					 */
-					uint32_t _stamp;
-					// Арена узлов дерева разметки
-					vector <record_t> _nodes;
-					// Хранилище атрибутов всех узлов дерева
-					vector <property_t> _attributes;
-					// Хранилище связываний префиксов, объявленных узлами дерева
-					vector <scope_t> _scopes;
+					mutable error_t _error;
 					/**
 					 * \~russian
-					 * Отрезки хранилища связываний, объявленных узлами дерева
+					 * Положение обнаруженной ошибки в исходном тексте
 					 *
-					 * @note Объявляет пространства имён считанное число узлов - обыкновенно один
-					 *       корневой, - и отводить место под отрезок в записи каждого узла незачем:
-					 *       отрезок отыскивается по узлу лишь тогда, когда объявления запрошены
+					 * @note Изменчиво оно намеренно: запись дерева константна, а сброс положения
+					 *       прежней работы обязателен и ей - код от новой работы складывался бы
+					 *       со старым местом в донесение стройное, но ложное
 					 *
 					 * \~english
-					 * Segments of the storage of the bindings declared by the nodes of the tree
+					 * Position of the detected error in the source text
 					 *
-					 * @note A mere few nodes declare the namespaces — ordinarily one
-					 *       root node — and there is no point in allotting a place for a segment in the record of every node:
-					 *       the segment is found by a node only when the declarations have been requested
+					 * @note Its variability is deliberate: the writing of a tree is constant, while the
+					 *       reset of the position of the former work is mandatory for it too - a code
+					 *       from a new work would else compose with an old place into a shapely but
+					 *       false report
 					 *
 					 * \~
 					 */
-					unordered_map <node_id_t, span_t> _scoped;
+					mutable location_t _errorLocation;
+				private:
 					// Общее хранилище знаков имён и содержимого узлов
 					string _storage;
+				private:
+					// Арена узлов дерева разметки
+					vector <record_t> _nodes;
+					// Хранилище связываний префиксов, объявленных узлами дерева
+					vector <scope_t> _scopes;
+					// Хранилище атрибутов всех узлов дерева
+					vector <property_t> _attributes;
+				private:
 					/**
 					 * \~russian
 					 * Таблица размещённых имён для сведения повторов
@@ -1380,6 +1368,24 @@ namespace awh {
 					 * \~
 					 */
 					unordered_map <string, span_t> _interned;
+					/**
+					 * \~russian
+					 * Отрезки хранилища связываний, объявленных узлами дерева
+					 *
+					 * @note Объявляет пространства имён считанное число узлов - обыкновенно один
+					 *       корневой, - и отводить место под отрезок в записи каждого узла незачем:
+					 *       отрезок отыскивается по узлу лишь тогда, когда объявления запрошены
+					 *
+					 * \~english
+					 * Segments of the storage of the bindings declared by the nodes of the tree
+					 *
+					 * @note A mere few nodes declare the namespaces — ordinarily one
+					 *       root node — and there is no point in allotting a place for a segment in the record of every node:
+					 *       the segment is found by a node only when the declarations have been requested
+					 *
+					 * \~
+					 */
+					unordered_map <node_id_t, span_t> _scoped;
 					/**
 					 * \~russian
 					 * Отображения местных имён вложенных узлов на их номера по родительским узлам
@@ -1429,6 +1435,7 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <node_id_t, unordered_map <string_view, entry_t>> _index;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод розыска узла дерева по пути
@@ -2380,11 +2387,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2395,7 +2402,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor

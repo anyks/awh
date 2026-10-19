@@ -34,27 +34,13 @@
 #pragma once
 
 /**
- * Подключаем заголовочные файлы модуля
- */
-/**
- * \~russian
- * @brief Стандартные заголовочные файлы
- *
- * @note Свойства типов нужны обращению по написанию знака: ограда пропускает ровно
- *       разряд `char`, а перечнем это не лечится - заводитель по знаку делает
- *       двусмысленным обычное `v[0]`
- *
- * \~english
- * @brief Standard header files
- *
- * @note The type traits are needed by the access by the writing of a sign: the fence admits exactly
- *       the `char` rank, and a list does not cure it — a constructor by a sign makes an ordinary
- *       `v[0]` ambiguous
- *
- * \~
+ * Стандартный заголовочный файл
  */
 #include <type_traits>
 
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include "writer.hpp"
 #include "document.hpp"
 
@@ -102,7 +88,7 @@ namespace awh {
 		namespace xml {
 			/**
 			 * \~russian
-			 * @brief Владеющее значение XML
+			 * @brief Класс владеющего значением XML
 			 *
 			 * @details Тип этот стоит **над** деревом разметки, а не вместо него. Дерево
 			 *          разбирает текст и хранит узлы ареной, отчего узел `Document::Node` владельцем
@@ -128,7 +114,7 @@ namespace awh {
 			 *       неприкосновенности остаётся за деревом. Это два разных употребления
 			 *
 			 * \~english
-			 * @brief Owning value of XML
+			 * @brief Class representing an XML value
 			 *
 			 * @details This type stands **above** the markup tree rather than instead of it. The tree
 			 *          parses a text and stores the nodes in an arena, whereby a node `Document::Node` is not an owner
@@ -159,7 +145,7 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Свойство владеющего значения
+					 * @brief Структура свойства владеющего значения
 					 *
 					 * @details Свойство хранится строками собственными, а не отрезками чужого
 					 *          текста: значение владеющее дерево пережить обязано.
@@ -169,7 +155,7 @@ namespace awh {
 					 *       лежит рядом, в пространстве имён кодека
 					 *
 					 * \~english
-					 * @brief Property of an owning value
+					 * @brief Structure of a property that holds a value
 					 *
 					 * @details A property is stored by its own strings rather than by the segments of a foreign
 					 *          text: an owning value must outlive the tree.
@@ -181,24 +167,34 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Property {
-						// Префикс пространства имён без разделителя
-						string prefix;
-						// Местное имя без префикса
-						string local;
 						// Обозначение связанного пространства имён
 						string uri;
 						// Значение свойства, приведённое к окончательному виду
 						string value;
+						// Местное имя без префикса
+						string local;
+						// Префикс пространства имён без разделителя
+						string prefix;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Property() noexcept;
 					} property_t;
 					/**
 					 * \~russian
-					 * @brief Связывание префикса с пространством имён
+					 * @brief Структура связывания префикса с пространством имён
 					 *
 					 * @details Связывание принадлежит узлу, где объявлено, и действует внутри
 					 *          всех вложенных в него, пока не будет переопределено.
 					 *
 					 * \~english
-					 * @brief Binding of a prefix to a namespace
+					 * @brief Structure for binding a prefix to a namespace
 					 *
 					 * @details A binding belongs to the node where it is declared and acts inside
 					 *          all the ones nested into it until it is redefined.
@@ -206,15 +202,25 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Namespace {
-						// Префикс без разделителя, пустой у объявления по умолчанию
-						string prefix;
 						// Обозначение пространства имён, пустое у отмены связывания
 						string uri;
+						// Префикс без разделителя, пустой у объявления по умолчанию
+						string prefix;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Namespace() noexcept;
 					} namespace_t;
 				private:
 					/**
 					 * \~russian
-					 * @brief Запись отображения имён: первый узел с именем и число одноимённых
+					 * @brief Структура записи отображения имён: первый узел с именем и число одноимённых
 					 *
 					 * @details Числа одноимённых довольно, чтобы выдать ВСЕХ совпавших без
 					 *          перебора там, где он всего дороже: у широкого узла разных имён совпавший
@@ -225,7 +231,7 @@ namespace awh {
 					 *       выдача велика, и перебор платится не зря
 					 *
 					 * \~english
-					 * @brief Record of the mapping of the names: the first node with the name and the count of the namesakes
+					 * @brief Structure of a name-mapping entry: the first node containing the name, and the count of items with that same name
 					 *
 					 * @details The counts of the namesakes are enough to issue ALL the coincided ones without
 					 *          a traversal where it costs the most: at a wide node of different names the
@@ -237,7 +243,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Entry {
+					typedef struct __AWH_SHARED_EXPORT__ Entry {
 						// Номер первого вложенного узла разметки с этим именем
 						size_t first;
 						// Количество вложенных узлов разметки с этим именем
@@ -255,40 +261,69 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Entry(const size_t first = 0) noexcept : first(first), count(1) {}
+						explicit Entry(const size_t first = 0) noexcept;
 					} entry_t;
+				private:
+					/**
+					 * \~russian
+					 * Признак заведённости отображения имён вложенных узлов
+					 *
+					 * @note Признак отдельный от пустоты отображения обязателен: у узла об
+					 *       одних лишь узлах текста отображение выходит пустым, и сличение
+					 *       размеров велело бы заводить его снова на всяком обращении
+					 *
+					 * \~english
+					 * Flag of the readiness of the mapping of the names of the nested nodes
+					 *
+					 * @note A sign separate from an emptiness of the mapping is mandatory: at a node of only
+					 *       text nodes the mapping comes out empty, and a comparison of the sizes would order to
+					 *       create it again at every addressing
+					 *
+					 * \~
+					 */
+					mutable bool _indexed;
+					/**
+					 * \~russian
+					 * Признак заведённости отображения имён свойств узла
+					 *
+					 * @note Признак отдельный от пустоты отображения обязателен по той же причине,
+					 *       что и у отображения вложенных узлов: у узла без свойств отображение
+					 *       выходит пустым, и сличение размеров велело бы заводить его снова
+					 *       на всяком обращении
+					 *
+					 * \~english
+					 * Flag of the readiness of the mapping of the names of the node properties
+					 *
+					 * @note A sign separate from an emptiness of the mapping is mandatory for the same reason
+					 *       as at the mapping of the nested nodes: at a node without properties the mapping
+					 *       comes out empty, and a comparison of the sizes would order to create it again at
+					 *       every addressing
+					 *
+					 * \~
+					 */
+					mutable bool _propertied;
+				private:
 					// Вид хранимого узла
 					kind_t _kind;
 					/**
 					 * \~russian
-					 * Префикс пространства имён имени узла
+					 * @brief Код отказа последней работы над значением
 					 *
-					 * @note Префикс удерживается наравне с обозначением пространства имён, хотя
-					 *       сличению имён он и не подлежит: без него запись выданного текста
-					 *       разошлась бы с записью исходного, а отвечающие по UPnP ставят
-					 *       префиксы всякий по-своему
+					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
+					 *          неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
+					 *          от значения пустого.
 					 *
 					 * \~english
-					 * Prefix of the namespace of the name of the node
+					 * @brief Code of the refusal of the last operation over the value
 					 *
-					 * @note The prefix is retained on a par with the designation of the namespace, although
-					 *       it is not subject to the comparison of the names: without it the record of the issued text
-					 *       would diverge from the record of the source one, while those answering by UPnP put
-					 *       the prefixes each in its own way
+					 * @details The field is mutable deliberately: the issuance of the text of a value
+					 *          is a constant operation, while it is obliged to report a refusal — otherwise
+					 *          an empty text is indistinguishable from an empty value.
 					 *
 					 * \~
 					 */
-					string _prefix;
-					/**
-					 * \~russian
-					 * Местное имя узла разметки, а у указания обработчику - цель его
-					 *
-					 * \~english
-					 * Local name of a markup node, and for a processing instruction — its target
-					 *
-					 * \~
-					 */
-					string _local;
+					mutable error_t _error;
+				private:
 					// Обозначение пространства имён узла разметки
 					string _uri;
 					/**
@@ -309,12 +344,44 @@ namespace awh {
 					 * \~
 					 */
 					string _text;
-					// Свойства узла разметки в порядке их следования
-					vector <property_t> _attributes;
-					// Связывания префиксов, объявленные узлом разметки
-					vector <namespace_t> _bindings;
+					/**
+					 * \~russian
+					 * Местное имя узла разметки, а у указания обработчику - цель его
+					 *
+					 * \~english
+					 * Local name of a markup node, and for a processing instruction — its target
+					 *
+					 * \~
+					 */
+					string _local;
+					/**
+					 * \~russian
+					 * Префикс пространства имён имени узла
+					 *
+					 * @note Префикс удерживается наравне с обозначением пространства имён, хотя
+					 *       сличению имён он и не подлежит: без него запись выданного текста
+					 *       разошлась бы с записью исходного, а отвечающие по UPnP ставят
+					 *       префиксы всякий по-своему
+					 *
+					 * \~english
+					 * Prefix of the namespace of the name of the node
+					 *
+					 * @note The prefix is retained on a par with the designation of the namespace, although
+					 *       it is not subject to the comparison of the names: without it the record of the issued text
+					 *       would diverge from the record of the source one, while those answering by UPnP put
+					 *       the prefixes each in its own way
+					 *
+					 * \~
+					 */
+					string _prefix;
+				private:
 					// Вложенные узлы в порядке их следования
 					vector <Value> _items;
+					// Связывания префиксов, объявленные узлом разметки
+					vector <namespace_t> _bindings;
+					// Свойства узла разметки в порядке их следования
+					vector <property_t> _attributes;
+				private:
 					/**
 					 * \~russian
 					 * Отображение местных имён вложенных узлов на их номера, заводимое по требованию
@@ -408,24 +475,6 @@ namespace awh {
 					mutable unordered_map <string, entry_t> _index;
 					/**
 					 * \~russian
-					 * Признак заведённости отображения имён вложенных узлов
-					 *
-					 * @note Признак отдельный от пустоты отображения обязателен: у узла об
-					 *       одних лишь узлах текста отображение выходит пустым, и сличение
-					 *       размеров велело бы заводить его снова на всяком обращении
-					 *
-					 * \~english
-					 * Flag of the readiness of the mapping of the names of the nested nodes
-					 *
-					 * @note A sign separate from an emptiness of the mapping is mandatory: at a node of only
-					 *       text nodes the mapping comes out empty, and a comparison of the sizes would order to
-					 *       create it again at every addressing
-					 *
-					 * \~
-					 */
-					mutable bool _indexed;
-					/**
-					 * \~russian
 					 * Отображение имён свойств узла на их номера, заводимое по требованию
 					 *
 					 * @details Ключ двухуровневый - местное имя, а под ним обозначение пространства
@@ -456,44 +505,7 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <string, unordered_map <string, size_t>> _properties;
-					/**
-					 * \~russian
-					 * Признак заведённости отображения имён свойств узла
-					 *
-					 * @note Признак отдельный от пустоты отображения обязателен по той же причине,
-					 *       что и у отображения вложенных узлов: у узла без свойств отображение
-					 *       выходит пустым, и сличение размеров велело бы заводить его снова
-					 *       на всяком обращении
-					 *
-					 * \~english
-					 * Flag of the readiness of the mapping of the names of the node properties
-					 *
-					 * @note A sign separate from an emptiness of the mapping is mandatory for the same reason
-					 *       as at the mapping of the nested nodes: at a node without properties the mapping
-					 *       comes out empty, and a comparison of the sizes would order to create it again at
-					 *       every addressing
-					 *
-					 * \~
-					 */
-					mutable bool _propertied;
-					/**
-					 * \~russian
-					 * @brief Код отказа последней работы над значением
-					 *
-					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
-					 *          неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
-					 *          от значения пустого.
-					 *
-					 * \~english
-					 * @brief Code of the refusal of the last operation over the value
-					 *
-					 * @details The field is mutable deliberately: the issuance of the text of a value
-					 *          is a constant operation, while it is obliged to report a refusal — otherwise
-					 *          an empty text is indistinguishable from an empty value.
-					 *
-					 * \~
-					 */
-					mutable error_t _error = error_t::NONE;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод розыска номера вложенного узла разметки по местному имени
@@ -680,22 +692,33 @@ namespace awh {
 					void propertied(const string & local, const string & uri) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Шаблонный метод извлечения числа затребованным видом
+					 * @brief Шаблон метода извлечения числа затребованным видом
 					 *
-					 * @tparam T      затребованный вид числа
-					 * @param  result переменная, куда помещается извлечённое значение
-					 * @return        признак успешности извлечения
+					 * @tparam T затребованный вид числа
 					 *
 					 * \~english
-					 * @brief Template method of the extraction of a number by the demanded kind
+					 * @brief Method template for extracting a number in a requested format
 					 *
 					 * @tparam T demanded kind of the number
-					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод извлечения числа затребованным видом
+					 *
+					 * @param result переменная, куда помещается извлечённое значение
+					 * @return       признак успешности извлечения
+					 *
+					 * \~english
+					 * @brief Method for extracting a number in a requested format
+					 *
+					 * @param result variable where the extracted value is placed
+					 * @return       sign of the success of the extraction
+					 *
+					 * \~
+					 */
 					bool extract(T & result) const noexcept;
 					/**
 					 * \~russian
@@ -716,7 +739,7 @@ namespace awh {
 					 *          open or its content unfinished.
 					 *
 					 * @param writer writing stream where the value is placed
-					 * @return sign of the success of the writing
+					 * @return       sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -939,7 +962,7 @@ namespace awh {
 					 * @brief Method of the check of the kind of the node
 					 *
 					 * @param kind kind of the node being compared
-					 * @return sign of the coincidence of the kind
+					 * @return     sign of the coincidence of the kind
 					 *
 					 * \~
 					 */
@@ -1055,8 +1078,8 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the setting of the name of the node
 					 *
-					 * @param local local name of the node being set
-					 * @param uri designation of the namespace being set
+					 * @param local  local name of the node being set
+					 * @param uri    designation of the namespace being set
 					 * @param prefix prefix of the namespace being set
 					 *
 					 * \~
@@ -1103,7 +1126,7 @@ namespace awh {
 					 *          by one text node: the markup has no own content at all.
 					 *
 					 * @param text content of the node being set
-					 * @return sign of the success of the setting
+					 * @return     sign of the success of the setting
 					 *
 					 * \~
 					 */
@@ -1169,11 +1192,11 @@ namespace awh {
 					 * @details A property with an already occupied name is overwritten in its place, while
 					 *          the order of the properties is thereby preserved.
 					 *
-					 * @param local local name of the property
-					 * @param value value of the property being set
-					 * @param uri designation of the namespace of the property
+					 * @param local  local name of the property
+					 * @param value  value of the property being set
+					 * @param uri    designation of the namespace of the property
 					 * @param prefix prefix of the namespace of the property
-					 * @return sign of the success of the setting
+					 * @return       sign of the success of the setting
 					 *
 					 * \~
 					 */
@@ -1190,8 +1213,8 @@ namespace awh {
 					 * @brief Method of the check of the presence of a property of a markup node
 					 *
 					 * @param local local name of the property being searched for
-					 * @param uri designation of the namespace of the property
-					 * @return sign of the presence of the property
+					 * @param uri   designation of the namespace of the property
+					 * @return      sign of the presence of the property
 					 *
 					 * \~
 					 */
@@ -1208,8 +1231,8 @@ namespace awh {
 					 * @brief Method of the removal of a property of a markup node
 					 *
 					 * @param local local name of the property being removed
-					 * @param uri designation of the namespace of the property
-					 * @return sign of the success of the removal
+					 * @param uri   designation of the namespace of the property
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1240,8 +1263,8 @@ namespace awh {
 					 * @brief Method of the declaration of a binding of a prefix to a namespace
 					 *
 					 * @param prefix prefix being declared, an empty one — a declaration by default
-					 * @param uri designation of the namespace, an empty one — a cancellation of the binding
-					 * @return sign of the success of the declaration
+					 * @param uri    designation of the namespace, an empty one — a cancellation of the binding
+					 * @return       sign of the success of the declaration
 					 *
 					 * \~
 					 */
@@ -1258,8 +1281,8 @@ namespace awh {
 					 * @brief Method of the check of the presence of a nested markup node with the indicated name
 					 *
 					 * @param local local name of the node being searched for
-					 * @param uri designation of the namespace of the node
-					 * @return sign of the presence of the nested node
+					 * @param uri   designation of the namespace of the node
+					 * @return      sign of the presence of the nested node
 					 *
 					 * \~
 					 */
@@ -1276,8 +1299,8 @@ namespace awh {
 					 * @brief Method of the extraction of all the nested markup nodes with the indicated name
 					 *
 					 * @param local local name of the nodes being searched for
-					 * @param uri designation of the namespace of the nodes
-					 * @return list of the pointers to the found nodes
+					 * @param uri   designation of the namespace of the nodes
+					 * @return      list of the pointers to the found nodes
 					 *
 					 * \~
 					 */
@@ -1315,7 +1338,7 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param path path to the node being searched for
-					 * @return reference to the found node
+					 * @return     reference to the found node
 					 *
 					 * \~
 					 */
@@ -1351,14 +1374,14 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param path path to the node being searched for
-					 * @return reference to the found or created node
+					 * @return     reference to the found or created node
 					 *
 					 * \~
 					 */
 					Value & place(const string & path) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод обращения к вложенному узлу разметки по местному имени
+					 * @brief Оператор обращения к вложенному узлу разметки по местному имени
 					 *
 					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
 					 *          дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
@@ -1370,7 +1393,7 @@ namespace awh {
 					 * @return      ссылка на первый вложенный узел с таким именем
 					 *
 					 * \~english
-					 * @brief Method of the access to a nested markup node by a local name
+					 * @brief Operator for accessing a nested markup node by its local name
 					 *
 					 * @warning The issued reference lives only until the nearest institution of a sibling:
 					 *          the children lie in a movable container, and its growth INVALIDATES the references to
@@ -1379,14 +1402,14 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param local local name of the nested node
-					 * @return reference to the first nested node with such name
+					 * @return      reference to the first nested node with such name
 					 *
 					 * \~
 					 */
 					const Value & operator [] (const string & local) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод обращения к вложенному узлу разметки по местному имени с
+					 * @brief Оператор обращения к вложенному узлу разметки по местному имени с
 					 *        заведением недостающего
 					 *
 					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
@@ -1399,8 +1422,8 @@ namespace awh {
 					 * @return      ссылка на первый вложенный узел с таким именем
 					 *
 					 * \~english
-					 * @brief Method of the access to a nested markup node by a local name with
-					 *        the creation of a missing one
+					 * @brief Operator for accessing a nested markup node by its local name,
+					 *        with creation of the node if it is missing
 					 *
 					 * @warning The issued reference lives only until the nearest institution of a sibling:
 					 *          the children lie in a movable container, and its growth INVALIDATES the references to
@@ -1409,14 +1432,14 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param local local name of the nested node
-					 * @return reference to the first nested node with such name
+					 * @return      reference to the first nested node with such name
 					 *
 					 * \~
 					 */
 					Value & operator [] (const string & local) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод обращения к вложенному узлу по номеру
+					 * @brief Оператор обращения к вложенному узлу по номеру
 					 *
 					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
 					 *          дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
@@ -1428,7 +1451,7 @@ namespace awh {
 					 * @return      ссылка на вложенный узел
 					 *
 					 * \~english
-					 * @brief Method of the access to a nested node by an index
+					 * @brief Operator for accessing a nested node by index
 					 *
 					 * @warning The issued reference lives only until the nearest institution of a sibling:
 					 *          the children lie in a movable container, and its growth INVALIDATES the references to
@@ -1437,14 +1460,14 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param index index of the nested node
-					 * @return reference to the nested node
+					 * @return      reference to the nested node
 					 *
 					 * \~
 					 */
 					const Value & operator [] (const size_t index) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод обращения к вложенному узлу по номеру с заведением недостающего
+					 * @brief Оператор обращения к вложенному узлу по номеру с заведением недостающего
 					 *
 					 * @details Обращение за границу перечня растит его до затребованного номера
 					 *          узлами неопределёнными.
@@ -1459,7 +1482,7 @@ namespace awh {
 					 * @return      ссылка на вложенный узел
 					 *
 					 * \~english
-					 * @brief Method of the access to a nested node by an index with the creation of a missing one
+					 * @brief Operator for accessing a nested node by index, with automatic creation of any missing nodes
 					 *
 					 * @details An access beyond the boundary of the list grows it up to the demanded index
 					 *          by the undefined nodes.
@@ -1471,50 +1494,28 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param index index of the nested node
-					 * @return reference to the nested node
+					 * @return      reference to the nested node
 					 *
 					 * \~
 					 */
 					Value & operator [] (const size_t index) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод обращения по написанию знака
-					 *
-					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
-					 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
-					 *
-					 * @note Без этого метода `v['z']` молча обращался к элементу под номером
-					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
-					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
-					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+					 * @brief Шаблон оператора обращения по написанию знака
 					 *
 					 * @tparam T разряд обращения, ограда пропускает ровно знак
-					 * @param  name разыскиваемое имя из одного знака
-					 * @return ссылка на дочерний узел
 					 *
 					 * \~english
-					 * @brief Method of the access by a writing of a character
-					 *
-					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
-					 *          of a single character rather than for an index. This rule is one for the whole codec.
-					 *
-					 * @note Without this method `v['z']` silently addressed the element under the index 122
-					 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
-					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
-					 *       ambiguous, hence a template with a guard here
+					 * @brief Operator template for character writing
 					 *
 					 * @tparam T width of the access, the guard admits exactly a character
-					 * @param name name of a single character being searched for
-					 * @return reference to the child node
 					 *
 					 * \~
 					 */
 					template <typename T>
-					typename std::enable_if <std::is_same <T, char>::value, const Value &>::type
-					operator [] (const T name) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод обращения по написанию знака
+					 * @brief Оператор обращения по написанию знака
 					 *
 					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
 					 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
@@ -1524,12 +1525,11 @@ namespace awh {
 					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
 					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
 					 *
-					 * @tparam T разряд обращения, ограда пропускает ровно знак
-					 * @param  name разыскиваемое имя из одного знака
-					 * @return ссылка на дочерний узел
+					 * @param name разыскиваемое имя из одного знака
+					 * @return     ссылка на дочерний узел
 					 *
 					 * \~english
-					 * @brief Method of the access by a writing of a character
+					 * @brief Operator for handling the writing of a character
 					 *
 					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
 					 *          of a single character rather than for an index. This rule is one for the whole codec.
@@ -1539,15 +1539,58 @@ namespace awh {
 					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
 					 *       ambiguous, hence a template with a guard here
 					 *
-					 * @tparam T width of the access, the guard admits exactly a character
 					 * @param name name of a single character being searched for
-					 * @return reference to the child node
+					 * @return     reference to the child node
+					 *
+					 * \~
+					 */
+					typename std::enable_if <std::is_same <T, char>::value, const Value &>::type operator [] (const T name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон оператора обращения по написанию знака
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 *
+					 * \~english
+					 * @brief Operator template for character writing
+					 *
+					 * @tparam T width of the access, the guard admits exactly a character
 					 *
 					 * \~
 					 */
 					template <typename T>
-					typename std::enable_if <std::is_same <T, char>::value, Value &>::type
-					operator [] (const T name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор обращения по написанию знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+					 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
+					 *
+					 * @note Без этого метода `v['z']` молча обращался к элементу под номером
+					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
+					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
+					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+					 *
+					 * @param name разыскиваемое имя из одного знака
+					 * @return     ссылка на дочерний узел
+					 *
+					 * \~english
+					 * @brief Operator for handling the writing of a character
+					 *
+					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+					 *          of a single character rather than for an index. This rule is one for the whole codec.
+					 *
+					 * @note Without this method `v['z']` silently addressed the element under the index 122
+					 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
+					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
+					 *       ambiguous, hence a template with a guard here
+					 *
+					 * @param name name of a single character being searched for
+					 * @return     reference to the child node
+					 *
+					 * \~
+					 */
+					typename std::enable_if <std::is_same <T, char>::value, Value &>::type operator [] (const T name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления узла в конец перечня вложенных
@@ -1565,7 +1608,7 @@ namespace awh {
 					 *          has no nested nodes at all and the addition responds with a refusal.
 					 *
 					 * @param value node being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1591,7 +1634,7 @@ namespace awh {
 					 *
 					 * @param local local name of the nested node
 					 * @param value node being set
-					 * @return sign of the success of the setting
+					 * @return      sign of the success of the setting
 					 *
 					 * \~
 					 */
@@ -1614,8 +1657,8 @@ namespace awh {
 					 *          a markup may have any number of the nodes with one name.
 					 *
 					 * @param local local name of the node being removed
-					 * @param uri designation of the namespace of the node
-					 * @return sign of the success of the removal
+					 * @param uri   designation of the namespace of the node
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1631,7 +1674,7 @@ namespace awh {
 					 * @brief Method of the removal of a nested node by an index
 					 *
 					 * @param index index of the node being removed
-					 * @return sign of the success of the removal
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1653,7 +1696,7 @@ namespace awh {
 					 *          the descriptions of the markup know no other records of a logical value.
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1703,45 +1746,99 @@ namespace awh {
 					 *       exactly, and `9007199254740993.0` loses the number already at the parsing
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					bool value(int8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(float & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::xml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(double & result) const noexcept;
 					/**
@@ -1775,7 +1872,7 @@ namespace awh {
 					 *       The rule follows from the structure of the notation rather than from the taste of the codec
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1807,9 +1904,9 @@ namespace awh {
 					 *       the external entities, nor the substitution of the declared defaults — would be reachable
 					 *       at all for an owning value, and the parsing of a fragment would be conducted by the defaults alone
 					 *
-					 * @param text markup text being parsed
+					 * @param text     markup text being parsed
 					 * @param settings settings of the reading of a markup text
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1837,7 +1934,7 @@ namespace awh {
 					 *       not fit into the memory is what the streaming reading of reader_t is meant for
 					 *
 					 * @param filename address of the file being parsed
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1890,7 +1987,7 @@ namespace awh {
 					 * @brief Method of the rewriting of the value into a markup text
 					 *
 					 * @param format kind of the writing of the text being assembled
-					 * @return markup text, an empty one — the value could not be written
+					 * @return       markup text, an empty one — the value could not be written
 					 *
 					 * \~
 					 */
@@ -1914,7 +2011,7 @@ namespace awh {
 					 *          to give away an unusable thing silently.
 					 *
 					 * @param settings settings of the writing of the text
-					 * @return markup text, an empty one — the value could not be written
+					 * @return         markup text, an empty one — the value could not be written
 					 *
 					 * \~
 					 */
@@ -1931,8 +2028,8 @@ namespace awh {
 					 * @brief Method of the writing of the value into a file
 					 *
 					 * @param filename address of the file being written
-					 * @param format kind of the writing of the text being assembled
-					 * @return sign of the success of the writing
+					 * @param format   kind of the writing of the text being assembled
+					 * @return         sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2017,7 +2114,7 @@ namespace awh {
 					 *          texts will be identical. The comparison of a JSON value acts the same way
 					 *
 					 * @param value value being compared
-					 * @return sign of the coincidence of the values
+					 * @return      sign of the coincidence of the values
 					 *
 					 * \~
 					 */
@@ -2033,26 +2130,11 @@ namespace awh {
 					 * @brief Method of the comparison of the values for a mismatch
 					 *
 					 * @param value value being compared
-					 * @return sign of the mismatch of the values
+					 * @return      sign of the mismatch of the values
 					 *
 					 * \~
 					 */
 					bool operator != (const Value & value) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Оператор присваивания копированием
-					 *
-					 * @param value присваиваемое значение
-					 * @return      ссылка на текущее значение
-					 *
-					 * \~english
-					 * @brief Copy assignment operator
-					 *
-					 * @param value value being assigned
-					 * @return reference to the current value
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Оператор присваивания копией
@@ -2080,7 +2162,7 @@ namespace awh {
 					 * @brief Move assignment operator
 					 *
 					 * @param value value being moved
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
@@ -2102,7 +2184,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value() noexcept;
+					explicit Value() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор узла указанного вида
@@ -2128,8 +2210,8 @@ namespace awh {
 					 * \~english
 					 * @brief Constructor of a markup node with a name
 					 *
-					 * @param local local name of the node being created
-					 * @param uri designation of the namespace of the node
+					 * @param local  local name of the node being created
+					 * @param uri    designation of the namespace of the node
 					 * @param prefix prefix of the namespace of the node
 					 *
 					 * \~
@@ -2208,12 +2290,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Value() noexcept {}
+					~Value() noexcept = default;
 			} value_t;
-
 			/**
 			 * \~russian
-			 * @brief Потоковая сборка владеющего значения XML
+			 * @brief Класс потоковой сборки владеющего значения XML
 			 *
 			 * @details Сборщик этот повторяет договор потока записи слово в слово: открыть
 			 *          узел, объявить свойство, объявить связывание, записать содержимое, закрыть
@@ -2221,7 +2302,7 @@ namespace awh {
 			 *          потребителя одной буквой, а не двумя разными договорами.
 			 *
 			 * \~english
-			 * @brief Streaming assembly of an owning value of XML
+			 * @brief Streaming construction class for an XML value that holds ownership
 			 *
 			 * @details This builder repeats the contract of the writing stream word for word: to open
 			 *          a node, to declare a property, to declare a binding, to write a content, to close
@@ -2236,6 +2317,7 @@ namespace awh {
 					value_t _result;
 					// Стек указаний на открытые узлы разметки
 					vector <value_t *> _nesting;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод помещения собранного узла на своё место
@@ -2247,7 +2329,7 @@ namespace awh {
 					 * @brief Method of the placement of an assembled node at its place
 					 *
 					 * @param value node being placed
-					 * @return pointer to the placed node, a zero — the placement has failed
+					 * @return      pointer to the placed node, a zero — the placement has failed
 					 *
 					 * \~
 					 */
@@ -2265,10 +2347,10 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the opening of a markup node
 					 *
-					 * @param local local name of the node being opened
-					 * @param uri designation of the namespace of the node
+					 * @param local  local name of the node being opened
+					 * @param uri    designation of the namespace of the node
 					 * @param prefix prefix of the namespace of the node
-					 * @return sign of the success of the opening
+					 * @return       sign of the success of the opening
 					 *
 					 * \~
 					 */
@@ -2300,11 +2382,11 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the declaration of a property of an opened markup node
 					 *
-					 * @param local local name of the property
-					 * @param value value of the property
-					 * @param uri designation of the namespace of the property
+					 * @param local  local name of the property
+					 * @param value  value of the property
+					 * @param uri    designation of the namespace of the property
 					 * @param prefix prefix of the namespace of the property
-					 * @return sign of the success of the declaration
+					 * @return       sign of the success of the declaration
 					 *
 					 * \~
 					 */
@@ -2321,8 +2403,8 @@ namespace awh {
 					 * @brief Method of the declaration of a binding of a prefix by an opened markup node
 					 *
 					 * @param prefix prefix being declared, an empty one — a declaration by default
-					 * @param uri designation of the namespace
-					 * @return sign of the success of the declaration
+					 * @param uri    designation of the namespace
+					 * @return       sign of the success of the declaration
 					 *
 					 * \~
 					 */
@@ -2338,7 +2420,7 @@ namespace awh {
 					 * @brief Method of the writing of a text content
 					 *
 					 * @param text content being written
-					 * @return sign of the success of the writing
+					 * @return     sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2354,7 +2436,7 @@ namespace awh {
 					 * @brief Method of the writing of a literal section
 					 *
 					 * @param text content being written
-					 * @return sign of the success of the writing
+					 * @return     sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2370,7 +2452,7 @@ namespace awh {
 					 * @brief Method of the writing of a comment
 					 *
 					 * @param text content being written
-					 * @return sign of the success of the writing
+					 * @return     sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2387,8 +2469,8 @@ namespace awh {
 					 * @brief Method of the writing of a processing instruction
 					 *
 					 * @param target target of the processing instruction
-					 * @param text content of the processing instruction
-					 * @return sign of the success of the writing
+					 * @param text   content of the processing instruction
+					 * @return       sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2410,7 +2492,7 @@ namespace awh {
 					 *          assembled somewhere else.
 					 *
 					 * @param value node being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2467,6 +2549,7 @@ namespace awh {
 					 * \~
 					 */
 					value_t finish() noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2486,7 +2569,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Builder() noexcept {}
+					~Builder() noexcept = default;
 			} builder_t;
 		};
 	};

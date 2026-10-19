@@ -42,19 +42,18 @@
 #include <string_view>
 
 /**
- * Подключаем заголовочные файлы модуля
- */
-
-/**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "document.hpp"
-#include <sys/macro/global.hpp>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -71,7 +70,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -81,7 +79,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера XML
-		 *
 		 *
 		 * \~english
 		 * @brief XML container namespace
@@ -189,22 +186,18 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * @brief Запись открытого узла разметки
+					 * @brief Структура записи открытого узла разметки
 					 *
 					 * \~english
-					 * @brief Record of an open markup node
+					 * @brief Structure of an open markup node record
 					 *
 					 * \~
 					 */
-					typedef struct Opened {
-						// Имя узла в записи, принятой в исходном тексте
-						string name;
-						// Признак того, что метка узла ещё не завершена
-						bool pending;
+					typedef struct __AWH_SHARED_EXPORT__ Opened {
 						// Признак того, что узел уже содержит вложенное содержимое
 						bool filled;
-						// Признак того, что узел содержит вложенные узлы разметки
-						bool elements;
+						// Признак того, что метка узла ещё не завершена
+						bool pending;
 						/**
 						 * \~russian
 						 * Признак записи содержимого узла в одну строку без отступов
@@ -223,8 +216,12 @@ namespace awh {
 						 * \~
 						 */
 						bool oneline;
+						// Признак того, что узел содержит вложенные узлы разметки
+						bool elements;
 						// Количество связываний префиксов, объявленных узлом
 						uint32_t bindings;
+						// Имя узла в записи, принятой в исходном тексте
+						string name;
 						/**
 						 * Записанные имена атрибутов узла в том виде, в каком они попали
 						 * в текст. Договор не допускает повторного имени атрибута у одного
@@ -237,82 +234,86 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Opened() noexcept : pending(false), filled(false), elements(false), oneline(false), bindings(0) {}
+						explicit Opened() noexcept;
 					} opened_t;
 					/**
 					 * \~russian
-					 * @brief Связывание префикса с пространством имён при записи
+					 * @brief Структура связывания префикса с пространством имён при записи
 					 *
 					 * \~english
-					 * @brief Binding of a prefix to a namespace at the writing
+					 * @brief Structure for binding a prefix to a namespace during writing
 					 *
 					 * \~
 					 */
-					typedef struct Scope {
-						// Префикс без разделителя
-						string prefix;
+					typedef struct __AWH_SHARED_EXPORT__ Scope {
 						// Обозначение связанного пространства имён
 						string uri;
+						// Префикс без разделителя
+						string prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Scope() noexcept {}
+						explicit Scope() noexcept;
 					} scope_t;
-				private:
-					// Настройки записи текста разметки
-					settings_t _settings;
-				private:
-					// Код ошибки последней операции записи
-					error_t _error;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод отказа записи с сообщением о нём в журнал
-					 *
-					 * @details Способ этот стоит ГОРЛОМ: всякий отказ записи обязан идти через
-					 *          него. Сообщение в журнал пишется в одном месте на всю запись, а не при
-					 *          всяком присваивании кода отказа: иначе места записи разошлись бы с
-					 *          местами отказа, и часть бед уходила бы молча.
-					 *
-					 * @param error код ошибки записи
-					 * @return      всегда ложь, ради возврата им из места отказа
-					 *
-					 * \~english
-					 * @brief Method of the refusal of the writing with a report of it to the log
-					 *
-					 * @details This step stands THROAT-OUT: every refusal of the writing is bound to go
-					 *          through it. A message into the log is written at one place over the whole writing,
-					 *          and not upon every assigning of a code of a refusal: else the places of the writing
-					 *          would part from the places of the refusals, and part of the troubles would go off
-					 *          silently.
-					 *
-					 * @param error the code of the writing error
-					 * @return      always false, for the returning by it from the place of the refusal
-					 *
-					 * \~
-					 */
-					bool refuse(const error_t error) noexcept;
 				private:
 					// Признак того, что корневой узел разметки уже записан
 					bool _root;
 					// Признак того, что часть текста уже передана через изъятие
 					bool _taken;
 				private:
-					// Собираемый текст разметки
-					string _text;
+					/**
+					 * \~russian
+					 * Счётчик самостоятельно назначенных префиксов пространств имён
+					 *
+					 * @note Разрядности его хватает с большим запасом, и сторожа при нём нет
+					 *       НАРОЧНО. Заворот требует 2^32 самочинных префиксов в ОДНОМ тексте,
+					 *       а всякий из них рождается лишь от своего пространства имён: столько
+					 *       различных обозначений надо сперва где-то держать. Дерево, пришедшее
+					 *       разбором, до того упрётся в сторожа разрядности хранилища имён у
+					 *       читателя, а дерево, собранное потребителем вручную, - в память
+					 *       машины: одни лишь обозначения заняли бы её всю. Довод этот
+					 *       достижимостью, а не замером, и назван таковым нарочно
+					 *
+					 * @warning Заворот, буде он случится, отказом НЕ обернётся: счётчик выдаст
+					 *          уже занятый префикс, и все записанные с ним имена сменят
+					 *          пространство имён при обратном чтении. Оттого решение оставить
+					 *          поле без сторожа держится ровно на доводе выше, и если довод
+					 *          этот когда-нибудь падёт - например, обозначения станут храниться
+					 *          общей таблицей, - сторожа надо будет завести
+					 *
+					 * \~english
+					 * Counter of the independently assigned prefixes of the namespaces
+					 *
+					 * @note Its bit width suffices with a large reserve, and there is DELIBERATELY no guard
+					 *       on it: a wraparound demands 2^32 self-assigned prefixes within a SINGLE text, and
+					 *       every one of them is born only from its own namespace: so many different
+					 *       designations must first be kept somewhere. A tree which has come by a parsing runs
+					 *       before that into a guard of the bit width of the storage of the names at the reader,
+					 *       while a tree assembled by the consumer by hand - into the memory of the machine: the
+					 *       designations alone would take it all. This argument is one of an attainability, and
+					 *       not of a measurement, and it is named as such deliberately
+					 *
+					 * @warning A wraparound, should it happen, will NOT turn into a refusal: the counter
+					 *          issues a prefix already taken, and all the names written with it change their
+					 *          namespace at the reading back. Therefore the decision to leave the field without
+					 *          a guard holds by the very argument above, and if that argument ever falls - for
+					 *          instance, the designations come to be kept by a common table, - a guard will have
+					 *          to be made
+					 *
+					 * \~
+					 */
+					uint32_t _counter;
 				private:
 					/**
 					 * \~russian
@@ -352,11 +353,6 @@ namespace awh {
 					 * \~
 					 */
 					size_t _depth;
-					// Хранилище записей открытых узлов разметки
-					vector <opened_t> _opened;
-				private:
-					// Действующие связывания префиксов с пространствами имён
-					vector <scope_t> _scopes;
 					/**
 					 * \~russian
 					 * Число действующих связываний префиксов
@@ -379,6 +375,47 @@ namespace awh {
 					 * \~
 					 */
 					size_t _bindings;
+				private:
+					// Код ошибки последней операции записи
+					error_t _error;
+					// Настройки записи текста разметки
+					settings_t _settings;
+				private:
+					// Собираемый текст разметки
+					string _text;
+				private:
+					// Действующие связывания префиксов с пространствами имён
+					vector <scope_t> _scopes;
+					// Хранилище записей открытых узлов разметки
+					vector <opened_t> _opened;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод отказа записи с сообщением о нём в журнал
+					 *
+					 * @details Способ этот стоит ГОРЛОМ: всякий отказ записи обязан идти через
+					 *          него. Сообщение в журнал пишется в одном месте на всю запись, а не при
+					 *          всяком присваивании кода отказа: иначе места записи разошлись бы с
+					 *          местами отказа, и часть бед уходила бы молча.
+					 *
+					 * @param error код ошибки записи
+					 * @return      всегда ложь, ради возврата им из места отказа
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the writing with a report of it to the log
+					 *
+					 * @details This step stands THROAT-OUT: every refusal of the writing is bound to go
+					 *          through it. A message into the log is written at one place over the whole writing,
+					 *          and not upon every assigning of a code of a refusal: else the places of the writing
+					 *          would part from the places of the refusals, and part of the troubles would go off
+					 *          silently.
+					 *
+					 * @param error the code of the writing error
+					 * @return      always false, for the returning by it from the place of the refusal
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian
@@ -508,8 +545,8 @@ namespace awh {
 					 *          узнать, каким префиксом записать имя, требуется до того, как объявления
 					 *          попадут в текст.
 					 *
-					 * @param local    местное имя открываемого узла
-					 * @param uri      обозначение пространства имён открываемого узла
+					 * @param local     местное имя открываемого узла
+					 * @param uri       обозначение пространства имён открываемого узла
 					 * @param declares  объявления пространств имён, записываемые узлу
 					 * @param preferred префикс, каким имя узла записано в исходном тексте
 					 * @param verbatim  признак записи имён узла дословно, без пространств имён
@@ -525,8 +562,8 @@ namespace awh {
 					 *          it is required to learn by which prefix to write the name before the declarations
 					 *          get into the text.
 					 *
-					 * @param local    local name of the node being opened
-					 * @param uri      designation of the namespace of the node being opened
+					 * @param local     local name of the node being opened
+					 * @param uri       designation of the namespace of the node being opened
 					 * @param declares  declarations of the namespaces being written to the node
 					 * @param preferred prefix by which the name of the node is written in the source text
 					 * @param verbatim  flag of the writing of the names of the node literally, without the namespaces
@@ -542,8 +579,7 @@ namespace awh {
 					 *
 					 * @param node     записываемый узел дерева разметки
 					 * @param preserve признак сохранения пробельного содержимого, унаследованный
-					 *          от объемлющих узлов
-					 *
+					 *                 от объемлющих узлов
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
@@ -551,56 +587,12 @@ namespace awh {
 					 *
 					 * @param node     node of the markup tree being written
 					 * @param preserve flag of the preservation of the whitespace content inherited
-					 *          from the enclosing nodes
-					 *
+					 *                 from the enclosing nodes
 					 * @return         result of performing the operation
 					 *
 					 * \~
 					 */
 					bool element(const node_t & node, const bool preserve) noexcept;
-									private:
-					/**
-					 * \~russian
-					 * Счётчик самостоятельно назначенных префиксов пространств имён
-					 *
-					 * @note Разрядности его хватает с большим запасом, и сторожа при нём нет
-					 *       НАРОЧНО. Заворот требует 2^32 самочинных префиксов в ОДНОМ тексте,
-					 *       а всякий из них рождается лишь от своего пространства имён: столько
-					 *       различных обозначений надо сперва где-то держать. Дерево, пришедшее
-					 *       разбором, до того упрётся в сторожа разрядности хранилища имён у
-					 *       читателя, а дерево, собранное потребителем вручную, - в память
-					 *       машины: одни лишь обозначения заняли бы её всю. Довод этот
-					 *       достижимостью, а не замером, и назван таковым нарочно
-					 *
-					 * @warning Заворот, буде он случится, отказом НЕ обернётся: счётчик выдаст
-					 *          уже занятый префикс, и все записанные с ним имена сменят
-					 *          пространство имён при обратном чтении. Оттого решение оставить
-					 *          поле без сторожа держится ровно на доводе выше, и если довод
-					 *          этот когда-нибудь падёт - например, обозначения станут храниться
-					 *          общей таблицей, - сторожа надо будет завести
-					 *
-					 * \~english
-					 * Counter of the independently assigned prefixes of the namespaces
-					 *
-					 * @note Its bit width suffices with a large reserve, and there is DELIBERATELY no guard
-					 *       on it: a wraparound demands 2^32 self-assigned prefixes within a SINGLE text, and
-					 *       every one of them is born only from its own namespace: so many different
-					 *       designations must first be kept somewhere. A tree which has come by a parsing runs
-					 *       before that into a guard of the bit width of the storage of the names at the reader,
-					 *       while a tree assembled by the consumer by hand - into the memory of the machine: the
-					 *       designations alone would take it all. This argument is one of an attainability, and
-					 *       not of a measurement, and it is named as such deliberately
-					 *
-					 * @warning A wraparound, should it happen, will NOT turn into a refusal: the counter
-					 *          issues a prefix already taken, and all the names written with it change their
-					 *          namespace at the reading back. Therefore the decision to leave the field without
-					 *          a guard holds by the very argument above, and if that argument ever falls - for
-					 *          instance, the designations come to be kept by a common table, - a guard will have
-					 *          to be made
-					 *
-					 * \~
-					 */
-					uint32_t _counter;
 				public:
 					/**
 					 * \~russian
@@ -701,8 +693,8 @@ namespace awh {
 					 * @param prefix   желаемый префикс имени узла, пустой - на выбор потока
 					 * @param oneline  признак записи содержимого узла в одну строку без отступов
 					 * @param verbatim признак записи имени узла дословно, вместе с разделителем
-					 *          префикса: разбор без пространств имён кладёт имя в дерево целиком,
-					 *          и делить его нечем
+					 *                 префикса: разбор без пространств имён кладёт имя в дерево целиком,
+					 *                 и делить его нечем
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
@@ -723,8 +715,8 @@ namespace awh {
 					 * @param prefix   desired prefix of the name of the node, an empty one — at the choice of the stream
 					 * @param oneline  flag of the writing of the content of the node in a single line without the indents
 					 * @param verbatim flag of the writing of the name of the node verbatim, together with the separator
-					 *          of a prefix: the parsing without the namespaces puts a name into the tree
-					 *          in full, and there is nothing to divide it by
+					 *                 of a prefix: the parsing without the namespaces puts a name into the tree
+					 *                 in full, and there is nothing to divide it by
 					 * @return         result of performing the operation
 					 *
 					 * \~
@@ -761,8 +753,8 @@ namespace awh {
 					 * @param value    значение атрибута
 					 * @param uri      обозначение пространства имён атрибута
 					 * @param verbatim признак записи имени атрибута дословно, вместе с разделителем
-					 *          префикса: разбор без пространств имён кладёт имя в дерево целиком,
-					 *          и делить его нечем
+					 *                 префикса: разбор без пространств имён кладёт имя в дерево целиком,
+					 *                 и делить его нечем
 					 * @return         результат выполнения операции
 					 *
 					 * \~english
@@ -779,8 +771,8 @@ namespace awh {
 					 * @param value    value of the attribute
 					 * @param uri      designation of the namespace of the attribute
 					 * @param verbatim flag of the writing of the name of the attribute verbatim, together
-					 *          with the separator of a prefix: the parsing without the namespaces puts a
-					 *          name into the tree in full, and there is nothing to divide it by
+					 *                 with the separator of a prefix: the parsing without the namespaces puts a
+					 *                 name into the tree in full, and there is nothing to divide it by
 					 * @return         result of performing the operation
 					 *
 					 * \~
@@ -1131,7 +1123,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1155,7 +1146,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor

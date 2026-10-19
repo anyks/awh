@@ -57,7 +57,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -72,7 +71,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -323,6 +321,16 @@ namespace awh {
 		namespace xml {
 			/**
 			 * \~russian
+			 * @brief Наибольшая допустимая длина имени в знаках
+			 *
+			 * \~english
+			 * @brief Largest admissible length of a name in characters
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_NAME = 8192;
+			/**
+			 * \~russian
 			 * @brief Наибольшая допустимая глубина вложенности узлов
 			 *
 			 * @details Ограничение защищает от исчерпания стека при разборе текста с
@@ -355,18 +363,32 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_DEPTH = 1024;
-
 			/**
 			 * \~russian
-			 * @brief Наибольшая допустимая длина имени в знаках
+			 * @brief Порог заведения отображения имён вложенных узлов
+			 *
+			 * @details Узел о немногих детях разыскивается перебором, а широкий -
+			 *          отображением, заводимым по требованию: заведение его обходится дороже
+			 *          сличения немногих имён, а узлов о немногих детях в обиходе подавляющее
+			 *          большинство.
+			 *
+			 * @note Порог тот же, каким пользуется кодек JSON: речь об одном и том же
+			 *       выборе, и разводить его двумя числами значило бы завести две правды
 			 *
 			 * \~english
-			 * @brief Largest admissible length of a name in characters
+			 * @brief Threshold of the creation of the mapping of the names of the nested nodes
+			 *
+			 * @details A node of a few children is searched for by a traversal, while a wide one - by
+			 *          a mapping created on demand: to create it costs dearer than a comparison of a
+			 *          few names, and the nodes of a few children are the overwhelming majority in
+			 *          the everyday use.
+			 *
+			 * @note The threshold is the very one the codec JSON uses: the question is about one and
+			 *       the same choice, and to part it by two numbers would mean to make two truths
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_NAME = 8192;
-
+			constexpr uint32_t INDEX_THRESHOLD = 16;
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое количество атрибутов у одного узла разметки
@@ -385,7 +407,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_ATTRIBUTES = 4096;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшая допустимая глубина вложенности ссылок на сущности
@@ -402,45 +423,16 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_ENTITY_DEPTH = 32;
-
 			/**
 			 * \~russian
-			 * @brief Наибольшее допустимое количество объявленных сущностей
+			 * @brief Наибольшее кодовое значение знака Юникода
 			 *
 			 * \~english
-			 * @brief Largest admissible number of the declared entities
+			 * @brief Largest code value of a Unicode character
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_ENTITY_COUNT = 4096;
-
-			/**
-			 * \~russian
-			 * @brief Наибольший допустимый общий объём подстановки сущностей в байтах
-			 *
-			 * @details Предел считается на весь документ, а не на отдельную подстановку:
-			 *          вложенные друг в друга сущности наращивают объём произведением, и уследить за
-			 *          этим можно только по общей сумме. Превышение прекращает разбор ошибкой.
-			 *
-			 * @warning Снятие этого предела открывает многократное разрастание текста при
-			 *          разборе - способ исчерпать память узла подставным документом в несколько
-			 *          сотен байт
-			 *
-			 * \~english
-			 * @brief Largest admissible total volume of the substitution of the entities in bytes
-			 *
-			 * @details The limit is counted over the whole document rather than over a separate substitution:
-			 *          the entities nested into one another increase the volume by a multiplication, and it is possible to keep track of
-			 *          this only by the total sum. An excess terminates the parsing with an error.
-			 *
-			 * @warning The removal of this limit opens up a multiple expansion of the text at the
-			 *          parsing — a way to exhaust the memory of a node with a planted document of several
-			 *          hundred bytes
-			 *
-			 * \~
-			 */
-			constexpr uint64_t MAX_ENTITY_EXPANSION = 0x100000;
-
+			constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
 			/**
 			 * \~russian
 			 * @brief Наибольший допустимый объём одного события в байтах
@@ -483,45 +475,42 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint64_t MAX_EVENT = 0x1000000;
-
 			/**
 			 * \~russian
-			 * @brief Наибольшее кодовое значение знака Юникода
+			 * @brief Наибольшее допустимое количество объявленных сущностей
 			 *
 			 * \~english
-			 * @brief Largest code value of a Unicode character
+			 * @brief Largest admissible number of the declared entities
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
-
+			constexpr uint32_t MAX_ENTITY_COUNT = 4096;
 			/**
 			 * \~russian
-			 * @brief Порог заведения отображения имён вложенных узлов
+			 * @brief Наибольший допустимый общий объём подстановки сущностей в байтах
 			 *
-			 * @details Узел о немногих детях разыскивается перебором, а широкий -
-			 *          отображением, заводимым по требованию: заведение его обходится дороже
-			 *          сличения немногих имён, а узлов о немногих детях в обиходе подавляющее
-			 *          большинство.
+			 * @details Предел считается на весь документ, а не на отдельную подстановку:
+			 *          вложенные друг в друга сущности наращивают объём произведением, и уследить за
+			 *          этим можно только по общей сумме. Превышение прекращает разбор ошибкой.
 			 *
-			 * @note Порог тот же, каким пользуется кодек JSON: речь об одном и том же
-			 *       выборе, и разводить его двумя числами значило бы завести две правды
+			 * @warning Снятие этого предела открывает многократное разрастание текста при
+			 *          разборе - способ исчерпать память узла подставным документом в несколько
+			 *          сотен байт
 			 *
 			 * \~english
-			 * @brief Threshold of the creation of the mapping of the names of the nested nodes
+			 * @brief Largest admissible total volume of the substitution of the entities in bytes
 			 *
-			 * @details A node of a few children is searched for by a traversal, while a wide one - by
-			 *          a mapping created on demand: to create it costs dearer than a comparison of a
-			 *          few names, and the nodes of a few children are the overwhelming majority in
-			 *          the everyday use.
+			 * @details The limit is counted over the whole document rather than over a separate substitution:
+			 *          the entities nested into one another increase the volume by a multiplication, and it is possible to keep track of
+			 *          this only by the total sum. An excess terminates the parsing with an error.
 			 *
-			 * @note The threshold is the very one the codec JSON uses: the question is about one and
-			 *       the same choice, and to part it by two numbers would mean to make two truths
+			 * @warning The removal of this limit opens up a multiple expansion of the text at the
+			 *          parsing — a way to exhaust the memory of a node with a planted document of several
+			 *          hundred bytes
 			 *
 			 * \~
 			 */
-			constexpr uint32_t INDEX_THRESHOLD = 16;
-
+			constexpr uint64_t MAX_ENTITY_EXPANSION = 0x100000;
 			/**
 			 * \~russian
 			 * @brief Обозначение отсутствующего положения в исходном тексте
@@ -533,6 +522,16 @@ namespace awh {
 			 */
 			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (~0ull);
 
+			/**
+			 * \~russian
+			 * @brief Постоянное обозначение пространства имён объявлений «xmlns»
+			 *
+			 * \~english
+			 * @brief Constant designation of the «xmlns» namespace of the declarations
+			 *
+			 * \~
+			 */
+			constexpr string_view XMLNS_NAMESPACE = "http://www.w3.org/2000/xmlns/";
 			/**
 			 * \~russian
 			 * @brief Постоянное обозначение пространства имён «xml»
@@ -552,17 +551,6 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Постоянное обозначение пространства имён объявлений «xmlns»
-			 *
-			 * \~english
-			 * @brief Constant designation of the «xmlns» namespace of the declarations
-			 *
-			 * \~
-			 */
-			constexpr string_view XMLNS_NAMESPACE = "http://www.w3.org/2000/xmlns/";
-
-			/**
-			 * \~russian
 			 * @brief Коды ошибок разбора текста разметки
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
@@ -577,7 +565,8 @@ namespace awh {
 			 * \~
 			 */
 			enum class error_t : uint8_t {
-				NONE                    = 0x00, // Ошибок не обнаружено
+				// Ошибок не обнаружено
+				NONE = 0x00,
 				/**
 				 * \~russian
 				 * Внутренняя ошибка разбора
@@ -599,51 +588,51 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				INTERNAL                = 0x01, // Внутренняя ошибка разбора
-				INVALID_CHARACTER       = 0x02, // Знак недопустим в разметке
-				INVALID_ENCODING        = 0x03, // Последовательность байтов не отвечает объявленной кодировке
-				UNSUPPORTED_ENCODING    = 0x04, // Объявленная кодировка не поддерживается
-				INVALID_DECLARATION     = 0x05, // Ошибочное объявление разметки в начале текста
-				UNSUPPORTED_VERSION     = 0x06, // Объявленное издание разметки не поддерживается
-				INVALID_NAME            = 0x07, // Имя содержит недопустимые знаки либо пусто
-				NAME_TOO_LONG           = 0x08, // Длина имени превышает допустимую
-				INVALID_TAG             = 0x09, // Ошибочное построение метки
-				UNCLOSED_TAG            = 0x0A, // Метка не закрыта до конца текста
-				MISMATCHED_TAG          = 0x0B, // Имя закрывающей метки не совпадает с открывающей
-				UNEXPECTED_CLOSE_TAG    = 0x0C, // Закрывающая метка без соответствующей открывающей
-				MULTIPLE_ROOTS          = 0x0D, // В тексте более одного корневого узла
-				MISSING_ROOT            = 0x0E, // В тексте отсутствует корневой узел
-				CONTENT_OUTSIDE_ROOT    = 0x0F, // Текстовое содержимое вне корневого узла
-				DEPTH_EXCEEDED          = 0x10, // Превышена допустимая глубина вложенности узлов
-				INVALID_ATTRIBUTE       = 0x11, // Ошибочное построение атрибута
-				DUPLICATE_ATTRIBUTE     = 0x12, // Атрибут с таким именем в узле уже объявлен
-				UNQUOTED_ATTRIBUTE      = 0x13, // Значение атрибута не заключено в кавычки
-				INVALID_REFERENCE       = 0x14, // Ошибочное построение ссылки на сущность
-				UNKNOWN_ENTITY          = 0x15, // Ссылка на необъявленную сущность
-				EXTERNAL_ENTITY         = 0x16, // Ссылка на внешнюю либо неразбираемую сущность там, где договор её запрещает
-				RECURSIVE_ENTITY        = 0x17, // Сущность ссылается сама на себя
-				ENTITY_DEPTH_EXCEEDED   = 0x18, // Превышена допустимая глубина вложенности сущностей
-				ENTITY_LIMIT_EXCEEDED   = 0x19, // Превышен допустимый объём подстановки сущностей
-				ENTITY_COUNT_EXCEEDED   = 0x1A, // Превышено допустимое количество объявленных сущностей
-				INVALID_CHAR_REFERENCE  = 0x1B, // Числовая ссылка построена ошибочно либо указывает на недопустимое кодовое значение
-				INVALID_COMMENT         = 0x1C, // Ошибочное построение примечания
-				INVALID_CDATA           = 0x1D, // Ошибочное построение раздела дословного текста
-				INVALID_PROCESSING      = 0x1E, // Ошибочное построение указания обработчику
-				RESERVED_PROCESSING     = 0x1F, // Имя указания обработчику отведено договором
-				INVALID_DOCTYPE         = 0x20, // Ошибочное построение описания типа документа
-				DOCTYPE_MISPLACED       = 0x21, // Описание типа документа расположено не на своём месте
-				INVALID_PREFIX          = 0x22, // Ошибочное построение префикса пространства имён
-				UNBOUND_PREFIX          = 0x23, // Префикс не связан ни с одним пространством имён
-				RESERVED_PREFIX         = 0x24, // Попытка переопределить отведённый договором префикс
-				INVALID_NAMESPACE       = 0x25, // Объявлению пространства имён дано недопустимое значение
-				OVERFLOW_LIMIT          = 0x26, // Превышен предел, заданный настройками разбора
-				ENTITY_BOUNDARY         = 0x27, // Построение разметки пересекает границу подставленной сущности
-				FILE_NOT_OPENED         = 0x28, // Файл разметки открыть не удалось
-				TEXT_ALREADY_ENDED      = 0x29, // Подача продолжена после объявленного конца текста
-				FILE_NOT_WRITTEN        = 0x2A, // Текст разметки записать в файл не удалось
-				STORAGE_EXHAUSTED       = 0x2B, // Разбираемый текст не помещается в разрядность хранилища
-				TOO_MANY_ATTRIBUTES     = 0x2C, // Количество атрибутов у узла превышает допустимое
-				FILE_NOT_READ           = 0x2D, // Файл разметки прочитать не удалось
+				INTERNAL               = 0x01, // Внутренняя ошибка разбора
+				INVALID_CHARACTER      = 0x02, // Знак недопустим в разметке
+				INVALID_ENCODING       = 0x03, // Последовательность байтов не отвечает объявленной кодировке
+				UNSUPPORTED_ENCODING   = 0x04, // Объявленная кодировка не поддерживается
+				INVALID_DECLARATION    = 0x05, // Ошибочное объявление разметки в начале текста
+				UNSUPPORTED_VERSION    = 0x06, // Объявленное издание разметки не поддерживается
+				INVALID_NAME           = 0x07, // Имя содержит недопустимые знаки либо пусто
+				NAME_TOO_LONG          = 0x08, // Длина имени превышает допустимую
+				INVALID_TAG            = 0x09, // Ошибочное построение метки
+				UNCLOSED_TAG           = 0x0A, // Метка не закрыта до конца текста
+				MISMATCHED_TAG         = 0x0B, // Имя закрывающей метки не совпадает с открывающей
+				UNEXPECTED_CLOSE_TAG   = 0x0C, // Закрывающая метка без соответствующей открывающей
+				MULTIPLE_ROOTS         = 0x0D, // В тексте более одного корневого узла
+				MISSING_ROOT           = 0x0E, // В тексте отсутствует корневой узел
+				CONTENT_OUTSIDE_ROOT   = 0x0F, // Текстовое содержимое вне корневого узла
+				DEPTH_EXCEEDED         = 0x10, // Превышена допустимая глубина вложенности узлов
+				INVALID_ATTRIBUTE      = 0x11, // Ошибочное построение атрибута
+				DUPLICATE_ATTRIBUTE    = 0x12, // Атрибут с таким именем в узле уже объявлен
+				UNQUOTED_ATTRIBUTE     = 0x13, // Значение атрибута не заключено в кавычки
+				INVALID_REFERENCE      = 0x14, // Ошибочное построение ссылки на сущность
+				UNKNOWN_ENTITY         = 0x15, // Ссылка на необъявленную сущность
+				EXTERNAL_ENTITY        = 0x16, // Ссылка на внешнюю либо неразбираемую сущность там, где договор её запрещает
+				RECURSIVE_ENTITY       = 0x17, // Сущность ссылается сама на себя
+				ENTITY_DEPTH_EXCEEDED  = 0x18, // Превышена допустимая глубина вложенности сущностей
+				ENTITY_LIMIT_EXCEEDED  = 0x19, // Превышен допустимый объём подстановки сущностей
+				ENTITY_COUNT_EXCEEDED  = 0x1A, // Превышено допустимое количество объявленных сущностей
+				INVALID_CHAR_REFERENCE = 0x1B, // Числовая ссылка построена ошибочно либо указывает на недопустимое кодовое значение
+				INVALID_COMMENT        = 0x1C, // Ошибочное построение примечания
+				INVALID_CDATA          = 0x1D, // Ошибочное построение раздела дословного текста
+				INVALID_PROCESSING     = 0x1E, // Ошибочное построение указания обработчику
+				RESERVED_PROCESSING    = 0x1F, // Имя указания обработчику отведено договором
+				INVALID_DOCTYPE        = 0x20, // Ошибочное построение описания типа документа
+				DOCTYPE_MISPLACED      = 0x21, // Описание типа документа расположено не на своём месте
+				INVALID_PREFIX         = 0x22, // Ошибочное построение префикса пространства имён
+				UNBOUND_PREFIX         = 0x23, // Префикс не связан ни с одним пространством имён
+				RESERVED_PREFIX        = 0x24, // Попытка переопределить отведённый договором префикс
+				INVALID_NAMESPACE      = 0x25, // Объявлению пространства имён дано недопустимое значение
+				OVERFLOW_LIMIT         = 0x26, // Превышен предел, заданный настройками разбора
+				ENTITY_BOUNDARY        = 0x27, // Построение разметки пересекает границу подставленной сущности
+				FILE_NOT_OPENED        = 0x28, // Файл разметки открыть не удалось
+				TEXT_ALREADY_ENDED     = 0x29, // Подача продолжена после объявленного конца текста
+				FILE_NOT_WRITTEN       = 0x2A, // Текст разметки записать в файл не удалось
+				STORAGE_EXHAUSTED      = 0x2B, // Разбираемый текст не помещается в разрядность хранилища
+				TOO_MANY_ATTRIBUTES    = 0x2C, // Количество атрибутов у узла превышает допустимое
+				FILE_NOT_READ          = 0x2D, // Файл разметки прочитать не удалось
 				/**
 				 * \~russian
 				 * Переданный узел дерева непригоден
@@ -665,7 +654,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				INVALID_NODE            = 0x2E,
+				INVALID_NODE = 0x2E,
 				/**
 				 * \~russian
 				 * Кодировка исходного текста сменена посреди подачи
@@ -697,110 +686,6 @@ namespace awh {
 				 * \~
 				 */
 				ENCODING_ALREADY_CHOSEN = 0x2F // Кодировка сменена посреди подачи текста
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды событий чтения текста разметки
-			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
-			 *
-			 * \~english
-			 * @brief Kinds of the events of the reading of a markup text
-			 *
-			 * @details The reading issues the events as the text is parsed without holding it in full.
-			 *
-			 * \~
-			 */
-			enum class event_t : uint8_t {
-				NONE          = 0x00, // Событие не определено
-				DECLARATION   = 0x01, // Объявление разметки в начале текста
-				DOCTYPE       = 0x02, // Описание типа документа
-				PROCESSING    = 0x03, // Указание обработчику
-				COMMENT       = 0x04, // Примечание
-				ELEMENT_OPEN  = 0x05, // Начало узла со списком его атрибутов
-				ELEMENT_CLOSE = 0x06, // Конец узла
-				TEXT          = 0x07, // Текстовое содержимое узла
-				CDATA         = 0x08, // Раздел дословного текста
-				SPACE         = 0x09, // Пробельное содержимое, не значимое для строения
-				FINISH        = 0x0A  // Текст разобран до конца
-			};
-
-			/**
-			 * \~russian
-			 * @brief Кодировки исходного текста разметки
-			 *
-			 * @details Кодировка определяется по метке порядка байтов и по объявлению
-			 *          разметки в начале текста; при их отсутствии договор предписывает считать
-			 *          текст записанным в UTF-8.
-			 *
-			 * \~english
-			 * @brief Encodings of the source markup text
-			 *
-			 * @details The encoding is determined by the byte order mark and by the declaration
-			 *          of the markup at the beginning of the text; in their absence the protocol prescribes considering
-			 *          the text written in UTF-8.
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE     = 0x00, // Кодировка не определена
-				UTF8     = 0x01, // Кодировка UTF-8
-				UTF16LE  = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE  = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1   = 0x04, // Кодировка ISO-8859-1
-				ASCII    = 0x05, // Кодировка US-ASCII
-				/**
-				 * \~russian
-				 * Однобайтовая кодировка, взятая таблицею у `awh::charset`
-				 *
-				 * @details Виды выше разбираются своими ветвями, ибо разбор их своеобразен:
-				 *          у UTF-8 знак занимает от одного до четырёх байтов, у UTF-16 - два либо
-				 *          четыре. Всякая же ОДНОБАЙТОВАЯ кодировка разбирается одинаково - байт в
-				 *          кодовое значение по таблице, - и заводить каждой свой вид незачем: их
-				 *          десятки, и все они уже лежат в `awh::charset`.
-				 *
-				 * @note Вид этот сам по себе кодировки НЕ называет: какая именно взята,
-				 *       хранится таблицею у разбора. Оттого `name()` выдаёт для него не имя
-				 *       кодировки, а обозначение вида
-				 *
-				 * \~english
-				 * Single-byte encoding taken as a table from `awh::charset`
-				 *
-				 * @details The kinds above are parsed by their own branches, for their parsing is own: at
-				 *          UTF-8 a character takes from one to four bytes, at UTF-16 - two or four. Any
-				 *          SINGLE-BYTE encoding, on the contrary, is parsed in the same way - a byte into a
-				 *          code value by a table, - and there is no sense in making an own kind for each:
-				 *          there are dozens of them, and all of them already lie in `awh::charset`.
-				 *
-				 * @note This kind by itself does NOT name an encoding: which exact one has been taken is
-				 *       kept by a table at the parsing. Therefore `name()` issues for it not a name of an
-				 *       encoding, but a designation of the kind
-				 *
-				 * \~
-				 */
-				SINGLE   = 0x06
-			};
-
-			/**
-			 * \~russian
-			 * @brief Признак самодостаточности текста разметки
-			 *
-			 * @details Объявляется полем «standalone» объявления разметки и сообщает, влияет
-			 *          ли внешнее подмножество описания типа документа на смысл текста.
-			 *
-			 * \~english
-			 * @brief Flag of the standaloneness of a markup text
-			 *
-			 * @details Declared by the «standalone» field of the markup declaration and reports whether
-			 *          the external subset of a document type definition affects the meaning of the text.
-			 *
-			 * \~
-			 */
-			enum class standalone_t : uint8_t {
-				NONE = 0x00, // Признак в объявлении разметки отсутствует
-				YES  = 0x01, // Текст самодостаточен
-				NO   = 0x02  // Смысл текста зависит от внешнего подмножества
 			};
 
 			/**
@@ -839,32 +724,43 @@ namespace awh {
 			};
 			/**
 			 * \~russian
-			 * @warning Нарядная запись `PRETTY` кругового прохода НЕ сохраняет: отступ есть
-			 *          вставка пробельных знаков, а пробелы в разметке значимы, и разбор
-			 *          записанного даёт лишние текстовые узлы между вложенными. Плотная запись
-			 *          `COMPACT` круг сохраняет всегда - её и следует брать там, где записанное
-			 *          сличается с исходным либо разбирается обратно
+			 * @brief Обращение с пробельным содержимым внутри узла
 			 *
-			 * @note Узел со смешанным содержимым - несущий разом непробельный текст и вложенные
-			 *       узлы - от вставки заслонён: внутри него отступы не ставятся вовсе, иначе
-			 *       «перед» становилось бы «перед\n\t». Заслон держат оба пути записи, и
-			 *       древесный, и потоковый
+			 * @details Задаётся отведённым договором атрибутом «xml:space» и наследуется
+			 *          вложенными узлами.
 			 *
 			 * \~english
-			 * @warning The `PRETTY` writing does NOT preserve a round trip: an indent is an insertion
-			 *          of the whitespace characters, while the whitespace in a markup is significant, and
-			 *          the parsing of what was written gives extra text nodes between the nested ones. The
-			 *          `COMPACT` writing always preserves the round trip — it is the one to take wherever
-			 *          what was written is compared with the source or is parsed back
+			 * @brief Treatment of the whitespace content inside a node
 			 *
-			 * @note A node with a mixed content — carrying both a non-whitespace text and the nested nodes
-			 *       at once — is shielded from the insertion: no indents are placed inside it at all,
-			 *       otherwise "before" would become "before\n\t". The shield is held by both paths of
-			 *       the writing, the tree one and the streaming one
+			 * @details Given by the «xml:space» attribute allotted by the protocol and inherited
+			 *          by the nested nodes.
 			 *
 			 * \~
 			 */
-
+			enum class space_t : uint8_t {
+				DEFAULT  = 0x00, // Обращение с пробелами оставлено на усмотрение читающего
+				PRESERVE = 0x01  // Пробельное содержимое подлежит сохранению как есть
+			};
+			/**
+			 * \~russian
+			 * @brief Признак самодостаточности текста разметки
+			 *
+			 * @details Объявляется полем «standalone» объявления разметки и сообщает, влияет
+			 *          ли внешнее подмножество описания типа документа на смысл текста.
+			 *
+			 * \~english
+			 * @brief Flag of the standaloneness of a markup text
+			 *
+			 * @details Declared by the «standalone» field of the markup declaration and reports whether
+			 *          the external subset of a document type definition affects the meaning of the text.
+			 *
+			 * \~
+			 */
+			enum class standalone_t : uint8_t {
+				NONE = 0x00, // Признак в объявлении разметки отсутствует
+				YES  = 0x01, // Текст самодостаточен
+				NO   = 0x02  // Смысл текста зависит от внешнего подмножества
+			};
 			/**
 			 * \~russian
 			 * @brief Знак отступа нарядной записи
@@ -895,7 +791,273 @@ namespace awh {
 			};
 			/**
 			 * \~russian
-			 * @brief Настройки записи текста разметки
+			 * @brief Виды событий чтения текста разметки
+			 *
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a markup text
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE          = 0x00, // Событие не определено
+				DECLARATION   = 0x01, // Объявление разметки в начале текста
+				DOCTYPE       = 0x02, // Описание типа документа
+				PROCESSING    = 0x03, // Указание обработчику
+				COMMENT       = 0x04, // Примечание
+				ELEMENT_OPEN  = 0x05, // Начало узла со списком его атрибутов
+				ELEMENT_CLOSE = 0x06, // Конец узла
+				TEXT          = 0x07, // Текстовое содержимое узла
+				CDATA         = 0x08, // Раздел дословного текста
+				SPACE         = 0x09, // Пробельное содержимое, не значимое для строения
+				FINISH        = 0x0A  // Текст разобран до конца
+			};
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста разметки
+			 *
+			 * @details Кодировка определяется по метке порядка байтов и по объявлению
+			 *          разметки в начале текста; при их отсутствии договор предписывает считать
+			 *          текст записанным в UTF-8.
+			 *
+			 * \~english
+			 * @brief Encodings of the source markup text
+			 *
+			 * @details The encoding is determined by the byte order mark and by the declaration
+			 *          of the markup at the beginning of the text; in their absence the protocol prescribes considering
+			 *          the text written in UTF-8.
+			 *
+			 * \~
+			 */
+			enum class encoding_t : uint8_t {
+				NONE    = 0x00, // Кодировка не определена
+				UTF8    = 0x01, // Кодировка UTF-8
+				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
+				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
+				LATIN1  = 0x04, // Кодировка ISO-8859-1
+				ASCII   = 0x05, // Кодировка US-ASCII
+				/**
+				 * \~russian
+				 * Однобайтовая кодировка, взятая таблицею у `awh::charset`
+				 *
+				 * @details Виды выше разбираются своими ветвями, ибо разбор их своеобразен:
+				 *          у UTF-8 знак занимает от одного до четырёх байтов, у UTF-16 - два либо
+				 *          четыре. Всякая же ОДНОБАЙТОВАЯ кодировка разбирается одинаково - байт в
+				 *          кодовое значение по таблице, - и заводить каждой свой вид незачем: их
+				 *          десятки, и все они уже лежат в `awh::charset`.
+				 *
+				 * @note Вид этот сам по себе кодировки НЕ называет: какая именно взята,
+				 *       хранится таблицею у разбора. Оттого `name()` выдаёт для него не имя
+				 *       кодировки, а обозначение вида
+				 *
+				 * \~english
+				 * Single-byte encoding taken as a table from `awh::charset`
+				 *
+				 * @details The kinds above are parsed by their own branches, for their parsing is own: at
+				 *          UTF-8 a character takes from one to four bytes, at UTF-16 - two or four. Any
+				 *          SINGLE-BYTE encoding, on the contrary, is parsed in the same way - a byte into a
+				 *          code value by a table, - and there is no sense in making an own kind for each:
+				 *          there are dozens of them, and all of them already lie in `awh::charset`.
+				 *
+				 * @note This kind by itself does NOT name an encoding: which exact one has been taken is
+				 *       kept by a table at the parsing. Therefore `name()` issues for it not a name of an
+				 *       encoding, but a designation of the kind
+				 *
+				 * \~
+				 */
+				SINGLE = 0x06
+			};
+
+			/**
+			 * \~russian
+			 * @warning Нарядная запись `PRETTY` кругового прохода НЕ сохраняет: отступ есть
+			 *          вставка пробельных знаков, а пробелы в разметке значимы, и разбор
+			 *          записанного даёт лишние текстовые узлы между вложенными. Плотная запись
+			 *          `COMPACT` круг сохраняет всегда - её и следует брать там, где записанное
+			 *          сличается с исходным либо разбирается обратно
+			 *
+			 * @note Узел со смешанным содержимым - несущий разом непробельный текст и вложенные
+			 *       узлы - от вставки заслонён: внутри него отступы не ставятся вовсе, иначе
+			 *       «перед» становилось бы «перед\n\t». Заслон держат оба пути записи, и
+			 *       древесный, и потоковый
+			 *
+			 * \~english
+			 * @warning The `PRETTY` writing does NOT preserve a round trip: an indent is an insertion
+			 *          of the whitespace characters, while the whitespace in a markup is significant, and
+			 *          the parsing of what was written gives extra text nodes between the nested ones. The
+			 *          `COMPACT` writing always preserves the round trip — it is the one to take wherever
+			 *          what was written is compared with the source or is parsed back
+			 *
+			 * @note A node with a mixed content — carrying both a non-whitespace text and the nested nodes
+			 *       at once — is shielded from the insertion: no indents are placed inside it at all,
+			 *       otherwise "before" would become "before\n\t". The shield is held by both paths of
+			 *       the writing, the tree one and the streaming one
+			 *
+			 * \~
+			 */
+
+			/**
+			 * \~russian
+			 * @brief Структура связывания префикса с пространством имён
+			 *
+			 * @details Действует внутри узла, где объявлено, и внутри всех вложенных в него,
+			 *          пока не будет переопределено.
+			 *
+			 * @warning Поля живут лишь до закрытия узла, связывание объявившего: хранилище
+			 *          областей переиспользуется. Замер: обозначение, удержанное у корневого узла,
+			 *          по закрытии его читало СДВИНУТОЕ содержимое - «p» вместо «urn:A», - тогда как
+			 *          зов `resolve()` отвечал пустым, то есть верно. Ответ о связывании надлежит
+			 *          брать зовом, а нужное дольше - копировать
+			 *
+			 * \~english
+			 * @brief Structure for binding a prefix to a namespace
+			 *
+			 * @details Acts inside the node where it is declared and inside all the ones nested into it,
+			 *          until it is redefined.
+			 *
+			 * @warning The fields live only until the closing of the node that declared the binding: the storage
+			 *          of the scopes is reused. Measurement: a designation held at the root node,
+			 *          upon its closing read a SHIFTED content — «p» instead of «urn:A» — whereas
+			 *          a call to `resolve()` answered empty, that is, correctly. The answer about a binding should be
+			 *          taken by a call, and what is needed for longer — copied
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Binding {
+				// Обозначение пространства имён, пустое для отмены связывания
+				string_view uri;
+				// Префикс без разделителя, пустой для объявления по умолчанию
+				string_view prefix;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Binding() noexcept = default;
+			} binding_t;
+			/**
+			 * \~russian
+			 * @brief Структура отрезка общего хранилища знаков
+			 *
+			 * @details Хранилища знаков дописываются по мере разбора и при росте
+			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
+			 *          отрезка вместо ссылки на него - единственный способ пережить такое
+			 *          перемещение.
+			 *
+			 * \~english
+			 * @brief Structure of a segment of the shared character storage
+			 *
+			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
+			 *          are moved, invalidating the references to their content. To keep the position of a
+			 *          segment instead of a reference to it is the only way to survive such a
+			 *          move.
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Span {
+				// Смещение начала отрезка в хранилище знаков
+				uint32_t offset;
+				// Длина отрезка в байтах
+				uint32_t length;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Span() noexcept;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * @param offset смещение начала отрезка в хранилище знаков
+				 * @param length длина отрезка в байтах
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * @param offset offset of the beginning of the segment in the storage of the characters
+				 * @param length length of the segment in bytes
+				 *
+				 * \~
+				 */
+				explicit Span(const uint32_t offset, const uint32_t length) noexcept;
+			} span_t;
+			/**
+			 * \~russian
+			 * @brief Структура положения в исходном тексте разметки
+			 *
+			 * @details Служит для указания места ошибки и для привязки узлов дерева к
+			 *          исходному тексту.
+			 *
+			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
+			 *       смещение - в байтах исходного текста до перекодирования
+			 *
+			 * \~english
+			 * @brief Structure of the position within the source markup text
+			 *
+			 * @details Serves for indicating the place of an error and for binding the nodes of the tree to the
+			 *          source text.
+			 *
+			 * @note The line number and the position in the line are counted in Unicode characters, while
+			 *       the offset — in the bytes of the source text before the transcoding
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Location {
+				// Номер строки, считая с единицы
+				uint32_t line;
+				/**
+				 * \~russian
+				 * @brief Смещение от начала текста в байтах
+				 *
+				 * @warning Смещение считается по тексту, ПРИВЕДЁННОМУ к UTF-8, а не по
+				 *          исходным байтам. Метка порядка байтов снята, а текст в иной
+				 *          кодировке уже переведён, и длины расходятся: документ Latin-1
+				 *          в 52 байта даёт смещение конца 54, а метка порядка байтов
+				 *          сдвигает все смещения на свою длину. Для указания места в
+				 *          ИСХОДНОМ файле смещение это негодно, если текст подан не в
+				 *          UTF-8 без метки
+				 *
+				 * \~english
+				 * @brief The offset from the beginning of the text in bytes
+				 *
+				 * @warning The offset is counted over the text CONVERTED to UTF-8 rather than over
+				 *          the source bytes. The byte order mark is stripped and a text in another
+				 *          encoding is already converted, so the lengths diverge: a Latin-1 document
+				 *          of 52 bytes gives the ending offset 54, and a byte order mark shifts every
+				 *          offset by its length. For pointing at a place in the SOURCE file this
+				 *          offset is unfit unless the text is supplied as UTF-8 without a mark
+				 *
+				 * \~
+				 */
+				uint64_t offset;
+				// Положение в строке, считая с единицы
+				uint32_t column;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Location() noexcept;
+			} location_t;
+			/**
+			 * \~russian
+			 * @brief Структура настройки записи текста разметки
 			 *
 			 * @note Построение это лежит в общем заголовке, а не в записи, оттого что дерево
 			 *       разметки записывает себя ходом `dump(settings)`, а включить у себя запись
@@ -903,7 +1065,7 @@ namespace awh {
 			 *       прежним именем `writer_t::settings_t`
 			 *
 			 * \~english
-			 * @brief Settings of the writing of a markup text
+			 * @brief Structure for configuring markup text recording
 			 *
 			 * @note This construction lies in a common header rather than in the writing, because a
 			 *       markup tree writes itself by the `dump(settings)` step, while it cannot include the
@@ -913,16 +1075,12 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Settings {
-				// Вид записи собираемого текста разметки
-				format_t format;
 				// Флаг записи узлов без содержимого самозакрывающейся меткой
 				bool collapse;
 				// Флаг экранирования знаков, выходящих за пределы US-ASCII, числовыми ссылками
 				bool escapeNonAscii;
 				// Количество знаков отступа на один уровень вложенности
 				uint8_t indent;
-				// Знак, которым ставится отступ нарядной записи
-				separator_t separator;
 				/**
 				 * \~russian
 				 * Наибольшая допустимая глубина вложенности узлов, ноль - без предела
@@ -951,159 +1109,24 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t maxDepth;
+				// Вид записи собираемого текста разметки
+				format_t format;
+				// Знак, которым ставится отступ нарядной записи
+				separator_t separator;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Settings() noexcept;
+				explicit Settings() noexcept;
 			} writer_settings_t;
-
 			/**
 			 * \~russian
-			 * @brief Обращение с пробельным содержимым внутри узла
-			 *
-			 * @details Задаётся отведённым договором атрибутом «xml:space» и наследуется
-			 *          вложенными узлами.
-			 *
-			 * \~english
-			 * @brief Treatment of the whitespace content inside a node
-			 *
-			 * @details Given by the «xml:space» attribute allotted by the protocol and inherited
-			 *          by the nested nodes.
-			 *
-			 * \~
-			 */
-			enum class space_t : uint8_t {
-				DEFAULT  = 0x00, // Обращение с пробелами оставлено на усмотрение читающего
-				PRESERVE = 0x01  // Пробельное содержимое подлежит сохранению как есть
-			};
-
-			/**
-			 * \~russian
-			 * @brief Отрезок общего хранилища знаков
-			 *
-			 * @details Хранилища знаков дописываются по мере разбора и при росте
-			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
-			 *          отрезка вместо ссылки на него - единственный способ пережить такое
-			 *          перемещение.
-			 *
-			 * \~english
-			 * @brief Segment of the common storage of the characters
-			 *
-			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
-			 *          are moved, invalidating the references to their content. To keep the position of a
-			 *          segment instead of a reference to it is the only way to survive such a
-			 *          move.
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище знаков
-				uint32_t offset;
-				// Длина отрезка в байтах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				Span() noexcept : offset(0), length(0) {}
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище знаков
-				 * @param length длина отрезка в байтах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the characters
-				 * @param length length of the segment in bytes
-				 *
-				 * \~
-				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
-			} span_t;
-
-			/**
-			 * \~russian
-			 * @brief Положение в исходном тексте разметки
-			 *
-			 * @details Служит для указания места ошибки и для привязки узлов дерева к
-			 *          исходному тексту.
-			 *
-			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 *       смещение - в байтах исходного текста до перекодирования
-			 *
-			 * \~english
-			 * @brief Position in the source markup text
-			 *
-			 * @details Serves for indicating the place of an error and for binding the nodes of the tree to the
-			 *          source text.
-			 *
-			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 *       the offset — in the bytes of the source text before the transcoding
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				/**
-				 * \~russian
-				 * @brief Смещение от начала текста в байтах
-				 *
-				 * @warning Смещение считается по тексту, ПРИВЕДЁННОМУ к UTF-8, а не по
-				 *          исходным байтам. Метка порядка байтов снята, а текст в иной
-				 *          кодировке уже переведён, и длины расходятся: документ Latin-1
-				 *          в 52 байта даёт смещение конца 54, а метка порядка байтов
-				 *          сдвигает все смещения на свою длину. Для указания места в
-				 *          ИСХОДНОМ файле смещение это негодно, если текст подан не в
-				 *          UTF-8 без метки
-				 *
-				 * \~english
-				 * @brief The offset from the beginning of the text in bytes
-				 *
-				 * @warning The offset is counted over the text CONVERTED to UTF-8 rather than over
-				 *          the source bytes. The byte order mark is stripped and a text in another
-				 *          encoding is already converted, so the lengths diverge: a Latin-1 document
-				 *          of 52 bytes gives the ending offset 54, and a byte order mark shifts every
-				 *          offset by its length. For pointing at a place in the SOURCE file this
-				 *          offset is unfit unless the text is supplied as UTF-8 without a mark
-				 *
-				 * \~
-				 */
-				uint64_t offset;
-				// Номер строки, считая с единицы
-				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
-			} location_t;
-
-			/**
-			 * \~russian
-			 * @brief Имя узла или атрибута с учётом пространства имён
+			 * @brief Структура имени узла или атрибута с учётом пространства имён
 			 *
 			 * @details Имя в разметке с пространствами имён состоит из необязательного
 			 *          префикса и местного имени. Смысл имени задаёт не префикс, а связанное с ним
@@ -1119,7 +1142,7 @@ namespace awh {
 			 *       хранилищу имён, и живут не дольше их
 			 *
 			 * \~english
-			 * @brief Name of a node or of an attribute with regard to the namespace
+			 * @brief Structure of a node or attribute name, taking namespaces into account
 			 *
 			 * @details A name in a markup with the namespaces consists of an optional
 			 *          prefix and a local name. The meaning of a name is given not by the prefix but by the designation of the
@@ -1137,12 +1160,12 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Name {
-				// Префикс пространства имён без разделителя
-				string_view prefix;
-				// Местное имя без префикса
-				string_view local;
 				// Обозначение связанного пространства имён
 				string_view uri;
+				// Местное имя без префикса
+				string_view local;
+				// Префикс пространства имён без разделителя
+				string_view prefix;
 				/**
 				 * \~russian
 				 * @brief Метод проверки совпадения имени
@@ -1194,10 +1217,9 @@ namespace awh {
 				 */
 				bool operator != (const Name & name) const noexcept;
 			} name_t;
-
 			/**
 			 * \~russian
-			 * @brief Атрибут узла разметки
+			 * @brief Структура атрибута узла разметки
 			 *
 			 * @details Значение атрибута выдаётся уже приведённым к окончательному виду:
 			 *          ссылки на сущности подставлены, знаки конца строки приведены к единому виду,
@@ -1214,7 +1236,7 @@ namespace awh {
 			 *          ГОВОРИТ, и молчание здесь читалось бы как её срок
 			 *
 			 * \~english
-			 * @brief Attribute of a markup node
+			 * @brief Markup node attribute structure
 			 *
 			 * @details The value of an attribute is issued already brought to its final form:
 			 *          the references to the entities are substituted, the line ending characters are brought to a single form,
@@ -1233,81 +1255,35 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Attribute {
-				// Имя атрибута с учётом пространства имён
-				name_t name;
-				// Значение атрибута, приведённое к окончательному виду
-				string_view value;
-				// Положение атрибута в исходном тексте
-				location_t location;
 				// Признак того, что значение взято из объявления по умолчанию, а не из текста
 				bool defaulted;
+				// Имя атрибута с учётом пространства имён
+				name_t name;
+				// Положение атрибута в исходном тексте
+				location_t location;
+				// Значение атрибута, приведённое к окончательному виду
+				string_view value;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Attribute() noexcept : defaulted(false) {}
+				explicit Attribute() noexcept;
 			} attribute_t;
 
 			/**
 			 * \~russian
-			 * @brief Связывание префикса с пространством имён
-			 *
-			 * @details Действует внутри узла, где объявлено, и внутри всех вложенных в него,
-			 *          пока не будет переопределено.
-			 *
-			 * @warning Поля живут лишь до закрытия узла, связывание объявившего: хранилище
-			 *          областей переиспользуется. Замер: обозначение, удержанное у корневого узла,
-			 *          по закрытии его читало СДВИНУТОЕ содержимое - «p» вместо «urn:A», - тогда как
-			 *          зов `resolve()` отвечал пустым, то есть верно. Ответ о связывании надлежит
-			 *          брать зовом, а нужное дольше - копировать
-			 *
-			 * \~english
-			 * @brief Binding of a prefix to a namespace
-			 *
-			 * @details Acts inside the node where it is declared and inside all the ones nested into it,
-			 *          until it is redefined.
-			 *
-			 * @warning The fields live only until the closing of the node that declared the binding: the storage
-			 *          of the scopes is reused. Measurement: a designation held at the root node,
-			 *          upon its closing read a SHIFTED content — «p» instead of «urn:A» — whereas
-			 *          a call to `resolve()` answered empty, that is, correctly. The answer about a binding should be
-			 *          taken by a call, and what is needed for longer — copied
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Binding {
-				// Префикс без разделителя, пустой для объявления по умолчанию
-				string_view prefix;
-				// Обозначение пространства имён, пустое для отмены связывания
-				string_view uri;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				Binding() noexcept {}
-			} binding_t;
-
-			/**
-			 * \~russian
-			 * @brief Метод получения описания кода ошибки разбора
+			 * @brief Функция получения описания кода ошибки разбора
 			 *
 			 * @param error код ошибки разбора
 			 * @return      описание кода ошибки на английском языке
 			 *
 			 * \~english
-			 * @brief Method of getting the description of an error code of the parsing
+			 * @brief Function of getting the description of an error code of the parsing
 			 *
 			 * @param error error code of the parsing
 			 * @return      description of the error code in the English language
@@ -1315,16 +1291,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод получения названия кодировки
+			 * @brief Функция получения названия кодировки
 			 *
 			 * @param encoding кодировка исходного текста
 			 * @return         общепринятое название кодировки
 			 *
 			 * \~english
-			 * @brief Method of getting the name of an encoding
+			 * @brief Function of getting the name of an encoding
 			 *
 			 * @param encoding encoding of the source text
 			 * @return         commonly accepted name of the encoding
@@ -1332,16 +1307,15 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод определения кодировки по её названию
+			 * @brief Функция определения кодировки по её названию
 			 *
 			 * @param text название кодировки в любом регистре
 			 * @return     определённая кодировка исходного текста
 			 *
 			 * \~english
-			 * @brief Method of determining an encoding by its name
+			 * @brief Function of determining an encoding by its name
 			 *
 			 * @param text name of the encoding in any case
 			 * @return     determined encoding of the source text
@@ -1349,10 +1323,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ encoding_t encoding(const string_view text) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора целого числа со знаком из содержимого разметки
+			 * @brief Функция разбора целого числа со знаком из содержимого разметки
 			 *
 			 * @details Пробельная обвязка по краям отбрасывается, а разобрано обязано быть
 			 *          всё содержимое целиком: остаток за числом считается отказом. Разбор ведётся
@@ -1363,7 +1336,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a signed integer from the content of a markup
+			 * @brief Function of parsing a signed integer from the content of a markup
 			 *
 			 * @details The whitespace padding at the edges is discarded, while the whole content as a whole is obliged to be
 			 *          parsed: a remainder after the number is considered a refusal. The parsing is conducted
@@ -1376,17 +1349,16 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool integer(const string_view text, int64_t & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора целого числа без знака из содержимого разметки
+			 * @brief Функция разбора целого числа без знака из содержимого разметки
 			 *
 			 * @param text   разбираемое содержимое
 			 * @param result ссылка на результат разбора
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing an unsigned integer from the content of a markup
+			 * @brief Function of parsing an unsigned integer from the content of a markup
 			 *
 			 * @param text   content being parsed
 			 * @param result reference to the result of the parsing
@@ -1395,10 +1367,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool integer(const string_view text, uint64_t & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора числа с плавающей точкой из содержимого разметки
+			 * @brief Функция разбора числа с плавающей точкой из содержимого разметки
 			 *
 			 * @details Разбор совпадает с разбором функции strtod в местности «C» вплоть до
 			 *          последнего бита мантиссы.
@@ -1408,7 +1379,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a floating-point number from the content of a markup
+			 * @brief Function of parsing a floating-point number from the content of a markup
 			 *
 			 * @details The parsing coincides with the parsing of the strtod function in the «C» locale down to
 			 *          the last bit of the mantissa.
@@ -1420,10 +1391,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool real(const string_view text, double & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод разбора логического значения из содержимого разметки
+			 * @brief Функция разбора логического значения из содержимого разметки
 			 *
 			 * @details Признаётся запись по договору XSD: «true», «false», «1» и «0».
 			 *          Регистр учитывается - договор иных написаний не допускает.
@@ -1433,7 +1403,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a logical value from the content of a markup
+			 * @brief Function of parsing a logical value from the content of a markup
 			 *
 			 * @details The notation of the XSD protocol is recognized: «true», «false», «1» and «0».
 			 *          The case is taken into account — the protocol admits no other spellings.
@@ -1445,16 +1415,14 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool boolean(const string_view text, bool & result) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Шаблон типа числа результата разбора
+			 * @brief Шаблон функции разбора числа из содержимого разметки
 			 *
 			 * @tparam T тип числа результата разбора
 			 *
-			 *
 			 * \~english
-			 * @brief Template of the number type of the parsing result
+			 * @brief Function template for parsing a number from markup content
 			 *
 			 * @tparam T number type of the parsing result
 			 *
@@ -1463,7 +1431,7 @@ namespace awh {
 			template <typename T>
 			/**
 			 * \~russian
-			 * @brief Метод разбора числа из содержимого разметки
+			 * @brief Функция разбора числа из содержимого разметки
 			 *
 			 * @details Пробельная обвязка отбрасывается, а вид разбора решается ЗАПИСЬЮ,
 			 *          а не затребованным видом: `1e2` и `300.5` извлекаются и целым, округляясь по
@@ -1482,7 +1450,7 @@ namespace awh {
 			 * @return       признак успешного разбора
 			 *
 			 * \~english
-			 * @brief Method of parsing a number from the content of a markup
+			 * @brief Function of parsing a number from markup content
 			 *
 			 * @details The whitespace padding is discarded, while the kind of the parsing is decided by
 			 *          the NOTATION, and not by the requested kind: `1e2` and `300.5` are extracted even

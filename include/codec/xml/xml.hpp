@@ -34,8 +34,8 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include "common.hpp"
+#include "value.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
+#include "common.hpp"
 #include "document.hpp"
-#include "value.hpp"
