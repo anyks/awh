@@ -23,6 +23,7 @@
  * Стандартные заголовочные файлы
  */
 #include <chrono>
+#include <cstdio>
 #include <memory>
 #include <vector>
 
@@ -107,11 +108,15 @@ namespace {
 		awh::event::id_t id;
 		// Количество принятых октетов текущего сообщения
 		size_t received;
+		// Количество завершённых обменов прогрева этого подключения
+		size_t warmed;
+		// Признак отправки текущего запроса после открытия окна
+		bool measured;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit Connection() noexcept : id(0), received(0) {}
+		explicit Connection() noexcept : id(0), received(0), warmed(0), measured(false) {}
 	} connection_t;
 
 	/**
@@ -123,12 +128,14 @@ namespace {
 		bool stop;
 		// Флаг активности замера
 		bool measuring;
-		// Количество выполненных обменов прогрева
-		size_t warmed;
+		// Признак общего прогрева после готовности всех подключений
+		bool fleet;
+		// Количество полностью прогретых подключений
+		size_t ready;
 		// Количество выполненных обменов замера
 		size_t done;
-		// Требуемое количество обменов прогрева
-		size_t warmup;
+		// Причина недействительности прогона
+		const char * failure;
 		// Требуемое количество обменов замера
 		size_t rounds;
 		// Момент начала замера
@@ -140,46 +147,100 @@ namespace {
 		 *
 		 */
 		explicit State() noexcept :
-		 stop(false), measuring(false), warmed(0), done(0), warmup(0), rounds(0) {}
+		 stop(false), measuring(false), fleet(false), ready(0), done(0), failure(nullptr), rounds(0) {}
 	} state_t;
 
 	/**
-	 * @brief Функция учёта выполненного обмена
+	 * @brief Функция остановки недействительного прогона
 	 *
-	 * @param state состояние прогона сценария
-	 * @return      результат учёта (true - обмен следует продолжать)
+	 * @param state  состояние прогона
+	 * @param reason причина отказа
 	 *
 	 */
-	static bool account(state_t & state) noexcept {
+	static void fail(state_t & state, const char * reason) noexcept {
+		// Не изменяем уже закрытое окно при очистке событий
+		if(state.stop)
+			// Прекращаем повторную остановку
+			return;
+		// Сохраняем первую причину отказа
+		state.failure = reason;
+		// Останавливаем обмены и цикл событий
+		state.stop = true;
+		// Выключаем учёт выделений даже при отказе внутри окна
+		awh::benchmark::counting(false);
+		// Выключаем учёт системных вызовов на той же границе
+		awh::benchmark::syscall::counting(false);
+	}
+	/**
+	 * @brief Функция открытия окна после готовности всех подключений
+	 *
+	 * @param state       состояние прогона
+	 * @param connections требуемое количество подключений
+	 * @param accepted    количество принятых подключений
+	 * @return            признак открытия окна измерения
+	 *
+	 */
+	static bool begin(state_t & state, const size_t connections, const size_t accepted) noexcept {
+		// Не допускаем неполный состав, повторный запуск и нулевую нагрузку
+		if(state.stop || state.measuring || (connections == 0) || (state.rounds == 0) || (state.ready != connections) || (accepted != connections))
+			// Сохраняем окно закрытым
+			return false;
+		// Отмечаем начало установившегося обмена
+		state.measuring = true;
+		// Включаем учёт выделений памяти
+		awh::benchmark::counting(true);
+		// Включаем учёт системных вызовов
+		awh::benchmark::syscall::counting(true);
+		// Запоминаем момент начала замера
+		state.start = std::chrono::steady_clock::now();
+		// Разрешаем запуск измеряемых обменов
+		return true;
+	}
+	/**
+	 * @brief Функция учёта выполненного обмена конкретного подключения
+	 *
+	 * @param state      состояние прогона сценария
+	 * @param connection состояние ответившего подключения
+	 * @return           результат учёта (true - обмен следует продолжать)
+	 *
+	 */
+	static bool account(state_t & state, connection_t & connection) noexcept {
+		// Хвост текущей пачки не должен менять уже закрытое окно
+		if(state.stop)
+			// Прекращаем отправку следующего сообщения
+			return false;
 		// Если замер ещё не начат
 		if(!state.measuring){
-			// Считаем выполненный обмен прогрева
-			state.warmed++;
-			// Если прогрев ещё не завершён
-			if(state.warmed < state.warmup)
-				// Продолжаем обмен
+			// Готовый клиент не подменяет прогрев остальных повторным учётом
+			if(connection.warmed >= 8)
+				// После первого барьера сохраняем общий поток без паузы
+				return state.fleet;
+			// Считаем полный ответ именно этого клиента
+			connection.warmed++;
+			// Если клиент ещё не прогрет
+			if(connection.warmed < 8)
+				// Продолжаем его обмены прогрева
 				return true;
-			// Включаем режим замера
-			state.measuring = true;
-			// Включаем учёт выделений памяти
-			awh::benchmark::counting(true);
-			// Включаем учёт системных вызовов
-			awh::benchmark::syscall::counting(true);
-			// Запоминаем момент начала замера
-			state.start = std::chrono::steady_clock::now();
-			// Продолжаем обмен
-			return true;
+			// Учитываем клиента у барьера ровно один раз
+			state.ready++;
+			// Общий прогрев переходит в измерение без массового перезапуска
+			return state.fleet;
 		}
+		// Последний ответ прогрева мог прийти уже после открытия общего окна
+		if(!connection.measured)
+			// Продолжаем обмен, не считая запрос, начатый до измерения
+			return true;
 		// Считаем выполненный обмен замера
 		state.done++;
 		// Если требуемое количество обменов ещё не выполнено
 		if(state.done < state.rounds)
 			// Продолжаем обмен
 			return true;
-		// Запоминаем момент окончания замера
+		// Запоминаем момент окончания замера ровно один раз
 		state.finish = std::chrono::steady_clock::now();
-		// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
+		// Закрываем учёт выделений на границе последнего обмена
 		awh::benchmark::counting(false);
+		// Закрываем учёт системных вызовов на той же границе
 		awh::benchmark::syscall::counting(false);
 		// Останавливаем цикл событий
 		state.stop = true;
@@ -208,26 +269,36 @@ namespace {
 		state_t state;
 		// Устанавливаем требуемое количество обменов замера
 		state.rounds = rounds;
-		/**
-		 * Устанавливаем требуемое количество обменов прогрева: буферы сокетов и
-		 * накопители движка выходят на рабочий объём за первые обмены, и их
-		 * стоимость к установившемуся режиму отношения не имеет
-		 */
-		state.warmup = (connections * 8);
 		// Полезная нагрузка одного обмена
 		static uint8_t payload[ECHO_PAYLOAD] = {0};
 		// Создаём объект асинхронного движка ввода-вывода
 		awh::engine::io_t io;
+		// Общий обработчик ошибок не допускает частично выполненную нагрузку
+		const awh::engine::callback::error_t error = [&state]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, [[maybe_unused]] const string & message) noexcept -> void {
+			// Отмечаем отказ движка независимо от режима проверки порогов
+			::fail(state, "engine-error");
+		};
+		// Общий обработчик разрыва останавливает незавершённые обмены
+		const awh::engine::callback::event_t closed = [&state]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+			// Если связь закрыта до завершения всей нагрузки
+			if((action == awh::event::action_t::CLOSE) || (action == awh::event::action_t::DISCONNECT))
+				// Не выдаём оставшихся участников за полный состав
+				::fail(state, "connection-closed");
+		};
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера
 		const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		// Устанавливаем порт события сервера
 		io.setSourcePort(server, number);
+		// Добавляем общий предельный срок подготовки и измерения
+		const awh::event::id_t deadline = io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 		// Если инициализация движка не выполнена
 		if(!io.initialize())
 			// Выводим пустые итоги прогона
 			return result;
+		// Регистрируем отказ слушающего события
+		io.on(server, error);
 		// Устанавливаем опции события сервера
 		io.setOptions(server, options());
 		// Устанавливаем адрес события сервера
@@ -237,7 +308,11 @@ namespace {
 		// Резервируем память под состояния принятых подключений
 		accepted.reserve(connections);
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &accepted]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state, &accepted, &error, &closed]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			// Отслеживаем ошибки принятого подключения
+			io.on(cid, error);
+			// Отслеживаем преждевременное закрытие принятого подключения
+			io.on(cid, closed);
 			// Устанавливаем опции принятого подключения
 			io.setOptions(cid, options());
 			// Создаём состояние принятого подключения
@@ -249,17 +324,30 @@ namespace {
 			 * сервер возвращает принятые октеты как есть, разбор сообщения на его
 			 * стороне не нужен - границы восстанавливает принимающий клиент
 			 */
-			io.on(cid, [&io](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-				// Отправляем принятые данные обратно клиенту
-				io.send(eid, data, size);
+			io.on(cid, [&io, &state](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Не отправляем хвост сообщений после закрытия окна
+				if(!state.stop && (io.send(eid, data, size) != size))
+					// Отмечаем неполную постановку ответа в очередь
+					::fail(state, "echo-send-failed");
 			});
 		}));
-		// Выполняем фиксацию настроек события сервера
-		io.commit(server);
-		// Переводим событие сервера в режим прослушивания
-		io.listen(server, BACKLOG);
-		// Запускаем событие сервера
-		io.launch(server);
+		// Проверяем настройку и запуск слушающего события
+		if(!io.commit(server) || !io.listen(server, BACKLOG) || !io.launch(server))
+			// Не запускаем клиентов без рабочего сервера
+			::fail(state, "listener-setup-failed");
+		// Ограничиваем весь прогон одной минутой без часов в горячем пути
+		io.setTimeout(deadline, awh::event::action_t::NONE, 60000);
+		// Регистрируем завершение предельного срока
+		io.on(deadline, [&state]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если предельный срок достигнут
+			if(status == awh::event::status_t::SUCCESS)
+				// Отклоняем неполный прогон вместо бесконечного ожидания
+				::fail(state, "deadline-expired");
+		});
+		// Проверяем запуск общего предельного срока
+		if(!io.commit(deadline) || !io.launch(deadline))
+			// Не допускаем неограниченное ожидание при отказе таймера
+			::fail(state, "deadline-setup-failed");
 		// Список состояний клиентских подключений
 		vector <unique_ptr <connection_t>> clients;
 		// Резервируем память под состояния клиентских подключений
@@ -267,13 +355,17 @@ namespace {
 		/**
 		 * Выполняем создание требуемого количества клиентских подключений
 		 */
-		for(size_t i = 0; i < connections; i++){
+		for(size_t i = 0; (i < connections) && !state.stop; i++){
 			// Создаём состояние клиентского подключения
 			clients.push_back(unique_ptr <connection_t> (new connection_t));
 			// Получаем состояние созданного подключения
 			connection_t * connection = clients.back().get();
 			// Добавляем новое событие клиента
 			connection->id = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			// Регистрируем отказ клиентского события
+			io.on(connection->id, error);
+			// Регистрируем преждевременное закрытие клиента
+			io.on(connection->id, closed);
 			// Устанавливаем порт назначения события клиента
 			io.setTargetPort(connection->id, number);
 			// Устанавливаем опции события клиента
@@ -283,18 +375,26 @@ namespace {
 			// Устанавливаем адрес назначения события клиента
 			io.setTarget(connection->id, "127.0.0.1");
 			// Устанавливаем функцию обратного вызова на подключение клиента
-			io.on(connection->id, static_cast <awh::engine::callback::connect_t> ([&io](const awh::event::id_t eid, const bool ok) noexcept -> void {
-				// Если подключение выполнено успешно
-				if(ok)
-					// Отправляем первое сообщение обмена
-					io.send(eid, payload, ECHO_PAYLOAD);
+			io.on(connection->id, static_cast <awh::engine::callback::connect_t> ([&io, &state](const awh::event::id_t eid, const bool ok) noexcept -> void {
+				// Не продолжаем подготовку после первого отказа
+				if(state.stop)
+					// Оставляем очистку общему завершению
+					return;
+				// Проверяем подключение и первое сообщение прогрева
+				if(!ok || (io.send(eid, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD))
+					// Неподключённый клиент не должен исчезнуть из нагрузки
+					::fail(state, "client-connect-or-send-failed");
 			}));
 			/**
 			 * Устанавливаем функцию обратного вызова на чтение из события клиента:
 			 * границы сообщения восстанавливаются накоплением принятых октетов,
 			 * поскольку поток TCP вправе доставить ответ по частям
 			 */
-			io.on(connection->id, [&io, &state, connection](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			io.on(connection->id, [&io, &state, &accepted, connection, connections](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+				// Хвост пачки после остановки не принадлежит измерению
+				if(state.stop)
+					// Не изменяем счётчики и не создаём новых отправок
+					return;
 				// Накапливаем количество принятых октетов текущего сообщения
 				connection->received += size;
 				// Если сообщение принято не полностью
@@ -303,30 +403,91 @@ namespace {
 					return;
 				// Учитываем принятое сообщение
 				connection->received -= ECHO_PAYLOAD;
-				// Если обмен следует продолжать
-				if(::account(state))
-					// Отправляем следующее сообщение обмена
-					io.send(eid, payload, ECHO_PAYLOAD);
+				// Учитываем завершённый запрос до выбора фазы следующей отправки
+				const bool more = ::account(state, * connection);
+				// Последний готовый участник открывает окно внутри непрерывного потока
+				if(state.fleet && !state.measuring && (state.ready == connections)){
+					// Повторно проверяем полный состав на самой границе измерения
+					if(!::begin(state, connections, accepted.size()))
+						// Неполный состав не должен попасть в результат
+						::fail(state, "warmup-incomplete");
+				}
+				// Если следующий обмен разрешён и прогон не остановлен
+				if(more && !state.stop){
+					// Помечаем именно новый запрос, а не пришедший ответ прогрева
+					connection->measured = state.measuring;
+					// Проверяем полную постановку следующего сообщения
+					if(io.send(eid, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD)
+						// Отклоняем потерянное продолжение обмена
+						::fail(state, "client-send-failed");
+				}
 			});
-			// Выполняем фиксацию настроек события клиента
-			io.commit(connection->id);
-			// Выполняем подключение клиента к серверу
-			io.connect(connection->id);
-			// Запускаем событие клиента
-			io.launch(connection->id);
+			// Проверяем настройку, подключение и запуск клиента
+			if(!io.commit(connection->id) || !io.connect(connection->id) || !io.launch(connection->id))
+				// Не подменяем неполный состав меньшей нагрузкой
+				::fail(state, "client-setup-failed");
 		}
 		/**
-		 * Запускаем опрос событий до выполнения требуемого количества обменов
+		 * Каждый клиент выполняет восемь обменов и ждёт у общего барьера
 		 */
-		while(!state.stop && io.poll());
-		// Устанавливаем количество выполненных операций
-		result.operations = state.done;
-		// Устанавливаем объём переданных данных с учётом обоих направлений обмена
-		result.bytes = (state.done * ECHO_PAYLOAD * 2);
-		// Устанавливаем затраченное время
-		result.seconds = std::chrono::duration <double> (state.finish - state.start).count();
-		// Снимаем показатели окружения по итогам замера
+		while(!state.stop && (state.ready < connections)){
+			// Проверяем успешность опроса, включая пробуждение предельным сроком
+			if(!io.poll())
+				// Отказ опроса не должен превращаться в частичный результат
+				::fail(state, "warmup-poll-failed");
+		}
+		// Проверяем полный состав перед общим прогревом очередей отправки
+		if(!state.stop && (connections > 0) && (rounds > 0) && (state.ready == connections) && (accepted.size() == connections)){
+			// Сохраняем поток готовых клиентов до включения измерения
+			state.fleet = true;
+			// Отдельно считаем участников общего прогрева
+			state.ready = 0;
+			/**
+			 * Сбрасываем индивидуальные счётчики до первой общей отправки
+			 */
+			for(const auto & connection : clients)
+				// Каждый клиент должен снова завершить свои восемь обменов
+				connection->warmed = 0;
+			/**
+			 * Прогреваем максимальное число одновременно незавершённых отправок
+			 */
+			for(const auto & connection : clients){
+				// Не запускаем оставшихся участников после отказа
+				if(state.stop)
+					// Оставляем очистку общему завершению
+					break;
+				// Первый общий запуск ещё не принадлежит измерению
+				if(io.send(connection->id, payload, ECHO_PAYLOAD) != ECHO_PAYLOAD)
+					// Не открываем окно при неполной постановке прогрева
+					::fail(state, "fleet-warmup-send-failed");
+			}
+			/**
+			 * Общий прогрев продолжается измерением без остановки всех клиентов
+			 */
+			while(!state.stop){
+				// Проверяем опрос обеих фаз до целевого обмена или первого отказа
+				if(!io.poll())
+					// Не выдаём неполный прогон за полный
+					::fail(state, "fleet-poll-failed");
+			}
+		} else
+			// Нулевой или неполный состав не имеет измеряемого результата
+			::fail(state, "warmup-incomplete");
+		// При отказе оставляем нулевые операции для обязательного validate
+		if((state.failure == nullptr) && (state.done == rounds) && (rounds > 0)){
+			// Устанавливаем точное количество выполненных обменов
+			result.operations = state.done;
+			// Устанавливаем объём данных в обоих направлениях
+			result.bytes = (state.done * ECHO_PAYLOAD * 2);
+			// Устанавливаем длительность единственного закрытого окна
+			result.seconds = std::chrono::duration <double> (state.finish - state.start).count();
+		}
+		// Снимаем показатели до очистки и вывода диагностики
 		collect(result);
+		// Если нагрузка не была выполнена полностью
+		if(state.failure != nullptr)
+			// Сообщаем причину отказа вне измеряемого окна
+			::fprintf(stderr, "ECHO_BENCH_FAIL: %s\n", state.failure);
 		// Выполняем деинициализацию движка
 		io.deinitialize();
 		// Выводим итоги прогона сценария
@@ -360,6 +521,7 @@ namespace {
 	 *       и illumos), и взятие адреса такого имени разбирается как взятие адреса типа -
 	 *       сборка отвечает «expected primary-expression before ')' token», указывая на
 	 *       строку с закрывающей скобкой, а не на имя
+	 *
 	 */
 	static awh::benchmark::result_t singleFlow() noexcept {
 		// Результат измерения

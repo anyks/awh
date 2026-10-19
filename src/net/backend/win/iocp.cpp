@@ -635,7 +635,7 @@ namespace {
 		// Код отказа приёма, если отказ случится
 		int32_t error = 0;
 		// Выполняем приём сообщения у системы
-		const int64_t result = win::message::receive(static_cast <awh::net::socket_t> (sock), msg, flags, &error);
+		const int64_t result = awh::win::message::receive(static_cast <awh::net::socket_t> (sock), msg, flags, &error);
 		// Если приём отказом завершился
 		if(result < 0){
 			// Переносим код отказа приёма в errno
@@ -1050,7 +1050,7 @@ namespace {
 		 */
 		::inflight::forsake(static_cast <awh::net::socket_t> (sock));
 		// Снимаем поток качества обслуживания закрываемого дескриптора
-		win::qos::release(static_cast <awh::net::socket_t> (sock));
+		awh::win::qos::release(static_cast <awh::net::socket_t> (sock));
 		/**
 		 * Устраняем туннельное устройство, если дескриптор им и является
 		 *
@@ -1058,7 +1058,7 @@ namespace {
 		 *       закрывать больше нечего. Дескриптору не туннельному оно отвечает отказом
 		 *       по отсутствию записи в реестре, и обходится одним поиском
 		 */
-		if(win::tunnel::destroy(static_cast <awh::net::socket_t> (sock)))
+		if(awh::win::tunnel::destroy(static_cast <awh::net::socket_t> (sock)))
 			// Выводим успешный результат закрытия
 			return 0;
 		// Выполняем закрытие дескриптора как сокета
@@ -1194,7 +1194,7 @@ namespace {
 		 */
 		if(result == 0)
 			// Выполняем применение запомненной отметки
-			win::qos::apply(sock);
+			awh::win::qos::apply(sock);
 		// Если подключение сокета не удалось
 		if(result < 0){
 			// Получаем код отказа подключения сокета
@@ -6981,6 +6981,8 @@ namespace inflight {
 		 *
 		 */
 		bool metadata;
+		// Признак сокета, подтверждённый при подаче текущей операции
+		bool socket;
 		/**
 		 * @brief Признак приёма, сохраняющего границы сообщения
 		 *
@@ -7016,7 +7018,7 @@ namespace inflight {
 		 overlapped{}, kind(kind_t::NONE), busy(false), multishot(false), cancelled(false),
 		 generation(0), index(0), sock(net::invalid_socket_t), mask(0), bid(0xFFFF), udata(nullptr),
 		 addr{}, length(sizeof(struct sockaddr_storage)), message{}, wsamsg{}, wsabuf{}, capacity(0), receiver(nullptr),
-		 metadata(false), vector{}, deadline(0), wait(nullptr) {
+		 metadata(false), socket(false), vector{}, deadline(0), wait(nullptr) {
 			// Зануляем описатель наложенного обмена
 			::memset(&this->overlapped, 0, sizeof(this->overlapped));
 		}
@@ -7210,6 +7212,8 @@ namespace inflight {
 		slot.bid = 0xFFFF;
 		// Сбрасываем признак приёма со служебными метаданными
 		slot.metadata = false;
+		// Не переносим подтверждение вида дескриптора к новой операции
+		slot.socket = false;
 		// Сбрасываем адаптивную длину приёма прежней операции
 		slot.capacity = 0;
 		// Забываем узел прежнего адаптивного приёма
@@ -9759,6 +9763,8 @@ namespace post {
 		int32_t length = static_cast <int32_t> (sizeof(type));
 		// Выполняем получение вида дескриптора
 		const bool socket = (::__awh_getsockopt__(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, &type, &length) == 0);
+		// Сохраняем ответ системы только на время этой операции
+		slot->socket = socket;
 		// Выполняем определение дейтаграммного дескриптора
 		const bool datagram = (socket && (type == SOCK_DGRAM));
 		/**
@@ -78855,6 +78861,8 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					void * const owner = slot->udata;
 					// Запоминаем признак отмены операции
 					const bool cancelled = slot->cancelled;
+					// Снимаем подтверждённый вид дескриптора до освобождения записи
+					const bool socketOf = slot->socket;
 					// Запоминаем разновидность поданной операции
 					const ::inflight::kind_t kind = slot->kind;
 					// Запоминаем дескриптор, к которому операция относилась
@@ -79160,7 +79168,16 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 * @note Установлено следом в памяти: за пришедшей готовностью не
 							 *       следовало ни одного согласования по этому описателю
 							 */
-							if((state->udata != nullptr) && ::__awh_pipe__(static_cast <SOCKET> (state->sock)))
+							/**
+							 * Успешное ожидание сокета не требует повторного опознания канала
+							 *
+							 * @note Ответ системы принадлежит записи операции с её поколением,
+							 *       сбрасывается при новом занятии ячейки и не живёт по номеру
+							 *       дескриптора. Отменённые завершения отсеяны выше. Для отказа
+							 *       операции и неизвестного вида сохраняется прежняя проверка.
+							 *
+							 */
+							if((state->udata != nullptr) && (!socketOf || (completion.res < 0)) && ::__awh_pipe__(static_cast <SOCKET> (state->sock)))
 								// Выполняем согласование учёта с ядром немедленно
 								::kernel::reconcile(* state);
 						}
