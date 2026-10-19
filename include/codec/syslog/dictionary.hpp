@@ -49,7 +49,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -65,7 +64,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -76,7 +74,6 @@ namespace awh {
 		 * \~russian
 		 * @brief Пространство имён контейнера SysLog
 		 *
-		 *
 		 * \~english
 		 * @brief SysLog container namespace
 		 *
@@ -85,17 +82,17 @@ namespace awh {
 		namespace syslog {
 			/**
 			 * \~russian
-			 * @brief Запись словаря источников сообщений и степеней их важности
+			 * @brief Структура записи словаря источников сообщений и степеней их важности
 			 *
-			 * @details Запись связывает числовой код, приоритетом объявляемый, с
-			 *          кратким именем, службами журналов употребляемым, и с человеческим
-			 *          названием.
+			 * @details Запись связывает числовой код, приоритетом объявляемый,
+			 *          с кратким именем, службами журналов употребляемым
+			 *          и с человеческим названием.
 			 *
 			 * \~english
-			 * @brief Record of the dictionary of the sources of the messages and of the degrees of their importance
+			 * @brief Structure of a dictionary entry for message sources and their importance levels
 			 *
-			 * @details The record links a numeric code declared by a priority with a short name used by the
-			 *          journal services and with a human-readable name.
+			 * @details An entry associates a numerical code—designated as a priority—with
+			 *          a short name (used by logging services) and a human-readable name.
 			 *
 			 * \~
 			 */
@@ -106,6 +103,16 @@ namespace awh {
 				string_view name;
 				// Человеческое название
 				string_view title;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param code  числовой код
+				 * @param name  краткое имя
+				 * @param title заголовок
+				 *
+				 */
+				constexpr Entry(const uint8_t code, string_view name, string_view title) noexcept :
+				 code(code), name(name), title(title) {}
 			} entry_t;
 
 			/**
@@ -124,6 +131,20 @@ namespace awh {
 			 * \~
 			 */
 			namespace facilities {
+				/**
+				 * \~russian
+				 * @brief Метод получения количества записей словаря
+				 *
+				 * @return количество записей словаря
+				 *
+				 * \~english
+				 * @brief Method of getting the number of the records of the dictionary
+				 *
+				 * @return number of the records of the dictionary
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ size_t size() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод розыска источника сообщения по числовому коду
@@ -162,22 +183,7 @@ namespace awh {
 				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ const entry_t * find(const string_view name) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения количества записей словаря
-				 *
-				 * @return количество записей словаря
-				 *
-				 * \~english
-				 * @brief Method of getting the number of the records of the dictionary
-				 *
-				 * @return number of the records of the dictionary
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ size_t size() noexcept;
-			}
-
+			};
 			/**
 			 * \~russian
 			 * @brief Пространство имён словаря степеней важности сообщений
@@ -194,6 +200,20 @@ namespace awh {
 			 * \~
 			 */
 			namespace severities {
+				/**
+				 * \~russian
+				 * @brief Метод получения количества записей словаря
+				 *
+				 * @return количество записей словаря
+				 *
+				 * \~english
+				 * @brief Method of getting the number of the records of the dictionary
+				 *
+				 * @return number of the records of the dictionary
+				 *
+				 * \~
+				 */
+				__AWH_SHARED_EXPORT__ size_t size() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод розыска степени важности сообщения по числовому коду
@@ -234,24 +254,10 @@ namespace awh {
 				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ const entry_t * find(const string_view name) noexcept;
-				/**
-				 * \~russian
-				 * @brief Метод получения количества записей словаря
-				 *
-				 * @return количество записей словаря
-				 *
-				 * \~english
-				 * @brief Method of getting the number of the records of the dictionary
-				 *
-				 * @return number of the records of the dictionary
-				 *
-				 * \~
-				 */
-				__AWH_SHARED_EXPORT__ size_t size() noexcept;
-			}
-		}
-	}
-}
+			};
+		};
+	};
+};
 
 /**
  * Возвращаем имена, системными макросами занятые

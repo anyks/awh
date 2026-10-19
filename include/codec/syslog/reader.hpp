@@ -18,7 +18,9 @@
  *        событиями порознь, без удержания разобранного в памяти
  *
  * \~english
- * @brief Header file of the streaming reading of the system log messages
+ * @brief Header file of the streaming reading of the system log messages — feeding a text by pieces
+ *        of an arbitrary size, issuing the fields of the header, the structured data and the text of
+ *        the message by events separately, without holding the parsed in memory
  *
  * \~
  *
@@ -39,9 +41,13 @@
 #include <utility>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочные файлы модуля
  */
 #include "common.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include "../../sys/chrono.hpp"
 
 /**
@@ -52,7 +58,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -69,7 +74,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -79,7 +83,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера SysLog
-		 *
 		 *
 		 * \~english
 		 * @brief SysLog container namespace
@@ -99,8 +102,7 @@ namespace awh {
 			 * @brief States of the streaming reading of the records
 			 *
 			 * @details The list is deliberately kept equal to the lists of the INI, TOML, YAML and CEF codecs:
-			 *          a consumer conducting the reading by a state would otherwise learn its own list for every
-			 *          codec.
+			 *          a consumer conducting the reading by a state would otherwise learn its own list for every codec.
 			 *
 			 * \~
 			 */
@@ -200,76 +202,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
-				public:
-					/**
-					 * \~russian
-					 * @brief Настройки разбора сообщений системного журнала
-					 *
-					 *
-					 * \~english
-					 * @brief Settings of the parsing of the system log messages
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Описание, каким надлежит читать записи
-						standard_t standard;
-						// Строгость сличения разбираемой записи с описанием
-						mode_t mode;
-						// Обращение с отсутствующим значением поля
-						nil_t nil;
-						// Признак снятия метки порядка байтов с текста сообщения
-						bool bom;
-						// Признак снятия отмены знаков со значений структурированных данных
-						bool unescape;
-						// Наибольшая допустимая длина одной записи в байтах
-						uint32_t maxRecord;
-						// Наибольшее допустимое количество блоков структурированных данных
-						uint32_t maxStructures;
-						// Наибольшее допустимое количество полей одного блока данных
-						uint32_t maxParams;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Settings() noexcept :
-						 standard(standard_t::AUTO), mode(mode_t::NONE), nil(nil_t::OMIT),
-						 bom(true), unescape(true), maxRecord(MAX_RECORD),
-						 maxStructures(MAX_STRUCTURES), maxParams(MAX_PARAMS) {}
-					} settings_t;
-				private:
-					// Настройки разбора записей
-					settings_t _settings;
-				private:
-					// Текущее состояние чтения
-					state_t _state;
-					// Вид текущего события разбора
-					event_t _event;
-					// Код ошибки последней операции разбора
-					error_t _error;
-				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					pos_t _errorLocation;
-					// Положение начала текущего события в исходном тексте
-					pos_t _position;
-					// Положение начала хранилища в исходном тексте
-					pos_t _origin;
-				private:
-					// Хранилище подаваемого текста
-					string _buffer;
-					// Смещение разбора в хранилище
-					size_t _offset;
-					// Смещение начала неразобранного остатка записи
-					size_t _record;
-				private:
-					// Признак того, что подан последний кусок текста
-					bool _end;
 				private:
 					/**
 					 * \~russian
@@ -294,15 +226,101 @@ namespace awh {
 						MESSAGE   = 0x03, // Выдача текста сообщения событием
 						FINISH    = 0x04  // Выдача знака окончания записи событием
 					};
+				public:
+					/**
+					 * \~russian
+					 * @brief Структура настроек разбора сообщений системного журнала
+					 *
+					 * \~english
+					 * @brief Structure of system log message parsing settings
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Признак снятия метки порядка байтов с текста сообщения
+						bool bom;
+						// Признак снятия отмены знаков со значений структурированных данных
+						bool unescape;
+						// Обращение с отсутствующим значением поля
+						nil_t nil;
+						// Строгость сличения разбираемой записи с описанием
+						mode_t mode;
+						// Описание, каким надлежит читать записи
+						standard_t standard;
+						// Наибольшее допустимое количество полей одного блока данных
+						uint32_t maxParams;
+						// Наибольшая допустимая длина одной записи в байтах
+						uint32_t maxRecord;
+						// Наибольшее допустимое количество блоков структурированных данных
+						uint32_t maxStructures;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Settings() noexcept;
+					} settings_t;
+				private:
+					// Признак того, что подан последний кусок текста
+					bool _end;
+					// Признак того, что текст сообщения записью объявлен
+					bool _messaged;
+					// Признак того, что приоритет записью объявлен
+					bool _prioritized;
+				private:
+					// Текущее состояние чтения
+					state_t _state;
+					// Вид текущего события разбора
+					event_t _event;
+					// Код ошибки последней операции разбора
+					error_t _error;
 				private:
 					// Этап разбора текущей записи
 					stage_t _stage;
 					// Номер поля заголовка, выдаваемого текущим событием
 					field_t _field;
+				private:
+					// Положение начала хранилища в исходном тексте
+					pos_t _origin;
+					// Положение начала текущего события в исходном тексте
+					pos_t _position;
+					// Положение обнаруженной ошибки в исходном тексте
+					pos_t _errorLocation;
+				private:
+					// Описание, каким прочтена текущая запись
+					standard_t _standard;
+					// Настройки разбора записей
+					settings_t _settings;
+				private:
+					// Объект работы с датой и временем
+					mutable chrono_t _chrono;
+				private:
 					// Указатель выдачи полей заголовка либо полей данных
 					size_t _index;
 					// Указатель выдачи блоков структурированных данных
 					size_t _block;
+					// Смещение разбора в хранилище
+					size_t _offset;
+					// Смещение начала неразобранного остатка записи
+					size_t _record;
+				private:
+					// Номер описания записи, объявленный самой записью
+					uint32_t _version;
+					// Приоритет текущей записи
+					uint32_t _priority;
+				private:
+					// Содержимое текущего события: имя ключа либо опознаватель блока
+					string _key;
+					// Содержимое текущего события: значение
+					string _value;
+					// Хранилище подаваемого текста
+					string _buffer;
+					// Текст сообщения текущей записи
+					string _message;
 				private:
 					// Поля заголовка текущей записи
 					vector <pair <field_t, string>> _fields;
@@ -324,48 +342,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <pair <string, vector <pair <string, string>>>> _structures;
-				private:
-					// Текст сообщения текущей записи
-					string _message;
-					// Признак того, что текст сообщения записью объявлен
-					bool _messaged;
-				private:
-					// Описание, каким прочтена текущая запись
-					standard_t _standard;
-					// Приоритет текущей записи
-					uint32_t _priority;
-					// Признак того, что приоритет записью объявлен
-					bool _prioritized;
-					// Номер описания записи, объявленный самой записью
-					uint32_t _version;
-				private:
-					// Содержимое текущего события: имя ключа либо опознаватель блока
-					string _key;
-					// Содержимое текущего события: значение
-					string _value;
-				private:
-					// Объект работы с датой и временем
-					mutable chrono_t _chrono;
-				private:
-					/**
-					 * \~russian
-					 * @brief Объект для работы с логами
-					 *
-					 * @note Объекта фреймворка читатель НЕ держит: разбор ведётся своими
-					 *       ходами, а даты - объектом времени, каким фреймворк принят
-					 *       конструктором. Держать ссылку без потребителя значило бы
-					 *       заводить поле, о каком собиратель справедливо предупреждает
-					 *
-					 * \~english
-					 * @brief An object for the work with the logs
-					 *
-					 * @note The reader does NOT hold an object of the framework: the parsing is conducted by its own
-					 *       methods, and the dates by the object of the time, as the framework has been accepted by the
-					 *       constructor. To hold a link without a consumer would mean to raise a field about which the
-					 *       collector fairly warns
-					 *
-					 * \~
-					 */
 				private:
 					/**
 					 * \~russian
@@ -862,7 +838,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of getting the description by which the current record is read
 					 *
-					 * @details Under the self-determination the RECOGNIZED description is issued rather than the `AUTO` setting.
+					 * @details Under the self-determination the RECOGNIZED description is issued rather than the
+					 *          `AUTO` setting: this query answers the same way as if the description were
+					 *          set manually.
 					 *
 					 * @return description by which the current record is read
 					 *
@@ -973,22 +951,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Reader() noexcept {}
+					~Reader() noexcept = default;
 			} reader_t;
-		}
-	}
-}
+		};
+	};
+};
 
 /**
  * Возвращаем имена, системными макросами занятые

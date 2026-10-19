@@ -62,7 +62,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -78,7 +77,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -88,7 +86,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера SysLog
-		 *
 		 *
 		 * \~english
 		 * @brief SysLog container namespace
@@ -108,8 +105,11 @@ namespace awh {
 			 *     либо `RFC5424`;
 			 *
 			 * @li `/priority` - приоритет записи целым числом, если он объявлен;
+			 *
 			 * @li `/facility` - краткое имя источника сообщения знаками;
+			 *
 			 * @li `/severity` - краткое имя степени важности сообщения знаками;
+			 *
 			 * @li `/header` - поля заголовка отображением с именами `version`,
 			 *     `timestamp`, `hostname`, `application`, `process`, `messageId`;
 			 *
@@ -249,8 +249,11 @@ namespace awh {
 			 *     `RFC3164` or `RFC5424`;
 			 *
 			 * @li `/priority` - the priority of the record as an integer, if it is declared;
+			 *
 			 * @li `/facility` - the short name of the source of the message as characters;
+			 *
 			 * @li `/severity` - the short name of the degree of importance of the message as characters;
+			 *
 			 * @li `/header` - the fields of the header as a mapping with the names `version`,
 			 *     `timestamp`, `hostname`, `application`, `process`, `messageId`;
 			 *
@@ -387,6 +390,26 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:
+					/**
+					 * \~russian
+					 * @brief Объект работы с файловой системой
+					 *
+					 * @details Держится ПОЛЕМ, а не заводится в теле хода: так устроены и
+					 *          прочие опоры документа - чтение, запись, дата, - и так же поступают
+					 *          прочие модули рамки, «awh::args» в их числе.
+					 *
+					 * \~english
+					 * @brief Filesystem object
+					 *
+					 * @details It persists as a FIELD rather than being embedded within the
+					 *          execution flow; this is how other document supports—such as read,
+					 *          write, and date—are structured, and other framework modules,
+					 *          including "awh::args," operate in the same way.
+					 *
+					 * \~
+					 */
+					fs_t _fs;
+				private:
 					// Дерево разобранной записи контейнером ABC
 					abc::value_t _root;
 					/**
@@ -409,7 +432,6 @@ namespace awh {
 					 */
 					abc::value_t * _structures;
 				private:
-					// Код ошибки последней операции
 					/**
 					 * \~russian
 					 * @brief Код ошибки последней операции
@@ -439,26 +461,6 @@ namespace awh {
 				private:
 					// Объект работы с датой и временем
 					mutable chrono_t _chrono;
-				private:
-					/**
-					 * \~russian
-					 * @brief Объект работы с файловой системой
-					 *
-					 * @details Держится ПОЛЕМ, а не заводится в теле хода: так устроены и
-					 *          прочие опоры документа - чтение, запись, дата, - и так же поступают
-					 *          прочие модули рамки, «awh::args» в их числе.
-					 *
-					 * \~english
-					 * @brief Filesystem object
-					 *
-					 * @details It persists as a FIELD rather than being embedded within the
-					 *          execution flow; this is how other document supports—such as read,
-					 *          write, and date—are structured, and other framework modules,
-					 *          including "awh::args," operate in the same way.
-					 *
-					 * \~
-					 */
-					fs_t _fs;
 				public:
 					/**
 					 * \~russian
@@ -670,7 +672,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод очистки дерева события
 					 *
-					 *
 					 * \~english
 					 * @brief Method of the clearing of the tree of an event
 					 *
@@ -686,7 +687,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -939,7 +940,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
@@ -947,9 +947,9 @@ namespace awh {
 					 */
 					~Document() noexcept = default;
 			} document_t;
-		}
-	}
-}
+		};
+	};
+};
 
 /**
  * Возвращаем имена, системными макросами занятые

@@ -56,7 +56,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -71,7 +70,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -181,6 +179,22 @@ namespace awh {
 		namespace syslog {
 			/**
 			 * \~russian
+			 * @brief Наибольшая допустимая длина имени внутри структурированных данных
+			 *
+			 * @details Предел назначен RFC 5424, раздел 6.3.2, и общий у опознавателя
+			 *          блока и у имени поля.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of a name inside the structured data
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.3.2, and is common to the identifier of a
+			 *          block and to the name of a field.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_NAME = 32;
+			/**
+			 * \~russian
 			 * @brief Наибольший поддерживаемый номер описания записи
 			 *
 			 * @details RFC 5424 объявляет описание номером первым и оговаривает, что номер
@@ -197,7 +211,20 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_VERSION = 1;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина опознавателя работы в байтах
+			 *
+			 * @details Предел назначен RFC 5424, раздел 6.2.6.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of the identifier of the process in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.6.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_PROCESS = 128;
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое значение приоритета
@@ -214,7 +241,58 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_PRIORITY = 191;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина имени узла в байтах
+			 *
+			 * @details Предел назначен RFC 5424, раздел 6.2.4.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of the name of the host in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.4.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_HOSTNAME = 255;
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина опознавателя сообщения в байтах
+			 *
+			 * @details Предел назначен RFC 5424, раздел 6.2.7.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of the identifier of a message in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.7.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_MESSAGE_ID = 32;
+			/**
+			 * \~russian
+			 * @brief Наибольшее допустимое количество полей одного блока данных
+			 *
+			 * \~english
+			 * @brief Largest admissible number of the fields of one block of the data
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_PARAMS = 0x1000;
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина названия приложения в байтах
+			 *
+			 * @details Предел назначен RFC 5424, раздел 6.2.5.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of the name of the application in bytes
+			 *
+			 * @details The limit is appointed by RFC 5424, section 6.2.5.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_APPLICATION = 48;
 			/**
 			 * \~russian
 			 * @brief Наибольшая допустимая длина одной записи в байтах
@@ -235,84 +313,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_RECORD = 0x100000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина имени узла в байтах
-			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.4.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the name of the host in bytes
-			 *
-			 * @details The limit is appointed by RFC 5424, section 6.2.4.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_HOSTNAME = 255;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина названия приложения в байтах
-			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.5.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the name of the application in bytes
-			 *
-			 * @details The limit is appointed by RFC 5424, section 6.2.5.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_APPLICATION = 48;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина опознавателя работы в байтах
-			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.6.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the identifier of the process in bytes
-			 *
-			 * @details The limit is appointed by RFC 5424, section 6.2.6.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_PROCESS = 128;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина опознавателя сообщения в байтах
-			 *
-			 * @details Предел назначен RFC 5424, раздел 6.2.7.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the identifier of a message in bytes
-			 *
-			 * @details The limit is appointed by RFC 5424, section 6.2.7.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_MESSAGE_ID = 32;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина имени внутри структурированных данных
-			 *
-			 * @details Предел назначен RFC 5424, раздел 6.3.2, и общий у опознавателя
-			 *          блока и у имени поля.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of a name inside the structured data
-			 *
-			 * @details The limit is appointed by RFC 5424, section 6.3.2, and is common to the identifier of a
-			 *          block and to the name of a field.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_NAME = 32;
-
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое количество блоков структурированных данных
@@ -326,15 +326,20 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Наибольшее допустимое количество полей одного блока данных
+			 * @brief Знак, отсутствию значения назначенный
+			 *
+			 * @details Назначен RFC 5424, раздел 6: поле, значения не имеющее, несёт один
+			 *          этот знак.
 			 *
 			 * \~english
-			 * @brief Largest admissible number of the fields of one block of the data
+			 * @brief Character assigned to the absence of a value
+			 *
+			 * @details It is appointed by RFC 5424, section 6: a field having no value carries
+			 *          this one sign only.
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_PARAMS = 0x1000;
-
+			constexpr string_view NIL = "-";
 			/**
 			 * \~russian
 			 * @brief Метка порядка байтов, тексту сообщения предшествующая
@@ -354,20 +359,212 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Знак, отсутствию значения назначенный
+			 * @brief Описания записи системного журнала
 			 *
-			 * @details Назначен RFC 5424, раздел 6: поле, значения не имеющее, несёт один
-			 *          этот знак.
+			 * @details Самоопределение сличает вид поля, за приоритетом стоящего: число с
+			 *          пробелом означает RFC 5424, всё прочее - RFC 3164. Признак этот назначен
+			 *          самим RFC 5424, а не выведен из наблюдений: номер описания там обязателен и
+			 *          стоит первым после приоритета.
 			 *
 			 * \~english
-			 * @brief Character assigned to the absence of a value
+			 * @brief Descriptions of a record of the system log
 			 *
-			 * @details It is appointed by RFC 5424, section 6: a field having no value carries this one sign only.
+			 * @details A self-determination compares the appearance of the field standing after the priority: a
+			 *          number with a space means RFC 5424, everything else — RFC 3164. This sign is appointed by
+			 *          RFC 5424 itself and is not drawn from the observations: there the number of the description
+			 *          is mandatory and stands first after the priority.
 			 *
 			 * \~
 			 */
-			constexpr string_view NIL = "-";
-
+			enum class standard_t : uint8_t {
+				AUTO    = 0x00, // Описание определяется по виду записи
+				RFC3164 = 0x01, // Устаревшее описание BSD
+				RFC5424 = 0x02  // Нынешнее описание с опознавателем сообщения
+			};
+			/**
+			 * \~russian
+			 * @brief Строгость сличения разбираемой записи с описанием
+			 *
+			 * @details Сличение стоит времени и потому берётся настройкой, а не ведётся
+			 *          всегда: сборщик журналов принимает миллионы записей от устройств, описанию
+			 *          следующих нестрого, и отвергать их значило бы терять события.
+			 *
+			 * \~english
+			 * @brief Strictness of the matching of a parsed record against the description
+			 *
+			 * @details A comparison costs time, and therefore it is taken by a setting and is not conducted
+			 *          always: a collector of journals accepts millions of records from the devices following
+			 *          the description not strictly, and to refuse them would mean to lose events.
+			 *
+			 * \~
+			 */
+			enum class mode_t : uint8_t {
+				NONE   = 0x00, // Сличения не ведётся: поля кладутся знаками, как в записи и стоят
+				WEAK   = 0x01, // Сличается вид полей, но отказом отвечает лишь неразбираемое
+				STRONG = 0x02  // Сличается всё: вид полей, длины, набор знаков имён
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обращения с отсутствующим значением
+			 *
+			 * @details RFC 5424 назначает знак «-» отсутствию значения. Умолчание -
+			 *          опустить поле вовсе, ибо «неизвестно» и «пусто» суть разные утверждения.
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of an absent value
+			 *
+			 * @details RFC 5424 appoints the sign «-» to an absence of a value. The default is to drop the
+			 *          field entirely, for «unknown» and «empty» are different assertions.
+			 *
+			 * \~
+			 */
+			enum class nil_t : uint8_t {
+				OMIT   = 0x00, // Поле в дерево не кладётся вовсе
+				EMPTY  = 0x01, // Поле кладётся пустой последовательностью знаков
+				LITERAL = 0x02 // Поле кладётся знаками «-», как в записи и стоит
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обращения с вложенностью при записи дерева в запись SysLog
+			 *
+			 * @details Дерева произвольной глубины запись системного журнала не несёт:
+			 *          поля заголовка суть знаки, а структурированные данные глубже одного слоя
+			 *          не идут. Выбор исхода принадлежит не кодеку, а тому, кто пишет:
+			 *          молчаливое обращение в знаки оставляло бы потребителя с записью, которая
+			 *          разбирается, но означает иное.
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of a nesting at the writing of a tree into a SysLog record
+			 *
+			 * @details A record of the system log carries no tree of an arbitrary depth: the fields of the
+			 *          header are characters, while the structured data go no deeper than one layer. The choice
+			 *          of the outcome belongs not to the codec but to the one who writes: a silent turning into
+			 *          characters would leave a consumer with a record that is parsed but means something else.
+			 *
+			 * \~
+			 */
+			enum class nested_t : uint8_t {
+				STRICT = 0x00, // Отвечать отказом с кодом NESTED_VALUE
+				TEXT   = 0x01, // Обращать в последовательность знаков
+				SKIP   = 0x02  // Пропускать значение вовсе
+			};
+			/**
+			 * \~russian
+			 * @brief Виды событий чтения сообщения системного журнала
+			 *
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a system log message
+			 *
+			 * @details The reading issues the events as the text is parsed, without holding it in full.
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE      = 0x00, // Событие не определено
+				HEADER    = 0x01, // Поле заголовка записи
+				STRUCTURE = 0x02, // Опознаватель начатого блока структурированных данных
+				PARAM     = 0x03, // Поле структурированных данных «имя=значение»
+				MESSAGE   = 0x04, // Свободный текст сообщения
+				RECORD    = 0x05, // Запись разобрана до конца, следующая начинается заново
+				FINISH    = 0x06  // Текст разобран до конца, событие видно после цикла разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Поля заголовка записи системного журнала
+			 *
+			 * @details Порядок членов отвечает порядку полей в записи и служит их
+			 *          указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
+			 *          заголовка запись не несёт вовсе. Поля VERSION, MESSAGE_ID и STRUCTURE
+			 *          принадлежат лишь RFC 5424, поле TAG - лишь RFC 3164.
+			 *
+			 * \~english
+			 * @brief Fields of the header of a system log record
+			 *
+			 * @details The order of the members answers the order of the fields in a record and serves as their
+			 *          index: a field is parsed by count and not by name, for a record carries no names of the
+			 *          fields of the header at all. The fields VERSION, MESSAGE_ID and STRUCTURE belong only to
+			 *          RFC 5424, the field TAG only to RFC 3164.
+			 *
+			 * \~
+			 */
+			enum class field_t : uint8_t {
+				NONE       = 0x00, // Поле не определено
+				PRIORITY   = 0x01, // Приоритет: источник, восьмикратно взятый, и важность
+				VERSION    = 0x02, // Номер описания записи, лишь RFC 5424
+				TIMESTAMP  = 0x03, // Дата и время составления сообщения
+				HOSTNAME   = 0x04, // Имя узла, сообщение составившего
+				APPLICATION = 0x05, // Название приложения либо метка RFC 3164
+				PROCESS    = 0x06, // Опознаватель работы, сообщение составившей
+				MESSAGE_ID = 0x07  // Опознаватель разновидности сообщения, лишь RFC 5424
+			};
+			/**
+			 * \~russian
+			 * @brief Степени важности сообщения системного журнала
+			 *
+			 * @details Значения назначены RFC 5424, таблица 2. Важность есть остаток от
+			 *          деления приоритета на восемь, и меньшее число означает БОЛЬШУЮ важность.
+			 *
+			 * \~english
+			 * @brief Degrees of the importance of a system log message
+			 *
+			 * @details The values are appointed by RFC 5424, table 2. A severity is the remainder of the
+			 *          division of the priority by eight, and a lesser number means a GREATER severity.
+			 *
+			 * \~
+			 */
+			enum class severity_t : uint8_t {
+				EMERGENCY = 0x00, // Система непригодна к работе
+				ALERT     = 0x01, // Вмешательство требуется немедленно
+				CRITICAL  = 0x02, // Состояние тяжёлое
+				ERROR     = 0x03, // Условие отказа
+				WARNING   = 0x04, // Условие предостережения
+				NOTICE    = 0x05, // Состояние обычное, но внимания достойное
+				INFO      = 0x06, // Сообщение осведомительное
+				DEBUG     = 0x07  // Сообщение отладочное
+			};
+			/**
+			 * \~russian
+			 * @brief Источники сообщения системного журнала
+			 *
+			 * @details Значения назначены RFC 5424, таблица 1. Источник есть частное от
+			 *          деления приоритета на восемь.
+			 *
+			 * \~english
+			 * @brief Sources of a system log message
+			 *
+			 * @details The values are appointed by RFC 5424, table 1. A source is the quotient of the division
+			 *          of the priority by eight.
+			 *
+			 * \~
+			 */
+			enum class facility_t : uint8_t {
+				KERNEL   = 0x00, // Сообщения ядра системы
+				USER     = 0x01, // Сообщения уровня пользователя
+				MAIL     = 0x02, // Почтовая служба
+				DAEMON   = 0x03, // Службы системы
+				AUTH     = 0x04, // Опознание и безопасность
+				SYSLOG   = 0x05, // Сообщения самой службы журнала
+				PRINTER  = 0x06, // Служба печати
+				NEWS     = 0x07, // Служба новостей
+				UUCP     = 0x08, // Служба UUCP
+				CLOCK    = 0x09, // Служба часов
+				SECURITY = 0x0A, // Опознание и безопасность, второй набор
+				FTP      = 0x0B, // Служба передачи файлов
+				NTP      = 0x0C, // Служба сетевого времени
+				AUDIT    = 0x0D, // Записи наблюдения за журналом
+				ALERT    = 0x0E, // Тревоги наблюдения за журналом
+				CLOCK2   = 0x0F, // Служба часов, второй набор
+				LOCAL0   = 0x10, // Местное употребление, набор нулевой
+				LOCAL1   = 0x11, // Местное употребление, набор первый
+				LOCAL2   = 0x12, // Местное употребление, набор второй
+				LOCAL3   = 0x13, // Местное употребление, набор третий
+				LOCAL4   = 0x14, // Местное употребление, набор четвёртый
+				LOCAL5   = 0x15, // Местное употребление, набор пятый
+				LOCAL6   = 0x16, // Местное употребление, набор шестой
+				LOCAL7   = 0x17  // Местное употребление, набор седьмой
+			};
 			/**
 			 * \~russian
 			 * @brief Коды отказов разбора и записи
@@ -386,7 +583,7 @@ namespace awh {
 			 * \~
 			 */
 			enum class error_t : uint8_t {
-				NONE                  = 0x00, // Ошибок не обнаружено
+				NONE = 0x00, // Ошибок не обнаружено
 				/**
 				 * \~russian
 				 * @brief Запись не открывается приставкой приоритета
@@ -451,222 +648,6 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Виды событий чтения сообщения системного журнала
-			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
-			 *
-			 * \~english
-			 * @brief Kinds of the events of the reading of a system log message
-			 *
-			 * @details The reading issues the events as the text is parsed, without holding it in full.
-			 *
-			 * \~
-			 */
-			enum class event_t : uint8_t {
-				NONE      = 0x00, // Событие не определено
-				HEADER    = 0x01, // Поле заголовка записи
-				STRUCTURE = 0x02, // Опознаватель начатого блока структурированных данных
-				PARAM     = 0x03, // Поле структурированных данных «имя=значение»
-				MESSAGE   = 0x04, // Свободный текст сообщения
-				RECORD    = 0x05, // Запись разобрана до конца, следующая начинается заново
-				FINISH    = 0x06  // Текст разобран до конца, событие видно после цикла разбора
-			};
-
-			/**
-			 * \~russian
-			 * @brief Описания записи системного журнала
-			 *
-			 * @details Самоопределение сличает вид поля, за приоритетом стоящего: число с
-			 *          пробелом означает RFC 5424, всё прочее - RFC 3164. Признак этот назначен
-			 *          самим RFC 5424, а не выведен из наблюдений: номер описания там обязателен и
-			 *          стоит первым после приоритета.
-			 *
-			 * \~english
-			 * @brief Descriptions of a record of the system log
-			 *
-			 * @details A self-determination compares the appearance of the field standing after the priority: a
-			 *          number with a space means RFC 5424, everything else — RFC 3164. This sign is appointed by
-			 *          RFC 5424 itself and is not drawn from the observations: there the number of the description
-			 *          is mandatory and stands first after the priority.
-			 *
-			 * \~
-			 */
-			enum class standard_t : uint8_t {
-				AUTO    = 0x00, // Описание определяется по виду записи
-				RFC3164 = 0x01, // Устаревшее описание BSD
-				RFC5424 = 0x02  // Нынешнее описание с опознавателем сообщения
-			};
-
-			/**
-			 * \~russian
-			 * @brief Поля заголовка записи системного журнала
-			 *
-			 * @details Порядок членов отвечает порядку полей в записи и служит их
-			 *          указателем: поле разбирается по счёту, а не по имени, ибо имён у полей
-			 *          заголовка запись не несёт вовсе. Поля VERSION, MESSAGE_ID и STRUCTURE
-			 *          принадлежат лишь RFC 5424, поле TAG - лишь RFC 3164.
-			 *
-			 * \~english
-			 * @brief Fields of the header of a system log record
-			 *
-			 * @details The order of the members answers the order of the fields in a record and serves as their
-			 *          index: a field is parsed by count and not by name, for a record carries no names of the
-			 *          fields of the header at all. The fields VERSION, MESSAGE_ID and STRUCTURE belong only to
-			 *          RFC 5424, the field TAG only to RFC 3164.
-			 *
-			 * \~
-			 */
-			enum class field_t : uint8_t {
-				NONE       = 0x00, // Поле не определено
-				PRIORITY   = 0x01, // Приоритет: источник, восьмикратно взятый, и важность
-				VERSION    = 0x02, // Номер описания записи, лишь RFC 5424
-				TIMESTAMP  = 0x03, // Дата и время составления сообщения
-				HOSTNAME   = 0x04, // Имя узла, сообщение составившего
-				APPLICATION = 0x05, // Название приложения либо метка RFC 3164
-				PROCESS    = 0x06, // Опознаватель работы, сообщение составившей
-				MESSAGE_ID = 0x07  // Опознаватель разновидности сообщения, лишь RFC 5424
-			};
-
-			/**
-			 * \~russian
-			 * @brief Источники сообщения системного журнала
-			 *
-			 * @details Значения назначены RFC 5424, таблица 1. Источник есть частное от
-			 *          деления приоритета на восемь.
-			 *
-			 * \~english
-			 * @brief Sources of a system log message
-			 *
-			 * @details The values are appointed by RFC 5424, table 1. A source is the quotient of the division
-			 *          of the priority by eight.
-			 *
-			 * \~
-			 */
-			enum class facility_t : uint8_t {
-				KERNEL   = 0x00, // Сообщения ядра системы
-				USER     = 0x01, // Сообщения уровня пользователя
-				MAIL     = 0x02, // Почтовая служба
-				DAEMON   = 0x03, // Службы системы
-				AUTH     = 0x04, // Опознание и безопасность
-				SYSLOG   = 0x05, // Сообщения самой службы журнала
-				PRINTER  = 0x06, // Служба печати
-				NEWS     = 0x07, // Служба новостей
-				UUCP     = 0x08, // Служба UUCP
-				CLOCK    = 0x09, // Служба часов
-				SECURITY = 0x0A, // Опознание и безопасность, второй набор
-				FTP      = 0x0B, // Служба передачи файлов
-				NTP      = 0x0C, // Служба сетевого времени
-				AUDIT    = 0x0D, // Записи наблюдения за журналом
-				ALERT    = 0x0E, // Тревоги наблюдения за журналом
-				CLOCK2   = 0x0F, // Служба часов, второй набор
-				LOCAL0   = 0x10, // Местное употребление, набор нулевой
-				LOCAL1   = 0x11, // Местное употребление, набор первый
-				LOCAL2   = 0x12, // Местное употребление, набор второй
-				LOCAL3   = 0x13, // Местное употребление, набор третий
-				LOCAL4   = 0x14, // Местное употребление, набор четвёртый
-				LOCAL5   = 0x15, // Местное употребление, набор пятый
-				LOCAL6   = 0x16, // Местное употребление, набор шестой
-				LOCAL7   = 0x17  // Местное употребление, набор седьмой
-			};
-
-			/**
-			 * \~russian
-			 * @brief Степени важности сообщения системного журнала
-			 *
-			 * @details Значения назначены RFC 5424, таблица 2. Важность есть остаток от
-			 *          деления приоритета на восемь, и меньшее число означает БОЛЬШУЮ важность.
-			 *
-			 * \~english
-			 * @brief Degrees of the importance of a system log message
-			 *
-			 * @details The values are appointed by RFC 5424, table 2. A severity is the remainder of the
-			 *          division of the priority by eight, and a lesser number means a GREATER severity.
-			 *
-			 * \~
-			 */
-			enum class severity_t : uint8_t {
-				EMERGENCY = 0x00, // Система непригодна к работе
-				ALERT     = 0x01, // Вмешательство требуется немедленно
-				CRITICAL  = 0x02, // Состояние тяжёлое
-				ERROR     = 0x03, // Условие отказа
-				WARNING   = 0x04, // Условие предостережения
-				NOTICE    = 0x05, // Состояние обычное, но внимания достойное
-				INFO      = 0x06, // Сообщение осведомительное
-				DEBUG     = 0x07  // Сообщение отладочное
-			};
-
-			/**
-			 * \~russian
-			 * @brief Строгость сличения разбираемой записи с описанием
-			 *
-			 * @details Сличение стоит времени и потому берётся настройкой, а не ведётся
-			 *          всегда: сборщик журналов принимает миллионы записей от устройств, описанию
-			 *          следующих нестрого, и отвергать их значило бы терять события.
-			 *
-			 * \~english
-			 * @brief Strictness of the matching of a parsed record against the description
-			 *
-			 * @details A comparison costs time, and therefore it is taken by a setting and is not conducted
-			 *          always: a collector of journals accepts millions of records from the devices following
-			 *          the description not strictly, and to refuse them would mean to lose events.
-			 *
-			 * \~
-			 */
-			enum class mode_t : uint8_t {
-				NONE   = 0x00, // Сличения не ведётся: поля кладутся знаками, как в записи и стоят
-				WEAK   = 0x01, // Сличается вид полей, но отказом отвечает лишь неразбираемое
-				STRONG = 0x02  // Сличается всё: вид полей, длины, набор знаков имён
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с отсутствующим значением
-			 *
-			 * @details RFC 5424 назначает знак «-» отсутствию значения. Умолчание -
-			 *          опустить поле вовсе, ибо «неизвестно» и «пусто» суть разные утверждения.
-			 *
-			 * \~english
-			 * @brief Rules of the treatment of an absent value
-			 *
-			 * @details RFC 5424 appoints the sign «-» to an absence of a value. The default is to drop the
-			 *          field entirely, for «unknown» and «empty» are different assertions.
-			 *
-			 * \~
-			 */
-			enum class nil_t : uint8_t {
-				OMIT   = 0x00, // Поле в дерево не кладётся вовсе
-				EMPTY  = 0x01, // Поле кладётся пустой последовательностью знаков
-				LITERAL = 0x02 // Поле кладётся знаками «-», как в записи и стоит
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с вложенностью при записи дерева в запись SysLog
-			 *
-			 * @details Дерева произвольной глубины запись системного журнала не несёт:
-			 *          поля заголовка суть знаки, а структурированные данные глубже одного слоя
-			 *          не идут. Выбор исхода принадлежит не кодеку, а тому, кто пишет:
-			 *          молчаливое обращение в знаки оставляло бы потребителя с записью, которая
-			 *          разбирается, но означает иное.
-			 *
-			 * \~english
-			 * @brief Rules of the treatment of a nesting at the writing of a tree into a SysLog record
-			 *
-			 * @details A record of the system log carries no tree of an arbitrary depth: the fields of the
-			 *          header are characters, while the structured data go no deeper than one layer. The choice
-			 *          of the outcome belongs not to the codec but to the one who writes: a silent turning into
-			 *          characters would leave a consumer with a record that is parsed but means something else.
-			 *
-			 * \~
-			 */
-			enum class nested_t : uint8_t {
-				STRICT = 0x00, // Отвечать отказом с кодом NESTED_VALUE
-				TEXT   = 0x01, // Обращать в последовательность знаков
-				SKIP   = 0x02  // Пропускать значение вовсе
-			};
-
-			/**
-			 * \~russian
 			 * @brief Метод получения текста сообщения об ошибке разбора
 			 *
 			 * @details Текст выдаётся на английском языке и предназначен журналу, а не
@@ -687,7 +668,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Метод получения имени источника сообщения
@@ -710,7 +690,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const facility_t facility) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Метод получения имени степени важности сообщения
@@ -730,13 +709,13 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Положение в разбираемом тексте
+			 * @brief Структура положения в разбираемом тексте
 			 *
 			 * @details Положение несёт и смещение в октетах от начала текста, и номер
 			 *          строки со столбцом.
 			 *
 			 * \~english
-			 * @brief Position in the parsed text
+			 * @brief Structure of the proposition in the text under analysis
 			 *
 			 * @details A position carries both an offset in octets from the beginning of a text and the
 			 *          numbers of a line and of a column.
@@ -744,27 +723,26 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Position {
-				// Смещение в байтах от начала текста
-				uint64_t offset;
 				// Номер строки, считая от единицы
 				uint64_t line;
 				// Номер столбца в байтах, считая от единицы
 				uint64_t column;
+				// Смещение в байтах от начала текста
+				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Position() noexcept : offset(0), line(1), column(1) {}
+				explicit Position() noexcept;
 			} pos_t;
-		}
-	}
-}
+		};
+	};
+};
 
 /**
  * Возвращаем имена, системными макросами занятые

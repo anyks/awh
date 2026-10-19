@@ -44,8 +44,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/chrono.hpp"
 #include "../abc/value.hpp"
+#include "../../sys/chrono.hpp"
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
@@ -55,7 +55,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -72,7 +71,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -82,7 +80,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера SysLog
-		 *
 		 *
 		 * \~english
 		 * @brief SysLog container namespace
@@ -229,47 +226,43 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки записи событий
-					 *
+					 * @brief Структура настроек записи событий
 					 *
 					 * \~english
-					 * @brief Settings of the writing of the events
+					 * @brief Event logging configuration structure
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Описание, каким надлежит писать записи
-						standard_t standard;
-						// Обращение с вложенным значением, записи системного журнала неведомым
-						nested_t nested;
-						// Признак записи приставки приоритета перед заголовком
-						bool prefix;
 						// Признак постановки метки порядка байтов перед текстом сообщения
 						bool bom;
 						// Признак постановки отмены знаков в значениях структурированных данных
 						bool escape;
+						// Признак записи приставки приоритета перед заголовком
+						bool prefix;
 						// Признак записи знака конца строки за записью
 						bool terminate;
+						// Обращение с вложенным значением, записи системного журнала неведомым
+						nested_t nested;
+						// Описание, каким надлежит писать записи
+						standard_t standard;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept :
-						 standard(standard_t::AUTO), nested(nested_t::STRICT), prefix(true),
-						 bom(true), escape(true), terminate(true) {}
+						explicit Settings() noexcept;
 					} settings_t;
-				private:
-					// Настройки записи событий
-					settings_t _settings;
 				private:
 					// Код ошибки последней операции записи
 					error_t _error;
+				private:
+					// Настройки записи событий
+					settings_t _settings;
 				private:
 					// Описание, каким собрана последняя запись
 					standard_t _standard;
@@ -581,22 +574,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Writer() noexcept {}
+					~Writer() noexcept = default;
 			} writer_t;
-		}
-	}
-}
+		};
+	};
+};
 
 /**
  * Возвращаем имена, системными макросами занятые
