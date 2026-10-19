@@ -265,7 +265,7 @@ def check_doc_parity(path, lines, report, fixes=None):
 				block = []
 
 SNAKE_STOP = {"operator", "no_except", "decltype", "sizeof_", "alignof_", "return_type"}
-STD_CALLS = {"make_pair", "make_tuple", "make_unique", "make_shared", "forward_like"}
+STD_CALLS = {"make_pair", "make_tuple", "make_unique", "make_shared", "forward_like", "sleep_for"}
 # слово перед именем в позиции типа означает вызов, а не объявление
 KEYWORD_HEAD = {"return", "throw", "co_return", "co_await", "new", "delete", "case", "else"}
 
