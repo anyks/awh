@@ -333,16 +333,6 @@ namespace awh {
 				 * \~
 				 */
 				explicit Vessel(const secrecy_t secrecy = secrecy_t::STRICT) noexcept;
-				/**
-				 * \~russian
-				 * @brief Деструктор
-				 *
-				 * \~english
-				 * @brief Destructor
-				 *
-				 * \~
-				 */
-				~Vessel() noexcept;
 			public:
 				/**
 				 * Копированию приёмник не подлежит
@@ -379,6 +369,16 @@ namespace awh {
 				 * \~
 				 */
 				Vessel & operator = (Vessel && vessel) noexcept;
+				/**
+				 * \~russian
+				 * @brief Деструктор
+				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
+				 */
+				~Vessel() noexcept;
 		} vessel_t;
 	};
 };

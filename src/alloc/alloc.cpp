@@ -29,6 +29,7 @@
  */
 #include <cerrno>
 #include <ctime>
+#include <new>
 
 /**
  * Заголовочные файлы дешёвых часов по системам
@@ -2443,7 +2444,17 @@ namespace {
 	 * команд и 3 ветвлений у `free` соперника. Быстрая дорога - вернуть блок разряда в
 	 * кэш своего потока - тонула во всём этом
 	 */
-	static AWH_ALLOC_COLD void discardSlow(void * ptr, const bool bare) noexcept {
+	static AWH_ALLOC_COLD void discardSlow(void * ptr, const bool bare, const bool keeping = true) noexcept {
+		/**
+		 * Адрес области первоначальной выдачи не отдаём ни слоям, ни прежнему
+		 * распределителю
+		 *
+		 * Лежит он в статическом буфере и не выдан ни нами, ни системным malloc: утекает.
+		 * Сюда он приходит лишь холодными путями - с горячей дороги проверка вынесена
+		 */
+		if(AWH_ALLOC_UNLIKELY(preliminary(ptr)))
+			// Освобождать нечего
+			return;
 		if(AWH_ALLOC_UNLIKELY(!bare) && guarded.load(std::memory_order_relaxed)){
 			// Признак принадлежности адреса заслонам
 			bool mine = false;
@@ -2522,7 +2533,7 @@ namespace {
 		 */
 		if(AWH_ALLOC_LIKELY(bare)){
 			// Возвращаем блок слоям распределителя
-			recycle(ptr, index, cache);
+			recycle(ptr, index, cache, keeping);
 			// Освобождать больше нечего
 			return;
 		}
@@ -2557,7 +2568,7 @@ namespace {
 			// Засеваем освобождаемое заметным образом
 			::memset(ptr, 0xDE, size);
 		// Возвращаем блок слоям распределителя
-		recycle(ptr, index, cache);
+		recycle(ptr, index, cache, keeping);
 		/**
 		 * Отдаём освободившееся системе немедля, если так заказано
 		 *
@@ -2619,10 +2630,6 @@ namespace {
 		if(AWH_ALLOC_UNLIKELY(ptr == nullptr))
 			// Освобождать нечего
 			return;
-		// Если адрес принадлежит области первоначальной выдачи
-		if(AWH_ALLOC_UNLIKELY(preliminary(ptr)))
-			// Освобождать нечего
-			return;
 		// Если распределитель не готов
 		if(AWH_ALLOC_UNLIKELY(stage.load(std::memory_order_acquire) != STAGE_READY)){
 			// Если прежнее освобождение памяти известно
@@ -2643,42 +2650,33 @@ namespace {
 		// Если хоть одна возможность включена, идём холодным путём целиком
 		if(AWH_ALLOC_UNLIKELY(!bare)){
 			// Возвращаем память по холодным путям
-			discardSlow(ptr, bare);
+			discardSlow(ptr, bare, keeping);
 			// Возвращать больше нечего
 			return;
 		}
 		// Получаем кэш текущего потока
 		awh::alloc::cache_t * cache = unit->caches.local();
 		// Номер разряда, которому принадлежит адрес
-		size_t index = awh::alloc::Classes::LIMIT;
-		// Определяем размер возвращаемого блока
-		const size_t size = sized(ptr, &index, cache);
-		// Если блок нам не принадлежит
-		if(AWH_ALLOC_UNLIKELY(size == 0)){
-			// Если прежнее освобождение памяти известно
-			if(originals.free != nullptr)
-				// Отдаём память прежнему распределителю
-				(* originals.free)(ptr);
-			// Освобождать больше нечем
-			return;
-		}
-		// Уменьшаем занятое прикладным кодом
-		account(cache, -static_cast <int64_t> (size));
+		size_t index = 0;
 		/**
-		 * Быстрая дорога возврата встроена ЗДЕСЬ, а не взята из `recycle`
+		 * Разряд берём картой страниц напрямую, без обёртки `sized`
 		 *
-		 * Тело `recycle` разбирает ещё крупные выдачи и области сверх разрядов, и
-		 * встраивать его целиком значило бы вернуть в горячий путь то, ради чего он и
-		 * разводился. Прочие дороги оставлены самому `recycle`
+		 * Нуль в ответе означает «не классовый блок»: чужой адрес, область первоначальной
+		 * выдачи либо крупная выдача - все они уходят холодным путём
 		 */
-		if(AWH_ALLOC_LIKELY((index < unit->classes.count()) && (cache != nullptr))){
-			// Возвращаем блок в кэш текущего потока
-			cache->free(index, ptr);
-			// Возвращать больше нечего
-			return;
+		if(unit->central.sorted(ptr, &index, ((cache != nullptr) ? cache->hint() : nullptr))){
+			// Если кэш заведён и разряд в таблице
+			if(AWH_ALLOC_LIKELY((index < unit->classes.count()) && (cache != nullptr))){
+				// Уменьшаем занятое прикладным кодом
+				account(cache, -static_cast <int64_t> (unit->classes.extent(index)));
+				// Возвращаем блок в кэш текущего потока
+				cache->free(index, ptr);
+				// Возвращать больше нечего
+				return;
+			}
 		}
-		// Возвращаем блок слоям распределителя
-		recycle(ptr, index, cache, keeping);
+		// Возвращаем память по холодным путям
+		discardSlow(ptr, bare, keeping);
 	}
 };
 
@@ -3014,6 +3012,145 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_AL
 	// Выводим выданную память, обнулив хвост сверх перенесённого
 	return ::blanked(result, before, size);
 }
+/**
+ * Семья операторов языка C++
+ *
+ * Подмена malloc-семейства не закрывает операторы языка: обращение к `operator new` у
+ * библиотеки времени исполнения разрешается отдельно от malloc и на macOS уходит в
+ * системный malloc зоной, платя лишний диспетчер. Собственные операторы ведут выдачу
+ * прямо к распределителю, без посредника, ровно как это делает tcmalloc
+ */
+#if !defined(_WIN32) && !defined(_WIN64) && !defined(AWH_ALLOC_DISABLED) && !(defined(__APPLE__) && AWH_ALLOC_SANITIZER)
+	/**
+	 * @brief Оператор выделения памяти языка C++
+	 *
+	 * @param size требуемый размер в байтах
+	 * @return     адрес выданной памяти
+	 *
+	 */
+	void * operator new (size_t size){
+		// Нулевой запрос обращаем в наименьший блок
+		if(size == 0)
+			// Обращаем запрос в наименьший блок
+			size = 1;
+		// Выдаём память
+		void * result = ::blanked(::reserve(size), 0, size);
+		/**
+		 * Кружим по обработчику нехватки, покуда память не выдана
+		 */
+		while(result == nullptr){
+			// Берём текущий обработчик нехватки памяти
+			std::new_handler handler = std::get_new_handler();
+			// Если обработчика нет
+			if(handler == nullptr)
+				// Бросаем отказ нехватки памяти
+				throw std::bad_alloc();
+			// Зовём обработчик нехватки памяти
+			handler();
+			// Выдаём память повторно
+			result = ::blanked(::reserve(size), 0, size);
+		}
+		// Выводим выданную память
+		return result;
+	}
+	/**
+	 * @brief Оператор выделения памяти под массив языка C++
+	 *
+	 * @param size требуемый размер в байтах
+	 * @return     адрес выданной памяти
+	 *
+	 */
+	void * operator new [] (size_t size){
+		// Выдаём память обычным оператором
+		return ::operator new(size);
+	}
+	/**
+	 * @brief Оператор освобождения памяти языка C++
+	 *
+	 * @param ptr адрес освобождаемой памяти
+	 *
+	 */
+	void operator delete (void * ptr) noexcept {
+		// Освобождаем память
+		::discard(ptr);
+	}
+	/**
+	 * @brief Оператор освобождения памяти массива языка C++
+	 *
+	 * @param ptr адрес освобождаемой памяти
+	 *
+	 */
+	void operator delete [] (void * ptr) noexcept {
+		// Освобождаем память
+		::discard(ptr);
+	}
+	/**
+	 * @brief Оператор освобождения памяти с известным размером языка C++
+	 *
+	 * @param ptr адрес освобождаемой памяти
+	 *
+	 */
+	void operator delete (void * ptr, size_t) noexcept {
+		// Освобождаем память
+		::discard(ptr);
+	}
+	/**
+	 * @brief Оператор освобождения памяти массива с известным размером языка C++
+	 *
+	 * @param ptr адрес освобождаемой памяти
+	 *
+	 */
+	void operator delete [] (void * ptr, size_t) noexcept {
+		// Освобождаем память
+		::discard(ptr);
+	}
+	/**
+	 * @brief Оператор выделения памяти без бросания языка C++
+	 *
+	 * @param size требуемый размер в байтах
+	 * @return     адрес выданной памяти либо nullptr
+	 *
+	 */
+	void * operator new (size_t size, const std::nothrow_t &) noexcept {
+		// Нулевой запрос обращаем в наименьший блок
+		if(size == 0)
+			// Обращаем запрос в наименьший блок
+			size = 1;
+		// Выдаём память
+		return ::blanked(::reserve(size), 0, size);
+	}
+	/**
+	 * @brief Оператор выделения памяти массива без бросания языка C++
+	 *
+	 * @param size требуемый размер в байтах
+	 * @return     адрес выданной памяти либо nullptr
+	 *
+	 */
+	void * operator new [] (size_t size, const std::nothrow_t & nt) noexcept {
+		// Выдаём память обычным оператором без бросания
+		return ::operator new(size, nt);
+	}
+	/**
+	 * @brief Оператор освобождения памяти без бросания языка C++
+	 *
+	 * @param ptr адрес освобождаемой памяти
+	 *
+	 */
+	void operator delete (void * ptr, const std::nothrow_t &) noexcept {
+		// Освобождаем память
+		::discard(ptr);
+	}
+	/**
+	 * @brief Оператор освобождения памяти массива без бросания языка C++
+	 *
+	 * @param ptr адрес освобождаемой памяти
+	 *
+	 */
+	void operator delete [] (void * ptr, const std::nothrow_t &) noexcept {
+		// Освобождаем память
+		::discard(ptr);
+	}
+#endif
 /**
  * @brief Метод определения размера выделенного блока
  *

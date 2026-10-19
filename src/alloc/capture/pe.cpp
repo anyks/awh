@@ -1186,4 +1186,4 @@ const char * awh::alloc::PECapture::name() const noexcept {
  */
 awh::alloc::PECapture::~PECapture() noexcept {}
 
-#endif // _WIN32 || _WIN64
+#endif

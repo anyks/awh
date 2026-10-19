@@ -33,7 +33,7 @@
  *
  */
 awh::alloc::Pages::Pages() noexcept :
- _source(nullptr), _chunks(nullptr), _registry(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr), _unmerged(0),
+ _source(nullptr), _chunks(nullptr), _registry(nullptr), _root(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr), _unmerged(0),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
  _delay(10), _block(0), _limit(0), _jammed(false), _pending(0), _state() {
 	// Обнуляем списки свободных областей
@@ -472,27 +472,113 @@ void awh::alloc::Pages::mark(span_t * span) noexcept {
 	 */
 	// Места указателей областей, начиная с первой страницы
 	std::atomic <span_t *> * const index = (span->chunk->index + first);
-	// Места меток разряда, начиная с первой страницы
-	std::atomic <uint8_t> * const tags = (span->chunk->tags + first);
 	// Число страниц области
 	const size_t pages = span->pages;
 	// Метка разряда: у свободной области её нет, у выданной она берётся из самой области
 	const uint8_t tag = (span->released ? 0 : static_cast <uint8_t> (span->tag));
 	// Отпускаем записанное в область прежде записей по её страницам
 	std::atomic_thread_fence(std::memory_order_release);
-	for(size_t i = 0; i < pages; i++){
+	/**
+	 * Записываем область по всем её страницам
+	 *
+	 * По всем, а не по первой: разбор адреса приходит с адресом любого блока области
+	 */
+	for(size_t i = 0; i < pages; i++)
 		// Записываем область по очередной странице
 		index[i].store(span, std::memory_order_relaxed);
+	/**
+	 * Правим метку разряда страницы вслед за областью
+	 *
+	 * `mark` - единственное место, где страницы переходят к другой области, оттого
+	 * метка правится здесь же: у свободной области её нет вовсе, а у выданной она
+	 * берётся из самой области. Разряд проставляется потом, методом `tag`, - в тот
+	 * же миг, когда область отдаётся разряду
+	 */
+	this->paint(span->base, pages, tag);
+}
+/**
+ * @brief Метод проставления меток разрядов по страницам радикс-карты
+ *
+ * @param addr  адрес первой страницы диапазона
+ * @param pages число страниц диапазона
+ * @param tag   проставляемая метка разряда
+ *
+ */
+void awh::alloc::Pages::paint(const void * addr, const size_t pages, const uint8_t tag) noexcept {
+	// Определяем номер первой страницы диапазона
+	const uintptr_t page = (reinterpret_cast <uintptr_t> (addr) >> SHIFT);
+	// Получаем корень радикс-карты
+	root_t * root = this->_root.load(std::memory_order_relaxed);
+	// Если корень ещё не заведён
+	if(root == nullptr){
+		// Берём у источника память под корень
+		root = reinterpret_cast <root_t *> (this->meta(sizeof(root_t) * LEAF));
+		// Если память под корень не выдана
+		if(root == nullptr)
+			// Помечать нечем
+			return;
 		/**
-		 * Правим метку разряда страницы вслед за областью
+		 * Обнуляем места корня по одному
 		 *
-		 * `mark` - единственное место, где страницы переходят к другой области, оттого
-		 * метка правится здесь же: у свободной области её нет вовсе, а у выданной она
-		 * берётся из самой области. Разряд проставляется потом, методом `tag`, - в тот
-		 * же миг, когда область отдаётся разряду
+		 * Не `memset`: места неделимы, а побайтового их обнуления стандарт не обещает
 		 */
-		tags[i].store(tag, std::memory_order_relaxed);
+		for(size_t i = 0; i < LEAF; i++)
+			// Обнуляем место корня
+			root[i].store(nullptr, std::memory_order_relaxed);
+		// Объявляем корень действующим
+		this->_root.store(root, std::memory_order_release);
 	}
+	// Определяем место среднего яруса в корне
+	mid_t * mid = root[page >> (LEAF_BITS * 2)].load(std::memory_order_relaxed);
+	// Если средний ярус ещё не заведён
+	if(mid == nullptr){
+		// Берём у источника память под средний ярус
+		mid = reinterpret_cast <mid_t *> (this->meta(sizeof(mid_t) * LEAF));
+		// Если память под ярус не выдана
+		if(mid == nullptr)
+			// Помечать нечем
+			return;
+		/**
+		 * Обнуляем места яруса по одному
+		 *
+		 * Не `memset`: места неделимы, а побайтового их обнуления стандарт не обещает
+		 */
+		for(size_t i = 0; i < LEAF; i++)
+			// Обнуляем место яруса
+			mid[i].store(nullptr, std::memory_order_relaxed);
+		// Публикуем ярус релизом: читатель берёт его захватом
+		root[page >> (LEAF_BITS * 2)].store(mid, std::memory_order_release);
+	}
+	// Определяем место листа в среднем ярусе
+	leaf_t * leaf = mid[(page >> LEAF_BITS) & LEAF_MASK].load(std::memory_order_relaxed);
+	// Если лист ещё не заведён
+	if(leaf == nullptr){
+		// Берём у источника память под лист
+		leaf = reinterpret_cast <leaf_t *> (this->meta(sizeof(leaf_t) * LEAF));
+		// Если память под лист не выдана
+		if(leaf == nullptr)
+			// Помечать нечем
+			return;
+		/**
+		 * Обнуляем места листа по одному
+		 *
+		 * Не `memset`: места неделимы, а побайтового их обнуления стандарт не обещает
+		 */
+		for(size_t i = 0; i < LEAF; i++)
+			// Обнуляем место листа
+			leaf[i].store(0, std::memory_order_relaxed);
+		// Публикуем лист релизом: читатель берёт его захватом
+		mid[(page >> LEAF_BITS) & LEAF_MASK].store(leaf, std::memory_order_release);
+	}
+	/**
+	 * Проставляем метку по страницам диапазона
+	 *
+	 * Область не длиннее куска (четыре мегабайта, пять сотен страниц), а лист держит
+	 * шестнадцать тысяч страниц: границы листа диапазон не пересекает
+	 */
+	for(size_t i = 0; i < pages; i++)
+		// Проставляем метку очередной страницы
+		leaf[(page + i) & LEAF_MASK].store(tag, std::memory_order_relaxed);
 }
 /**
  * @brief Метод внесения области в список свободных
@@ -679,12 +765,9 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 	 * но обещание это нигде не записано, а цена перебора - однажды на кусок в четыре
 	 * мегабайта
 	 */
-	for(size_t i = 0; i < PAGES; i++){
+	for(size_t i = 0; i < PAGES; i++)
 		// Обнуляем указатель области очередной страницы
 		chunk->index[i].store(nullptr, std::memory_order_relaxed);
-		// Обнуляем метку разряда очередной страницы
-		chunk->tags[i].store(0, std::memory_order_relaxed);
-	}
 	/**
 	 * Вносим кусок в таблицу поиска по адресу
 	 *
@@ -1045,6 +1128,8 @@ void awh::alloc::Pages::destroy() noexcept {
 	 */
 	// Обнуляем запись таблицы поиска
 	this->_registry.store(nullptr, std::memory_order_relaxed);
+	// Обнуляем корень радикс-карты разрядов
+	this->_root.store(nullptr, std::memory_order_relaxed);
 	// Обнуляем число внесённых в таблицу кусков
 	this->_enrolled = 0;
 	// Обнуляем общий список кусков
@@ -1596,20 +1681,10 @@ bool awh::alloc::Pages::free(void * addr, const uint64_t now) noexcept {
 		 * Сличение здесь холостое: у выдач сверх разрядов метка нулевая, и обход не идёт
 		 */
 		if(span->tag != 0){
-			// Определяем номер первой страницы области в куске
-			const size_t first = static_cast <size_t> ((span->base - chunk->base) / PAGE);
-			/**
-			 * Перебираем страницы области
-			 */
-			// Места меток разряда, начиная с первой страницы (поля берутся до перебора - довод у `mark`)
-			std::atomic <uint8_t> * const tags = (chunk->tags + first);
-			// Число страниц области
-			const size_t pages = span->pages;
 			// Отпускаем записанное прежде ОДНИМ барьером на всю область (довод у `mark`)
 			std::atomic_thread_fence(std::memory_order_release);
-			for(size_t i = 0; i < pages; i++)
-				// Снимаем метку разряда очередной страницы
-				tags[i].store(0, std::memory_order_relaxed);
+			// Снимаем метку разряда со всех страниц области
+			this->paint(span->base, span->pages, 0);
 			// Снимаем метку владельца и с самой области
 			span->tag = 0;
 		}
@@ -1808,20 +1883,10 @@ bool awh::alloc::Pages::tag(void * addr, const uint32_t tag) noexcept {
 	 * По всем, а не по первой: освобождение приходит с адресом ЛЮБОГО блока области, и
 	 * страница его вправе быть какой угодно внутри неё
 	 */
-	// Определяем номер первой страницы области в куске
-	const size_t first = static_cast <size_t> ((span->base - span->chunk->base) / PAGE);
-	/**
-	 * Перебираем страницы области
-	 */
-	// Места меток разряда, начиная с первой страницы (поля берутся до перебора - довод у `mark`)
-	std::atomic <uint8_t> * const tags = (span->chunk->tags + first);
-	// Число страниц области
-	const size_t pages = span->pages;
 	// Отпускаем записанное прежде ОДНИМ барьером на всю область (довод у `mark`)
 	std::atomic_thread_fence(std::memory_order_release);
-	for(size_t i = 0; i < pages; i++)
-		// Проставляем метку разряда очередной страницы
-		tags[i].store(static_cast <uint8_t> (tag), std::memory_order_relaxed);
+	// Проставляем метку разряда по всем страницам области
+	this->paint(span->base, span->pages, static_cast <uint8_t> (tag));
 	// Отвечаем успехом
 	return true;
 }

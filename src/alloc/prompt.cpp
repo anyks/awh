@@ -304,7 +304,7 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 		// Ширины принятых знаков в байтах
 		uint8_t widths[WIDTHS] = {0};
 		// Число принятых знаков
-		size_t taken_symbols = 0;
+		size_t takenSymbols = 0;
 		/**
 		 * Выполняем приём знаков набора
 		 */
@@ -325,11 +325,11 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 			// Если знак снимает предыдущий
 			if((static_cast <uint8_t> (symbol) == BACKSPACE) || (static_cast <uint8_t> (symbol) == RUBOUT)){
 				// Если снимать нечего
-				if(taken_symbols == 0)
+				if(takenSymbols == 0)
 					// Переходим к следующему знаку
 					continue;
 				// Получаем ширину последнего принятого знака
-				uint8_t width = widths[(taken_symbols - 1u) % WIDTHS];
+				uint8_t width = widths[(takenSymbols - 1u) % WIDTHS];
 				/**
 				 * Ширину неизвестного знака числим одним байтом
 				 *
@@ -346,7 +346,7 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 					// Снимаем очередной байт знака
 					static_cast <void> (vessel.drop());
 				// Уменьшаем число принятых знаков
-				taken_symbols--;
+				takenSymbols--;
 				// Переходим к следующему знаку
 				continue;
 			}
@@ -360,15 +360,15 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 			// Если принятый байт продолжает знак
 			if(::trailing(static_cast <uint8_t> (symbol))){
 				// Если знак, какой он продолжает, помнится
-				if((taken_symbols > 0) && (((taken_symbols - 1u) % WIDTHS) < WIDTHS))
+				if((takenSymbols > 0) && (((takenSymbols - 1u) % WIDTHS) < WIDTHS))
 					// Расширяем последний принятый знак
-					widths[(taken_symbols - 1u) % WIDTHS]++;
+					widths[(takenSymbols - 1u) % WIDTHS]++;
 			// Если принятый байт начинает знак
 			} else {
 				// Запоминаем ширину нового знака
-				widths[taken_symbols % WIDTHS] = 1;
+				widths[takenSymbols % WIDTHS] = 1;
 				// Увеличиваем число принятых знаков
-				taken_symbols++;
+				takenSymbols++;
 			}
 		}
 		/**

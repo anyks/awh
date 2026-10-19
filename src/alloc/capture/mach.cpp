@@ -968,4 +968,4 @@ const awh::alloc::functions_t & awh::alloc::ZoneCapture::originals() const noexc
  */
 awh::alloc::ZoneCapture::~ZoneCapture() noexcept {}
 
-#endif // __APPLE__
+#endif

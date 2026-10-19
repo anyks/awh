@@ -311,4 +311,4 @@ const awh::alloc::functions_t & awh::alloc::ELFCapture::originals() const noexce
  */
 awh::alloc::ELFCapture::~ELFCapture() noexcept {}
 
-#endif // !_WIN32 && !_WIN64 && !__APPLE__
+#endif

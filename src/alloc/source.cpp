@@ -42,6 +42,94 @@
 #endif
 
 /**
+ * @brief Инкапсулируем резервирование общего бюджета системного источника
+ *
+ */
+namespace {
+	/**
+	 * @brief Класс резерва памяти на время обращения к системе
+	 *
+	 * @note Учёт включает незавершённые выдачи. Нулевой результат возвращает резерв
+	 *       автоматически на любом пути отказа; успешная выдача оставляет его занятым
+	 *       до освобождения области. Замки вызывающих слоёв независимы
+	 *
+	 */
+	typedef class Source_Reservation {
+		private:
+			// Общий счётчик выданной и зарезервированной памяти
+			std::atomic <size_t> & _taken;
+			// Размер состоявшейся выдачи
+			const size_t & _actual;
+			// Размер полученного резерва либо нуль при отказе
+			size_t _size;
+		public:
+			/**
+			 * @brief Метод проверки состоявшегося резервирования
+			 *
+			 * @return признак полученного резерва
+			 *
+			 */
+			bool reserved() const noexcept {
+				// Выводим признак полученного резерва
+				return (this->_size > 0);
+			}
+		public:
+			/**
+			 * @brief Запрещаем копирование единственного владельца резерва
+			 *
+			 */
+			Source_Reservation(const Source_Reservation &) = delete;
+			/**
+			 * @brief Запрещаем присваивание владельца резерва
+			 *
+			 */
+			Source_Reservation & operator = (const Source_Reservation &) = delete;
+			/**
+			 * @brief Конструктор резерва системной выдачи
+			 *
+			 * @param taken   общий счётчик памяти
+			 * @param ceiling потолок памяти
+			 * @param size    размер новой выдачи
+			 * @param actual  размер состоявшейся выдачи
+			 *
+			 */
+			Source_Reservation(std::atomic <size_t> & taken, const std::atomic <size_t> & ceiling, const size_t size, const size_t & actual) noexcept :
+			 _taken(taken), _actual(actual), _size(0) {
+				// Читаем занятый бюджет
+				size_t occupied = this->_taken.load(std::memory_order_relaxed);
+				/**
+				 * Повторяем проверку при изменении бюджета соседним потоком
+				 */
+				for(;;){
+					// Читаем действующий потолок
+					const size_t limit = ceiling.load(std::memory_order_relaxed);
+					// Отсекаем переполнение и превышение потолка без опасного сложения
+					if((size > (static_cast <size_t> (-1) - occupied)) || ((limit > 0) && ((occupied > limit) || (size > (limit - occupied)))))
+						// Оставляем резерв пустым
+						return;
+					// Занимаем бюджет до обращения к системе
+					if(this->_taken.compare_exchange_weak(occupied, (occupied + size), std::memory_order_relaxed, std::memory_order_relaxed)){
+						// Запоминаем размер полученного резерва
+						this->_size = size;
+						// Резервирование завершено
+						return;
+					}
+				}
+			}
+			/**
+			 * @brief Деструктор резерва системной выдачи
+			 *
+			 */
+			~Source_Reservation() noexcept {
+				// Если выдача не состоялась, освобождаем полученный резерв
+				if((this->_size > 0) && (this->_actual == 0))
+					// Возвращаем бюджет без системного обращения
+					this->_taken.fetch_sub(this->_size, std::memory_order_relaxed);
+			}
+	} source_reservation_t;
+};
+
+/**
  * @brief Метод определения размера страницы у системы
  *
  * @return размер страницы в байтах
@@ -153,6 +241,9 @@ size_t awh::alloc::SystemSource::superpaged() const noexcept {
  *
  */
 static void * __awh_source_huge__(const size_t size) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Просим у системы крупные страницы
@@ -180,6 +271,9 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 			return nullptr;
 		// Отводим область крупными страницами
 		return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+	/**
+	 * Для операционной системы Linux
+	 */
 	#elif defined(__linux__)
 		/**
 		 * Просим у системы крупные страницы
@@ -192,11 +286,18 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 			void * result = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
 			// Выводим отображённую область
 			return ((result != MAP_FAILED) ? result : nullptr);
+		/**
+		 * Если отведение крупных страниц недоступно
+		 */
 		#else
 			// Крупных страниц у этой системы нет
-			(void) size;
+			static_cast <void> (size);
+			// Отвечаем отсутствием крупных страниц
 			return nullptr;
 		#endif
+	/**
+	 * Для операционной системы FreeBSD
+	 */
 	#elif defined(__FreeBSD__)
 		/**
 		 * Просим у системы сверхстраницы
@@ -209,10 +310,18 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 			void * result = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_ALIGNED_SUPER, -1, 0);
 			// Выводим отображённую область
 			return ((result != MAP_FAILED) ? result : nullptr);
+		/**
+		 * Если признак сверхстраниц недоступен
+		 */
 		#else
-			(void) size;
+			// Размер не используется без поддержки сверхстраниц
+			static_cast <void> (size);
+			// Отвечаем отсутствием специальной области
 			return nullptr;
 		#endif
+	/**
+	 * Для систем без отдельного отведения крупных страниц
+	 */
 	#else
 		/**
 		 * Крупных страниц отдельным отображением эта система не даёт
@@ -221,7 +330,8 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 		 * вовсе, а у систем Sun о них просят советом уже отображённой области - что и
 		 * делается ниже, обычным путём
 		 */
-		(void) size;
+		static_cast <void> (size);
+		// Отвечаем отсутствием специальной области
 		return nullptr;
 	#endif
 }
@@ -243,15 +353,38 @@ static void * __awh_source_huge__(const size_t size) noexcept {
  * @param size размер области в байтах
  *
  */
+/**
+ * Для систем с поддержкой совета отображённым страницам
+ */
 #if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * @brief Функция совета системе собрать крупные страницы
+	 *
+	 * @param addr адрес отображённой области
+	 * @param size размер отображённой области
+	 *
+	 */
 	static void __awh_source_advise__(void * addr, const size_t size) noexcept {
+		/**
+		 * Если доступен совет о крупных страницах
+		 */
 		#if defined(MADV_HUGEPAGE)
 			// Советуем системе собрать крупные страницы
 			::madvise(addr, size, MADV_HUGEPAGE);
+		/**
+		 * Если доступно объединение страниц
+		 */
 		#elif defined(MADV_COLLAPSE)
+			// Просим собрать область из крупных страниц
 			::madvise(addr, size, MADV_COLLAPSE);
+		/**
+		 * Если советы о крупных страницах недоступны
+		 */
 		#else
-			(void) addr; (void) size;
+			// Адрес не используется без поддержки совета
+			static_cast <void> (addr);
+			// Размер не используется без поддержки совета
+			static_cast <void> (size);
 		#endif
 	}
 #endif
@@ -300,34 +433,20 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 	if(size > (static_cast <size_t> (-1) - (grain - 1)))
 		// Отвечаем отказом: приведение к зернистости переполнилось бы
 		return nullptr;
-	/**
-	 * Сверяем потолок взятого у системы ПРЕЖДЕ обращения к ней
-	 *
-	 * Сверяем приблизительно - по запрошенному, а не по округлённому: округление
-	 * прибавит меньше страницы, а вторая сверка после выдачи стоила бы отдачи только
-	 * что взятого. Потолок здесь и есть предел, заказанный приложением, а не точная
-	 * граница до байта
-	 */
 	// Требуемое выравнивание не может быть меньше зернистости выдачи
 	const size_t align = ((alignment > grain) ? alignment : grain);
 	// Округляем требуемый размер до целого числа страниц
 	const size_t rounded = (((size + (grain - 1)) / grain) * grain);
-	{
-		// Читаем потолок взятого у системы
-		const size_t limit = this->_ceiling.load(std::memory_order_relaxed);
-		/**
-		 * Потолок сверяется с ОКРУГЛЁННЫМ размером, а не с затребованным
-		 *
-		 * У системы берётся целое число страниц, и учёт взятого ведётся по ним же:
-		 * сверка по затребованному размеру пропускала запрос, какому до потолка не
-		 * хватало округления, а прибавляла к взятому всю страницу. Потолок при этом
-		 * перебирался молча - тем чаще, чем мельче запросы
-		 */
-		// Если потолок задан и запрос его перебирает
-		if((limit > 0) && ((this->_taken.load(std::memory_order_relaxed) + rounded) > limit))
-			// Отвечаем отказом: приложение само заказало этот предел
-			return nullptr;
-	}
+	// Отсекаем переполнение запаса под выравнивание на всех платформах
+	if((align > grain) && (rounded > (static_cast <size_t> (-1) - align)))
+		// Отвечаем отказом до обращения к системе
+		return nullptr;
+	// Резервируем округлённый размер окончательной области
+	const source_reservation_t reservation(this->_taken, this->_ceiling, rounded, actual);
+	// Если общий бюджет исчерпан
+	if(!reservation.reserved())
+		// Отвечаем отказом до обращения к системе
+		return nullptr;
 	/**
 	 * Пробуем крупные страницы, если о них просили
 	 *
@@ -342,8 +461,6 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		if(result != nullptr){
 			// Запоминаем действительно выданный размер
 			actual = rounded;
-			// Считаем взятое у системы
-			this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 			// Считаем области, доставшиеся крупными страницами
 			this->_superpaged.fetch_add(1, std::memory_order_relaxed);
 			// Выводим адрес отведённой области
@@ -377,8 +494,6 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			if(result != nullptr){
 				// Запоминаем действительно выданный размер
 				actual = rounded;
-				// Считаем взятое у системы
-				this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 			}
 			// Выводим адрес отведённой области
 			return result;
@@ -403,8 +518,6 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			if(result != nullptr){
 				// Запоминаем действительно выданный размер
 				actual = rounded;
-				// Считаем взятое у системы
-				this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 				// Выводим адрес отведённой области
 				return result;
 			}
@@ -437,8 +550,6 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		if(align <= grain){
 			// Запоминаем действительно выданный размер
 			actual = rounded;
-			// Считаем взятое у системы
-			this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 			// Выводим адрес отображённой области
 			return probe;
 		}
@@ -464,8 +575,6 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			::munmap(reinterpret_cast <void *> (aligned + rounded), tail);
 		// Запоминаем действительно выданный размер
 		actual = rounded;
-		// Считаем взятое у системы
-		this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 		// Выводим выровненный адрес области
 		return reinterpret_cast <void *> (aligned);
 	#endif
@@ -554,29 +663,21 @@ void * awh::alloc::SystemSource::conceal(const size_t size, size_t & actual, boo
 			return nullptr;
 		// Округляем требуемый размер до целого числа страниц
 		const size_t rounded = (((size + (grain - 1)) / grain) * grain);
-		/**
-		 * Сверяем потолок взятого у системы ПРЕЖДЕ обращения к ней
-		 *
-		 * Дорога обычной выдачи (`alloc`) потолок сторожит, и укрытая дорога Linux, идя
-		 * через неё, сторожит тоже. Своя же `mmap` укрытия у OpenBSD/FreeBSD ту проверку
-		 * миновала бы, и укрытая выдача перебирала бы заказанный приложением предел там,
-		 * где обычная и укрытая-Linux ему подчиняются. Потолок обещан на ВСЁ взятое у
-		 * системы, укрытие не исключение; сверка та же приблизительная - по округлённому
-		 */
-		{
-			// Читаем потолок взятого у системы
-			const size_t limit = this->_ceiling.load(std::memory_order_relaxed);
-			// Если потолок задан и запрос его перебирает
-			if((limit > 0) && ((this->_taken.load(std::memory_order_relaxed) + rounded) > limit))
-				// Отвечаем отказом: приложение само заказало этот предел
-				return nullptr;
-		}
+		// Резервируем бюджет укрытой области наравне с обычной выдачей
+		const source_reservation_t reservation(this->_taken, this->_ceiling, rounded, actual);
+		// Если общего бюджета недостаточно
+		if(!reservation.reserved())
+			// Отвечаем отказом до обращения к системе
+			return nullptr;
 		/**
 		 * Признак укрытия у своей системы
 		 */
 		#if defined(MAP_CONCEAL)
 			// Область не попадает в снимок памяти при падении
 			const int shelter = MAP_CONCEAL;
+		/**
+		 * Если укрытие задаётся признаком MAP_NOCORE
+		 */
 		#else
 			// Область не попадает в снимок памяти при падении
 			const int shelter = MAP_NOCORE;
@@ -589,8 +690,6 @@ void * awh::alloc::SystemSource::conceal(const size_t size, size_t & actual, boo
 			return nullptr;
 		// Запоминаем действительно выданный размер
 		actual = rounded;
-		// Считаем взятое у системы
-		this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 		// Отмечаем укрытие состоявшимся
 		hidden = true;
 		// Выводим адрес отведённой области
@@ -615,6 +714,9 @@ void * awh::alloc::SystemSource::conceal(const size_t size, size_t & actual, boo
 		hidden = (::madvise(result, ((actual > 0) ? actual : size), MADV_DONTDUMP) == 0);
 		// Выводим адрес отведённой области
 		return result;
+	/**
+	 * Если отдельное укрытие недоступно
+	 */
 	#else
 		// Отводим область обычным путём
 		return this->alloc(size, 0, actual);
@@ -660,6 +762,9 @@ bool awh::alloc::SystemSource::purge(void * addr, const size_t size) noexcept {
 	 * MADV_FREE там тоже есть, но отдаёт лениво, и расход памяти по отчётам системы
 	 * при этом не убывает - для нашей задачи это негодно
 	 */
+	/**
+	 * Для операционной системы Linux
+	 */
 	#elif defined(__linux__)
 		// Отдаём страницы системе
 		return (::madvise(addr, size, MADV_DONTNEED) == 0);
@@ -699,26 +804,6 @@ bool awh::alloc::SystemSource::release(void * addr, const size_t size) noexcept 
 		// Отдавать нечего
 		return false;
 	/**
-	 * Снимаем область со счёта взятого ПРЕЖДЕ отдачи
-	 *
-	 * Отдача у нас отказом не отвечает по существу - область наша, и система её примет,
-	 * - а порядок этот держит счёт не выше истины: снятый после, он на короткий срок
-	 * показывал бы взятым то, что уже отдано, и потолок отвергал бы выдачу на ровном месте
-	 */
-	{
-		// Читаем взятое у системы
-		size_t taken = this->_taken.load(std::memory_order_relaxed);
-		/**
-		 * Снимаем со счёта, не уводя его ниже нуля
-		 *
-		 * Область могла быть взята до задания потолка либо отдана частями: счёт этот
-		 * приблизительный по устройству, и уход в минус превратил бы его в огромное
-		 * число, отчего потолок закрыл бы выдачу насовсем
-		 */
-		while(!this->_taken.compare_exchange_weak(taken, ((taken > size) ? (taken - size) : 0),
-		 std::memory_order_relaxed, std::memory_order_relaxed));
-	}
-	/**
 	 * Для операционной системы MS Windows
 	 *
 	 * MEM_RELEASE требует нулевого размера и адреса, полученного от VirtualAlloc:
@@ -728,14 +813,26 @@ bool awh::alloc::SystemSource::release(void * addr, const size_t size) noexcept 
 		// Отмечаем неиспользуемый параметр
 		static_cast <void> (size);
 		// Отдаём область системе
-		return (::VirtualFree(addr, 0, MEM_RELEASE) != FALSE);
+		const bool released = (::VirtualFree(addr, 0, MEM_RELEASE) != FALSE);
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#else
 		// Отдаём область системе
-		return (::munmap(addr, size) == 0);
+		const bool released = (::munmap(addr, size) == 0);
 	#endif
+	// Не освобождаем бюджет области, оставшейся у системы
+	if(!released)
+		// Отвечаем отказом без изменения учёта
+		return false;
+	// Читаем занятый бюджет после успешной отдачи области
+	size_t taken = this->_taken.load(std::memory_order_relaxed);
+	/**
+	 * Снимаем отданную область с учёта, сохраняя резервы соседних выдач
+	 */
+	while(!this->_taken.compare_exchange_weak(taken, ((taken > size) ? (taken - size) : 0), std::memory_order_relaxed, std::memory_order_relaxed));
+	// Отвечаем успехом освобождения
+	return true;
 }
 /**
  * @brief Метод смены доступности области

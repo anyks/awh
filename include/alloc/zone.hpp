@@ -192,4 +192,4 @@ namespace awh {
 	};
 };
 
-#endif // __APPLE__
+#endif

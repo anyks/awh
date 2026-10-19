@@ -112,6 +112,14 @@ namespace awh {
 				static constexpr size_t CHUNK = (4u * 1024u * 1024u);
 				// Число страниц в куске
 				static constexpr size_t PAGES = (CHUNK / PAGE);
+				// Сдвиг номера страницы в разбиении памяти: 8 КБ = 2^13
+				static constexpr size_t SHIFT = 13;
+				// Разрядность младшей части номера страницы в листе радикс-карты
+				static constexpr size_t LEAF_BITS = 14;
+				// Число мест в листе, среднем ярусе и корне радикс-карты
+				static constexpr size_t LEAF = (1u << LEAF_BITS);
+				// Маска места страницы в листе
+				static constexpr size_t LEAF_MASK = (LEAF - 1u);
 				// Наибольшее число страниц, учитываемое отдельным списком
 				static constexpr size_t LISTS = 128;
 				// Начальная длина таблицы поиска куска по адресу
@@ -214,22 +222,28 @@ namespace awh {
 					 */
 					// Указатели областей по номеру страницы куска
 					std::atomic <span_t *> index[PAGES];
-					/**
-					 * Метки разрядов по страницам куска
-					 *
-					 * Для блока разряда освобождению нужен ОДИН лишь номер разряда, а
-					 * добывался он двумя чтениями холодной памяти: указателя страницы
-					 * (четыре килобайта на кусок) и самой учётной записи области -
-					 * записи же лежат вразброс по своим кускам и на нагрузке занимают
-					 * мегабайты. Метка по странице стоит одного байта, весь массив -
-					 * полкилобайта на кусок, и в кэш он ложится целиком
-					 *
-					 * Нуль означает «страница разряду не отдана»: тогда разбор идёт
-					 * прежним, полным путём. Неделимые они потому, что читатель разбирает
-					 * адрес БЕЗ замка кучи
-					 */
-					std::atomic <uint8_t> tags[PAGES];
 				} chunk_t;
+				/**
+				 * @brief Лист радикс-карты: метки разрядов по страницам
+				 *
+				 * @note Метка лежит байтом на страницу адресного пространства и читается
+				 *       без поиска куска - номером страницы. Нуль означает «страница
+				 *       разряду не отдана»: тогда разбор идёт полным путём через
+				 *       `describe`. Неделимые они потому, что читатель разбирает адрес
+				 *       БЕЗ замка кучи
+				 *
+				 */
+				typedef std::atomic <uint8_t> leaf_t;
+				/**
+				 * @brief Средний ярус радикс-карты: места, держащие листы
+				 *
+				 */
+				typedef std::atomic <leaf_t *> mid_t;
+				/**
+				 * @brief Корень радикс-карты: места, держащие средние ярусы
+				 *
+				 */
+				typedef std::atomic <mid_t *> root_t;
 				/**
 				 * @brief Запись таблицы поиска куска по адресу
 				 *
@@ -286,6 +300,8 @@ namespace awh {
 				 */
 				// Запись таблицы поиска куска по адресу
 				std::atomic <registry_t *> _registry;
+				// Корень радикс-карты разрядов по страницам
+				std::atomic <root_t *> _root;
 				// Число кусков, внесённых в таблицу
 				size_t _enrolled;
 				// Списки свободных областей по числу страниц
@@ -395,6 +411,19 @@ namespace awh {
 				 *
 				 */
 				void mark(span_t * span) noexcept;
+				/**
+				 * @brief Метод проставления меток разрядов по страницам радикс-карты
+				 *
+				 * @note Заводит корень, средние ярусы и листы по мере надобности, а метки
+				 *       пишет за барьером отпускания, поставленным звавшим: читатель
+				 *       берёт их захватом в `classify`
+				 *
+				 * @param addr  адрес первой страницы диапазона
+				 * @param pages число страниц диапазона
+				 * @param tag   проставляемая метка разряда
+				 *
+				 */
+				void paint(const void * addr, const size_t pages, const uint8_t tag) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перестроения таблицы поиска куска по адресу
@@ -656,16 +685,30 @@ namespace awh {
 				 *
 				 */
 				AWH_PAGES_INLINE uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept {
-					// Ищем кусок, которому принадлежит адрес
-					const chunk_t * chunk = this->lookup(addr, hint);
-					// Если куска за адресом не нашлось
-					if(chunk == nullptr)
+					// Подсказка карте не нужна: она отвечает номером страницы
+					(void) hint;
+					// Определяем номер страницы адреса
+					const uintptr_t page = (reinterpret_cast <uintptr_t> (addr) >> SHIFT);
+					// Получаем корень радикс-карты
+					const root_t * root = this->_root.load(std::memory_order_acquire);
+					// Если корень не заведён
+					if(root == nullptr)
 						// Ответить меткой нельзя
 						return 0;
-					// Определяем номер страницы, которой принадлежит адрес
-					const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
+					// Получаем средний ярус радикс-карты
+					const mid_t * mid = root[page >> (LEAF_BITS * 2)].load(std::memory_order_acquire);
+					// Если среднего яруса нет
+					if(mid == nullptr)
+						// Ответить меткой нельзя
+						return 0;
+					// Получаем лист радикс-карты
+					const leaf_t * leaf = mid[(page >> LEAF_BITS) & LEAF_MASK].load(std::memory_order_acquire);
+					// Если листа нет
+					if(leaf == nullptr)
+						// Ответить меткой нельзя
+						return 0;
 					// Выводим метку разряда страницы
-					return chunk->tags[page].load(std::memory_order_acquire);
+					return leaf[page & LEAF_MASK].load(std::memory_order_acquire);
 				}
 				AWH_PAGES_INLINE bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept {
 					// Ищем кусок, которому принадлежит адрес
