@@ -50,6 +50,120 @@ namespace {
 		"malloc", "free", "calloc", "realloc", "_msize",
 		"_aligned_malloc", "_aligned_free", "_aligned_realloc", "_aligned_msize"
 	};
+	// Прежние функции каждой библиотеки, заведённые постоянным выражением
+	static awh::alloc::functions_t __awh_pe_originals__[2];
+	// Отклики распределителя, общие для обеих библиотек
+	static awh::alloc::functions_t __awh_pe_hooks__;
+	// Владелец установленных подмен
+	static const awh::alloc::PECapture * __awh_pe_owner__ = nullptr;
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param ptr адрес освобождаемого блока
+	 *
+	 */
+	template <size_t Index>
+	static void __awh_pe_free__(void * ptr) {
+		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
+		(* __awh_pe_hooks__.freeFrom)(ptr, __awh_pe_originals__[Index]);
+	}
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param ptr адрес изменяемого блока
+	 * @param size требуемый размер
+	 * @return адрес выданной памяти либо nullptr
+	 *
+	 */
+	template <size_t Index>
+	static void * __awh_pe_realloc__(void * ptr, size_t size) {
+		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
+		return (* __awh_pe_hooks__.reallocFrom)(ptr, size, __awh_pe_originals__[Index]);
+	}
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param ptr разбираемый адрес
+	 * @return размер блока в байтах
+	 *
+	 */
+	template <size_t Index>
+	static size_t __awh_pe_msize__(const void * ptr) {
+		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
+		return (* __awh_pe_hooks__.msizeFrom)(ptr, __awh_pe_originals__[Index]);
+	}
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param ptr адрес освобождаемого блока
+	 *
+	 */
+	template <size_t Index>
+	static void __awh_pe_alignedFree__(void * ptr) {
+		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
+		(* __awh_pe_hooks__.alignedFreeFrom)(ptr, __awh_pe_originals__[Index]);
+	}
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param ptr адрес изменяемого блока
+	 * @param size требуемый размер
+	 * @param alignment выравнивание блока
+	 * @return адрес выданной памяти либо nullptr
+	 *
+	 */
+	template <size_t Index>
+	static void * __awh_pe_alignedRealloc__(void * ptr, size_t size, size_t alignment) {
+		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
+		return (* __awh_pe_hooks__.alignedReallocFrom)(ptr, size, alignment, __awh_pe_originals__[Index]);
+	}
+	/**
+	 * @brief Функция передачи вызова с сохранением исходной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param ptr разбираемый адрес
+	 * @param alignment выравнивание блока
+	 * @param offset смещение блока
+	 * @return размер блока в байтах
+	 *
+	 */
+	template <size_t Index>
+	static size_t __awh_pe_alignedMsize__(void * ptr, size_t alignment, size_t offset) {
+		// Передаём прежние функции именно той библиотеки, через которую пришёл вызов
+		return (* __awh_pe_hooks__.alignedMsizeFrom)(ptr, alignment, offset, __awh_pe_originals__[Index]);
+	}
+	/**
+	 * @brief Функция построения набора подмен для одной CRT
+	 *
+	 * @tparam Index номер библиотеки времени исполнения
+	 * @param hooks общие отклики распределителя
+	 * @return      отклики с сохранением исходной библиотеки
+	 *
+	 */
+	template <size_t Index>
+	static awh::alloc::functions_t __awh_pe_targets__(const awh::alloc::functions_t & hooks) noexcept {
+		// Сохраняем общие функции выдачи
+		awh::alloc::functions_t result = hooks;
+		// Назначаем отклик с номером исходной библиотеки
+		result.free = &__awh_pe_free__ <Index>;
+		// Назначаем отклик с номером исходной библиотеки
+		result.realloc = &__awh_pe_realloc__ <Index>;
+		// Назначаем отклик с номером исходной библиотеки
+		result.msize = &__awh_pe_msize__ <Index>;
+		// Назначаем отклик с номером исходной библиотеки
+		result.alignedFree = &__awh_pe_alignedFree__ <Index>;
+		// Назначаем отклик с номером исходной библиотеки
+		result.alignedRealloc = &__awh_pe_alignedRealloc__ <Index>;
+		// Назначаем отклик с номером исходной библиотеки
+		result.alignedMsize = &__awh_pe_alignedMsize__ <Index>;
+		// Выводим подготовленный набор
+		return result;
+	}
 	/**
 	 * @brief Функция извлечения адреса поля набора функций
 	 *
@@ -173,6 +287,9 @@ void * awh::alloc::PECapture::body(void * entry) const noexcept {
 		return nullptr;
 	#endif
 }
+/**
+ * Для набора команд x86-64
+ */
 #if defined(_M_X64) || defined(__x86_64__)
 	/**
 	 * @brief Измерение длины поля адресации команды x86-64 (ModRM + SIB + смещение)
@@ -184,6 +301,7 @@ void * awh::alloc::PECapture::body(void * entry) const noexcept {
 	 *       смещение у формы `mod=00` с основанием 101 в байте масштаба (`[index*scale +
 	 *       disp32]`). Команда мерилась на четыре октета короче, и мостик вставал в
 	 *       середину команды - молчаливая порча кода библиотеки, а не безопасный отказ
+	 *
 	 */
 	static size_t __awh_pe_operand__(const uint8_t * field) noexcept {
 		// Извлекаем поле вида адресации
@@ -548,11 +666,11 @@ bool awh::alloc::PECapture::suits(void * entry) const noexcept {
  */
 void * awh::alloc::PECapture::nearby(const void * anchor, const size_t size) noexcept {
 	// Если в уже взятой области место есть
-	if((this->_arena != nullptr) && ((this->_arenaUsed + size) <= this->_arenaSize)){
+	if((this->_arena[this->_library] != nullptr) && ((this->_arenaUsed[this->_library] + size) <= this->_arenaSize[this->_library])){
 		// Запоминаем адрес выдачи
-		void * result = (reinterpret_cast <uint8_t *> (this->_arena) + this->_arenaUsed);
+		void * result = (reinterpret_cast <uint8_t *> (this->_arena[this->_library]) + this->_arenaUsed[this->_library]);
 		// Сдвигаем занятое в области
-		this->_arenaUsed += size;
+		this->_arenaUsed[this->_library] += size;
 		// Выводим адрес выданной памяти
 		return result;
 	}
@@ -589,11 +707,11 @@ void * awh::alloc::PECapture::nearby(const void * anchor, const size_t size) noe
 				// Пробуем следующий адрес
 				continue;
 			// Запоминаем взятую область
-			this->_arena = block;
+			this->_arena[this->_library] = block;
 			// Запоминаем размер взятой области
-			this->_arenaSize = static_cast <size_t> (step);
+			this->_arenaSize[this->_library] = static_cast <size_t> (step);
 			// Запоминаем занятое в области
-			this->_arenaUsed = size;
+			this->_arenaUsed[this->_library] = size;
 			// Выводим адрес выданной памяти
 			return block;
 		}
@@ -604,13 +722,15 @@ void * awh::alloc::PECapture::nearby(const void * anchor, const size_t size) noe
 /**
  * @brief Метод наложения подмены на вход функции
  *
- * @param patch  сведения о подмене
- * @param entry  адрес входа подменяемой функции
- * @param target адрес подставляемой функции
- * @return       признак успеха
+ * @param patch     сведения о подмене
+ * @param entry     адрес входа подменяемой функции
+ * @param target    адрес подставляемой функции
+ * @param originals прежние функции исходной библиотеки
+ * @param index     номер подменяемой функции
+ * @return          признак успеха
  *
  */
-bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * target) noexcept {
+bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * target, functions_t & originals, const size_t index) noexcept {
 	// Если вход или подставляемая функция не заданы
 	if((entry == nullptr) || (target == nullptr))
 		// Отвечаем отказом
@@ -662,6 +782,8 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		::memcpy(buffer + 4, &br, sizeof(br));
 		// Записываем адрес подставляемой функции
 		::memcpy(buffer + 8, &target, sizeof(target));
+		// Публикуем прежнюю функцию до включения перехода на наш отклик
+		put(originals, index, patch.body);
 		// Переносим собранное на вход функции
 		::memcpy(entry, buffer, PATCH_SIZE);
 		// Возвращаем прежние права доступа
@@ -869,6 +991,8 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 		const int32_t narrow = static_cast <int32_t> (reach);
 		// Записываем смещение перехода
 		::memcpy(buffer + 1, &narrow, sizeof(narrow));
+		// Публикуем прежнюю функцию до включения перехода на наш отклик
+		put(originals, index, patch.body);
 		// Переносим собранное на вход функции
 		::memcpy(entry, buffer, moved);
 		// Возвращаем прежние права доступа
@@ -935,146 +1059,170 @@ void awh::alloc::PECapture::revert(patch_t & patch) noexcept {
  *
  */
 bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & originals) noexcept {
-	// Если захват уже состоялся
+	// Если этот экземпляр уже владеет захватом
 	if(this->_acquired)
-		// Повторять его незачем
+		// Повторно накладывать подмены не требуется
 		return true;
+	// Если подменами владеет другой экземпляр
+	if(__awh_pe_owner__ != nullptr)
+		// Менять наборы действующих откликов нельзя
+		return false;
+	// Если отклики не умеют сохранять исходную библиотеку
+	if((hooks.freeFrom == nullptr) || (hooks.reallocFrom == nullptr) || (hooks.msizeFrom == nullptr))
+		// Без прежних функций каждой CRT старые блоки освобождать небезопасно
+		return false;
+	// Имена поддерживаемых библиотек
+	static const char * const LIBRARIES[LIBRARY_COUNT] = {"ucrtbase.dll", "msvcrt.dll"};
+	// Описатели уже загруженных библиотек
+	::HMODULE modules[LIBRARY_COUNT] = {nullptr};
+	// Входы функций каждой библиотеки
+	void * entries[LIBRARY_COUNT][PATCH_TOTAL] = {{nullptr}};
+	// Подмены с сохранением исходной библиотеки
+	const functions_t targets[LIBRARY_COUNT] = {__awh_pe_targets__ <0> (hooks), __awh_pe_targets__ <1> (hooks)};
+	// Номер первой найденной библиотеки
+	size_t first = LIBRARY_COUNT;
 	/**
-	 * Ищем библиотеку времени исполнения среди известных
-	 *
-	 * Их две, и какая из них загружена - решает окружение сборки: у MSYS2 CLANGARM64
-	 * это `ucrtbase.dll`, а у MSYS2 MINGW64 - `msvcrt.dll`. Искали мы прежде только
-	 * первую, и на x86-64 захват отвечал отказом, не дойдя до подмены вовсе
+	 * Проверяем все обязательные группы до изменения первого входа
 	 */
-	// Названия известных библиотек времени исполнения
-	static const char * const LIBRARIES[] = {"ucrtbase.dll", "msvcrt.dll"};
-	// Описатель библиотеки времени исполнения
-	HMODULE module = nullptr;
-	/**
-	 * Перебираем известные библиотеки времени исполнения
-	 */
-	for(size_t i = 0; (i < (sizeof(LIBRARIES) / sizeof(LIBRARIES[0]))) && (module == nullptr); i++)
-		// Получаем описатель очередной библиотеки
-		module = ::GetModuleHandleA(LIBRARIES[i]);
-	// Если ни одна из библиотек не загружена
-	if(module == nullptr)
-		// Отвечаем отказом: подменять нечего
+	for(size_t library = 0; library < LIBRARY_COUNT; library++){
+		// Получаем описатель уже загруженной библиотеки
+		modules[library] = ::GetModuleHandleA(LIBRARIES[library]);
+		// Если библиотека не загружена
+		if(modules[library] == nullptr)
+			// Загружать новую CRT ради захвата не требуется
+			continue;
+		// Если это первая найденная библиотека
+		if(first == LIBRARY_COUNT)
+			// Запоминаем основной набор прежних функций
+			first = library;
+		/**
+		 * Проверяем входы обязательной группы
+		 */
+		for(size_t i = 0; i < PATCH_COUNT; i++){
+			// Получаем адрес входа
+			entries[library][i] = reinterpret_cast <void *> (::GetProcAddress(modules[library], NAMES[i]));
+			// Если вход непригоден либо замена не задана
+			if(!this->suits(entries[library][i]) || (pick(hooks, i) == nullptr))
+				// Отказываем до изменения кода
+				return false;
+		}
+		// Признак наличия откликов выровненной семьи
+		bool aligned = ((hooks.alignedFreeFrom != nullptr) && (hooks.alignedReallocFrom != nullptr));
+		/**
+		 * Проверяем всё ядро выровненной семьи
+		 */
+		for(size_t i = ALIGNED_FIRST; aligned && (i < PATCH_TOTAL); i++){
+			// Получаем адрес очередного входа
+			entries[library][i] = reinterpret_cast <void *> (::GetProcAddress(modules[library], NAMES[i]));
+			// Если необязательное измерение не экспортируется
+			if((i == (PATCH_TOTAL - 1)) && (entries[library][i] == nullptr))
+				// Подменять отсутствующую функцию не требуется
+				continue;
+			// Проверяем пригодность входа и наличие замены
+			aligned = (this->suits(entries[library][i]) && (pick(hooks, i) != nullptr));
+			// Если измерение экспортируется, оно тоже должно сохранять исходную CRT
+			if(i == (PATCH_TOTAL - 1))
+				// Не оставляем системное измерение над нашими блоками
+				aligned = (aligned && (hooks.alignedMsizeFrom != nullptr));
+		}
+		// Если семья не может быть установлена целиком
+		if(!aligned){
+			/**
+			 * Исключаем всю выровненную группу
+			 */
+			for(size_t i = ALIGNED_FIRST; i < PATCH_TOTAL; i++)
+				// Оставляем исходный вход нетронутым
+				entries[library][i] = nullptr;
+		}
+	}
+	// Если ни одна CRT не загружена
+	if(first == LIBRARY_COUNT)
+		// Подменять нечего
 		return false;
 	/**
-	 * Разбираем входы всех подменяемых функций прежде, чем править хоть один
+	 * Общий адрес двух экспортов нельзя переписывать дважды
 	 *
-	 * Порядок этот выбран намеренно: если хоть один вход окажется без горячей заплатки,
-	 * отказать надо не тронув ничего. Правка половины функций оставила бы процесс в
-	 * состоянии, где часть памяти идёт к нам, а часть мимо, и распутать это нечем
+	 * Для перенаправленных экспортов отказываем до изменения кода: источник
+	 * вызова у общего входа неразличим, а второй переходник захватил бы первый.
 	 */
-	void * entries[PATCH_COUNT] = {nullptr};
+	for(size_t i = 0; i < PATCH_TOTAL; i++){
+		/**
+		 * Сопоставляем входы двух библиотек
+		 */
+		for(size_t j = 0; j < PATCH_TOTAL; j++){
+			// Если обе библиотеки ведут в один вход
+			if((entries[0][i] != nullptr) && (entries[0][i] == entries[1][j]))
+				// Не накладываем неоднозначную подмену
+				return false;
+		}
+	}
+	// Сохраняем отклики до включения первого перехода
+	__awh_pe_hooks__ = hooks;
+	// Закрепляем владение общими таблицами
+	__awh_pe_owner__ = this;
 	/**
-	 * Перебираем подменяемые функции
+	 * Устанавливаем обязательные группы обеих библиотек
 	 */
-	for(size_t i = 0; i < PATCH_COUNT; i++){
-		// Получаем адрес входа очередной функции
-		entries[i] = reinterpret_cast <void *> (::GetProcAddress(module, NAMES[i]));
-		// Если функция не найдена либо вход её заплаткой не начинается
-		if((entries[i] == nullptr) || !this->suits(entries[i]))
-			// Отвечаем отказом, не тронув ничего
-			return false;
-		// Если для функции не задана наша замена
-		if(pick(hooks, i) == nullptr)
-			// Отвечаем отказом: подменять не на что
-			return false;
+	for(size_t library = 0; library < LIBRARY_COUNT; library++){
+		// Если библиотека не загружена
+		if(modules[library] == nullptr)
+			// Подменять нечего
+			continue;
+		// Выбираем отдельную область переходников этой библиотеки
+		this->_library = library;
+		/**
+		 * Устанавливаем обязательные подмены
+		 */
+		for(size_t i = 0; i < PATCH_COUNT; i++){
+			// Если очередная подмена не установлена
+			if(!this->apply(this->_patches[library][i], entries[library][i], pick(targets[library], i), __awh_pe_originals__[library], i)){
+				/**
+				 * Возвращаем обе библиотеки в исходное состояние
+				 */
+				for(size_t crt = 0; crt < LIBRARY_COUNT; crt++){
+					/**
+					 * Снимаем уже установленные обязательные подмены
+					 */
+					for(size_t j = 0; j < PATCH_COUNT; j++)
+						// Восстанавливаем прежний вход
+						this->revert(this->_patches[crt][j]);
+				}
+				// Освобождаем владение таблицами
+				__awh_pe_owner__ = nullptr;
+				// Сообщаем об отказе всей операции
+				return false;
+			}
+		}
 	}
 	/**
-	 * Накладываем подмены
+	 * Устанавливаем необязательные выровненные группы отдельно для каждой CRT
 	 */
-	for(size_t i = 0; i < PATCH_COUNT; i++){
-		// Накладываем очередную подмену
-		if(!this->apply(this->_patches[i], entries[i], pick(hooks, i))){
-			/**
-			 * Откатываем уже наложенное
-			 *
-			 * Оставить половину наложенной нельзя: часть выделений шла бы к нам, а
-			 * освобождение их - к прежнему распределителю
-			 */
-			for(size_t j = 0; j < i; j++)
-				// Снимаем ранее наложенную подмену
-				this->revert(this->_patches[j]);
-			// Отвечаем отказом
-			return false;
-		}
-		// Отдаём прежнюю функцию вызывающей стороне
-		put(originals, i, this->_patches[i].body);
-	}
-	/**
-	 * Накладываем выровненную семью ОТДЕЛЬНОЙ группой
-	 *
-	 * Группа эта необязательна: не найдись хоть одно её имя - обязательная пятёрка
-	 * остаётся наложенной, и распределитель работает. Выровненная выдача пойдёт мимо
-	 * нас, как шла и прежде, но памятью процесса мы владеть не перестанем
-	 *
-	 * Внутри же группы правило прежнее - всё или ничего: `_aligned_malloc` без
-	 * `_aligned_free` отдал бы наш блок чужому распределителю
-	 */
-	{
-		// Входы функций выровненной семьи
-		void * aligned[ALIGNED_COUNT] = {nullptr};
-		// Признак пригодности ядра группы
-		bool suitable = true;
+	for(size_t library = 0; library < LIBRARY_COUNT; library++){
+		// Выбираем область переходников этой библиотеки
+		this->_library = library;
 		/**
-		 * Разбираем входы всего ядра прежде, чем править хоть один
+		 * Устанавливаем подготовленные входы выровненной семьи
 		 */
-		for(size_t i = 0; (i < ALIGNED_CORE) && suitable; i++){
-			// Получаем адрес входа очередной функции
-			aligned[i] = reinterpret_cast <void *> (::GetProcAddress(module, NAMES[ALIGNED_FIRST + i]));
-			// Если функция не найдена, вход её заплаткой не начинается либо замены нет
-			suitable = ((aligned[i] != nullptr) && this->suits(aligned[i]) &&
-			 (pick(hooks, (ALIGNED_FIRST + i)) != nullptr));
-		}
-		/**
-		 * Разбираем измерение ОТДЕЛЬНО от ядра
-		 *
-		 * Не отдай его библиотека - ядро всё равно ложится: спросить размер нашего
-		 * блока прежним измерением там некому, имени этого попросту нет
-		 */
-		if(suitable){
-			// Номер измерения в наборе имён
-			const size_t index = (ALIGNED_FIRST + ALIGNED_CORE);
-			// Получаем адрес входа измерения
-			void * entry = reinterpret_cast <void *> (::GetProcAddress(module, NAMES[index]));
-			// Берём измерение лишь пригодным к подмене
-			aligned[ALIGNED_CORE] = ((entry != nullptr) && this->suits(entry) &&
-			 (pick(hooks, index) != nullptr)) ? entry : nullptr;
-		}
-		/**
-		 * Накладываем подмены группы, если ядро её пригодно целиком
-		 *
-		 * Место измерения при этом может быть пустым: тогда оно просто пропускается
-		 */
-		for(size_t i = 0; suitable && (i < ALIGNED_COUNT); i++){
-			// Если места этого у библиотеки нет
-			if(aligned[i] == nullptr)
+		for(size_t i = ALIGNED_FIRST; i < PATCH_TOTAL; i++){
+			// Если вход отсутствует либо вся группа исключена
+			if(entries[library][i] == nullptr)
 				// Подменять нечего
 				continue;
-			// Номер очередной подмены
-			const size_t index = (ALIGNED_FIRST + i);
-			// Накладываем очередную подмену
-			if(!this->apply(this->_patches[index], aligned[i], pick(hooks, index))){
+			// Если очередная подмена не установлена
+			if(!this->apply(this->_patches[library][i], entries[library][i], pick(targets[library], i), __awh_pe_originals__[library], i)){
 				/**
-				 * Откатываем наложенное ГРУППОЙ, не трогая обязательную пятёрку
-				 *
-				 * Половина группы оставила бы выданное нами на прежнем распределителе
+				 * Снимаем всю выровненную группу этой библиотеки
 				 */
-				for(size_t j = 0; j < i; j++)
-					// Снимаем ранее наложенную подмену группы
-					this->revert(this->_patches[ALIGNED_FIRST + j]);
-				// Группу взять не вышло
-				suitable = false;
-				// Накладывать больше нечего
+				for(size_t j = ALIGNED_FIRST; j < i; j++)
+					// Восстанавливаем прежний вход
+					this->revert(this->_patches[library][j]);
+				// К следующей библиотеке переходим без частично установленной группы
 				break;
 			}
-			// Отдаём прежнюю функцию вызывающей стороне
-			put(originals, index, this->_patches[index].body);
 		}
 	}
+	// Возвращаем прежние функции основной библиотеки для прямых вызовов
+	originals = __awh_pe_originals__[first];
 	// Отмечаем захват состоявшимся
 	this->_acquired = true;
 	// Отвечаем успехом
@@ -1090,16 +1238,20 @@ void awh::alloc::PECapture::release() noexcept {
 		// Снимать нечего
 		return;
 	/**
-	 * Снимаем наложенные подмены, обязательные и выровненные разом
-	 *
-	 * Обходим ВСЕ места, а не одну обязательную пятёрку: выровненная семья могла и не
-	 * лечь, и тогда места её пусты - снятие само разбирает наложенное по признаку
+	 * Восстанавливаем входы обеих библиотек
 	 */
-	for(size_t i = 0; i < PATCH_TOTAL; i++)
-		// Снимаем очередную подмену
-		this->revert(this->_patches[i]);
+	for(size_t library = 0; library < LIBRARY_COUNT; library++){
+		/**
+		 * Снимаем обязательные и выровненные подмены
+		 */
+		for(size_t i = 0; i < PATCH_TOTAL; i++)
+			// Восстанавливаем прежний вход
+			this->revert(this->_patches[library][i]);
+	}
 	// Отмечаем захват снятым
 	this->_acquired = false;
+	// Освобождаем владение общими таблицами
+	__awh_pe_owner__ = nullptr;
 }
 /**
  * @brief Метод определения состоявшегося захвата
@@ -1166,6 +1318,18 @@ const char * awh::alloc::PECapture::name() const noexcept {
 	// Выводим название способа захвата
 	return "PE entry rewrite";
 }
+/**
+ * @brief Конструктор сведений о подмене
+ *
+ */
+awh::alloc::PECapture::Patch::Patch() noexcept :
+ entry(nullptr), body(nullptr), saved{0}, moved(0), applied(false) {}
+/**
+ * @brief Конструктор захвата обеих библиотек времени исполнения
+ *
+ */
+awh::alloc::PECapture::PECapture() noexcept :
+ _library(0), _arena{nullptr}, _arenaUsed{0}, _arenaSize{0}, _acquired(false) {}
 /**
  * @brief Деструктор
  *

@@ -155,15 +155,23 @@ namespace awh {
 					// Признак наложенной подмены
 					bool applied;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
-					Patch() noexcept :
-					 entry(nullptr), body(nullptr), saved{0}, moved(0), applied(false) {}
+					Patch() noexcept;
 				} patch_t;
 			private:
-				// Наложенные подмены
-				patch_t _patches[PATCH_TOTAL];
+				// Число поддерживаемых библиотек времени исполнения
+				static constexpr size_t LIBRARY_COUNT = 2;
+				// Наложенные подмены каждой библиотеки
+				patch_t _patches[LIBRARY_COUNT][PATCH_TOTAL];
+				// Номер библиотеки, для которой строится переходник
+				size_t _library;
 				/**
 				 * Область под переходники
 				 *
@@ -173,11 +181,11 @@ namespace awh {
 				 * переходник ПОБЛИЗОСТИ, а тот уже - абсолютным переходом к нам
 				 */
 				// Область под переходники
-				void * _arena;
+				void * _arena[LIBRARY_COUNT];
 				// Занято в области под переходники
-				size_t _arenaUsed;
+				size_t _arenaUsed[LIBRARY_COUNT];
 				// Размер области под переходники
-				size_t _arenaSize;
+				size_t _arenaSize[LIBRARY_COUNT];
 				// Признак состоявшегося захвата
 				bool _acquired;
 			private:
@@ -226,8 +234,8 @@ namespace awh {
 				 * @brief Метод выдачи памяти под переходник вблизи образа
 				 *
 				 * @param anchor адрес, вблизи которого нужна память
-				 * @param size  требуемый размер в байтах
-				 * @return      адрес выданной памяти либо nullptr
+				 * @param size   требуемый размер в байтах
+				 * @return       адрес выданной памяти либо nullptr
 				 *
 				 * \~english
 				 * @brief Method of allocating trampoline memory near an image
@@ -235,15 +243,29 @@ namespace awh {
 				 */
 				void * nearby(const void * anchor, const size_t size) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод наложения подмены на вход функции
 				 *
-				 * @param patch  сведения о подмене
-				 * @param entry  адрес входа подменяемой функции
-				 * @param target адрес подставляемой функции
-				 * @return       признак успеха
+				 * @param patch     сведения о подмене
+				 * @param entry     адрес входа подменяемой функции
+				 * @param target    адрес подставляемой функции
+				 * @param originals прежние функции исходной библиотеки
+				 * @param index     номер подменяемой функции
+				 * @return          признак успеха
 				 *
+				 * \~english
+				 * @brief Method of patching a function entry
+				 *
+				 * @param patch     patch information
+				 * @param entry     entry address of the original function
+				 * @param target    replacement function address
+				 * @param originals original functions of the source library
+				 * @param index     index of the patched function
+				 * @return          success flag
+				 *
+				 * \~
 				 */
-				bool apply(patch_t & patch, void * entry, const void * target) noexcept;
+				bool apply(patch_t & patch, void * entry, const void * target, functions_t & originals, const size_t index) noexcept;
 				/**
 				 * @brief Метод снятия подмены со входа функции
 				 *
@@ -253,12 +275,31 @@ namespace awh {
 				void revert(patch_t & patch) noexcept;
 			public:
 				/**
-				 * @brief Метод захвата выделения памяти процесса
+				 * \~russian
+				 * @brief Метод захвата выделения памяти загруженных CRT
+				 *
+				 * @note Обязательные функции всех найденных CRT захватываются совместно.
+				 *       Отклики freeFrom, reallocFrom и msizeFrom обязательны: прежние блоки
+				 *       возвращаются той библиотеке, через которую пришёл вызов.
+				 *       Захват выполняется до запуска потоков, вызывающих функции CRT.
 				 *
 				 * @param hooks     наши функции, ставимые на место прежних
-				 * @param originals прежние функции, отдаваемые захватом
+				 * @param originals прежние функции первой найденной CRT для прямых вызовов
 				 * @return          признак состоявшегося захвата
 				 *
+				 * \~english
+				 * @brief Method of capturing allocation in loaded CRTs
+				 *
+				 * @note Mandatory functions of all detected CRTs are captured together.
+				 *       The freeFrom, reallocFrom and msizeFrom callbacks are required: legacy
+				 *       blocks return to the library through which the call arrived.
+				 *       Capture must run before starting threads that call CRT functions.
+				 *
+				 * @param hooks     our functions installed in place of the original ones
+				 * @param originals original functions of the first detected CRT for direct calls
+				 * @return          successful capture flag
+				 *
+				 * \~
 				 */
 				bool acquire(const functions_t & hooks, functions_t & originals) noexcept override;
 				/**
@@ -292,11 +333,15 @@ namespace awh {
 				const char * name() const noexcept override;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
-				PECapture() noexcept :
-				 _arena(nullptr), _arenaUsed(0), _arenaSize(0), _acquired(false) {}
+				PECapture() noexcept;
 				/**
 				 * @brief Деструктор
 				 *

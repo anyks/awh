@@ -134,6 +134,34 @@ namespace awh {
 			// Определение размера памяти, выданной с выравниванием
 			size_t (* alignedMsize)(void *, size_t, size_t);
 			/**
+			 * \~russian
+			 * @brief Отклики с явным набором прежних функций
+			 *
+			 * @note Захват нескольких CRT передаёт набор той библиотеки, через которую
+			 *       пришёл вызов. Старый блок возвращается своему распределителю.
+			 *
+			 * \~english
+			 * @brief Callbacks with an explicit set of original functions
+			 *
+			 * @note Capture of multiple CRTs passes the functions of the library that
+			 *       received the call. Legacy blocks return to their original allocator.
+			 *
+			 * \~
+			 */
+			// Освобождение памяти через исходную CRT
+			void (* freeFrom)(void *, const Functions &);
+			// Изменение размера через исходную CRT
+			void * (* reallocFrom)(void *, size_t, const Functions &);
+			// Определение размера через исходную CRT
+			size_t (* msizeFrom)(const void *, const Functions &);
+			// Освобождение выровненной памяти через исходную CRT
+			void (* alignedFreeFrom)(void *, const Functions &);
+			// Изменение размера выровненной памяти через исходную CRT
+			void * (* alignedReallocFrom)(void *, size_t, size_t, const Functions &);
+			// Определение размера выровненной памяти через исходную CRT
+			size_t (* alignedMsizeFrom)(void *, size_t, size_t, const Functions &);
+			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @note Помечен `constexpr` НЕ ради скорости, а ради порядка построения, и
@@ -152,12 +180,33 @@ namespace awh {
 			 * @note Доказано сторожевой точкой отладчика: запись захвата по адресу
 			 *       переменной, а следом - запись из `__cxx_global_var_init` того же
 			 *       файла. Падение приходило на обращение по нулю без стека вовсе
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * @note constexpr is required for initialization order, not speed. Instances
+			 *       live at module scope (__awh_zone_hooks__ in zone capture and originals
+			 *       in the allocator), while capture may happen before dynamic module
+			 *       initialization. An application may construct a framework object at
+			 *       file scope during the first initialization pass. Without constexpr,
+			 *       the compiler emits a dynamic constructor that clears callbacks already
+			 *       installed by capture. The next allocation would call a null pointer.
+			 *       Constant initialization prepares the instance at build time and emits
+			 *       no dynamic constructor that could erase the installed callbacks.
+			 *
+			 * @note A debugger watchpoint confirmed the capture write followed by a write
+			 *       from __cxx_global_var_init in the same file. The subsequent null call
+			 *       crashed before a usable stack trace could be obtained.
+			 *
+			 * \~
 			 */
 			constexpr Functions() noexcept :
 			 malloc(nullptr), free(nullptr), calloc(nullptr),
 			 realloc(nullptr), msize(nullptr), memalign(nullptr),
 			 alignedAlloc(nullptr), alignedFree(nullptr),
-			 alignedRealloc(nullptr), alignedMsize(nullptr) {}
+			 alignedRealloc(nullptr), alignedMsize(nullptr),
+			 freeFrom(nullptr), reallocFrom(nullptr), msizeFrom(nullptr),
+			 alignedFreeFrom(nullptr), alignedReallocFrom(nullptr), alignedMsizeFrom(nullptr) {}
 		} functions_t;
 		/**
 		 * Сторож постоянного заведения набора функций
