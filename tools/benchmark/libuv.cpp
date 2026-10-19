@@ -257,24 +257,6 @@ namespace {
 		} else ::uv_stop(stream->loop);
 	}
 	/**
-	 * @brief Функция обратного вызова завершения клиентского подключения
-	 *
-	 * @param request запрос подключения к серверу
-	 *
-	 */
-	static void clientConnect(uv_connect_t * request, int32_t) noexcept {
-		// Получаем состояние подключения
-		connection_t * connection = reinterpret_cast <connection_t *> (request->data);
-		// Устанавливаем состояние подключения дескриптору
-		connection->handle.data = connection;
-		// Запускаем чтение данных подключения
-		::uv_read_start(reinterpret_cast <uv_stream_t *> (&connection->handle), &::allocate, &::clientRead);
-		// Формируем блок отправляемых данных
-		uv_buf_t payload = ::uv_buf_init(reinterpret_cast <char *> (gPayload), ECHO_PAYLOAD);
-		// Отправляем первое сообщение обмена
-		::uv_write(&connection->request, reinterpret_cast <uv_stream_t *> (&connection->handle), &payload, 1, nullptr);
-	}
-	/**
 	 * @brief Функция обратного вызова принятия входящего подключения сценария обмена
 	 *
 	 * @param server дескриптор слушающего сокета
@@ -306,72 +288,611 @@ namespace {
 		gAccepted++;
 	}
 	/**
-	 * @brief Функция прогона сценария обмена короткими сообщениями
+	 * @brief Состояние TCP-прогона с индивидуальным прогревом подключений
+	 *
+	 */
+	struct Echo_State;
+	/**
+	 * @brief Структура участника TCP-обмена с собственными буферами отправки
+	 *
+	 * @note Один запрос ожидает один ответ. Пока завершение прежней отправки
+	 *       ещё не доставлено, следующий фрагмент сохраняется отдельно;
+	 *       память uv_write_t и переданные октеты живут до write-callback
+	 *
+	 */
+	typedef struct Echo_Peer {
+		// Дескриптор подключения
+		uv_tcp_t handle;
+		// Запрос подключения клиента
+		uv_connect_t connection;
+		// Запрос текущей отправки
+		uv_write_t request;
+		// Состояние всего прогона
+		Echo_State * state;
+		// Признак клиентской стороны
+		bool client;
+		// Признак незавершённой отправки
+		bool writing;
+		// Признак отправки запроса внутри окна замера
+		bool measured;
+		// Количество октетов незавершённого ответа
+		size_t received;
+		// Количество индивидуальных обменов прогрева
+		size_t warmed;
+		// Количество октетов, ожидающих завершения прежней отправки
+		size_t queued;
+		// Буфер приёма одного сообщения или его части
+		char input[ECHO_PAYLOAD];
+		// Буфер, используемый текущей отправкой
+		char output[ECHO_PAYLOAD];
+		// Буфер следующей отправки
+		char pending[ECHO_PAYLOAD];
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Echo_Peer() noexcept :
+		 handle{}, connection{}, request{}, state(nullptr), client(false), writing(false), measured(false), received(0), warmed(0), queued(0), input{}, output{}, pending{} {}
+	} echo_peer_t;
+	/**
+	 * @brief Структура состояния TCP-прогона с точной границей измерения
+	 *
+	 */
+	typedef struct Echo_State {
+		// Цикл событий текущего прогона
+		uv_loop_t loop;
+		// Признак остановки прогона
+		bool stop;
+		// Признак открытого измеряемого окна
+		bool measuring;
+		// Признак общего прогрева после индивидуального барьера
+		bool fleet;
+		// Требуемое количество подключений
+		size_t connections;
+		// Количество участников, завершивших текущий прогрев
+		size_t ready;
+		// Количество принятых сервером подключений
+		size_t accepted;
+		// Требуемое количество измеряемых обменов
+		size_t rounds;
+		// Количество завершённых измеряемых обменов
+		size_t done;
+		// Причина отказа прогона
+		const char * failure;
+		// Момент открытия измеряемого окна
+		chrono::steady_clock::time_point start;
+		// Единственная отметка конца измеряемого окна
+		chrono::steady_clock::time_point finish;
+		// Клиентские подключения, живущие до закрытия цикла
+		vector <unique_ptr <echo_peer_t>> clients;
+		// Серверные подключения, живущие до закрытия цикла
+		vector <unique_ptr <echo_peer_t>> peers;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Echo_State() noexcept :
+		 loop{}, stop(false), measuring(false), fleet(false), connections(0), ready(0), accepted(0), rounds(0), done(0), failure(nullptr) {}
+	} echo_state_t;
+	/**
+	 * @brief Функция остановки недействительного TCP-прогона
+	 *
+	 * @param state  состояние прогона
+	 * @param reason причина отказа
+	 *
+	 */
+	static void echoFail(echo_state_t & state, const char * reason) noexcept {
+		// Не изменяем уже закрытое окно при очистке
+		if(state.stop)
+			// Оставляем первый итог прогона
+			return;
+		// Сохраняем причину отказа
+		state.failure = reason;
+		// Запрещаем дальнейшие отправки и учёт
+		state.stop = true;
+		// Прерываем ожидание остальных участников
+		::uv_stop(&state.loop);
+	}
+	/**
+	 * @brief Функция открытия окна после прогрева полного состава
+	 *
+	 * @param state состояние прогона
+	 * @return      признак открытия окна
+	 *
+	 */
+	static bool echoBegin(echo_state_t & state) noexcept {
+		// Не допускаем неполный состав, повторный запуск и нулевую нагрузку
+		if(state.stop || state.measuring || !state.fleet || (state.connections == 0) || (state.rounds == 0) || (state.ready != state.connections) || (state.accepted != state.connections))
+			// Сохраняем окно закрытым
+			return false;
+		// Открываем измеряемое окно
+		state.measuring = true;
+		// Запоминаем момент начала замера
+		state.start = chrono::steady_clock::now();
+		// Сообщаем об открытии окна
+		return true;
+	}
+	/**
+	 * @brief Функция учёта полного ответа конкретному клиенту
+	 *
+	 * @param state состояние прогона
+	 * @param peer  состояние ответившего клиента
+	 * @return      признак необходимости следующего запроса
+	 *
+	 */
+	static bool echoAccount(echo_state_t & state, echo_peer_t & peer) noexcept {
+		// Хвост текущей пачки не должен менять закрытое окно
+		if(state.stop)
+			// Прекращаем обмен
+			return false;
+		// Если измерение ещё не началось
+		if(!state.measuring){
+			// Готовый клиент не выполняет прогрев за остальных
+			if(peer.warmed >= 8)
+				// Сохраняем непрерывный поток только во второй фазе
+				return state.fleet;
+			// Учитываем ответ именно этого клиента
+			peer.warmed++;
+			// Если индивидуальный прогрев ещё не завершён
+			if(peer.warmed < 8)
+				// Продолжаем прогрев клиента
+				return true;
+			// Учитываем готового участника ровно один раз
+			state.ready++;
+			// Первый барьер останавливает клиента, второй сохраняет поток
+			return state.fleet;
+		}
+		// Не учитываем ответ на запрос, отправленный до начала окна
+		if(!peer.measured)
+			// Продолжаем обмен уже измеряемым запросом
+			return true;
+		// Учитываем завершённый обмен замера
+		state.done++;
+		// Если целевое количество ещё не достигнуто
+		if(state.done < state.rounds)
+			// Продолжаем измерение
+			return true;
+		// Фиксируем конец окна единственный раз
+		state.finish = chrono::steady_clock::now();
+		// Запрещаем учёт и отправки в оставшихся callback
+		state.stop = true;
+		// Прекращаем обмен
+		return false;
+	}
+	/**
+	 * @brief Функция постановки стабильного буфера в очередь отправки
+	 *
+	 * @param peer состояние отправителя
+	 * @param data передаваемые октеты
+	 * @param size количество передаваемых октетов
+	 *
+	 */
+	static void echoWrite(echo_peer_t & peer, const char * data, const size_t size) noexcept;
+	/**
+	 * @brief Функция завершения отправки и освобождения её буфера
+	 *
+	 * @param request завершённый запрос
+	 * @param status  результат отправки
+	 *
+	 */
+	static void echoWritten(uv_write_t * request, const int32_t status) noexcept {
+		// Получаем состояние отправителя
+		echo_peer_t * peer = reinterpret_cast <echo_peer_t *> (request->data);
+		// Разрешаем повторное использование запроса и буфера
+		peer->writing = false;
+		// Не запускаем хвост очереди при очистке
+		if(peer->state->stop)
+			// Оставляем очередь общему завершению
+			return;
+		// Если система отказала в отправке
+		if(status < 0){
+			// Отклоняем неполный прогон
+			::echoFail(* peer->state, "write-completion-failed");
+			// Не отправляем оставшиеся октеты
+			return;
+		}
+		// Если накоплены октеты следующей отправки
+		if(peer->queued > 0){
+			// Запоминаем размер очереди
+			const size_t size = peer->queued;
+			// Освобождаем место для новых фрагментов
+			peer->queued = 0;
+			// Передаём накопленные октеты в освободившийся запрос
+			::echoWrite(* peer, peer->pending, size);
+		}
+	}
+	/**
+	 * @brief Функция постановки стабильного буфера в очередь отправки
+	 *
+	 * @param peer состояние отправителя
+	 * @param data передаваемые октеты
+	 * @param size количество передаваемых октетов
+	 *
+	 */
+	static void echoWrite(echo_peer_t & peer, const char * data, const size_t size) noexcept {
+		// Не добавляем отправки за границей прогона
+		if(peer.state->stop)
+			// Оставляем буферы общему завершению
+			return;
+		// Если предыдущий запрос ещё принадлежит libuv
+		if(peer.writing){
+			// Один запрос в полёте ограничивает очередь одним сообщением
+			if(size > (ECHO_PAYLOAD - peer.queued)){
+				// Отклоняем нарушение протокола вместо перезаписи памяти
+				::echoFail(* peer.state, "write-queue-overflow");
+				// Не копируем лишние октеты
+				return;
+			}
+			// Сохраняем октеты отдельно от активного буфера
+			::memcpy(peer.pending + peer.queued, data, size);
+			// Увеличиваем размер отложенной отправки
+			peer.queued += size;
+			// Ожидаем callback прежнего запроса
+			return;
+		}
+		// Проверяем границу стабильного буфера
+		if(size > ECHO_PAYLOAD){
+			// Отклоняем сообщение неизвестного размера
+			::echoFail(* peer.state, "write-size-invalid");
+			// Не передаём системе недействительный буфер
+			return;
+		}
+		// Сохраняем данные до завершения асинхронной отправки
+		::memcpy(peer.output, data, size);
+		// Формируем описание стабильного буфера
+		uv_buf_t buffer = ::uv_buf_init(peer.output, static_cast <uint32_t> (size));
+		// Запрещаем повторное использование запроса до callback
+		peer.writing = true;
+		// Проверяем постановку отправки в очередь
+		if(::uv_write(&peer.request, reinterpret_cast <uv_stream_t *> (&peer.handle), &buffer, 1, &::echoWritten) != 0){
+			// Запрос не принят системой и не получит callback
+			peer.writing = false;
+			// Отклоняем неполный прогон
+			::echoFail(* peer.state, "write-submit-failed");
+		}
+	}
+	/**
+	 * @brief Функция предоставления отдельного буфера приёма
+	 *
+	 * @param handle дескриптор подключения
+	 * @param buffer выводимое описание буфера
+	 *
+	 */
+	static void echoAllocate(uv_handle_t * handle, size_t, uv_buf_t * buffer) noexcept {
+		// Получаем состояние читающего подключения
+		echo_peer_t * peer = reinterpret_cast <echo_peer_t *> (handle->data);
+		// Предоставляем буфер только этого подключения
+		(*buffer) = ::uv_buf_init(peer->input, ECHO_PAYLOAD);
+	}
+	/**
+	 * @brief Функция обработки принятых октетов TCP-обмена
+	 *
+	 * @param stream дескриптор подключения
+	 * @param size   количество принятых октетов или ошибка
+	 * @param buffer описание принятых октетов
+	 *
+	 */
+	static void echoRead(uv_stream_t * stream, const ssize_t size, const uv_buf_t * buffer) noexcept {
+		// Получаем состояние подключения
+		echo_peer_t * peer = reinterpret_cast <echo_peer_t *> (stream->data);
+		// Получаем состояние прогона
+		echo_state_t & state = * peer->state;
+		// Не учитываем хвост пачки после закрытия окна
+		if(state.stop)
+			// Оставляем подключение общему завершению
+			return;
+		// Если чтение завершилось отказом или разрывом
+		if(size < 0){
+			// Отклоняем потерю участника
+			::echoFail(state, "read-failed");
+			// Не используем недействительный размер
+			return;
+		}
+		// Если очередное чтение пока не принесло октетов
+		if(size == 0)
+			// Продолжаем ожидание
+			return;
+		// Если октеты приняты сервером
+		if(!peer->client){
+			// Возвращаем фактические данные, сохраняя их до write-callback
+			::echoWrite(* peer, buffer->base, static_cast <size_t> (size));
+			// Сервер не учитывает клиентские обмены
+			return;
+		}
+		// Накапливаем полный клиентский ответ
+		peer->received += static_cast <size_t> (size);
+		// Если ответ пока неполный
+		if(peer->received < ECHO_PAYLOAD)
+			// Ожидаем остальные октеты
+			return;
+		// Исключаем неожиданное объединение нескольких ответов
+		if(peer->received != ECHO_PAYLOAD){
+			// Отклоняем нарушение одного запроса в полёте
+			::echoFail(state, "response-size-invalid");
+			// Не выдаём лишние октеты за очередной обмен
+			return;
+		}
+		// Освобождаем счётчик для следующего ответа
+		peer->received = 0;
+		// Учитываем ответ в соответствующей фазе
+		const bool more = ::echoAccount(state, * peer);
+		// Последний готовый участник открывает окно без остановки потока
+		if(state.fleet && !state.measuring && (state.ready == state.connections)){
+			// Повторно проверяем полный принятый состав
+			if(!::echoBegin(state))
+				// Отклоняем неполный прогрев
+				::echoFail(state, "warmup-incomplete");
+		}
+		// Если следующий запрос разрешён
+		if(more && !state.stop){
+			// Запоминаем фазу именно нового запроса
+			peer->measured = state.measuring;
+			// Продолжаем обмен без повторного массового запуска
+			::echoWrite(* peer, reinterpret_cast <const char *> (gPayload), ECHO_PAYLOAD);
+		}
+		// Если достигнут первый барьер или конец прогона
+		if(state.stop || (!state.fleet && (state.ready == state.connections)))
+			// Возвращаем управление подготовке следующей фазы или очистке
+			::uv_stop(&state.loop);
+	}
+	/**
+	 * @brief Функция запуска подключившегося клиента
+	 *
+	 * @param request запрос подключения
+	 * @param status  результат подключения
+	 *
+	 */
+	static void echoConnected(uv_connect_t * request, const int32_t status) noexcept {
+		// Получаем состояние клиента
+		echo_peer_t * peer = reinterpret_cast <echo_peer_t *> (request->data);
+		// Не запускаем клиента после отказа другого участника
+		if(peer->state->stop)
+			// Оставляем подключение очистке
+			return;
+		// Проверяем результат подключения
+		if(status < 0){
+			// Отклоняем отсутствующего клиента
+			::echoFail(* peer->state, "client-connect-failed");
+			// Не запускаем чтение неподключённого дескриптора
+			return;
+		}
+		// Проверяем подписку чтения подключённого клиента
+		if(::uv_read_start(reinterpret_cast <uv_stream_t *> (&peer->handle), &::echoAllocate, &::echoRead) != 0){
+			// Отклоняем клиента без чтения ответов
+			::echoFail(* peer->state, "client-read-start-failed");
+			// Не отправляем сообщение неподключённому клиенту
+			return;
+		}
+		// Запускаем индивидуальный прогрев
+		::echoWrite(* peer, reinterpret_cast <const char *> (gPayload), ECHO_PAYLOAD);
+	}
+	/**
+	 * @brief Функция принятия участника TCP-прогона
+	 *
+	 * @param server слушающий дескриптор
+	 * @param status результат ожидания входящего подключения
+	 *
+	 */
+	static void echoAccepted(uv_stream_t * server, const int32_t status) noexcept {
+		// Получаем состояние прогона
+		echo_state_t & state = * reinterpret_cast <echo_state_t *> (server->data);
+		// Не принимаем новых участников после остановки
+		if(state.stop)
+			// Оставляем слушатель очистке
+			return;
+		// Если входящее подключение недействительно или состав превышен
+		if((status < 0) || (state.accepted >= state.connections)){
+			// Не подменяем состав случайным подключением
+			::echoFail(state, "accept-status-invalid");
+			// Прекращаем приём
+			return;
+		}
+		// Сохраняем состояние до закрытия всех дескрипторов
+		state.peers.push_back(unique_ptr <echo_peer_t> (new echo_peer_t));
+		// Получаем добавленного участника
+		echo_peer_t & peer = * state.peers.back();
+		// Устанавливаем общее состояние прогона
+		peer.state = &state;
+		// Инициализируем серверную сторону подключения
+		if(::uv_tcp_init(&state.loop, &peer.handle) != 0){
+			// Отклоняем отсутствие дескриптора
+			::echoFail(state, "peer-init-failed");
+			// Не используем неинициализированный дескриптор
+			return;
+		}
+		// Связываем callback чтения с состоянием участника
+		peer.handle.data = &peer;
+		// Связываем callback отправки со стабильным запросом
+		peer.request.data = &peer;
+		// Проверяем приём, параметры сокета и запуск чтения
+		if((::uv_accept(server, reinterpret_cast <uv_stream_t *> (&peer.handle)) != 0) || (::uv_tcp_nodelay(&peer.handle, 1) != 0) || (::uv_read_start(reinterpret_cast <uv_stream_t *> (&peer.handle), &::echoAllocate, &::echoRead) != 0)){
+			// Отклоняем неподготовленного участника
+			::echoFail(state, "peer-setup-failed");
+			// Не учитываем неполное подключение
+			return;
+		}
+		// Учитываем только полностью подготовленную серверную сторону
+		state.accepted++;
+	}
+	/**
+	 * @brief Функция ограничения подготовки и измерения общим сроком
+	 *
+	 * @param timer дескриптор предельного срока
+	 *
+	 */
+	static void echoExpired(uv_timer_t * timer) noexcept {
+		// Отклоняем незавершённый прогрев или обмен
+		::echoFail(* reinterpret_cast <echo_state_t *> (timer->data), "deadline-expired");
+	}
+	/**
+	 * @brief Функция закрытия дескриптора после остановки прогона
+	 *
+	 * @param handle закрываемый дескриптор
+	 *
+	 */
+	static void echoClose(uv_handle_t * handle, void *) noexcept {
+		// Не закрываем уже закрываемый дескриптор повторно
+		if(!::uv_is_closing(handle))
+			// Сохраняем память дескриптора до осушения цикла
+			::uv_close(handle, nullptr);
+	}
+	/**
+	 * @brief Функция прогона TCP-обмена с тем же прогревом, что и у AWH
 	 *
 	 * @param connections количество одновременных подключений
 	 * @param rounds      требуемое количество обменов замера
-	 * @return            итоги прогона сценария
+	 * @return            итоги прогона или нулевой результат при отказе
 	 *
 	 */
-	static outcome_t exchange(const size_t connections, const size_t rounds) noexcept {
+	static outcome_t echoExchange(const size_t connections, const size_t rounds) noexcept {
 		// Итоги прогона сценария
 		outcome_t result;
-		// Состояние прогона сценария
-		echo_t state(connections, rounds);
-		// Цикл событий стенда
-		uv_loop_t loop{};
-		// Выполняем инициализацию цикла событий стенда
-		::uv_loop_init(&loop);
-		// Параметры привязки слушающего сокета
-		struct sockaddr_in address{};
-		// Формируем адрес привязки слушающего сокета
-		::uv_ip4_addr("127.0.0.1", 0, &address);
-		// Дескриптор слушающего сокета
+		// Состояние текущего прогона и его дескрипторы
+		echo_state_t state;
+		// Проверяем параметры и создание цикла до использования дескрипторов
+		if((connections == 0) || (rounds == 0) || (::uv_loop_init(&state.loop) != 0)){
+			// Сообщаем об отказе до запуска нагрузки
+			::fprintf(stderr, "ECHO_BENCH_FAIL: loop-or-parameters-invalid\n");
+			// Возвращаем недействительный результат
+			return result;
+		}
+		// Устанавливаем полный состав участников
+		state.connections = connections;
+		// Устанавливаем точное число измеряемых обменов
+		state.rounds = rounds;
+		// Резервируем состояния клиентов до начала нагрузки
+		state.clients.reserve(connections);
+		// Резервируем состояния сервера до начала нагрузки
+		state.peers.reserve(connections);
+		// Слушающий дескриптор
 		uv_tcp_t server{};
-		// Выполняем инициализацию дескриптора слушающего сокета
-		::uv_tcp_init(&loop, &server);
-		// Выполняем привязку слушающего сокета
-		::uv_tcp_bind(&server, reinterpret_cast <const struct sockaddr *> (&address), 0);
-		// Размер структуры параметров сокета
+		// Общий предельный срок подготовки и измерения
+		uv_timer_t deadline{};
+		// Адрес слушателя с автоматически выбранным портом
+		struct sockaddr_in address{};
+		// Размер адреса для получения выбранного порта
 		int32_t length = sizeof(address);
-		// Извлекаем параметры привязки слушающего сокета
-		::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&address), &length);
-		// Переводим слушающий сокет в режим прослушивания
-		::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::echoAccept);
-		// Список состояний клиентских подключений
-		vector <unique_ptr <connection_t>> clients;
-		// Резервируем память под состояния клиентских подключений
-		clients.reserve(connections);
-		/**
-		 * Выполняем создание требуемого количества клиентских подключений
-		 */
-		for(size_t i = 0; i < connections; i++){
-			// Создаём состояние клиентского подключения
-			clients.push_back(unique_ptr <connection_t> (new connection_t));
-			// Получаем состояние созданного подключения
-			connection_t * connection = clients.back().get();
-			// Устанавливаем состояние прогона сценария
-			connection->state = &state;
-			// Выполняем инициализацию дескриптора подключения
-			::uv_tcp_init(&loop, &connection->handle);
-			// Отключаем алгоритм Нейгла подключения
-			::uv_tcp_nodelay(&connection->handle, 1);
-			// Устанавливаем состояние подключения запросу подключения
-			connection->connection.data = connection;
-			// Выполняем подключение к слушающему сокету
-			::uv_tcp_connect(&connection->connection, &connection->handle, reinterpret_cast <const struct sockaddr *> (&address), &::clientConnect);
+		// Проверяем создание слушателя
+		if(::uv_tcp_init(&state.loop, &server) != 0)
+			// Не используем неинициализированный дескриптор
+			::echoFail(state, "listener-init-failed");
+		// Если дескриптор слушателя создан
+		if(!state.stop){
+			// Передаём состояние прогона обработчику приёма
+			server.data = &state;
+			// Проверяем привязку и запуск слушателя
+			if((::uv_ip4_addr("127.0.0.1", 0, &address) != 0) || (::uv_tcp_bind(&server, reinterpret_cast <const struct sockaddr *> (&address), 0) != 0) || (::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&address), &length) != 0) || (::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::echoAccepted) != 0))
+				// Не запускаем клиентов без готового сервера
+				::echoFail(state, "listener-setup-failed");
+		}
+		// Если слушатель готов и можно ограничить время прогона
+		if(!state.stop){
+			// Проверяем создание таймера
+			if(::uv_timer_init(&state.loop, &deadline) != 0)
+				// Не оставляем прогон без ограничения
+				::echoFail(state, "deadline-init-failed");
+			else {
+				// Передаём состояние обработчику предельного срока
+				deadline.data = &state;
+				// Ограничиваем подготовку и измерение одной минутой
+				if(::uv_timer_start(&deadline, &::echoExpired, 60000, 0) != 0)
+					// Отклоняем прогон без рабочего таймера
+					::echoFail(state, "deadline-start-failed");
+			}
 		}
 		/**
-		 * Запускаем цикл событий до выполнения требуемого количества обменов
+		 * Создаём клиентов, обслуживая приём между запросами подключения
 		 */
-		::uv_run(&loop, UV_RUN_DEFAULT);
-		// Устанавливаем количество выполненных операций
-		result.operations = state.done;
-		// Устанавливаем объём переданных данных с учётом обоих направлений обмена
-		result.bytes = (state.done * ECHO_PAYLOAD * 2);
-		// Устанавливаем затраченное время
-		result.seconds = elapsed(state.start, state.finish);
-		// Выводим итоги прогона сценария
+		for(size_t i = 0; (i < connections) && !state.stop; i++){
+			// Сохраняем состояние клиента до осушения цикла
+			state.clients.push_back(unique_ptr <echo_peer_t> (new echo_peer_t));
+			// Получаем добавленного клиента
+			echo_peer_t & peer = * state.clients.back();
+			// Подключаем общее состояние прогона
+			peer.state = &state;
+			// Отмечаем клиентскую сторону
+			peer.client = true;
+			// Проверяем создание клиентского дескриптора
+			if(::uv_tcp_init(&state.loop, &peer.handle) != 0){
+				// Отклоняем неполный состав
+				::echoFail(state, "client-init-failed");
+				// Не используем неинициализированный дескриптор
+				break;
+			}
+			// Связываем чтение с состоянием клиента
+			peer.handle.data = &peer;
+			// Связываем завершение отправки со стабильным запросом
+			peer.request.data = &peer;
+			// Связываем завершение подключения с клиентом
+			peer.connection.data = &peer;
+			// Проверяем параметры и начало подключения
+			if((::uv_tcp_nodelay(&peer.handle, 1) != 0) || (::uv_tcp_connect(&peer.connection, &peer.handle, reinterpret_cast <const struct sockaddr *> (&address), &::echoConnected) != 0))
+				// Не подменяем отказавшего клиента меньшим составом
+				::echoFail(state, "client-connect-submit-failed");
+			// Если запрос подключения принят
+			if(!state.stop)
+				// Не оставляем весь всплеск ConnectEx без обработки AcceptEx
+				::uv_run(&state.loop, UV_RUN_NOWAIT);
+		}
+		// Если полный первый барьер ещё не достигнут при создании клиентов
+		if(!state.stop && (state.ready < connections))
+			// Ждём индивидуального прогрева каждого клиента
+			::uv_run(&state.loop, UV_RUN_DEFAULT);
+		// Проверяем полный состав перед общим прогревом
+		if(!state.stop && (state.ready == connections) && (state.accepted == connections)){
+			// Переключаемся на непрерывный общий прогрев
+			state.fleet = true;
+			// Считаем готовность участников второй фазы отдельно
+			state.ready = 0;
+			/**
+			 * Сбрасываем счётчики всех клиентов перед первой общей отправкой
+			 */
+			for(const auto & peer : state.clients)
+				// Каждый клиент должен снова выполнить восемь обменов
+				peer->warmed = 0;
+			/**
+			 * Запускаем общую нагрузку без открытия измеряемого окна
+			 */
+			for(const auto & peer : state.clients)
+				// Поддерживаем один запрос в полёте у каждого клиента
+				::echoWrite(* peer, reinterpret_cast <const char *> (gPayload), ECHO_PAYLOAD);
+			// Если отправки общего прогрева приняты
+			if(!state.stop)
+				// Переходим от общего прогрева к замеру без паузы
+				::uv_run(&state.loop, UV_RUN_DEFAULT);
+		} else
+			// Неполный состав не имеет измеряемого результата
+			::echoFail(state, "warmup-incomplete");
+		// Проверяем единственное успешное завершение на точной границе
+		if((state.failure == nullptr) && (!state.stop || !state.measuring || (state.done != rounds)))
+			// Не выдаём преждевременный выход за выполненную нагрузку
+			state.failure = "exchange-incomplete";
+		// Запрещаем обработчикам очистки продолжать обмен
+		state.stop = true;
+		// Закрываем слушатель, таймер и обе стороны всех подключений
+		::uv_walk(&state.loop, &::echoClose, nullptr);
+		/**
+		 * Осушаем цикл, включая сброс uv_stop после отказа во время подготовки
+		 */
+		while(::uv_loop_alive(&state.loop))
+			// Доставляем отменённые запросы и закрытия до разрушения их памяти
+			::uv_run(&state.loop, UV_RUN_DEFAULT);
+		// Проверяем полное освобождение цикла
+		if(::uv_loop_close(&state.loop) != 0)
+			// Не публикуем результат с незавершёнными ресурсами
+			state.failure = "loop-close-failed";
+		// Если все проверки пройдены
+		if(state.failure == nullptr){
+			// Устанавливаем точное число обменов
+			result.operations = state.done;
+			// Устанавливаем объём данных в обоих направлениях
+			result.bytes = (state.done * ECHO_PAYLOAD * 2);
+			// Используем только сохранённое измеряемое окно
+			result.seconds = elapsed(state.start, state.finish);
+		} else
+			// Сообщаем причину отказа вне измеряемого окна
+			::fprintf(stderr, "ECHO_BENCH_FAIL: %s\n", state.failure);
+		// Выводим итоги прогона
 		return result;
 	}
 	/**
@@ -889,6 +1410,7 @@ namespace {
 		 *       подписанный на чтение, - настоящему серверу принятый сокет и нужен
 		 *       именно таким. Прежде стенд принятое подключение сразу закрывал, и
 		 *       подписка ему не стоила ничего
+		 *
 		 */
 		::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::peerRead);
 		// Прекращаем чтение принятого подключения
@@ -964,6 +1486,7 @@ namespace {
 		 *       дескриптора у стенда нет. Опция задержки закрытия нужна лишь
 		 *       к моменту закрытия, поэтому ставится здесь - и стенд перестаёт
 		 *       расходовать динамические порты иначе, чем остальные три
+		 *
 		 */
 		if(::uv_fileno(reinterpret_cast <uv_handle_t *> (state->handle), &fd) == 0)
 			// Включаем немедленный обрыв соединения при закрытии сокета
@@ -1533,7 +2056,11 @@ int32_t main(int32_t argc, char ** argv){
 	// Если сценарий обмена на одном подключении выполняется
 	if(selected("net/io/echo/single", name)){
 		// Выполняем прогон сценария обмена на одном подключении
-		const outcome_t outcome = ::exchange(1, ECHO_SINGLE_ROUNDS);
+		const outcome_t outcome = ::echoExchange(1, ECHO_SINGLE_ROUNDS);
+		// Не публикуем неполный или недействительный прогон
+		if((outcome.operations != ECHO_SINGLE_ROUNDS) || (outcome.seconds <= 0.0))
+			// Сообщаем вызывающей обвязке об отказе
+			return EXIT_FAILURE;
 		// Выводим результат прогона сценария
 		report("net/io/echo/single", "обменов/с", perSecond(outcome), outcome);
 	}
@@ -1552,15 +2079,21 @@ int32_t main(int32_t argc, char ** argv){
 		// Выводим результат прогона сценария
 		report("net/io/datagram/multi", "обменов/с", perSecond(outcome), outcome);
 	}
+	// Если сценарий обмена среди наблюдаемых подключений выполняется
 	if(selected("net/io/idle/exchanges", name)){
 		// Выполняем прогон сценария обмена при множестве наблюдаемых подключений
 		const outcome_t outcome = ::watched();
 		// Выводим результат прогона сценария
 		report("net/io/idle/exchanges", "обменов/с", perSecond(outcome), outcome);
 	}
+	// Если сценарий обмена множеством подключений выполняется
 	if(selected("net/io/echo/multi", name)){
 		// Выполняем прогон сценария обмена на множестве подключений
-		const outcome_t outcome = ::exchange(ECHO_MULTI_CONNECTIONS, ECHO_MULTI_ROUNDS);
+		const outcome_t outcome = ::echoExchange(ECHO_MULTI_CONNECTIONS, ECHO_MULTI_ROUNDS);
+		// Не публикуем неполный или недействительный прогон
+		if((outcome.operations != ECHO_MULTI_ROUNDS) || (outcome.seconds <= 0.0))
+			// Сообщаем вызывающей обвязке об отказе
+			return EXIT_FAILURE;
 		// Выводим результат прогона сценария
 		report("net/io/echo/multi", "обменов/с", perSecond(outcome), outcome);
 	}
