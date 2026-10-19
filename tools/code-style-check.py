@@ -897,7 +897,9 @@ def check_file(path, lines, members, report, fixes=None):
             head = code[:pos]
             return bool(re.match(r"^[\w:]+(?:\s*[*&]\s*)?\s+", head.lstrip())) and (head.strip() == "" or re.search(r"[\w:*>\s]$", head)) and (head.lstrip() != "" or pos == 0) and re.match(r"^[\w:]+(?:<[^>]*>)?(?:\s*[*&])?\s+" + re.escape(name) + r"\s*\(", code.lstrip())
         for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_ERR + r"\s*\(", code):
-            if m.group(1) in static_names or is_declaration(m.group(1), m.start()):
+            if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
+                continue
+            if not code[:m.start()].strip() and prev_code.rstrip().endswith((":", ",")):
                 continue
             report(path, n, "ERROR", "§6.2", f"обращение '{m.group(1)}(' без :: — системные функции только через ::")
         for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_WARN + r"\s*\(", code):
@@ -922,7 +924,7 @@ def check_file(path, lines, members, report, fixes=None):
         # snake_case в объявлениях переменных и параметров (§4.3)
         for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]\w*)\s*(?==[^=]|;|,|\)|\()", code):
             name = vm.group(1)
-            kw = {"if", "for", "while", "switch", "return", "case", "sizeof", "noexcept", "const", "static", "auto", "int", "void", "bool"} | STD_CALLS
+            kw = {"if", "for", "while", "switch", "return", "case", "sizeof", "noexcept", "const", "static", "auto", "int", "void", "bool", "value_type", "size_type", "difference_type", "pointer", "const_pointer", "reference", "const_reference", "rebind", "other"} | STD_CALLS
             if name in kw or not is_snake_name(name):
                 continue
             before = code[:vm.start()]
