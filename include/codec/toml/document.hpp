@@ -37,9 +37,9 @@
  * Стандартные заголовочные файлы
  */
 #include <vector>
-#include <type_traits>
 #include <string>
 #include <cstdint>
+#include <type_traits>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -47,18 +47,19 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <sys/fs.hpp>
-
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
-
 #include "../value.hpp"
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../sys/fs.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -75,7 +76,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -86,13 +86,23 @@ namespace awh {
 		 * \~russian
 		 * @brief Пространство имён контейнера TOML
 		 *
-		 *
 		 * \~english
 		 * @brief TOML container namespace
 		 *
 		 * \~
 		 */
 		namespace toml {
+			/**
+			 * \~russian
+			 * @brief Предобъявление владеющего значения настроек
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value of the settings
+			 *
+			 * \~
+			 */
+			class Value;
+
 			/**
 			 * \~russian
 			 * @brief Виды записей текста настроек
@@ -332,16 +342,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			/**
-			 * \~russian
-			 * @brief Предобъявление владеющего значения настроек
-			 *
-			 * \~english
-			 * @brief Forward declaration of the owning value of the settings
-			 *
-			 * \~
-			 */
-			class Value;
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:
 					/**
@@ -363,6 +363,594 @@ namespace awh {
 					 * \~
 					 */
 					friend class Value;
+				public:
+					/**
+					 * \~russian
+					 * @brief Структура настроек дерева
+					 *
+					 * \~english
+					 * @brief Tree settings structure
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Настройки разбора текста настроек
+						reader_t::settings_t reader;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Settings() noexcept;
+					} settings_t;
+				private:
+					/**
+					 * \~russian
+					 * @brief Структура отрезка общего хранилища знаков
+					 *
+					 * \~english
+					 * @brief Structure of a segment of the shared character storage
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Span {
+						// Смещение начала отрезка в хранилище знаков
+						uint32_t offset;
+						// Длина отрезка в байтах
+						uint32_t length;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Span() noexcept;
+					} span_t;
+					/**
+					 * \~russian
+					 * @brief Структура составной части имени ключа
+					 *
+					 * \~english
+					 * @brief Structure of a key name component
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Key {
+						// Место имени части в хранилище знаков
+						span_t name;
+						// Запись имени части в исходном тексте
+						naming_t naming;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Key() noexcept;
+					} key_t;
+					/**
+					 * \~russian
+					 * @brief Структура примечания, стоящее внутри перечня значений
+					 *
+					 * @details Примечание внутри перечня держится не записью, а самим узлом
+					 *          перечня: строкой текста настроек оно не является и живёт вместе со
+					 *          значением, которому писано.
+					 *
+					 * \~english
+					 * @brief Structure of a note located within a list of values
+					 *
+					 * @details A comment inside an array is kept not by a record but by the node of the array
+					 *          itself: it is not a line of the settings text and lives together with
+					 *          the value to which it has been written.
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Remark {
+						/**
+						 * \~russian
+						 * Признак примечания, дописанного к строке значения
+						 *
+						 * @note Примечание перечня стоит либо своей строкой, либо за
+						 *       значением на строке его: обратная запись расстановку эту
+						 *       хранит
+						 *
+						 * \~english
+						 * Flag of a comment appended to the line of a value
+						 *
+						 * @note A comment of an array stands either as its own line or after
+						 *       a value on its line: the writing back preserves that
+						 *       arrangement
+						 *
+						 * \~
+						 */
+						bool trailing;
+						// Место содержимого примечания в хранилище знаков
+						span_t text;
+						/**
+						 * \~russian
+						 * Количество значений перечня, записанных до примечания
+						 *
+						 * @note Место примечания задано счётом значений, а не ссылкою на
+						 *       значение: примечание стоит и перед первым значением, и за
+						 *       последним, где ссылаться не на что
+						 *
+						 * \~english
+						 * Number of the values of the array written before the comment
+						 *
+						 * @note The place of a comment is given by a count of the values rather than by a reference to a
+						 *       value: a comment stands both before the first value and after
+						 *       the last one, where there is nothing to refer to
+						 *
+						 * \~
+						 */
+						uint32_t index;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Remark() noexcept;
+					} remark_t;
+					/**
+					 * \~russian
+					 * @brief Структура узла значения текста настроек
+					 *
+					 * @details Значение составное хранится деревом узлов: у перечня узлы
+					 *          значений его, у встроенной таблицы - узлы её пар. Узлы держатся общим
+					 *          перечнем и ссылаются друг на друга порядковыми номерами: ссылки на
+					 *          память хранилище при дописывании обесценивает.
+					 *
+					 * \~english
+					 * @brief Structure of a text settings value node
+					 *
+					 * @details A compound value is stored as a tree of the nodes: an array has the nodes
+					 *          of its values, an inline table — the nodes of its pairs. The nodes are kept as a common
+					 *          list and refer to one another by the ordinal numbers: the references to
+					 *          the memory are invalidated by the storage at an appending.
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Node {
+						// Логическое значение
+						bool boolean;
+						/**
+						 * \~russian
+						 * Признак записи перечня несколькими строками
+						 *
+						 * @note Держится ради обратной записи: расстановка строк выбрана
+						 *       человеком, и перезапись обязана её сохранять
+						 *
+						 * \~english
+						 * Flag of the writing of an array in several lines
+						 *
+						 * @note It is kept for the sake of the writing back: the arrangement of the lines has been chosen
+						 *       by the human, and a rewriting is obliged to preserve it
+						 *
+						 * \~
+						 */
+						bool multiline;
+						// Тип значения
+						type_t type;
+						// Место строкового значения в хранилище знаков
+						span_t text;
+						// Система счисления записи целого числа
+						radix_t radix;
+						// Отметка времени
+						stamp_t stamp;
+						// Запись строкового значения
+						string_t quoting;
+						// Число с плавающей точкой
+						double real;
+						// Целое число со знаком
+						int64_t integer;
+						/**
+						 * \~russian
+						 * Составные имена ключей пар встроенной таблицы
+						 *
+						 * @note Перечень этот идёт рядом с перечнем узлов: имя каждой пары
+						 *       встроенной таблицы задано отрезком перечня частей имён
+						 *
+						 * \~english
+						 * Compound names of the keys of the pairs of an inline table
+						 *
+						 * @note This list goes next to the list of the nodes: the name of every pair
+						 *       of an inline table is given by a segment of the list of the parts of the names
+						 *
+						 * \~
+						 */
+						vector <span_t> names;
+						// Порядковые номера узлов значений перечня либо пар встроенной таблицы
+						vector <uint32_t> items;
+						/**
+						 * \~russian
+						 * Примечания, стоящие внутри перечня значений
+						 *
+						 * @note Держатся ради обратной записи: примечание писано человеком,
+						 *       и перезапись, его теряющая, обедняет файл настроек
+						 *
+						 * \~english
+						 * Comments standing inside an array of the values
+						 *
+						 * @note They are kept for the sake of the writing back: a comment has been written by a human,
+						 *       and a rewriting that loses it impoverishes the settings file
+						 *
+						 * \~
+						 */
+						vector <remark_t> remarks;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Node() noexcept;
+					} node_t;
+					/**
+					 * \~russian
+					 * @brief Структура записи разобранного текста настроек
+					 *
+					 * \~english
+					 * @brief Structure of the parsed configuration text entry
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Record {
+						/**
+						 * \~russian
+						 * Признак примечания, дописанного к готовой строке
+						 *
+						 * @note Примечание это писано к своей записи и удаляется вместе с
+						 *       нею: пояснение к тому, чего в файле нет, смысла не несёт
+						 *
+						 * \~english
+						 * Flag of a comment appended to a ready line
+						 *
+						 * @note That comment has been written to its record and is removed together with
+						 *       it: an explanation of what is not in the file carries no sense
+						 *
+						 * \~
+						 */
+						bool trailing;
+						// Вид записи текста настроек
+						kind_t kind;
+						/**
+						 * \~russian
+						 * Место составного имени записи в перечне частей имён
+						 *
+						 * @note Отрезок задан смещением и количеством частей, а не длиной в
+						 *       байтах: части имени хранятся своим перечнем
+						 *
+						 * \~english
+						 * Place of the compound name of the record in the list of the parts of the names
+						 *
+						 * @note The segment is given by an offset and a number of the parts rather than by a length in
+						 *       bytes: the parts of a name are stored in their own list
+						 *
+						 * \~
+						 */
+						span_t path;
+						// Место содержимого примечания в хранилище знаков
+						span_t text;
+						// Порядковый номер узла значения пары
+						uint32_t node;
+						// Порядковый номер записи объявления таблицы, которой запись принадлежит
+						uint32_t table;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Record() noexcept;
+					} record_t;
+					/**
+					 * \~russian
+					 * @brief Структура состояния обхода записей, удерживаемое между перестроениями указателей
+					 *
+					 * @details Перестроение обходит всё дерево, и правка, зовущая его на всякую
+					 *          заводимую запись, обращает сборку дерева правками в квадратичную: восемь
+					 *          тысяч правок стоили три секунды, и цена одной правки удваивалась с каждым
+					 *          удвоением их числа. Запись, встающая в конец перечня, порядковых номеров
+					 *          прежних записей не сдвигает, и указатели ей достаточно нарастить - для
+					 *          чего и держится состояние, с каким обход дошёл до конца дерева.
+					 *
+					 * @note Разбор записи ведётся одним и тем же телом и при полном перестроении,
+					 *       и при доборном наращивании: два списка правил разошлись бы при первой же
+					 *       правке одного из них
+					 *
+					 * \~english
+					 * @brief Structure of the record-traversal state, maintained between pointer readjustments
+					 *
+					 * @details A rebuilding traverses the whole tree, and an editing calling it for every
+					 *          created record turns the assembly of a tree by the editings into a quadratic one: eight
+					 *          thousand editings used to cost three seconds, and the price of one editing doubled with
+					 *          every doubling of their number. A record placed at the end of the list does not shift the
+					 *          ordinal numbers of the previous records, and it is enough to grow the indexes for it —
+					 *          which is what the state the traversal reached the end of the tree with is kept for.
+					 *
+					 * @note The parsing of a record is conducted by one and the same body both at a full
+					 *       rebuilding and at an incremental growing: two lists of the rules would diverge at the
+					 *       first editing of one of them
+					 *
+					 * \~
+					 */
+					typedef struct Traversal {
+						/**
+						 * \~russian
+						 * Ключ указателя таблицы, которой принадлежат разбираемые записи
+						 *
+						 * \~english
+						 * Key of the index of the table the records being parsed belong to
+						 *
+						 * \~
+						 */
+						string table;
+						/**
+						 * \~russian
+						 * Имя таблицы, которой принадлежат разбираемые записи, без номеров
+						 *
+						 * @details Ключ указателя несёт номера таблиц набора, а имя - одни лишь
+						 *          составные части. Хранятся оба: по имени сличается, продолжает ли
+						 *          объявляемая таблица нынешнюю, а ключ служит ей основанием.
+						 *
+						 * \~english
+						 * Name of the table the records being parsed belong to, without the ordinals
+						 *
+						 * @details The key of the index carries the ordinals of the tables of an array while the name —
+						 *          only the compound parts. Both are stored: by the name it is compared whether
+						 *          the table being declared continues the current one, while the key serves as its base.
+						 *
+						 * \~
+						 */
+						string named;
+						/**
+						 * \~russian
+						 * Подсказки места вставки записи по порядковому номеру таблицы
+						 *
+						 * @details Заведение пары ищет место за последней парой её таблицы обходом
+						 *          области таблицы, а область эта растёт с каждой заведённой парой: обход
+						 *          выходил квадратичным - шестнадцать тысяч правок стоили сто двадцать
+						 *          восемь миллионов шагов. Подсказка хранит место, найденное прошлым
+						 *          заведением, и обход продолжается от него, проходя лишь записи, с тех
+						 *          пор добавленные.
+						 *
+						 * @note Подсказка есть подсказка, а не истина: правило поиска места
+						 *       остаётся одно и то же, и обход от подсказки даёт тот же итог, что и
+						 *       обход с начала области. Всякая правка, сдвигающая порядковые номера
+						 *       записей, подсказки отменяет вместе с перестроением указателей
+						 *
+						 * \~english
+						 * Hints of the place of the insertion of a record by the ordinal number of a table
+						 *
+						 * @details The creation of a pair looks for a place after the last pair of its table by a
+						 *          traversal of the area of the table, and that area grows with every created pair: the
+						 *          traversal used to be quadratic — sixteen thousand editings cost one hundred twenty eight
+						 *          million steps. A hint keeps the place found by the previous creation, and the traversal
+						 *          continues from it, passing only the records added since then.
+						 *
+						 * @note A hint is a hint rather than a truth: the rule of the search for a place remains one
+						 *       and the same, and a traversal from a hint gives the same result as a traversal from the
+						 *       beginning of the area. Every editing that shifts the ordinal numbers of the records
+						 *       cancels the hints together with the rebuilding of the indexes
+						 *
+						 * \~
+						 */
+						unordered_map <uint32_t, size_t> hints;
+						/**
+						 * \~russian
+						 * Ключи указателя объявленных таблиц по именам их без номеров
+						 *
+						 * @details Служит розыску объемлющей таблицы: объявление «[[a.b]]» лежит
+						 *          внутри последней таблицы набора «a», и ключ его строится на её ключе.
+						 *          Сличения с одною лишь нынешнею таблицею мало - между ними встают
+						 *          объявления глубже вложенные, как «[a.b.c]» перед вторым «[[a.b]]».
+						 *
+						 * \~english
+						 * Keys of the index of the declared tables by their names without the ordinals
+						 *
+						 * @details Serves the search for the enclosing table: the declaration «[[a.b]]» lies
+						 *          inside the last table of the array «a», and its key is built upon her key.
+						 *          A comparison with the current table alone is not enough — between them stand
+						 *          the declarations nested deeper, like «[a.b.c]» before the second «[[a.b]]».
+						 *
+						 * \~
+						 */
+						unordered_map <string, string> anchors;
+						/**
+						 * \~russian
+						 * Количество таблиц, объявленных каждым набором таблиц
+						 *
+						 * \~english
+						 * Number of the tables declared by every array of tables
+						 *
+						 * \~
+						 */
+						unordered_map <string, uint32_t> ordinals;
+						/**
+						 * \~russian
+						 * Объявленные дочерние имена по каждому объемлющему имени
+						 *
+						 * @note Перечень дочерних имён держится порядком объявления, и сличать
+						 *       добавляемое имя перебором его значило бы обращать перестроение в
+						 *       квадратичное: текст из одних объявлений таблиц собирался вдевятеро
+						 *       медленнее текста с парами, и замер это показал сразу
+						 *
+						 * \~english
+						 * Declared child names for every enclosing name
+						 *
+						 * @note The list of the child names is kept in the order of the declaration, and
+						 *       comparing an added name by a traversal of it would turn the rebuilding into a
+						 *       quadratic one: a text made of the declarations of the tables alone used to be
+						 *       assembled nine times slower than a text with the pairs, and a measurement showed it at once
+						 *
+						 * \~
+						 */
+						unordered_map <string, unordered_set <string>> declared;
+						/**
+						 * \~russian
+						 * @brief Метод сброса состояния обхода записей
+						 *
+						 * \~english
+						 * @brief Method of the reset of the state of the traversal of the records
+						 *
+						 * \~
+						 */
+						void reset() noexcept;
+					} traversal_t;
+				private:
+					/**
+					 * \~russian
+					 * Объект работы с файловой системой
+					 *
+					 * \~english
+					 * Object of the work with the filesystem
+					 *
+					 * \~
+					 */
+					fs_t _fs;
+				private:
+					// Настройки дерева настроек
+					settings_t _settings;
+					/**
+					 * \~russian
+					 * Кодировка, какою текст настроек прочитан
+					 *
+					 * \~english
+					 * Encoding by which the text of the settings has been read
+					 *
+					 * \~
+					 */
+					encoding_t _encoding;
+					/**
+					 * \~russian
+					 * Состояние обхода, с каким перестроение дошло до конца дерева
+					 *
+					 * \~english
+					 * State of the traversal the rebuilding reached the end of the tree with
+					 *
+					 * \~
+					 */
+					traversal_t _traversal;
+				private:
+					// Код ошибки последней операции
+					mutable error_t _error;
+					// Положение обнаруженной ошибки в исходном тексте
+					mutable location_t _errorLocation;
+				private:
+					/**
+					 * \~russian
+					 * Количество записей и узлов, правкой в мусор обращённых
+					 *
+					 * @note Считается приблизительно: узел замещённого значения идёт за один,
+					 *       сколько бы вложенных он ни нёс. Занижение уплотнение лишь
+					 *       отдаляет, а рост всё равно остаётся ограниченным
+					 *
+					 * \~english
+					 * Number of the records and the nodes turned into garbage by an editing
+					 *
+					 * @note Counted approximately: the node of a replaced value goes as one,
+					 *       however many nested ones it may carry. An underestimation only postpones
+					 *       the compaction, while the growth all the same remains limited
+					 *
+					 * \~
+					 */
+					size_t _garbage;
+					/**
+					 * \~russian
+					 * Длина хранилища знаков, снятая последним уплотнением
+					 *
+					 * @note Держится ради правки строковых значений: содержимое дописывается
+					 *       к хранилищу всякий раз, а прежнее остаётся в нём мусором, и
+					 *       счётом записей рост этот не виден
+					 *
+					 * \~english
+					 * Length of the storage of the characters taken at the last compaction
+					 *
+					 * @note It is kept for the sake of the editing of the string values: the content is appended
+					 *       to the storage every time, while the previous one remains in it as garbage, and
+					 *       by the count of the records that growth is not visible
+					 *
+					 * \~
+					 */
+					size_t _compacted;
+				private:
+					// Общее хранилище знаков имён, значений и примечаний
+					string _store;
+				private:
+					// Перечень составных частей имён записей и пар встроенных таблиц
+					vector <key_t> _keys;
+					// Перечень узлов значений текста настроек
+					vector <node_t> _nodes;
+					// Перечень записей разобранного текста в порядке их следования
+					vector <record_t> _records;
+				private:
+					/**
+					 * \~russian
+					 * Имена таблиц, заведённых составным именем ключа
+					 *
+					 * @details Составное имя ключа «a.b = 1» заводит таблицу «a», собственного
+					 *          объявления не имеющую, и описание запрещает объявлять её заголовком:
+					 *          правка, такой заголовок заводящая, собрала бы текст, который разбор
+					 *          отверг бы повтором. Таблица, заведённая исподволь заголовком «[a.b]»,
+					 *          тем же заголовком «[a]» объявляется законно, и в перечень этот не идёт.
+					 *
+					 * \~english
+					 * Names of the tables created by a compound name of a key
+					 *
+					 * @details The compound name of a key «a.b = 1» creates the table «a», which has no declaration
+					 *          of its own, and the specification prohibits declaring it by a header:
+					 *          an editing that creates such a header would assemble a text which the parsing
+					 *          would reject as a repetition. A table created implicitly by the header «[a.b]»
+					 *          is declared lawfully by the same header «[a]», and it does not go into this list.
+					 *
+					 * \~
+					 */
+					unordered_set <string> _dotted;
+				private:
+					// Указатель записей по составному имени, приведённому к виду для сличения
+					unordered_map <string, uint32_t> _index;
+					/**
+					 * \~russian
+					 * Порядок объявления дочерних имён по каждому составному имени
+					 *
+					 * @details Держит для каждой таблицы перечень записей её дочерних имён в
+					 *          порядке следования их в тексте.
+					 *
+					 * @note Без него выдача перечня имён обращалась бы в квадратичную:
+					 *       перебор всех записей дерева ради каждой таблицы
+					 *
+					 * \~english
+					 * Order of the declaration of the child names for every compound name
+					 *
+					 * @details Keeps for every table a list of the records of its child names in
+					 *          the order of their succession in the text.
+					 *
+					 * @note Without it the issuance of the list of the names would turn into a quadratic one:
+					 *       a traversal of all the records of the tree for the sake of every table
+					 *
+					 * \~
+					 */
+					unordered_map <string, vector <uint32_t>> _children;
 				private:
 					/**
 					 * \~russian
@@ -431,647 +1019,6 @@ namespace awh {
 					 * \~
 					 */
 					bool fault(const error_t error) const noexcept;
-					/**
-					 * \~russian
-					 * Кодировка, какою текст настроек прочитан
-					 *
-					 * \~english
-					 * Encoding by which the text of the settings has been read
-					 *
-					 * \~
-					 */
-					encoding_t _encoding;
-					/**
-					 * \~russian
-					 * Объект фреймворка
-					 *
-					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
-					 *       широкую запись ходом `convert()`, и без неё кириллический путь у
-					 *       MS Windows лёг бы на диск мусором
-					 *
-					 * \~english
-					 * Object of the framework
-					 *
-					 * @note The framework is needed by the works with the file system: `fs_t` turns a path
-					 *       into a wide record by the `convert()` step, and without it a Cyrillic path
-					 *       under MS Windows would lie down on the disk as garbage
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * Объект работы с файловой системой
-					 *
-					 * \~english
-					 * Object of the work with the filesystem
-					 *
-					 * \~
-					 */
-					fs_t _fs;
-				public:
-					/**
-					 * \~russian
-					 * @brief Настройки дерева настроек
-					 *
-					 * \~english
-					 * @brief Settings of the settings tree
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Настройки разбора текста настроек
-						reader_t::settings_t reader;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Settings() noexcept;
-					} settings_t;
-				private:
-					/**
-					 * \~russian
-					 * @brief Отрезок общего хранилища знаков
-					 *
-					 * \~english
-					 * @brief Segment of the common storage of the characters
-					 *
-					 * \~
-					 */
-					typedef struct Span {
-						// Смещение начала отрезка в хранилище знаков
-						uint32_t offset;
-						// Длина отрезка в байтах
-						uint32_t length;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Span() noexcept : offset(0), length(0) {}
-					} span_t;
-					/**
-					 * \~russian
-					 * @brief Составная часть имени ключа
-					 *
-					 * \~english
-					 * @brief Component part of the name of a key
-					 *
-					 * \~
-					 */
-					typedef struct Key {
-						// Место имени части в хранилище знаков
-						span_t name;
-						// Запись имени части в исходном тексте
-						naming_t naming;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Key() noexcept : naming(naming_t::BARE) {}
-					} key_t;
-					/**
-					 * \~russian
-					 * @brief Примечание, стоящее внутри перечня значений
-					 *
-					 * @details Примечание внутри перечня держится не записью, а самим узлом
-					 *          перечня: строкой текста настроек оно не является и живёт вместе со
-					 *          значением, которому писано.
-					 *
-					 * \~english
-					 * @brief Comment standing inside an array of the values
-					 *
-					 * @details A comment inside an array is kept not by a record but by the node of the array
-					 *          itself: it is not a line of the settings text and lives together with
-					 *          the value to which it has been written.
-					 *
-					 * \~
-					 */
-					typedef struct Remark {
-						/**
-						 * \~russian
-						 * Количество значений перечня, записанных до примечания
-						 *
-						 * @note Место примечания задано счётом значений, а не ссылкою на
-						 *       значение: примечание стоит и перед первым значением, и за
-						 *       последним, где ссылаться не на что
-						 *
-						 * \~english
-						 * Number of the values of the array written before the comment
-						 *
-						 * @note The place of a comment is given by a count of the values rather than by a reference to a
-						 *       value: a comment stands both before the first value and after
-						 *       the last one, where there is nothing to refer to
-						 *
-						 * \~
-						 */
-						uint32_t index;
-						// Место содержимого примечания в хранилище знаков
-						span_t text;
-						/**
-						 * \~russian
-						 * Признак примечания, дописанного к строке значения
-						 *
-						 * @note Примечание перечня стоит либо своей строкой, либо за
-						 *       значением на строке его: обратная запись расстановку эту
-						 *       хранит
-						 *
-						 * \~english
-						 * Flag of a comment appended to the line of a value
-						 *
-						 * @note A comment of an array stands either as its own line or after
-						 *       a value on its line: the writing back preserves that
-						 *       arrangement
-						 *
-						 * \~
-						 */
-						bool trailing;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Remark() noexcept : index(0), trailing(false) {}
-					} remark_t;
-					/**
-					 * \~russian
-					 * @brief Узел значения текста настроек
-					 *
-					 * @details Значение составное хранится деревом узлов: у перечня узлы
-					 *          значений его, у встроенной таблицы - узлы её пар. Узлы держатся общим
-					 *          перечнем и ссылаются друг на друга порядковыми номерами: ссылки на
-					 *          память хранилище при дописывании обесценивает.
-					 *
-					 * \~english
-					 * @brief Node of a value of a settings text
-					 *
-					 * @details A compound value is stored as a tree of the nodes: an array has the nodes
-					 *          of its values, an inline table — the nodes of its pairs. The nodes are kept as a common
-					 *          list and refer to one another by the ordinal numbers: the references to
-					 *          the memory are invalidated by the storage at an appending.
-					 *
-					 * \~
-					 */
-					typedef struct Node {
-						// Тип значения
-						type_t type;
-						// Запись строкового значения
-						string_t quoting;
-						// Система счисления записи целого числа
-						radix_t radix;
-						// Логическое значение
-						bool boolean;
-						/**
-						 * \~russian
-						 * Признак записи перечня несколькими строками
-						 *
-						 * @note Держится ради обратной записи: расстановка строк выбрана
-						 *       человеком, и перезапись обязана её сохранять
-						 *
-						 * \~english
-						 * Flag of the writing of an array in several lines
-						 *
-						 * @note It is kept for the sake of the writing back: the arrangement of the lines has been chosen
-						 *       by the human, and a rewriting is obliged to preserve it
-						 *
-						 * \~
-						 */
-						bool multiline;
-						// Целое число со знаком
-						int64_t integer;
-						// Число с плавающей точкой
-						double real;
-						// Отметка времени
-						stamp_t stamp;
-						// Место строкового значения в хранилище знаков
-						span_t text;
-						// Порядковые номера узлов значений перечня либо пар встроенной таблицы
-						vector <uint32_t> items;
-						/**
-						 * \~russian
-						 * Составные имена ключей пар встроенной таблицы
-						 *
-						 * @note Перечень этот идёт рядом с перечнем узлов: имя каждой пары
-						 *       встроенной таблицы задано отрезком перечня частей имён
-						 *
-						 * \~english
-						 * Compound names of the keys of the pairs of an inline table
-						 *
-						 * @note This list goes next to the list of the nodes: the name of every pair
-						 *       of an inline table is given by a segment of the list of the parts of the names
-						 *
-						 * \~
-						 */
-						vector <span_t> names;
-						/**
-						 * \~russian
-						 * Примечания, стоящие внутри перечня значений
-						 *
-						 * @note Держатся ради обратной записи: примечание писано человеком,
-						 *       и перезапись, его теряющая, обедняет файл настроек
-						 *
-						 * \~english
-						 * Comments standing inside an array of the values
-						 *
-						 * @note They are kept for the sake of the writing back: a comment has been written by a human,
-						 *       and a rewriting that loses it impoverishes the settings file
-						 *
-						 * \~
-						 */
-						vector <remark_t> remarks;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Node() noexcept :
-						 type(type_t::NONE), quoting(string_t::BASIC), radix(radix_t::DECIMAL),
-						 boolean(false), multiline(false), integer(0), real(0.0) {}
-					} node_t;
-					/**
-					 * \~russian
-					 * @brief Запись разобранного текста настроек
-					 *
-					 * \~english
-					 * @brief Record of the parsed settings text
-					 *
-					 * \~
-					 */
-					typedef struct Record {
-						// Вид записи текста настроек
-						kind_t kind;
-						/**
-						 * \~russian
-						 * Место составного имени записи в перечне частей имён
-						 *
-						 * @note Отрезок задан смещением и количеством частей, а не длиной в
-						 *       байтах: части имени хранятся своим перечнем
-						 *
-						 * \~english
-						 * Place of the compound name of the record in the list of the parts of the names
-						 *
-						 * @note The segment is given by an offset and a number of the parts rather than by a length in
-						 *       bytes: the parts of a name are stored in their own list
-						 *
-						 * \~
-						 */
-						span_t path;
-						// Порядковый номер узла значения пары
-						uint32_t node;
-						// Порядковый номер записи объявления таблицы, которой запись принадлежит
-						uint32_t table;
-						// Место содержимого примечания в хранилище знаков
-						span_t text;
-						/**
-						 * \~russian
-						 * Признак примечания, дописанного к готовой строке
-						 *
-						 * @note Примечание это писано к своей записи и удаляется вместе с
-						 *       нею: пояснение к тому, чего в файле нет, смысла не несёт
-						 *
-						 * \~english
-						 * Flag of a comment appended to a ready line
-						 *
-						 * @note That comment has been written to its record and is removed together with
-						 *       it: an explanation of what is not in the file carries no sense
-						 *
-						 * \~
-						 */
-						bool trailing;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Record() noexcept :
-						 kind(kind_t::NONE), node(0), table(0), trailing(false) {}
-					} record_t;
-				private:
-					// Код ошибки последней операции
-					mutable error_t _error;
-				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					mutable location_t _errorLocation;
-				private:
-					// Общее хранилище знаков имён, значений и примечаний
-					string _store;
-				private:
-					// Перечень записей разобранного текста в порядке их следования
-					vector <record_t> _records;
-				private:
-					// Перечень составных частей имён записей и пар встроенных таблиц
-					vector <key_t> _keys;
-				private:
-					// Перечень узлов значений текста настроек
-					vector <node_t> _nodes;
-				private:
-					// Указатель записей по составному имени, приведённому к виду для сличения
-					unordered_map <string, uint32_t> _index;
-				private:
-					/**
-					 * \~russian
-					 * Порядок объявления дочерних имён по каждому составному имени
-					 *
-					 * @details Держит для каждой таблицы перечень записей её дочерних имён в
-					 *          порядке следования их в тексте.
-					 *
-					 * @note Без него выдача перечня имён обращалась бы в квадратичную:
-					 *       перебор всех записей дерева ради каждой таблицы
-					 *
-					 * \~english
-					 * Order of the declaration of the child names for every compound name
-					 *
-					 * @details Keeps for every table a list of the records of its child names in
-					 *          the order of their succession in the text.
-					 *
-					 * @note Without it the issuance of the list of the names would turn into a quadratic one:
-					 *       a traversal of all the records of the tree for the sake of every table
-					 *
-					 * \~
-					 */
-					unordered_map <string, vector <uint32_t>> _children;
-					private:
-					/**
-					 * \~russian
-					 * Имена таблиц, заведённых составным именем ключа
-					 *
-					 * @details Составное имя ключа «a.b = 1» заводит таблицу «a», собственного
-					 *          объявления не имеющую, и описание запрещает объявлять её заголовком:
-					 *          правка, такой заголовок заводящая, собрала бы текст, который разбор
-					 *          отверг бы повтором. Таблица, заведённая исподволь заголовком «[a.b]»,
-					 *          тем же заголовком «[a]» объявляется законно, и в перечень этот не идёт.
-					 *
-					 * \~english
-					 * Names of the tables created by a compound name of a key
-					 *
-					 * @details The compound name of a key «a.b = 1» creates the table «a», which has no declaration
-					 *          of its own, and the specification prohibits declaring it by a header:
-					 *          an editing that creates such a header would assemble a text which the parsing
-					 *          would reject as a repetition. A table created implicitly by the header «[a.b]»
-					 *          is declared lawfully by the same header «[a]», and it does not go into this list.
-					 *
-					 * \~
-					 */
-					unordered_set <string> _dotted;
-				private:
-					/**
-					 * \~russian
-					 * Состояние обхода записей, удерживаемое между перестроениями указателей
-					 *
-					 * @details Перестроение обходит всё дерево, и правка, зовущая его на всякую
-					 *          заводимую запись, обращает сборку дерева правками в квадратичную: восемь
-					 *          тысяч правок стоили три секунды, и цена одной правки удваивалась с каждым
-					 *          удвоением их числа. Запись, встающая в конец перечня, порядковых номеров
-					 *          прежних записей не сдвигает, и указатели ей достаточно нарастить - для
-					 *          чего и держится состояние, с каким обход дошёл до конца дерева.
-					 *
-					 * @note Разбор записи ведётся одним и тем же телом и при полном перестроении,
-					 *       и при доборном наращивании: два списка правил разошлись бы при первой же
-					 *       правке одного из них
-					 *
-					 * \~english
-					 * State of the traversal of the records kept between the rebuildings of the indexes
-					 *
-					 * @details A rebuilding traverses the whole tree, and an editing calling it for every
-					 *          created record turns the assembly of a tree by the editings into a quadratic one: eight
-					 *          thousand editings used to cost three seconds, and the price of one editing doubled with
-					 *          every doubling of their number. A record placed at the end of the list does not shift the
-					 *          ordinal numbers of the previous records, and it is enough to grow the indexes for it —
-					 *          which is what the state the traversal reached the end of the tree with is kept for.
-					 *
-					 * @note The parsing of a record is conducted by one and the same body both at a full
-					 *       rebuilding and at an incremental growing: two lists of the rules would diverge at the
-					 *       first editing of one of them
-					 *
-					 * \~
-					 */
-					typedef struct Traversal {
-						/**
-						 * \~russian
-						 * Ключ указателя таблицы, которой принадлежат разбираемые записи
-						 *
-						 * \~english
-						 * Key of the index of the table the records being parsed belong to
-						 *
-						 * \~
-						 */
-						string table;
-						/**
-						 * \~russian
-						 * Имя таблицы, которой принадлежат разбираемые записи, без номеров
-						 *
-						 * @details Ключ указателя несёт номера таблиц набора, а имя - одни лишь
-						 *          составные части. Хранятся оба: по имени сличается, продолжает ли
-						 *          объявляемая таблица нынешнюю, а ключ служит ей основанием.
-						 *
-						 * \~english
-						 * Name of the table the records being parsed belong to, without the ordinals
-						 *
-						 * @details The key of the index carries the ordinals of the tables of an array while the name —
-						 *          only the compound parts. Both are stored: by the name it is compared whether
-						 *          the table being declared continues the current one, while the key serves as its base.
-						 *
-						 * \~
-						 */
-						string named;
-						/**
-						 * \~russian
-						 * Ключи указателя объявленных таблиц по именам их без номеров
-						 *
-						 * @details Служит розыску объемлющей таблицы: объявление «[[a.b]]» лежит
-						 *          внутри последней таблицы набора «a», и ключ его строится на её ключе.
-						 *          Сличения с одною лишь нынешнею таблицею мало - между ними встают
-						 *          объявления глубже вложенные, как «[a.b.c]» перед вторым «[[a.b]]».
-						 *
-						 * \~english
-						 * Keys of the index of the declared tables by their names without the ordinals
-						 *
-						 * @details Serves the search for the enclosing table: the declaration «[[a.b]]» lies
-						 *          inside the last table of the array «a», and its key is built upon her key.
-						 *          A comparison with the current table alone is not enough — between them stand
-						 *          the declarations nested deeper, like «[a.b.c]» before the second «[[a.b]]».
-						 *
-						 * \~
-						 */
-						unordered_map <string, string> anchors;
-						/**
-						 * \~russian
-						 * Количество таблиц, объявленных каждым набором таблиц
-						 *
-						 * \~english
-						 * Number of the tables declared by every array of tables
-						 *
-						 * \~
-						 */
-						unordered_map <string, uint32_t> ordinals;
-						/**
-						 * \~russian
-						 * Объявленные дочерние имена по каждому объемлющему имени
-						 *
-						 * @note Перечень дочерних имён держится порядком объявления, и сличать
-						 *       добавляемое имя перебором его значило бы обращать перестроение в
-						 *       квадратичное: текст из одних объявлений таблиц собирался вдевятеро
-						 *       медленнее текста с парами, и замер это показал сразу
-						 *
-						 * \~english
-						 * Declared child names for every enclosing name
-						 *
-						 * @note The list of the child names is kept in the order of the declaration, and
-						 *       comparing an added name by a traversal of it would turn the rebuilding into a
-						 *       quadratic one: a text made of the declarations of the tables alone used to be
-						 *       assembled nine times slower than a text with the pairs, and a measurement showed it at once
-						 *
-						 * \~
-						 */
-						unordered_map <string, unordered_set <string>> declared;
-						/**
-						 * \~russian
-						 * Подсказки места вставки записи по порядковому номеру таблицы
-						 *
-						 * @details Заведение пары ищет место за последней парой её таблицы обходом
-						 *          области таблицы, а область эта растёт с каждой заведённой парой: обход
-						 *          выходил квадратичным - шестнадцать тысяч правок стоили сто двадцать
-						 *          восемь миллионов шагов. Подсказка хранит место, найденное прошлым
-						 *          заведением, и обход продолжается от него, проходя лишь записи, с тех
-						 *          пор добавленные.
-						 *
-						 * @note Подсказка есть подсказка, а не истина: правило поиска места
-						 *       остаётся одно и то же, и обход от подсказки даёт тот же итог, что и
-						 *       обход с начала области. Всякая правка, сдвигающая порядковые номера
-						 *       записей, подсказки отменяет вместе с перестроением указателей
-						 *
-						 * \~english
-						 * Hints of the place of the insertion of a record by the ordinal number of a table
-						 *
-						 * @details The creation of a pair looks for a place after the last pair of its table by a
-						 *          traversal of the area of the table, and that area grows with every created pair: the
-						 *          traversal used to be quadratic — sixteen thousand editings cost one hundred twenty eight
-						 *          million steps. A hint keeps the place found by the previous creation, and the traversal
-						 *          continues from it, passing only the records added since then.
-						 *
-						 * @note A hint is a hint rather than a truth: the rule of the search for a place remains one
-						 *       and the same, and a traversal from a hint gives the same result as a traversal from the
-						 *       beginning of the area. Every editing that shifts the ordinal numbers of the records
-						 *       cancels the hints together with the rebuilding of the indexes
-						 *
-						 * \~
-						 */
-						unordered_map <uint32_t, size_t> hints;
-						/**
-						 * \~russian
-						 * @brief Метод сброса состояния обхода записей
-						 *
-						 * \~english
-						 * @brief Method of the reset of the state of the traversal of the records
-						 *
-						 * \~
-						 */
-						void reset() noexcept {
-							// Выполняем очистку ключа указателя таблицы
-							this->table.clear();
-							// Выполняем очистку имени таблицы без номеров
-							this->named.clear();
-							// Выполняем очистку ключей объявленных таблиц
-							this->anchors.clear();
-							// Выполняем очистку количества таблиц наборов
-							this->ordinals.clear();
-							// Выполняем очистку объявленных дочерних имён
-							this->declared.clear();
-							// Выполняем очистку подсказок места вставки записи
-							this->hints.clear();
-						}
-					} traversal_t;
-				private:
-					/**
-					 * \~russian
-					 * Состояние обхода, с каким перестроение дошло до конца дерева
-					 *
-					 * \~english
-					 * State of the traversal the rebuilding reached the end of the tree with
-					 *
-					 * \~
-					 */
-					traversal_t _traversal;
-				private:
-					/**
-					 * \~russian
-					 * Количество записей и узлов, правкой в мусор обращённых
-					 *
-					 * @note Считается приблизительно: узел замещённого значения идёт за один,
-					 *       сколько бы вложенных он ни нёс. Занижение уплотнение лишь
-					 *       отдаляет, а рост всё равно остаётся ограниченным
-					 *
-					 * \~english
-					 * Number of the records and the nodes turned into garbage by an editing
-					 *
-					 * @note Counted approximately: the node of a replaced value goes as one,
-					 *       however many nested ones it may carry. An underestimation only postpones
-					 *       the compaction, while the growth all the same remains limited
-					 *
-					 * \~
-					 */
-					size_t _garbage;
-					/**
-					 * \~russian
-					 * Длина хранилища знаков, снятая последним уплотнением
-					 *
-					 * @note Держится ради правки строковых значений: содержимое дописывается
-					 *       к хранилищу всякий раз, а прежнее остаётся в нём мусором, и
-					 *       счётом записей рост этот не виден
-					 *
-					 * \~english
-					 * Length of the storage of the characters taken at the last compaction
-					 *
-					 * @note It is kept for the sake of the editing of the string values: the content is appended
-					 *       to the storage every time, while the previous one remains in it as garbage, and
-					 *       by the count of the records that growth is not visible
-					 *
-					 * \~
-					 */
-					size_t _compacted;
-				private:
-					// Настройки дерева настроек
-					settings_t _settings;
 				private:
 					/**
 					 * \~russian
@@ -1765,6 +1712,20 @@ namespace awh {
 					vector <string_view> keys(const vector <string_view> & path = {}) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон метода перечисления звеньев пути к детям значения
+					 *
+					 * @tparam T тип числа результата разбора
+					 *
+					 * \~english
+					 * @brief Template for a method that enumerates the segments of the path to a value's children
+					 *
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
+					 */
+					template <class T>
+					/**
+					 * \~russian
 					 * @brief Метод перечисления звеньев пути к детям значения
 					 *
 					 * @details Выдаются НЕ ИМЕНА детей, а ЗВЕНЬЯ ПУТИ к ним: такие, что
@@ -1834,9 +1795,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_convertible <const T &, string_view>::value, vector <string>>::type
-					keys(const T & path) const noexcept {
+					typename std::enable_if <std::is_convertible <const T &, string_view>::value, vector <string>>::type keys(const T & path) const noexcept {
 						// Выводим перечень звеньев пути к детям значения
 						return this->children(string_view(path));
 					}
@@ -1895,7 +1854,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					::awh::codec::toml::Value at(const string & path) const noexcept;
+					codec::toml::Value at(const string & path) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон метода роверки наличия значения по пути
+					 *
+					 * @tparam T тип числа результата разбора
+					 *
+					 * \~english
+					 * @brief Template for a method to check for the existence of a value along a path
+					 *
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
+					 */
+					template <class T>
 					/**
 					 * \~russian
 					 * @brief Метод проверки наличия значения по пути
@@ -1920,9 +1893,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_convertible <const T &, string_view>::value, bool>::type
-					has(const T & path) const noexcept {
+					typename std::enable_if <std::is_convertible <const T &, string_view>::value, bool>::type has(const T & path) const noexcept {
 						// Выводим признак наличия значения по указанному пути
 						return this->present(string(string_view(path)));
 					}
@@ -1984,21 +1955,20 @@ namespace awh {
 					 * \~
 					 */
 					type_t type(const vector <string_view> & path) const noexcept;
-					codec::kind_t kind(const vector <string_view> & path) const noexcept {
-						switch(this->type(path)){
-							case type_t::STRING:	return codec::kind_t::STRING;
-							case type_t::INTEGER:
-							case type_t::FLOAT:	return codec::kind_t::NUMBER;
-							case type_t::BOOLEAN:	return codec::kind_t::BOOL;
-							case type_t::OFFSET_DATETIME:
-							case type_t::LOCAL_DATETIME:
-							case type_t::LOCAL_DATE:
-							case type_t::LOCAL_TIME:	return codec::kind_t::TIME;
-							case type_t::ARRAY:	return codec::kind_t::ARRAY;
-							case type_t::TABLE:	return codec::kind_t::MAP;
-							default:	return codec::kind_t::NONE;
-						}
-					}
+					/**
+					 * \~russian
+					 * @brief Метод извлечения вида узла значения
+					 *
+					 * @return вид узла значения
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the kind of the node of a value
+					 *
+					 * @return kind of the node of the value
+					 *
+					 * \~
+					 */
+					codec::kind_t kind(const vector <string_view> & path) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения значения пары
@@ -2113,13 +2083,12 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Шаблон типа числа результата разбора
+					 * @brief Шаблон метода получения значения пары числом
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
-					 *
 					 * \~english
-					 * @brief Template of the number type of the parsing result
+					 * @brief Method template for retrieving a pair value as a number
 					 *
 					 * @tparam T number type of the parsing result
 					 *
@@ -2221,6 +2190,20 @@ namespace awh {
 					bool set(const vector <string_view> & path, const string_view value, const string_t quoting = string_t::BASIC) noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон метода постановки владеющего значения по пути
+					 *
+					 * @tparam T тип числа результата разбора
+					 *
+					 * \~english
+					 * @brief Pattern of a method for setting the owning value along a path
+					 *
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
+					 */
+					template <class T>
+					/**
+					 * \~russian
 					 * @brief Метод постановки владеющего значения по пути
 					 *
 					 * @details Ход этот есть тот же перенос, какой ведёт `Value::graft()`, и
@@ -2255,9 +2238,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_convertible <const T &, string_view>::value, bool>::type
-					set(const T & path, const ::awh::codec::toml::Value & value) noexcept {
+					typename std::enable_if <std::is_convertible <const T &, string_view>::value, bool>::type set(const T & path, const codec::toml::Value & value) noexcept {
 						// Выводим результат переноса владеющего значения в дерево настроек
 						return this->graft(string_view(path), value);
 					}
@@ -2294,7 +2275,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool graft(const string_view path, const ::awh::codec::toml::Value & value) noexcept;
+					bool graft(const string_view path, const codec::toml::Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки строкового значения пары
@@ -2513,6 +2494,20 @@ namespace awh {
 					bool erase(const vector <string_view> & path) noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон метода снятия значения по пути
+					 *
+					 * @tparam T тип числа результата разбора
+					 *
+					 * \~english
+					 * @brief Pattern of a method for removing a value along a path
+					 *
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
+					 */
+					template <class T>
+					/**
+					 * \~russian
 					 * @brief Метод снятия значения по пути
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки: снос по пути, строкою
@@ -2544,9 +2539,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <class T>
-					typename ::std::enable_if <::std::is_convertible <const T &, string_view>::value, bool>::type
-					erase(const T & path) noexcept {
+					typename std::enable_if <std::is_convertible <const T &, string_view>::value, bool>::type erase(const T & path) noexcept {
 						// Выводим результат снятия значения по пути
 						return this->prune(string(string_view(path)));
 					}
@@ -2832,6 +2825,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Document(Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -2839,7 +2874,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2853,52 +2888,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Ходы копии и переноса дерева
-					 *
-					 * @details Объявлены они здесь ради ПЕРЕНОСА: прежде тут стоял деструктор,
-					 *          освобождавший дерево зовом `clear()`, и объявление его отменяло порождение
-					 *          переносящих ходов - по правилу языка неявный перенос у класса с деструктором
-					 *          объявленным не порождается вовсе. Перенос при этом молча обращался копией:
-					 *          замер 17.09.2026 на дереве о двадцати тысячах таблиц дал перенос 4240 мкс
-					 *          против копии 4127 мкс, и источник сохранял всё содержимое.
-					 *
-					 * @note Деструктор тот был ИЗЛИШЕН: `clear()` сбрасывает поля, а поля эти -
-					 *       перечни да строки, и освободятся они деструкторами своими сами. Сосед YAML
-					 *       деструктора не имеет вовсе, и перенос у него работал всё это время
-					 *
-					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 *          переноса подавило бы порождение копии, и дерево перестало бы копироваться
-					 *
-					 * \~english
-					 * @brief The calls of the copying and of the moving of a tree
-					 *
-					 * @details They are declared here for the sake of the MOVING: formerly a destructor
-					 *          stood here, freeing the tree by a call to `clear()`, and its declaration
-					 *          cancelled the generation of the moving methods - by the rule of the
-					 *          language an implicit move is not generated at all at a class with a
-					 *          declared destructor. The moving thereby silently turned into a copy: a
-					 *          measurement of 2026-09-17 on a tree of twenty thousand tables gave a move
-					 *          of 4240 µs against a copy of 4127 µs, and the source kept all of its
-					 *          content.
-					 *
-					 * @note That destructor was REDUNDANT: `clear()` resets the fields, and those fields
-					 *       are lists and strings, and they are freed by their own destructors themselves.
-					 *       The neighbouring YAML has no destructor at all, and its moving worked all this
-					 *       time
-					 *
-					 * @warning FOUR methods are declared at once by the rule of five: the declaration of a
-					 *          move alone would have suppressed the generation of the copy, and the tree
-					 *          would have ceased to be copied
-					 *
-					 * \~
-					 */
-					Document(const Document &) = default;
-					Document(Document &&) noexcept = default;
-					Document & operator = (const Document &) = default;
-					Document & operator = (Document &&) noexcept = default;
+					explicit Document(const settings_t & settings) noexcept;
 			} document_t;
 		};
 	};

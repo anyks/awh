@@ -49,7 +49,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -65,7 +64,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -75,7 +73,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера TOML
-		 *
 		 *
 		 * \~english
 		 * @brief TOML container namespace
@@ -178,6 +175,32 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Decoder {
 				private:
+					// Признак навязанной извне кодировки
+					bool _forced;
+					// Признак обработки метки порядка байтов
+					bool _marked;
+					// Признак обнаружения метки порядка байтов
+					bool _signed;
+					// Признак начала приведения текста
+					bool _started;
+				private:
+					// Количество удержанных байтов незавершённой последовательности
+					size_t _length;
+				private:
+					// Удержанная старшая половина суррогатной пары
+					uint16_t _surrogate;
+				private:
+					// Код ошибки последней операции приведения
+					error_t _error;
+					// Определённая кодировка исходного текста
+					encoding_t _encoding;
+				private:
+					// Удержанное начало текста до определения кодировки
+					string _prolog;
+				private:
+					// Удержанные байты незавершённой последовательности знака
+					char _pending[4];
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод вывода сообщения об отказе в лог
@@ -194,42 +217,6 @@ namespace awh {
 					 * \~
 					 */
 					void report() const noexcept;
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-				private:
-					// Определённая кодировка исходного текста
-					encoding_t _encoding;
-				private:
-					// Код ошибки последней операции приведения
-					error_t _error;
-				private:
-					// Признак навязанной извне кодировки
-					bool _forced;
-					// Признак обработки метки порядка байтов
-					bool _marked;
-					// Признак обнаружения метки порядка байтов
-					bool _signed;
-					// Признак начала приведения текста
-					bool _started;
-				private:
-					// Удержанное начало текста до определения кодировки
-					string _prolog;
-				private:
-					// Количество удержанных байтов незавершённой последовательности
-					size_t _length;
-					// Удержанные байты незавершённой последовательности знака
-					char _pending[4];
-				private:
-					// Удержанная старшая половина суррогатной пары
-					uint16_t _surrogate;
 				private:
 					/**
 					 * \~russian
@@ -372,7 +359,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Decoder() noexcept;
+					explicit Decoder() noexcept;
 			} decoder_t;
 		};
 	};

@@ -34,11 +34,11 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <deque>
 #include <string>
 #include <vector>
 #include <cstdint>
 #include <string_view>
-#include <deque>
 #include <unordered_map>
 
 /**
@@ -50,7 +50,6 @@
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -67,7 +66,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -77,7 +75,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера TOML
-		 *
 		 *
 		 * \~english
 		 * @brief TOML container namespace
@@ -218,26 +215,16 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки разбора текста настроек
+					 * @brief Структура настройки разбора текста
 					 *
 					 * @details Настройки задают пределы разбора и объём выдачи, но не
 					 *          устройство записи: описание у TOML единственное, и наречий здесь нет.
 					 *
 					 * \~english
-					 * @brief Settings of the parsing of a settings text
+					 * @brief Structure for configuring text parsing
 					 *
 					 * @details The settings give the limits of the parsing and the volume of the output, but not
 					 *          the arrangement of the notation: the specification of TOML is a single one, and there are no dialects here.
@@ -245,6 +232,70 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						/**
+						 * \~russian
+						 * Признак дозволения вложенных значений
+						 *
+						 * @details Снятый признак отвергает всякий перечень значений да встроенную
+						 *          таблицу, оставляя значения простые. Прежде мысль эта выражалась нулём у
+						 *          `maxDepth`, а ноль ныне значит «без предела» у всех кодеков рамки.
+						 *
+						 * \~english
+						 * Sign of the permission of the nested values
+						 *
+						 * @details A cleared sign rejects every array and inline table, leaving the simple values.
+						 *          Formerly this thought was expressed by a zero at `maxDepth`, while a zero now
+						 *          means «without a limit» at all the codecs of the framework.
+						 *
+						 * \~
+						 */
+						bool nesting;
+						/**
+						 * \~russian
+						 * Признак признания знаков Юникода в именах без кавычек
+						 *
+						 * @note Описание версии 1.0.0 отводит именам без кавычек лишь знаки
+						 *       US-ASCII, и умолчанием берётся оно: имя «сервер» такому разбору
+						 *       положено записывать в кавычках. Черновик следующей версии знаки
+						 *       Юникода в именах дозволяет, и признак этот его включает - выбор
+						 *       оставлен потребителю, а не зашит
+						 *
+						 * \~english
+						 * Flag of the recognition of the Unicode characters in the names without quotes
+						 *
+						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to the names without quotes,
+						 *       and it is taken by default: the name «сервер» for such a parsing
+						 *       ought to be written in quotes. The draft of the next version permits the Unicode
+						 *       characters in the names, and this flag enables it — the choice
+						 *       is left to the consumer rather than being hardwired
+						 *
+						 * \~
+						 */
+						bool unicode;
+						/**
+						 * \~russian
+						 * Признак проверки повторного объявления ключей и таблиц
+						 *
+						 * @note Описание повтор запрещает, и проверка эта по умолчанию
+						 *       включена. Стоит она памяти - разбор удерживает имена уже
+						 *       объявленного, - и отключают её там, где текст заведомо свой
+						 *
+						 * \~english
+						 * Flag of the check of a repeated declaration of the keys and of the tables
+						 *
+						 * @note The specification prohibits a repetition, and this check is enabled by
+						 *       default. It costs memory — the parsing holds the names of what has already been
+						 *       declared — and it is disabled where the text is known to be one's own
+						 *
+						 * \~
+						 */
+						bool duplicates;
+						// Признак выдачи событий пустых строк
+						bool emitBlanks;
+						// Признак выдачи событий примечаний
+						bool emitComments;
+						// Наибольшая допустимая длина составной части имени ключа в байтах, ноль - без предела
+						uint32_t maxKey;
 						/**
 						 * \~russian
 						 * Наибольшая допустимая длина логической строки в байтах, ноль - без предела
@@ -263,8 +314,6 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxLine;
-						// Наибольшая допустимая длина составной части имени ключа в байтах, ноль - без предела
-						uint32_t maxKey;
 						/**
 						 * \~russian
 						 * Наибольшая допустимая глубина вложенности значений
@@ -300,189 +349,22 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxDepth;
-						/**
-						 * \~russian
-						 * Признак дозволения вложенных значений
-						 *
-						 * @details Снятый признак отвергает всякий перечень значений да встроенную
-						 *          таблицу, оставляя значения простые. Прежде мысль эта выражалась нулём у
-						 *          `maxDepth`, а ноль ныне значит «без предела» у всех кодеков рамки.
-						 *
-						 * \~english
-						 * Sign of the permission of the nested values
-						 *
-						 * @details A cleared sign rejects every array and inline table, leaving the simple values.
-						 *          Formerly this thought was expressed by a zero at `maxDepth`, while a zero now
-						 *          means «without a limit» at all the codecs of the framework.
-						 *
-						 * \~
-						 */
-						bool nesting;
 						// Наибольшее допустимое количество составных частей имени ключа, ноль - без предела
 						uint32_t maxParts;
-						/**
-						 * \~russian
-						 * Признак проверки повторного объявления ключей и таблиц
-						 *
-						 * @note Описание повтор запрещает, и проверка эта по умолчанию
-						 *       включена. Стоит она памяти - разбор удерживает имена уже
-						 *       объявленного, - и отключают её там, где текст заведомо свой
-						 *
-						 * \~english
-						 * Flag of the check of a repeated declaration of the keys and of the tables
-						 *
-						 * @note The specification prohibits a repetition, and this check is enabled by
-						 *       default. It costs memory — the parsing holds the names of what has already been
-						 *       declared — and it is disabled where the text is known to be one's own
-						 *
-						 * \~
-						 */
-						bool duplicates;
-						/**
-						 * \~russian
-						 * Признак признания знаков Юникода в именах без кавычек
-						 *
-						 * @note Описание версии 1.0.0 отводит именам без кавычек лишь знаки
-						 *       US-ASCII, и умолчанием берётся оно: имя «сервер» такому разбору
-						 *       положено записывать в кавычках. Черновик следующей версии знаки
-						 *       Юникода в именах дозволяет, и признак этот его включает - выбор
-						 *       оставлен потребителю, а не зашит
-						 *
-						 * \~english
-						 * Flag of the recognition of the Unicode characters in the names without quotes
-						 *
-						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to the names without quotes,
-						 *       and it is taken by default: the name «сервер» for such a parsing
-						 *       ought to be written in quotes. The draft of the next version permits the Unicode
-						 *       characters in the names, and this flag enables it — the choice
-						 *       is left to the consumer rather than being hardwired
-						 *
-						 * \~
-						 */
-						bool unicode;
-						// Признак выдачи событий примечаний
-						bool emitComments;
-						// Признак выдачи событий пустых строк
-						bool emitBlanks;
 						// Кодировка, навязанная извне вопреки метке порядка байтов
 						encoding_t encoding;
 						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
-					/**
-					 * \~russian
-					 * @brief Указание на последовательность знаков в хранилище записи
-					 *
-					 * @note Хранилище по ходу разбора записи прирастает и вправе быть
-					 *       перенесено в памяти: удерживать указатели в него до окончания
-					 *       разбора записи нельзя, а указания смещением переносимы
-					 *
-					 * \~english
-					 * @brief Pointer to a sequence of characters in the storage of a record
-					 *
-					 * @note The storage grows in the course of the parsing of a record and has the right to be
-					 *       moved in the memory: the pointers into it cannot be held until the end of
-					 *       the parsing of the record, while the pointers by an offset are movable
-					 *
-					 * \~
-					 */
-					typedef struct Span {
-						// Смещение начала последовательности в хранилище
-						uint32_t offset;
-						// Длина последовательности знаков
-						uint32_t length;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Span() noexcept : offset(0), length(0) {}
-					} span_t;
-					/**
-					 * \~russian
-					 * @brief Событие разбора, собранное для выдачи
-					 *
-					 * @details Запись разбирается целиком, а события её складываются в
-					 *          очередь: значение составное даёт их несколько, и выдавать их по
-					 *          мере разбора значило бы оставлять потребителя с событиями записи,
-					 *          которая ошибочна в своей второй половине.
-					 *
-					 * \~english
-					 * @brief Parsing event assembled for the issuance
-					 *
-					 * @details A record is parsed in full, while its events are put into a
-					 *          queue: a compound value gives several of them, and to issue them as
-					 *          the parsing goes on would mean to leave the consumer with the events of a record
-					 *          which is erroneous in its second half.
-					 *
-					 * \~
-					 */
-					typedef struct Item {
-						// Вид собранного события
-						event_t event;
-						// Тип значения события
-						type_t type;
-						// Запись строкового значения
-						string_t quoting;
-						// Система счисления записи целого числа
-						radix_t radix;
-						// Логическое значение
-						bool boolean;
-						// Признак того, что примечание дописано к готовой строке
-						bool trailing;
-						// Целое число со знаком
-						int64_t integer;
-						// Число с плавающей точкой
-						double real;
-						// Отметка времени
-						stamp_t stamp;
-						// Указание на содержимое события в хранилище записи
-						span_t content;
-						// Номер первой составной части имени ключа события
-						uint32_t part;
-						// Количество составных частей имени ключа события
-						uint32_t parts;
-						// Положение события в исходном тексте
-						location_t location;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Item() noexcept :
-						 event(event_t::NONE), type(type_t::NONE), quoting(string_t::BASIC),
-						 radix(radix_t::DECIMAL), boolean(false), trailing(false), integer(0),
-						 real(0.0), part(0), parts(0) {}
-					} item_t;
-					/**
-					 * \~russian
-					 * @brief Составная часть имени ключа, собранная для выдачи
-					 *
-					 * \~english
-					 * @brief Component part of the name of a key assembled for the issuance
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Роды имён, объявляемых текстом настроек
@@ -513,20 +395,132 @@ namespace awh {
 						VALUE    = 0x05, // Имя объявлено парой с простым значением либо перечнем
 						INLINE   = 0x06  // Имя объявлено парой со встроенной таблицей
 					};
+				private:
 					/**
 					 * \~russian
-					 * @brief Имя, объявляемое разбираемой записью
+					 * @brief Структура указания на последовательность знаков в хранилище записи
+					 *
+					 * @note Хранилище по ходу разбора записи прирастает и вправе быть
+					 *       перенесено в памяти: удерживать указатели в него до окончания
+					 *       разбора записи нельзя, а указания смещением переносимы
 					 *
 					 * \~english
-					 * @brief Name declared by the record being parsed
+					 * @brief Structure for specifying a sequence of characters within a record storage
+					 *
+					 * @note The storage grows in the course of the parsing of a record and has the right to be
+					 *       moved in the memory: the pointers into it cannot be held until the end of
+					 *       the parsing of the record, while the pointers by an offset are movable
 					 *
 					 * \~
 					 */
-					typedef struct Pending {
-						// Объявляемое полное имя
-						string name;
-						// Род объявляемого имени
-						kind_t kind;
+					typedef struct __AWH_SHARED_EXPORT__ Span {
+						// Длина последовательности знаков
+						uint32_t length;
+						// Смещение начала последовательности в хранилище
+						uint32_t offset;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Span() noexcept;
+					} span_t;
+					/**
+					 * \~russian
+					 * @brief Структура составной части имени ключа, собранная для выдачи
+					 *
+					 * \~english
+					 * @brief Structure of a key name component, assembled for output
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Segment {
+						// Указание на имя части в хранилище записи
+						span_t name;
+						// Запись имени части в исходном тексте
+						naming_t naming;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Segment() noexcept;
+					} segment_t;
+					/**
+					 * \~russian
+					 * @brief Структура события разбора, собранное для выдачи
+					 *
+					 * @details Запись разбирается целиком, а события её складываются в
+					 *          очередь: значение составное даёт их несколько, и выдавать их по
+					 *          мере разбора значило бы оставлять потребителя с событиями записи,
+					 *          которая ошибочна в своей второй половине.
+					 *
+					 * \~english
+					 * @brief Structure of the parsing event, assembled for output
+					 *
+					 * @details A record is parsed in full, while its events are put into a
+					 *          queue: a compound value gives several of them, and to issue them as
+					 *          the parsing goes on would mean to leave the consumer with the events of a record
+					 *          which is erroneous in its second half.
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Item {
+						// Логическое значение
+						bool boolean;
+						// Признак того, что примечание дописано к готовой строке
+						bool trailing;
+						// Число с плавающей точкой
+						double real;
+						// Номер первой составной части имени ключа события
+						uint32_t part;
+						// Количество составных частей имени ключа события
+						uint32_t parts;
+						// Целое число со знаком
+						int64_t integer;
+						// Тип значения события
+						type_t type;
+						// Вид собранного события
+						event_t event;
+						// Отметка времени
+						stamp_t stamp;
+						// Система счисления записи целого числа
+						radix_t radix;
+						// Указание на содержимое события в хранилище записи
+						span_t content;
+						// Запись строкового значения
+						string_t quoting;
+						// Положение события в исходном тексте
+						location_t location;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Item() noexcept;
+					} item_t;
+					/**
+					 * \~russian
+					 * @brief Структура имени, объявляемое разбираемой записью
+					 *
+					 * \~english
+					 * @brief Structure of the name declared by the record being parsed
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Pending {
 						/**
 						 * \~russian
 						 * Признак того, что имя заведено исподволь
@@ -544,6 +538,10 @@ namespace awh {
 						 * \~
 						 */
 						bool implied;
+						// Род объявляемого имени
+						kind_t kind;
+						// Объявляемое полное имя
+						string name;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -561,51 +559,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Pending(const string_view name, const kind_t kind, const bool implied) noexcept :
-						 name(name), kind(kind), implied(implied) {}
+						explicit Pending(string_view name, const kind_t kind, const bool implied) noexcept;
 					} pending_t;
-					typedef struct Segment {
-						// Указание на имя части в хранилище записи
-						span_t name;
-						// Запись имени части в исходном тексте
-						naming_t naming;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Segment() noexcept : naming(naming_t::BARE) {}
-					} segment_t;
 				private:
-					// Состояние разбора текста настроек
-					state_t _state;
-					// Код ошибки последней операции разбора
-					error_t _error;
-					/**
-					 * \~russian
-					 * Признак того, что разбираемой записи не хватает продолжения текста
-					 *
-					 * @note Разбор записи ведётся по накопленному тексту, и исчерпание его
-					 *       посреди записи означает не ошибку, а нужду в следующем куске: запись
-					 *       откатывается к своему началу и разбирается заново по приходе
-					 *       продолжения. Ошибкой исчерпание становится лишь на последнем куске
-					 *
-					 * \~english
-					 * Flag of the record being parsed lacking a continuation of the text
-					 *
-					 * @note The parsing of a record is conducted over the accumulated text, and its exhaustion
-					 *       in the middle of a record means not an error but a need for the next chunk: the record
-					 *       is rolled back to its beginning and is parsed anew upon the arrival of
-					 *       the continuation. The exhaustion becomes an error only on the last chunk
-					 *
-					 * \~
-					 */
-					bool _hungry;
 					/**
 					 * \~russian
 					 * Признак того, что исходный текст поступил целиком
@@ -628,43 +584,35 @@ namespace awh {
 					bool _final;
 					/**
 					 * \~russian
-					 * Отложенный код ошибки приведения к кодировке UTF-8
+					 * Признак того, что разбираемой записи не хватает продолжения текста
 					 *
-					 * @note Приведение переносит в хранилище всё, что успело проверить, и
-					 *       отказ его выдаётся лишь по исчерпании приведённого начала: иначе
-					 *       разбор того же текста целиком и кусками расходился бы событиями
+					 * @note Разбор записи ведётся по накопленному тексту, и исчерпание его
+					 *       посреди записи означает не ошибку, а нужду в следующем куске: запись
+					 *       откатывается к своему началу и разбирается заново по приходе
+					 *       продолжения. Ошибкой исчерпание становится лишь на последнем куске
 					 *
 					 * \~english
-					 * Postponed error code of the conversion to the UTF-8 encoding
+					 * Flag of the record being parsed lacking a continuation of the text
 					 *
-					 * @note The conversion transfers into the storage everything it has managed to check, and
-					 *       its refusal is issued only upon the exhaustion of the converted beginning: otherwise
-					 *       the parsing of the same text in full and by chunks would diverge in the events
+					 * @note The parsing of a record is conducted over the accumulated text, and its exhaustion
+					 *       in the middle of a record means not an error but a need for the next chunk: the record
+					 *       is rolled back to its beginning and is parsed anew upon the arrival of
+					 *       the continuation. The exhaustion becomes an error only on the last chunk
 					 *
 					 * \~
 					 */
-					error_t _decoding;
+					bool _hungry;
+					// Признак того, что разбираемой записью объявляется таблица
+					bool _declaring;
+					// Признак того, что разбираемой записью объявляется набор таблиц
+					bool _appending;
 				private:
-					// Приведение исходного текста к кодировке UTF-8
-					decoder_t _decoder;
-				private:
-					// Настройки разбора текста настроек
-					settings_t _settings;
-				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					location_t _errorLocation;
-					// Положение начала текущего события в исходном тексте
-					location_t _location;
-				private:
-					// Приведённый к кодировке UTF-8 исходный текст
-					string _buffer;
-					// Хранилище содержимого событий разбираемой записи
-					string _store;
-				private:
-					// Положение разбираемого знака в приведённом тексте
-					size_t _offset;
+					// Положение начала разбираемой строки в приведённом тексте
+					size_t _bol;
 					// Положение начала разбираемой записи в приведённом тексте
 					size_t _start;
+					// Положение разбираемого знака в приведённом тексте
+					size_t _offset;
 					/**
 					 * \~russian
 					 * Положение, с которого ищется знак конца записи, откаченной нуждою в
@@ -685,6 +633,31 @@ namespace awh {
 					 * \~
 					 */
 					size_t _probed;
+					// Номер выдаваемого события в очереди
+					size_t _current;
+					/**
+					 * \~russian
+					 * Количество имён, объявляемых разбираемой записью
+					 *
+					 * @note Очередь имён между записями не освобождается, а лишь укорачивается
+					 *       этим счётом: места её достаются следующей записи вместе с уже занятой под
+					 *       имена памятью, и выделение приходится на всякое место лишь единожды.
+					 *       Длина самой очереди означает число заведённых мест, а не число имён
+					 *
+					 * \~english
+					 * Number of the names declared by the record being parsed
+					 *
+					 * @note The deque of the names is not released between the records but is only shortened
+					 *       by this count: its places go to the next record together with the memory already occupied
+					 *       by the names, and an allocation falls on every place only once.
+					 *       The length of the deque itself means the number of the created places rather than the number of the names
+					 *
+					 * \~
+					 */
+					size_t _staging;
+				private:
+					// Номер разбираемой строки исходного текста, считая с единицы
+					uint32_t _line;
 					/**
 					 * \~russian
 					 * Счёт встроенных таблиц записи, собственного имени не имеющих
@@ -707,31 +680,49 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _anonymous;
+				private:
 					// Смещение начала приведённого текста от начала исходного в байтах
 					uint64_t _base;
-					// Номер разбираемой строки исходного текста, считая с единицы
-					uint32_t _line;
-					// Положение начала разбираемой строки в приведённом тексте
-					size_t _bol;
 				private:
+					// Состояние разбора текста настроек
+					state_t _state;
+					// Код ошибки последней операции разбора
+					error_t _error;
 					/**
 					 * \~russian
-					 * Хранилище собираемого содержимого строкового значения
+					 * Отложенный код ошибки приведения к кодировке UTF-8
 					 *
-					 * @note Держится полем ради переиспользования занятой памяти: очистка
-					 *       её за хранилищем сохраняет, и всякое следующее строковое
-					 *       значение обходится без выделения
+					 * @note Приведение переносит в хранилище всё, что успело проверить, и
+					 *       отказ его выдаётся лишь по исчерпании приведённого начала: иначе
+					 *       разбор того же текста целиком и кусками расходился бы событиями
 					 *
 					 * \~english
-					 * Storage of the content of a string value being assembled
+					 * Postponed error code of the conversion to the UTF-8 encoding
 					 *
-					 * @note It is kept as a member for the sake of the reuse of the occupied memory: its clearing
-					 *       preserves it behind the storage, and every next string
-					 *       value makes do without an allocation
+					 * @note The conversion transfers into the storage everything it has managed to check, and
+					 *       its refusal is issued only upon the exhaustion of the converted beginning: otherwise
+					 *       the parsing of the same text in full and by chunks would diverge in the events
 					 *
 					 * \~
 					 */
-					string _content;
+					error_t _decoding;
+				private:
+					// Значение текущего события разбора
+					content_t _value;
+					// Примечание текущего события разбора
+					comment_t _comment;
+				private:
+					// Приведение исходного текста к кодировке UTF-8
+					decoder_t _decoder;
+				private:
+					// Настройки разбора текста настроек
+					settings_t _settings;
+				private:
+					// Положение начала текущего события в исходном тексте
+					location_t _location;
+					// Положение обнаруженной ошибки в исходном тексте
+					location_t _errorLocation;
+				private:
 					/**
 					 * \~russian
 					 * Хранилище собираемого полного имени ключа разбираемой пары
@@ -750,51 +741,40 @@ namespace awh {
 					 * \~
 					 */
 					string _name;
+					// Имя текущей таблицы текста настроек
+					string _table;
+					// Хранилище содержимого событий разбираемой записи
+					string _store;
+					// Приведённый к кодировке UTF-8 исходный текст
+					string _buffer;
+					/**
+					 * \~russian
+					 * Хранилище собираемого содержимого строкового значения
+					 *
+					 * @note Держится полем ради переиспользования занятой памяти: очистка
+					 *       её за хранилищем сохраняет, и всякое следующее строковое
+					 *       значение обходится без выделения
+					 *
+					 * \~english
+					 * Storage of the content of a string value being assembled
+					 *
+					 * @note It is kept as a member for the sake of the reuse of the occupied memory: its clearing
+					 *       preserves it behind the storage, and every next string
+					 *       value makes do without an allocation
+					 *
+					 * \~
+					 */
+					string _content;
+					// Имя таблицы, объявляемой разбираемой записью
+					string _pendingTable;
 				private:
+					// Составные части имени ключа текущего события
+					vector <part_t> _path;
 					// Очередь собранных событий разбираемой записи
 					vector <item_t> _items;
 					// Составные части имён ключей разбираемой записи
 					vector <segment_t> _segments;
-					// Номер выдаваемого события в очереди
-					size_t _current;
 				private:
-					// Составные части имени ключа текущего события
-					vector <part_t> _path;
-					// Значение текущего события разбора
-					content_t _value;
-					// Примечание текущего события разбора
-					comment_t _comment;
-				private:
-					// Имя текущей таблицы текста настроек
-					string _table;
-					/**
-					 * \~russian
-					 * Указатель родов уже объявленных имён
-					 *
-					 * @details Правила описания об объявлении имён сводятся к роду уже
-					 *          объявленного, и держать их порознь перечнями значило бы проверять одно и
-					 *          то же имя в нескольких местах: указатель этот сводит проверку к одному
-					 *          обращению.
-					 *
-					 * @note Заполняется лишь при включённой проверке повторов: в прочих случаях
-					 *       удерживать имена незачем, а на большом тексте настроек указатель этот
-					 *       памяти стоит
-					 *
-					 * \~english
-					 * Index of the kinds of the already declared names
-					 *
-					 * @details The rules of the specification about the declaration of the names come down to the kind of what has already been
-					 *          declared, and to keep them apart as lists would mean to check one and
-					 *          the same name in several places: this index reduces the check to a single
-					 *          call.
-					 *
-					 * @note Filled in only when the check of the repetitions is enabled: in the other cases
-					 *       there is no point in holding the names, while on a large settings text this index
-					 *       costs memory
-					 *
-					 * \~
-					 */
-					unordered_map <string_view, kind_t> _names;
 					/**
 					 * \~russian
 					 * Хранилище имён объявленных ключей и таблиц
@@ -851,6 +831,35 @@ namespace awh {
 					 * \~
 					 */
 					deque <pending_t> _pending;
+				private:
+					/**
+					 * \~russian
+					 * Указатель родов уже объявленных имён
+					 *
+					 * @details Правила описания об объявлении имён сводятся к роду уже
+					 *          объявленного, и держать их порознь перечнями значило бы проверять одно и
+					 *          то же имя в нескольких местах: указатель этот сводит проверку к одному
+					 *          обращению.
+					 *
+					 * @note Заполняется лишь при включённой проверке повторов: в прочих случаях
+					 *       удерживать имена незачем, а на большом тексте настроек указатель этот
+					 *       памяти стоит
+					 *
+					 * \~english
+					 * Index of the kinds of the already declared names
+					 *
+					 * @details The rules of the specification about the declaration of the names come down to the kind of what has already been
+					 *          declared, and to keep them apart as lists would mean to check one and
+					 *          the same name in several places: this index reduces the check to a single
+					 *          call.
+					 *
+					 * @note Filled in only when the check of the repetitions is enabled: in the other cases
+					 *       there is no point in holding the names, while on a large settings text this index
+					 *       costs memory
+					 *
+					 * \~
+					 */
+					unordered_map <string_view, kind_t> _names;
 					/**
 					 * \~russian
 					 * Указатель имён, объявляемых разбираемой записью
@@ -885,32 +894,6 @@ namespace awh {
 					 * \~
 					 */
 					unordered_map <string_view, uint32_t> _staged;
-					/**
-					 * \~russian
-					 * Количество имён, объявляемых разбираемой записью
-					 *
-					 * @note Очередь имён между записями не освобождается, а лишь укорачивается
-					 *       этим счётом: места её достаются следующей записи вместе с уже занятой под
-					 *       имена памятью, и выделение приходится на всякое место лишь единожды.
-					 *       Длина самой очереди означает число заведённых мест, а не число имён
-					 *
-					 * \~english
-					 * Number of the names declared by the record being parsed
-					 *
-					 * @note The deque of the names is not released between the records but is only shortened
-					 *       by this count: its places go to the next record together with the memory already occupied
-					 *       by the names, and an allocation falls on every place only once.
-					 *       The length of the deque itself means the number of the created places rather than the number of the names
-					 *
-					 * \~
-					 */
-					size_t _staging;
-					// Имя таблицы, объявляемой разбираемой записью
-					string _pendingTable;
-					// Признак того, что разбираемой записью объявляется таблица
-					bool _declaring;
-					// Признак того, что разбираемой записью объявляется набор таблиц
-					bool _appending;
 				private:
 					/**
 					 * \~russian
@@ -1746,6 +1729,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Reader & operator = (const Reader &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Reader & operator = (Reader &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Reader(const Reader &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Reader(Reader &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -1753,7 +1778,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1767,45 +1792,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Ходы копии и переноса
-					 *
-					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
-					 *          поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
-					 *          по правилу языка неявный перенос у класса с деструктором объявленным не
-					 *          порождается вовсе, и перенос молча обращался копией.
-					 *
-					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
-					 *       освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
-					 *       перенос у него работал всё это время
-					 *
-					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 *          переноса подавило бы порождение копии
-					 *
-					 * \~english
-					 * @brief The calls of the copying and of the moving
-					 *
-					 * @details They are declared for the sake of the MOVING: formerly a destructor stood
-					 *          here, cleaning the fields by a call to `clear()`, and its declaration
-					 *          cancelled the generation of the moving methods - by the rule of the language
-					 *          an implicit move is not generated at all at a class with a declared
-					 *          destructor, and the moving silently turned into a copy.
-					 *
-					 * @note That destructor was REDUNDANT: it cleaned strings and lists, which are freed by
-					 *       their own destructors themselves. The neighbouring YAML has no destructor, and
-					 *       its moving worked all this time
-					 *
-					 * @warning FOUR methods are declared at once by the rule of five: the declaration of a
-					 *          move alone would have suppressed the generation of the copy
-					 *
-					 * \~
-					 */
-					Reader(const Reader &) = default;
-					Reader(Reader &&) noexcept = default;
-					Reader & operator = (const Reader &) = default;
-					Reader & operator = (Reader &&) noexcept = default;
+					explicit Reader(const settings_t & settings) noexcept;
 			} reader_t;
 		};
 	};

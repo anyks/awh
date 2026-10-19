@@ -50,7 +50,6 @@
  * \~russian
  * @brief Основное пространство имён
  *
- *
  * \~english
  * @brief Main namespace
  *
@@ -66,7 +65,6 @@ namespace awh {
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
-	 *
 	 * \~english
 	 * @brief Data containers namespace
 	 *
@@ -76,7 +74,6 @@ namespace awh {
 		/**
 		 * \~russian
 		 * @brief Пространство имён контейнера TOML
-		 *
 		 *
 		 * \~english
 		 * @brief TOML container namespace
@@ -197,27 +194,84 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки записи текста настроек
+					 * @brief Структура записи текста настроек
 					 *
 					 * \~english
-					 * @brief Settings of the writing of a settings text
+					 * @brief Structure of the settings text entry
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						/**
+						 * \~russian
+						 * Флаг записи отступа перед парами объявленной таблицы
+						 *
+						 * @note Отступ этот украшающий: описание пробельную обвязку строки
+						 *       отбрасывает, и на разбор он не влияет
+						 *
+						 * \~english
+						 * Flag of the writing of an indent before the pairs of a declared table
+						 *
+						 * @note This indent is an adorning one: the specification discards the whitespace padding of a line,
+						 *       and it does not affect the parsing
+						 *
+						 * \~
+						 */
+						bool indent;
+						// Флаг записи пробелов вокруг знака равенства
+						bool spaces;
+						/**
+						 * \~russian
+						 * Признак дозволения смены записи строки, содержимого не несущей
+						 *
+						 * @note Дословная строка управляющих последовательностей не
+						 *       признаёт, и одинарную кавычку записать ею нечем. При взведённом
+						 *       признаке запись берёт ближайшую ограду, содержимое несущую, при
+						 *       снятом - отвечает отказом. Содержимое при этом не меняется ни в
+						 *       том, ни в другом случае: меняется лишь выбранная человеком ограда
+						 *
+						 * \~english
+						 * Flag of the permission of a change of the notation of a string that does not carry the content
+						 *
+						 * @note A literal string does not recognize the escape sequences,
+						 *       and there is nothing to write a single quote with it. When the flag is
+						 *       raised the writing takes the nearest fence that carries the content, when it is
+						 *       not — it answers with a refusal. The content is thereby not changed in
+						 *       either case: only the fence chosen by the human changes
+						 *
+						 * \~
+						 */
+						bool promote;
+						/**
+						 * \~russian
+						 * Признак того, что читающий признаёт знаки Юникода в имени без кавычек
+						 *
+						 * @note Описание версии 1.0.0 отводит имени без кавычек лишь знаки
+						 *       US-ASCII, и умолчанием признак снят: имя с прочими знаками
+						 *       ограждается тогда кавычками. Взводят его по читающему, а не по
+						 *       желанию пишущего - иначе собранный текст читающему не прочесть
+						 *
+						 * \~english
+						 * Flag of the reader recognizing the Unicode characters in a name without quotes
+						 *
+						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to a name without quotes,
+						 *       and by default the flag is not set: a name with the other characters
+						 *       is then fenced with quotes. It is raised by the reader rather than by
+						 *       the wish of the writer — otherwise the assembled text cannot be read by the reader
+						 *
+						 * \~
+						 */
+						bool unicode;
+						// Флаг записи пустой строки перед объявлением таблицы
+						bool separated;
+						/**
+						 * Наибольшая допустимая длина составной части имени ключа в байтах,
+						 * ноль - без предела
+						 */
+						uint32_t maxKey;
 						/**
 						 * \~russian
 						 * Наибольшая допустимая длина логической строки в байтах,
@@ -236,11 +290,6 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxLine;
-						/**
-						 * Наибольшая допустимая длина составной части имени ключа в байтах,
-						 * ноль - без предела
-						 */
-						uint32_t maxKey;
 						/**
 						 * \~russian
 						 * Наибольшая допустимая глубина вложенности значений
@@ -264,72 +313,9 @@ namespace awh {
 						 */
 						uint32_t maxDepth;
 						/**
-						 * Наибольшее допустимое количество составных частей имени ключа,
-						 * ноль - без предела
+						 * Наибольшее допустимое количество составных частей имени ключа, ноль - без предела
 						 */
 						uint32_t maxParts;
-						/**
-						 * \~russian
-						 * Признак того, что читающий признаёт знаки Юникода в имени без кавычек
-						 *
-						 * @note Описание версии 1.0.0 отводит имени без кавычек лишь знаки
-						 *       US-ASCII, и умолчанием признак снят: имя с прочими знаками
-						 *       ограждается тогда кавычками. Взводят его по читающему, а не по
-						 *       желанию пишущего - иначе собранный текст читающему не прочесть
-						 *
-						 * \~english
-						 * Flag of the reader recognizing the Unicode characters in a name without quotes
-						 *
-						 * @note The specification of the version 1.0.0 allots only the US-ASCII characters to a name without quotes,
-						 *       and by default the flag is not set: a name with the other characters
-						 *       is then fenced with quotes. It is raised by the reader rather than by
-						 *       the wish of the writer — otherwise the assembled text cannot be read by the reader
-						 *
-						 * \~
-						 */
-						bool unicode;
-						/**
-						 * \~russian
-						 * Признак дозволения смены записи строки, содержимого не несущей
-						 *
-						 * @note Дословная строка управляющих последовательностей не
-						 *       признаёт, и одинарную кавычку записать ею нечем. При взведённом
-						 *       признаке запись берёт ближайшую ограду, содержимое несущую, при
-						 *       снятом - отвечает отказом. Содержимое при этом не меняется ни в
-						 *       том, ни в другом случае: меняется лишь выбранная человеком ограда
-						 *
-						 * \~english
-						 * Flag of the permission of a change of the notation of a string that does not carry the content
-						 *
-						 * @note A literal string does not recognize the escape sequences,
-						 *       and there is nothing to write a single quote with it. When the flag is
-						 *       raised the writing takes the nearest fence that carries the content, when it is
-						 *       not — it answers with a refusal. The content is thereby not changed in
-						 *       either case: only the fence chosen by the human changes
-						 *
-						 * \~
-						 */
-						bool promote;
-						// Флаг записи пробелов вокруг знака равенства
-						bool spaces;
-						/**
-						 * \~russian
-						 * Флаг записи отступа перед парами объявленной таблицы
-						 *
-						 * @note Отступ этот украшающий: описание пробельную обвязку строки
-						 *       отбрасывает, и на разбор он не влияет
-						 *
-						 * \~english
-						 * Flag of the writing of an indent before the pairs of a declared table
-						 *
-						 * @note This indent is an adorning one: the specification discards the whitespace padding of a line,
-						 *       and it does not affect the parsing
-						 *
-						 * \~
-						 */
-						bool indent;
-						// Флаг записи пустой строки перед объявлением таблицы
-						bool separated;
 						// Вид знака конца строки собираемого текста
 						newline_t newline;
 						/**
@@ -352,13 +338,12 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
@@ -376,20 +361,35 @@ namespace awh {
 						ARRAY  = 0x02, // Запись ведётся внутри перечня значений
 						INLINE = 0x03  // Запись ведётся внутри встроенной таблицы
 					};
+				private:
 					/**
 					 * \~russian
-					 * @brief Уровень вложенности собираемого значения
+					 * @brief Структура уровня вложенности собираемого значения
 					 *
 					 * \~english
-					 * @brief Level of the nesting of the value being assembled
+					 * @brief Structure of the nesting level for the collected value
 					 *
 					 * \~
 					 */
-					typedef struct Level {
-						// Вид окружения записываемого значения
-						context_t context;
-						// Количество значений, записанных на этом уровне
-						uint32_t count;
+					typedef struct __AWH_SHARED_EXPORT__ Level {
+						/**
+						 * \~russian
+						 * Признак того, что на уровне записано примечание
+						 *
+						 * @note Держится ради закрывающей скобки перечня: примечание длится
+						 *       до конца строки, и скобка, за ним записанная, досталась бы
+						 *       содержимому его
+						 *
+						 * \~english
+						 * Flag of a comment having been written at the level
+						 *
+						 * @note It is kept for the sake of the closing bracket of an array: a comment lasts
+						 *       until the end of the line, and the bracket written after it would go
+						 *       to its content
+						 *
+						 * \~
+						 */
+						bool remarked;
 						/**
 						 * \~russian
 						 * Признак многострочной записи перечня
@@ -424,24 +424,10 @@ namespace awh {
 						 * \~
 						 */
 						bool separated;
-						/**
-						 * \~russian
-						 * Признак того, что на уровне записано примечание
-						 *
-						 * @note Держится ради закрывающей скобки перечня: примечание длится
-						 *       до конца строки, и скобка, за ним записанная, досталась бы
-						 *       содержимому его
-						 *
-						 * \~english
-						 * Flag of a comment having been written at the level
-						 *
-						 * @note It is kept for the sake of the closing bracket of an array: a comment lasts
-						 *       until the end of the line, and the bracket written after it would go
-						 *       to its content
-						 *
-						 * \~
-						 */
-						bool remarked;
+						// Количество значений, записанных на этом уровне
+						uint32_t count;
+						// Вид окружения записываемого значения
+						context_t context;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -457,33 +443,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Level(const context_t context, const bool multiline) noexcept :
-						 context(context), count(0), multiline(multiline), separated(false), remarked(false) {}
+						explicit Level(const context_t context, const bool multiline) noexcept;
 					} level_t;
 				private:
-					// Код ошибки последней операции записи
-					error_t _error;
-				private:
-					// Признак того, что таблица текста настроек уже объявлена
-					bool _tabled;
-					/**
-					 * \~russian
-					 * Признак того, что к последней записанной строке можно дописать примечание
-					 *
-					 * @details Дописывается примечание к строке пары либо объявления таблицы:
-					 *          пустая строка примечанием перестала бы быть пустой, а к строке
-					 *          примечания дописывать нечего - оно и так примечание.
-					 *
-					 * \~english
-					 * Flag of a comment being appendable to the last written line
-					 *
-					 * @details A comment is appended to the line of a pair or of a table declaration:
-					 *          an empty line would cease to be an empty one from a comment, while to the line of
-					 *          a comment there is nothing to append — it is a comment as it is.
-					 *
-					 * \~
-					 */
-					bool _trailable;
 					/**
 					 * \~russian
 					 * Признак текста, отказом оборванного
@@ -506,9 +468,26 @@ namespace awh {
 					 * \~
 					 */
 					bool _torn;
-				private:
-					// Собираемый текст настроек
-					string _text;
+					// Признак того, что таблица текста настроек уже объявлена
+					bool _tabled;
+					/**
+					 * \~russian
+					 * Признак того, что к последней записанной строке можно дописать примечание
+					 *
+					 * @details Дописывается примечание к строке пары либо объявления таблицы:
+					 *          пустая строка примечанием перестала бы быть пустой, а к строке
+					 *          примечания дописывать нечего - оно и так примечание.
+					 *
+					 * \~english
+					 * Flag of a comment being appendable to the last written line
+					 *
+					 * @details A comment is appended to the line of a pair or of a table declaration:
+					 *          an empty line would cease to be an empty one from a comment, while to the line of
+					 *          a comment there is nothing to append — it is a comment as it is.
+					 *
+					 * \~
+					 */
+					bool _trailable;
 				private:
 					// Длина собираемой логической строки в байтах
 					size_t _length;
@@ -539,10 +518,8 @@ namespace awh {
 					 */
 					size_t _restore;
 				private:
-					// Стопа уровней вложенности собираемого значения
-					vector <level_t> _levels;
-				private:
-					// Настройки записи текста настроек
+					// Код ошибки последней операции записи
+					error_t _error;
 					/**
 					 * \~russian
 					 * @brief Разметка конца строки, ПОСЛЕДНЕЙ записью на деле применённая
@@ -577,8 +554,14 @@ namespace awh {
 					 * \~
 					 */
 					newline_t _written;
-				private:
+					// Настройки записи текста настроек
 					settings_t _settings;
+				private:
+					// Собираемый текст настроек
+					string _text;
+				private:
+					// Стопа уровней вложенности собираемого значения
+					vector <level_t> _levels;
 				private:
 					/**
 					 * \~russian
@@ -1485,12 +1468,12 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Шаблон типа записываемого числа
+					 * @brief Шаблон метода записи пары с числовым значением
 					 *
 					 * @tparam T тип записываемого числа
 					 *
 					 * \~english
-					 * @brief Template of the type of the number being written
+					 * @brief Template for a method that records a pair with a numeric value
 					 *
 					 * @tparam T type of the number being written
 					 *
@@ -1597,6 +1580,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Writer & operator = (const Writer &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Writer & operator = (Writer &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Writer(const Writer &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Writer(Writer &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -1604,7 +1629,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1618,45 +1643,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer(const settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Ходы копии и переноса
-					 *
-					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
-					 *          поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
-					 *          по правилу языка неявный перенос у класса с деструктором объявленным не
-					 *          порождается вовсе, и перенос молча обращался копией.
-					 *
-					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
-					 *       освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
-					 *       перенос у него работал всё это время
-					 *
-					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
-					 *          переноса подавило бы порождение копии
-					 *
-					 * \~english
-					 * @brief The calls of the copying and of the moving
-					 *
-					 * @details They are declared for the sake of the MOVING: formerly a destructor stood here,
-					 *          cleaning the fields by a call to `clear()`, and its declaration cancelled the
-					 *          generation of the moving methods - by the rule of the language an implicit move
-					 *          is not generated at all at a class with a declared destructor, and the moving
-					 *          silently turned into a copy.
-					 *
-					 * @note That destructor was REDUNDANT: it cleaned strings and lists, which are freed by
-					 *       their own destructors themselves. The neighbouring YAML has no destructor, and its
-					 *       moving worked all this time
-					 *
-					 * @warning FOUR methods are declared at once by the rule of five: the declaration of a
-					 *          move alone would have suppressed the generation of the copy
-					 *
-					 * \~
-					 */
-					Writer(const Writer &) = default;
-					Writer(Writer &&) noexcept = default;
-					Writer & operator = (const Writer &) = default;
-					Writer & operator = (Writer &&) noexcept = default;
+					explicit Writer(const settings_t & settings) noexcept;
 			} writer_t;
 		};
 	};

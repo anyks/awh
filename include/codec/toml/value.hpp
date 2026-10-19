@@ -40,11 +40,14 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
-#include <sys/fs.hpp>
-
 #include "document.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/fs.hpp"
 
 /**
  * \~russian
@@ -83,7 +86,7 @@ namespace awh {
 		namespace toml {
 			/**
 			 * \~russian
-			 * @brief Владеющее значение TOML
+			 * @brief Класс владеющий значением TOML
 			 *
 			 * @details Тип этот стоит **над** деревом настроек, а не вместо него. Дерево
 			 *          разбирает текст, удерживает оформление его и правится по путям, причём узлы
@@ -108,7 +111,7 @@ namespace awh {
 			 *       один есть вид, - тогда как TOML вид записывает при разборе однозначно
 			 *
 			 * \~english
-			 * @brief Owning value of TOML
+			 * @brief A class that holds a TOML value
 			 *
 			 * @details This type stands **above** the settings tree rather than instead of it. The tree
 			 *          parses a text, retains its formatting and is edited by paths, whereby its nodes
@@ -151,6 +154,66 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
 				private:
+					// Логическое значение
+					bool _boolean;
+					/**
+					 * \~russian
+					 * Признак записи перечня несколькими строками
+					 *
+					 * @note Держится ради записи в текст: расстановка строк выбрана
+					 *       потребителем, и запись обязана её соблюдать
+					 *
+					 * \~english
+					 * Flag of the writing of an array in several lines
+					 *
+					 * @note It is kept for the sake of the writing into a text: the arrangement of the lines has been
+					 *       chosen by the consumer, and the writing is obliged to observe it
+					 *
+					 * \~
+					 */
+					bool _multiline;
+				private:
+					// Тип хранимого значения
+					type_t _type;
+					/**
+					 * \~russian
+					 * Система счисления записи целого числа
+					 *
+					 * @details Хранится она рядом с числом, а не вместо него: запись `0x1F`
+					 *          обязана вернуться записью `0x1F`, а извлечение числа обязано выдать 31,
+					 *          и одно другому не замена.
+					 *
+					 * \~english
+					 * Radix of the record of the integer
+					 *
+					 * @details It is stored alongside the number rather than instead of it: the record `0x1F`
+					 *          must return as the record `0x1F`, while the extraction of the number must give away 31,
+					 *          and one is not a replacement for the other.
+					 *
+					 * \~
+					 */
+					radix_t _radix;
+					// Отметка времени
+					stamp_t _stamp;
+					/**
+					 * \~russian
+					 * Запись строкового значения
+					 *
+					 * @details Запись хранится значением, а не берётся у дерева: владеющее
+					 *          значение дерево пережить обязано, и запись его переопределяться
+					 *          настройками чужого разбора не должна.
+					 *
+					 * \~english
+					 * Notation of the string value
+					 *
+					 * @details The notation is stored by the value rather than taken from the tree: an owning
+					 *          value must outlive the tree, and its notation must not be redefined by
+					 *          the settings of a foreign parsing.
+					 *
+					 * \~
+					 */
+					string_t _quoting;
+				private:
 					/**
 					 * \~russian
 					 * Код отказа последней работы над владеющим значением
@@ -181,79 +244,17 @@ namespace awh {
 					 */
 					mutable error_t _error = error_t::NONE;
 				private:
-					// Тип хранимого значения
-					type_t _type;
-				private:
-					/**
-					 * \~russian
-					 * Запись строкового значения
-					 *
-					 * @details Запись хранится значением, а не берётся у дерева: владеющее
-					 *          значение дерево пережить обязано, и запись его переопределяться
-					 *          настройками чужого разбора не должна.
-					 *
-					 * \~english
-					 * Notation of the string value
-					 *
-					 * @details The notation is stored by the value rather than taken from the tree: an owning
-					 *          value must outlive the tree, and its notation must not be redefined by
-					 *          the settings of a foreign parsing.
-					 *
-					 * \~
-					 */
-					string_t _quoting;
-				private:
-					/**
-					 * \~russian
-					 * Система счисления записи целого числа
-					 *
-					 * @details Хранится она рядом с числом, а не вместо него: запись `0x1F`
-					 *          обязана вернуться записью `0x1F`, а извлечение числа обязано выдать 31,
-					 *          и одно другому не замена.
-					 *
-					 * \~english
-					 * Radix of the record of the integer
-					 *
-					 * @details It is stored alongside the number rather than instead of it: the record `0x1F`
-					 *          must return as the record `0x1F`, while the extraction of the number must give away 31,
-					 *          and one is not a replacement for the other.
-					 *
-					 * \~
-					 */
-					radix_t _radix;
-				private:
-					// Логическое значение
-					bool _boolean;
-				private:
-					/**
-					 * \~russian
-					 * Признак записи перечня несколькими строками
-					 *
-					 * @note Держится ради записи в текст: расстановка строк выбрана
-					 *       потребителем, и запись обязана её соблюдать
-					 *
-					 * \~english
-					 * Flag of the writing of an array in several lines
-					 *
-					 * @note It is kept for the sake of the writing into a text: the arrangement of the lines has been
-					 *       chosen by the consumer, and the writing is obliged to observe it
-					 *
-					 * \~
-					 */
-					bool _multiline;
+					// Число с плавающей точкой
+					double _real;
 				private:
 					// Целое число со знаком
 					int64_t _integer;
 				private:
-					// Число с плавающей точкой
-					double _real;
-				private:
-					// Отметка времени
-					stamp_t _stamp;
-				private:
 					// Содержимое строкового значения, хранимое собственной памятью
 					string _text;
 				private:
+					// Значения вместилища в порядке их следования
+					vector <Value> _items;
 					/**
 					 * \~russian
 					 * Имена пар таблицы
@@ -270,9 +271,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <string> _names;
-				private:
-					// Значения вместилища в порядке их следования
-					vector <Value> _items;
 				private:
 					/**
 					 * \~russian
@@ -348,22 +346,33 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * @brief Шаблонный метод извлечения числа затребованным видом
+					 * @brief Шаблон метода извлечения числа затребованным видом
 					 *
-					 * @tparam T      затребованный вид числа
-					 * @param  result переменная, куда помещается извлечённое значение
-					 * @return        признак успешности извлечения
+					 * @tparam T затребованный вид числа
 					 *
 					 * \~english
-					 * @brief Template method of the extraction of a number by the demanded kind
+					 * @brief Method template for extracting a number in a requested format
 					 *
-					 * @tparam T      demanded kind of the number
-					 * @param  result variable where the extracted value is placed
-					 * @return        sign of the success of the extraction
+					 * @tparam T demanded kind of the number
 					 *
 					 * \~
 					 */
 					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод извлечения числа затребованным видом
+					 *
+					 * @param result переменная, куда помещается извлечённое значение
+					 * @return       признак успешности извлечения
+					 *
+					 * \~english
+					 * @brief Method for extracting a number in a requested format
+					 *
+					 * @param result variable where the extracted value is placed
+					 * @return       sign of the success of the extraction
+					 *
+					 * \~
+					 */
 					bool extract(T & result) const noexcept;
 				private:
 					/**
@@ -845,7 +854,8 @@ namespace awh {
 					 * @details The search is conducted by the index of the names when it is established: an enumeration
 					 *          would turn the assembling of a container by the calls into a quadratic one.
 					 *
-					 * @note The size of the container is issued when there is no pair with such a name
+					 * @note The size of the container is issued when there is no pair with such a name: this way
+					 *       is the same as the one `npos` of a string answers with
 					 *
 					 * @param name name of the pair being searched for
 					 * @return     number of the pair, size of the container at the absence
@@ -1240,39 +1250,93 @@ namespace awh {
 					 */
 					bool value(int8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(float & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(double & result) const noexcept;
 					/**
@@ -1608,7 +1672,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value() noexcept;
+					explicit Value() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор вместилища затребованного типа
@@ -1714,21 +1778,6 @@ namespace awh {
 					 * @brief Template of the kind of the integer being written
 					 *
 					 * @tparam T kind of the integer being written
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * @note Ограда `enable_if` обязательна: без неё заводитель перехватывал бы и
-					 *       написание дробное - `Value(1.5f)` доводится до `float` точным
-					 *       совпадением, а до `double` приведением, и сборка искала бы шаблон,
-					 *       созданный лишь для целых чисел. Замерено отказом связывания
-					 *
-					 * \~english
-					 * @note The `enable_if` fence is mandatory: without it the constructor would intercept a
-					 *       fractional writing as well — `Value(1.5f)` is brought to `float` by an exact match, and to
-					 *       `double` by a conversion, and the assembly would look for a template created only for the
-					 *       integers. Measured by a refusal of the binding
 					 *
 					 * \~
 					 */
@@ -1901,12 +1950,12 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Value() noexcept {}
+					~Value() noexcept = default;
 			} value_t;
 
 			/**
 			 * \~russian
-			 * @brief Потоковая сборка владеющего значения
+			 * @brief Класс потоковой сборки владеющего значения
 			 *
 			 * @details Сборка эта есть второй способ построить дерево, стоящий рядом с
 			 *          путями, а не вместо них. Потребитель, пары подряд заносящий, вложенностей не
@@ -1930,7 +1979,7 @@ namespace awh {
 			 *       обещать потребителю то, чего наречие не умеет
 			 *
 			 * \~english
-			 * @brief Streaming assembly of an owning value
+			 * @brief Streaming builder class for an owned value
 			 *
 			 * @details This assembly is the second way to build a tree, standing alongside
 			 *          the paths rather than instead of them. A consumer entering the pairs in a row does not
@@ -1957,8 +2006,32 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
 				private:
+					/**
+					 * \~russian
+					 * Признак того, что сборка завершена
+					 *
+					 * @details Признак этот отличает вместилище корневое открытое от
+					 *          закрытого: путь номеров у обоих пуст, и без признака закрытие корня
+					 *          оставалось бы незамеченным.
+					 *
+					 * \~english
+					 * Sign that the assembly is finished
+					 *
+					 * @details This sign distinguishes an opened root container from
+					 *          a closed one: the path of the indices of both is empty, and without the sign the closing
+					 *          of the root would remain unnoticed.
+					 *
+					 * \~
+					 */
+					bool _done;
+					// Признак того, что имя пары таблицы назначено
+					bool _keyed;
+				private:
 					// Собираемое значение
-					Value _root;
+					value_t _root;
+				private:
+					// Имя пары таблицы, значения ожидающее
+					string _key;
 				private:
 					/**
 					 * \~russian
@@ -1979,31 +2052,6 @@ namespace awh {
 					 */
 					vector <size_t> _path;
 				private:
-					// Имя пары таблицы, значения ожидающее
-					string _key;
-				private:
-					// Признак того, что имя пары таблицы назначено
-					bool _keyed;
-				private:
-					/**
-					 * \~russian
-					 * Признак того, что сборка завершена
-					 *
-					 * @details Признак этот отличает вместилище корневое открытое от
-					 *          закрытого: путь номеров у обоих пуст, и без признака закрытие корня
-					 *          оставалось бы незамеченным.
-					 *
-					 * \~english
-					 * Sign that the assembly is finished
-					 *
-					 * @details This sign distinguishes an opened root container from
-					 *          a closed one: the path of the indices of both is empty, and without the sign the closing
-					 *          of the root would remain unnoticed.
-					 *
-					 * \~
-					 */
-					bool _done;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод получения вместилища, сборкой открытого
@@ -2017,7 +2065,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value & opened() noexcept;
+					value_t & opened() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод занесения собранного значения во вместилище
@@ -2033,7 +2081,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					size_t deposit(Value && value) noexcept;
+					size_t deposit(value_t && value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища затребованного типа
@@ -2049,7 +2097,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool expand(Value && value) noexcept;
+					bool expand(value_t && value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2136,7 +2184,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(const Value & value) noexcept;
+					bool value(const value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи логического значения
@@ -2230,7 +2278,13 @@ namespace awh {
 					 */
 					bool value(const string & value, const string_t quoting = string_t::BASIC) noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::toml::Builder::value(const string &, const string_t)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::toml::Builder::value(const string &, const string_t)
+					 *
+					 * \~
 					 */
 					bool value(const char * value, const string_t quoting = string_t::BASIC) noexcept;
 					/**
@@ -2297,7 +2351,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value finish() noexcept;
+					value_t finish() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2308,7 +2362,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept;
+					explicit Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -2318,7 +2372,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Builder() noexcept {}
+					~Builder() noexcept = default;
 			} builder_t;
 		};
 	};
