@@ -40,19 +40,18 @@
 #include <cstdint>
 
 /**
- * Подключаем заголовочные файлы модуля
- */
-
-/**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
-#include <sys/macro/global.hpp>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
  * @brief Основное пространство имён
- *
  *
  * \~english
  * @brief Main namespace
@@ -68,7 +67,6 @@ namespace awh {
 	/**
 	 * \~russian
 	 * @brief Пространство имён контейнеров данных
-	 *
 	 *
 	 * \~english
 	 * @brief Data containers namespace
@@ -96,7 +94,6 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
-
 			/**
 			 * \~russian
 			 * @brief Обозначение кодового значения, полученного ошибочно
@@ -142,7 +139,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool isChar(const uint32_t code) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Метод чтения кодового значения из текста в кодировке UTF-8
@@ -171,7 +167,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ uint32_t decode(const char * buffer, const size_t size, size_t & length) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Метод записи кодового значения в кодировке UTF-8
@@ -190,7 +185,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool encode(const uint32_t code, string & result) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Метод извлечения кодовой точки из последовательности UTF-8
@@ -232,7 +226,6 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ size_t decode(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept;
-
 			/**
 			 * \~russian
 			 * @brief Встраиваемый посредник разбора последовательности UTF-8
@@ -297,13 +290,21 @@ namespace awh {
 				// Верхний предел первого продолжающего байта последовательности
 				uint8_t upper = 0xBF;
 				/**
-				 * Если байт является знаком US-ASCII
+				 * \~russian
+				 * @brief Если байт является знаком US-ASCII
+				 *
+				 * @note Устанавливаем признак годности разобранной последовательности
+				 *
+				 * \~english
+				 * @brief If the byte is a US-ASCII character
+				 *
+				 * @note Set the validity flag for the parsed sequence
+				 *
+				 * \~
 				 */
-				if(letter < 0x80){
+				if((valid = (letter < 0x80))){
 					// Устанавливаем кодовую точку знаком US-ASCII
 					code = static_cast <uint32_t> (letter);
-					// Устанавливаем признак годности разобранной последовательности
-					valid = true;
 					// Выводим количество разобранных байтов содержимого
 					return 1;
 				}
@@ -379,8 +380,7 @@ namespace awh {
 				/**
 				 * Если байт ведущим байтом последовательности не является
 				 */
-				} else // Выводим количество разобранных байтов содержимого
-					return 1;
+				} else return 1;
 				// Устанавливаем значащие разряды ведущего байта
 				code = static_cast <uint32_t> (letter & (0x7F >> count));
 				/**
@@ -487,33 +487,92 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Chunk {
-						// Буфер доведённой последовательности знака
-						const char * head;
+					typedef struct __AWH_SHARED_EXPORT__ Chunk {
 						// Размер доведённой последовательности знака
 						size_t count;
-						// Буфер отрезка проверенного текста
-						const char * body;
 						// Размер отрезка проверенного текста
 						size_t length;
+						// Буфер отрезка проверенного текста
+						const char * body;
+						// Буфер доведённой последовательности знака
+						const char * head;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Chunk() noexcept : head(nullptr), count(0), body(nullptr), length(0) {}
+						explicit Chunk() noexcept;
 					} chunk_t;
 				private:
-					// Определённая кодировка исходного текста
-					encoding_t _encoding;
+					// Признак того, что кодировка навязана извне
+					bool _forced;
+					// Признак того, что метка порядка байтов уже обработана
+					bool _marked;
+					// Признак обнаружения метки порядка байтов в начале исходного текста
+					bool _signed;
+					// Признак того, что приведение текста уже началось
+					bool _started;
+				private:
+					// Количество удержанных байтов незавершённой последовательности
+					uint8_t _length;
+				private:
+					// Удержанная старшая половина суррогатной пары
+					uint32_t _surrogate;
 				private:
 					// Код ошибки последней операции приведения
 					error_t _error;
+					// Определённая кодировка исходного текста
+					encoding_t _encoding;
+				private:
+					// Байты начала текста, удержанные до определения кодировки
+					string _prolog;
+				private:
+					// Удержанные байты незавершённой последовательности знака
+					char _pending[4];
+					/**
+					 * \~russian
+					 * Байты последовательности знака, доведённой очередным куском
+					 *
+					 * @note Буфер этот отдельный от удержанных байтов намеренно: доведённая
+					 *       последовательность выдаётся указанием наружу, а проверка остатка
+					 *       того же куска успевает удержать в буфере удержанных байтов новый
+					 *       разорванный знак
+					 *
+					 * \~english
+					 * The bytes of a character sequence completed by the current chunk
+					 *
+					 * @note This buffer is kept apart from the held bytes on purpose: a completed sequence
+					 *       is issued outward by a pointer, while the check of the remainder of the same
+					 *       chunk has time to hold a new torn character in the buffer of the held bytes
+					 *
+					 * \~
+					 */
+					char _complete[4];
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод определения кодировки по метке порядка байтов
+					 *
+					 * @details Метка снимается с начала удержанных байтов, а при её отсутствии
+					 *          кодировкой принимается UTF-8.
+					 *
+					 * @return признак того, что определение кодировки завершено
+					 *
+					 * \~english
+					 * @brief Method of determining the encoding by the byte order mark
+					 *
+					 * @details The mark is taken from the beginning of the held bytes, and in its absence
+					 *          UTF-8 is assumed as the encoding.
+					 *
+					 * @return flag of the determination of the encoding being completed
+					 *
+					 * \~
+					 */
+					bool sniff() noexcept;
 				private:
 					/**
 					 * \~russian
@@ -538,70 +597,6 @@ namespace awh {
 					 */
 					bool refuse(const error_t error) noexcept;
 				private:
-					// Признак того, что кодировка навязана извне
-					bool _forced;
-				private:
-					// Признак того, что метка порядка байтов уже обработана
-					bool _marked;
-				private:
-					// Признак обнаружения метки порядка байтов в начале исходного текста
-					bool _signed;
-				private:
-					// Признак того, что приведение текста уже началось
-					bool _started;
-				private:
-					// Байты начала текста, удержанные до определения кодировки
-					string _prolog;
-				private:
-					// Количество удержанных байтов незавершённой последовательности
-					uint8_t _length;
-				private:
-					// Удержанные байты незавершённой последовательности знака
-					char _pending[4];
-				private:
-					/**
-					 * \~russian
-					 * Байты последовательности знака, доведённой очередным куском
-					 *
-					 * @note Буфер этот отдельный от удержанных байтов намеренно: доведённая
-					 *       последовательность выдаётся указанием наружу, а проверка остатка
-					 *       того же куска успевает удержать в буфере удержанных байтов новый
-					 *       разорванный знак
-					 *
-					 * \~english
-					 * The bytes of a character sequence completed by the current chunk
-					 *
-					 * @note This buffer is kept apart from the held bytes on purpose: a completed sequence
-					 *       is issued outward by a pointer, while the check of the remainder of the same
-					 *       chunk has time to hold a new torn character in the buffer of the held bytes
-					 *
-					 * \~
-					 */
-					char _complete[4];
-				private:
-					// Удержанная старшая половина суррогатной пары
-					uint32_t _surrogate;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод определения кодировки по метке порядка байтов
-					 *
-					 * @details Метка снимается с начала удержанных байтов, а при её отсутствии
-					 *          кодировкой принимается UTF-8.
-					 *
-					 * @return признак того, что определение кодировки завершено
-					 *
-					 * \~english
-					 * @brief Method of determining the encoding by the byte order mark
-					 *
-					 * @details The mark is taken from the beginning of the held bytes, and in its absence
-					 *          UTF-8 is assumed as the encoding.
-					 *
-					 * @return flag of the determination of the encoding being completed
-					 *
-					 * \~
-					 */
-					bool sniff() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод приведения удержанных байтов к кодировке UTF-8
@@ -838,7 +833,6 @@ namespace awh {
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor

@@ -42,10 +42,6 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-
-/**
- * Подключаем заголовочные файлы модуля
- */
 #include "common.hpp"
 #include "encoding.hpp"
 
@@ -131,12 +127,16 @@ namespace awh {
 			 *          каждому отведено своё состояние:
 			 *
 			 * @li знак отмены внутри строки - `ESCAPE`;
+			 *
 			 * @li запись `\\uXXXX` - четыре состояния по числу шестнадцатеричных знаков;
+			 *
 			 * @li **суррогатная пара** - шесть состояний: за старшим суррогатом обязан
 			 *     следовать младший, а между ними вправе пройти граница куска;
 			 *
 			 * @li запись числа - состояния по частям: знак, целая часть, дробная, порядок;
+			 *
 			 * @li литералы `true`, `false` и `null` - разбираются по знаку;
+			 *
 			 * @li косая черта, открывающая примечание, - её значение решает следующий знак
 			 *
 			 * @note Разбор ведётся **без рекурсии**: вложенность хранится стеком видов
@@ -158,12 +158,16 @@ namespace awh {
 			 *          each one is given its own state:
 			 *
 			 * @li the escape character inside a string — `ESCAPE`;
+			 *
 			 * @li the record `\\uXXXX` — four states by the number of the hexadecimal characters;
+			 *
 			 * @li a **surrogate pair** — six states: a high surrogate must be
 			 *     followed by a low one, and a chunk boundary may pass between them;
 			 *
 			 * @li the record of a number — the states by the parts: the sign, the integer part, the fractional one, the exponent;
+			 *
 			 * @li the literals `true`, `false` and `null` — are parsed by a character;
+			 *
 			 * @li a solidus opening a comment — its meaning is decided by the next character
 			 *
 			 * @note The parsing is conducted **without a recursion**: the nesting is held by a stack of the kinds
@@ -176,16 +180,63 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки разбора текста
+					 * @brief Структура значения, выданное событием разбора
+					 *
+					 * @details Значение ссылается на память, принадлежащую разбору, и живёт
+					 *          не дольше следующего события.
 					 *
 					 * \~english
-					 * @brief Settings of the parsing of a text
+					 * @brief The structure of the value produced by a parsing event
+					 *
+					 * @details The value refers to the memory belonging to the parsing and lives
+					 *          no longer than the next event.
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Value {
+						// Вид значения
+						kind_t kind;
+						// Признак того, что содержимое было изменено разбором
+						bool modified;
+						/**
+						 * \~russian
+						 * Содержимое значения
+						 *
+						 * @note У строки и у имени поля - со снятым экранированием, у
+						 *       числа - записью как она есть, у логического значения - словами
+						 *       `true` либо `false`
+						 *
+						 * \~english
+						 * Content of the value
+						 *
+						 * @note For a string and for the name of a field — with the escaping removed, for
+						 *       a number — by the record as it is, for a logical value — by the words
+						 *       `true` or `false`
+						 *
+						 * \~
+						 */
+						string_view text;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Value() noexcept;
+					} value_t;
+					/**
+					 * \~russian
+					 * @brief Структура настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Structure for configuring text parsing
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Кодировка, навязанная извне вопреки метке порядка байтов
-						encoding_t encoding;
 						/**
 						 * \~russian
 						 * Признак строгого следования RFC 8259
@@ -241,28 +292,6 @@ namespace awh {
 						bool strict;
 						/**
 						 * \~russian
-						 * Признак разрешения примечаний
-						 *
-						 * @note Стандарт примечаний не знает вовсе, а обиход настроек их
-						 *       требует: файлы настроек с примечаниями зовут JSONC
-						 *
-						 * \~english
-						 * Flag of the permission of the comments
-						 *
-						 * @note The standard does not know the comments at all, while the custom of the settings
-						 *       demands them: the files of the settings with the comments are called JSONC
-						 *
-						 * \~
-						 */
-						bool allowComments;
-						// Признак разрешения запятой перед закрывающей скобкой
-						bool allowTrailingCommas;
-						// Признак разрешения записей NaN, Infinity и -Infinity
-						bool allowInfinityAndNan;
-						// Признак разрешения строк в одинарных кавычках
-						bool allowSingleQuotes;
-						/**
-						 * \~russian
 						 * Признак разбора потока документов NDJSON
 						 *
 						 * @note Поток этот - последовательность документов, разделённых
@@ -281,10 +310,28 @@ namespace awh {
 						bool stream;
 						// Признак выдачи событий примечаний
 						bool emitComments;
-						// Наибольшая допустимая длина строкового значения в байтах, ноль - без предела; отказ кодом STRING_TOO_LONG
-						uint32_t maxString;
-						// Наибольшая допустимая длина записи числа в байтах, ноль - без предела; отказ кодом NUMBER_TOO_LONG
-						uint32_t maxNumber;
+						/**
+						 * \~russian
+						 * Признак разрешения примечаний
+						 *
+						 * @note Стандарт примечаний не знает вовсе, а обиход настроек их
+						 *       требует: файлы настроек с примечаниями зовут JSONC
+						 *
+						 * \~english
+						 * Flag of the permission of the comments
+						 *
+						 * @note The standard does not know the comments at all, while the custom of the settings
+						 *       demands them: the files of the settings with the comments are called JSONC
+						 *
+						 * \~
+						 */
+						bool allowComments;
+						// Признак разрешения строк в одинарных кавычках
+						bool allowSingleQuotes;
+						// Признак разрешения запятой перед закрывающей скобкой
+						bool allowTrailingCommas;
+						// Признак разрешения записей NaN, Infinity и -Infinity
+						bool allowInfinityAndNan;
 						/**
 						 * \~russian
 						 * @brief Наибольшая допустимая глубина вложенности, ноль - без предела
@@ -313,68 +360,23 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxDepth;
+						// Наибольшая допустимая длина строкового значения в байтах, ноль - без предела; отказ кодом STRING_TOO_LONG
+						uint32_t maxString;
+						// Наибольшая допустимая длина записи числа в байтах, ноль - без предела; отказ кодом NUMBER_TOO_LONG
+						uint32_t maxNumber;
+						// Кодировка, навязанная извне вопреки метке порядка байтов
+						encoding_t encoding;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
-					/**
-					 * \~russian
-					 * @brief Значение, выданное событием разбора
-					 *
-					 * @details Значение ссылается на память, принадлежащую разбору, и живёт
-					 *          не дольше следующего события.
-					 *
-					 * \~english
-					 * @brief Value issued by an event of the parsing
-					 *
-					 * @details The value refers to the memory belonging to the parsing and lives
-					 *          no longer than the next event.
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Value {
-						/**
-						 * \~russian
-						 * Содержимое значения
-						 *
-						 * @note У строки и у имени поля - со снятым экранированием, у
-						 *       числа - записью как она есть, у логического значения - словами
-						 *       `true` либо `false`
-						 *
-						 * \~english
-						 * Content of the value
-						 *
-						 * @note For a string and for the name of a field — with the escaping removed, for
-						 *       a number — by the record as it is, for a logical value — by the words
-						 *       `true` or `false`
-						 *
-						 * \~
-						 */
-						string_view text;
-						// Вид значения
-						kind_t kind;
-						// Признак того, что содержимое было изменено разбором
-						bool modified;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Value() noexcept : kind(kind_t::NONE), modified(false) {}
-					} value_t;
 				private:
 					/**
 					 * \~russian
@@ -443,35 +445,35 @@ namespace awh {
 						DOCUMENT_END    = 0x1F, // Документ разобран, знаки за ним разрешены лишь потоку NDJSON
 						FAILED          = 0x20  // Разбор прекращён отказом
 					};
+				private:
 					/**
 					 * \~russian
-					 * @brief Событие разбора, собранное для выдачи
+					 * @brief Структура события разбора, собранное для выдачи
 					 *
 					 * \~english
-					 * @brief Parsing event assembled for the issuance
+					 * @brief Structure of the parsing event, assembled for output
 					 *
 					 * \~
 					 */
-					typedef struct Item {
+					typedef struct __AWH_SHARED_EXPORT__ Item {
+						// Признак того, что содержимое было изменено разбором
+						bool modified;
 						// Вид собранного события
 						event_t event;
 						// Указание на содержимое события в хранилище знаков
 						span_t content;
 						// Положение события в исходном тексте
 						location_t location;
-						// Признак того, что содержимое было изменено разбором
-						bool modified;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Item() noexcept : event(event_t::NONE), modified(false) {}
+						explicit Item() noexcept;
 					} item_t;
 				public:
 					/**
@@ -503,135 +505,14 @@ namespace awh {
 					 */
 					typedef void (* handler_t) (void * context, Reader & reader, const event_t event, const span_t content, const bool modified);
 				private:
-					// Настройки разбора текста
-					settings_t _settings;
-				private:
-					// Состояние разбора текста
-					phase_t _phase;
-					// Код отказа разбора
-					error_t _error;
-				private:
 					// Признак того, что подан последний кусок текста
 					bool _last;
-					// Признак того, что разбираемая строка является именем поля объекта
-					bool _keyed;
-					// Признак того, что содержимое было изменено разбором
-					bool _modified;
-					// Признак того, что вместилище ещё не получило ни одного значения
-					bool _empty;
 					// Признак того, что прочитана запятая, а значение за ней ещё не начато
 					bool _comma;
-				private:
-					/**
-					 * \~russian
-					 * Хранилище знаков собираемого значения
-					 *
-					 * @note Хранилище переиспользуется между значениями: выдача события
-					 *       возвращает его к началу, а память остаётся выделенной
-					 *
-					 * \~english
-					 * Storage of the characters of the value being assembled
-					 *
-					 * @note The storage is reused between the values: the issuance of an event
-					 *       returns it to the beginning, while the memory remains allocated
-					 *
-					 * \~
-					 */
-					string _storage;
-				private:
-					/**
-					 * \~russian
-					 * Количество байтов, выброшенных из хранилища знаков за всё время разбора
-					 *
-					 * @details Хранилище очищается всякий раз, когда очередь событий выдана,
-					 *          и смещения в нём начинаются заново. Счёт выброшенного делает смещения
-					 *          сквозными: положение содержимого события в потоке разобранных знаков
-					 *          есть сумма счёта и смещения события в хранилище.
-					 *
-					 * @note Счёт этот заведён ради потребителя, дерево собирающего: без
-					 *       сквозного положения ему пришлось бы переносить знаки всякого значения
-					 *       к себе по одному, а с ним хранилище переносится целыми кусками
-					 *
-					 * \~english
-					 * Number of the bytes discarded from the storage of the characters over the whole time of the parsing
-					 *
-					 * @details The storage is cleared every time the queue of the events is issued,
-					 *          and the offsets in it begin anew. The counting of the discarded makes the offsets
-					 *          through-going: the position of the content of an event in the stream of the parsed characters
-					 *          is the sum of the counting and of the offset of the event in the storage.
-					 *
-					 * @note This counting is created for the sake of the consumer assembling a tree: without
-					 *       a through-going position it would have to transfer the characters of every value
-					 *       to itself one by one, while with it the storage is transferred by whole blocks
-					 *
-					 * \~
-					 */
-					uint64_t _origin;
-					// Текст куска, приведённый к UTF-8
-					string _decoded;
-				private:
-					/**
-					 * \~russian
-					 * Стек видов вместилищ, задающий вложенность
-					 *
-					 * @note Стек этот заменяет рекурсию: вид вместилища решает, ожидается
-					 *       ли следующим имя поля либо значение
-					 *
-					 * \~english
-					 * Stack of the kinds of the containers setting the nesting
-					 *
-					 * @note This stack replaces the recursion: the kind of a container decides whether
-					 *       the name of a field or a value is expected next
-					 *
-					 * \~
-					 */
-					vector <kind_t> _nesting;
-				private:
-					/**
-					 * \~russian
-					 * Очередь собранных событий
-					 *
-					 * @note Очередь заведена перечнем с указанием на голову, а не двусторонней
-					 *       очередью: та отводит по блоку памяти на каждые несколько десятков
-					 *       событий и освобождает его по опустошении, отчего разбор крупного
-					 *       документа стоил бы десятков тысяч выделений памяти
-					 *
-					 * \~english
-					 * Queue of the assembled events
-					 *
-					 * @note The queue is made as a list with a pointer to the head rather than as a deque:
-					 *       the latter allocates a block of the memory per every few dozens
-					 *       of the events and frees it upon the emptying, whereby the parsing of a large
-					 *       document would cost tens of thousands of the allocations of the memory
-					 *
-					 * \~
-					 */
-					vector <item_t> _items;
-					// Указание на голову очереди собранных событий
-					size_t _head;
-					// Текущее выданное событие
-					item_t _current;
-				private:
-					/**
-					 * \~russian
-					 * Обработчик прямой выдачи событий разбора
-					 *
-					 * @note Очередь выдачи стоит на пути события к потребителю и обходится
-					 *       обработчиком: событие ложится в очередь лишь тогда, когда
-					 *       обработчик не установлен
-					 *
-					 * \~english
-					 * A handler of the direct issue of the parse events
-					 *
-					 * @note The queue of the issue stands on the way of an event to the consumer and is
-					 *       bypassed by a handler: an event is laid into the queue only when no handler has
-					 *       been set
-					 *
-					 * \~
-					 */
-					handler_t _handler;
-					// Указание, передаваемое обработчику прямой выдачи событий
-					void * _context;
+					// Признак того, что разбираемая строка является именем поля объекта
+					bool _keyed;
+					// Признак того, что вместилище ещё не получило ни одного значения
+					bool _empty;
 					/**
 					 * \~russian
 					 * Признак прекращения разбора по требованию потребителя
@@ -668,9 +549,47 @@ namespace awh {
 					 * \~
 					 */
 					bool _keeping;
+					// Признак того, что содержимое было изменено разбором
+					bool _modified;
 				private:
-					// Положение текущего события в исходном тексте
-					location_t _position;
+					// Код отказа разбора
+					error_t _error;
+					// Настройки разбора текста
+					settings_t _settings;
+				private:
+					/**
+					 * \~russian
+					 * Обработчик прямой выдачи событий разбора
+					 *
+					 * @note Очередь выдачи стоит на пути события к потребителю и обходится
+					 *       обработчиком: событие ложится в очередь лишь тогда, когда
+					 *       обработчик не установлен
+					 *
+					 * \~english
+					 * A handler of the direct issue of the parse events
+					 *
+					 * @note The queue of the issue stands on the way of an event to the consumer and is
+					 *       bypassed by a handler: an event is laid into the queue only when no handler has
+					 *       been set
+					 *
+					 * \~
+					 */
+					handler_t _handler;
+					// Средство приведения исходного текста к кодировке UTF-8
+					decoder_t _decoder;
+				private:
+					// Состояние разбора текста
+					phase_t _phase;
+					// Состояние, к какому разбор вернётся по окончании примечания
+					phase_t _resume;
+				private:
+					// Текущее выданное событие
+					item_t _current;
+					// Вид значения, каким завершится разбор литерала
+					event_t _outcome;
+				private:
+					// Положение начала собираемого значения в исходном тексте
+					location_t _mark;
 					/**
 					 * \~russian
 					 * Положение обнаруженного отказа в исходном тексте
@@ -691,8 +610,15 @@ namespace awh {
 					 * \~
 					 */
 					location_t _failure;
-					// Смещение от начала текста в байтах
-					uint64_t _offset;
+					// Положение текущего события в исходном тексте
+					location_t _position;
+				private:
+					// Знак кавычек, каким открыта разбираемая строка
+					char _quote;
+				private:
+					// Указание на голову очереди собранных событий
+					size_t _head;
+				private:
 					// Номер строки, считая с единицы
 					uint32_t _line;
 					// Положение в строке, считая с единицы
@@ -701,48 +627,103 @@ namespace awh {
 					uint32_t _length;
 					// Собираемый знак Юникода записи \\uXXXX
 					uint32_t _unicode;
-					// Старший суррогат, ожидающий младшего
-					uint32_t _surrogate;
 					// Количество разобранных знаков литерала
 					uint32_t _matched;
-				private:
-					// Разбираемый литерал
-					const char * _literal;
-					// Вид значения, каким завершится разбор литерала
-					event_t _outcome;
-				private:
-					// Знак кавычек, каким открыта разбираемая строка
-					char _quote;
-					// Состояние, к какому разбор вернётся по окончании примечания
-					phase_t _resume;
-					// Положение начала собираемого значения в исходном тексте
-					location_t _mark;
-				private:
-					// Средство приведения исходного текста к кодировке UTF-8
-					Decoder _decoder;
+					// Старший суррогат, ожидающий младшего
+					uint32_t _surrogate;
 				private:
 					/**
 					 * \~russian
-					 * Разметка знаков, прерывающих быстрый проход внутри строки
+					 * Количество байтов, выброшенных из хранилища знаков за всё время разбора
 					 *
-					 * @details Знак, в разметке не отмеченный, содержимым строки и является:
-					 *          такие знаки проходятся отрезком и переносятся в хранилище одним
-					 *          действием. Договор о независимости выдачи от нарезки текста проход
-					 *          этот не задевает: знаки, чьё значение зависит от следующего за ними,
-					 *          разметкой отмечены и проходом не берутся.
+					 * @details Хранилище очищается всякий раз, когда очередь событий выдана,
+					 *          и смещения в нём начинаются заново. Счёт выброшенного делает смещения
+					 *          сквозными: положение содержимого события в потоке разобранных знаков
+					 *          есть сумма счёта и смещения события в хранилище.
+					 *
+					 * @note Счёт этот заведён ради потребителя, дерево собирающего: без
+					 *       сквозного положения ему пришлось бы переносить знаки всякого значения
+					 *       к себе по одному, а с ним хранилище переносится целыми кусками
 					 *
 					 * \~english
-					 * Marking of the characters interrupting the fast pass inside a string
+					 * Number of the bytes discarded from the storage of the characters over the whole time of the parsing
 					 *
-					 * @details A character not marked in the marking is the content of the string itself:
-					 *          such characters are passed by a segment and transferred into the storage by one
-					 *          action. The contract of the independence of the issuance from the cutting of the text does not
-					 *          affect this pass: the characters whose meaning depends on the one following them
-					 *          are marked by the marking and are not taken by the pass.
+					 * @details The storage is cleared every time the queue of the events is issued,
+					 *          and the offsets in it begin anew. The counting of the discarded makes the offsets
+					 *          through-going: the position of the content of an event in the stream of the parsed characters
+					 *          is the sum of the counting and of the offset of the event in the storage.
+					 *
+					 * @note This counting is created for the sake of the consumer assembling a tree: without
+					 *       a through-going position it would have to transfer the characters of every value
+					 *       to itself one by one, while with it the storage is transferred by whole blocks
 					 *
 					 * \~
 					 */
-					bool _breakString[256];
+					uint64_t _origin;
+					// Смещение от начала текста в байтах
+					uint64_t _offset;
+				private:
+					/**
+					 * \~russian
+					 * Хранилище знаков собираемого значения
+					 *
+					 * @note Хранилище переиспользуется между значениями: выдача события
+					 *       возвращает его к началу, а память остаётся выделенной
+					 *
+					 * \~english
+					 * Storage of the characters of the value being assembled
+					 *
+					 * @note The storage is reused between the values: the issuance of an event
+					 *       returns it to the beginning, while the memory remains allocated
+					 *
+					 * \~
+					 */
+					string _storage;
+					// Текст куска, приведённый к UTF-8
+					string _decoded;
+				private:
+					/**
+					 * \~russian
+					 * Очередь собранных событий
+					 *
+					 * @note Очередь заведена перечнем с указанием на голову, а не двусторонней
+					 *       очередью: та отводит по блоку памяти на каждые несколько десятков
+					 *       событий и освобождает его по опустошении, отчего разбор крупного
+					 *       документа стоил бы десятков тысяч выделений памяти
+					 *
+					 * \~english
+					 * Queue of the assembled events
+					 *
+					 * @note The queue is made as a list with a pointer to the head rather than as a deque:
+					 *       the latter allocates a block of the memory per every few dozens
+					 *       of the events and frees it upon the emptying, whereby the parsing of a large
+					 *       document would cost tens of thousands of the allocations of the memory
+					 *
+					 * \~
+					 */
+					vector <item_t> _items;
+					/**
+					 * \~russian
+					 * Стек видов вместилищ, задающий вложенность
+					 *
+					 * @note Стек этот заменяет рекурсию: вид вместилища решает, ожидается
+					 *       ли следующим имя поля либо значение
+					 *
+					 * \~english
+					 * Stack of the kinds of the containers setting the nesting
+					 *
+					 * @note This stack replaces the recursion: the kind of a container decides whether
+					 *       the name of a field or a value is expected next
+					 *
+					 * \~
+					 */
+					vector <kind_t> _nesting;
+				private:
+					// Указание, передаваемое обработчику прямой выдачи событий
+					void * _context;
+				private:
+					// Разбираемый литерал
+					const char * _literal;
 				private:
 					/**
 					 * \~russian
@@ -775,6 +756,29 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Разметка знаков, прерывающих быстрый проход внутри строки
+					 *
+					 * @details Знак, в разметке не отмеченный, содержимым строки и является:
+					 *          такие знаки проходятся отрезком и переносятся в хранилище одним
+					 *          действием. Договор о независимости выдачи от нарезки текста проход
+					 *          этот не задевает: знаки, чьё значение зависит от следующего за ними,
+					 *          разметкой отмечены и проходом не берутся.
+					 *
+					 * \~english
+					 * Marking of the characters interrupting the fast pass inside a string
+					 *
+					 * @details A character not marked in the marking is the content of the string itself:
+					 *          such characters are passed by a segment and transferred into the storage by one
+					 *          action. The contract of the independence of the issuance from the cutting of the text does not
+					 *          affect this pass: the characters whose meaning depends on the one following them
+					 *          are marked by the marking and are not taken by the pass.
+					 *
+					 * \~
+					 */
+					bool _breakString[256];
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод заполнения разметки знаков, прерывающих быстрый проход
 					 *
 					 *
@@ -796,8 +800,8 @@ namespace awh {
 					 * @brief Method of the fast pass over the characters not changing the state
 					 *
 					 * @param buffer buffer of the text being parsed
-					 * @param size size of the buffer of the text being parsed
-					 * @return number of the passed bytes
+					 * @param size   size of the buffer of the text being parsed
+					 * @return       number of the passed bytes
 					 *
 					 * \~
 					 */
@@ -815,7 +819,7 @@ namespace awh {
 					 *
 					 * @param text buffer of the text being parsed
 					 * @param size size of the buffer of the text being parsed
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -831,7 +835,7 @@ namespace awh {
 					 * @brief Method of the parsing of one character of a text
 					 *
 					 * @param letter character being parsed
-					 * @return sign of the success of the parsing
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -847,7 +851,7 @@ namespace awh {
 					 * @brief Method of the stopping of the parsing by a refusal
 					 *
 					 * @param error error code of the parsing
-					 * @return sign of the success of the parsing, always a falsehood
+					 * @return      sign of the success of the parsing, always a falsehood
 					 *
 					 * \~
 					 */
@@ -863,7 +867,7 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the placing of an assembled event into the queue of the issuance
 					 *
-					 * @param event kind of the assembled event
+					 * @param event  kind of the assembled event
 					 * @param offset offset of the content of the event in the storage of the characters
 					 * @param length length of the content of the event in bytes
 					 *
@@ -895,7 +899,7 @@ namespace awh {
 					 * @brief Method of the beginning of the parsing of a value
 					 *
 					 * @param letter character beginning the value
-					 * @return sign of the success of the parsing
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -911,7 +915,7 @@ namespace awh {
 					 * @brief Method of the parsing of a character of the record of a number
 					 *
 					 * @param letter character being parsed
-					 * @return sign of the success of the parsing
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -973,9 +977,9 @@ namespace awh {
 					 *          rather than the return of the feeding alone
 					 *
 					 * @param buffer buffer of the text being fed
-					 * @param size size of the buffer of the text being fed
-					 * @param end  flag that the chunk is the last one
-					 * @return sign of the success of the parsing
+					 * @param size   size of the buffer of the text being fed
+					 * @param end    flag that the chunk is the last one
+					 * @return       sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -991,7 +995,7 @@ namespace awh {
 					 * @brief Method of the feeding of a text as a whole
 					 *
 					 * @param text text being fed
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1383,7 +1387,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -1394,13 +1397,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Reader() noexcept {}
+					~Reader() noexcept = default;
 			} reader_t;
 		};
 	};

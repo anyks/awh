@@ -49,6 +49,10 @@
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include "../../sys/fs.hpp"
 
 /**
@@ -99,14 +103,14 @@ namespace awh {
 			 *
 			 * @details Объявление это заведено ради прививки: документ прививаемое значение
 			 *          принимает, а определение его лежит в заголовке, какой сам подключает документ.
-			 *          Полное объявление есть в `value.hpp`
+			 *          Полное объявление есть в `value.hpp`.
 			 *
 			 * \~english
 			 * @brief Forward declaration of the owning value
 			 *
 			 * @details This declaration is made for the sake of the grafting: a document accepts a value
 			 *          being grafted, while its definition lies in a header which itself includes the document.
-			 *          The full declaration is in `value.hpp`
+			 *          The full declaration is in `value.hpp`.
 			 *
 			 * \~
 			 */
@@ -182,10 +186,8 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Настройки разбора текста
-						reader_t::settings_t reader;
-						// Настройки записи текста
-						writer_t::settings_t writer;
+						// Правило преобразования чисел при разборе
+						number_t numbers;
 						/**
 						 * \~russian
 						 * @brief Правило обращения с повторяющимся именем поля объекта
@@ -204,25 +206,25 @@ namespace awh {
 						 * \~
 						 */
 						duplicate_t duplicates;
-						// Правило преобразования чисел при разборе
-						number_t numbers;
+						// Настройки разбора текста
+						reader_t::settings_t reader;
+						// Настройки записи текста
+						writer_t::settings_t writer;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept :
-						 duplicates(duplicate_t::ERROR), numbers(number_t::NATIVE) {}
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
 					 * \~russian
-					 * @brief Узел документа
+					 * @brief Структура узла документа
 					 *
 					 * @details Узел занимает двадцать байтов и указаний на другие узлы не несёт
 					 *          вовсе: содержимое, имя поля и дети находятся счётом. Имя поля лежит в
@@ -233,7 +235,7 @@ namespace awh {
 					 *          вместилища своего содержимого нет, а у прочих узлов нет детей.
 					 *
 					 * \~english
-					 * @brief Node of a document
+					 * @brief Document node structure
 					 *
 					 * @details A node occupies twenty bytes and does not carry any pointers to the other nodes
 					 *          at all: the content, the name of a field and the children are found by a counting. The name of a field lies in
@@ -246,10 +248,6 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct Node {
-						// Вид значения узла документа
-						type_t type;
-						// Признак того, что содержимое было изменено разбором
-						bool modified;
 						/**
 						 * \~russian
 						 * Признак того, что узел является полем объекта
@@ -270,19 +268,14 @@ namespace awh {
 						 * \~
 						 */
 						bool keyed;
-						/**
-						 * \~russian
-						 * Количество детей вместилища либо длина содержимого в байтах
-						 *
-						 * \~english
-						 * Number of the children of a container or the length of the content in bytes
-						 *
-						 * \~
-						 */
-						// Смещение содержимого либо имени поля в хранилище знаков
-						uint32_t offset;
+						// Признак того, что содержимое было изменено разбором
+						bool modified;
+						// Вид значения узла документа
+						type_t type;
 						// Длина имени поля объекта в байтах
 						uint32_t named;
+						// Смещение содержимого либо имени поля в хранилище знаков
+						uint32_t offset;
 						/**
 						 * \~russian
 						 * Содержимое узла шириною в восемь байтов
@@ -443,20 +436,31 @@ namespace awh {
 						}
 						/**
 						 * \~russian
-						 * @brief Шаблонный метод получения числа, хранимого узлом
+						 * @brief Шаблон метода получения числа, хранимого узлом
 						 *
 						 * @tparam T вид хранимого узлом числа
-						 * @return   число, хранимое узлом
 						 *
 						 * \~english
-						 * @brief Template method of the obtaining of the number stored by the node
+						 * @brief Template for a method to retrieve the value stored by a node
 						 *
 						 * @tparam T kind of the number stored by the node
-						 * @return number stored by the node
 						 *
 						 * \~
 						 */
 						template <typename T>
+						/**
+						 * \~russian
+						 * @brief Метод получения числа, хранимого узлом
+						 *
+						 * @return число, хранимое узлом
+						 *
+						 * \~english
+						 * @brief Method for obtaining the value stored by a node
+						 *
+						 * @return number stored by the node
+						 *
+						 * \~
+						 */
 						AWH_JSON_INLINE T number() const noexcept {
 							// Извлекаемое из узла число
 							T result;
@@ -467,20 +471,31 @@ namespace awh {
 						}
 						/**
 						 * \~russian
-						 * @brief Шаблонный метод установки числа, хранимого узлом
+						 * @brief Шаблон метода установки числа, хранимого узлом
 						 *
-						 * @tparam T     вид хранимого узлом числа
-						 * @param  value устанавливаемое число
+						 * @tparam T вид хранимого узлом числа
 						 *
 						 * \~english
-						 * @brief Template method of the setting of the number stored by the node
+						 * @brief Template for setting the number stored by the node
 						 *
 						 * @tparam T kind of the number stored by the node
-						 * @param value number being set
 						 *
 						 * \~
 						 */
 						template <typename T>
+						/**
+						 * \~russian
+						 * @brief Метод установки числа, хранимого узлом
+						 *
+						 * @param value устанавливаемое число
+						 *
+						 * \~english
+						 * @brief Method for setting the value stored by a node
+						 *
+						 * @param value number being set
+						 *
+						 * \~
+						 */
 						AWH_JSON_INLINE void number(const T value) noexcept {
 							// Выполняем обнуление содержимого узла
 							this->content[0] = 0;
@@ -493,27 +508,27 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Node() noexcept :
-						 type(type_t::UNDEFINED), modified(false), keyed(false),
-						 offset(0), named(0), content{0, 0} {}
+						constexpr Node() noexcept :
+						 keyed(false), modified(false),
+						 type(type_t::UNDEFINED), named(0),
+						 offset(0), content{0, 0} {}
 					} node_t;
 				public:
 					/**
 					 * \~russian
-					 * @brief Ссылка на узел документа
+					 * @brief Класс ссылки на узел документа
 					 *
 					 * @details Ссылка легка: она хранит указатель на документ и номер узла.
 					 *          Обращение по имени и по номеру отдаёт такую же ссылку, отчего цепочка
 					 *          обращений памяти не выделяет вовсе.
 					 *
 					 * \~english
-					 * @brief Reference to a node of a document
+					 * @brief Document node reference class
 					 *
 					 * @details The reference is light: it holds a pointer to the document and the index of the node.
 					 *          An access by a name and by an index gives away the same reference, whereby a chain
@@ -523,31 +538,8 @@ namespace awh {
 					 */
 					typedef class __AWH_SHARED_EXPORT__ Value {
 						private:
-							// Документ, которому принадлежит узел
-							const Document * _doc;
-						private:
 							// Номер узла в перечне узлов документа
 							uint32_t _index;
-						private:
-							/**
-							 * \~russian
-							 * Номер узла за последним узлом вместилища, какому узел принадлежит
-							 *
-							 * @details Указаний на родителя узел не несёт, а переход к соседу
-							 *          обязан останавливаться на границе своего вместилища: без границы
-							 *          обход массива продолжился бы соседом его родителя.
-							 *
-							 * \~english
-							 * Index of the node past the last node of the container to which the node belongs
-							 *
-							 * @details A node does not carry any pointer to its parent, while the transition to a sibling
-							 *          is obliged to stop at the boundary of its container: without the boundary
-							 *          the traversal of an array would continue with the sibling of its parent.
-							 *
-							 * \~
-							 */
-							uint32_t _bound;
-						private:
 							/**
 							 * \~russian
 							 * Клеймо поколения дерева, при котором ссылка снята
@@ -578,6 +570,27 @@ namespace awh {
 							 * \~
 							 */
 							uint32_t _stamp;
+							/**
+							 * \~russian
+							 * Номер узла за последним узлом вместилища, какому узел принадлежит
+							 *
+							 * @details Указаний на родителя узел не несёт, а переход к соседу
+							 *          обязан останавливаться на границе своего вместилища: без границы
+							 *          обход массива продолжился бы соседом его родителя.
+							 *
+							 * \~english
+							 * Index of the node past the last node of the container to which the node belongs
+							 *
+							 * @details A node does not carry any pointer to its parent, while the transition to a sibling
+							 *          is obliged to stop at the boundary of its container: without the boundary
+							 *          the traversal of an array would continue with the sibling of its parent.
+							 *
+							 * \~
+							 */
+							uint32_t _bound;
+						private:
+							// Документ, которому принадлежит узел
+							const Document * _doc;
 						public:
 							/**
 							 * \~russian
@@ -677,8 +690,7 @@ namespace awh {
 							 *       и у `DOUBLE`
 							 *
 							 * @param type вид либо набор видов, на принадлежность к какому
-							 *          проверяется значение
-							 *
+							 *             проверяется значение
 							 * @return     признак принадлежности значения к виду
 							 *
 							 * \~english
@@ -692,9 +704,8 @@ namespace awh {
 							 *       and for `DOUBLE`
 							 *
 							 * @param type kind or set of the kinds for the belonging to which
-							 *          the value is checked
-							 *
-							 * @return flag of the belonging of the value to the kind
+							 *             the value is checked
+							 * @return     flag of the belonging of the value to the kind
 							 *
 							 * \~
 							 */
@@ -822,11 +833,12 @@ namespace awh {
 							 * @brief Method of the check of the presence of a field of an object with the indicated name
 							 *
 							 * @param name name of the field of the object being searched for
-							 * @return sign of the presence of the field of the object
+							 * @return     sign of the presence of the field of the object
 							 *
 							 * \~
 							 */
 							bool contains(const string & name) const noexcept;
+						public:
 							/**
 							 * \~russian
 							 * @brief Метод обращения к полю объекта по имени
@@ -844,7 +856,7 @@ namespace awh {
 							 *          gives away an invalid reference.
 							 *
 							 * @param name name of the field of the object
-							 * @return reference to the node of the field of the object
+							 * @return     reference to the node of the field of the object
 							 *
 							 * \~
 							 */
@@ -860,47 +872,58 @@ namespace awh {
 							 * @brief Method of the access to a value of a container by an index
 							 *
 							 * @param index index of the value in the container
-							 * @return reference to the node of the value
+							 * @return      reference to the node of the value
 							 *
 							 * \~
 							 */
 							Value operator [] (const size_t index) const noexcept;
-						/**
-						 * \~russian
-						 * @brief Метод обращения по написанию знака
-						 *
-						 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
-						 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
-						 *
-						 * @note Без этого метода `v['z']` молча обращался к элементу под номером
-						 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
-						 *       Перечнем беда не лечится: заводитель по разряду `char` делает
-						 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
-						 *
-						 * @tparam T разряд обращения, ограда пропускает ровно знак
-						 * @param  name разыскиваемое имя из одного знака
-						 * @return снятое значение
-						 *
-						 * \~english
-						 * @brief Method of the access by a writing of a character
-						 *
-						 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
-						 *          of a single character rather than for an index. This rule is one for the whole codec.
-						 *
-						 * @note Without this method `v['z']` silently addressed the element under the index 122
-						 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
-						 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
-						 *       ambiguous, hence a template with a guard here
-						 *
-						 * @tparam T width of the access, the guard admits exactly a character
-						 * @param name name of a single character being searched for
-						 * @return value taken
-						 *
-						 * \~
-						 */
-						template <typename T>
-						typename std::enable_if <std::is_same <T, char>::value, Value>::type
-						operator [] (const T name) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Шаблон метода обращения по написанию знака
+							 *
+							 * @tparam T разряд обращения, ограда пропускает ровно знак
+							 *
+							 * \~english
+							 * @brief Method template for character-based input
+							 *
+							 * @tparam T width of the access, the guard admits exactly a character
+							 *
+							 * \~
+							 */
+							template <typename T>
+							/**
+							 * \~russian
+							 * @brief Метод обращения по написанию знака
+							 *
+							 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+							 *          ИМЯ из одного знака, а не номер. Правило это одно на весь кодек.
+							 *
+							 * @note Без этого метода `v['z']` молча обращался к элементу под номером
+							 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
+							 *       Перечнем беда не лечится: заводитель по разряду `char` делает
+							 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+							 *
+							 * @param name разыскиваемое имя из одного знака
+							 * @return      снятое значение
+							 *
+							 * \~english
+							 * @brief Method of the access by a writing of a character
+							 *
+							 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+							 *          of a single character rather than for an index. This rule is one for the whole codec.
+							 *
+							 * @note Without this method `v['z']` silently addressed the element under the index 122
+							 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
+							 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
+							 *       ambiguous, hence a template with a guard here
+							 *
+							 * @param name name of a single character being searched for
+							 * @return     value taken
+							 *
+							 * \~
+							 */
+							typename std::enable_if <std::is_same <T, char>::value, Value>::type operator [] (const T name) const noexcept;
+						public:
 							/**
 							 * \~russian
 							 * @brief Метод обращения к значению по указателю JSON Pointer
@@ -916,63 +939,57 @@ namespace awh {
 							 * @details The pointer is written according to RFC 6901: `/response/users/0/id`
 							 *
 							 * @param pointer pointer to the value according to RFC 6901
-							 * @return reference to the node of the value
+							 * @return        reference to the node of the value
 							 *
 							 * \~
 							 */
 							Value at(const string & pointer) const noexcept;
-						public:
-							/**
-							 * \~russian
-							 * @brief Метод извлечения логического значения
-							 *
-							 * @param result переменная, куда помещается извлечённое значение
-							 * @return       признак успешности извлечения
-							 *
-							 * \~english
-							 * @brief Method of the extraction of a logical value
-							 *
-							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
-							 *
-							 * \~
-							 */
 						private:
 							/**
 							 * \~russian
-							 * @brief Шаблонный метод извлечения числа затребованным видом
+							 * @brief Шаблон метода извлечения числа затребованным видом
+							 *
+							 * @tparam T затребованный вид числа
+							 *
+							 * \~english
+							 * @brief Method template for extracting a number in a requested format
+							 *
+							 * @tparam T demanded kind of the number
+							 *
+							 * \~
+							 */
+							template <typename T>
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа затребованным видом
 							 *
 							 * @details Извлечение сличает само значение с пределами затребованного
 							 *          вида, а не вид хранения с видом затребованным.
-							 *
-							 * @tparam T      затребованный вид числа
-							 * @param  result переменная, куда помещается извлечённое значение
-							 * @return        признак успешности извлечения
 							 *
 							 * @note Переменная-приёмник при ОТКАЗЕ не трогается вовсе и сохраняет
 							 *       то, что несла до вызова: уклад этот един у всех трёх кодеков и
 							 *       снят замером 01.09.2026 по двадцати путям отказа
 							 *
+							 * @param  result переменная, куда помещается извлечённое значение
+							 * @return        признак успешности извлечения
+							 *
 							 * \~english
-							 * @brief Template method of the extraction of a number by the demanded kind
+							 * @brief Method for extracting a number in a requested format
 							 *
 							 * @details The extraction compares the value itself with the limits of the demanded
 							 *          kind rather than the kind of the storage with the demanded kind.
-							 *
-							 * @tparam T demanded kind of the number
-							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
 							 *
 							 * @note The receiver variable is not touched at all on a REFUSAL and keeps
 							 *       what it carried before the call: this layout is common to all the three codecs
 							 *       and was taken off by a measurement of 2026-09-01 along twenty refusal paths
 							 *
+							 * @param result variable where the extracted value is placed
+							 * @return       sign of the success of the extraction
+							 *
 							 * \~
 							 */
-							template <typename T>
 							bool extract(T & result) const noexcept;
 						public:
-							bool value(bool & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа
@@ -984,7 +1001,7 @@ namespace awh {
 							 * @details Целое, не вмещающееся в затребованный вид, переносится
 							 *          младшими разрядами - ровно так, как это делает `static_cast`. Дробное
 							 *          же ОКРУГЛЯЕТСЯ по правилам математики с уводом половины от нуля:
-							 *          `1.5` даёт `2`, `-1.5` даёт `-2`, `1.4` даёт `1`
+							 *          `1.5` даёт `2`, `-1.5` даёт `-2`, `1.4` даёт `1`.
 							 *
 							 * @note Единственное отступление от `static_cast` касается дробного,
 							 *       чья целая часть лежит за пределами затребованного вида, - вроде
@@ -1005,7 +1022,7 @@ namespace awh {
 							 * @details An integer not fitting into the demanded kind is transferred by the lower
 							 *          bits — exactly as `static_cast` does it. A fractional number, however, is ROUNDED
 							 *          by the rules of mathematics with the half taken away from zero:
-							 *          `1.5` gives `2`, `-1.5` gives `-2`, `1.4` gives `1`
+							 *          `1.5` gives `2`, `-1.5` gives `-2`, `1.4` gives `1`.
 							 *
 							 * @note The only deviation from `static_cast` concerns a fractional number
 							 *       whose integer part lies beyond the limits of the demanded kind — like
@@ -1014,7 +1031,7 @@ namespace awh {
 							 *       behaviour in the codec
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1030,7 +1047,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `int16_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1046,7 +1063,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `int32_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1062,7 +1079,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `int64_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1078,7 +1095,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `uint8_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1094,7 +1111,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `uint16_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1110,7 +1127,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `uint32_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1126,7 +1143,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `uint64_t`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1142,7 +1159,7 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `float`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1158,11 +1175,27 @@ namespace awh {
 							 * @brief Method of the extraction of a number by the kind `double`
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
 							bool value(double & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения булевого значения
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method for retrieving a Boolean value
+							 *
+							 * @param result variable where the extracted value is placed
+							 * @return       sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(bool & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения строкового значения
@@ -1174,7 +1207,7 @@ namespace awh {
 							 * @brief Method of the extraction of a string value
 							 *
 							 * @param result variable where the extracted value is placed
-							 * @return sign of the success of the extraction
+							 * @return       sign of the success of the extraction
 							 *
 							 * \~
 							 */
@@ -1320,13 +1353,12 @@ namespace awh {
 							 * \~russian
 							 * @brief Конструктор
 							 *
-							 *
 							 * \~english
 							 * @brief Constructor
 							 *
 							 * \~
 							 */
-							Value() noexcept : _doc(nullptr), _index(NO_INDEX), _bound(0), _stamp(0) {}
+							explicit Value() noexcept;
 							/**
 							 * \~russian
 							 * @brief Конструктор
@@ -1338,14 +1370,15 @@ namespace awh {
 							 * \~english
 							 * @brief Constructor
 							 *
-							 * @param doc document to which the node belongs
+							 * @param doc   document to which the node belongs
 							 * @param index index of the node in the list of the nodes of the document
 							 * @param bound index of the node past the last node of the container
 							 *
 							 * \~
 							 */
-							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept : _doc(doc), _index(index), _bound(bound), _stamp((doc != nullptr) ? doc->_stamp : 0) {}
+							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept;
 					} value_t;
+				public:
 					/**
 					 * \~russian
 					 * @brief Обработчик потоковой выдачи значений
@@ -1363,100 +1396,53 @@ namespace awh {
 					 */
 					typedef function <bool (const value_t &)> callback_t;
 				private:
-					// Настройки документа
-					settings_t _settings;
+					// Признак того, что имя поля объекта разобрано, а значение его - ещё нет
+					bool _keyed;
 					/**
 					 * \~russian
-					 * Чтение текста документа
+					 * @brief Признак прекращения разбора по требованию обработчика
 					 *
-					 * @note Чтение принадлежит документу, а не разбору: заведение его на всякий
-					 *       разбор стоило бы выделения памяти под очередь событий, хранилище знаков и
-					 *       стек вложенности - а на малых документах, каких у служб большинство,
-					 *       стоимость эта и составляет почти всё время разбора
+					 * @details Обработчик потоковой выдачи вправе ответить ложью, и разбор
+					 *          тогда прекращается. Прекращение это ОТКАЗОМ НЕ ЯВЛЯЕТСЯ: потребитель
+					 *          получил, сколько хотел. Прежде разбор отвечал на него ложью при коде
+					 *          `NONE` - отличить своё же «довольно» от отказа неведомой причины было
+					 *          нечем, - тогда как таблица CSV на то же действие отвечает успехом и
+					 *          договором это описывает.
 					 *
 					 * \~english
-					 * Reading of the text of the document
+					 * @brief Flag of the parsing being stopped at the demand of a handler
 					 *
-					 * @note The reading belongs to the document rather than to the parsing: its creation
-					 *       for every parsing would cost an allocation of the memory for the queue of the events, the storage of the characters and
-					 *       the stack of the nesting — and for the small documents, of which there are the majority at the services,
-					 *       this cost constitutes almost all of the time of the parsing
+					 * @details A handler of the streaming issue is entitled to answer with a falsehood, and
+					 *          the parsing then stops. This stopping IS NOT A REFUSAL: the consumer has
+					 *          received as much as it wanted. Formerly the parsing answered it with a
+					 *          falsehood under the code `NONE` - there was nothing to tell one's own
+					 *          "enough" apart from a refusal of an unknown cause, - while the CSV table
+					 *          answers the very same action with success, and the contract describes it so.
 					 *
 					 * \~
 					 */
-					reader_t _reader;
+					bool _halted;
 					/**
 					 * \~russian
-					 * @brief Код отказа последней работы над документом
+					 * Признак того, что документ уже собран целиком
 					 *
-					 * @details Поле изменчиво нарочно: выдача текста документа и запись его в
-					 *          файл идут работами неизменными, а сообщать отказ обязаны - иначе пустой
-					 *          текст неотличим от документа пустого. Прежде код отведён был одному
-					 *          лишь разбору, и отказ записи пропадал вовсе.
+					 * @details Поток несёт документы один за другим, а дерево вмещает один. Без
+					 *          обработчика потоковой выдачи второй документ потока уходил бы в никуда
+					 *          молча: узлы его ложились бы за корнем недостижимыми, а выдача текста
+					 *          отдавала бы первый документ признаком успеха.
 					 *
 					 * \~english
-					 * @brief Code of the failure of the last work upon the document
+					 * Sign of the document having already been assembled as a whole
 					 *
-					 * @details The field is mutable on purpose: the issue of the text of a document and its
-					 *          writing to a file go as immutable methods, yet both are obliged to report a
-					 *          failure - otherwise an empty text is indistinguishable from an empty document.
-					 *          Previously the code was allotted to the parsing alone, and a failure of the
-					 *          writing vanished altogether.
+					 * @details A stream carries the documents one after another, while a tree holds one.
+					 *          Without a handler of the streaming issuance the second document of a stream would
+					 *          go nowhere silently: its nodes would lie behind the root unreachable, while the
+					 *          issuance of the text would give away the first document with a sign of success.
 					 *
 					 * \~
 					 */
-					mutable error_t _error;
-					/**
-					 * \~russian
-					 * Кодировка, какою исходный текст документа прочитан
-					 *
-					 * @note Хранится своим полем, а не спрашивается у чтения, оттого что очистка
-					 *       обязана её сбрасывать, а сбросить чтение посреди разбора нельзя:
-					 *       очистка бывает позвана из обработчика потоковой выдачи
-					 *
-					 * \~english
-					 * Encoding by which the source text of the document has been read
-					 *
-					 * @note It is kept by its own field rather than asked of the reading: the clearing is bound
-					 *       to reset it, and the reading cannot be reset in the middle of the parsing - the
-					 *       clearing may be called from the handler of the streaming issuance
-					 *
-					 * \~
-					 */
-					encoding_t _encoding = encoding_t::NONE;
-					/**
-					 * \~russian
-					 * Объект для работы с файловой системой
-					 *
-					 * @note Изменяемость его намеренна: сохранение документа объявлено НЕИЗМЕНЯЮЩИМ
-					 *       - оно документа не трогает, - а подмена целевого файла временным
-					 *       константным ходом у файловой системы не является
-					 *
-					 * \~english
-					 * Object for working with the file system
-					 *
-					 * @note Its mutability is deliberate: the saving of a document is declared NON-MUTATING
-					 *       - it does not touch the document - while the replacement of the target file by a
-					 *       temporary one is not a constant method of the file system
-					 *
-					 * \~
-					 */
-					fs_t _fs;
-					/**
-					 * \~russian
-					 * Перечень узлов документа
-					 *
-					 * @details Дети лежат сразу за родителем, оттого обход идёт вперёд по
-					 *          памяти.
-					 *
-					 * \~english
-					 * List of the nodes of the document
-					 *
-					 * @details The children lie right after the parent, whereby the traversal goes forward through
-					 *          the memory.
-					 *
-					 * \~
-					 */
+					bool _completed;
+				private:
 					/**
 					 * \~russian
 					 * Клеймо поколения дерева документа
@@ -1516,152 +1502,9 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _stamp;
-					vector <node_t> _nodes;
-					// Хранилище знаков всех строк и имён документа
-					string _storage;
-					/**
-					 * \~russian
-					 * Отображение имён полей в номера узлов, заводимое по требованию
-					 *
-					 * @details Заводится при первом обращении по имени к объекту, число
-					 *          полей какого превышает порог. Мелкие объекты, каких большинство, не
-					 *          платят за него ничего.
-					 *
-					 * \~english
-					 * Mapping of the names of the fields into the indices of the nodes created on demand
-					 *
-					 * @details Is created at the first access by a name to an object the number
-					 *          of the fields of which exceeds the threshold. The small objects, of which there are the majority, do not
-					 *          pay anything for it.
-					 *
-					 * \~
-					 */
-					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
-					/**
-					 * \~russian
-					 * Перечень имён полей разбираемого объекта вместе с номерами их узлов
-					 *
-					 * @note Перечень принадлежит документу, а не разбору повторов: заведение
-					 *       его на всяком закрываемом объекте стоило бы выделения памяти на всякий
-					 *       объект документа
-					 *
-					 * \~english
-					 * List of the names of the fields of the object being analyzed together with the indices of their nodes
-					 *
-					 * @note The list belongs to the document rather than to the analysis of the repetitions: its creation
-					 *       at every object being closed would cost an allocation of the memory for every
-					 *       object of the document
-					 *
-					 * \~
-					 */
-					vector <pair <string_view, uint32_t>> _naming;
-					// Отображение имён полей крупного объекта в места их в перечне имён
-					unordered_map <string_view, size_t> _lookup;
-					/**
-					 * \~russian
-					 * @brief Положение отказа разбора в исходном тексте
-					 *
-					 * @details Поле изменчиво нарочно, наравне с кодом отказа: выдача текста
-					 *          идёт работой неизменной, а положение сбрасывать обязана - у отказа записи
-					 *          места в исходном тексте нет вовсе, и положение прежнего разбора, его
-					 *          пережив, складывалось бы с новым кодом в донесение стройное, но ложное.
-					 *
-					 * \~english
-					 * @brief Position of a parse failure in the source text
-					 *
-					 * @details The field is mutable on purpose, on a par with the failure code: the issue of
-					 *          the text goes as an immutable method, yet it is obliged to reset the position -
-					 *          a failure of the writing has no place in the source text at all, and the
-					 *          position of a previous parse, outliving it, would join the new code into a
-					 *          tidy yet false report.
-					 *
-					 * \~
-					 */
-					mutable location_t _position;
-					/**
-					 * \~russian
-					 * Стек номеров узлов открытых вместилищ
-					 *
-					 * @note Стек этот принадлежит документу, а не сборке: текст подаётся
-					 *       кусками, и сборка вызывается на всякий кусок заново. Стек, заведённый
-					 *       внутри сборки, терялся бы на границе кусков вместе с деревом
-					 *
-					 * \~english
-					 * Stack of the indices of the nodes of the opened containers
-					 *
-					 * @note This stack belongs to the document rather than to the assembly: the text is fed
-					 *       by chunks, and the assembly is called anew for every chunk. A stack created
-					 *       inside the assembly would be lost at the boundary of the chunks together with the tree
-					 *
-					 * \~
-					 */
-					vector <uint32_t> _nesting;
 					// Длина имени поля объекта, ожидающего своего значения
 					uint32_t _named;
-					// Признак того, что имя поля объекта разобрано, а значение его - ещё нет
-					bool _keyed;
-					/**
-					 * \~russian
-					 * Признак того, что документ уже собран целиком
-					 *
-					 * @details Поток несёт документы один за другим, а дерево вмещает один. Без
-					 *          обработчика потоковой выдачи второй документ потока уходил бы в никуда
-					 *          молча: узлы его ложились бы за корнем недостижимыми, а выдача текста
-					 *          отдавала бы первый документ признаком успеха.
-					 *
-					 * \~english
-					 * Sign of the document having already been assembled as a whole
-					 *
-					 * @details A stream carries the documents one after another, while a tree holds one.
-					 *          Without a handler of the streaming issuance the second document of a stream would
-					 *          go nowhere silently: its nodes would lie behind the root unreachable, while the
-					 *          issuance of the text would give away the first document with a sign of success.
-					 *
-					 * \~
-					 */
-					bool _completed;
-					/**
-					 * \~russian
-					 * @brief Признак прекращения разбора по требованию обработчика
-					 *
-					 * @details Обработчик потоковой выдачи вправе ответить ложью, и разбор
-					 *          тогда прекращается. Прекращение это ОТКАЗОМ НЕ ЯВЛЯЕТСЯ: потребитель
-					 *          получил, сколько хотел. Прежде разбор отвечал на него ложью при коде
-					 *          `NONE` - отличить своё же «довольно» от отказа неведомой причины было
-					 *          нечем, - тогда как таблица CSV на то же действие отвечает успехом и
-					 *          договором это описывает.
-					 *
-					 * \~english
-					 * @brief Flag of the parsing being stopped at the demand of a handler
-					 *
-					 * @details A handler of the streaming issue is entitled to answer with a falsehood, and
-					 *          the parsing then stops. This stopping IS NOT A REFUSAL: the consumer has
-					 *          received as much as it wanted. Formerly the parsing answered it with a
-					 *          falsehood under the code `NONE` - there was nothing to tell one's own
-					 *          "enough" apart from a refusal of an unknown cause, - while the CSV table
-					 *          answers the very same action with success, and the contract describes it so.
-					 *
-					 * \~
-					 */
-					bool _halted;
-					/**
-					 * \~russian
-					 * Сквозное положение конца имени поля объекта, ожидающего своего значения
-					 *
-					 * @details Узел несёт одно смещение на имя и на содержимое разом: имя лежит
-					 *          вплотную перед содержимым. У вместилища же своего содержимого нет, и
-					 *          смещению его взяться неоткуда - оттого конец имени запоминается отдельно.
-					 *
-					 * \~english
-					 * Through-going position of the end of the name of the field of an object awaiting its value
-					 *
-					 * @details A node carries one offset for the name and for the content at once: the name lies
-					 *          right before the content. A container has no content of its own, and
-					 *          its offset has nowhere to come from — whereby the end of the name is remembered separately.
-					 *
-					 * \~
-					 */
-					uint64_t _pointer;
+				private:
 					/**
 					 * \~russian
 					 * Сквозное положение первого знака хранилища документа в потоке разобранных знаков
@@ -1684,6 +1527,131 @@ namespace awh {
 					uint64_t _base;
 					/**
 					 * \~russian
+					 * Сквозное положение конца имени поля объекта, ожидающего своего значения
+					 *
+					 * @details Узел несёт одно смещение на имя и на содержимое разом: имя лежит
+					 *          вплотную перед содержимым. У вместилища же своего содержимого нет, и
+					 *          смещению его взяться неоткуда - оттого конец имени запоминается отдельно.
+					 *
+					 * \~english
+					 * Through-going position of the end of the name of the field of an object awaiting its value
+					 *
+					 * @details A node carries one offset for the name and for the content at once: the name lies
+					 *          right before the content. A container has no content of its own, and
+					 *          its offset has nowhere to come from — whereby the end of the name is remembered separately.
+					 *
+					 * \~
+					 */
+					uint64_t _pointer;
+				private:
+					/**
+					 * \~russian
+					 * Объект для работы с файловой системой
+					 *
+					 * @note Изменяемость его намеренна: сохранение документа объявлено НЕИЗМЕНЯЮЩИМ
+					 *       - оно документа не трогает, - а подмена целевого файла временным
+					 *       константным ходом у файловой системы не является
+					 *
+					 * \~english
+					 * Object for working with the file system
+					 *
+					 * @note Its mutability is deliberate: the saving of a document is declared NON-MUTATING
+					 *       - it does not touch the document - while the replacement of the target file by a
+					 *       temporary one is not a constant method of the file system
+					 *
+					 * \~
+					 */
+					fs_t _fs;
+				private:
+					/**
+					 * \~russian
+					 * Чтение текста документа
+					 *
+					 * @note Чтение принадлежит документу, а не разбору: заведение его на всякий
+					 *       разбор стоило бы выделения памяти под очередь событий, хранилище знаков и
+					 *       стек вложенности - а на малых документах, каких у служб большинство,
+					 *       стоимость эта и составляет почти всё время разбора
+					 *
+					 * \~english
+					 * Reading of the text of the document
+					 *
+					 * @note The reading belongs to the document rather than to the parsing: its creation
+					 *       for every parsing would cost an allocation of the memory for the queue of the events, the storage of the characters and
+					 *       the stack of the nesting — and for the small documents, of which there are the majority at the services,
+					 *       this cost constitutes almost all of the time of the parsing
+					 *
+					 * \~
+					 */
+					reader_t _reader;
+					// Настройки документа
+					settings_t _settings;
+					/**
+					 * \~russian
+					 * Кодировка, какою исходный текст документа прочитан
+					 *
+					 * @note Хранится своим полем, а не спрашивается у чтения, оттого что очистка
+					 *       обязана её сбрасывать, а сбросить чтение посреди разбора нельзя:
+					 *       очистка бывает позвана из обработчика потоковой выдачи
+					 *
+					 * \~english
+					 * Encoding by which the source text of the document has been read
+					 *
+					 * @note It is kept by its own field rather than asked of the reading: the clearing is bound
+					 *       to reset it, and the reading cannot be reset in the middle of the parsing - the
+					 *       clearing may be called from the handler of the streaming issuance
+					 *
+					 * \~
+					 */
+					encoding_t _encoding;
+				private:
+					/**
+					 * \~russian
+					 * @brief Код отказа последней работы над документом
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста документа и запись его в
+					 *          файл идут работами неизменными, а сообщать отказ обязаны - иначе пустой
+					 *          текст неотличим от документа пустого. Прежде код отведён был одному
+					 *          лишь разбору, и отказ записи пропадал вовсе.
+					 *
+					 * \~english
+					 * @brief Code of the failure of the last work upon the document
+					 *
+					 * @details The field is mutable on purpose: the issue of the text of a document and its
+					 *          writing to a file go as immutable methods, yet both are obliged to report a
+					 *          failure - otherwise an empty text is indistinguishable from an empty document.
+					 *          Previously the code was allotted to the parsing alone, and a failure of the
+					 *          writing vanished altogether.
+					 *
+					 * \~
+					 */
+					mutable error_t _error;
+					/**
+					 * \~russian
+					 * @brief Положение отказа разбора в исходном тексте
+					 *
+					 * @details Поле изменчиво нарочно, наравне с кодом отказа: выдача текста
+					 *          идёт работой неизменной, а положение сбрасывать обязана - у отказа записи
+					 *          места в исходном тексте нет вовсе, и положение прежнего разбора, его
+					 *          пережив, складывалось бы с новым кодом в донесение стройное, но ложное.
+					 *
+					 * \~english
+					 * @brief Position of a parse failure in the source text
+					 *
+					 * @details The field is mutable on purpose, on a par with the failure code: the issue of
+					 *          the text goes as an immutable method, yet it is obliged to reset the position -
+					 *          a failure of the writing has no place in the source text at all, and the
+					 *          position of a previous parse, outliving it, would join the new code into a
+					 *          tidy yet false report.
+					 *
+					 * \~
+					 */
+					mutable location_t _position;
+				private:
+					// Хранилище знаков всех строк и имён документа
+					string _storage;
+				private:
+					/**
+					 * \~russian
 					 * Обработчик потоковой выдачи значений, действующий на время разбора
 					 *
 					 * @note Обработчик хранится указанием, а не копией: событие приходит из
@@ -1699,6 +1667,135 @@ namespace awh {
 					 * \~
 					 */
 					const callback_t * _callback;
+				private:
+					/**
+					 * \~russian
+					 * Перечень узлов документа
+					 *
+					 * @details Дети лежат сразу за родителем, оттого обход идёт вперёд по памяти.
+					 *
+					 * \~english
+					 * List of the nodes of the document
+					 *
+					 * @details The children lie right after the parent, whereby the traversal goes forward through the memory.
+					 *
+					 * \~
+					 */
+					vector <node_t> _nodes;
+					/**
+					 * \~russian
+					 * Стек номеров узлов открытых вместилищ
+					 *
+					 * @note Стек этот принадлежит документу, а не сборке: текст подаётся
+					 *       кусками, и сборка вызывается на всякий кусок заново. Стек, заведённый
+					 *       внутри сборки, терялся бы на границе кусков вместе с деревом
+					 *
+					 * \~english
+					 * Stack of the indices of the nodes of the opened containers
+					 *
+					 * @note This stack belongs to the document rather than to the assembly: the text is fed
+					 *       by chunks, and the assembly is called anew for every chunk. A stack created
+					 *       inside the assembly would be lost at the boundary of the chunks together with the tree
+					 *
+					 * \~
+					 */
+					vector <uint32_t> _nesting;
+					/**
+					 * \~russian
+					 * Перечень имён полей разбираемого объекта вместе с номерами их узлов
+					 *
+					 * @note Перечень принадлежит документу, а не разбору повторов: заведение
+					 *       его на всяком закрываемом объекте стоило бы выделения памяти на всякий
+					 *       объект документа
+					 *
+					 * \~english
+					 * List of the names of the fields of the object being analyzed together with the indices of their nodes
+					 *
+					 * @note The list belongs to the document rather than to the analysis of the repetitions: its creation
+					 *       at every object being closed would cost an allocation of the memory for every
+					 *       object of the document
+					 *
+					 * \~
+					 */
+					vector <pair <string_view, uint32_t>> _naming;
+				private:
+					// Отображение имён полей крупного объекта в места их в перечне имён
+					unordered_map <string_view, size_t> _lookup;
+					/**
+					 * \~russian
+					 * Отображение имён полей в номера узлов, заводимое по требованию
+					 *
+					 * @details Заводится при первом обращении по имени к объекту, число
+					 *          полей какого превышает порог. Мелкие объекты, каких большинство, не
+					 *          платят за него ничего.
+					 *
+					 * \~english
+					 * Mapping of the names of the fields into the indices of the nodes created on demand
+					 *
+					 * @details Is created at the first access by a name to an object the number
+					 *          of the fields of which exceeds the threshold. The small objects, of which there are the majority, do not
+					 *          pay anything for it.
+					 *
+					 * \~
+					 */
+					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод определения вида числа вместе с преобразованием его
+					 *
+					 * @details Вид выбирается самый узкий из вмещающих: число `1` получает вид
+					 *          `UINT8`, а `-1` - вид `INT8`. Знаковость решается знаком записи, а не
+					 *          величиной: запись без минуса есть число без знака.
+					 *
+					 * @param text разбираемая запись числа
+					 * @param node узел документа, куда помещается разобранное число
+					 * @return     признак того, что число вместилось в родной вид
+					 *
+					 * \~english
+					 * @brief Method of the determination of the kind of a number together with its conversion
+					 *
+					 * @details The kind is chosen as the narrowest of the containing ones: the number `1` receives the kind
+					 *          `UINT8`, while `-1` the kind `INT8`. The signedness is decided by the sign of the record rather than by
+					 *          the magnitude: a record without a minus is a number without a sign.
+					 *
+					 * @param text record of the number being parsed
+					 * @param node node of the document where the parsed number is placed
+					 * @return     flag that the number fitted into a native kind
+					 *
+					 * \~
+					 */
+					static bool classify(const string_view text, node_t & node) noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод приёма события разбора, выданного прямо из чтения
+					 *
+					 * @details Стоит посредником между обработчиком чтения, какому возвращать
+					 *          нечего, и сборкой дерева: отказ сборки прекращает разбор вызовом `abort()`
+					 *
+					 * @param context  указание на документ, собирающий дерево
+					 * @param reader   объект потокового чтения текста
+					 * @param event    вид очередного события разбора
+					 * @param content  указание на содержимое события в хранилище знаков разбора
+					 * @param modified признак изменения содержимого разбором
+					 *
+					 * \~english
+					 * @brief Method of the reception of a parsing event issued straight from the reading
+					 *
+					 * @details It stands as an intermediary between the handler of the reading, which has nothing
+					 *          to return, and the assembly of the tree: a failure of the assembly terminates the parsing by a call of `abort()`
+					 *
+					 * @param context  pointer at the document assembling the tree
+					 * @param reader   object of the streaming reading of a text
+					 * @param event    kind of the next event of the parsing
+					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
+					 * @param modified flag of the modification of the content by the parsing
+					 *
+					 * \~
+					 */
+					static void handler(void * context, reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод сборки дерева по очередному событию разбора
@@ -1716,7 +1813,7 @@ namespace awh {
 					 * @param event    kind of the next event of the parsing
 					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
 					 * @param modified flag of the modification of the content by the parsing
-					 * @return sign of the success of the assembly
+					 * @return         sign of the success of the assembly
 					 *
 					 * \~
 					 */
@@ -1749,34 +1846,6 @@ namespace awh {
 					void transfer(const reader_t & reader) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод приёма события разбора, выданного прямо из чтения
-					 *
-					 * @details Стоит посредником между обработчиком чтения, какому возвращать
-					 *          нечего, и сборкой дерева: отказ сборки прекращает разбор вызовом `abort()`
-					 *
-					 * @param context  указание на документ, собирающий дерево
-					 * @param reader   объект потокового чтения текста
-					 * @param event    вид очередного события разбора
-					 * @param content  указание на содержимое события в хранилище знаков разбора
-					 * @param modified признак изменения содержимого разбором
-					 *
-					 * \~english
-					 * @brief Method of the reception of a parsing event issued straight from the reading
-					 *
-					 * @details It stands as an intermediary between the handler of the reading, which has nothing
-					 *          to return, and the assembly of the tree: a failure of the assembly terminates the parsing by a call of `abort()`
-					 *
-					 * @param context  pointer at the document assembling the tree
-					 * @param reader   object of the streaming reading of a text
-					 * @param event    kind of the next event of the parsing
-					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
-					 * @param modified flag of the modification of the content by the parsing
-					 *
-					 * \~
-					 */
-					static void handler(void * context, reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод разбора повторяющихся имён полей объекта
 					 *
 					 * @details Вызывается при закрытии объекта, когда все поля его уже
@@ -1796,7 +1865,7 @@ namespace awh {
 					 *
 					 * @param parent index of the node of the object being analyzed
 					 * @param reader object of the streaming reading of a text
-					 * @return sign of the success of the analysis
+					 * @return       sign of the success of the analysis
 					 *
 					 * \~
 					 */
@@ -1860,39 +1929,13 @@ namespace awh {
 					 *       The limits are measured at the public `graft` method, whence this transfer is called
 					 *
 					 * @param value owning value being transferred
-					 * @param name name of the field of an object, a zero — the node is not a field of an object
+					 * @param name  name of the field of an object, a zero — the node is not a field of an object
 					 * @param nodes list of the nodes where the transferred value is placed
-					 * @return number of the nodes of the transferred subtree
+					 * @return      number of the nodes of the transferred subtree
 					 *
 					 * \~
 					 */
 					uint32_t transplant(const json::Value & value, const string * name, vector <node_t> & nodes, const uint32_t depth) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод определения вида числа вместе с преобразованием его
-					 *
-					 * @details Вид выбирается самый узкий из вмещающих: число `1` получает вид
-					 *          `UINT8`, а `-1` - вид `INT8`. Знаковость решается знаком записи, а не
-					 *          величиной: запись без минуса есть число без знака.
-					 *
-					 * @param text разбираемая запись числа
-					 * @param node узел документа, куда помещается разобранное число
-					 * @return     признак того, что число вместилось в родной вид
-					 *
-					 * \~english
-					 * @brief Method of the determination of the kind of a number together with its conversion
-					 *
-					 * @details The kind is chosen as the narrowest of the containing ones: the number `1` receives the kind
-					 *          `UINT8`, while `-1` the kind `INT8`. The signedness is decided by the sign of the record rather than by
-					 *          the magnitude: a record without a minus is a number without a sign.
-					 *
-					 * @param text record of the number being parsed
-					 * @param node node of the document where the parsed number is placed
-					 * @return flag that the number fitted into a native kind
-					 *
-					 * \~
-					 */
-					static bool classify(const string_view text, node_t & node) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи числа, хранимого узлом
@@ -1901,8 +1944,13 @@ namespace awh {
 					 *          числа: две отдельные записи одного и того же числа неминуемо разошлись
 					 *          бы видом.
 					 *
+					 * @note Исход сличается выдачей текста: отказ записи МЕСТНЫЙ, и выдача,
+					 *       идущая до конца не глядя, получала последний его код вместо
+					 *       первого - звучащему называлась не та причина
+					 *
 					 * @param writer объект записи текста документа
 					 * @param node   узел, число какого записывается
+					 * @return       признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of the number stored by a node
@@ -1911,15 +1959,15 @@ namespace awh {
 					 *          of a number: two separate writings of one and the same number would inevitably diverge
 					 *          in their appearance.
 					 *
+					 * @note The outcome is revealed by the text output: a "LOCAL" write failure occurs, and the output
+					 *       process—continuing to the end regardless—ends up returning the final error code instead
+					 *       of the first one; consequently, the reason reported is not the actual one
+					 *
 					 * @param writer object of the writing of a text of a document
-					 * @param node node the number of which is being written
+					 * @param node   node the number of which is being written
+					 * @return       indicator of a successful recording
 					 *
 					 * \~
-					 * @return признак успешности записи
-					 *
-					 * @note Исход сличается выдачей текста: отказ записи МЕСТНЫЙ, и выдача,
-					 *       идущая до конца не глядя, получала последний его код вместо
-					 *       первого - звучащему называлась не та причина
 					 */
 					bool compose(writer_t & writer, const node_t & node) const noexcept;
 				public:
@@ -1942,7 +1990,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void reset() noexcept { clear(); }
+					void reset() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста документа
@@ -1954,7 +2002,7 @@ namespace awh {
 					 * @brief Method of the parsing of the text of a document
 					 *
 					 * @param text text of the document being parsed
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1989,9 +2037,9 @@ namespace awh {
 					 *       Such a termination is NOT a refusal: the consumer has got as much as it wanted,
 					 *       and the parsing answers with SUCCESS at the code `NONE`
 					 *
-					 * @param text text of the document being parsed
+					 * @param text     text of the document being parsed
 					 * @param callback handler of the streaming issuance of the values, false terminates the parsing
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -2007,7 +2055,7 @@ namespace awh {
 					 * @brief Method of the parsing of the text of a document from a file
 					 *
 					 * @param filename address of the file being parsed
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -2023,7 +2071,7 @@ namespace awh {
 					 * @brief Method of the rewriting of the document into a text
 					 *
 					 * @param format kind of the formatting of the text being assembled
-					 * @return assembled text of the document
+					 * @return       assembled text of the document
 					 *
 					 * \~
 					 */
@@ -2064,6 +2112,9 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи документа в файл
 					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
+					 *      неделимость записи: отказ оставляет прежний файл нетронутым
+					 *
 					 * @param filename адрес записываемого файла
 					 * @param format   вид оформления собираемого текста
 					 * @return         признак успешности записи
@@ -2071,14 +2122,14 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the writing of the document into a file
 					 *
+					 * @see This contract is verified by the `CodecContract.SavingKeepsThePreviousFileOnWriteFailure` test:
+					 *      the write operation is atomic—a failure leaves the original file untouched
+					 *
 					 * @param filename address of the file being written
-					 * @param format kind of the formatting of the text being assembled
-					 * @return sign of the success of the writing
+					 * @param format   kind of the formatting of the text being assembled
+					 * @return         sign of the success of the writing
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
-					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
 					/**
@@ -2173,8 +2224,8 @@ namespace awh {
 					 *       too with a sevenfold reserve
 					 *
 					 * @param pointer pointer to the place being grafted by RFC 6901
-					 * @param value owning value being grafted
-					 * @return sign of the success of the grafting
+					 * @param value   owning value being grafted
+					 * @return        sign of the success of the grafting
 					 *
 					 * \~
 					 */
@@ -2287,7 +2338,7 @@ namespace awh {
 					 * @brief Method of the access to a field of the root object by a name
 					 *
 					 * @param name name of the field of the root object
-					 * @return reference to the node of the field of the object
+					 * @return     reference to the node of the field of the object
 					 *
 					 * \~
 					 */
@@ -2303,11 +2354,25 @@ namespace awh {
 					 * @brief Method of the access to a value of the root array by an index
 					 *
 					 * @param index index of the value in the root array
-					 * @return reference to the node of the value
+					 * @return      reference to the node of the value
 					 *
 					 * \~
 					 */
 					value_t operator [] (const size_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон метода обращения по написанию знака
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 *
+					 * \~english
+					 * @brief Method template for character-based input
+					 *
+					 * @tparam T width of the access, the guard admits exactly a character
+					 *
+					 * \~
+					 */
+					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод обращения по написанию знака
@@ -2320,9 +2385,8 @@ namespace awh {
 					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
 					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
 					 *
-					 * @tparam T разряд обращения, ограда пропускает ровно знак
-					 * @param  name разыскиваемое имя из одного знака
-					 * @return снятое значение
+					 * @param name разыскиваемое имя из одного знака
+					 * @return     снятое значение
 					 *
 					 * \~english
 					 * @brief Method of the access by a writing of a character
@@ -2335,15 +2399,12 @@ namespace awh {
 					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
 					 *       ambiguous, hence a template with a guard here
 					 *
-					 * @tparam T width of the access, the guard admits exactly a character
 					 * @param name name of a single character being searched for
-					 * @return value taken
+					 * @return     value taken
 					 *
 					 * \~
 					 */
-					template <typename T>
-					typename std::enable_if <std::is_same <T, char>::value, value_t>::type
-					operator [] (const T name) const noexcept;
+					typename std::enable_if <std::is_same <T, char>::value, value_t>::type operator [] (const T name) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод обращения к значению по указателю JSON Pointer
@@ -2355,7 +2416,7 @@ namespace awh {
 					 * @brief Method of the access to a value by a JSON Pointer
 					 *
 					 * @param pointer pointer to the value according to RFC 6901
-					 * @return reference to the node of the value
+					 * @return        reference to the node of the value
 					 *
 					 * \~
 					 */
@@ -2408,6 +2469,9 @@ namespace awh {
 					 *       указатель, ведущий в никуда, - им же: отсутствие детей и отсутствие
 					 *       места разнятся ходом `has()`
 					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`:
+					 *      замкнутость обхода: всякое выданное звено годно для `at()` и ведёт к тому самому ребёнку
+					 *
 					 * @param pointer указатель на значение по RFC 6901
 					 * @return        перечень звеньев указателя к детям значения
 					 *
@@ -2431,13 +2495,13 @@ namespace awh {
 					 *       leading nowhere - with the same: the absence of children and the absence of a
 					 *       place differ by the `has()` method
 					 *
+					 * @see This contract is enforced by the `CodecContract.EnumerationAndLookupFormAClosedTraversal` check:
+					 *      the traversal is "closed"—meaning every element yielded is valid for use with `at()` and leads to the very same child node
+					 *
 					 * @param pointer pointer to the value according to RFC 6901
 					 * @return        list of the tokens of the pointer to the children of the value
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`:
-					 *      замкнутость обхода: всякое выданное звено годно для `at()` и ведёт к тому самому ребёнку
 					 */
 					vector <string> keys(const string & pointer) const noexcept;
 					/**
@@ -2485,6 +2549,9 @@ namespace awh {
 					 *          с новым разбором. Судить по этому счёту о содержимом документа НЕЛЬЗЯ -
 					 *          для того есть `size()` да `empty()`
 					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
+					 *      развод счёта детей корня со счётом узлов хранилища
+					 *
 					 * @return количество узлов хранилища документа
 					 *
 					 * \~english
@@ -2493,12 +2560,12 @@ namespace awh {
 					 * @details The storage is only APPENDED TO: the nodes of a removed subtree remain
 					 *          in it unreachable. This count MUST NOT be used to judge the content of the document.
 					 *
+					 * @see This contract is enforced by the `CodecContract.ChildCountIsSeparatedFromStorageCount` check:
+					 *      which ensures that the count of a root node’s children is kept separate from the count of nodes in the storage
+					 *
 					 * @return number of the nodes of the storage of the document
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
-					 *      развод счёта детей корня со счётом узлов хранилища
 					 */
 					size_t nodes() const noexcept;
 					/**
@@ -2561,22 +2628,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод извлечения положения отказа разбора в исходном тексте
 					 *
-					 * @return положение отказа разбора в исходном тексте
-					 *
 					 * @note Имя названо явным нарочно: у чтения `location()` означает место
 					 *       ТЕКУЩЕГО события, а не отказа, и одно имя о двух значениях
 					 *       заводило потребителя в западню при переходе с уровня на уровень.
 					 *       Кодеки XML, TOML и INI зовут его так же
 					 *
+					 * @return положение отказа разбора в исходном тексте
+					 *
 					 * \~english
 					 * @brief Method of the extraction of the position of the refusal of the parsing in the source text
-					 *
-					 * @return position of the refusal of the parsing in the source text
 					 *
 					 * @note The name is spelled out explicitly on purpose: at the reading `location()` means
 					 *       the place of the CURRENT event, and not of a refusal, and one name about two
 					 *       meanings would lead a consumer into a trap when passing from one level to another.
 					 *       The XML, TOML and INI codecs name it the same
+					 *
+					 * @return position of the refusal of the parsing in the source text
 					 *
 					 * \~
 					 */
@@ -2595,6 +2662,9 @@ namespace awh {
 					 *
 					 * @warning До первого разбора выдаётся кодировка неопределённая
 					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
+					 *      распознавание метки порядка байтов да невхождение её в содержимое
+					 *
 					 * @return кодировка исходного текста
 					 *
 					 * \~english
@@ -2610,12 +2680,12 @@ namespace awh {
 					 *
 					 * @warning Before the first parsing an undefined encoding is issued
 					 *
+					 * @see This agreement is enforced by the `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent` check:
+					 *      the byte order mark is recognized and excluded from the content
+					 *
 					 * @return encoding of the source text
 					 *
 					 * \~
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
-					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
 					/**
@@ -2646,28 +2716,27 @@ namespace awh {
 					 * \~
 					 */
 					void settings(const settings_t & settings) noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
-					 *
 					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Document() noexcept {}
+					~Document() noexcept = default;
 			} document_t;
 		};
 	};

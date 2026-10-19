@@ -41,11 +41,7 @@
 #include <type_traits>
 
 /**
- * Подключаем заголовочные файлы модуля
- */
-
-/**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -93,7 +89,7 @@ namespace awh {
 		namespace json {
 			/**
 			 * \~russian
-			 * @brief Запись текста JSON
+			 * @brief Класс для записи текста в формате JSON
 			 *
 			 * @details Текст собирается значение за значением, а собранное вправе изыматься
 			 *          по мере накопления: сборщик отдаёт накопленное и остаётся готовым продолжать.
@@ -109,7 +105,7 @@ namespace awh {
 			 *       Собранный текст оттого правилен по строению всегда
 			 *
 			 * \~english
-			 * @brief Writing of a JSON text
+			 * @brief A class for writer text in JSON format
 			 *
 			 * @details The text is assembled value by value, while what has been assembled may be extracted
 			 *          as it accumulates: the assembler gives away what has been accumulated and remains ready to continue.
@@ -138,42 +134,16 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Вид оформления собираемого текста
-						format_t format;
-						// Правило экранирования при записи
-						escape_t escape;
 						/**
 						 * \~russian
-						 * Правило обращения с последовательностью, кодировке UTF-8 не отвечающей
-						 *
-						 * @note Умолчанием стоит замена знаком U+FFFD: текст обязан остаться
-						 *       годным для разбора при любом содержимом строки, а знак замены
-						 *       предписан самой кодировкой и в тексте виден глазом
+						 * Признак разделения документов переводом строки при потоке NDJSON
 						 *
 						 * \~english
-						 * Rule of the handling of a sequence not conforming to the UTF-8 encoding
-						 *
-						 * @note The replacement by the character U+FFFD stands as the default: a text must remain
-						 *       suitable for the parsing at any content of a string, while the replacement character
-						 *       is prescribed by the encoding itself and is visible to the eye in the text
+						 * Flag of the separation of the documents by a line feed at an NDJSON stream
 						 *
 						 * \~
 						 */
-						malformed_t malformed;
-						/**
-						 * \~russian
-						 * Количество пробелов отступа при оформлении с отступами
-						 *
-						 * @note Ноль означает отступ знаком табуляции
-						 *
-						 * \~english
-						 * Number of the spaces of the indentation at the formatting with the indentations
-						 *
-						 * @note Zero means an indentation by a tabulation character
-						 *
-						 * \~
-						 */
-						uint8_t indent;
+						bool stream;
 						/**
 						 * \~russian
 						 * Признак записи NaN и бесконечности словами вместо отказа
@@ -230,80 +200,58 @@ namespace awh {
 						bool allowInfinityAndNan;
 						/**
 						 * \~russian
-						 * Признак разделения документов переводом строки при потоке NDJSON
+						 * Количество пробелов отступа при оформлении с отступами
+						 *
+						 * @note Ноль означает отступ знаком табуляции
 						 *
 						 * \~english
-						 * Flag of the separation of the documents by a line feed at an NDJSON stream
+						 * Number of the spaces of the indentation at the formatting with the indentations
+						 *
+						 * @note Zero means an indentation by a tabulation character
 						 *
 						 * \~
 						 */
-						bool stream;
+						uint8_t indent;
+						// Вид оформления собираемого текста
+						format_t format;
+						// Правило экранирования при записи
+						escape_t escape;
+						/**
+						 * \~russian
+						 * Правило обращения с последовательностью, кодировке UTF-8 не отвечающей
+						 *
+						 * @note Умолчанием стоит замена знаком U+FFFD: текст обязан остаться
+						 *       годным для разбора при любом содержимом строки, а знак замены
+						 *       предписан самой кодировкой и в тексте виден глазом
+						 *
+						 * \~english
+						 * Rule of the handling of a sequence not conforming to the UTF-8 encoding
+						 *
+						 * @note The replacement by the character U+FFFD stands as the default: a text must remain
+						 *       suitable for the parsing at any content of a string, while the replacement character
+						 *       is prescribed by the encoding itself and is visible to the eye in the text
+						 *
+						 * \~
+						 */
+						malformed_t malformed;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
-				private:
-					// Настройки записи текста
-					settings_t _settings;
-				private:
-					// Собираемый текст
-					string _result;
-				private:
-					/**
-					 * \~russian
-					 * Стек видов открытых вместилищ
-					 *
-					 * \~english
-					 * Stack of the kinds of the opened containers
-					 *
-					 * \~
-					 */
-					vector <kind_t> _nesting;
 				private:
 					// Признак того, что вместилище ещё не получило ни одного значения
 					bool _empty;
 					// Признак того, что имя поля объекта записано, а значение ещё нет
 					bool _keyed;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод отказа записи с сообщением о доводе его в журнал
-					 *
-					 * @details Способ этот зовётся лишь там, где отказ ВОЗНИКАЕТ. Проброс чужого
-					 *          отказа через него не идёт: о беде сообщено там, где она случилась, и
-					 *          второе сообщение лишь запутало бы читающего журнал.
-					 *
-					 * @param error код отказа записи
-					 * @return       всегда ложь, ради возврата им из места отказа
-					 *
-					 * \~english
-					 * @brief Method of the refusal of the writing with a report of its reason to the log
-					 *
-					 * @details This way is called only where the refusal ARISES. The forwarding of a foreign
-					 *          refusal does not go through it: the trouble is reported where it has happened, and
-					 *          a second report would only confuse the one reading the log.
-					 *
-					 * @param error the code of the refusal of the writing
-					 * @return       always false, for the returning by it from the place of the refusal
-					 *
-					 * \~
-					 */
-					bool refuse(const error_t error) noexcept;
-				private:
-					// Код отказа последней операции записи
-					error_t _error;
-				private:
 					// Признак того, что хотя бы один документ уже записан
 					bool _started;
-				private:
 					/**
 					 * \~russian
 					 * Признак того, что записанные документы разделены знаком перевода строки
@@ -331,8 +279,52 @@ namespace awh {
 					 */
 					bool _separated;
 				private:
+					// Код отказа последней операции записи
+					error_t _error;
+					// Настройки записи текста
+					settings_t _settings;
+				private:
 					// Количество байтов, изъятых из сборщика за всё время работы
 					uint64_t _taken;
+				private:
+					// Собираемый текст
+					string _result;
+				private:
+					/**
+					 * \~russian
+					 * Стек видов открытых вместилищ
+					 *
+					 * \~english
+					 * Stack of the kinds of the opened containers
+					 *
+					 * \~
+					 */
+					vector <kind_t> _nesting;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод отказа записи с сообщением о доводе его в журнал
+					 *
+					 * @details Способ этот зовётся лишь там, где отказ ВОЗНИКАЕТ. Проброс чужого
+					 *          отказа через него не идёт: о беде сообщено там, где она случилась, и
+					 *          второе сообщение лишь запутало бы читающего журнал.
+					 *
+					 * @param error код отказа записи
+					 * @return      всегда ложь, ради возврата им из места отказа
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the writing with a report of its reason to the log
+					 *
+					 * @details This way is called only where the refusal ARISES. The forwarding of a foreign
+					 *          refusal does not go through it: the trouble is reported where it has happened, and
+					 *          a second report would only confuse the one reading the log.
+					 *
+					 * @param error the code of the refusal of the writing
+					 * @return      always false, for the returning by it from the place of the refusal
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian
@@ -389,8 +381,8 @@ namespace awh {
 					 *          an unfit record. Only a record which came from the outside is compared.
 					 *
 					 * @param value record of the number being transferred
-					 * @param size length of the record of the number being transferred
-					 * @return sign of the success of the writing
+					 * @param size  length of the record of the number being transferred
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -501,7 +493,7 @@ namespace awh {
 					 *       opened object would lie upon the hot path of the writing
 					 *
 					 * @param name name of the field of the object being written
-					 * @return sign of the success of the writing
+					 * @return     sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -532,7 +524,7 @@ namespace awh {
 					 * @brief Method of the writing of a logical value
 					 *
 					 * @param value logical value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -572,7 +564,7 @@ namespace awh {
 					 *       a valid encoding of the text. This divergence is set by the formats rather than by an omission
 					 *
 					 * @param value string value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -616,7 +608,7 @@ namespace awh {
 					 * @brief Method of the writing of an integer
 					 *
 					 * @param value integer being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -632,14 +624,28 @@ namespace awh {
 					 * @brief Method of the writing of an unsigned integer
 					 *
 					 * @param value unsigned integer being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
 					bool value(const uint64_t value) noexcept;
 					/**
 					 * \~russian
-					 * @brief Шаблон записи целого числа записи любой
+					 * @brief Шаблон метода записи целого числа любой записи
+					 *
+					 * @tparam T вид записываемого целого числа
+					 *
+					 * \~english
+					 * @brief Template of a method for writing an integer of any record
+					 *
+					 * @tparam T kind of the integer being written
+					 *
+					 * \~
+					 */
+					template <typename T, typename = typename std::enable_if <std::is_integral <T>::value>::type>
+					/**
+					 * \~russian
+					 * @brief Метод записи целого числа любой записи
 					 *
 					 * @details Приём этот отвечает за написания, точного вида не несущие, -
 					 *          `value(7)`, `value(size_t(9))`, `value(short(3))`. Без него запись
@@ -659,12 +665,11 @@ namespace awh {
 					 *          и `value('z')` записал бы число 122 молча. Для знака есть запись
 					 *          строкою. Кодек CSV держится того же правила
 					 *
-					 * @tparam T вид записываемого целого числа
 					 * @param number записываемое целое число
 					 * @return       признак успешности записи
 					 *
 					 * \~english
-					 * @brief Template of the writing of an integer of any record
+					 * @brief A method for representing an integer in any notation
 					 *
 					 * @details This facility answers for the writings that carry no exact kind - `value(7)`,
 					 *          `value(size_t(9))`, `value(short(3))`. Without it the writing would diverge among
@@ -684,13 +689,11 @@ namespace awh {
 					 *          `value('z')` would write the number 122 silently. For a character there is a
 					 *          writing by a string. The CSV codec keeps to the same rule
 					 *
-					 * @tparam T kind of the integer being written
 					 * @param number integer being written
-					 * @return sign of the success of the writing
+					 * @return       sign of the success of the writing
 					 *
 					 * \~
 					 */
-					template <typename T, typename = typename std::enable_if <std::is_integral <T>::value>::type>
 					bool value(const T number) noexcept;
 					/**
 					 * \~russian
@@ -709,7 +712,7 @@ namespace awh {
 					 *          number.
 					 *
 					 * @param value floating-point number being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -731,7 +734,7 @@ namespace awh {
 					 *          Serves for the transfer of the numbers parsed by the reading without a loss of the precision.
 					 *
 					 * @param value record of the number being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -912,7 +915,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
@@ -923,13 +925,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Деструктор
 					 *
-					 *
 					 * \~english
 					 * @brief Destructor
 					 *
 					 * \~
 					 */
-					~Writer() noexcept {}
+					~Writer() noexcept = default;
 			} writer_t;
 		};
 	};

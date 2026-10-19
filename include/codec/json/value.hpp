@@ -54,7 +54,7 @@
 #include <type_traits>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "document.hpp"
 
@@ -102,7 +102,7 @@ namespace awh {
 		namespace json {
 			/**
 			 * \~russian
-			 * @brief Владеющее значение JSON
+			 * @brief Класс владеющего значения JSON
 			 *
 			 * @details Тип этот стоит **над** документом, а не вместо него. Документ
 			 *          разбирает текст и хранит дерево плоским массивом узлов, отчего ссылка на
@@ -136,7 +136,7 @@ namespace awh {
 			 *       наречий прибавляются полями сверху
 			 *
 			 * \~english
-			 * @brief Owning value of JSON
+			 * @brief JSON value-holding class
 			 *
 			 * @details This type stands **above** the document rather than instead of it. The document
 			 *          parses a text and stores the tree as a flat array of the nodes, whereby a reference to
@@ -191,13 +191,34 @@ namespace awh {
 					typedef union Numeric {
 						// Логическое значение
 						bool flag;
+						// Дробное число
+						double real;
 						// Целое число со знаком
 						int64_t integer;
 						// Целое число без знака
 						uint64_t natural;
-						// Дробное число
-						double real;
 					} numeric_t;
+				private:
+					/**
+					 * \~russian
+					 * Признак заведённости отображения имён полей объекта
+					 *
+					 * @note Признак отдельный от пустоты отображения обязателен: у объекта
+					 *       об одних лишь повторяющихся именах отображение вышло бы короче
+					 *       перечня, и сличение размеров велело бы заводить его снова и
+					 *       снова на всяком обращении
+					 *
+					 * \~english
+					 * Flag of the readiness of the mapping of the names of the fields of an object
+					 *
+					 * @note A flag separate from the emptiness of the mapping is mandatory: for an object with
+					 *       repeating names only, the mapping would turn out shorter than the list, and a
+					 *       comparison of the sizes would make one build it again and again on every access
+					 *
+					 * \~
+					 */
+					mutable bool _indexed;
+				private:
 					// Вид хранимого значения
 					kind_t _kind;
 					/**
@@ -222,6 +243,25 @@ namespace awh {
 					numeric_t _number;
 					/**
 					 * \~russian
+					 * @brief Код отказа последней работы над значением
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
+					 *          неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
+					 *          от значения пустого.
+					 *
+					 * \~english
+					 * @brief Code of the refusal of the last operation over the value
+					 *
+					 * @details The field is mutable deliberately: the issuance of the text of a value
+					 *          is a constant operation, while it is obliged to report a refusal — otherwise
+					 *          an empty text is indistinguishable from an empty value.
+					 *
+					 * \~
+					 */
+					mutable error_t _error;
+				private:
+					/**
+					 * \~russian
 					 * Содержимое значения строкового и запись числа, в родной вид не вместимого
 					 *
 					 * @details Поле одно на два употребления намеренно: у строки число не
@@ -238,6 +278,9 @@ namespace awh {
 					 * \~
 					 */
 					string _text;
+				private:
+					// Значения вместилища в порядке их следования
+					vector <Value> _items;
 					/**
 					 * \~russian
 					 * Имена полей объекта
@@ -254,8 +297,7 @@ namespace awh {
 					 * \~
 					 */
 					vector <string> _names;
-					// Значения вместилища в порядке их следования
-					vector <Value> _items;
+				private:
 					/**
 					 * \~russian
 					 * Отображение имён полей объекта на их номера, заводимое по требованию
@@ -295,43 +337,7 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <string, size_t> _index;
-					/**
-					 * \~russian
-					 * Признак заведённости отображения имён полей объекта
-					 *
-					 * @note Признак отдельный от пустоты отображения обязателен: у объекта
-					 *       об одних лишь повторяющихся именах отображение вышло бы короче
-					 *       перечня, и сличение размеров велело бы заводить его снова и
-					 *       снова на всяком обращении
-					 *
-					 * \~english
-					 * Flag of the readiness of the mapping of the names of the fields of an object
-					 *
-					 * @note A flag separate from the emptiness of the mapping is mandatory: for an object with
-					 *       repeating names only, the mapping would turn out shorter than the list, and a
-					 *       comparison of the sizes would make one build it again and again on every access
-					 *
-					 * \~
-					 */
-					mutable bool _indexed;
-					/**
-					 * \~russian
-					 * @brief Код отказа последней работы над значением
-					 *
-					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
-					 *          неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
-					 *          от значения пустого.
-					 *
-					 * \~english
-					 * @brief Code of the refusal of the last operation over the value
-					 *
-					 * @details The field is mutable deliberately: the issuance of the text of a value
-					 *          is a constant operation, while it is obliged to report a refusal — otherwise
-					 *          an empty text is indistinguishable from an empty value.
-					 *
-					 * \~
-					 */
-					mutable error_t _error = error_t::NONE;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод розыска номера поля объекта по имени
@@ -394,22 +400,33 @@ namespace awh {
 					void reindex() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Шаблонный метод извлечения числа затребованным видом
+					 * @brief Шаблон метода извлечения числа затребованным видом
 					 *
-					 * @tparam T      затребованный вид числа
-					 * @param  result переменная, куда помещается извлечённое значение
-					 * @return        признак успешности извлечения
+					 * @tparam T затребованный вид числа
 					 *
 					 * \~english
-					 * @brief Template method of the extraction of a number by the demanded kind
+					 * @brief Method template for extracting a number in a requested format
 					 *
 					 * @tparam T demanded kind of the number
-					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод извлечения числа затребованным видом
+					 *
+					 * @param result переменная, куда помещается извлечённое значение
+					 * @return       признак успешности извлечения
+					 *
+					 * \~english
+					 * @brief Method for extracting a number in a requested format
+					 *
+					 * @param result variable where the extracted value is placed
+					 * @return       sign of the success of the extraction
+					 *
+					 * \~
+					 */
 					bool extract(T & result) const noexcept;
 					/**
 					 * \~russian
@@ -430,7 +447,7 @@ namespace awh {
 					 *          of the writing after a refusal would leave in the text the name of a field without its value.
 					 *
 					 * @param writer writing stream where the value is placed
-					 * @return sign of the success of the writing
+					 * @return       sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -641,8 +658,7 @@ namespace awh {
 					 *          документа, оттого точный вопрос и сборный стоят одинаково.
 					 *
 					 * @param type вид либо набор видов, на принадлежность к какому
-					 *          проверяется значение
-					 *
+					 *             проверяется значение
 					 * @return     признак принадлежности значения к виду
 					 *
 					 * \~english
@@ -652,9 +668,8 @@ namespace awh {
 					 *          of a document, whereby an exact question and a composite one cost the same.
 					 *
 					 * @param type kind or set of the kinds for the belonging to which
-					 *          the value is checked
-					 *
-					 * @return flag of the belonging of the value to the kind
+					 *             the value is checked
+					 * @return     flag of the belonging of the value to the kind
 					 *
 					 * \~
 					 */
@@ -744,7 +759,7 @@ namespace awh {
 					 * @brief Method of the extraction of the name of a field of an object by an index
 					 *
 					 * @param index index of the field of the object
-					 * @return name of the field of the object, an empty one — there is no field with such index
+					 * @return      name of the field of the object, an empty one — there is no field with such index
 					 *
 					 * \~
 					 */
@@ -760,7 +775,7 @@ namespace awh {
 					 * @brief Method of the check of the presence of a field of an object with the indicated name
 					 *
 					 * @param name name of the field of the object being searched for
-					 * @return sign of the presence of the field of the object
+					 * @return     sign of the presence of the field of the object
 					 *
 					 * \~
 					 */
@@ -796,7 +811,7 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param path path to the value being searched for
-					 * @return reference to the found value
+					 * @return     reference to the found value
 					 *
 					 * \~
 					 */
@@ -832,7 +847,7 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param path path to the value being searched for
-					 * @return reference to the found or created value
+					 * @return     reference to the found or created value
 					 *
 					 * \~
 					 */
@@ -860,7 +875,7 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param name name of the field of the object
-					 * @return reference to the value of the field of the object
+					 * @return     reference to the value of the field of the object
 					 *
 					 * \~
 					 */
@@ -894,7 +909,7 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param name name of the field of the object
-					 * @return reference to the value of the field of the object
+					 * @return     reference to the value of the field of the object
 					 *
 					 * \~
 					 */
@@ -922,7 +937,7 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param index index of the value in the container
-					 * @return reference to the value of the container
+					 * @return      reference to the value of the container
 					 *
 					 * \~
 					 */
@@ -956,11 +971,25 @@ namespace awh {
 					 *          the reference but the path to the node, and it should be taken anew
 					 *
 					 * @param index index of the value in the container
-					 * @return reference to the value of the container
+					 * @return      reference to the value of the container
 					 *
 					 * \~
 					 */
 					Value & operator [] (const size_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон метода обращения по написанию знака
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 *
+					 * \~english
+					 * @brief Method template for character-based input
+					 *
+					 * @tparam T width of the access, the guard admits exactly a character
+					 *
+					 * \~
+					 */
+					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Методы обращения по написанию знака
@@ -980,12 +1009,11 @@ namespace awh {
 					 *       точное совпадение: прочие разряды его не создают вовсе. Проверено
 					 *       щупом ДО правки - лекарство перечнем вышло бы хуже болезни
 					 *
-					 * @tparam T разряд обращения, ограда пропускает ровно знак
-					 * @param  name разыскиваемое имя из одного знака
-					 * @return ссылка на значение поля объекта
+					 * @param name разыскиваемое имя из одного знака
+					 * @return     ссылка на значение поля объекта
 					 *
 					 * \~english
-					 * @brief Methods of the access by a writing of a character
+					 * @brief Methods for handling the writing of a character
 					 *
 					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
 					 *          of a single character rather than for an index. This rule is one for the whole codec:
@@ -1002,39 +1030,46 @@ namespace awh {
 					 *       widths do not create it at all. Checked by a probe BEFORE the fix — a cure by a
 					 *       list would have come out worse than the trouble
 					 *
-					 * @tparam T width of the access, the guard admits exactly a character
 					 * @param name name of a single character being searched for
-					 * @return reference to the value of the field of the object
+					 * @return     reference to the value of the field of the object
+					 *
+					 * \~
+					 */
+					typename std::enable_if <std::is_same <T, char>::value, const Value &>::type operator [] (const T name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон метода обращения по написанию знака с заведением недостающего
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 *
+					 * \~english
+					 * @brief Method template for handling character entry, including the addition of any missing characters
+					 *
+					 * @tparam T width of the access, the guard admits exactly a character
 					 *
 					 * \~
 					 */
 					template <typename T>
-					typename std::enable_if <std::is_same <T, char>::value, const Value &>::type
-					operator [] (const T name) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод обращения по написанию знака с заведением недостающего
 					 *
 					 * @details Написание знака есть ТЕКСТ: разыскивается имя из одного знака.
 					 *
-					 * @tparam T разряд обращения, ограда пропускает ровно знак
-					 * @param  name разыскиваемое имя из одного знака
-					 * @return ссылка на значение поля объекта
+					 * @param name разыскиваемое имя из одного знака
+					 * @return     ссылка на значение поля объекта
 					 *
 					 * \~english
 					 * @brief Method of the access by a writing of a character with the institution of the missing
 					 *
 					 * @details A writing of a character is a TEXT: a name of a single character is searched for.
 					 *
-					 * @tparam T width of the access, the guard admits exactly a character
 					 * @param name name of a single character being searched for
-					 * @return reference to the value of the field of the object
+					 * @return     reference to the value of the field of the object
 					 *
 					 * \~
 					 */
-					template <typename T>
-					typename std::enable_if <std::is_same <T, char>::value, Value &>::type
-					operator [] (const T name) noexcept;
+					typename std::enable_if <std::is_same <T, char>::value, Value &>::type operator [] (const T name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления значения в конец массива
@@ -1052,7 +1087,7 @@ namespace awh {
 					 *          is not subject to the rebirth and the addition responds with a refusal.
 					 *
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1086,9 +1121,9 @@ namespace awh {
 					 *       of a text by the rule `duplicate_t::LAST` is entitled to leave a field at
 					 *       the place of the last of its appearances — this is not a divergence
 					 *
-					 * @param name name of the field of the object
+					 * @param name  name of the field of the object
 					 * @param value value of the field being set
-					 * @return sign of the success of the setting
+					 * @return      sign of the success of the setting
 					 *
 					 * \~
 					 */
@@ -1130,9 +1165,9 @@ namespace awh {
 					 *       of the record will return them only with the same setting `duplicate_t::KEEP`:
 					 *       the other rules will reject or reduce a repetition
 					 *
-					 * @param name name of the field of the object being added
+					 * @param name  name of the field of the object being added
 					 * @param value value of the field being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1148,7 +1183,7 @@ namespace awh {
 					 * @brief Method of the removal of a field of an object by a name
 					 *
 					 * @param name name of the field of the object being removed
-					 * @return sign of the success of the removal
+					 * @return     sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1164,7 +1199,7 @@ namespace awh {
 					 * @brief Method of the removal of a value of a container by an index
 					 *
 					 * @param index index of the value of the container being removed
-					 * @return sign of the success of the removal
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1180,7 +1215,7 @@ namespace awh {
 					 * @brief Method of the extraction of a logical value
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1262,45 +1297,99 @@ namespace awh {
 					 *          matters ought to take a wider kind or the record of the number as a whole
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					bool value(int8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(float & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(double & result) const noexcept;
 					/**
@@ -1338,7 +1427,7 @@ namespace awh {
 					 *       the structure of the notation rather than from the taste of the codec
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1372,9 +1461,9 @@ namespace awh {
 					 *       limits of the nesting — would be reachable at all for an owning value, and the parsing
 					 *       of a fragment would be conducted by the defaults alone
 					 *
-					 * @param text JSON text being parsed
+					 * @param text     JSON text being parsed
 					 * @param settings settings of the parsing of a JSON text
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1390,7 +1479,7 @@ namespace awh {
 					 * @brief Method of the parsing of a JSON text from a file
 					 *
 					 * @param filename address of the file being parsed
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1442,7 +1531,7 @@ namespace awh {
 					 * @brief Method of the rewriting of the value into a JSON text
 					 *
 					 * @param format kind of the formatting of the text being assembled
-					 * @return JSON text
+					 * @return       JSON text
 					 *
 					 * \~
 					 */
@@ -1468,7 +1557,7 @@ namespace awh {
 					 *          to the standard while the writing of such numbers is forbidden by the settings.
 					 *
 					 * @param settings settings of the writing of the text
-					 * @return JSON text, an empty one — the value could not be written
+					 * @return         JSON text, an empty one — the value could not be written
 					 *
 					 * \~
 					 */
@@ -1485,8 +1574,8 @@ namespace awh {
 					 * @brief Method of the writing of the value into a file
 					 *
 					 * @param filename address of the file being written
-					 * @param format kind of the formatting of the text being assembled
-					 * @return sign of the success of the writing
+					 * @param format   kind of the formatting of the text being assembled
+					 * @return         sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -1573,7 +1662,7 @@ namespace awh {
 					 *          the FORM, and it is not permissible to decide by the comparison whether the texts will be identical
 					 *
 					 * @param value value being compared
-					 * @return sign of the coincidence of the values
+					 * @return      sign of the coincidence of the values
 					 *
 					 * \~
 					 */
@@ -1589,7 +1678,7 @@ namespace awh {
 					 * @brief Method of the comparison of the values for a mismatch
 					 *
 					 * @param value value being compared
-					 * @return sign of the mismatch of the values
+					 * @return      sign of the mismatch of the values
 					 *
 					 * \~
 					 */
@@ -1605,7 +1694,7 @@ namespace awh {
 					 * @brief Copy assignment operator
 					 *
 					 * @param value value being assigned
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
@@ -1621,24 +1710,12 @@ namespace awh {
 					 * @brief Move assignment operator
 					 *
 					 * @param value value being moved
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
 					Value & operator = (Value && value) noexcept;
-					/**
-					 * \~russian
-					 * @brief Конструктор копирования
-					 *
-					 * @param value копируемое значение
-					 *
-					 * \~english
-					 * @brief Copy constructor
-					 *
-					 * @param value value being copied
-					 *
-					 * \~
-					 */
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1648,7 +1725,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value() noexcept;
+					explicit Value() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор значения указанного вида
@@ -1786,11 +1863,65 @@ namespace awh {
 					 * \~
 					 */
 					Value(const char value) noexcept;
+					/**
+					 * \~russian
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~
+					 */
 					Value(const short value) noexcept;
+					/**
+					 * \~russian
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~
+					 */
 					Value(const unsigned short value) noexcept;
+					/**
+					 * \~russian
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~
+					 */
 					Value(const int value) noexcept;
+					/**
+					 * \~russian
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~
+					 */
 					Value(const unsigned int value) noexcept;
+					/**
+					 * \~russian
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~
+					 */
 					Value(const std::conditional <std::is_same <int64_t, long>::value, long long, long>::type value) noexcept;
+					/**
+					 * \~russian
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::json::Value::Value(const char)
+					 *
+					 * \~
+					 */
 					Value(const std::conditional <std::is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type value) noexcept;
 					/**
 					 * \~russian
@@ -1847,17 +1978,17 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Value(const Document::value_t & value) noexcept;
+					explicit Value(const document_t::value_t & value) noexcept;
 					/**
 					 * \~russian
-					 * @brief Конструктор копии
+					 * @brief Конструктор копирования
 					 *
 					 * @param value копируемое значение
 					 *
 					 * \~english
-					 * @brief Constructor of the copy
+					 * @brief Copy constructor
 					 *
-					 * @param value the copied value
+					 * @param value value being copied
 					 *
 					 * \~
 					 */
@@ -1885,12 +2016,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Value() noexcept {}
+					~Value() noexcept = default;
 			} value_t;
-
 			/**
 			 * \~russian
-			 * @brief Потоковая сборка владеющего значения JSON
+			 * @brief Структура потоковой сборки владеющего значения JSON
 			 *
 			 * @details Сборщик этот повторяет договор потока записи слово в слово: открыть
 			 *          объект, открыть массив, записать имя поля, записать значение, закрыть
@@ -1906,7 +2036,7 @@ namespace awh {
 			 *       разбирать её обратно
 			 *
 			 * \~english
-			 * @brief Streaming assembly of an owning value of JSON
+			 * @brief Streaming assembly structure for an owned JSON value
 			 *
 			 * @details This builder repeats the contract of the writing stream word for word: to open
 			 *          an object, to open an array, to write the name of a field, to write a value, to close
@@ -1925,28 +2055,6 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
 				private:
-					// Собираемое значение
-					value_t _result;
-					/**
-					 * \~russian
-					 * Стек указаний на открытые вместилища
-					 *
-					 * @details Стек хранит указания, а не номера: вместилище, уже открытое,
-					 *          своих детей не переселяет, оттого указание на него живёт до самого
-					 *          его закрытия.
-					 *
-					 * \~english
-					 * Stack of the pointers to the opened containers
-					 *
-					 * @details The stack stores the pointers rather than the indexes: a container already opened
-					 *          does not relocate its children, whereby a pointer to it lives until
-					 *          its very closing.
-					 *
-					 * \~
-					 */
-					vector <value_t *> _nesting;
-					// Имя поля объекта, записанное перед значением
-					string _name;
 					// Признак того, что имя поля объекта записано, а значение ещё нет
 					bool _keyed;
 					/**
@@ -1967,6 +2075,32 @@ namespace awh {
 					 * \~
 					 */
 					bool _appended;
+				private:
+					// Собираемое значение
+					value_t _result;
+				private:
+					// Имя поля объекта, записанное перед значением
+					string _name;
+				private:
+					/**
+					 * \~russian
+					 * Стек указаний на открытые вместилища
+					 *
+					 * @details Стек хранит указания, а не номера: вместилище, уже открытое,
+					 *          своих детей не переселяет, оттого указание на него живёт до самого
+					 *          его закрытия.
+					 *
+					 * \~english
+					 * Stack of the pointers to the opened containers
+					 *
+					 * @details The stack stores the pointers rather than the indexes: a container already opened
+					 *          does not relocate its children, whereby a pointer to it lives until
+					 *          its very closing.
+					 *
+					 * \~
+					 */
+					vector <value_t *> _nesting;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод помещения собранного значения на своё место
@@ -1978,7 +2112,7 @@ namespace awh {
 					 * @brief Method of the placement of an assembled value at its place
 					 *
 					 * @param value value being placed
-					 * @return pointer to the placed value, a zero — the placement has failed
+					 * @return      pointer to the placed value, a zero — the placement has failed
 					 *
 					 * \~
 					 */
@@ -2037,7 +2171,7 @@ namespace awh {
 					 * @brief Method of the writing of the name of a field of an object
 					 *
 					 * @param name name of the field of the object being written
-					 * @return sign of the success of the writing
+					 * @return     sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2071,7 +2205,7 @@ namespace awh {
 					 *       at all: the repetitions would collapse into a single field
 					 *
 					 * @param name name of the field of the object being written
-					 * @return sign of the success of the writing
+					 * @return     sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2101,7 +2235,7 @@ namespace awh {
 					 * @brief Method of the writing of a logical value
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2117,7 +2251,7 @@ namespace awh {
 					 * @brief Method of the writing of a signed integer number
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2133,7 +2267,7 @@ namespace awh {
 					 * @brief Method of the writing of an unsigned integer number
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2149,7 +2283,7 @@ namespace awh {
 					 * @brief Method of the writing of a fractional number
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2165,7 +2299,7 @@ namespace awh {
 					 * @brief Method of the writing of a string value
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2187,7 +2321,7 @@ namespace awh {
 					 *       of a string literal would go into the writing of a LOGICAL value
 					 *
 					 * @param value value being written, a zero — an empty value
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2211,7 +2345,7 @@ namespace awh {
 					 *          in rewriting the ready pieces of a tree field by field.
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2281,7 +2415,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Builder() noexcept {}
+					~Builder() noexcept = default;
 			} builder_t;
 		};
 	};

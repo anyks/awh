@@ -240,45 +240,10 @@ namespace awh {
 		namespace json {
 			/**
 			 * \~russian
-			 * @brief Наибольшая допустимая длина строкового значения в байтах
-			 *
-			 * @details Предел считается по значению уже со снятым экранированием.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of a string value in bytes
-			 *
-			 * @details The limit is counted over the value already with the escaping removed.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_STRING = 0x1000000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина записи числа в байтах
-			 *
-			 * @details Запись числа удерживается разбором целиком, оттого и ограничивается.
-			 *          Числа этого довольно и для целого о тысяче разрядов, и для дробного с любым
-			 *          разумным порядком.
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the record of a number in bytes
-			 *
-			 * @details The record of a number is held by the parsing in full, whereby it is limited as well.
-			 *          This number is enough both for an integer of a thousand digits and for a fractional one with any
-			 *          reasonable exponent.
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_NUMBER = 0x400;
-
-			/**
-			 * \~russian
 			 * @brief Наибольшая допустимая глубина вложенности
 			 *
 			 * @details Предел этот стережёт не стек вызовов - разбор ведётся без рекурсии, -
-			 *          а память под стек состояний: текст из одних открывающих скобок иначе занял бы
-			 *          её всю.
+			 *          а память под стек состояний: текст из одних открывающих скобок иначе занял бы её всю.
 			 *
 			 * @details Разбором предел этот стережёт не стек вызовов, а память под стек
 			 *          состояний. Возвратны, однако, работы ПО ГОТОВОМУ ДЕРЕВУ - размножение
@@ -309,18 +274,24 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_DEPTH = 0x400;
-
 			/**
 			 * \~russian
-			 * @brief Наибольшее допустимое количество узлов в документе
+			 * @brief Наибольшая допустимая длина записи числа в байтах
+			 *
+			 * @details Запись числа удерживается разбором целиком, оттого и ограничивается.
+			 *          Числа этого довольно и для целого о тысяче разрядов, и для дробного с любым
+			 *          разумным порядком.
 			 *
 			 * \~english
-			 * @brief Largest admissible number of the nodes in a document
+			 * @brief Largest admissible length of the record of a number in bytes
+			 *
+			 * @details The record of a number is held by the parsing in full, whereby it is limited as well.
+			 *          This number is enough both for an integer of a thousand digits and for a fractional one with any
+			 *          reasonable exponent.
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_NODES = 0x4000000;
-
+			constexpr uint32_t MAX_NUMBER = 0x400;
 			/**
 			 * \~russian
 			 * @brief Количество полей объекта, начиная с какого заводится отображение имён
@@ -347,7 +318,40 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t INDEX_THRESHOLD = 16;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшее допустимое количество узлов в документе
+			 *
+			 * \~english
+			 * @brief Largest admissible number of the nodes in a document
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_NODES = 0x4000000;
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина строкового значения в байтах
+			 *
+			 * @details Предел считается по значению уже со снятым экранированием.
+			 *
+			 * \~english
+			 * @brief Largest admissible length of a string value in bytes
+			 *
+			 * @details The limit is counted over the value already with the escaping removed.
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_STRING = 0x1000000;
+			/**
+			 * \~russian
+			 * @brief Обозначение отсутствующего номера узла
+			 *
+			 * \~english
+			 * @brief Designation of an absent number of a node
+			 *
+			 * \~
+			 */
+			constexpr uint32_t NO_INDEX = static_cast <uint32_t> (~0u);
 			/**
 			 * \~russian
 			 * @brief Обозначение отсутствующего положения в исходном тексте
@@ -361,15 +365,135 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Обозначение отсутствующего номера узла
+			 * @brief Правила преобразования чисел при разборе
+			 *
+			 * @details Разбор определяет вид числа и преобразует его всегда: повторного
+			 *          разбора записи не бывает вовсе. Правило это задаёт лишь то, как поступать с
+			 *          числом, ВЕЛИЧИНА которого не вмещается ни в один родной вид: целым за пределами
+			 *          `int64_t` и `uint64_t` либо дробным, вышедшим за пределы `double` - как вверх,
+			 *          обращаясь в бесконечность, так и вниз, обращаясь в нуль.
+			 *
+			 * @note Излишняя ТОЧНОСТЬ записи отказом не считается ни при каком правиле:
+			 *       запись `0.1234567890123456789012345` величиною в `double` вмещается и
+			 *       округляется до `0.12345678901234568`, как округлил бы её сам язык.
+			 *       Отвергать всякую запись, точнее `double`, значило бы отвергать и `0.1`,
+			 *       записанное двадцатью знаками, - то есть обычную запись обычного числа
 			 *
 			 * \~english
-			 * @brief Designation of an absent number of a node
+			 * @brief Rules of the conversion of the numbers at the parsing
+			 *
+			 * @details The parsing determines the kind of a number and converts it always: a repeated
+			 *          parsing of the record does not happen at all. This rule sets only how to handle a
+			 *          number whose MAGNITUDE is not containable in any native kind: an integer beyond the limits
+			 *          of `int64_t` and `uint64_t`, or a real that has left the range of a `double` — either upwards,
+			 *          turning into an infinity, or downwards, turning into a zero.
+			 *
+			 * @note An excessive PRECISION of a record is not counted as a refusal under any rule:
+			 *       the record `0.1234567890123456789012345` is containable in a `double` by its magnitude and
+			 *       is rounded to `0.12345678901234568`, as the language itself would round it.
+			 *       To reject every record more precise than a `double` would be to reject `0.1` too,
+			 *       written with twenty digits — that is, an ordinary record of an ordinary number
 			 *
 			 * \~
 			 */
-			constexpr uint32_t NO_INDEX = static_cast <uint32_t> (~0u);
-
+			enum class number_t : uint8_t {
+				NATIVE = 0x00, // Число, не вместимое ни в один родной вид, хранится записью
+				CHECK  = 0x01  // Число, не вместимое ни в один родной вид, есть отказ разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Виды оформления собираемого текста
+			 *
+			 * \~english
+			 * @brief Kinds of the formatting of the text being assembled
+			 *
+			 * \~
+			 */
+			enum class format_t : uint8_t {
+				COMPACT = 0x00, // Без пробелов и переводов строк
+				PRETTY  = 0x01  // С отступами и переводами строк
+			};
+			/**
+			 * \~russian
+			 * @brief Правила экранирования при записи текста
+			 *
+			 * \~english
+			 * @brief Rules of the escaping at the writing of a text
+			 *
+			 * \~
+			 */
+			enum class escape_t : uint8_t {
+				MINIMAL = 0x00, // Экранируется лишь предписанное стандартом
+				SOLIDUS = 0x01, // Сверх того экранируется косая черта
+				ASCII   = 0x02  // Сверх того всякий знак вне US-ASCII записывается как \\uXXXX
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обращения с последовательностью, кодировке не отвечающей
+			 *
+			 * @details Стандарт предписывает тексту кодировку UTF-8, и разбор наш байты,
+			 *          ей не отвечающие, отвергает. Запись их насквозь выдала бы текст, какой
+			 *          кодек прочитать не сможет сам, оттого правило обращения с ними и заведено.
+			 *
+			 * @note Негодными считаются: ведущий байт, ведущим не являющийся; недостача
+			 *       продолжающих байтов; продолжающий байт вне отведённого ведущему
+			 *       предела; запись кодовой точки длиннее необходимого; суррогат;
+			 *       кодовая точка свыше U+10FFFF
+			 *
+			 * \~english
+			 * @brief Rules of the handling of a sequence not conforming to the encoding
+			 *
+			 * @details The standard prescribes the UTF-8 encoding for a text, and our parsing rejects
+			 *          the bytes not conforming to it. The writing of them through would give away a text which
+			 *          the codec itself will not be able to read, whereby the rule of the handling of them is made.
+			 *
+			 * @note The following are considered malformed: a leading byte which is not a leading one; a shortage
+			 *       of the continuing bytes; a continuing byte outside the limit allotted to the leading one;
+			 *       a record of a code point longer than necessary; a surrogate;
+			 *       a code point above U+10FFFF
+			 *
+			 * \~
+			 */
+			enum class malformed_t : uint8_t {
+				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
+				REFUSE  = 0x01, // Запись отвергается, ничего не записав
+				PASS    = 0x02  // Байты пропускаются как есть
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обращения с повторяющимся именем поля объекта
+			 *
+			 * @details Стандарт повторяющиеся имена допускает, а поведение при них не
+			 *          задаёт вовсе, и реализации расходятся: одни берут первое значение, другие
+			 *          последнее, третьи собирают все.
+			 *
+			 * @warning Дерево, разобранное правилом `KEEP`, записывается повторами и
+			 *          обратно читается ЛИШЬ правилом `FIRST`, `LAST` либо `KEEP`:
+			 *          умолчательное правило `ERROR` такой текст отвергает отказом
+			 *          `DUPLICATE_KEY`. Круговой ход через умолчания на нём рвётся, и
+			 *          сохраняющему повторы надлежит знать, чем их потом читать
+			 *
+			 * \~english
+			 * @brief Rules of the handling of a repeating name of a field of an object
+			 *
+			 * @details The standard permits the repeating names but does not set the behaviour
+			 *          for them at all, and the implementations diverge: some take the first value, others
+			 *          the last one, the third ones collect all of them.
+			 *
+			 * @warning A tree parsed by the rule `KEEP` is written with the repetitions and is read
+			 *          back ONLY by the rule `FIRST`, `LAST` or `KEEP`: the default rule `ERROR`
+			 *          rejects such a text with a `DUPLICATE_KEY` refusal. The round trip through
+			 *          the defaults breaks upon it, and whoever preserves the repetitions ought to
+			 *          know what will read them afterwards
+			 *
+			 * \~
+			 */
+			enum class duplicate_t : uint8_t {
+				ERROR = 0x00, // Отказ разбора, правило по умолчанию
+				FIRST = 0x01, // Берётся первое встреченное значение, прочие отбрасываются
+				LAST  = 0x02, // Берётся последнее встреченное значение
+				KEEP  = 0x03  // Удерживаются все, доступ по имени отдаёт первое
+			};
 			/**
 			 * \~russian
 			 * @brief Виды узлов документа
@@ -402,7 +526,86 @@ namespace awh {
 				ARRAY  = 0x05, // Массив
 				OBJECT = 0x06  // Объект
 			};
-
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста
+			 *
+			 * @details Стандарт предписывает **UTF-8** для обмена между разными системами и
+			 *          метку порядка байтов запрещает. Прочие кодировки распознаются потому, что в
+			 *          обиходе они встречаются, и текст в них лучше принять с пометкой, чем
+			 *          отвергнуть молчанием.
+			 *
+			 * @note Кодировок UTF-32 среди распознаваемых нет: стандарт их для обмена не
+			 *       велит, а в обиходе они не встречаются вовсе
+			 *
+			 * \~english
+			 * @brief Encodings of the source text
+			 *
+			 * @details The standard prescribes UTF-8 and forbids the byte order mark. The other
+			 *          encodings are recognised because they are encountered in the practice, and a text in them
+			 *          is better accepted with a note than rejected by a silence.
+			 *
+			 * @note UTF-32 encodings are not among the recognised ones: the standard does not
+			 *       prescribe them for the exchange, and in the practice they are not
+			 *       encountered at all
+			 *
+			 * \~
+			 */
+			enum class encoding_t : uint8_t {
+				NONE    = 0x00, // Кодировка не определена, определяется по метке порядка байтов
+				UTF8    = 0x01, // Кодировка UTF-8, предписанная стандартом
+				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
+				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
+				LATIN1  = 0x04, // Кодировка ISO-8859-1
+				ASCII   = 0x05, // Кодировка US-ASCII
+				CP1252  = 0x06  // Кодировка Windows-1252
+			};
+			/**
+			 * \~russian
+			 * @brief Виды событий чтения текста
+			 *
+			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
+			 *
+			 * @note Начало и конец вместилища выдаются отдельными событиями, а не одним
+			 *       событием с готовым вместилищем: массив на миллион значений иначе удерживался
+			 *       бы в памяти целиком прежде первой выдачи, и потоковое чтение потеряло бы
+			 *       смысл
+			 *
+			 * @note Имя поля объекта выдаётся своим событием, предшествующим событию
+			 *       значения. Значением при этом вправе оказаться вместилище, и тогда за именем
+			 *       идёт начало вместилища
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a text
+			 *
+			 * @details The reading issues the events as the text is parsed without holding it in full.
+			 *
+			 * @note The beginning and the end of a container are issued by separate events rather than by one
+			 *       event with a ready container: an array of a million values would otherwise be held
+			 *       in the memory in full before the first issuance, and the streaming reading would lose its
+			 *       sense
+			 *
+			 * @note The name of a field of an object is issued by its own event preceding the event
+			 *       of the value. The value may thereby turn out to be a container, and then the name
+			 *       is followed by the beginning of a container
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE         = 0x00, // Событие не определено
+				KEY          = 0x01, // Имя поля объекта
+				NUL          = 0x02, // Значение null
+				BOOL         = 0x03, // Значение true либо false
+				NUMBER       = 0x04, // Число, выдаётся записью без преобразования
+				STRING       = 0x05, // Строка со снятым экранированием
+				ARRAY_BEGIN  = 0x06, // Начало массива
+				ARRAY_END    = 0x07, // Конец массива
+				OBJECT_BEGIN = 0x08, // Начало объекта
+				OBJECT_END   = 0x09, // Конец объекта
+				COMMENT      = 0x0A, // Примечание, выдаётся лишь при разрешённых примечаниях
+				DOCUMENT     = 0x0B, // Документ разобран до конца, следом вправе идти новый при потоке NDJSON
+				FINISH       = 0x0C  // Текст разобран до конца, событие видно после цикла разбора
+			};
 			/**
 			 * \~russian
 			 * @brief Виды значений документа
@@ -477,17 +680,16 @@ namespace awh {
 				DOUBLE    = 0x4000, // Дробное двойной точности
 				EXTENDED  = 0x8000, // Число, не вместимое ни в один родной вид
 				// Целое со знаком любой ширины
-				SIGNED    = (INT8 | INT16 | INT32 | INT64),
+				SIGNED = (INT8 | INT16 | INT32 | INT64),
 				// Целое без знака любой ширины
-				UNSIGNED  = (UINT8 | UINT16 | UINT32 | UINT64),
+				UNSIGNED = (UINT8 | UINT16 | UINT32 | UINT64),
 				// Целое любой ширины и любой знаковости
-				INT       = (SIGNED | UNSIGNED),
+				INT = (SIGNED | UNSIGNED),
 				// Дробное любой точности
-				REAL      = (FLOAT | DOUBLE),
+				REAL = (FLOAT | DOUBLE),
 				// Число любого вида
-				NUMBER    = (INT | REAL | EXTENDED)
+				NUMBER = (INT | REAL | EXTENDED)
 			};
-
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора текста
@@ -504,7 +706,8 @@ namespace awh {
 			 * \~
 			 */
 			enum class error_t : uint8_t {
-				NONE                  = 0x00, // Ошибок не обнаружено
+				// Ошибок не обнаружено
+				NONE = 0x00,
 				/**
 				 * \~russian
 				 * Внутренняя ошибка разбора
@@ -526,33 +729,33 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				INTERNAL              = 0x01, // Внутренняя ошибка разбора
-				UNEXPECTED_EOF        = 0x02, // Текст оборвался посреди значения
-				INVALID_CHARACTER     = 0x03, // Знак недопустим в этом месте текста
-				INVALID_ENCODING      = 0x04, // Последовательность байтов не отвечает объявленной кодировке
-				UNSUPPORTED_ENCODING  = 0x05, // Объявленная кодировка не поддерживается
-				UNTERMINATED_STRING   = 0x06, // Строка не закрыта до конца текста
-				INVALID_ESCAPE        = 0x07, // Отменяющая последовательность не опознана
-				INVALID_UNICODE       = 0x08, // Запись \\uXXXX содержит недопустимые знаки
-				UNPAIRED_SURROGATE    = 0x09, // Суррогат не образует пары
-				CONTROL_IN_STRING     = 0x0A, // Управляющий знак внутри строки без экранирования
-				INVALID_NUMBER        = 0x0B, // Запись числа не отвечает стандарту
-				NUMBER_OUT_OF_RANGE   = 0x0C, // Число не представимо затребованным видом
-				INVALID_LITERAL       = 0x0D, // Вместо true, false либо null стоит иное
-				TRAILING_CHARACTERS   = 0x0E, // Знаки за окончанием документа
-				EXPECTED_VALUE        = 0x0F, // Ожидалось значение
-				EXPECTED_KEY          = 0x10, // Ожидалось имя поля объекта
-				EXPECTED_COLON        = 0x11, // Ожидалось двоеточие после имени поля
-				EXPECTED_COMMA        = 0x12, // Ожидалась запятая либо закрывающая скобка
-				TRAILING_COMMA        = 0x13, // Запятая перед закрывающей скобкой при строгом разборе
-				DUPLICATE_KEY         = 0x14, // Имя поля объекта объявлено повторно
-				DEPTH_EXCEEDED        = 0x15, // Глубина вложенности превышает допустимую
-				STRING_TOO_LONG       = 0x16, // Длина строкового значения превышает допустимую
-				NUMBER_TOO_LONG       = 0x17, // Длина записи числа превышает допустимую
-				TOO_MANY_NODES        = 0x18, // Количество узлов документа превышает допустимое
-				COMMENT_NOT_ALLOWED   = 0x19, // Примечание встречено при строгом разборе
-				UNTERMINATED_COMMENT  = 0x1A, // Примечание не закрыто до конца текста
-				EMPTY_TEXT            = 0x1B, // Текст пуст, а документ затребован
+				INTERNAL             = 0x01, // Внутренняя ошибка разбора
+				UNEXPECTED_EOF       = 0x02, // Текст оборвался посреди значения
+				INVALID_CHARACTER    = 0x03, // Знак недопустим в этом месте текста
+				INVALID_ENCODING     = 0x04, // Последовательность байтов не отвечает объявленной кодировке
+				UNSUPPORTED_ENCODING = 0x05, // Объявленная кодировка не поддерживается
+				UNTERMINATED_STRING  = 0x06, // Строка не закрыта до конца текста
+				INVALID_ESCAPE       = 0x07, // Отменяющая последовательность не опознана
+				INVALID_UNICODE      = 0x08, // Запись \\uXXXX содержит недопустимые знаки
+				UNPAIRED_SURROGATE   = 0x09, // Суррогат не образует пары
+				CONTROL_IN_STRING    = 0x0A, // Управляющий знак внутри строки без экранирования
+				INVALID_NUMBER       = 0x0B, // Запись числа не отвечает стандарту
+				NUMBER_OUT_OF_RANGE  = 0x0C, // Число не представимо затребованным видом
+				INVALID_LITERAL      = 0x0D, // Вместо true, false либо null стоит иное
+				TRAILING_CHARACTERS  = 0x0E, // Знаки за окончанием документа
+				EXPECTED_VALUE       = 0x0F, // Ожидалось значение
+				EXPECTED_KEY         = 0x10, // Ожидалось имя поля объекта
+				EXPECTED_COLON       = 0x11, // Ожидалось двоеточие после имени поля
+				EXPECTED_COMMA       = 0x12, // Ожидалась запятая либо закрывающая скобка
+				TRAILING_COMMA       = 0x13, // Запятая перед закрывающей скобкой при строгом разборе
+				DUPLICATE_KEY        = 0x14, // Имя поля объекта объявлено повторно
+				DEPTH_EXCEEDED       = 0x15, // Глубина вложенности превышает допустимую
+				STRING_TOO_LONG      = 0x16, // Длина строкового значения превышает допустимую
+				NUMBER_TOO_LONG      = 0x17, // Длина записи числа превышает допустимую
+				TOO_MANY_NODES       = 0x18, // Количество узлов документа превышает допустимое
+				COMMENT_NOT_ALLOWED  = 0x19, // Примечание встречено при строгом разборе
+				UNTERMINATED_COMMENT = 0x1A, // Примечание не закрыто до конца текста
+				EMPTY_TEXT           = 0x1B, // Текст пуст, а документ затребован
 				/**
 				 * \~russian
 				 * Превышен предел, заданный настройками разбора
@@ -576,14 +779,14 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				OVERFLOW_LIMIT        = 0x1C, // Превышен предел, заданный настройками разбора
-				FILE_NOT_OPENED       = 0x1D, // Файл документа открыть не удалось
-				TEXT_ALREADY_ENDED    = 0x1E, // Подача продолжена после объявленного конца текста
-				FILE_NOT_WRITTEN      = 0x1F, // Текст документа записать в файл не удалось
-				MULTIPLE_ROOTS        = 0x20, // Корень документа уже несёт значение
-				NO_CONTAINER_OPEN     = 0x21, // Ни одно вместилище не открыто
-				KEY_OUTSIDE_OBJECT    = 0x22, // Имя поля допустимо лишь внутри объекта и лишь однажды
-				FILE_NOT_READ         = 0x23, // Файл документа прочитать не удалось
+				OVERFLOW_LIMIT     = 0x1C, // Превышен предел, заданный настройками разбора
+				FILE_NOT_OPENED    = 0x1D, // Файл документа открыть не удалось
+				TEXT_ALREADY_ENDED = 0x1E, // Подача продолжена после объявленного конца текста
+				FILE_NOT_WRITTEN   = 0x1F, // Текст документа записать в файл не удалось
+				MULTIPLE_ROOTS     = 0x20, // Корень документа уже несёт значение
+				NO_CONTAINER_OPEN  = 0x21, // Ни одно вместилище не открыто
+				KEY_OUTSIDE_OBJECT = 0x22, // Имя поля допустимо лишь внутри объекта и лишь однажды
+				FILE_NOT_READ      = 0x23, // Файл документа прочитать не удалось
 				/**
 				 * \~russian
 				 * Разбираемый текст не помещается в разрядность хранилища
@@ -618,7 +821,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				STORAGE_EXHAUSTED     = 0x24, // Разбираемый текст не помещается в разрядность хранилища
+				STORAGE_EXHAUSTED = 0x24, // Разбираемый текст не помещается в разрядность хранилища
 				/**
 				 * \~russian
 				 * Массив не закрыт до конца текста
@@ -645,8 +848,8 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				UNCLOSED_ARRAY        = 0x25, // Массив не закрыт до конца текста
-				UNCLOSED_OBJECT       = 0x26, // Объект не закрыт до конца текста
+				UNCLOSED_ARRAY  = 0x25, // Массив не закрыт до конца текста
+				UNCLOSED_OBJECT = 0x26, // Объект не закрыт до конца текста
 				/**
 				 * \~russian
 				 * Кодировка исходного текста сменена посреди подачи
@@ -726,225 +929,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				UNWRITABLE_VALUE      = 0x28 // Значение установленными настройками записи непредставимо
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды событий чтения текста
-			 *
-			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его целиком.
-			 *
-			 * @note Начало и конец вместилища выдаются отдельными событиями, а не одним
-			 *       событием с готовым вместилищем: массив на миллион значений иначе удерживался
-			 *       бы в памяти целиком прежде первой выдачи, и потоковое чтение потеряло бы
-			 *       смысл
-			 *
-			 * @note Имя поля объекта выдаётся своим событием, предшествующим событию
-			 *       значения. Значением при этом вправе оказаться вместилище, и тогда за именем
-			 *       идёт начало вместилища
-			 *
-			 * \~english
-			 * @brief Kinds of the events of the reading of a text
-			 *
-			 * @details The reading issues the events as the text is parsed without holding it in full.
-			 *
-			 * @note The beginning and the end of a container are issued by separate events rather than by one
-			 *       event with a ready container: an array of a million values would otherwise be held
-			 *       in the memory in full before the first issuance, and the streaming reading would lose its
-			 *       sense
-			 *
-			 * @note The name of a field of an object is issued by its own event preceding the event
-			 *       of the value. The value may thereby turn out to be a container, and then the name
-			 *       is followed by the beginning of a container
-			 *
-			 * \~
-			 */
-			enum class event_t : uint8_t {
-				NONE          = 0x00, // Событие не определено
-				KEY           = 0x01, // Имя поля объекта
-				NUL           = 0x02, // Значение null
-				BOOL          = 0x03, // Значение true либо false
-				NUMBER        = 0x04, // Число, выдаётся записью без преобразования
-				STRING        = 0x05, // Строка со снятым экранированием
-				ARRAY_BEGIN   = 0x06, // Начало массива
-				ARRAY_END     = 0x07, // Конец массива
-				OBJECT_BEGIN  = 0x08, // Начало объекта
-				OBJECT_END    = 0x09, // Конец объекта
-				COMMENT       = 0x0A, // Примечание, выдаётся лишь при разрешённых примечаниях
-				DOCUMENT      = 0x0B, // Документ разобран до конца, следом вправе идти новый при потоке NDJSON
-				FINISH        = 0x0C  // Текст разобран до конца, событие видно после цикла разбора
-			};
-
-			/**
-			 * \~russian
-			 * @brief Кодировки исходного текста
-			 *
-			 * @details Стандарт предписывает **UTF-8** для обмена между разными системами и
-			 *          метку порядка байтов запрещает. Прочие кодировки распознаются потому, что в
-			 *          обиходе они встречаются, и текст в них лучше принять с пометкой, чем
-			 *          отвергнуть молчанием.
-			 *
-			 * @note Кодировок UTF-32 среди распознаваемых нет: стандарт их для обмена не
-			 *       велит, а в обиходе они не встречаются вовсе
-			 *
-			 * \~english
-			 * @brief Encodings of the source text
-			 *
-			 * @details The standard prescribes UTF-8 and forbids the byte order mark. The other
-			 *          encodings are recognised because they are encountered in the practice, and a text in them
-			 *          is better accepted with a note than rejected by a silence.
-			 *
-			 * @note UTF-32 encodings are not among the recognised ones: the standard does not
-			 *       prescribe them for the exchange, and in the practice they are not
-			 *       encountered at all
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена, определяется по метке порядка байтов
-				UTF8    = 0x01, // Кодировка UTF-8, предписанная стандартом
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06  // Кодировка Windows-1252
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с повторяющимся именем поля объекта
-			 *
-			 * @details Стандарт повторяющиеся имена допускает, а поведение при них не
-			 *          задаёт вовсе, и реализации расходятся: одни берут первое значение, другие
-			 *          последнее, третьи собирают все.
-			 *
-			 * @warning Дерево, разобранное правилом `KEEP`, записывается повторами и
-			 *          обратно читается ЛИШЬ правилом `FIRST`, `LAST` либо `KEEP`:
-			 *          умолчательное правило `ERROR` такой текст отвергает отказом
-			 *          `DUPLICATE_KEY`. Круговой ход через умолчания на нём рвётся, и
-			 *          сохраняющему повторы надлежит знать, чем их потом читать
-			 *
-			 * \~english
-			 * @brief Rules of the handling of a repeating name of a field of an object
-			 *
-			 * @details The standard permits the repeating names but does not set the behaviour
-			 *          for them at all, and the implementations diverge: some take the first value, others
-			 *          the last one, the third ones collect all of them.
-			 *
-			 * @warning A tree parsed by the rule `KEEP` is written with the repetitions and is read
-			 *          back ONLY by the rule `FIRST`, `LAST` or `KEEP`: the default rule `ERROR`
-			 *          rejects such a text with a `DUPLICATE_KEY` refusal. The round trip through
-			 *          the defaults breaks upon it, and whoever preserves the repetitions ought to
-			 *          know what will read them afterwards
-			 *
-			 * \~
-			 */
-			enum class duplicate_t : uint8_t {
-				ERROR = 0x00, // Отказ разбора, правило по умолчанию
-				FIRST = 0x01, // Берётся первое встреченное значение, прочие отбрасываются
-				LAST  = 0x02, // Берётся последнее встреченное значение
-				KEEP  = 0x03  // Удерживаются все, доступ по имени отдаёт первое
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила преобразования чисел при разборе
-			 *
-			 * @details Разбор определяет вид числа и преобразует его всегда: повторного
-			 *          разбора записи не бывает вовсе. Правило это задаёт лишь то, как поступать с
-			 *          числом, ВЕЛИЧИНА которого не вмещается ни в один родной вид: целым за пределами
-			 *          `int64_t` и `uint64_t` либо дробным, вышедшим за пределы `double` - как вверх,
-			 *          обращаясь в бесконечность, так и вниз, обращаясь в нуль.
-			 *
-			 * @note Излишняя ТОЧНОСТЬ записи отказом не считается ни при каком правиле:
-			 *       запись `0.1234567890123456789012345` величиною в `double` вмещается и
-			 *       округляется до `0.12345678901234568`, как округлил бы её сам язык.
-			 *       Отвергать всякую запись, точнее `double`, значило бы отвергать и `0.1`,
-			 *       записанное двадцатью знаками, - то есть обычную запись обычного числа
-			 *
-			 * \~english
-			 * @brief Rules of the conversion of the numbers at the parsing
-			 *
-			 * @details The parsing determines the kind of a number and converts it always: a repeated
-			 *          parsing of the record does not happen at all. This rule sets only how to handle a
-			 *          number whose MAGNITUDE is not containable in any native kind: an integer beyond the limits
-			 *          of `int64_t` and `uint64_t`, or a real that has left the range of a `double` — either upwards,
-			 *          turning into an infinity, or downwards, turning into a zero.
-			 *
-			 * @note An excessive PRECISION of a record is not counted as a refusal under any rule:
-			 *       the record `0.1234567890123456789012345` is containable in a `double` by its magnitude and
-			 *       is rounded to `0.12345678901234568`, as the language itself would round it.
-			 *       To reject every record more precise than a `double` would be to reject `0.1` too,
-			 *       written with twenty digits — that is, an ordinary record of an ordinary number
-			 *
-			 * \~
-			 */
-			enum class number_t : uint8_t {
-				NATIVE = 0x00, // Число, не вместимое ни в один родной вид, хранится записью
-				CHECK  = 0x01  // Число, не вместимое ни в один родной вид, есть отказ разбора
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды оформления собираемого текста
-			 *
-			 * \~english
-			 * @brief Kinds of the formatting of the text being assembled
-			 *
-			 * \~
-			 */
-			enum class format_t : uint8_t {
-				COMPACT = 0x00, // Без пробелов и переводов строк
-				PRETTY  = 0x01  // С отступами и переводами строк
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила экранирования при записи текста
-			 *
-			 * \~english
-			 * @brief Rules of the escaping at the writing of a text
-			 *
-			 * \~
-			 */
-			enum class escape_t : uint8_t {
-				MINIMAL = 0x00, // Экранируется лишь предписанное стандартом
-				SOLIDUS = 0x01, // Сверх того экранируется косая черта
-				ASCII   = 0x02  // Сверх того всякий знак вне US-ASCII записывается как \\uXXXX
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с последовательностью, кодировке не отвечающей
-			 *
-			 * @details Стандарт предписывает тексту кодировку UTF-8, и разбор наш байты,
-			 *          ей не отвечающие, отвергает. Запись их насквозь выдала бы текст, какой
-			 *          кодек прочитать не сможет сам, оттого правило обращения с ними и заведено.
-			 *
-			 * @note Негодными считаются: ведущий байт, ведущим не являющийся; недостача
-			 *       продолжающих байтов; продолжающий байт вне отведённого ведущему
-			 *       предела; запись кодовой точки длиннее необходимого; суррогат;
-			 *       кодовая точка свыше U+10FFFF
-			 *
-			 * \~english
-			 * @brief Rules of the handling of a sequence not conforming to the encoding
-			 *
-			 * @details The standard prescribes the UTF-8 encoding for a text, and our parsing rejects
-			 *          the bytes not conforming to it. The writing of them through would give away a text which
-			 *          the codec itself will not be able to read, whereby the rule of the handling of them is made.
-			 *
-			 * @note The following are considered malformed: a leading byte which is not a leading one; a shortage
-			 *       of the continuing bytes; a continuing byte outside the limit allotted to the leading one;
-			 *       a record of a code point longer than necessary; a surrogate;
-			 *       a code point above U+10FFFF
-			 *
-			 * \~
-			 */
-			enum class malformed_t : uint8_t {
-				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
-				REFUSE  = 0x01, // Запись отвергается, ничего не записав
-				PASS    = 0x02  // Байты пропускаются как есть
+				UNWRITABLE_VALUE = 0x28 // Значение установленными настройками записи непредставимо
 			};
 
 			/**
@@ -998,13 +983,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Span() noexcept : offset(0), length(0) {}
+				explicit Span() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -1020,15 +1004,14 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+				Span(const uint32_t offset, const uint32_t length) noexcept;
 			} span_t;
 
 			/**
 			 * \~russian
 			 * @brief Положение в исходном тексте
 			 *
-			 * @details Служит для указания места отказа и для привязки значений к исходному
-			 *          тексту.
+			 * @details Служит для указания места отказа и для привязки значений к исходному тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
 			 *       смещение - в байтах исходного текста до перекодирования
@@ -1036,8 +1019,7 @@ namespace awh {
 			 * \~english
 			 * @brief Position in the source text
 			 *
-			 * @details Serves for indicating the place of a refusal and for binding the values to the source
-			 *          text.
+			 * @details Serves for indicating the place of a refusal and for binding the values to the source text.
 			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
 			 *       the offset — in the bytes of the source text before the transcoding
@@ -1045,6 +1027,12 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Location {
+				// Номер строки, считая с единицы
+				uint32_t line;
+				// Глубина вложенности, считая с нуля
+				uint32_t depth;
+				// Положение в строке, считая с единицы
+				uint32_t column;
 				/**
 				 * \~russian
 				 * @brief Смещение от начала текста в байтах
@@ -1070,23 +1058,16 @@ namespace awh {
 				 * \~
 				 */
 				uint64_t offset;
-				// Номер строки, считая с единицы
-				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				// Глубина вложенности, считая с нуля
-				uint32_t depth;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Location() noexcept : offset(NO_OFFSET), line(0), column(0), depth(0) {}
+				explicit Location() noexcept;
 			} location_t;
 
 			/**
@@ -1100,7 +1081,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the textual description of a refusal code
 			 *
 			 * @param error error code of the parsing
-			 * @return textual description of the error code
+			 * @return      textual description of the error code
 			 *
 			 * \~
 			 */
@@ -1116,7 +1097,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the name of a kind of a node
 			 *
 			 * @param kind kind of a node of a document
-			 * @return name of the kind of the node
+			 * @return     name of the kind of the node
 			 *
 			 * \~
 			 */
@@ -1138,7 +1119,7 @@ namespace awh {
 			 *       named, for it is a set of the kinds rather than a kind
 			 *
 			 * @param type kind of a value of a document
-			 * @return name of the kind of the value
+			 * @return     name of the kind of the value
 			 *
 			 * \~
 			 */
@@ -1184,7 +1165,7 @@ namespace awh {
 			 *          every number, by whichever kind it is stored, is a node of the kind `NUMBER`.
 			 *
 			 * @param type kind of a value of a document
-			 * @return kind of a node of a document
+			 * @return     kind of a node of a document
 			 *
 			 * \~
 			 */
@@ -1208,7 +1189,7 @@ namespace awh {
 			 *          the digits.
 			 *
 			 * @param text record of a number being checked
-			 * @return sign of the conformity of the record to the standard
+			 * @return     sign of the conformity of the record to the standard
 			 *
 			 * \~
 			 */
@@ -1230,9 +1211,9 @@ namespace awh {
 			 * @details A string not requiring an escaping is written by a transfer of the segment
 			 *          as a whole bypassing the parsing by the characters.
 			 *
-			 * @param text value being checked
+			 * @param text   value being checked
 			 * @param escape rule of the escaping at the writing
-			 * @return sign of the necessity of the escaping
+			 * @return       sign of the necessity of the escaping
 			 *
 			 * \~
 			 */
