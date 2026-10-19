@@ -618,14 +618,14 @@ namespace awh {
 					error_t error() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод извлечения вида значения
+					 * @brief Метод извлечения вида узла значения
 					 *
-					 * @return вид хранимого значения
+					 * @return вид узла значения
 					 *
 					 * \~english
-					 * @brief Method of the extraction of the kind of the value
+					 * @brief Method of the extraction of the kind of the node of a value
 					 *
-					 * @return kind of the stored value
+					 * @return kind of the node of the value
 					 *
 					 * \~
 					 */
