@@ -139,10 +139,13 @@ LEAD_TAG = re.compile(r"^\s*\*\s*@(\w+)")
 LEAD_TEXT = re.compile(r"^\s*\*\s*[^\s@]")
 LEAD_CONT = re.compile(r"^\s*\*\s{2,}\S")
 LEAD_LANG = re.compile(r"^\s*\*\s*\\~(russian|english)\s*$")
+LEAD_CLOSE = re.compile(r"^\s*\*\s*\\~\s*$")
+LEAD_END = re.compile(r"^\s*\*/\s*$")
 LEAD_BLANK = re.compile(r"^\s*\*\s*$")
 def check_lead_gap(path, start, block, report, fixes=None):
-    """Отбивка вокруг зачина секции: лишняя пустая строка после метки языка (§7.1)
-    и недостающая перед первым тегом после текста без тега (§7.3)."""
+    """Отбивка вокруг меток языка: лишняя пустая строка после `\\~russian`/`\\~english`
+    и после закрывающей `\\~` перед `*/` (§7.1), недостающая перед первым тегом
+    после текста без тега (§7.3)."""
     for k in range(1, len(block) - 1):
         s = block[k].strip()
         mt = LEAD_TAG.match(s)
@@ -167,6 +170,18 @@ def check_lead_gap(path, start, block, report, fixes=None):
         if j >= len(block) or not LEAD_TAG.match(block[j].strip()):
             continue
         report(path, start + k + 1, "ERROR", "§7.1", f"пустая строка сразу после {block[k].strip()[1:].strip()} лишняя — первым идёт тег (§7.1)")
+        if fixes is not None:
+            for d in range(k + 1, j):
+                fixes[start + d - 1] = None
+    for k in range(len(block) - 2):
+        if not LEAD_CLOSE.match(block[k].strip()):
+            continue
+        j = k + 1
+        while j < len(block) - 1 and LEAD_BLANK.match(block[j].strip()):
+            j += 1
+        if j == k + 1 or not LEAD_END.match(block[j].strip()):
+            continue
+        report(path, start + k + 1, "ERROR", "§7.1", f"пустая строка после закрывающей `\\~` перед `*/` лишняя — закрытие секций идёт встык к `*/` (§7.1)")
         if fixes is not None:
             for d in range(k + 1, j):
                 fixes[start + d - 1] = None
@@ -213,20 +228,29 @@ def check_doc_parity(path, lines, report, fixes=None):
 							report(path, n, "ERROR", "§7.5", f"перед закрывающей `* \\~` нет пустой строки ` *` (§7.5, §7.1): последняя линия «{body[-2].strip()[:44]}»")
 							if fixes is not None and solo:
 								fixes[start + closer - 2] = None
+					elif body and LEAD_BLANK.match(body[-1]):
+						# блок без тегов кончается встык к закрытию: отбивка в нём не нужна
+						report(path, n, "ERROR", "§7.5", f"в блоке без тегов `@` пустая строка ` *` перед `*/` лишняя (§7.5): текст кончается встык к закрытию")
+						if fixes is not None:
+							fixes[start + closer - 2] = None
 					if (ru or en) and not any(re.match(r"^\s*\*\s*\\~\s*$", x) for x in block[1:]):
 						report(path, n, "ERROR", "§7.6.3", "в блоке с `\\~russian`/`\\~english` нет завершающей строки `* \\~` перед `*/` (§7.6.3)")
 						if fixes is not None and solo:
 							fixes[n - 1] = (["*"] if tail != "*" else []) + ["* \\~"]
-					for lang in ("russian", "english"):
+					for lang in ("russian", "english", "?"):
+						# блок без меток языка (`?`) — реализация или внутренний заголовок: отбивку
+						# групп в нём не требуем (шапка файла держит теги парами намеренно), но
+						# плотность блока @param/@return едина для всех
 						gg = sec.get(lang) or []
+						named = lang != "?"
 						for gi in range(1, len(gg)):
 							tag, blank, ln = gg[gi][0], gg[gi][1], gg[gi][2]
 							prev_tag = gg[gi-1][0]
 							packed = (tag in ("param", "return") and prev_tag in ("param", "return", "par")) or tag == "endcode" or (tag == "par" and prev_tag in ("param", "return", "par")) or (tag == prev_tag and tag in ("note", "details", "warning", "tparam"))
-							if not packed and not blank:
+							if named and not packed and not blank:
 								report(path, start + ln - 1, "ERROR", "§7.3", f"в секции {lang}: перед @{tag} нет пустой строки ' *' (группы тегов разделяются)")
 							tight = (tag in ("param", "tparam", "retval", "arg", "return")
-								and prev_tag in ("param", "tparam", "retval", "arg", "return"))
+							and prev_tag in ("param", "tparam", "retval", "arg", "return"))
 							if tight and blank:
 								report(path, start + ln - 1, "ERROR", "§7.3", f"лишняя пустая строка перед @{tag} внутри блока @param/@return — блок ведёт плотно (§7.3)")
 								if fixes is not None:
@@ -1149,8 +1173,9 @@ def main():
         print(f"{path}:{n}: {level} [{rule}] {msg}")
     if waived:
         print(f"§5.5 молчит на {len(waived)} header-only заголовках (свод §5.5.1): {', '.join(sorted(set(waived))[:24])}" + (" …" if len(set(waived)) > 24 else ""))
-    print(f"\n{len(files)} файлов: ERROR={errors} WARN={warns}")
+    print(f"\n{len(files)} файлов: ERROR={errors} WARN={warns}" + (f" НЕЧИТАЕМЫХ={unreadable}" if unreadable else ""))
     if unreadable:
+        print("ни один файл не проверен: путь прочитан буквально, опечатку не исправляем", file=sys.stderr)
         return 2
     return 1 if errors or (strict and warns) else 0
 
