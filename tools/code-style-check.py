@@ -332,6 +332,10 @@ def collect_members(files):
                 for line in open(f, errors="ignore"):
                     m = pat.match(line)
                     if m:
+                        # внутренняя статика §4.10 (`__awh_{name}__`) — не член:
+                        # к ней обращаются через `::` (§6.2), `this->` там ошибочно
+                        if m.group(1).startswith("__awh_") and m.group(1).endswith("__"):
+                            continue
                         names.add(m.group(1))
             except OSError:
                 pass
@@ -420,6 +424,9 @@ def template_above(code, n):
             return False
         j -= 1
     return False
+
+# Слова, после которых имя не может быть объявлением: это выражение или вызов.
+DECL_LEAD_KW = re.compile(r"^(?:return|if|else|while|for|switch|case|do|and|or|xor|not|sizeof|alignof|decltype|new|delete|throw|co_await|co_return|catch|try|static_assert|noexcept)\b")
 
 DEF_OPEN = re.compile(r"\)\s*(?:(?:const|noexcept|override|volatile|mutable)\s+|&\s*|\*\s*)*\{")
 DECL_OPEN = re.compile(r"^(?:namespace\b|(?:extern\s+\"[^\"]*\"\s*)?(?:typedef\s+)?(?:class|struct|union|enum)\b)|\b(?:class|struct|union)\s+\w+\s*(?:final\s*)?\{$")
@@ -918,8 +925,15 @@ def check_file(path, lines, members, report, fixes=None):
             report(path, n, "ERROR", "§6.3", "Си-каст примитива — использовать static_cast <T> (x)")
         # голые системные функции
         def is_declaration(name, pos):
-            head = code[:pos]
-            return bool(re.match(r"^[\w:]+(?:\s*[*&]\s*)?\s+", head.lstrip())) and (head.strip() == "" or re.search(r"[\w:*>\s]$", head)) and (head.lstrip() != "" or pos == 0) and re.match(r"^[\w:]+(?:<[^>]*>)?(?:\s*[*&])?\s+" + re.escape(name) + r"\s*\(", code.lstrip())
+            """Заголовок объявления/определения, а не вызов: перед именем — только
+            модификаторы и тип (`AWH_CACHE_INLINE void free(`, `static inline size_t read(`),
+            без операторов и без управляющего слова (`return free(p);` остаётся вызовом)."""
+            head = code[:pos].lstrip()
+            if not head or DECL_LEAD_KW.match(head):
+                return False
+            return bool(re.fullmatch(r"(?:[A-Za-z_]\w*|::|<[^<>]*>|\*|&|\s)+", head)
+                and re.search(r"[A-Za-z_]\w*\s*$", head)
+                and re.search(re.escape(name) + r"\s*\($", code[:pos + len(name) + 1]))
         for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_ERR + r"\s*\(", code):
             if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
                 continue
