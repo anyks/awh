@@ -26,8 +26,8 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstddef>
 #include <limits>
+#include <cstddef>
 
 /**
  * Используем стандартное пространство имён
@@ -48,141 +48,187 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
 		case static_cast <uint8_t> (error_t::NONE):
+			// Выводим текстовое описание кода отказа
 			return "no error";
 		// Если произошла внутренняя ошибка разбора
 		case static_cast <uint8_t> (error_t::INTERNAL):
+			// Выводим текстовое описание кода отказа
 			return "internal parsing error";
 		// Если запись оборвалась посреди значения
 		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF):
+			// Выводим текстовое описание кода отказа
 			return "record has ended in the middle of a value";
 		// Если метка не опознана
 		case static_cast <uint8_t> (error_t::UNKNOWN_TAG):
+			// Выводим текстовое описание кода отказа
 			return "tag is not recognised";
 		// Если метка отведена под будущее
 		case static_cast <uint8_t> (error_t::RESERVED_TAG):
+			// Выводим текстовое описание кода отказа
 			return "tag is reserved for the future";
 		// Если объявленная длина недопустима
 		case static_cast <uint8_t> (error_t::INVALID_LENGTH):
+			// Выводим текстовое описание кода отказа
 			return "declared length is inadmissible";
 		// Если строка не отвечает кодировке UTF-8
 		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
+			// Выводим текстовое описание кода отказа
 			return "string does not conform to the UTF-8 encoding";
 		// Если число не представимо затребованным видом
 		case static_cast <uint8_t> (error_t::NUMBER_OUT_OF_RANGE):
+			// Выводим текстовое описание кода отказа
 			return "number is not representable by the demanded kind";
 		// Если запись числа неограниченной ширины повреждена
 		case static_cast <uint8_t> (error_t::INVALID_BIGNUM):
+			// Выводим текстовое описание кода отказа
 			return "record of a number of an unlimited width is corrupted";
 		// Если запись десятичного числа повреждена
 		case static_cast <uint8_t> (error_t::INVALID_DECIMAL):
+			// Выводим текстовое описание кода отказа
 			return "record of a decimal number is corrupted";
 		// Если конец вместимого встречен вне вместимого неопределённой длины
 		case static_cast <uint8_t> (error_t::UNBALANCED_BREAK):
+			// Выводим текстовое описание кода отказа
 			return "end of a container is met outside of a container of an indefinite length";
 		// Если отображение оборвалось на имени
 		case static_cast <uint8_t> (error_t::MISSING_VALUE):
+			// Выводим текстовое описание кода отказа
 			return "mapping has ended on a name, there is no value after it";
 		// Если имя поля отображения объявлено повторно
 		case static_cast <uint8_t> (error_t::DUPLICATE_KEY):
+			// Выводим текстовое описание кода отказа
 			return "name of a field of a mapping is declared repeatedly";
 		// Если глубина вложенности превышает допустимую
 		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED):
+			// Выводим текстовое описание кода отказа
 			return "depth of the nesting exceeds the admissible one";
 		// Если длина строкового значения превышает допустимую
 		case static_cast <uint8_t> (error_t::STRING_TOO_LONG):
+			// Выводим текстовое описание кода отказа
 			return "length of a string value exceeds the admissible one";
 		// Если длина двоичного значения превышает допустимую
 		case static_cast <uint8_t> (error_t::BLOB_TOO_LONG):
+			// Выводим текстовое описание кода отказа
 			return "length of a binary value exceeds the admissible one";
 		// Если количество узлов документа превышает допустимое
 		case static_cast <uint8_t> (error_t::TOO_MANY_NODES):
+			// Выводим текстовое описание кода отказа
 			return "number of the nodes of the document exceeds the admissible one";
 		// Если за окончанием документа стоят октеты
 		case static_cast <uint8_t> (error_t::TRAILING_OCTETS):
+			// Выводим текстовое описание кода отказа
 			return "octets after the end of the document";
 		// Если запись пуста, а документ затребован
 		case static_cast <uint8_t> (error_t::EMPTY_RECORD):
+			// Выводим текстовое описание кода отказа
 			return "record is empty while a document is demanded";
 		// Если превышен предел, заданный настройками разбора
 		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
+			// Выводим текстовое описание кода отказа
 			return "limit set by the settings of the parsing is exceeded";
 		// Если именем поля отображения стоит вместимое
 		case static_cast <uint8_t> (error_t::INVALID_KEY):
+			// Выводим текстовое описание кода отказа
 			return "a container stands as the name of a field of a mapping";
 		// Если имена полей отображения идут не по возрастанию
 		case static_cast <uint8_t> (error_t::UNORDERED_KEY):
+			// Выводим текстовое описание кода отказа
 			return "names of the fields of a mapping do not go in the ascending order";
 		// Если неопределённая длина встречена при строгом виде записи
 		case static_cast <uint8_t> (error_t::INDEFINITE_REFUSED):
+			// Выводим текстовое описание кода отказа
 			return "an indefinite length at the strict kind of the record";
 		// Если вместимое не закрыто либо закрыто лишний раз
 		case static_cast <uint8_t> (error_t::UNBALANCED_CONTAINER):
+			// Выводим текстовое описание кода отказа
 			return "container is not closed or is closed once too many";
 		// Если значений вместимого больше объявленного
 		case static_cast <uint8_t> (error_t::CONTAINER_OVERFLOW):
+			// Выводим текстовое описание кода отказа
 			return "there are more values of a container than declared";
 		// Если заголовок не несёт опознавательной записи контейнера
 		case static_cast <uint8_t> (error_t::INVALID_MAGIC):
+			// Выводим текстовое описание кода отказа
 			return "header does not carry the identifying record of the container";
 		// Если вид записи контейнера не поддерживается
 		case static_cast <uint8_t> (error_t::INVALID_VERSION):
+			// Выводим текстовое описание кода отказа
 			return "kind of the record of the container is not supported";
 		// Если контрольная сумма заголовка не сошлась
 		case static_cast <uint8_t> (error_t::INVALID_CHECKSUM):
+			// Выводим текстовое описание кода отказа
 			return "checksum of the header does not agree";
 		// Если заголовок оборван
 		case static_cast <uint8_t> (error_t::TRUNCATED_HEADER):
+			// Выводим текстовое описание кода отказа
 			return "header is truncated, its octets are lacking";
 		// Если кадр оборван
 		case static_cast <uint8_t> (error_t::TRUNCATED_CHUNK):
+			// Выводим текстовое описание кода отказа
 			return "chunk is truncated, its octets are lacking";
 		// Если заголовок кадра не опознан
 		case static_cast <uint8_t> (error_t::INVALID_CHUNK):
+			// Выводим текстовое описание кода отказа
 			return "header of the chunk is not recognised";
 		// Если сжатие либо разжатие кадра отвечено отказом
 		case static_cast <uint8_t> (error_t::COMPRESSION_FAILED):
+			// Выводим текстовое описание кода отказа
 			return "compression or decompression of the chunk is refused";
 		// Если шифрование либо расшифровка кадра отвечены отказом
 		case static_cast <uint8_t> (error_t::ENCRYPTION_FAILED):
+			// Выводим текстовое описание кода отказа
 			return "encryption or decryption of the chunk is refused";
 		// Если оглавление контейнера не объявлено заголовком
 		case static_cast <uint8_t> (error_t::MISSING_INDEX):
+			// Выводим текстовое описание кода отказа
 			return "index of the container is not declared by the header";
 		// Если запись оглавления повреждена либо указывает за тело
 		case static_cast <uint8_t> (error_t::INVALID_INDEX):
+			// Выводим текстовое описание кода отказа
 			return "row of the index is corrupted or points beyond the body";
 		// Если работа чтения октетов контейнера отвечена отказом
 		case static_cast <uint8_t> (error_t::UNREADABLE_SOURCE):
+			// Выводим текстовое описание кода отказа
 			return "work of the reading of the octets of the container is refused";
 		// Если работа записи октетов контейнера отвечена отказом
 		case static_cast <uint8_t> (error_t::UNWRITABLE_SINK):
+			// Выводим текстовое описание кода отказа
 			return "work of the writing of the octets of the container is refused";
 		// Если запись снесена правкой контейнера
 		case static_cast <uint8_t> (error_t::MISSING_RECORD):
+			// Выводим текстовое описание кода отказа
 			return "record is erased by an editing of the container";
 		// Если запись подписи оборвана
 		case static_cast <uint8_t> (error_t::TRUNCATED_SIGNATURE):
+			// Выводим текстовое описание кода отказа
 			return "record of the signature is truncated, its octets are lacking";
 		// Если запись подписи повреждена
 		case static_cast <uint8_t> (error_t::INVALID_SIGNATURE):
+			// Выводим текстовое описание кода отказа
 			return "record of the signature is corrupted";
 		// Если подпись владельца контейнером не объявлена
 		case static_cast <uint8_t> (error_t::UNSIGNED_CONTAINER):
+			// Выводим текстовое описание кода отказа
 			return "signature of the owner is not declared by the container";
 		// Если подпись владельца контейнера не сошлась
 		case static_cast <uint8_t> (error_t::REFUSED_SIGNATURE):
+			// Выводим текстовое описание кода отказа
 			return "signature of the owner of the container does not agree";
 		// Если выработка подписи владельца отвечена отказом
 		case static_cast <uint8_t> (error_t::SIGNING_FAILED):
+			// Выводим текстовое описание кода отказа
 			return "production of the signature of the owner is refused";
 		// Если значение, собираемое кусками, несёт кусок иного вида
 		case static_cast <uint8_t> (error_t::INVALID_SEGMENT):
+			// Выводим текстовое описание кода отказа
 			return "value assembled by the chunks carries a chunk of another kind";
 		// Если запись открытого расширения повреждена
 		case static_cast <uint8_t> (error_t::INVALID_EXTENSION):
+			// Выводим текстовое описание кода отказа
 			return "record of the open extension is damaged";
 		// Если метка несёт запись шире наименьшей при строгом виде записи
 		case static_cast <uint8_t> (error_t::NON_MINIMAL_TAG):
+			// Выводим текстовое описание кода отказа
 			return "tag carries a record wider than the smallest one at the strict kind of the record";
 	}
 	// Выводим результат по умолчанию
@@ -202,36 +248,47 @@ const char * awh::codec::abc::name(const kind_t kind) noexcept {
 	switch(static_cast <uint8_t> (kind)){
 		// Если узел не определён
 		case static_cast <uint8_t> (kind_t::NONE):
+			// Выводим название вида узла
 			return "none";
 		// Если узел является пустым значением
-		case static_cast <uint8_t> (kind_t::NUL):
+		case static_cast <uint8_t> (kind_t::NUL):	
+			// Выводим название вида узла
 			return "null";
 		// Если узел является логическим значением
 		case static_cast <uint8_t> (kind_t::BOOL):
+			// Выводим название вида узла
 			return "bool";
 		// Если узел является числом
 		case static_cast <uint8_t> (kind_t::NUMBER):
+			// Выводим название вида узла
 			return "number";
 		// Если узел является строкой
 		case static_cast <uint8_t> (kind_t::STRING):
+			// Выводим название вида узла
 			return "string";
 		// Если узел является двоичными данными
 		case static_cast <uint8_t> (kind_t::BLOB):
+			// Выводим название вида узла
 			return "blob";
 		// Если узел является отметкой времени
 		case static_cast <uint8_t> (kind_t::TIME):
+			// Выводим название вида узла
 			return "time";
 		// Если узел является опознавателем
 		case static_cast <uint8_t> (kind_t::UUID):
+			// Выводим название вида узла
 			return "uuid";
 		// Если узел является массивом
 		case static_cast <uint8_t> (kind_t::ARRAY):
+			// Выводим название вида узла
 			return "array";
 		// Если узел является отображением
 		case static_cast <uint8_t> (kind_t::MAP):
+			// Выводим название вида узла
 			return "map";
 		// Если узел является открытым расширением
 		case static_cast <uint8_t> (kind_t::CUSTOM):
+			// Выводим название вида узла
 			return "custom";
 	}
 	// Выводим результат по умолчанию
@@ -251,69 +308,91 @@ const char * awh::codec::abc::name(const type_t type) noexcept {
 	switch(static_cast <uint32_t> (type)){
 		// Если значения нет вовсе
 		case static_cast <uint32_t> (type_t::UNDEFINED):
+			// Выводим название вида значения
 			return "undefined";
 		// Если значение является пустым
 		case static_cast <uint32_t> (type_t::NUL):
+			// Выводим название вида значения
 			return "null";
 		// Если значение является логическим
 		case static_cast <uint32_t> (type_t::BOOL):
+			// Выводим название вида значения
 			return "bool";
 		// Если значение является строкой
 		case static_cast <uint32_t> (type_t::STRING):
+			// Выводим название вида значения
 			return "string";
 		// Если значение является двоичными данными
 		case static_cast <uint32_t> (type_t::BLOB):
+			// Выводим название вида значения
 			return "blob";
 		// Если значение является массивом
 		case static_cast <uint32_t> (type_t::ARRAY):
+			// Выводим название вида значения
 			return "array";
 		// Если значение является отображением
 		case static_cast <uint32_t> (type_t::MAP):
+			// Выводим название вида значения
 			return "map";
 		// Если значение является отметкой времени
 		case static_cast <uint32_t> (type_t::TIME):
+			// Выводим название вида значения
 			return "time";
 		// Если значение является опознавателем
 		case static_cast <uint32_t> (type_t::UUID):
+			// Выводим название вида значения
 			return "uuid";
 		// Если значение является целым со знаком шириною в один октет
 		case static_cast <uint32_t> (type_t::INT8):
+			// Выводим название вида значения
 			return "int8";
 		// Если значение является целым со знаком шириною в два октета
 		case static_cast <uint32_t> (type_t::INT16):
+			// Выводим название вида значения
 			return "int16";
 		// Если значение является целым со знаком шириною в четыре октета
 		case static_cast <uint32_t> (type_t::INT32):
+			// Выводим название вида значения
 			return "int32";
 		// Если значение является целым со знаком шириною в восемь октетов
 		case static_cast <uint32_t> (type_t::INT64):
+			// Выводим название вида значения
 			return "int64";
 		// Если значение является целым без знака шириною в один октет
 		case static_cast <uint32_t> (type_t::UINT8):
+			// Выводим название вида значения
 			return "uint8";
 		// Если значение является целым без знака шириною в два октета
 		case static_cast <uint32_t> (type_t::UINT16):
+			// Выводим название вида значения
 			return "uint16";
 		// Если значение является целым без знака шириною в четыре октета
 		case static_cast <uint32_t> (type_t::UINT32):
+			// Выводим название вида значения
 			return "uint32";
 		// Если значение является целым без знака шириною в восемь октетов
 		case static_cast <uint32_t> (type_t::UINT64):
+			// Выводим название вида значения
 			return "uint64";
 		// Если значение является дробным одинарной точности
 		case static_cast <uint32_t> (type_t::FLOAT):
+			// Выводим название вида значения
 			return "float";
 		// Если значение является дробным двойной точности
 		case static_cast <uint32_t> (type_t::DOUBLE):
+			// Выводим название вида значения
 			return "double";
 		// Если значение является целым, не вместимым ни в один родной вид
 		case static_cast <uint32_t> (type_t::EXTENDED):
+			// Выводим название вида значения
 			return "extended";
 		// Если значение является десятичным
 		case static_cast <uint32_t> (type_t::DECIMAL):
+			// Выводим название вида значения
 			return "decimal";
 		// Если значение является открытым расширением
 		case static_cast <uint32_t> (type_t::CUSTOM):
+			// Выводим название вида значения
 			return "custom";
 	}
 	// Выводим результат по умолчанию
@@ -337,30 +416,39 @@ awh::codec::abc::kind_t awh::codec::abc::kind(const type_t type) noexcept {
 	switch(static_cast <uint32_t> (type)){
 		// Если значение является пустым
 		case static_cast <uint32_t> (type_t::NUL):
+			// Выводим вид узла
 			return kind_t::NUL;
 		// Если значение является логическим
 		case static_cast <uint32_t> (type_t::BOOL):
+			// Выводим вид узла
 			return kind_t::BOOL;
 		// Если значение является строкой
 		case static_cast <uint32_t> (type_t::STRING):
+			// Выводим вид узла
 			return kind_t::STRING;
 		// Если значение является двоичными данными
 		case static_cast <uint32_t> (type_t::BLOB):
+			// Выводим вид узла
 			return kind_t::BLOB;
 		// Если значение является отметкой времени
 		case static_cast <uint32_t> (type_t::TIME):
+			// Выводим вид узла
 			return kind_t::TIME;
 		// Если значение является опознавателем
 		case static_cast <uint32_t> (type_t::UUID):
+			// Выводим вид узла
 			return kind_t::UUID;
 		// Если значение является массивом
 		case static_cast <uint32_t> (type_t::ARRAY):
+			// Выводим вид узла
 			return kind_t::ARRAY;
 		// Если значение является отображением
 		case static_cast <uint32_t> (type_t::MAP):
+			// Выводим вид узла
 			return kind_t::MAP;
 		// Если значение является открытым расширением
 		case static_cast <uint32_t> (type_t::CUSTOM):
+			// Выводим вид узла
 			return kind_t::CUSTOM;
 	}
 	// Выводим результат по умолчанию
@@ -487,7 +575,7 @@ uint8_t awh::codec::abc::fit(const uint64_t value) noexcept {
  *          наличия у дерева (`Document::has`) правил этих сам не зовёт вовсе - он идёт
  *          через `Document::at`, и прежняя запись, числившая зовущих четверыми, считала
  *          его отдельно. Пересчёт: розыск `abc::segment(` по исходникам `src/codec/abc`.
- *          Расписаны правила у объявления работы
+ *          Расписаны правила у объявления работы.
  *
  * @note Смещение, равное `npos`, означает исчерпанный путь. Заведено оно затем, что
  *       смещение, равное длине пути, законно и означает ПОСЛЕДНЕЕ звено, пустое: путь
@@ -506,8 +594,7 @@ uint8_t awh::codec::abc::fit(const uint64_t value) noexcept {
  * @return       признак выданного звена
  *
  */
-bool awh::codec::abc::segment(const string_view path, size_t & offset, string_view & result,
- string & buffer, bool & invalid) noexcept {
+bool awh::codec::abc::segment(const string_view path, size_t & offset, string_view & result, string & buffer, bool & invalid) noexcept {
 	// Выполняем сброс признака недействительности пути
 	invalid = false;
 	// Выполняем сброс выдаваемого звена пути
@@ -551,6 +638,7 @@ bool awh::codec::abc::segment(const string_view path, size_t & offset, string_vi
 	 *
 	 * @note Вместилище отменённого заводится лишь по нужде: путь без знака отмены -
 	 *       случай обычный, и отведения памяти он не требует вовсе
+	 *
 	 */
 	if(result.find('~') == string_view::npos)
 		// Сообщаем, что звено пути выдано
@@ -586,6 +674,7 @@ bool awh::codec::abc::segment(const string_view path, size_t & offset, string_vi
 		 *          первой же поверке. Сам договор - недействительность пути, кончающегося
 		 *          знаком отмены, - закреплён `CodecAbcCommon.TheSegmentWithATruncatedEscapeIsRefused`,
 		 *          и проверка та честно объявляет, что ЭТОГО заслона не стережёт
+		 *
 		 */
 		if((i + 1) >= buffer.size()){
 			// Выполняем объявление пути недействительным
@@ -614,6 +703,7 @@ bool awh::codec::abc::segment(const string_view path, size_t & offset, string_vi
 			 *       у указателя JSON знак отмены, за каким не стоит нуля либо единицы,
 			 *       отвергается тем же порядком. Мягкость здесь означала бы, что имя
 			 *       `t~x` достижимо двояко, а `t~1x` - неоднозначно
+			 *
 			 */
 			default: {
 				// Выполняем объявление пути недействительным
@@ -648,6 +738,7 @@ bool awh::codec::abc::indexed(const string_view segment, size_t & result) noexce
 	 *       находит ни одного негодного, и работа объявляет звено ГОДНЫМ с номером НУЛЬ -
 	 *       путь `//` указывал бы на нулевое значение перечня вместо того, чтобы быть
 	 *       отвергнутым
+	 *
 	 */
 	if(segment.empty())
 		// Сообщаем, что звено номером не является
@@ -704,11 +795,13 @@ awh::codec::abc::Span::Span() noexcept : offset(0), length(0) {}
  *
  */
 awh::codec::abc::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::abc::Piece::Piece() noexcept : buffer(nullptr), size(0) {}
+awh::codec::abc::Piece::Piece() noexcept : size(0), buffer(nullptr) {}
+
 /**
  * @brief Конструктор
  *
@@ -716,9 +809,10 @@ awh::codec::abc::Piece::Piece() noexcept : buffer(nullptr), size(0) {}
  * @param size   размер октетов куска выдачи
  *
  */
-awh::codec::abc::Piece::Piece(const void * buffer, const size_t size) noexcept : buffer(buffer), size(size) {}
+awh::codec::abc::Piece::Piece(const void * buffer, const size_t size) noexcept : size(size), buffer(buffer) {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::abc::Location::Location() noexcept : offset(NO_OFFSET), depth(0) {}
+awh::codec::abc::Location::Location() noexcept : depth(0), offset(NO_OFFSET) {}

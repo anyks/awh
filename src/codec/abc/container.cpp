@@ -26,8 +26,12 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <limits>
+#include <cstring>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include <sys/log.hpp>
 
 /**
@@ -36,11 +40,56 @@
 using namespace std;
 
 /**
+ * @brief Пространство имён работ, доступных лишь этому файлу
+ *
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция объявления отказа поверки подписи
+	 *
+	 * @details Поверка есть свободная функция, и своего кода отказа у неё нет: код уходит
+	 *          доводом наружу. Воронка эта сводит выдачу кода и донесение о нём в одно
+	 *          место, как то сделано у работающих классов кодека
+	 *
+	 * @param error объявляемый код отказа
+	 * @param out   довод, куда следует уложить код отказа
+	 * @return      признак успешности, всегда ложь
+	 *
+	 */
+	bool refuse(const codec::abc::error_t error, codec::abc::error_t & out) noexcept {
+		// Выполняем установку кода отказа поверки
+		out = error;
+		/**
+		 * Если объект логирования отдан, доносим об отказе поверки
+		 *
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем ошибку в лог
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, codec::abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("ABC: %s", log::flag_t::WARNING, codec::abc::message(error));
+		#endif
+		// Сообщаем, что поверка отвечена отказом
+		return false;
+	}
+};
+
+/**
  * @brief Конструктор
  *
  */
 awh::codec::abc::Assembler::Settings::Settings() noexcept :
- block(0x10000), canonical(false), stream(true), indexed(true), content(0) {}
+ stream(true), indexed(true), canonical(false), block(0x10000), content(0) {}
 
 /**
  * @brief Метод объявления отказа сборки контейнера
@@ -54,11 +103,11 @@ bool awh::codec::abc::Assembler::fail(const error_t error) noexcept {
 	this->_error = error;
 	/**
 	 * Если объект логирования отдан, доносим об отказе
-	 */
-	/**
+	 *
 	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 *
 	 */
 	if(error != error_t::NONE){
 		/**
@@ -66,14 +115,14 @@ bool awh::codec::abc::Assembler::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
-			 awh::log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
+			 log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
+			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -246,9 +295,9 @@ bool awh::codec::abc::Assembler::append(const void * buffer, const size_t size, 
 	 *          17.09.2026 нашёл место молчащим, и молчание это означает недостижимость
 	 *          условия ценою прогона, а не мёртвый путь: сама укладка накопленного хожена
 	 *          соседним заслоном, что стоит выше и стережёт смену вида содержимого
+	 *
 	 */
-	if(!this->_pending.empty() &&
-	 ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
+	if(!this->_pending.empty() && ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
 		/**
 		 * Если уложить накопленное кадром не вышло
 		 */
@@ -353,6 +402,7 @@ bool awh::codec::abc::Assembler::flush() noexcept {
 	 *       Довод второй и есть тот, на каком порядок держится; переставь кто внесение
 	 *       в тело выше этого места - и строки неудавшейся попытки станут указывать на
 	 *       кадр чужой
+	 *
 	 */
 	if(this->_signer != nullptr){
 		/**
@@ -363,6 +413,7 @@ bool awh::codec::abc::Assembler::flush() noexcept {
 		 *       отдан и кадр непуст всегда. Дорога стережётся проверкой
 		 *       `SignatureFixture.MerkleRefusesWithoutItsGear`; разобрано сплошным щупом
 		 *       по местам отказа 05.09.2026
+		 *
 		 */
 		if(!this->_merkle.add(chunk.data(), chunk.size())){
 			// Выполняем установку кода отказа выработки свёртки
@@ -407,14 +458,14 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		/**
 		 * Выполняем укладку оглавления кадром видом однородных чисел: оглавление
 		 * есть череда чисел, и метод сжатия ему подобает свой, а не тела
-		 */
-		/**
+		 *
 		 * @note Причина ПЕРЕНОСИТСЯ от укладчика. Закреплено проверкою
 		 *       `ContainerFixture.IndexPackFailureCarriesThePackerCause`, и щуп переноса
 		 *       красит на ней одну лишь её. Устье разводится с укладкой ТЕЛА порогом
 		 *       накопления: при пороге по умолчанию тело копится и укладывается тем же
 		 *       завершением, отказом отвечается оно, и до оглавления дело не доходит -
 		 *       первая редакция проверки стерегла именно тело, что щуп и показал (05.09.2026)
+		 *
 		 */
 		if(!this->_packer.pack(entries.data(), entries.size(), payload_t::NUMERIC, this->_number, 0, tail)){
 			// Выполняем установку кода отказа укладки кадра оглавления
@@ -464,18 +515,17 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		sign.hash = digest(sign.kind, this->_hash);
 		/**
 		 * Если свести дерево свёрток к корню не вышло
-		 */
-		/**
+		 *
 		 * Кадр оглавления придаётся сведению дерева, а не оседает в нём: оглавление
 		 * подписывается наравне с телом, но при правке контейнера ложится наново
-		 */
-		/**
+		 *
 		 * Если снять свёртку по кадрам контейнера не вышло
 		 *
 		 * @note Кадр оглавления подаётся свёртке отдельно, а его может и не быть вовсе -
 		 *       оглавление отключаемо, да и пустому контейнеру его не из чего собрать.
 		 *       Подача пустого кадра отвечала отказом, и подпись выходила недостижимой у
 		 *       всякого контейнера без оглавления
+		 *
 		 */
 		if(!(tail.empty() ? this->_merkle.root(sign.root)
 		 : this->_merkle.root(sign.root, tail.data(), tail.size()))){
@@ -486,8 +536,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		}
 		/**
 		 * Если выработать подпись корня дерева не вышло
-		 */
-		/**
+		 *
 		 * @note Заслон этот от собратьев по причине ОТЛИЧЕН, и слипание их под одним
 		 *       кодом `SIGNING_FAILED` различие пряталo: у дерева свёрток отказ есть
 		 *       последняя рука - модуль отдан и кадр непуст всегда, - а здесь отказывает
@@ -498,6 +547,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 *
 		 * @note Пределы `0xFFFF` у подписи и у корня - последняя рука при ED25519, но
 		 *       подписыватель отдаётся извне, и вид подписи им не ограничен
+		 *
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
 		 sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
@@ -513,6 +563,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 *       пустой, а обёртка кадром принимает пустое содержимое безропотно, - и на
 		 *       носитель лёг бы безупречный кадр при заголовке, объявляющем контейнер
 		 *       подписанным
+		 *
 		 */
 		if(!abc::pack(sign, signature)){
 			// Выполняем установку кода отказа выработки подписи
@@ -557,14 +608,14 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 	 *
 	 * @note Отведение стоит ДО укладки заголовка: очистка буфера внутри неё отведённую
 	 *       память не отбирает, а вот отведение после укладки затёрло бы уложенное
-	 */
-	/**
+	 *
 	 * Выполняем очистку поданного буфера
 	 *
 	 * @note Укладка заголовка ДОПИСЫВАЕТ к буферу намеренно - правке она кладёт головной
 	 *       и хвостовой заголовки в один буфер, - и без очистки здесь контейнер начался бы
 	 *       не с метки, а с того, что потребитель оставил в буфере прежде. Очистка запаса
 	 *       буфера не отбирает, потому и стоит перед отведением
+	 *
 	 */
 	result.clear();
 	// Отводим место под заголовок, тело, хвостовой заголовок и подпись
@@ -693,8 +744,11 @@ void awh::codec::abc::Assembler::settings(const settings_t & settings) noexcept 
  *
  */
 awh::codec::abc::Assembler::Assembler() noexcept :
- _packer(), _error(error_t::NONE), _kind(payload_t::MIXED), _index(), _records(0), _number(0),
- _compressed(false), _merkle(), _signer(nullptr), _hash(crypto_t::hash_t::SHA256) {}
+ _index(), _error(error_t::NONE),
+ _kind(payload_t::MIXED), _packer(),
+ _merkle(), _compressed(false),
+ _number(0), _records(0),
+ _hash(crypto_t::hash_t::SHA256), _signer(nullptr) {}
 
 /**
  * @brief Метод объявления отказа снятия контейнера
@@ -708,11 +762,11 @@ bool awh::codec::abc::Loader::fail(const error_t error) noexcept {
 	this->_error = error;
 	/**
 	 * Если объект логирования отдан, доносим об отказе
-	 */
-	/**
+	 *
 	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 *
 	 */
 	if(error != error_t::NONE){
 		/**
@@ -720,14 +774,13 @@ bool awh::codec::abc::Loader::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
-			 awh::log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
+			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -770,6 +823,7 @@ bool awh::codec::abc::Loader::feed(const void * buffer, const size_t size) noexc
 	 *       переживала успешную подачу, и потребитель, спросивший её после успеха, читал
 	 *       чужую беду. Работа снятия кадра (`next`) сброс этот вела, а подача - нет, и
 	 *       расхождение близнецов ничем не оправдано
+	 *
 	 */
 	this->_error = error_t::NONE;
 	/**
@@ -786,8 +840,7 @@ bool awh::codec::abc::Loader::feed(const void * buffer, const size_t size) noexc
 	 */
 	if(size > 0)
 		// Выполняем накопление поданных октетов
-		this->_buffer.insert(this->_buffer.end(),
-		 reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+		this->_buffer.insert(this->_buffer.end(), reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 	// Выводим признак успешной подачи октетов
 	return true;
 }
@@ -880,6 +933,7 @@ bool awh::codec::abc::Loader::next(vector <uint8_t> & result, chunk_t & chunk) n
 		 *       17.09.2026: отбрасывание нуля октетов есть работа пустая, а не ошибочная.
 		 *       Держится он затем, чтобы не звать `erase` и не трогать вместилище там, где
 		 *       трогать нечего
+		 *
 		 */
 		if(this->_offset > 0){
 			// Выполняем отбрасывание вычитанных октетов из буфера подачи
@@ -908,18 +962,18 @@ bool awh::codec::abc::Loader::next(vector <uint8_t> & result, chunk_t & chunk) n
  *
  */
 void awh::codec::abc::Loader::reset() noexcept {
-	// Выполняем сброс кода отказа снятия контейнера
-	this->_error = error_t::NONE;
-	// Выполняем сброс признака снятого заголовка опознания
-	this->_ready = false;
 	// Выполняем сброс смещения разбора
 	this->_offset = 0;
 	// Выполняем сброс количества отброшенных октетов
 	this->_origin = 0;
+	// Выполняем сброс признака снятого заголовка опознания
+	this->_ready = false;
 	// Выполняем сброс буфера поданных октетов
 	this->_buffer.clear();
 	// Выполняем сброс снятого заголовка опознания контейнера
 	this->_header = header_t();
+	// Выполняем сброс кода отказа снятия контейнера
+	this->_error = error_t::NONE;
 }
 /**
  * @brief Метод проверки снятости заголовка опознания контейнера
@@ -945,8 +999,7 @@ bool awh::codec::abc::Loader::complete() const noexcept {
 		// Выводим признак неисчерпанного тела контейнера
 		return false;
 	// Выводим признак того, что подано октетов не менее объявленной длины тела
-	return ((this->_origin + static_cast <uint64_t> (this->_offset)) >=
-	 (HEADER_LENGTH + this->_header.length));
+	return ((this->_origin + static_cast <uint64_t> (this->_offset)) >= (HEADER_LENGTH + this->_header.length));
 }
 /**
  * @brief Метод извлечения снятого заголовка опознания контейнера
@@ -983,7 +1036,7 @@ awh::codec::abc::packer_t & awh::codec::abc::Loader::packer() noexcept {
  *
  */
 awh::codec::abc::Loader::Loader() noexcept :
- _packer(), _error(error_t::NONE), _ready(false), _offset(0), _origin(0) {}
+ _ready(false), _origin(0), _offset(0), _error(error_t::NONE), _packer() {}
 
 /**
  * @brief Функция поверки подписи владельца контейнера
@@ -996,60 +1049,15 @@ awh::codec::abc::Loader::Loader() noexcept :
  * @return       признак сошедшейся подписи владельца
  *
  */
-/**
- * @brief Пространство имён работ, доступных лишь этому файлу
- *
- */
-namespace {
-	/**
-	 * @brief Функция объявления отказа поверки подписи
-	 *
-	 * @details Поверка есть свободная функция, и своего кода отказа у неё нет: код уходит
-	 *          доводом наружу. Воронка эта сводит выдачу кода и донесение о нём в одно
-	 *          место, как то сделано у работающих классов кодека
-	 *
-	 * @param error объявляемый код отказа
-	 * @param out   довод, куда следует уложить код отказа
-	 * @return      признак успешности, всегда ложь
-	 *
-	 */
-	bool refuse(const awh::codec::abc::error_t error, awh::codec::abc::error_t & out) noexcept {
-		// Выполняем установку кода отказа поверки
-		out = error;
-		/**
-		 * Если объект логирования отдан, доносим об отказе поверки
-		 */
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
-			 awh::log::flag_t::WARNING, awh::codec::abc::message(error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, awh::codec::abc::message(error));
-		#endif
-		// Сообщаем, что поверка отвечена отказом
-		return false;
-	}
-	
-};
-
-bool awh::codec::abc::verify(const crypto_t & crypto, const string & name,
- const void * buffer, const size_t size, error_t & error) noexcept {
+bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const void * buffer, const size_t size, error_t & error) noexcept {
 	// Выполняем сброс кода отказа поверки подписи
 	error = error_t::NONE;
 	/**
 	 * Если октеты контейнера нам не переданы
 	 */
-	if((buffer == nullptr) || (size == 0)){
+	if((buffer == nullptr) || (size == 0))
 		// Выводим признак несошедшейся подписи
 		return ::refuse(error_t::INTERNAL, error);
-	}
 	// Выполняем получение указателя на поданные октеты контейнера
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
 	// Заголовок опознания поверяемого контейнера
@@ -1121,8 +1129,7 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name,
 	sign_t sign;
 	/**
 	 * Если снять запись подписи владельца контейнера не вышло
-	 */
-	/**
+	 *
 	 * Если поданных октетов недостаёт на заголовок кадра записи подписи
 	 */
 	if((header.signature + CHUNK_HEADER) > static_cast <uint64_t> (size)){

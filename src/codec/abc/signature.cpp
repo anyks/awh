@@ -19,9 +19,15 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
+ * Стандартные заголовочные файлы
  */
-#include <codec/abc/signature.hpp>
+#include <cstring>
+#include <limits>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочный файл кадра контейнера: свёртка листа снимает учётный
@@ -30,11 +36,9 @@
 #include <codec/abc/chunk.hpp>
 
 /**
- * Стандартные заголовочные файлы
+ * Подключаем заголовочный файл модуля
  */
-#include <cstring>
-#include <limits>
-#include <sys/log.hpp>
+#include <codec/abc/signature.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -47,20 +51,25 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Приставка свёртки листа дерева
 	 *
 	 */
-	constexpr uint8_t Leaf = 0x00;
+	constexpr uint8_t __awh_leaf__ = 0x00;
 	/**
 	 * @brief Приставка свёртки узла дерева
 	 *
 	 */
-	constexpr uint8_t Node = 0x01;
+	constexpr uint8_t __awh_node__ = 0x01;
 	/**
 	 * @brief Вид хэш-суммы дерева свёрток
 	 *
 	 */
-	constexpr awh::crypto_t::hash_t Digest = awh::crypto_t::hash_t::SHA256;
+	constexpr crypto_t::hash_t __awh_digest__ = crypto_t::hash_t::SHA256;
 };
 
 /**
@@ -76,7 +85,7 @@ namespace {
  */
 bool awh::codec::abc::Merkle::fail(const char * message) const noexcept {
 	/**
-	 * Если объект логирования отдан, доносим об отказе
+	 * Если включён режим отладки
 	 *
 	 * @note Закреплено `SignatureFixture.TheMerkleFunnelReportsItsTroubleToTheJournal`:
 	 *       щуп нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Здесь молчание дороже, чем у
@@ -85,20 +94,17 @@ bool awh::codec::abc::Merkle::fail(const char * message) const noexcept {
 	 *       ничем. Воронки `Editor::fail` и `Fetcher::fail` молчали тем же молчанием и
 	 *       закреплены каждая своею проверкою: работы разные, и закрепление одной другую
 	 *       не стережёт
-	 */
-	/**
-	 * Если включён режим отладки
+	 *
 	 */
 	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
-		awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {this->_leaves.size()},
-		 awh::log::flag_t::WARNING, message);
+		log::debug("ABC: %s", __PRETTY_FUNCTION__, {this->_leaves.size()}, log::flag_t::WARNING, message);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		awh::log::print("ABC: %s", awh::log::flag_t::WARNING, message);
+		log::print("ABC: %s", log::flag_t::WARNING, message);
 	#endif
 	// Сообщаем, что работа с деревом отвечена отказом
 	return false;
@@ -136,10 +142,9 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	// Выполняем заведение места под буфер свёртки листа
 	payload.reserve(size + 1);
 	// Выполняем внесение приставки свёртки листа
-	payload.push_back(Leaf);
+	payload.push_back(__awh_leaf__);
 	// Выполняем внесение октетов вносимого кадра
-	payload.insert(payload.end(),
-	 reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+	payload.insert(payload.end(), reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 	/**
 	 * Выполняем снятие разряда мусора с признаков кадра перед выработкой свёртки
 	 *
@@ -147,7 +152,7 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	 *          оглавление, обращённое в мусор, правкою одного октета внутри уже
 	 *          подписанного тела. Свёртка, следующая за ним, ломала подпись ПРЕЖНЕГО
 	 *          поколения при целых записях: обрыв фиксации сразу после пометки оставлял
-	 *          контейнер, где все записи читаются, а подпись не сходится
+	 *          контейнер, где все записи читаются, а подпись не сходится.
 	 *
 	 * @note Порядком записи это не лечится - испробовано и отвергнуто замером: пометка
 	 *       последней спасает прежнее поколение, но ломает подпись у ФИКСАЦИИ УДАВШЕЙСЯ,
@@ -158,22 +163,23 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 	 *       внесения, каковых ВОСЕМЬ - сочтено 07.09.2026 розыском `merkle.add(` по
 	 *       исходникам `src/codec/abc`: два у контейнера, пять у правщика и одно здесь.
 	 *       Прежняя запись числила их шестью
+	 *
 	 */
 	if(size > CHUNK_FLAGS)
 		// Выполняем снятие разряда мусора с признаков вносимого кадра
 		payload[1 + CHUNK_FLAGS] = static_cast <uint8_t> (payload[1 + CHUNK_FLAGS] & ~CHUNK_WASTE);
 	// Выполняем выработку свёртки листа дерева
-	vector <uint8_t> result = this->_crypto->hash <vector <uint8_t>, vector <uint8_t>> (
-	 payload, Digest, crypto_t::format_t::RAW);
+	vector <uint8_t> result = this->_crypto->hash <vector <uint8_t>, vector <uint8_t>> (payload, __awh_digest__, crypto_t::format_t::RAW);
 	/**
 	 * Если свёртка листа выработана не той длины
 	 *
 	 * @note Заслон ПОСЛЕДНЕЙ РУКИ наравне с близнецом своим у свёртки узла: вид свёртки
-	 *       задан постоянной `Digest` и равен SHA256, а та выдаёт ровно `DIGEST_LENGTH`
+	 *       задан постоянной `__awh_digest__` и равен SHA256, а та выдаёт ровно `DIGEST_LENGTH`
 	 *       октетов всегда. Условие достижимо лишь отказом самой подсистемы шифрования,
 	 *       поддельной у набора нет, - оттого сплошной щуп 17.09.2026 нашёл молчащими оба.
 	 *       Убирать нельзя: свёртка иной длины легла бы в дерево, и корень сошёлся бы не с
 	 *       тем, а беду искали бы в подписи
+	 *
 	 */
 	if(result.size() != DIGEST_LENGTH)
 		// Выводим признак неудачного внесения кадра
@@ -207,6 +213,7 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffe
 	 *       стережёт ОТКАЗ, а не этот заслон: обесточение его проверку не красит, ибо
 	 *       отказывает нижний. Прежде на дорогу эту ссылались проверкою внесения кадра,
 	 *       и довод был шире правды - трёхдоводного сведения без оснастки не звал никто
+	 *
 	 */
 	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0))
 		// Выводим признак неудачного сведения дерева
@@ -273,14 +280,14 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result) const noexcept {
 			// Выполняем заведение места под буфер свёртки узла
 			payload.reserve((DIGEST_LENGTH * 2) + 1);
 			// Выполняем внесение приставки свёртки узла
-			payload.push_back(Node);
+			payload.push_back(__awh_node__);
 			// Выполняем внесение свёртки левой ветви узла
 			payload.insert(payload.end(), tier.at(i).begin(), tier.at(i).end());
 			// Выполняем внесение свёртки правой ветви узла
 			payload.insert(payload.end(), tier.at(i + 1).begin(), tier.at(i + 1).end());
 			// Выполняем выработку свёртки узла дерева
 			vector <uint8_t> node = this->_crypto->hash <vector <uint8_t>, vector <uint8_t>> (
-			 payload, Digest, crypto_t::format_t::RAW);
+			 payload, __awh_digest__, crypto_t::format_t::RAW);
 			/**
 			 * Если свёртка узла выработана не той длины
 			 */
@@ -334,8 +341,8 @@ awh::crypto_t::hash_t awh::codec::abc::digest(const crypto_t::signature_t kind,
 		 * Если подпись выработана схемой Ed25519 либо по ГОСТ, хэш-сумма не задаётся:
 		 * у первой её нет вовсе, у второй она предписана самой схемой
 		 */
-		case static_cast <uint8_t> (crypto_t::signature_t::ED25519):
 		case static_cast <uint8_t> (crypto_t::signature_t::GOST):
+		case static_cast <uint8_t> (crypto_t::signature_t::ED25519):
 		case static_cast <uint8_t> (crypto_t::signature_t::GOST512):
 			/**
 			 * @note Ветвь `GOST512` прибавлена к перечню 01.09.2026 и поведения НЕ
@@ -343,6 +350,7 @@ awh::crypto_t::hash_t awh::codec::abc::digest(const crypto_t::signature_t kind,
 			 *       отсутствие хэша. Проверено снятием ветви - набор остаётся зелёным.
 			 *       Стоит она здесь ради полноты перечня: вид, в перечне не названный,
 			 *       читается забытым, и разбор кода к нему возвращается снова и снова
+			 *
 			 */
 			return crypto_t::hash_t::NONE;
 		/**
@@ -383,6 +391,7 @@ bool awh::codec::abc::pack(const sign_t & sign, vector <uint8_t> & result) noexc
 	 *       объявляющем контейнер подписанным. Отказ всплывал лишь у читающего, да ещё и
 	 *       не тем кодом - `internal parsing error` вместо обрыва подписи. Замерено щупом
 	 *       03.09.2026, закреплено `SignatureFixture.OversizedRecordIsRefusedOutright`
+	 *
 	 */
 	if((sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF))
 		// Сообщаем, что запись подписи не уложена
@@ -438,15 +447,13 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	}
 	/**
 	 * Если поданных октетов недостаёт на заголовок записи подписи
-	 */
-	/**
+	 *
 	 * @note Закреплено `SignatureFixture.TheShortSignatureRecordLeavesTheFieldsUntouched`:
 	 *       щуп нужности 08.09.2026 нашёл место МОЛЧАЩИМ. Причину утверждать здесь
 	 *       нельзя - сосед ниже отвечает тою же самой, - оттого проверка утверждает
 	 *       НЕПРИКОСНОВЕННОСТЬ полей: без заслона вид подписи и вид хэш-суммы успевают
 	 *       лечь из октетов заголовка, каковых у короткого буфера нет
-	 */
-	/**
+	 *
 	 * @warning **Проверкою заслон этот БОЛЕЕ НЕ ЗАКРЕПИТЬ, и виною тому правка 16.09.2026.**
 	 *          Прежде он стерёг поля: без него вид подписи и вид хэш-суммы успевали лечь из
 	 *          октетов, каковых у короткого буфера нет, - и `TheShortSignatureRecordLeavesTheFieldsUntouched`
@@ -466,6 +473,7 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	 *          вовсе - перехват его подменён. Замерено тем же щупом: связанный с объектами
 	 *          AWH, он не ловит даже заведомого чтения за концом. Разобрано это в
 	 *          `CMakeLists.txt` 15.09.2026, где и предписаны ДВА прогона под надзирателями
+	 *
 	 */
 	if(size < SIGNATURE_HEADER){
 		// Выполняем установку кода отказа обрыва подписи
@@ -485,6 +493,7 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	 *          3 и 4. Договор неприкосновенности объявлен заслоном короткого буфера
 	 *          выше, и держаться он обязан НА ВСЕХ путях отказа, а не на одном.
 	 *          Закреплено `SignatureFixture.TheRefusedSignatureRecordIsLeftIntact`
+	 *
 	 */
 	// Выполняем снятие вида подписи владельца контейнера
 	const crypto_t::signature_t kind = static_cast <crypto_t::signature_t> (octets[0]);
@@ -506,8 +515,7 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	/**
 	 * Если вид подписи владельца неведом либо не задан вовсе
 	 */
-	if((kind == crypto_t::signature_t::NONE) ||
-	 (static_cast <uint8_t> (kind) > static_cast <uint8_t> (crypto_t::signature_t::GOST512))){
+	if((kind == crypto_t::signature_t::NONE) || (static_cast <uint8_t> (kind) > static_cast <uint8_t> (crypto_t::signature_t::GOST512))){
 		// Выполняем установку кода отказа повреждённой подписи
 		error = error_t::INVALID_SIGNATURE;
 		// Выводим признак неудачного снятия подписи
@@ -551,11 +559,11 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 		return false;
 	}
 	/**
-	 * Выполняем установку снятых полей записи подписи ПОСЛЕ всех сличений
+	 * Выполняем установку вида подписи владельца контейнера
 	 *
 	 * @warning Всякое новое сличение ставить ВЫШЕ этой черты, а не ниже
+	 *
 	 */
-	// Выполняем установку вида подписи владельца контейнера
 	sign.kind = kind;
 	// Выполняем установку вида хэш-суммы, какой подпись выработана
 	sign.hash = hash;
@@ -582,14 +590,14 @@ bool awh::codec::abc::fingerprint(const crypto_t & crypto, const string & name, 
 	const vector <uint8_t> full = crypto.fingerprint <vector <uint8_t>> (name, crypto_t::format_t::RAW);
 	/**
 	 * Если отпечаток открытого ключа выработать не вышло
-	 */
-	/**
+	 *
 	 * @note Закреплено `SignatureFixture.TheFingerprintOfAnAbsentKeyIsRefused`: щуп
 	 *       нужности 08.09.2026 нашёл место МОЛЧАЩИМ. Без заслона усечение пустого
 	 *       отпечатка дало бы пустой же итог, а работа объявила бы себя УДАВШЕЙСЯ:
 	 *       пустой отпечаток лёг бы в заголовок, и беда вскрылась бы лишь сличением с
 	 *       чужим - сиречь никогда, ибо пустой не сойдётся ни с чем и будет сочтён
 	 *       чужою подписью
+	 *
 	 */
 	if(full.empty())
 		// Выводим признак неудачной выработки отпечатка
@@ -613,4 +621,6 @@ awh::codec::abc::Merkle::Merkle() noexcept : _crypto(nullptr) {}
  * @brief Конструктор
  *
  */
-awh::codec::abc::Sign::Sign() noexcept : kind(crypto_t::signature_t::NONE), hash(crypto_t::hash_t::NONE) {}
+awh::codec::abc::Sign::Sign() noexcept :
+ hash(crypto_t::hash_t::NONE),
+ kind(crypto_t::signature_t::NONE) {}

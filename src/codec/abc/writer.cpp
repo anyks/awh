@@ -19,11 +19,6 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <codec/abc/writer.hpp>
-
-/**
  * Стандартные заголовочные файлы
  *
  * @note Предел ширины вида берётся ЗДЕСЬ, в теле, а не в объявлениях писаря, оттого и
@@ -32,10 +27,20 @@
  *       и на рабочей машине дефекта видно не было вовсе - сборка падала лишь там, где
  *       стоит libstdc++: Debian (g++ 12.2), Alpine (g++ 15.2) и DragonFly. Опознано
  *       раскладкой стендов кодеков по восьми машинам 13.09.2026
+ *
  */
 #include <limits>
 #include <cstring>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/abc/writer.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -94,7 +99,9 @@ namespace {
  *
  */
 awh::codec::abc::Writer::Settings::Settings() noexcept :
- canonical(false), validate(true), duplicates(true), maxDepth(0), reference(0), spanned(0) {}
+ canonical(false), validate(true), duplicates(true),
+ reference(0), maxDepth(0), spanned(0) {}
+
 /**
  * @brief Метод объявления отказа сборки
  *
@@ -113,11 +120,11 @@ bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
 	 * Донесение идёт отсюда, из единственного места объявления отказа: сборка
 	 * отвечает отказом множеством путей, и запись в каждом из них разошлась бы с
 	 * прочими
-	 */
-	/**
+	 *
 	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 *
 	 */
 	if(error != error_t::NONE){
 		/**
@@ -125,9 +132,7 @@ bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__,
-			 {static_cast <uint16_t> (error), this->_record.size()},
-			 log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error), this->_record.size()}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -148,6 +153,8 @@ bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
  */
 bool awh::codec::abc::Writer::prepare(const bool container) noexcept {
 	/**
+	 * Если сборка уже отвечена отказом
+	 *
 	 * @note Заслон `!prepare(false)` стоит у КАЖДОЙ работы укладки порознь - одиннадцать
 	 *       мест по счёту щупа нужности 08.09.2026, - и все одиннадцать МОЛЧАЛИ. Причина
 	 *       видна из набора: отказ у нас наводили, но следом за ним сборщика бросали, а
@@ -156,8 +163,8 @@ bool awh::codec::abc::Writer::prepare(const bool container) noexcept {
 	 *       негодность эта не читалась бы ничем до самого разбора. Закреплено
 	 *       `CodecAbcWriter.TheFailedBuildingAcceptsNothingFurther`, перебирающей работы
 	 *       ВСЕ до единой: заслоны эти друг друга не стерегут
+	 *
 	 */
-	// Если сборка уже отвечена отказом
 	if(this->_failed)
 		// Сообщаем, что сборка отвечена отказом
 		return false;
@@ -210,6 +217,7 @@ void awh::codec::abc::Writer::rehash(const size_t depth, frame_t & frame, const 
 	 *
 	 * @details Загрузка держится ниже половины намеренно: открытая засылка вырождается
 	 * в тот же обход по мере заполнения, и запас этот есть плата за постоянство поиска
+	 *
 	 */
 	while(capacity < (needed * 2))
 		// Выполняем удвоение вместимости указателя имён полей
@@ -218,7 +226,8 @@ void awh::codec::abc::Writer::rehash(const size_t depth, frame_t & frame, const 
 	 * Выполняем заведение указателя имён полей вместимого заново
 	 *
 	 * @details Обнуление идёт по всей вместимости, а не по прежней величине: гнёзда
-	 * сверх неё могли остаться занятыми от прежнего вместимого той же глубины
+	 *          сверх неё могли остаться занятыми от прежнего вместимого той же глубины.
+	 *
 	 */
 	table.assign(capacity, 0);
 	// Выполняем запоминание величины заведённого указателя имён полей
@@ -262,7 +271,8 @@ bool awh::codec::abc::Writer::duplicated(frame_t & frame, const size_t offset, c
 		 * Если порога числа имён вместимое ещё не достигло, сличаем обходом перечня
 		 *
 		 * @details Обход растёт квадратом числа имён, но множитель его - одно сличение
-		 * свёрток, - и на десятке имён он дешевле самого заведения указателя
+		 *          свёрток, - и на десятке имён он дешевле самого заведения указателя.
+		 *
 		 */
 		if(count < HASHING_NAMES){
 			/**
@@ -288,7 +298,8 @@ bool awh::codec::abc::Writer::duplicated(frame_t & frame, const size_t offset, c
 		 * Если мест перечня указателю уже не выразить, сличаем обходом перечня
 		 *
 		 * @details Гнездо держит место имени числом в четыре октета, и перечень шире
-		 * того указателю неподвластен
+		 *          того указателю неподвластен.
+		 *
 		 */
 		if(this->_keys.size() >= static_cast <size_t> (numeric_limits <uint32_t>::max())){
 			/**
@@ -302,8 +313,7 @@ bool awh::codec::abc::Writer::duplicated(frame_t & frame, const size_t offset, c
 					// Переходим к следующему отрезку записи имени поля
 					continue;
 				// Если записи имён совпали октет в октет
-				if((length == 0) || (::memcmp(this->_record.data() + static_cast <size_t> (key.offset),
-				 this->_record.data() + offset, length) == 0))
+				if((length == 0) || (::memcmp(this->_record.data() + static_cast <size_t> (key.offset), this->_record.data() + offset, length) == 0))
 					// Сообщаем, что имя поля в этом вместимом уже было
 					return true;
 			}
@@ -345,7 +355,8 @@ bool awh::codec::abc::Writer::duplicated(frame_t & frame, const size_t offset, c
 	 * Выполняем занятие свободного гнезда местом имени поля, укладываемого зовущим
 	 *
 	 * @details Место берётся концом перечня: зовущий укладывает туда запись имени сразу
-	 * по возврату отсюда
+	 *          по возврату отсюда.
+	 *
 	 */
 	table.at(slot) = static_cast <uint32_t> (this->_keys.size() + 1);
 	// Сообщаем, что имя поля в этом вместимом ещё не встречалось
@@ -380,6 +391,7 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 		 *       (ветвь `duplicates && !canonical`), а отказ по неупорядоченности возможен
 		 *       лишь при строгом виде. Прежний вид звал сличение октетов и тогда, когда
 		 *       ни один из двух отказов объявлен быть не мог
+		 *
 		 */
 		if(frame.marked && this->_settings.canonical){
 			// Выполняем получение длины записи имени поля, уложенного прежде
@@ -387,8 +399,7 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 			// Выполняем получение длины сличаемой части записей имён
 			const size_t shared = ((previous < length) ? previous : length);
 			// Выполняем сличение записей имён по общей их части
-			int32_t compare = ((shared > 0) ? ::memcmp(this->_record.data() + frame.key.offset,
-			 this->_record.data() + start, shared) : 0);
+			int32_t compare = ((shared > 0) ? ::memcmp(this->_record.data() + frame.key.offset, this->_record.data() + start, shared) : 0);
 			/**
 			 * Если общая часть записей имён совпала, сличаем их по длине.
 			 *
@@ -416,7 +427,7 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 		 * @details Отрезок имени несёт смещение и длину ТРИДЦАТЬЮ ДВУМЯ разрядами, а запись
 		 *          растёт без предела. Сличение имени НЫНЕШНЕГО шло неусечённым смещением и
 		 *          оттого было верно, а вот ЗАПОМИНАЛОСЬ имя усечённым - и всякое следующее
-		 *          сличалось с завёрнутым местом
+		 *          сличалось с завёрнутым местом.
 		 *
 		 * @note Замерено щупом 30.08.2026, а не выведено рассуждением: отображение, где имя
 		 *       «имя» уложено на месте 4.25 ГиБ, принимало ТО ЖЕ имя вторично - «повтор имени
@@ -431,13 +442,13 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 		 * @note Сторож равняется на три таких же, стоящих в кодеке: обёртка записи кадром,
 		 *       хранилище дерева документа и отрезок события у разбора. Здесь четвёртый
 		 *       случай одного вида
-		 */
-		/**
+		 *
 		 * @note Место это НЕДОСТИЖИМО проверкою: оно требует настоящих четырёх гигабайт
 		 *       уложенных октетов, тогда как заслоны той же величины у разбора достижимы
 		 *       вполне - там сличается ОБЪЯВЛЕННАЯ длина, а не отведённая, и закреплены
 		 *       они проверкою WideNumbersAndExtensionsNameTheirCauses. Установлено щупом
 		 *       по местам отказа 04.09.2026
+		 *
 		 */
 		if(this->length() > static_cast <size_t> (numeric_limits <uint32_t>::max()))
 			// Выполняем объявление отказа сборки
@@ -448,26 +459,28 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 		 * @note У строгого вида перечень не нужен: имена там идут по возрастанию, и сличения
 		 *       с предыдущим довольно - повтор встал бы рядом. Вне его повтор бывает через
 		 *       любое число полей, и предыдущего мало
+		 *
 		 */
 		if(this->_settings.duplicates && !this->_settings.canonical){
 			/**
 			 * Выполняем выработку свёртки записи имени поля отображения
 			 *
 			 * @details Сличение идёт со ВСЕМИ прежними именами вместимого, то есть
-			 * квадратом их количества, и полное сличение октетов на всякой паре обходится
-			 * дорого. Свёртка обращает перебор в числовое сличение, а указатель имён -
-			 * в постоянный поиск
+			 *          квадратом их количества, и полное сличение октетов на всякой паре обходится
+			 *          дорого. Свёртка обращает перебор в числовое сличение, а указатель имён -
+			 *          в постоянный поиск.
 			 *
 			 * @note Устройство взято у разбора (`Reader::duplicated`) знак в знак, и
-			 * заведено оно по ЗАМЕРУ, а не по подобию. Замер 03.09.2026, сборка
-			 * отображения на 16 000 имён: поверка повторов стоила 590 мс против 5.3 мс при
-			 * снятой поверке - 112 крат, - и росла КВАДРАТОМ (1000 имён 3.1 мс, 2000 - 10.3,
-			 * 4000 - 43.2, 8000 - 187.5). Разбор той же записи, у какого указатель уже был,
-			 * шёл линейно и укладывался в 13.6 мс, то есть сборка была вчетверо с лишним
-			 * медленнее разбора на тех же данных
+			 *       заведено оно по ЗАМЕРУ, а не по подобию. Замер 03.09.2026, сборка
+			 *       отображения на 16 000 имён: поверка повторов стоила 590 мс против 5.3 мс при
+			 *       снятой поверке - 112 крат, - и росла КВАДРАТОМ (1000 имён 3.1 мс, 2000 - 10.3,
+			 *       4000 - 43.2, 8000 - 187.5). Разбор той же записи, у какого указатель уже был,
+			 *       шёл линейно и укладывался в 13.6 мс, то есть сборка была вчетверо с лишним
+			 *       медленнее разбора на тех же данных
 			 *
 			 * @note Свёртка отказа НЕ решает: совпадение её ведёт к полному сличению
-			 * октетов, и повтор объявляется лишь им
+			 *       октетов, и повтор объявляется лишь им
+			 *
 			 */
 			const uint64_t digest = ::digest(this->_record.data() + start, length);
 			// Если имя поля отображения в этом вместимом уже было
@@ -516,8 +529,7 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::INDEFINITE_REFUSED);
 	// Выполняем получение предела глубины вложенности
-	const uint32_t limit = ((this->_settings.maxDepth > 0) ?
-	 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+	const uint32_t limit = ((this->_settings.maxDepth > 0) ? ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
 	// Если глубина вложенности превышает допустимую
 	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
 		// Выполняем объявление отказа сборки
@@ -531,6 +543,7 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 	 *
 	 * @note Место под размах отводится ЗДЕСЬ и заполняется при закрытии: размах в
 	 *       октетах при открытии ещё не известен, а сдвигать уложенное следом нельзя
+	 *
 	 */
 	if(!indefinite && (this->_settings.spanned > 0) && (count >= this->_settings.spanned)){
 		// Выполняем укладку метки вместимого с объявленным размахом
@@ -603,6 +616,7 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
 	 *
 	 * @note Усечение вместимости не отнимает: перечень держит её до самой очистки сборки
+	 *
 	 */
 	this->_keys.resize(this->_stack.back().base);
 	// Выполняем снятие звена со стека вместимых
@@ -618,6 +632,7 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	 *
 	 * @note Размах считается от конца записи размаха до конца вместимого: чтение,
 	 *       сняв размах, прибавляет его к своему месту и оказывается за вместимым
+	 *
 	 */
 	if(spanned > 0){
 		// Размер содержимого, уложенного ссылкой внутри закрытого вместимого
@@ -628,6 +643,7 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 		 * @note Содержимое, уложенное ссылкой, во вместилище сборки не лежит и вклеивается
 		 *       лишь выдачей записи - а размах объявлен в октетах ГОТОВОЙ записи. Не считая
 		 *       врезок, размах выходил короче истинного, и своё же чтение отвечало отказом
+		 *
 		 */
 		for(auto & cut : this->_cuts){
 			// Если врезка стоит внутри закрытого вместимого
@@ -679,15 +695,13 @@ bool awh::codec::abc::Writer::segment(const bool string) noexcept {
 			return this->fail(error_t::INVALID_KEY);
 	}
 	// Выполняем получение предела глубины вложенности
-	const uint32_t limit = ((this->_settings.maxDepth > 0) ?
-	 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+	const uint32_t limit = ((this->_settings.maxDepth > 0) ? ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
 	// Если глубина вложенности превышает допустимую
 	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::DEPTH_EXCEEDED);
 	// Выполняем укладку метки значения неопределённой длины
-	abc::mark(this->_record, (string ? group_t::STRING : group_t::BLOB),
-	 static_cast <uint8_t> (single_t::BREAK));
+	abc::mark(this->_record, (string ? group_t::STRING : group_t::BLOB), static_cast <uint8_t> (single_t::BREAK));
 	// Заводимое звено стека вместимых
 	frame_t frame;
 	// Выполняем установку вида значения, собираемого кусками
@@ -715,6 +729,7 @@ bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 	 *       куска НЕ несёт, и конец куска отвергается СОСЕДНИМ заслоном - о несведённом
 	 *       вместимом, - оттого этого заслона она не стерегла бы вовсе. Щуп 08.09.2026
 	 *       это и показал: чтобы стеречь, отказ надобно навести ПОСРЕДИ сборки кусками
+	 *
 	 */
 	// Если сборка уже отвечена отказом
 	if(this->_failed)
@@ -723,14 +738,14 @@ bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 	/**
 	 * Если стек вместимых пуст либо закрывается не значение, собираемое кусками
 	 */
-	if(this->_stack.empty() || (this->_stack.back().segment !=
-	 (string ? type_t::STRING : type_t::BLOB)))
+	if(this->_stack.empty() || (this->_stack.back().segment != (string ? type_t::STRING : type_t::BLOB)))
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::UNBALANCED_CONTAINER);
 	/**
 	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
 	 *
 	 * @note Усечение вместимости не отнимает: перечень держит её до самой очистки сборки
+	 *
 	 */
 	this->_keys.resize(this->_stack.back().base);
 	// Выполняем снятие звена со стека вместимых
@@ -765,8 +780,7 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 	 */
 	for(auto & cut : this->_cuts){
 		// Выполняем вклейку части буфера, стоящей перед врезкой
-		result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset),
-		 this->_record.begin() + static_cast <ptrdiff_t> (cut.offset));
+		result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset), this->_record.begin() + static_cast <ptrdiff_t> (cut.offset));
 		// Выполняем получение указателя на октеты врезки
 		const uint8_t * octets = reinterpret_cast <const uint8_t *> (cut.buffer);
 		// Выполняем вклейку октетов врезки
@@ -789,7 +803,8 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 		 *          закрытие вписывало бы размах по устаревшему месту, перезаписывая
 		 *          октеты содержимого. Замерено 04.10.2026 сличением двух сборок одной
 		 *          записи: размах ложился ровно на размер врезки прежде, а сама запись
-		 *          собственным разбором отвергалась «объявленная длина недопустима»
+		 *          собственным разбором отвергалась «объявленная длина недопустима».
+		 *
 		 */
 		if(frame.spanned > 0){
 			// Размер содержимого, вклеенного перед местом записи размаха
@@ -817,6 +832,7 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 		 *       не имевшего, отрезок имени бессмыслен и переписывается ЦЕЛИКОМ при первой
 		 *       же укладке имени, - сдвиг его оттого безвреден. Заслон бережёт работу, а
 		 *       не правильность
+		 *
 		 */
 		if(!frame.marked)
 			// Переходим к следующему звену стека
@@ -835,6 +851,7 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 			 *       отрезок какого хранится звеном стека, а не перечнем. Щуп нужности
 			 *       09.09.2026 нашёл место молчащим и при первой половине проверки -
 			 *       та ходила лишь путём перечня
+			 *
 			 */
 			if(cut.offset > static_cast <size_t> (frame.key.offset))
 				// Выполняем прекращение перебора врезок
@@ -849,6 +866,7 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 	 * Выполняем сдвиг отрезков записей прежних имён полей всех вместимых стека
 	 *
 	 * @note Сдвиг у всякого имени свой: врезка, вставшая после имени, его не двигает
+	 *
 	 */
 	for(auto & key : this->_keys){
 		// Размер содержимого, вклеенного перед отрезком имени поля
@@ -864,6 +882,7 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 			 *       щуп нужности 09.09.2026 нашёл место МОЛЧАЩИМ. Содержимое ссылкой клали
 			 *       в наборе лишь в ПЕРЕЧЕНЬ, где имён полей нет вовсе, а извлечения записи
 			 *       посреди сборки - работы неразрушающей и потому законной - не делал никто
+			 *
 			 */
 			if(cut.offset > static_cast <size_t> (key.offset))
 				// Выполняем прекращение перебора врезок
@@ -900,6 +919,7 @@ void awh::codec::abc::Writer::content(const void * buffer, const size_t size, co
 	 *       Заслон стоит против самого неопределённого поведения, а не против видимого
 	 *       следствия его, и предмета проверки у него нет вовсе. Место его - у
 	 *       санитайзера, а не у набора
+	 *
 	 */
 	if((buffer == nullptr) || (size == 0))
 		// Выходим из функции
@@ -952,8 +972,7 @@ bool awh::codec::abc::Writer::boolean(const bool value) noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку логического значения
-	abc::mark(this->_record, group_t::SINGLE,
-	 static_cast <uint8_t> (value ? single_t::YES : single_t::NO));
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (value ? single_t::YES : single_t::NO));
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }
@@ -1090,6 +1109,7 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 	 * @note Договор же - «собранное кусками есть ОДНО значение вместившего» - закреплён
 	 *       проверками `SegmentedBlobInsideContainer` и `SegmentedStringInsideContainer`;
 	 *       держится он `account`, а не этим выходом
+	 *
 	 */
 	if(chunk)
 		// Сообщаем, что укладка куска успешна
@@ -1135,6 +1155,7 @@ bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexc
 	 *
 	 * @note Заслон молчащий и законно молчащий - см. пояснение у такого же выхода при
 	 *       укладке строки выше
+	 *
 	 */
 	if(chunk)
 		// Сообщаем, что укладка куска успешна
@@ -1399,27 +1420,28 @@ bool awh::codec::abc::Writer::mapEnd() noexcept {
  *
  */
 void awh::codec::abc::Writer::reset() noexcept {
-	// Выполняем сброс кода отказа сборки
-	this->_error = error_t::NONE;
-	// Выполняем очистку буфера собираемой записи
-	this->_record.clear();
 	// Выполняем очистку врезок чужого содержимого
 	this->_cuts.clear();
-	// Выполняем очистку стека вместимых
-	this->_stack.clear();
 	// Выполняем очистку отрезков записей имён полей вместимых
 	this->_keys.clear();
+	// Выполняем очистку стека вместимых
+	this->_stack.clear();
 	/**
 	 * Выполняем очистку указателей имён полей
 	 *
 	 * @note Сносятся они ЦЕЛИКОМ, а не обнуляются: сброс сборки означает новую запись, и
 	 *       запас указателей от прежней ей ни к чему
+	 *
 	 */
 	this->_tables.clear();
-	// Выполняем сброс признака отказа сборки
-	this->_failed = false;
+	// Выполняем очистку буфера собираемой записи
+	this->_record.clear();
 	// Выполняем сброс количества собранных документов
 	this->_documents = 0;
+	// Выполняем сброс признака отказа сборки
+	this->_failed = false;
+	// Выполняем сброс кода отказа сборки
+	this->_error = error_t::NONE;
 }
 /**
  * @brief Метод проверки завершённости собранной записи
@@ -1539,7 +1561,7 @@ void awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {
  *
  */
 awh::codec::abc::Writer::Writer() noexcept :
- _error(error_t::NONE), _failed(false), _documents(0) {}
+ _failed(false), _documents(0), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
@@ -1548,24 +1570,28 @@ awh::codec::abc::Writer::Writer() noexcept :
  * @param digest свёртка записи имени поля
  *
  */
-awh::codec::abc::Writer::Naming::Naming() noexcept : offset(0), length(0), digest(0) {}
+awh::codec::abc::Writer::Naming::Naming() noexcept :
+ offset(0), length(0), digest(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение записи имени поля
+ * @param length длина записи имени поля
+ * @param digest свёртка записи имени поля
+ *
+ */
+awh::codec::abc::Writer::Naming::Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept :
+ offset(offset), length(length), digest(digest) {}
 
-/**
- * @brief Конструктор
- *
- * @param offset смещение записи имени поля
- * @param length длина записи имени поля
- * @param digest свёртка записи имени поля
- *
- */
-awh::codec::abc::Writer::Naming::Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept : offset(offset), length(length), digest(digest) {}
 /**
  * @brief Конструктор
  *
  */
 awh::codec::abc::Writer::Frame::Frame() noexcept :
- mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
- base(0), hashed(0), spanned(0), segment(type_t::UNDEFINED) {}
+ segment(type_t::UNDEFINED), marked(false),
+ mapping(false), indefinite(false), expectKey(false),
+ base(0), hashed(0), spanned(0), remain(0) {}
+
 /**
  * @brief Конструктор
  *
@@ -1574,4 +1600,5 @@ awh::codec::abc::Writer::Frame::Frame() noexcept :
  * @param size   размер октетов врезки
  *
  */
-awh::codec::abc::Writer::Cut::Cut(const size_t offset, const void * buffer, const size_t size) noexcept : offset(offset), buffer(buffer), size(size) {}
+awh::codec::abc::Writer::Cut::Cut(const size_t offset, const void * buffer, const size_t size) noexcept :
+ size(size), offset(offset), buffer(buffer) {}

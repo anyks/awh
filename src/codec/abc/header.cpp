@@ -19,20 +19,20 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <cstring>
+
+/**
  * Подключаем заголовочный файл модуля
  */
 #include <codec/abc/header.hpp>
 #include <codec/abc/encoding.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <cryptography/hash.hpp>
-
-/**
- * Стандартные заголовочные файлы
- */
-#include <cstring>
 
 /**
  * Используем стандартное пространство имён
@@ -45,10 +45,15 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Опознавательная запись контейнера
 	 *
 	 */
-	const uint8_t Magic[4] = {'A', 'B', 'C', 0x00};
+	const uint8_t __awh_magic__[4] = {'A', 'B', 'C', 0x00};
 	/**
 	 * @brief Зерно свёртки контрольной суммы заголовка
 	 *
@@ -56,12 +61,12 @@ namespace {
 	 *          негодные, ибо сумма их перестала бы сходиться
 	 *
 	 */
-	constexpr uint64_t Seed = 0x4142433130303031ull;
+	constexpr uint64_t __awh_seed__ = 0x4142433130303031ull;
 	/**
 	 * @brief Смещение контрольной суммы в уложенном заголовке
 	 *
 	 */
-	constexpr size_t Checksum = (awh::codec::abc::HEADER_LENGTH - 8);
+	constexpr size_t __awh_checksum__ = (codec::abc::HEADER_LENGTH - 8);
 };
 
 /**
@@ -104,7 +109,7 @@ void awh::codec::abc::Header::pack(vector <uint8_t> & result) const noexcept {
 	// Выполняем получение указателя на укладываемый заголовок
 	uint8_t * buffer = (result.data() + start);
 	// Выполняем укладку опознавательной записи контейнера
-	::memcpy(buffer, Magic, sizeof(Magic));
+	::memcpy(buffer, __awh_magic__, sizeof(__awh_magic__));
 	// Выполняем укладку старшей версии вида записи
 	buffer[4] = this->version;
 	// Выполняем укладку младшей версии вида записи
@@ -136,7 +141,7 @@ void awh::codec::abc::Header::pack(vector <uint8_t> & result) const noexcept {
 	 * значило бы стеречь не то, что ляжет на носитель, и всякая правка укладки
 	 * проходила бы мимо суммы незамеченной
 	 */
-	abc::fixed(buffer + Checksum, awh::hashing::generate(buffer, Checksum, Seed), 8);
+	abc::fixed(buffer + __awh_checksum__, awh::hashing::generate(buffer, __awh_checksum__, __awh_seed__), 8);
 }
 /**
  * @brief Метод снятия заголовка с октетов
@@ -167,7 +172,7 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	// Выполняем получение указателя на поданные октеты
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
 	// Если опознавательная запись контейнера не сошлась
-	if(::memcmp(octets, Magic, sizeof(Magic)) != 0){
+	if(::memcmp(octets, __awh_magic__, sizeof(__awh_magic__)) != 0){
 		// Выполняем установку кода отказа опознания
 		error = error_t::INVALID_MAGIC;
 		// Сообщаем, что заголовок не снят
@@ -179,7 +184,7 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	 * Сумма сличается прежде разбора полей: поля повреждённого заголовка толковать
 	 * незачем, а смещения из него увели бы чтение в произвольное место записи
 	 */
-	if(abc::gather(octets + Checksum, 8) != awh::hashing::generate(octets, Checksum, Seed)){
+	if(abc::gather(octets + __awh_checksum__, 8) != awh::hashing::generate(octets, __awh_checksum__, __awh_seed__)){
 		// Выполняем установку кода отказа контрольной суммы
 		error = error_t::INVALID_CHECKSUM;
 		// Сообщаем, что заголовок не снят
@@ -206,9 +211,9 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	 * разряды эти подъёмом СТАРШЕЙ версии вида записи, как и всякое поле впрок
 	 */
 	if((flags & static_cast <uint16_t> (~(
-	 static_cast <uint16_t> (flag_t::CANONICAL) | static_cast <uint16_t> (flag_t::COMPRESSED) |
-	 static_cast <uint16_t> (flag_t::ENCRYPTED) | static_cast <uint16_t> (flag_t::SIGNED) |
-	 static_cast <uint16_t> (flag_t::PAGED) | static_cast <uint16_t> (flag_t::STREAM)))) != 0){
+	    static_cast <uint16_t> (flag_t::CANONICAL) | static_cast <uint16_t> (flag_t::COMPRESSED) |
+	    static_cast <uint16_t> (flag_t::ENCRYPTED) | static_cast <uint16_t> (flag_t::SIGNED) |
+	    static_cast <uint16_t> (flag_t::PAGED) | static_cast <uint16_t> (flag_t::STREAM)))) != 0){
 		// Выполняем установку кода отказа вида записи
 		error = error_t::INVALID_VERSION;
 		// Сообщаем, что заголовок не снят
@@ -227,7 +232,7 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	 * смещение внутри заголовка уводило бы чтение кадра на сам заголовок
 	 */
 	if(((index != 0) && (index < static_cast <uint64_t> (HEADER_LENGTH))) ||
-	 ((signature != 0) && (signature < static_cast <uint64_t> (HEADER_LENGTH)))){
+	   ((signature != 0) && (signature < static_cast <uint64_t> (HEADER_LENGTH)))){
 		// Выполняем установку кода отказа вида записи
 		error = error_t::INVALID_VERSION;
 		// Сообщаем, что заголовок не снят
@@ -243,6 +248,7 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	 *          заголовке восемь чужих полей. Замер щупом 16.09.2026: после отказа по
 	 *          смещению оглавления `content`, `records` и `length` несли значения с
 	 *          провода. Закреплено `CodecAbcHeader.TheRefusedHeaderIsLeftIntact`
+	 *
 	 */
 	this->version = group;
 	// Выполняем установку младшей версии вида записи
@@ -275,8 +281,10 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
  *
  */
 awh::codec::abc::Header::Header() noexcept :
- version(VERSION_MAJOR), revision(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
- content(0), length(0), records(0), index(0), extent(0), signature(0), generation(0) {
+ version(VERSION_MAJOR), revision(VERSION_MINOR),
+ flags(static_cast <uint16_t> (flag_t::NONE)),
+ extent(0), content(0), index(0), length(0),
+ records(0), signature(0), generation(0) {
 	// Выполняем обнуление признака владельца контейнера
 	::memset(this->owner, 0, OWNER_LENGTH);
 	// Выполняем обнуление отпечатка открытого ключа
@@ -292,6 +300,8 @@ awh::codec::abc::Header::Header() noexcept :
  */
 bool awh::codec::abc::probe(const void * buffer, const size_t size) noexcept {
 	/**
+	 * Если буфер поданных октетов не существует
+	 *
 	 * @note Оба заслона опознания - пустоты и метки - закреплены
 	 *       `CodecAbcHeader.ProbeRefusesTheAbsentBufferAndTheForeignMark`: щуп нужности
 	 *       08.09.2026 нашёл их МОЛЧАЩИМИ, тогда как соседний заслон длины сторожа имел.
@@ -303,8 +313,8 @@ bool awh::codec::abc::probe(const void * buffer, const size_t size) noexcept {
 	 * @note Заслон пустоты закреплён ПАДЕНИЕМ: обесточенный, он валит прогон (исход 139),
 	 *       и одна лишь эта проверка в отборе даёт то же падение - привязка доказана
 	 *       отдельно, ибо сорванный прогон судить по именам нельзя
+	 *
 	 */
-	// Если буфер поданных октетов не существует
 	if(buffer == nullptr)
 		// Сообщаем, что октеты контейнера не начинают
 		return false;
@@ -315,9 +325,9 @@ bool awh::codec::abc::probe(const void * buffer, const size_t size) noexcept {
 	// Выполняем получение указателя на поданные октеты
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
 	// Если опознавательная запись контейнера не сошлась
-	if(::memcmp(octets, Magic, sizeof(Magic)) != 0)
+	if(::memcmp(octets, __awh_magic__, sizeof(__awh_magic__)) != 0)
 		// Сообщаем, что октеты контейнера не начинают
 		return false;
 	// Выводим признак схождения контрольной суммы заголовка
-	return (abc::gather(octets + Checksum, 8) == awh::hashing::generate(octets, Checksum, Seed));
+	return (abc::gather(octets + __awh_checksum__, 8) == hashing::generate(octets, __awh_checksum__, __awh_seed__));
 }

@@ -133,6 +133,31 @@ namespace awh {
 			 *       - **два** были настоящей слепотою и закрыты
 			 *       `TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`
 			 *
+			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
+			 *       83 заслона части, под сторожем 50. Молчали ТРИДЦАТЬ ТРИ, и молчание сведено
+			 *       по существу:
+			 *       - **тринадцать** - семья `!prepare(false)` и признак отказавшей сборки у
+			 *       закрытия вместимого и конца куска. Все закрыты двумя проверками:
+			 *       `TheFailedBuildingAcceptsNothingFurther` и
+			 *       `TheFailedBuildingDoesNotCloseASegment`;
+			 *       - **пять** - пустой указатель при объявленных октетах у работ укладки
+			 *       двоичного вида (`TheAbsentBufferWithDeclaredOctetsIsRefused`); двое из них
+			 *       закреплены ПАДЕНИЕМ, привязанным отдельным щупом;
+			 *       - **одно** - воронка отказа, доносящая причину журналу
+			 *       (`TheWriterFunnelReportsItsCauseToTheJournal`), пятая в своём роду;
+			 *       - **прочие четырнадцать** закрытию чёрным ящиком не поддаются и СУЖДЕНЫ:
+			 *       скорые пути отсева повторяющихся имён (сличение свёртки прежде октетов,
+			 *       обход перечня прежде заведения указателя) правильности не меняют вовсе, а
+			 *       меняют лишь цену; блок сличения при перечне шире `uint32` требует четырёх
+			 *       миллиардов имён; заслон вида укладки содержимого при пустом буфере отдаёт
+			 *       пустоту и без него
+			 *
+			 * @warning Заслон `frame.hashed == 0` стоит с `else`, и приговор щупа о нём
+			 *          читается ИНАЧЕ: подмена условие сохраняет, а ветвь убивает, сиречь заслон не
+			 *          снят, а ВЫВЕРНУТ - всегда идёт вторая ветвь. «Не ловит ничего» означает там
+			 *          «указатель имён на месте обхода вреда не приносит», а вовсе не «заслон не
+			 *          нужен»
+			 *
 			 * @warning **Врезка чужого содержимого двигает отрезки уложенных имён полей.**
 			 *          Крупное значение кладётся ССЫЛКОЙ и вклеивается в запись лишь при извлечении
 			 *          её целиком, а отрезки имён отсчитаны от начала буфера: сличение имён после
@@ -190,48 +215,6 @@ namespace awh {
 			 *       - **two** were a genuine blindness and are closed by
 			 *       `TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`
 			 *
-			 * @warning **The insertion of a foreign content shifts the segments of the laid names of the fields.**
-			 *          A large value is laid by a REFERENCE and is spliced into the record only when it is extracted
-			 *          in full, while the name segments are counted from the beginning of the buffer: a comparison
-			 *          of the names after a splice would read FOREIGN octets, and a name repetition would pass
-			 *          unnoticed. There are three shift sites, and all three stood silent - a content by reference
-			 *          was laid in a set only into a SEQUENCE, where there are no field names at all, and no one
-			 *          extracted a record in the middle of an assembly. There are TWO comparisons, and their shifts
-			 *          differ: outside the strict kind a name is compared with all the former ones (the list
-			 *          `_keys`), under the strict kind - with the single previous one (the segment of a link of the
-			 *          stack). A check must travel BOTH roads, and its first half, written only for a sequence, left
-			 *          the second site silent
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
-			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
-			 *       83 заслона части, под сторожем 50. Молчали ТРИДЦАТЬ ТРИ, и молчание сведено
-			 *       по существу:
-			 *       - **тринадцать** - семья `!prepare(false)` и признак отказавшей сборки у
-			 *       закрытия вместимого и конца куска. Все закрыты двумя проверками:
-			 *       `TheFailedBuildingAcceptsNothingFurther` и
-			 *       `TheFailedBuildingDoesNotCloseASegment`;
-			 *       - **пять** - пустой указатель при объявленных октетах у работ укладки
-			 *       двоичного вида (`TheAbsentBufferWithDeclaredOctetsIsRefused`); двое из них
-			 *       закреплены ПАДЕНИЕМ, привязанным отдельным щупом;
-			 *       - **одно** - воронка отказа, доносящая причину журналу
-			 *       (`TheWriterFunnelReportsItsCauseToTheJournal`), пятая в своём роду;
-			 *       - **прочие четырнадцать** закрытию чёрным ящиком не поддаются и СУЖДЕНЫ:
-			 *       скорые пути отсева повторяющихся имён (сличение свёртки прежде октетов,
-			 *       обход перечня прежде заведения указателя) правильности не меняют вовсе, а
-			 *       меняют лишь цену; блок сличения при перечне шире `uint32` требует четырёх
-			 *       миллиардов имён; заслон вида укладки содержимого при пустом буфере отдаёт
-			 *       пустоту и без него
-			 *
-			 * @warning Заслон `frame.hashed == 0` стоит с `else`, и приговор щупа о нём
-			 *          читается ИНАЧЕ: подмена условие сохраняет, а ветвь убивает, сиречь заслон не
-			 *          снят, а ВЫВЕРНУТ - всегда идёт вторая ветвь. «Не ловит ничего» означает там
-			 *          «указатель имён на месте обхода вреда не приносит», а вовсе не «заслон не
-			 *          нужен»
-			 *
-			 * \~english
 			 * @note **The NEEDNESS audit (a guard is removed), 2026-09-08.** All 83 guards of the part
 			 *       were de-energized apart, under the watch 50. THIRTY-THREE stood silent, and the silence
 			 *       is reduced by the substance:
@@ -257,6 +240,19 @@ namespace awh {
 			 *          nothing" there means "the index of names at the walk site does no harm", and by no means
 			 *          "the guard is not needed"
 			 *
+			 * @warning **The insertion of a foreign content shifts the segments of the laid names of the fields.**
+			 *          A large value is laid by a REFERENCE and is spliced into the record only when it is extracted
+			 *          in full, while the name segments are counted from the beginning of the buffer: a comparison
+			 *          of the names after a splice would read FOREIGN octets, and a name repetition would pass
+			 *          unnoticed. There are three shift sites, and all three stood silent - a content by reference
+			 *          was laid in a set only into a SEQUENCE, where there are no field names at all, and no one
+			 *          extracted a record in the middle of an assembly. There are TWO comparisons, and their shifts
+			 *          differ: outside the strict kind a name is compared with all the former ones (the list
+			 *          `_keys`), under the strict kind - with the single previous one (the segment of a link of the
+			 *          stack). A check must travel BOTH roads, and its first half, written only for a sequence, left
+			 *          the second site silent
+			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
 				public:
@@ -334,7 +330,9 @@ namespace awh {
 						 *
 						 * @details A container carrying no fewer values than the threshold is laid after a tag
 						 *          of the span (`extend_t::SPANNED`): a reading is entitled to skip it by ONE addition
-						 *          instead of a walk over all of its values.
+						 *          instead of a walk over all of its values. Measured 21.08.2026: an access to
+						 *          a field behind a subtree of one hundred thousand values cost exactly as much
+						 *          as the parsing of the whole record - 2 ms.
 						 *
 						 * @note This setting is REMOVED by default, and removed deliberately: the tag of the span
 						 *       is an extension of the wire record, and a reading unaware of it will not parse such a record.

@@ -19,17 +19,21 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <codec/abc/index.hpp>
-#include <codec/abc/encoding.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
 #include <limits>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/abc/index.hpp>
+#include <codec/abc/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -132,6 +136,7 @@ void awh::codec::abc::Index::truncate(const size_t size) noexcept {
 	 *
 	 * @note Количество, большее нынешнего, оглавления не трогает: работа усекает, а не
 	 *       заводит строк из ничего
+	 *
 	 */
 	if(size < this->_entries.size())
 		// Выполняем усечение строк оглавления контейнера
@@ -276,7 +281,6 @@ bool awh::codec::abc::Index::unpack(const void * buffer, const size_t size, erro
 	// Выводим признак успешно снятого оглавления
 	return true;
 }
-
 /**
  * @brief Метод объявления отказа выборки записи
  *
@@ -293,12 +297,12 @@ bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
 	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 */
-	/**
+	 *
 	 * @note Закреплено `IndexFixture.TheFetcherFunnelReportsItsCauseToTheJournal`: щуп
 	 *       нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Набор спрашивал `error()`, а
 	 *       журнала не спрашивал никто. Близнец её у правщика молчал тем же молчанием и
 	 *       закреплён порознь: воронки РАЗНЫЕ, и закрепление одной другую не стережёт
+	 *
 	 */
 	if(error != error_t::NONE){
 		/**
@@ -379,14 +383,14 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		error_t error = error_t::NONE;
 		/**
 		 * Если снять заголовок опознания контейнера не вышло
-		 */
-		/**
+		 *
 		 * @note Закреплено `IndexFixture.TheHeaderRefusalIsCarriedOutwardByTheFetcher`:
 		 *       щуп нужности 08.09.2026 нашёл место МОЛЧАЩИМ. Обесточенное, оно отказа
 		 *       НЕ отменяет - снятие идёт дальше по недоснятому заголовку, поле
 		 *       оглавления остаётся нулём, и отказывает сосед с причиною «оглавления
 		 *       нет». Оттого проверка утверждает ИМЕННО причину, и двояко: она равна
 		 *       причине заголовка и НЕ равна причине соседа
+		 *
 		 */
 		if(!this->_header.unpack(buffer.data(), buffer.size(), error))
 			// Выводим признак неудачного открытия контейнера
@@ -431,6 +435,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 *       порча четырёх октетов длины ВНУТРИ кадра оглавления контрольной суммы заголовка
 	 *       не задевает. Снятие заслона красит одну лишь эту проверку - прочие двенадцать
 	 *       семьи оглавления подделки не замечали вовсе, и место было слепым (05.09.2026)
+	 *
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
 		// Выполняем установку кода отказа повреждённого кадра
@@ -455,6 +460,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 * @note Сличение ведётся ВЫЧИТАНИЕМ от полной длины, а не сложением смещения с
 	 *       длиною: слагаемые недоверенны оба, и сумма их завернулась бы, пройдя сторож
 	 *       насквозь
+	 *
 	 */
 	if(length > 0){
 		/**
@@ -494,6 +500,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 *       волен попасть выборщику, сжатия не знающему. Закреплено проверкою
 	 *       `IndexFixture.UnpackFailureCarriesThePackerCause`, и подмена переносимой
 	 *       причины красит одну лишь её (2018 прогнано, 2017 прошло, 05.09.2026)
+	 *
 	 */
 	if(!this->_packer.unpack(buffer.data(), buffer.size(), offset, payload, chunk)){
 		// Выполняем установку кода отказа снятия кадра оглавления
@@ -509,8 +516,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		error_t error = error_t::NONE;
 		/**
 		 * Если снять оглавление контейнера не вышло
-		 */
-		/**
+		 *
 		 * @note Закреплено `IndexFixture.TheIndexRefusalLeavesTheFetcherClosed`: щуп
 		 *       нужности 08.09.2026 нашёл место МОЛЧАЩИМ. Признак открытости ставится
 		 *       строкою ниже, и без заслона открытие объявило бы себя удавшимся с
@@ -518,6 +524,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 *       пустым, а выборка отвечала бы «записи нет» вместо «оглавление
 		 *       повреждено». Оттого проверка утверждает СОСТОЯНИЕ выборщика после
 		 *       отказа, а не причину
+		 *
 		 */
 		if(!this->_index.unpack(payload.data(), payload.size(), error))
 			// Выводим признак неудачного открытия контейнера
@@ -586,6 +593,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 *
 		 * @note Тело ограничено заголовком, а заголовок несёт контрольную сумму, и
 		 *       объявленное им поверять можно
+		 *
 		 */
 		if(entry.chunk >= this->_header.length){
 			// Выполняем установку кода отказа повреждённой записи оглавления
@@ -622,6 +630,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 *
 		 * @note Сторож этот стоит ЗДЕСЬ, а не в источнике октетов: источник даётся
 		 *       потребителем, и полагаться на разумность чужой работы нельзя
+		 *
 		 */
 		if((this->_header.length - entry.chunk) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
 			// Выполняем установку кода отказа повреждённой записи оглавления
@@ -654,6 +663,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 *       а оглавление об одной коротко, сжатия не берёт, и отказ настигает уже
 		 *       выборку. Закреплено тою же
 		 *       `IndexFixture.UnpackFailureCarriesThePackerCause` (05.09.2026)
+		 *
 		 */
 		if(!this->_packer.unpack(buffer.data(), buffer.size(), offset, this->_chunk, chunk)){
 			// Выполняем установку кода отказа снятия кадра
@@ -686,14 +696,14 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
  *
  */
 void awh::codec::abc::Fetcher::reset() noexcept {
-	// Выполняем сброс кода отказа выборки записи
-	this->_error = error_t::NONE;
+	// Выполняем сброс смещения удерживаемого кадра
+	this->_origin = 0;
 	// Выполняем сброс признака открытого контейнера
 	this->_opened = false;
 	// Выполняем сброс признака удержания снятого кадра
 	this->_cached = false;
-	// Выполняем сброс смещения удерживаемого кадра
-	this->_origin = 0;
+	// Выполняем сброс кода отказа выборки записи
+	this->_error = error_t::NONE;
 	// Выполняем сброс содержимого удерживаемого кадра
 	this->_chunk.clear();
 	// Выполняем сброс оглавления контейнера
@@ -758,9 +768,12 @@ awh::codec::abc::packer_t & awh::codec::abc::Fetcher::packer() noexcept {
  *
  */
 awh::codec::abc::Fetcher::Fetcher() noexcept :
- _index(), _packer(), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr) {}
+ _opened(false), _cached(false), _origin(0), _index(),
+ _error(error_t::NONE), _packer(), _source(nullptr) {}
 /**
  * @brief Конструктор
  *
  */
-awh::codec::abc::Entry::Entry() noexcept : chunk(0), offset(0), length(0), marks(static_cast <uint32_t> (mark_t::NONE)) {}
+awh::codec::abc::Entry::Entry() noexcept :
+ chunk(0), offset(0), length(0),
+ marks(static_cast <uint32_t> (mark_t::NONE)) {}

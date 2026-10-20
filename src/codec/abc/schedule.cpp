@@ -19,14 +19,14 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
- */
-#include <codec/abc/schedule.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <chrono>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/abc/schedule.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -46,8 +46,7 @@ namespace {
 	 */
 	uint64_t stamp() noexcept {
 		// Выводим нынешний штамп времени от начала отсчёта устойчивых часов
-		return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (
-		 chrono::steady_clock::now().time_since_epoch()).count());
+		return static_cast <uint64_t> (chrono::duration_cast <chrono::milliseconds> (chrono::steady_clock::now().time_since_epoch()).count());
 	}
 };
 
@@ -81,6 +80,7 @@ void awh::codec::abc::Schedule::run(const uint64_t round) noexcept {
 		 *          один лишь признак, и отставленный поток отбивал срок наравне с новым -
 		 *          замер щупом 16.09.2026 дал 32 отбоя вместо двадцати и ДВА потока-отбивалы.
 		 *          Закреплено `CodecAbcSchedule.RestartFromInsideTheCallbackLeavesOneBeater`
+		 *
 		 */
 		if(!this->_working || (this->_round != round))
 			// Прекращаем отбой срока
@@ -145,6 +145,7 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 	 *
 	 * @note Круг растёт ВСЯКИМ запуском, а не одним лишь потоковым: запуск штампом времени
 	 *       равно отставляет прежний поток, и тот обязан о том узнать
+	 *
 	 */
 	this->_round++;
 	/**
@@ -164,6 +165,7 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 		 * @note Заведение под замком безопасно: заведённый поток упрётся в этот же замок
 		 *       в начале своего хода и подождёт, покуда запуск замок отпустит. Ожидания
 		 *       конца потока запуск не делает, оттого встречного ожидания тут нет
+		 *
 		 */
 		this->_thread = thread(&Schedule::run, this, this->_round);
 		// Выполняем освобождение замка состояния отбоя срока
@@ -192,14 +194,14 @@ void awh::codec::abc::Schedule::stop() noexcept {
 	 *          стоял, и остановка, застав отбой уже остановленным, ожидания конца потока
 	 *          не делала. Поток при том оставался ожидаемым, а следующий запуск клал
 	 *          новый поток поверх ожидаемого - и это `std::terminate` по стандарту
-	 */
-	/**
+	 *
 	 * Вместилище потоков, ожидание конца которых берёт на себя эта остановка
 	 *
 	 * @warning Ожидание идёт ВНЕ замка, а под замком лишь изымаются потоки. Держать
 	 *          замок при ожидании нельзя: рабочий ход берёт тот же замок всяким
 	 *          кругом, и ожидание под ним было бы встречным - остановка ждала бы
 	 *          потока, а поток ждал бы замка
+	 *
 	 */
 	vector <thread> awaited;
 	{
@@ -210,6 +212,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 		 *          зовомая из отклика, его ЧИТАЕТ, исполняясь в самом потоке отбоя.
 		 *          Прежде касания эти шли без замка вовсе, и выходила гонка данных -
 		 *          найдена ThreadSanitizer 13.09.2026
+		 *
 		 */
 		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		/**
@@ -219,6 +222,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 		 *          стоял, и остановка, застав отбой уже остановленным, ожидания конца потока
 		 *          не делала. Поток при том оставался ожидаемым, а следующий запуск клал
 		 *          новый поток поверх ожидаемого - и это `std::terminate` по стандарту
+		 *
 		 */
 		if(this->_thread.joinable()){
 			/**
@@ -245,6 +249,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 			 *
 			 * @warning Отвязать отставного нельзя: отвязанный, он трогал бы замок объекта уже
 			 *          разрушенного
+			 *
 			 */
 			if(this->_thread.get_id() != this_thread::get_id())
 				// Выполняем изъятие потока отбоя срока под ожидание вне замка
@@ -258,6 +263,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 		 * @note Отставной, оказавшийся НЫНЕШНИМ потоком, изъятия не терпит и остаётся в
 		 *       отставке: ждать себя самого нельзя и здесь. Случай этот приходится ровно на
 		 *       остановку, зовомую из отклика, - тот самый поток только что и отставлен
+		 *
 		 */
 		for(size_t i = this->_retired.size(); i > 0; i--){
 			// Выполняем получение очередного отставного потока отбоя срока
@@ -331,6 +337,7 @@ bool awh::codec::abc::Schedule::working() const noexcept {
 	 *
 	 * @note Признак этот правится потоком отбоя, и чтение его без замка есть гонка -
 	 *       TSan её видит. Замок здесь ничего не стоит: спрашивают состояние редко
+	 *
 	 */
 	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим признак работы отбоя срока
@@ -353,7 +360,8 @@ awh::codec::abc::Schedule::mode_t awh::codec::abc::Schedule::mode() const noexce
  *
  */
 awh::codec::abc::Schedule::Schedule() noexcept :
- _mode(mode_t::NONE), _delay(0), _working(false), _stamp(0), _round(0), _callback(nullptr) {}
+ _working(false), _mode(mode_t::NONE),
+ _delay(0), _round(0), _stamp(0), _callback(nullptr) {}
 /**
  * @brief Деструктор
  *

@@ -32,8 +32,12 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <limits>
+#include <cstring>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
 #include <sys/log.hpp>
 
 /**
@@ -50,7 +54,7 @@ namespace {
 	 * @brief Разряд объявления зашифрованного содержимого кадра
 	 *
 	 */
-	constexpr uint8_t Encrypted = 0x01;
+	constexpr uint8_t __awh_encrypted__ = 0x01;
 	/**
 	 * @brief Зерно контрольной суммы кадра
 	 *
@@ -58,7 +62,7 @@ namespace {
 	 *       разное, и общее зерно роднило бы их без всякой нужды
 	 *
 	 */
-	constexpr uint64_t Seed = 0x41424348554E4B01ull;
+	constexpr uint64_t __awh_seed__ = 0x41424348554E4B01ull;
 	/**
 	 * @brief Разряд объявления кадра мусором
 	 *
@@ -67,7 +71,7 @@ namespace {
 	 *          обязала бы шифровать содержимое наново, ничего в нём не меняя
 	 *
 	 */
-	constexpr uint8_t Waste = awh::codec::abc::CHUNK_WASTE;
+	constexpr uint8_t __awh_waste__ = awh::codec::abc::CHUNK_WASTE;
 };
 
 /**
@@ -75,9 +79,11 @@ namespace {
  *
  */
 awh::codec::abc::Packer::Settings::Settings() noexcept :
+ encrypt(false), threshold(64),
+ hash(crypto_t::hash_t::SHA256), cipher(crypto_t::cipher_t::AES256),
  mixed(compressor::method_t::ZSTD), text(compressor::method_t::ZSTD),
- binary(compressor::method_t::LZ4), numeric(compressor::method_t::ZSTD),
- threshold(64), hash(crypto_t::hash_t::SHA256), cipher(crypto_t::cipher_t::AES256), encrypt(false) {}
+ binary(compressor::method_t::LZ4), numeric(compressor::method_t::ZSTD) {}
+
 /**
  * @brief Метод объявления отказа укладки либо снятия кадра
  *
@@ -94,13 +100,13 @@ bool awh::codec::abc::Packer::fail(const error_t error) noexcept {
 	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
-	 */
-	/**
+	 *
 	 * @note Закреплено `ChunkFixture.ThePackerFunnelReportsItsCauseToTheJournal`: щуп
 	 *       нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Она ЧЕТВЁРТАЯ в своём роду -
 	 *       вместе с `Editor::fail`, `Fetcher::fail` и `Merkle::fail`, - и все четыре
 	 *       молчали об одном: набор спрашивал причину работою `error()`, а журнала не
 	 *       спрашивал никто. Закреплены порознь: работы разные
+	 *
 	 */
 	if(error != error_t::NONE){
 		/**
@@ -181,6 +187,7 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
 	 *       тридцати двух октетов заголовка. Обесточенный, он валит прогон (исход 139),
 	 *       а не будь падения - отдал бы сумму по чужой памяти, НЕПОВТОРИМУЮ, отчего
 	 *       сличение её с уложенной отказывало бы то и дело
+	 *
 	 */
 	// Если кадр короче заголовка своего
 	if((octets == nullptr) || (size < CHUNK_HEADER))
@@ -198,7 +205,7 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
 	// Выполняем обнуление места самой контрольной суммы: в себя она не входит
 	::memset(head + CHUNK_DIGEST, 0, 8);
 	// Выработанная контрольная сумма заголовка кадра
-	uint64_t result = awh::hashing::generate(head, CHUNK_HEADER, Seed);
+	uint64_t result = awh::hashing::generate(head, CHUNK_HEADER, __awh_seed__);
 	// Если у кадра есть содержимое
 	if(size > CHUNK_HEADER)
 		// Выполняем выработку суммы по содержимому кадра с зерном заголовка
@@ -223,12 +230,12 @@ bool awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number,
 	 * @note Длина кадра объявлена четырьмя октетами, и запись длиннее легла бы в них
 	 *       усечённой МОЛЧА: кадр вышел бы годным по виду, а содержимое его -
 	 *       оборванным, и вскрылось бы это лишь у читающего
-	 */
-	/**
+	 *
 	 * @warning Путь ПОСЛЕДНЕЙ РУКИ наравне с близнецом своим у укладки кадра: сюда доходит
 	 *          лишь запись свыше четырёх гигабайт, и проверкою такое не закрепить. Щуп
 	 *          17.09.2026 нашёл место молчащим, и молчание означает недостижимость условия
 	 *          ценою прогона, а не мёртвый путь
+	 *
 	 */
 	if(length > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
 		// Сообщаем, что обернуть запись кадром не удалось
@@ -341,6 +348,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		 *       прежде: ключ выводится из соли и ПАРОЛЯ, а настройка модуля - забота
 		 *       зовущего, и забыть её он волен. Закреплено проверкою
 		 *       `ChunkFixture.EncryptionWithoutThePasswordIsRefused` (05.09.2026)
+		 *
 		 */
 		if(secured.empty() && !payload.empty()){
 			// Выполняем установку кода отказа шифрования
@@ -365,6 +373,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	 *
 	 * @note Убирать заслон нельзя: без него длина усечётся молча, и кадр объявит длину,
 	 *       содержимому не равную
+	 *
 	 */
 	if(payload.size() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Выполняем установку кода отказа длины
@@ -385,6 +394,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	 *          прогона: 1002-1006 МБ/с сборки контейнера без точного отведения против
 	 *          993-999 с ним. Разница мала, но знак её отвечает доводу, а выигрыша нет
 	 *          ни здесь, ни на рабочей машине
+	 *
 	 */
 	result.resize(start + CHUNK_HEADER, 0);
 	// Выполняем получение указателя на заголовок укладываемого кадра
@@ -392,7 +402,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	// Выполняем укладку метода сжатия содержимого кадра
 	head[0] = static_cast <uint8_t> (method);
 	// Выполняем укладку разрядов кадра
-	head[1] = static_cast <uint8_t> (encrypted ? Encrypted : 0x00);
+	head[1] = static_cast <uint8_t> (encrypted ?  __awh_encrypted__ : 0x00);
 	// Выполняем укладку длины уложенного содержимого кадра
 	abc::fixed(head + 4, static_cast <uint64_t> (payload.size()), 4);
 	// Выполняем укладку длины исходного содержимого кадра
@@ -452,7 +462,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	// Выполняем снятие разрядов кадра
 	const uint8_t flags = head[1];
 	// Если разряды кадра несут неведомое
-	if((flags & static_cast <uint8_t> (~(Encrypted | Waste))) != 0){
+	if((flags & static_cast <uint8_t> (~( __awh_encrypted__ | __awh_waste__))) != 0){
 		// Выполняем установку кода отказа опознания кадра
 		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
@@ -487,6 +497,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 *          расшифровка, а подавать им испорченное - значит гадать по итогу их. Без
 	 *          суммы порча октета внутри кадра проходила молча: развёртка 25.08.2026
 	 *          дала 24 молчаливо неверных чтения из 530 при порче кадра оглавления
+	 *
 	 */
 	if(abc::gather(head + CHUNK_DIGEST, 8) !=
 	 abc::digest(head, static_cast <size_t> (CHUNK_HEADER + length))){
@@ -521,9 +532,9 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	// Выполняем снятие поколения записи кадра
 	chunk.generation = static_cast <uint32_t> (abc::gather(head + 20, 4));
 	// Выполняем установку признака зашифрованности содержимого
-	chunk.encrypted = ((flags & Encrypted) != 0);
+	chunk.encrypted = ((flags &  __awh_encrypted__) != 0);
 	// Выполняем установку признака того, что кадр обращён в мусор
-	chunk.waste = ((flags & Waste) != 0);
+	chunk.waste = ((flags & __awh_waste__) != 0);
 	// Выполняем получение указателя на содержимое снимаемого кадра
 	const uint8_t * payload = (head + CHUNK_HEADER);
 	// Снимаемое содержимое кадра
@@ -545,6 +556,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 * @note Достижимо РАСХОЖДЕНИЕМ КЛЮЧЕЙ: уложено паролем владельца, снимается паролем
 		 *       постороннего, - и расшифровка вернёт пустое, а не чужое содержимое.
 		 *       Закреплено `ChunkFixture.DecryptionWithAForeignKeyIsRefused` (05.09.2026)
+		 *
 		 */
 		if(opened.empty() && (chunk.origin > 0)){
 			// Выполняем установку кода отказа шифрования
@@ -569,6 +581,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 * @note Закреплено проверкою `ChunkFixture.UnpackingCompressedWithoutTheCompressorIsRefused`:
 		 *       подмена причины красит одну лишь её (2012 прогнано, 2011 прошло), и до
 		 *       05.09.2026 место было слепым
+		 *
 		 */
 		if(this->_compressor == nullptr){
 			// Выполняем установку кода отказа сжатия
@@ -589,6 +602,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *       сличением длины ниже, тем же кодом INVALID_CHUNK. Зрячесть его исходом
 		 *       не доказуема, судить её можно лишь по расходу памяти. Случай пройден
 		 *       проверкой `ChunkFixture.CompressedChunkDeclaringNoOriginIsRefused`
+		 *
 		 */
 		if(chunk.origin == 0){
 			// Выполняем установку кода отказа опознания кадра
@@ -607,6 +621,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *          пришёл бы лишь от сличения длины после разжатия. Содержимое КОРОЧЕ
 		 *          объявленного предел не ловит, его ловит сличение длины ниже, оттого
 		 *          оно и оставлено. Закреплено `ChunkFixture.ContentLongerThanDeclaredIsRefusedByTheLimit`
+		 *
 		 */
 		this->_compressor->decompress(content.data(), content.size(), chunk.method, opened, static_cast <size_t> (chunk.origin));
 		// Если разжатие содержимого отвечено отказом
@@ -616,6 +631,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *       объявлена кадром, оттого пустое и опознаётся отказом. Закреплено
 		 *       `ChunkFixture.CorruptedCompressedContentIsRefused` (05.09.2026). Тот же
 		 *       отказ даёт и превышение предела: разжиматель отвечает пустым
+		 *
 		 */
 		if(opened.empty() && (chunk.origin > 0)){
 			// Выполняем установку кода отказа сжатия
@@ -686,5 +702,5 @@ awh::codec::abc::Packer::Packer() noexcept :
  *
  */
 awh::codec::abc::Chunk::Chunk() noexcept :
- method(compressor::method_t::NONE), length(0), origin(0),
- number(0), generation(0), encrypted(false), waste(false) {}
+ waste(false), encrypted(false), length(0),
+ origin(0), number(0), generation(0), method(compressor::method_t::NONE) {}

@@ -28,7 +28,7 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочные файлы модуля
  */
 #include <codec/numeric.hpp>
 #include <codec/abc/value.hpp>
@@ -43,6 +43,15 @@ using namespace std;
  *
  */
 namespace {
+	/**
+	 * @brief Предел роста вместимого обращением по номеру
+	 *
+	 * @details Предел ставится единожды при заведении приложения, а читается всяким
+	 *          потоком, оттого согласование порядка обращений здесь и не нужно
+	 *
+	 */
+	atomic_size_t __awh_limit__(0x10000);
+
 	/**
 	 * @brief Шаблон затребованного вида числа
 	 *
@@ -74,14 +83,6 @@ namespace {
 		// Выполняем приведение числа общим для кодеков способом
 		return awh::codec::convert <T> (value);
 	}
-	/**
-	 * @brief Предел роста вместимого обращением по номеру
-	 *
-	 * @details Предел ставится единожды при заведении приложения, а читается всяким
-	 *          потоком, оттого согласование порядка обращений здесь и не нужно
-	 *
-	 */
-	std::atomic <size_t> Limit(0x10000);
 };
 
 /**
@@ -98,6 +99,7 @@ size_t awh::codec::abc::Value::locate(const string & name) const noexcept {
 	 * @note Перебор при малом числе полей дешевле всякого указателя: сличение имён идёт
 	 *       по памяти подряд, тогда как заведение указателя стоит выделения памяти и
 	 *       счёта отпечатка на всякое имя
+	 *
 	 */
 	if(this->_keys.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
@@ -105,7 +107,7 @@ size_t awh::codec::abc::Value::locate(const string & name) const noexcept {
 		 */
 		for(size_t i = 0; i < this->_keys.size(); i++){
 			// Выполняем получение очередного имени поля отображения
-			const Value & key = this->_keys.at(i);
+			const value_t & key = this->_keys.at(i);
 			// Если имя поля отображения совпало с затребованным
 			if((key._type == type_t::STRING) && (key._text.compare(name) == 0))
 				// Выводим номер разысканного поля отображения
@@ -127,13 +129,14 @@ size_t awh::codec::abc::Value::locate(const string & name) const noexcept {
 		 */
 		for(size_t i = 0; i < this->_keys.size(); i++){
 			// Выполняем получение очередного имени поля отображения
-			const Value & key = this->_keys.at(i);
+			const value_t & key = this->_keys.at(i);
 			/**
 			 * Если имя поля отображения является строкой
 			 *
 			 * @note Именем вправе стоять и число, и отметка времени, но разыскиваются
 			 *       такие поля лишь перебором: указатель ведётся по строкам, а поиск по
 			 *       имени строкового и требует
+			 *
 			 */
 			if(key._type == type_t::STRING)
 				// Выполняем добавление имени поля в указатель поиска
@@ -161,13 +164,14 @@ void awh::codec::abc::Value::unindex() noexcept {
  * @return       признак того, что имена принадлежат одному виду записи
  *
  */
-bool awh::codec::abc::Value::akin(const Value & first, const Value & second) noexcept {
+bool awh::codec::abc::Value::akin(const value_t & first, const value_t & second) noexcept {
 	/**
 	 * Если одно имя целым является, а другое нет
 	 *
 	 * @note Целое `42` и дробное `42.0` укладываются РАЗНЫМИ метками, то есть суть разные
-	 * имена. Оператор равенства сличает их величиною и объявляет равными - он о значениях,
-	 * а тождество имени берётся у записи
+	 *       имена. Оператор равенства сличает их величиною и объявляет равными - он о значениях,
+	 *       а тождество имени берётся у записи
+	 *
 	 */
 	if(first.is(type_t::INT) != second.is(type_t::INT))
 		// Сообщаем, что имена принадлежат разным видам записи
@@ -180,7 +184,8 @@ bool awh::codec::abc::Value::akin(const Value & first, const Value & second) noe
 	 * Если одно имя целым неограниченной ширины является, а другое нет
 	 *
 	 * @note Целое неограниченной ширины и десятичное с нулевым порядком оператор равенства
-	 * объявляет одним числом, и это верно - но метки записи у них РАЗНЫЕ
+	 *       объявляет одним числом, и это верно - но метки записи у них РАЗНЫЕ
+	 *
 	 */
 	if((first._type == type_t::EXTENDED) != (second._type == type_t::EXTENDED))
 		// Сообщаем, что имена принадлежат разным видам записи
@@ -200,7 +205,7 @@ bool awh::codec::abc::Value::akin(const Value & first, const Value & second) noe
  */
 size_t awh::codec::abc::Value::limit() noexcept {
 	// Выводим предел роста вместимого
-	return Limit.load(std::memory_order_relaxed);
+	return __awh_limit__.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместимого
@@ -210,7 +215,7 @@ size_t awh::codec::abc::Value::limit() noexcept {
  */
 void awh::codec::abc::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместимого
-	Limit.store(value, std::memory_order_relaxed);
+	__awh_limit__.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод извлечения ссылки на отсутствующее значение
@@ -218,9 +223,9 @@ void awh::codec::abc::Value::limit(const size_t value) noexcept {
  * @return ссылка на отсутствующее значение
  *
  */
-const awh::codec::abc::Value & awh::codec::abc::Value::undefined() noexcept {
+const awh::codec::abc::value_t & awh::codec::abc::Value::undefined() noexcept {
 	// Отсутствующее значение, общее на весь процесс
-	static const Value result;
+	static const value_t result;
 	// Выводим ссылку на отсутствующее значение
 	return result;
 }
@@ -230,15 +235,16 @@ const awh::codec::abc::Value & awh::codec::abc::Value::undefined() noexcept {
  * @return ссылка на отбросное значение
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Value::scrap() noexcept {
+awh::codec::abc::value_t & awh::codec::abc::Value::scrap() noexcept {
 	/**
 	 * Отбросное значение, СВОЁ У ВСЯКОГО ПОТОКА
 	 *
 	 * @note Значение это правится всяким обращением к отсутствующему полю, и общее на
 	 *       процесс было бы гонкой у двух потоков, читающих РАЗНЫЕ деревья: TSan видит её
 	 *       на очистке. Своё у потока стоит одного указателя в потоковой памяти
+	 *
 	 */
-	static thread_local Value result;
+	static thread_local value_t result;
 	// Выполняем очистку отбросного значения
 	result.clear();
 	// Выводим ссылку на отбросное значение
@@ -250,7 +256,7 @@ awh::codec::abc::Value & awh::codec::abc::Value::scrap() noexcept {
  * @param value копируемое значение
  *
  */
-void awh::codec::abc::Value::clone(const Value & value) noexcept {
+void awh::codec::abc::Value::clone(const value_t & value) noexcept {
 	/**
 	 * @brief Работа копирования собственных полей значения, детей не трогающая
 	 *
@@ -258,7 +264,7 @@ void awh::codec::abc::Value::clone(const Value & value) noexcept {
 	 * @param into куда копируется
 	 *
 	 */
-	auto own = [](const Value & from, Value & into) noexcept -> void {
+	auto own = [](const value_t & from, value_t & into) noexcept -> void {
 		// Выполняем установку вида узла значения
 		into._kind = from._kind;
 		// Выполняем установку вида значения
@@ -275,7 +281,7 @@ void awh::codec::abc::Value::clone(const Value & value) noexcept {
 	// Выполняем копирование собственных полей корня
 	own(value, * this);
 	// Вместилище пар «откуда - куда», ожидающих копирования детей
-	vector <pair <const Value *, Value *>> pending;
+	vector <pair <const value_t *, value_t *>> pending;
 	// Выполняем внесение корня в ожидающие копирования
 	pending.emplace_back(& value, this);
 	/**
@@ -283,7 +289,7 @@ void awh::codec::abc::Value::clone(const Value & value) noexcept {
 	 */
 	while(!pending.empty()){
 		// Выполняем снятие очередной пары с вместилища ожидающих
-		const pair <const Value *, Value *> item = pending.back();
+		const pair <const value_t *, value_t *> item = pending.back();
 		// Выполняем снятие пары с вместилища ожидающих
 		pending.pop_back();
 		// Выполняем заведение места под имена полей отображения
@@ -403,13 +409,13 @@ void awh::codec::abc::Value::clear() noexcept {
 		/**
 		 * Выполняем перенесение значений вместимого в ожидающие разрушения
 		 */
-		for(Value & item : this->_items)
+		for(value_t & item : this->_items)
 			// Выполняем перенесение очередного значения вместимого
 			pending.push_back(::move(item));
 		/**
 		 * Выполняем перенесение имён полей отображения в ожидающие разрушения
 		 */
-		for(Value & key : this->_keys)
+		for(value_t & key : this->_keys)
 			// Выполняем перенесение очередного имени поля отображения
 			pending.push_back(::move(key));
 		// Выполняем очистку значений вместимого
@@ -425,19 +431,19 @@ void awh::codec::abc::Value::clear() noexcept {
 		 */
 		while(!pending.empty()){
 			// Выполняем снятие очередного значения с вместилища ожидающих
-			Value node = ::move(pending.back());
+			value_t node = ::move(pending.back());
 			// Выполняем удаление снятого значения из вместилища ожидающих
 			pending.pop_back();
 			/**
 			 * Выполняем перенесение детей снятого значения в ожидающие разрушения
 			 */
-			for(Value & item : node._items)
+			for(value_t & item : node._items)
 				// Выполняем перенесение очередного значения вместимого
 				pending.push_back(::move(item));
 			/**
 			 * Выполняем перенесение имён полей снятого значения в ожидающие разрушения
 			 */
-			for(Value & key : node._keys)
+			for(value_t & key : node._keys)
 				// Выполняем перенесение очередного имени поля отображения
 				pending.push_back(::move(key));
 			// Выполняем очистку значений вместимого снятого значения
@@ -486,13 +492,13 @@ void awh::codec::abc::Value::reset(const kind_t kind) noexcept {
 		/**
 		 * Выполняем перенесение значений вместимого в ожидающие разрушения
 		 */
-		for(Value & item : this->_items)
+		for(value_t & item : this->_items)
 			// Выполняем перенесение очередного значения вместимого
 			pending.push_back(::move(item));
 		/**
 		 * Выполняем перенесение имён полей отображения в ожидающие разрушения
 		 */
-		for(Value & key : this->_keys)
+		for(value_t & key : this->_keys)
 			// Выполняем перенесение очередного имени поля отображения
 			pending.push_back(::move(key));
 		// Выполняем очистку имён полей отображения (capacity сохраняется)
@@ -508,19 +514,19 @@ void awh::codec::abc::Value::reset(const kind_t kind) noexcept {
 		 */
 		while(!pending.empty()){
 			// Выполняем снятие очередного значения с вместилища ожидающих
-			Value node = ::move(pending.back());
+			value_t node = ::move(pending.back());
 			// Выполняем удаление снятого значения из вместилища ожидающих
 			pending.pop_back();
 			/**
 			 * Выполняем перенесение детей снятого значения в ожидающие разрушения
 			 */
-			for(Value & item : node._items)
+			for(value_t & item : node._items)
 				// Выполняем перенесение очередного значения вместимого
 				pending.push_back(::move(item));
 			/**
 			 * Выполняем перенесение имён полей снятого значения в ожидающие разрушения
 			 */
-			for(Value & key : node._keys)
+			for(value_t & key : node._keys)
 				// Выполняем перенесение очередного имени поля отображения
 				pending.push_back(::move(key));
 			// Выполняем очистку значений снятого значения
@@ -536,6 +542,7 @@ void awh::codec::abc::Value::reset(const kind_t kind) noexcept {
 	 *
 	 * @note MAP и ARRAY — два вида, у которых есть вместилище; оба требуют
 	 *       соответствующего `type_t` для последующих `place()` и `operator[]`
+	 *
 	 */
 	switch(kind){
 		// Тип узла принадлежит к карте
@@ -657,6 +664,7 @@ bool awh::codec::abc::Value::decimal(const void * buffer, const size_t size,
 	 *       значение, собрать какое запись отказывается, заводить владеющим значением
 	 *       незачем - оно вышло бы неукладываемым, а узнал бы о том потребитель лишь при
 	 *       сборке, вдали от места заведения
+	 *
 	 */
 	if((size > 0) && (octets[size - 1] == 0))
 		// Сообщаем, что установка отвечена отказом
@@ -675,6 +683,7 @@ bool awh::codec::abc::Value::decimal(const void * buffer, const size_t size,
 	 * @note Правило это взято у сборки записи: нулевой порядок даёт целое любой ширины,
 	 *       ненулевой - десятичное. Расходиться им нельзя, иначе одно и то же число
 	 *       укладывалось бы разными метками
+	 *
 	 */
 	this->_type = ((exponent != 0) ? type_t::DECIMAL : type_t::EXTENDED);
 	// Выполняем установку десятичного порядка величины
@@ -695,11 +704,11 @@ bool awh::codec::abc::Value::decimal(const void * buffer, const size_t size,
  * @return      имя поля отображения
  *
  */
-const awh::codec::abc::Value & awh::codec::abc::Value::key(const size_t index) const noexcept {
+const awh::codec::abc::value_t & awh::codec::abc::Value::key(const size_t index) const noexcept {
 	// Если затребованного имени поля отображения нет
 	if(index >= this->_keys.size())
 		// Выводим ссылку на отсутствующее значение
-		return Value::undefined();
+		return value_t::undefined();
 	// Выводим имя затребованного поля отображения
 	return this->_keys.at(index);
 }
@@ -725,74 +734,75 @@ bool awh::codec::abc::Value::contains(const string & name) const noexcept {
  * @return     ссылка на значение либо ссылка на отсутствующее значение
  *
  */
-const awh::codec::abc::Value & awh::codec::abc::Value::at(const string & path) const noexcept {
-	// Обходимое значение документа
-	const Value * current = this;
+const awh::codec::abc::value_t & awh::codec::abc::Value::at(const string & path) const noexcept {
 	// Смещение разбора пути
 	size_t offset = 0;
-	// Разбираемое звено пути
-	string_view segment;
-	// Вместилище звена пути со снятыми отменяющими записями
-	string unescaped;
 	// Признак недействительности разбираемого пути
 	bool invalid = false;
+	// Вместилище звена пути со снятыми отменяющими записями
+	string unescaped = "";
+	// Разбираемое звено пути
+	string_view segment = "";
+	// Обходимое значение документа
+	const value_t * current = this;
 	/**
 	 * Выполняем обход всех звеньев пути
 	 *
 	 * @note Разбор пути ведёт общий посредник `abc::segment`, а не свой обход: правила
 	 *       эти нужны четверым, и разойдись они хоть на одном звене - разошлись бы молча
+	 *
 	 */
 	while(abc::segment(path, offset, segment, unescaped, invalid)){
-		{
-			// Разобранный номер значения вместимого
-			size_t index = 0;
-			/**
-			 * Если звено пути является номером значения ПЕРЕЧНЯ
-			 *
-			 * @details Судит о том вид ВМЕСТИЛИЩА, а не вид записи звена, и так велит
-			 *          RFC 6901: у перечня звено есть номер, у отображения - ИМЯ ПОЛЯ,
-			 *          хотя бы и записанное цифрами. Прежде судил вид записи, и всякое
-			 *          звено из цифр бралось номером даже у отображения
-			 *
-			 * @note Замерено щупом 03.09.2026, а не выведено рассуждением: отображение с
-			 *       полем «1» на месте 0 и полем «0» на месте 1 отдавало по пути `m/1`
-			 *       поле «0», а по `m/0` - поле «1». То есть выдавало НЕ ТО МОЛЧА, что
-			 *       хуже отказа: поле есть, путь верен, значение чужое
-			 *
-			 * @note Первый щуп этого не поймал: имена там стояли по местам, отвечающим
-			 *       их числам, и «нашло по имени» было неотличимо от «взяло по номеру».
-			 *       Закреплено `CodecAbcValue.PathSegmentIsNameInsideAMapping`
-			 */
-			if((current->_type != type_t::MAP) && abc::indexed(segment, index)){
-				// Если затребованного значения вместимого нет
-				if(index >= current->_items.size())
-					// Выводим ссылку на отсутствующее значение
-					return Value::undefined();
-				// Выполняем переход к затребованному значению вместимого
-				current = &current->_items.at(index);
-			// Если звено пути является именем поля отображения
-			} else {
-				// Выполняем получение значения затребованного поля отображения
-				const Value & value = (* current)[string(segment)];
-				// Если затребованного поля отображения нет
-				if(!value.valid())
-					// Выводим ссылку на отсутствующее значение
-					return Value::undefined();
-				// Выполняем переход к значению затребованного поля
-				current = &value;
-			}
+		// Разобранный номер значения вместимого
+		size_t index = 0;
+		/**
+		 * Если звено пути является номером значения ПЕРЕЧНЯ
+		 *
+		 * @details Судит о том вид ВМЕСТИЛИЩА, а не вид записи звена, и так велит
+		 *          RFC 6901: у перечня звено есть номер, у отображения - ИМЯ ПОЛЯ,
+		 *          хотя бы и записанное цифрами. Прежде судил вид записи, и всякое
+		 *          звено из цифр бралось номером даже у отображения.
+		 *
+		 * @note Замерено щупом 03.09.2026, а не выведено рассуждением: отображение с
+		 *       полем «1» на месте 0 и полем «0» на месте 1 отдавало по пути `m/1`
+		 *       поле «0», а по `m/0` - поле «1». То есть выдавало НЕ ТО МОЛЧА, что
+		 *       хуже отказа: поле есть, путь верен, значение чужое
+		 *
+		 * @note Первый щуп этого не поймал: имена там стояли по местам, отвечающим
+		 *       их числам, и «нашло по имени» было неотличимо от «взяло по номеру».
+		 *       Закреплено `CodecAbcValue.PathSegmentIsNameInsideAMapping`
+		 *
+		 */
+		if((current->_type != type_t::MAP) && abc::indexed(segment, index)){
+			// Если затребованного значения вместимого нет
+			if(index >= current->_items.size())
+				// Выводим ссылку на отсутствующее значение
+				return value_t::undefined();
+			// Выполняем переход к затребованному значению вместимого
+			current = &current->_items.at(index);
+		// Если звено пути является именем поля отображения
+		} else {
+			// Выполняем получение значения затребованного поля отображения
+			const value_t & value = (* current)[string(segment)];
+			// Если затребованного поля отображения нет
+			if(!value.valid())
+				// Выводим ссылку на отсутствующее значение
+				return value_t::undefined();
+			// Выполняем переход к значению затребованного поля
+			current = &value;
 		}
 	}
 	/**
 	 * Если путь оказался недействительным, значения он не даёт
 	 *
 	 * @warning Посредник разбора пути отвечает ложью и на ИСЧЕРПАНИЕ пути, и на
-	 * НЕДЕЙСТВИТЕЛЬНОСТЬ его, а исходы у них противоположные: без признака путь `/t~x`
-	 * отдавал бы ПОСЛЕДНЕЕ дошедшее значение, то есть корень
+	 *          НЕДЕЙСТВИТЕЛЬНОСТЬ его, а исходы у них противоположные: без признака путь `/t~x`
+	 *          отдавал бы ПОСЛЕДНЕЕ дошедшее значение, то есть корень
+	 *
 	 */
 	if(invalid)
 		// Выводим ссылку на отсутствующее значение
-		return Value::undefined();
+		return value_t::undefined();
 	// Выводим ссылку на найденное значение
 	return (* current);
 }
@@ -803,63 +813,64 @@ const awh::codec::abc::Value & awh::codec::abc::Value::at(const string & path) c
  * @return     ссылка на заведённое значение
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Value::place(const string & path) noexcept {
-	// Заводимое значение документа
-	Value * current = this;
+awh::codec::abc::value_t & awh::codec::abc::Value::place(const string & path) noexcept {
 	// Смещение разбора пути
 	size_t offset = 0;
-	// Разбираемое звено пути
-	string_view segment;
-	// Вместилище звена пути со снятыми отменяющими записями
-	string unescaped;
 	// Признак недействительности разбираемого пути
 	bool invalid = false;
+	// Вместилище звена пути со снятыми отменяющими записями
+	string unescaped = "";
+	// Разбираемое звено пути
+	string_view segment = "";
+	// Заводимое значение документа
+	value_t * current = this;
 	/**
 	 * Выполняем обход всех звеньев пути
 	 *
 	 * @note Разбор пути ведёт общий посредник `abc::segment`, тот же, что у извлечения
+	 *
 	 */
 	while(abc::segment(path, offset, segment, unescaped, invalid)){
-		{
-			// Разобранный номер значения вместимого
-			size_t index = 0;
-			/**
-			 * Если звено пути является номером значения перечня
-			 *
-			 * @details Правило то же, что у извлечения, но о ТРЁХ частях, ибо заведение
-			 *          вместилище СОЗДАЁТ. У отображения звено есть имя поля всегда, хотя
-			 *          бы и записанное цифрами. У перечня - номер. А когда вместилища ещё
-			 *          нет вовсе, вид решать нечем, кроме записи звена: цифры заводят
-			 *          перечень, прочее - отображение
-			 *
-			 * @note Часть про отображение заведена 03.09.2026 вместе с тем же сторожем у
-			 *       извлечения: прежде звено из цифр бралось номером и у отображения, и
-			 *       заведение шло МИМО поля, чьё имя записано цифрами
-			 */
-			if((current->_type != type_t::MAP) && abc::indexed(segment, index))
-				// Выполняем заведение затребованного значения вместимого
-				current = &(* current)[index];
-			// Выполняем заведение затребованного поля отображения
-			else current = &(* current)[string(segment)];
-		}
+		// Разобранный номер значения вместимого
+		size_t index = 0;
+		/**
+		 * Если звено пути является номером значения перечня
+		 *
+		 * @details Правило то же, что у извлечения, но о ТРЁХ частях, ибо заведение
+		 *          вместилище СОЗДАЁТ. У отображения звено есть имя поля всегда, хотя
+		 *          бы и записанное цифрами. У перечня - номер. А когда вместилища ещё
+		 *          нет вовсе, вид решать нечем, кроме записи звена: цифры заводят
+		 *          перечень, прочее - отображение.
+		 *
+		 * @note Часть про отображение заведена 03.09.2026 вместе с тем же сторожем у
+		 *       извлечения: прежде звено из цифр бралось номером и у отображения, и
+		 *       заведение шло МИМО поля, чьё имя записано цифрами
+		 *
+		 */
+		if((current->_type != type_t::MAP) && abc::indexed(segment, index))
+			// Выполняем заведение затребованного значения вместимого
+			current = &(* current)[index];
+		// Выполняем заведение затребованного поля отображения
+		else current = &(* current)[string(segment)];
 	}
 	/**
 	 * Если путь оказался недействительным, заведения не происходит
 	 *
 	 * @warning Здесь молчание опаснее, чем у извлечения: заведение по недействительному
-	 * пути завело бы значение НЕ ТАМ и отчиталось успехом
+	 *          пути завело бы значение НЕ ТАМ и отчиталось успехом
 	 *
 	 * @note Заслон этот до 04.09.2026 был ДЕКОРАТИВЕН: обе ветви выдавали `* current`,
-	 * то есть ПОСЛЕДНЕЕ дошедшее значение, - и запись по такой ссылке молча ЗАТИРАЛА
-	 * существующее поле. Щуп 04.09.2026: `value["поле"] = 1`, затем
-	 * `value.place("/поле/t~x") = 777` оставлял корень отображением из одного поля, а
-	 * поле - числом 777. Ныне выдаётся ОТБРОСНОЕ значение, то же, каким отвечает
-	 * обращение по имени у вида, имён не несущего: запись в него уходит в никуда, а
-	 * дерево остаётся целым
+	 *       то есть ПОСЛЕДНЕЕ дошедшее значение, - и запись по такой ссылке молча ЗАТИРАЛА
+	 *       существующее поле. Щуп 04.09.2026: `value["поле"] = 1`, затем
+	 *       `value.place("/поле/t~x") = 777` оставлял корень отображением из одного поля, а
+	 *       поле - числом 777. Ныне выдаётся ОТБРОСНОЕ значение, то же, каким отвечает
+	 *       обращение по имени у вида, имён не несущего: запись в него уходит в никуда, а
+	 *       дерево остаётся целым
+	 *
 	 */
 	if(invalid)
 		// Выводим ссылку на отбросное значение
-		return Value::scrap();
+		return value_t::scrap();
 	// Выводим ссылку на заведённое значение
 	return (* current);
 }
@@ -870,11 +881,11 @@ awh::codec::abc::Value & awh::codec::abc::Value::place(const string & path) noex
  * @return     ссылка на значение поля отображения
  *
  */
-const awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string & name) const noexcept {
+const awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const string & name) const noexcept {
 	// Если значение отображением не является
 	if(this->_type != type_t::MAP)
 		// Выводим ссылку на отсутствующее значение
-		return Value::undefined();
+		return value_t::undefined();
 	// Выполняем разыскание затребованного поля отображения
 	const size_t index = this->locate(name);
 	// Если поле отображения разыскано
@@ -882,7 +893,7 @@ const awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string
 		// Выводим значение затребованного поля отображения
 		return this->_items.at(index);
 	// Выводим ссылку на отсутствующее значение
-	return Value::undefined();
+	return value_t::undefined();
 }
 /**
  * @brief Оператор заведения значения поля отображения по имени
@@ -891,11 +902,11 @@ const awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string
  * @return     ссылка на значение поля отображения
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string & name) noexcept {
+awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const string & name) noexcept {
 	// Если значение вместимым иного вида является
 	if((this->_type != type_t::MAP) && this->valid() && (this->_type != type_t::NUL))
 		// Выводим ссылку на отбросное значение
-		return Value::scrap();
+		return value_t::scrap();
 	// Если значение отображением ещё не является
 	if(this->_type != type_t::MAP){
 		// Выполняем установку вида узла отображения
@@ -914,14 +925,15 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string & nam
 	 *
 	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы
 	 *       ту самую квадратичность, от какой указатель и заводится
+	 *
 	 */
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
 		this->_index->emplace(name, this->_keys.size());
 	// Выполняем заведение имени затребованного поля отображения
-	this->_keys.push_back(Value(name));
+	this->_keys.push_back(value_t(name));
 	// Выполняем заведение значения затребованного поля отображения
-	this->_items.push_back(Value());
+	this->_items.push_back(value_t());
 	// Выводим значение заведённого поля отображения
 	return this->_items.back();
 }
@@ -932,11 +944,11 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string & nam
  * @return      ссылка на значение вместимого
  *
  */
-const awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const size_t index) const noexcept {
+const awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const size_t index) const noexcept {
 	// Если затребованного значения вместимого нет
 	if(index >= this->_items.size())
 		// Выводим ссылку на отсутствующее значение
-		return Value::undefined();
+		return value_t::undefined();
 	// Выводим затребованное значение вместимого
 	return this->_items.at(index);
 }
@@ -947,7 +959,7 @@ const awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const size_t
  * @return      ссылка на значение вместимого
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const size_t index) noexcept {
+awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const size_t index) noexcept {
 	// Если затребованное значение вместимого уже заведено
 	if(index < this->_items.size())
 		// Выводим затребованное значение вместимого
@@ -955,9 +967,9 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const size_t index
 	// Если значение вместимым иного вида является
 	if((this->_type != type_t::ARRAY) && this->valid() && (this->_type != type_t::NUL))
 		// Выводим ссылку на отбросное значение
-		return Value::scrap();
+		return value_t::scrap();
 	// Выполняем получение предела роста вместимого
-	const size_t limit = Value::limit();
+	const size_t limit = value_t::limit();
 	/**
 	 * Если рост вместимого превышает предел, заводить его нельзя.
 	 *
@@ -967,7 +979,7 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const size_t index
 	 */
 	if((limit > 0) && ((index + 1) > limit))
 		// Выводим ссылку на отбросное значение
-		return Value::scrap();
+		return value_t::scrap();
 	// Если значение перечнем ещё не является
 	if(this->_type != type_t::ARRAY){
 		// Выполняем установку вида узла перечня
@@ -987,7 +999,7 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const size_t index
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::abc::Value::push(const Value & value) noexcept {
+bool awh::codec::abc::Value::push(const value_t & value) noexcept {
 	// Если значение вместимым иного вида является
 	if((this->_type != type_t::ARRAY) && this->valid() && (this->_type != type_t::NUL))
 		// Сообщаем, что добавление отвечено отказом
@@ -1012,9 +1024,9 @@ bool awh::codec::abc::Value::push(const Value & value) noexcept {
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::abc::Value::insert(const string & name, const Value & value) noexcept {
+bool awh::codec::abc::Value::insert(const string & name, const value_t & value) noexcept {
 	// Выполняем добавление поля отображения с именем-строкою
-	return this->insert(Value(name), value);
+	return this->insert(value_t(name), value);
 }
 /**
  * @brief Метод добавления поля в отображение с именем строковым литералом
@@ -1024,9 +1036,9 @@ bool awh::codec::abc::Value::insert(const string & name, const Value & value) no
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::abc::Value::insert(const char * name, const Value & value) noexcept {
+bool awh::codec::abc::Value::insert(const char * name, const value_t & value) noexcept {
 	// Выполняем добавление поля отображения с именем строковым литералом
-	return this->insert(Value((name != nullptr) ? string(name) : string{}), value);
+	return this->insert(value_t((name != nullptr) ? string(name) : string{}), value);
 }
 /**
  * @brief Метод добавления поля в отображение с именем любого вида
@@ -1036,7 +1048,7 @@ bool awh::codec::abc::Value::insert(const char * name, const Value & value) noex
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noexcept {
+bool awh::codec::abc::Value::insert(const value_t & name, const value_t & value) noexcept {
 	// Номер занесённого поля отображения, вызову не нужный
 	size_t index = 0;
 	// Выполняем добавление поля отображения с выдачей номера поля
@@ -1051,7 +1063,7 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noe
  * @return      признак успешности добавления
  *
  */
-bool awh::codec::abc::Value::insert(const Value & name, const Value & value, size_t & index) noexcept {
+bool awh::codec::abc::Value::insert(const value_t & name, const value_t & value, size_t & index) noexcept {
 	// Выполняем сброс номера занесённого поля отображения
 	index = 0;
 	/**
@@ -1061,6 +1073,7 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value, siz
 	 *       и цена его несоразмерна получаемому. Ср. `INVALID_KEY` у разбора записи.
 	 *       Единство всех трёх слоёв закреплено проверкой
 	 *       `CodecAbcValue.ContainerKeyRefusedByEveryLayer`
+	 *
 	 */
 	if(name.is(type_t::ARRAY) || name.is(type_t::MAP))
 		// Сообщаем, что добавление отвечено отказом
@@ -1089,6 +1102,7 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value, siz
 	 *       указателя, ради какого он и заведён. Проверять на это надлежит КАЖДЫЙ
 	 *       путь установки поля, а не модуль целиком: пути расходятся, и мимо
 	 *       указателя ходит тот, кого забыли
+	 *
 	 */
 	if(name.is(type_t::STRING)){
 		// Выполняем разыскание затребованного поля отображения указателем
@@ -1110,15 +1124,16 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value, siz
 	 * @note Указатель ведётся по строковым именам, имени иного вида в нём нет вовсе,
 	 *       и перебор здесь неминуем. Отображения с такими именами редки, строковые -
 	 *       обиход, оттого указатель и заведён под них
+	 *
 	 */
-	} else for(size_t i = 0; i < this->_keys.size(); i++){
+	} else for(size_t i = 0; i < this->_keys.size(); i++) {
 		/**
 		 * Если имя поля отображения совпало с затребованным.
 		 *
 		 * Сличение идёт ЗНАЧЕНИЕМ, а не видом хранения: `UINT64(42)` при пересборке
 		 * сужается до `UINT8`, и сличение видами объявило бы равные имена разными
 		 */
-		if(Value::akin(this->_keys.at(i), name) && (this->_keys.at(i) == name)){
+		if(value_t::akin(this->_keys.at(i), name) && (this->_keys.at(i) == name)){
 			/**
 			 * Выполняем перезапись занятого имени на прежнем его месте.
 			 *
@@ -1138,6 +1153,7 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value, siz
 	 *
 	 * @note Указатель ведётся приращением: перестроение его на всякой правке вернуло бы
 	 *       ту самую квадратичность, от какой он и заводится
+	 *
 	 */
 	if(this->_index && name.is(type_t::STRING))
 		// Выполняем добавление заводимого имени в указатель поиска
@@ -1168,7 +1184,7 @@ bool awh::codec::abc::Value::erase(const string & name) noexcept {
 	 */
 	for(size_t i = 0; i < this->_keys.size(); i++){
 		// Выполняем получение очередного имени поля отображения
-		const Value & key = this->_keys.at(i);
+		const value_t & key = this->_keys.at(i);
 		// Если имя поля отображения совпало с затребованным
 		if((key._type == type_t::STRING) && (key._text.compare(name) == 0)){
 			// Выполняем удаление имени поля отображения
@@ -1212,6 +1228,7 @@ bool awh::codec::abc::Value::erase(const size_t index) noexcept {
 	 *       заведённой 04.09.2026. Дверей у удаления ДВЕ, и стеречь надлежит обе:
 	 *       `CodecAbcValue.NameIndexConsistency` стережёт лишь дверь по имени, и снос
 	 *       указателя ЗДЕСЬ она не ловила вовсе
+	 *
 	 */
 	this->unindex();
 	// Сообщаем, что удаление успешно
@@ -1267,6 +1284,7 @@ bool awh::codec::abc::Value::value(int64_t & result) const noexcept {
 		 *
 		 * @note Число, за отрезок затребованного вида выходящее, переносится младшими
 		 *       разрядами, а не отвечается отказом: договор извлечения общий у кодеков
+		 *
 		 */
 		result = static_cast <int64_t> (this->_number.natural);
 		// Сообщаем, что извлечение успешно
@@ -1306,6 +1324,7 @@ bool awh::codec::abc::Value::value(uint64_t & result) const noexcept {
 		 *
 		 * @note Отрицательное число видом без знака не представимо, и переносится оно
 		 *       младшими разрядами: договор извлечения общий у кодеков рамки
+		 *
 		 */
 		result = static_cast <uint64_t> (this->_number.integer);
 		// Сообщаем, что извлечение успешно
@@ -1380,7 +1399,7 @@ bool awh::codec::abc::Value::value(string & result) const noexcept {
  * @param value переносимое значение дерева документа
  *
  */
-void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
+void awh::codec::abc::Value::absorb(const document_t::value_t & value) noexcept {
 	// Выполняем очистку переносимого значения
 	this->clear();
 	// Если переносимое значение недействительно
@@ -1389,15 +1408,15 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 		return;
 	// Работа перенесения одного значения дерева документа
 	typedef struct Task {
-		// Переносимое значение дерева документа
-		Document::value_t source;
 		// Значение, куда следует перенести
-		Value * target;
+		value_t * target;
+		// Переносимое значение дерева документа
+		document_t::value_t source;
 	} task_t;
 	// Вместилище работ перенесения
 	vector <task_t> pending;
 	// Выполняем заведение работы перенесения корня
-	pending.push_back(task_t{value, this});
+	pending.push_back(task_t{this, value});
 	/**
 	 * Выполняем все работы перенесения без возвратности.
 	 *
@@ -1423,8 +1442,8 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 			/**
 			 * Если значение является вместимым
 			 */
-			case static_cast <uint32_t> (type_t::ARRAY):
-			case static_cast <uint32_t> (type_t::MAP): {
+			case static_cast <uint32_t> (type_t::MAP):
+			case static_cast <uint32_t> (type_t::ARRAY): {
 				// Выполняем получение количества значений вместимого
 				const size_t count = task.source.size();
 				// Выполняем заведение значений вместимого
@@ -1443,7 +1462,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 				 */
 				size_t index = 0;
 				// Выполняем получение первого значения вместимого
-				Document::value_t item = task.source.begin();
+				document_t::value_t item = task.source.begin();
 				/**
 				 * Выполняем перебор всех значений вместимого
 				 */
@@ -1455,7 +1474,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 					 */
 					if(type == type_t::MAP){
 						// Выполняем заведение работы перенесения имени поля
-						pending.push_back(task_t{item, &task.target->_keys.at(index)});
+						pending.push_back(task_t{&task.target->_keys.at(index), item});
 						// Выполняем переход к значению поля отображения
 						item = item.next();
 						// Если значения у имени поля не оказалось
@@ -1464,7 +1483,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 							break;
 					}
 					// Выполняем заведение работы перенесения значения вместимого
-					pending.push_back(task_t{item, &task.target->_items.at(index)});
+					pending.push_back(task_t{&task.target->_items.at(index), item});
 					// Выполняем переход к следующему значению вместимого
 					item = item.next();
 					// Выполняем учёт перенесённого значения вместимого
@@ -1485,9 +1504,9 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 			/**
 			 * Если значение хранится отрезком октетов
 			 */
-			case static_cast <uint32_t> (type_t::STRING):
 			case static_cast <uint32_t> (type_t::BLOB):
-			case static_cast <uint32_t> (type_t::UUID): {
+			case static_cast <uint32_t> (type_t::UUID):
+			case static_cast <uint32_t> (type_t::STRING): {
 				// Выполняем перенесение содержимого значения
 				task.target->_text.assign(task.source.data());
 			} break;
@@ -1503,8 +1522,8 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 			/**
 			 * Если значение является числом неограниченной ширины
 			 */
-			case static_cast <uint32_t> (type_t::EXTENDED):
-			case static_cast <uint32_t> (type_t::DECIMAL): {
+			case static_cast <uint32_t> (type_t::DECIMAL):
+			case static_cast <uint32_t> (type_t::EXTENDED): {
 				// Выполняем перенесение октетов величины
 				task.target->_text.assign(task.source.data());
 				// Выполняем установку десятичного порядка величины
@@ -1527,8 +1546,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 					// Выполняем установку дробного значения
 					task.target->_number.real = real;
 				// Если значение является целым со знаком либо отметкой времени
-				} else if(((static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::SIGNED)) != 0) ||
-				          (type == type_t::TIME)) {
+				} else if(((static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::SIGNED)) != 0) || (type == type_t::TIME)) {
 					// Извлекаемое целое со знаком
 					int64_t integer = 0;
 					// Выполняем извлечение целого со знаком
@@ -1564,7 +1582,7 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 	 * @return       признак успешности укладки
 	 *
 	 */
-	auto single = [](const Value & node, writer_t & writer) noexcept -> bool {
+	auto single = [](const value_t & node, writer_t & writer) noexcept -> bool {
 		/**
 		 * Определяем вид укладываемого значения
 		 */
@@ -1575,15 +1593,14 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			 * Изменяемое обращение заводит значение вида `NONE`, и потребитель вправе
 			 * его не заполнить. Отказ здесь означал бы, что заведённое обращением поле
 			 * делает запись несобираемой вовсе
-			 */
-			/**
+			 *
 			 * Если значение не определено либо является пустым
 			 *
 			 * @details Значение НЕОПРЕДЕЛЁННОЕ кладётся пустым намеренно, а не отвергается:
-			 * запись ABC вида «нет значения» не несёт вовсе, и вместилище, у какого звено
-			 * не заполнено, иначе было бы неукладываемо целиком. Уклад тот же, что у
-			 * документа JSON, где пустое значение отдаёт `null`; таблица же и разметка
-			 * отдают пустой текст, ибо у них своё устройство пустоты
+			 *          запись ABC вида «нет значения» не несёт вовсе, и вместилище, у какого звено
+			 *          не заполнено, иначе было бы неукладываемо целиком. Уклад тот же, что у
+			 *          документа JSON, где пустое значение отдаёт `null`; таблица же и разметка
+			 *          отдают пустой текст, ибо у них своё устройство пустоты.
 			 *
 			 * @note Решение это НАМЕРЕННО и закреплено проверкою
 			 *       `CodecAbcValue.UndefinedIsLaidAsNull`. Прежде оно стереглось лишь
@@ -1593,21 +1610,27 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			 */
 			case static_cast <uint32_t> (type_t::NUL):
 			case static_cast <uint32_t> (type_t::UNDEFINED):
+				// Выполняем укладку NULL
 				return writer.nul();
 			// Если значение является логическим
 			case static_cast <uint32_t> (type_t::BOOL):
+				// Выполняем укладку булевого значения
 				return writer.boolean(node._number.flag);
 			// Если значение является строкой
 			case static_cast <uint32_t> (type_t::STRING):
+				// Выполняем укладку строки
 				return writer.text(node._text);
 			// Если значение является двоичными данными
 			case static_cast <uint32_t> (type_t::BLOB):
+				// Выполняем укладку бинарного блока данных
 				return writer.blob(node._text.data(), node._text.size());
 			// Если значение является опознавателем
 			case static_cast <uint32_t> (type_t::UUID):
+				// Выполняем укладку UUID
 				return writer.uuid(node._text.data(), node._text.size());
 			// Если значение является отметкой времени
 			case static_cast <uint32_t> (type_t::TIME):
+				// Выполняем укладку штампа времени
 				return writer.timestamp(node._number.integer);
 			// Если значение является открытым расширением
 			case static_cast <uint32_t> (type_t::CUSTOM):
@@ -1631,6 +1654,7 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			 * @note Без этого дробное одинарной точности росло при перекладке вдвое, и
 			 *       запись, разобранная деревом и уложенная наново, переставала совпадать с
 			 *       исходной октет в октет
+			 *
 			 */
 			if((static_cast <uint32_t> (node._type) & static_cast <uint32_t> (type_t::FLOAT)) != 0)
 				// Выполняем укладку дробного значения одинарной точности
@@ -1657,7 +1681,7 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 	 * @return       признак успешности укладки
 	 *
 	 */
-	auto open = [](const Value & node, writer_t & writer) noexcept -> bool {
+	auto open = [](const value_t & node, writer_t & writer) noexcept -> bool {
 		// Если вместимое является отображением
 		if(node._type == type_t::MAP){
 			// Если имён полей у отображения не столько же, сколько значений
@@ -1679,7 +1703,7 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	// Вместилище обходимых вместимых вместе с номером очередного ребёнка
-	vector <pair <const Value *, size_t>> stack;
+	vector <pair <const value_t *, size_t>> stack;
 	// Выполняем заведение обхода корня укладываемого значения
 	stack.push_back(make_pair(this, static_cast <size_t> (0)));
 	/**
@@ -1687,7 +1711,7 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 	 */
 	while(!stack.empty()){
 		// Выполняем получение обходимого вместимого
-		const Value * node = stack.back().first;
+		const value_t * node = stack.back().first;
 		// Если дети обходимого вместимого исчерпаны
 		if(stack.back().second >= node->_items.size()){
 			// Выполняем снятие обходимого вместимого с вместилища
@@ -1709,7 +1733,7 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 				return false;
 		}
 		// Выполняем получение очередного значения вместимого
-		const Value & child = node->_items.at(index);
+		const value_t & child = node->_items.at(index);
 		// Если значение вместимого вместимым не является
 		if(!child.is(type_t::CONTAINER)){
 			// Если укладка одиночного значения отвечена отказом
@@ -1877,7 +1901,7 @@ bool awh::codec::abc::Value::graft(Document & document) const noexcept {
  * @return      признак равенства значений
  *
  */
-bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
+bool awh::codec::abc::Value::operator == (const value_t & value) const noexcept {
 	/**
 	 * @brief Функция сличения одиночных значений
 	 *
@@ -1886,7 +1910,7 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
 	 * @return       признак равенства значений
 	 *
 	 */
-	auto single = [](const Value & first, const Value & second) noexcept -> bool {
+	auto single = [](const value_t & first, const value_t & second) noexcept -> bool {
 		/**
 		 * Если сличаются числа родного вида, сличаем их значением, а не видом хранения.
 		 *
@@ -1968,31 +1992,35 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
 			// Если значения отсутствуют либо пусты
 			case static_cast <uint32_t> (type_t::NUL):
 			case static_cast <uint32_t> (type_t::UNDEFINED):
+				// Выводим положительный результат
 				return true;
 			// Если значения являются логическими
 			case static_cast <uint32_t> (type_t::BOOL):
+				// Выводим результат сравнения булевых типов
 				return (first._number.flag == second._number.flag);
 			// Если значения хранятся отрезком октетов
 			case static_cast <uint32_t> (type_t::BLOB):
 			case static_cast <uint32_t> (type_t::UUID):
 			case static_cast <uint32_t> (type_t::STRING):
+				// Выводим результат сравнения типов байт
 				return (first._text.compare(second._text) == 0);
 			// Если значения являются отметками времени
 			case static_cast <uint32_t> (type_t::TIME):
+				// Выводим результат сравнения типов штапов времени
 				return (first._number.integer == second._number.integer);
 			/**
 			 * Если значения являются открытыми расширениями. Сличаются они вместе с
 			 * номером подвида: одни и те же октеты у разных подвидов означают разное
 			 */
 			case static_cast <uint32_t> (type_t::CUSTOM):
-				return ((first._number.natural == second._number.natural) &&
-				        (first._text.compare(second._text) == 0));
+				// Выводим результат сравнения типов открытых расширений
+				return ((first._number.natural == second._number.natural) && (first._text.compare(second._text) == 0));
 		}
 		// Сообщаем, что значения неравны
 		return false;
 	};
 	// Вместилище пар значений, ожидающих сличения
-	vector <pair <const Value *, const Value *>> pending;
+	vector <pair <const value_t *, const value_t *>> pending;
 	// Выполняем заведение сличения корней значений
 	pending.push_back(make_pair(this, &value));
 	/**
@@ -2000,13 +2028,13 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
 	 */
 	while(!pending.empty()){
 		// Выполняем снятие очередной пары значений
-		const pair <const Value *, const Value *> couple = pending.back();
+		const pair <const value_t *, const value_t *> couple = pending.back();
 		// Выполняем удаление снятой пары значений
 		pending.pop_back();
 		// Выполняем получение первого сличаемого значения
-		const Value & first = (* couple.first);
+		const value_t & first = (* couple.first);
 		// Выполняем получение второго сличаемого значения
-		const Value & second = (* couple.second);
+		const value_t & second = (* couple.second);
 		// Если вместимость сличаемых значений расходится
 		if(first.is(type_t::CONTAINER) != second.is(type_t::CONTAINER))
 			// Сообщаем, что значения неравны
@@ -2080,7 +2108,7 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
  * @return      признак неравенства значений
  *
  */
-bool awh::codec::abc::Value::operator != (const Value & value) const noexcept {
+bool awh::codec::abc::Value::operator != (const value_t & value) const noexcept {
 	// Выводим признак неравенства значений
 	return !((* this) == value);
 }
@@ -2089,7 +2117,8 @@ bool awh::codec::abc::Value::operator != (const Value & value) const noexcept {
  *
  */
 awh::codec::abc::Value::Value() noexcept :
- _kind(kind_t::NONE), _type(type_t::UNDEFINED), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
 	// Выполняем сброс числа значения
 	this->_number.natural = 0;
 }
@@ -2100,7 +2129,8 @@ awh::codec::abc::Value::Value() noexcept :
  *
  */
 awh::codec::abc::Value::Value(const kind_t kind) noexcept :
- _kind(kind), _type(type_t::UNDEFINED), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind), _type(type_t::UNDEFINED) {
 	// Выполняем сброс числа значения
 	this->_number.natural = 0;
 	/**
@@ -2108,17 +2138,35 @@ awh::codec::abc::Value::Value(const kind_t kind) noexcept :
 	 */
 	switch(static_cast <uint8_t> (kind)){
 		// Если заводится пустое значение
-		case static_cast <uint8_t> (kind_t::NUL): this->_type = type_t::NUL; break;
+		case static_cast <uint8_t> (kind_t::NUL):
+			// Устанавливаем тип пустого значения NULL
+			this->_type = type_t::NUL;
+		break;
 		// Если заводится логическое значение
-		case static_cast <uint8_t> (kind_t::BOOL): this->_type = type_t::BOOL; break;
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Устанавливаем тип булевого значения
+			this->_type = type_t::BOOL;
+		break;
 		// Если заводится число
-		case static_cast <uint8_t> (kind_t::NUMBER): this->_type = type_t::UINT64; break;
+		case static_cast <uint8_t> (kind_t::NUMBER):
+			// Устанавливаем тип числа unsigned int 64
+			this->_type = type_t::UINT64;
+		break;
 		// Если заводится строка
-		case static_cast <uint8_t> (kind_t::STRING): this->_type = type_t::STRING; break;
+		case static_cast <uint8_t> (kind_t::STRING):
+			// Устанавливаем тип строки
+			this->_type = type_t::STRING;
+		break;
 		// Если заводятся двоичные данные
-		case static_cast <uint8_t> (kind_t::BLOB): this->_type = type_t::BLOB; break;
+		case static_cast <uint8_t> (kind_t::BLOB):
+			// Устанавливаем тип бинарных данных
+			this->_type = type_t::BLOB;
+		break;
 		// Если заводится отметка времени
-		case static_cast <uint8_t> (kind_t::TIME): this->_type = type_t::TIME; break;
+		case static_cast <uint8_t> (kind_t::TIME):
+			// Устанавливаем тип штампа времени
+			this->_type = type_t::TIME;
+		break;
 		/**
 		 * Если заводится опознаватель
 		 *
@@ -2128,6 +2176,7 @@ awh::codec::abc::Value::Value(const kind_t kind) noexcept :
 		 *       `CodecAbcValue.KindConstructedValueIsDumpable`, кладущей значение всякого
 		 *       вида не корнем, а парою отображения: губит такой узел не себя, и увидеть
 		 *       это можно лишь изнутри вместимого
+		 *
 		 */
 		case static_cast <uint8_t> (kind_t::UUID): {
 			// Выполняем установку вида значения
@@ -2136,9 +2185,15 @@ awh::codec::abc::Value::Value(const kind_t kind) noexcept :
 			this->_text.assign(UUID_WIDTH, '\0');
 		} break;
 		// Если заводится массив
-		case static_cast <uint8_t> (kind_t::ARRAY): this->_type = type_t::ARRAY; break;
+		case static_cast <uint8_t> (kind_t::ARRAY):
+			// Устанавливаем тип массива
+			this->_type = type_t::ARRAY;
+		break;
 		// Если заводится отображение
-		case static_cast <uint8_t> (kind_t::MAP): this->_type = type_t::MAP; break;
+		case static_cast <uint8_t> (kind_t::MAP):
+			// Устанавливаем тип карты
+			this->_type = type_t::MAP;
+		break;
 	}
 }
 /**
@@ -2148,7 +2203,8 @@ awh::codec::abc::Value::Value(const kind_t kind) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const bool value) noexcept :
- _kind(kind_t::BOOL), _type(type_t::BOOL), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::BOOL), _type(type_t::BOOL) {
 	// Выполняем установку логического значения
 	this->_number.flag = value;
 }
@@ -2159,7 +2215,8 @@ awh::codec::abc::Value::Value(const bool value) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const int64_t value) noexcept :
- _kind(kind_t::NUMBER), _type(type_t::INT64), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::NUMBER), _type(type_t::INT64) {
 	// Выполняем установку целого со знаком
 	this->_number.integer = value;
 }
@@ -2170,7 +2227,8 @@ awh::codec::abc::Value::Value(const int64_t value) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const uint64_t value) noexcept :
- _kind(kind_t::NUMBER), _type(type_t::UINT64), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::NUMBER), _type(type_t::UINT64) {
 	// Выполняем установку целого без знака
 	this->_number.natural = value;
 }
@@ -2181,7 +2239,8 @@ awh::codec::abc::Value::Value(const uint64_t value) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const double value) noexcept :
- _kind(kind_t::NUMBER), _type(type_t::DOUBLE), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::NUMBER), _type(type_t::DOUBLE) {
 	// Выполняем установку дробного числа
 	this->_number.real = value;
 }
@@ -2192,7 +2251,8 @@ awh::codec::abc::Value::Value(const double value) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const string & value) noexcept :
- _kind(kind_t::STRING), _type(type_t::STRING), _text(value), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::STRING), _type(type_t::STRING), _text(value) {
 	// Выполняем сброс числа значения
 	this->_number.natural = 0;
 }
@@ -2203,7 +2263,8 @@ awh::codec::abc::Value::Value(const string & value) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const char * value) noexcept :
- _kind(kind_t::STRING), _type(type_t::STRING), _exponent(0), _negative(false) {
+ _negative(false), _exponent(0),
+ _kind(kind_t::STRING), _type(type_t::STRING) {
 	// Выполняем сброс числа значения
 	this->_number.natural = 0;
 	// Если заводимая строка существует
@@ -2217,8 +2278,9 @@ awh::codec::abc::Value::Value(const char * value) noexcept :
  * @param value переносимое значение дерева документа
  *
  */
-awh::codec::abc::Value::Value(const Document::value_t & value) noexcept :
- _kind(kind_t::NONE), _type(type_t::UNDEFINED), _exponent(0), _negative(false) {
+awh::codec::abc::Value::Value(const document_t::value_t & value) noexcept :
+ _negative(false), _exponent(0),
+ _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
 	// Выполняем сброс числа значения
 	this->_number.natural = 0;
 	// Выполняем перенесение значения из дерева документа
@@ -2230,8 +2292,9 @@ awh::codec::abc::Value::Value(const Document::value_t & value) noexcept :
  * @param value копируемое значение
  *
  */
-awh::codec::abc::Value::Value(const Value & value) noexcept :
- _kind(kind_t::NONE), _type(type_t::UNDEFINED), _exponent(0), _negative(false) {
+awh::codec::abc::Value::Value(const value_t & value) noexcept :
+ _negative(false), _exponent(0),
+ _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
 	// Выполняем сброс числа значения
 	this->_number.natural = 0;
 	/**
@@ -2245,6 +2308,7 @@ awh::codec::abc::Value::Value(const Value & value) noexcept :
 	 *       первом же поиске по имени, а копирование его стоило бы выделения памяти и счёта
 	 *       отпечатков на всякое имя - и стоило бы того ВСЯКОМУ копированию узла, тогда как
 	 *       ищут по имени далеко не во всяком
+	 *
 	 */
 	this->clone(value);
 }
@@ -2254,10 +2318,10 @@ awh::codec::abc::Value::Value(const Value & value) noexcept :
  * @param value переносимое значение
  *
  */
-awh::codec::abc::Value::Value(Value && value) noexcept :
- _kind(value._kind), _type(value._type),
- _number(value._number), _text(::move(value._text)), _exponent(value._exponent),
- _negative(value._negative), _keys(::move(value._keys)),
+awh::codec::abc::Value::Value(value_t && value) noexcept :
+ _negative(value._negative), _exponent(value._exponent),
+ _kind(value._kind), _type(value._type), _number(value._number),
+ _text(::move(value._text)), _keys(::move(value._keys)),
  _items(::move(value._items)), _index(::move(value._index)) {
 	// Выполняем сброс вида узла перенесённого значения
 	value._kind = kind_t::NONE;
@@ -2271,7 +2335,7 @@ awh::codec::abc::Value::Value(Value && value) noexcept :
  * @return      ссылка на присвоенное значение
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Value::operator = (const Value & value) noexcept {
+awh::codec::abc::value_t & awh::codec::abc::Value::operator = (const value_t & value) noexcept {
 	// Если присваивается то же самое значение
 	if(this == &value)
 		// Выводим ссылку на присвоенное значение
@@ -2288,6 +2352,7 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator = (const Value & value
 	 *       Стоит он вторым написанием одного договора и оставлен нарочно - работа
 	 *       обязана быть верной и порознь от порядка вызовов внутри себя. Настоящий же
 	 *       сторож стоит у очистки и закреплён проверкой `CodecAbcValue.NameIndexRefill`
+	 *
 	 */
 	this->unindex();
 	// Выводим ссылку на присвоенное значение
@@ -2300,7 +2365,7 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator = (const Value & value
  * @return      ссылка на присвоенное значение
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Value::operator = (Value && value) noexcept {
+awh::codec::abc::value_t & awh::codec::abc::Value::operator = (value_t && value) noexcept {
 	// Если присваивается то же самое значение
 	if(this == &value)
 		// Выводим ссылку на присвоенное значение
@@ -2346,9 +2411,9 @@ awh::codec::abc::Value::~Value() noexcept {
  * @return ссылка на открытое вместилище
  *
  */
-awh::codec::abc::Value & awh::codec::abc::Builder::opened() noexcept {
+awh::codec::abc::value_t & awh::codec::abc::Builder::opened() noexcept {
 	// Получаем ссылку на собираемое значение
-	Value * result = &this->_root;
+	value_t * result = &this->_root;
 	/**
 	 * Выполняем перебор пути к открытому вместилищу
 	 */
@@ -2370,9 +2435,9 @@ awh::codec::abc::Value & awh::codec::abc::Builder::opened() noexcept {
  *       вместилище, какого нет
  *
  */
-bool awh::codec::abc::Builder::deposit(Value && value, size_t & index) noexcept {
+bool awh::codec::abc::Builder::deposit(value_t && value, size_t & index) noexcept {
 	// Получаем ссылку на открытое вместилище
-	Value & holder = this->opened();
+	value_t & holder = this->opened();
 	/**
 	 * Если имя поля отображения назначено
 	 */
@@ -2384,6 +2449,7 @@ bool awh::codec::abc::Builder::deposit(Value && value, size_t & index) noexcept 
 		 *       `size() - 1`: занятое имя перезаписывается НА МЕСТЕ, порядок полей
 		 *       сохраняя, и счёт увёл бы путь сборки на поле чужое. Закреплено проверкой
 		 *       `CodecAbcValue.BuilderReopensTheFieldOfTheOccupiedName`
+		 *
 		 */
 		if(!holder.insert(this->_key, value, index))
 			// Выводим признак неудачного занесения
@@ -2413,7 +2479,7 @@ bool awh::codec::abc::Builder::deposit(Value && value, size_t & index) noexcept 
  * @return      признак успешности открытия
  *
  */
-bool awh::codec::abc::Builder::expand(Value && value) noexcept {
+bool awh::codec::abc::Builder::expand(value_t && value) noexcept {
 	/**
 	 * Если сборка завершена уже
 	 */
@@ -2435,6 +2501,7 @@ bool awh::codec::abc::Builder::expand(Value && value) noexcept {
 		 *
 		 * @note Отказ намеренный: имя, назначенное до открытия корня, положить некуда -
 		 *       вместилища, какому оно принадлежало бы, ещё нет
+		 *
 		 */
 		if(this->_keyed)
 			// Выводим признак неудачного открытия
@@ -2465,7 +2532,7 @@ bool awh::codec::abc::Builder::expand(Value && value) noexcept {
  */
 bool awh::codec::abc::Builder::map() noexcept {
 	// Выводим признак успешности открытия отображения
-	return this->expand(Value(kind_t::MAP));
+	return this->expand(value_t(kind_t::MAP));
 }
 /**
  * @brief Метод открытия перечня значений
@@ -2475,7 +2542,7 @@ bool awh::codec::abc::Builder::map() noexcept {
  */
 bool awh::codec::abc::Builder::array() noexcept {
 	// Выводим признак успешности открытия перечня значений
-	return this->expand(Value(kind_t::ARRAY));
+	return this->expand(value_t(kind_t::ARRAY));
 }
 /**
  * @brief Метод закрытия открытого вместилища
@@ -2495,6 +2562,7 @@ bool awh::codec::abc::Builder::close() noexcept {
 	 *
 	 * @note Отказ намеренный: имя без значения есть незавершённая пара, и закрытие
 	 *       вместилища на ней потеряло бы имя молча
+	 *
 	 */
 	if(this->_keyed)
 		// Выводим признак неудачного закрытия
@@ -2533,12 +2601,13 @@ bool awh::codec::abc::Builder::key(const string & name) noexcept {
 	 * @note Пустая строка именем отвергается сборкою, хотя записи она дозволена:
 	 *       сборка ведёт путь к открытому вместилищу сама, и пустое имя в ней
 	 *       неотличимо от неназначенного
+	 *
 	 */
 	if(name.empty())
 		// Выводим признак неудачного назначения
 		return false;
 	// Выполняем назначение имени поля отображения строкою
-	return this->key(Value(name));
+	return this->key(value_t(name));
 }
 /**
  * @brief Метод назначения имени поля отображения строковым литералом
@@ -2564,7 +2633,7 @@ bool awh::codec::abc::Builder::key(const char * name) noexcept {
  * @return     признак успешности назначения
  *
  */
-bool awh::codec::abc::Builder::key(const Value & name) noexcept {
+bool awh::codec::abc::Builder::key(const value_t & name) noexcept {
 	/**
 	 * Если сборка завершена уже либо имя назначено уже
 	 */
@@ -2583,6 +2652,7 @@ bool awh::codec::abc::Builder::key(const Value & name) noexcept {
 	 * @note Отказ намеренный и отвечает разбору записи (`INVALID_KEY`): розыск по
 	 *       такому имени требовал бы сличения поддеревьев. Единство всех трёх слоёв
 	 *       закреплено проверкой `CodecAbcValue.ContainerKeyRefusedByEveryLayer`
+	 *
 	 */
 	if(name.is(type_t::ARRAY) || name.is(type_t::MAP))
 		// Выводим признак неудачного назначения
@@ -2607,7 +2677,7 @@ bool awh::codec::abc::Builder::key(const Value & name) noexcept {
  * @return      признак успешности записи
  *
  */
-bool awh::codec::abc::Builder::value(const Value & value) noexcept {
+bool awh::codec::abc::Builder::value(const value_t & value) noexcept {
 	/**
 	 * Если сборка завершена уже
 	 */
@@ -2624,6 +2694,7 @@ bool awh::codec::abc::Builder::value(const Value & value) noexcept {
 	 *
 	 * @note Имя, назначенное до открытия корня, кладётся некуда - вместилища, какому оно
 	 * принадлежало бы, нет вовсе; отказ здесь тот же, что и у открытия вместилища
+	 *
 	 */
 	if(this->_path.empty() && !this->_root.valid()){
 		/**
@@ -2633,7 +2704,7 @@ bool awh::codec::abc::Builder::value(const Value & value) noexcept {
 			// Выводим признак неудачной записи
 			return false;
 		// Выполняем установку одиночного значения корнем сборки
-		this->_root = Value(value);
+		this->_root = value_t(value);
 		// Выполняем объявление сборки завершённой: корень одиночный вместить не может
 		this->_done = true;
 		// Выводим признак успешной записи
@@ -2648,7 +2719,7 @@ bool awh::codec::abc::Builder::value(const Value & value) noexcept {
 	// Номер занесённого значения
 	size_t index = 0;
 	// Выполняем занесение записываемого значения
-	return this->deposit(Value(value), index);
+	return this->deposit(value_t(value), index);
 }
 /**
  * @brief Метод записи логического значения
@@ -2659,7 +2730,7 @@ bool awh::codec::abc::Builder::value(const Value & value) noexcept {
  */
 bool awh::codec::abc::Builder::value(const bool value) noexcept {
 	// Выводим признак успешности записи логического значения
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи целого значения со знаком
@@ -2670,7 +2741,7 @@ bool awh::codec::abc::Builder::value(const bool value) noexcept {
  */
 bool awh::codec::abc::Builder::value(const int64_t value) noexcept {
 	// Выводим признак успешности записи целого значения со знаком
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи целого значения без знака
@@ -2681,7 +2752,7 @@ bool awh::codec::abc::Builder::value(const int64_t value) noexcept {
  */
 bool awh::codec::abc::Builder::value(const uint64_t value) noexcept {
 	// Выводим признак успешности записи целого значения без знака
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи дробного значения
@@ -2692,7 +2763,7 @@ bool awh::codec::abc::Builder::value(const uint64_t value) noexcept {
  */
 bool awh::codec::abc::Builder::value(const double value) noexcept {
 	// Выводим признак успешности записи дробного значения
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи строкового значения
@@ -2703,7 +2774,7 @@ bool awh::codec::abc::Builder::value(const double value) noexcept {
  */
 bool awh::codec::abc::Builder::value(const string & value) noexcept {
 	// Выводим признак успешности записи строкового значения
-	return this->value(Value(value));
+	return this->value(value_t(value));
 }
 /**
  * @brief Метод записи пустого значения
@@ -2713,7 +2784,7 @@ bool awh::codec::abc::Builder::value(const string & value) noexcept {
  */
 bool awh::codec::abc::Builder::nul() noexcept {
 	// Выводим признак успешности записи пустого значения
-	return this->value(Value(kind_t::NUL));
+	return this->value(value_t(kind_t::NUL));
 }
 /**
  * @brief Метод извлечения глубины открытых вместилищ
@@ -2753,9 +2824,9 @@ void awh::codec::abc::Builder::reset() noexcept {
  * @return собранное значение
  *
  */
-awh::codec::abc::Value awh::codec::abc::Builder::finish() noexcept {
+awh::codec::abc::value_t awh::codec::abc::Builder::finish() noexcept {
 	// Выполняем изъятие собранного значения переносом
-	Value result(::move(this->_root));
+	value_t result(::move(this->_root));
 	// Выполняем сброс сборки в исходное состояние
 	this->reset();
 	// Выводим собранное значение
@@ -2766,4 +2837,4 @@ awh::codec::abc::Value awh::codec::abc::Builder::finish() noexcept {
  *
  */
 awh::codec::abc::Builder::Builder() noexcept :
- _keyed(false), _done(false) {}
+ _done(false), _keyed(false) {}
