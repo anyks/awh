@@ -251,7 +251,7 @@ const char * awh::codec::abc::name(const kind_t kind) noexcept {
 			// Выводим название вида узла
 			return "none";
 		// Если узел является пустым значением
-		case static_cast <uint8_t> (kind_t::NUL):	
+		case static_cast <uint8_t> (kind_t::NIL):	
 			// Выводим название вида узла
 			return "null";
 		// Если узел является логическим значением
@@ -311,7 +311,7 @@ const char * awh::codec::abc::name(const type_t type) noexcept {
 			// Выводим название вида значения
 			return "undefined";
 		// Если значение является пустым
-		case static_cast <uint32_t> (type_t::NUL):
+		case static_cast <uint32_t> (type_t::NIL):
 			// Выводим название вида значения
 			return "null";
 		// Если значение является логическим
@@ -415,9 +415,9 @@ awh::codec::abc::kind_t awh::codec::abc::kind(const type_t type) noexcept {
 	 */
 	switch(static_cast <uint32_t> (type)){
 		// Если значение является пустым
-		case static_cast <uint32_t> (type_t::NUL):
+		case static_cast <uint32_t> (type_t::NIL):
 			// Выводим вид узла
-			return kind_t::NUL;
+			return kind_t::NIL;
 		// Если значение является логическим
 		case static_cast <uint32_t> (type_t::BOOL):
 			// Выводим вид узла

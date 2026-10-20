@@ -2147,7 +2147,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool nul() noexcept;
+					bool nil() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи логического значения

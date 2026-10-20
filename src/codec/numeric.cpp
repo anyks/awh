@@ -133,6 +133,7 @@ namespace {
 		 *          числом не считаются и отвергаются заслоном начала записи, до приведения
 		 *          не доходя вовсе. Снимать его тем не менее нельзя - он последний рубеж
 		 *          перед поведением, договором языка не определённым
+		 *
 		 */
 		if(::isnan(value))
 			// Выводим нулевое число
@@ -150,6 +151,7 @@ namespace {
 		 *       целого: путь целого держит `int64_t` со знаком и `uint64_t` без него, и
 		 *       повторить перенос вне этих границ нечем - там неопределено и приведение
 		 *       самого языка. Числа шире уходят ниже, к пределам вида
+		 *
 		 */
 		if(value == ::trunc(value)){
 			/**
@@ -191,6 +193,7 @@ namespace {
 		 * @warning Округление стоит ПОСЛЕ сличения с пределами вида нарочно: округлить
 		 *          прежде значило бы приводить к целому виду число, ему не отвечающее,
 		 *          а это поведение неопределённое
+		 *
 		 */
 		return static_cast <T> (::round(value));
 	}
@@ -241,6 +244,7 @@ namespace {
 		 *
 		 * @warning Снимать заслон нельзя: без него отказ разбора, оставивший указатель на
 		 *          конце, прошёл бы за успех, и приведению досталось бы неразобранное число
+		 *
 		 */
 		if(!static_cast <bool> (res) && (res.error != awh::lexical_t::error_t::OVERFLOW_RANGE))
 			// Выводим признак неудачного извлечения
@@ -280,6 +284,7 @@ T awh::codec::convert(const double value) noexcept {
  * @note Перечень этот обязан совпадать с перечнем разбора выше буква в букву: извлечение
  *       числа кодеком идёт через оба тела, и вид, у одного из них отсутствующий, откажет
  *       связыванием ровно так же
+ *
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::convert <bool> (const double) noexcept;
 template __AWH_SHARED_EXPORT__ char awh::codec::convert <char> (const double) noexcept;
@@ -336,6 +341,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 	 *
 	 * @note Сличение ведётся прежде целых чисел намеренно: логический вид языком
 	 *       причислен к целым, и без этого «true» бы отвергалось
+	 *
 	 */
 	if constexpr(is_same <T, bool>::value){
 		// Получаем запись без пробельной обвязки
@@ -385,6 +391,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		 *          сличением двух дверей одного кодека: вход `xml::integer` плюс
 		 *          принимал, а извлечение значения узла - нет, и один и тот же текст
 		 *          читался числом либо не читался, смотря какою дверью войти
+		 *
 		 */
 		const string_view value = ((source.front() == '+') ? source.substr(1) : source);
 		/**
@@ -406,6 +413,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		 *
 		 * @note Число начинается цифрой, знаком минуса либо точкой: знак плюса записью
 		 *       числа не принимается, и заслон его отвергает вместе с буквами
+		 *
 		 */
 		{
 			// Положение первого знака записи, знаком минуса не являющегося
@@ -416,6 +424,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 			 * @warning Знак минуса пропускается перед сличением намеренно: заслон,
 			 *          глядевший лишь на первый знак записи, пропускал «-inf» - минус
 			 *          он числу дозволял, а что стоит за минусом, не смотрел вовсе
+			 *
 			 */
 			if((position >= value.length()) ||
 			   !(((value[position] >= '0') && (value[position] <= '9')) || (value[position] == '.')))
@@ -427,6 +436,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		 *
 		 * @note Поиск идёт по записи целиком, а не по одной лишь точке: число `1e3`
 		 *       точки не имеет вовсе, а целым тем не менее не является
+		 *
 		 */
 		bool real = false;
 		/**
@@ -453,6 +463,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 		 *          последнего разряда между режимами `FE_TONEAREST` и `FE_UPWARD`, и
 		 *          извлечение числа делалось зависимым от настройки, кодеку не
 		 *          принадлежащей вовсе
+		 *
 		 */
 		if(!real && !is_floating_point <T>::value){
 			/**
@@ -473,6 +484,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
 					 * @note Отказ по нехватке разрядности отличим от отказа по составу
 					 *       записи кодом причины, и различать их обязательно: запись,
 					 *       целым не вместимая, числом быть не перестаёт
+					 *
 					 */
 					if((res.error != lexical_t::error_t::OVERFLOW_RANGE) || (res.ptr != end))
 						// Выводим признак неудачного разбора
@@ -528,6 +540,7 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
  *
  * @note Перечень ведётся ВИДАМИ ЯЗЫКА и совпадает с перечнями писателей кодеков JSON, XML
  *       и CSV дословно; согласие это и есть договор о поддерживаемых видах числа
+ *
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <bool> (const string_view, bool &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <char> (const string_view, char &) noexcept;

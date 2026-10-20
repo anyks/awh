@@ -146,7 +146,7 @@ namespace {
 			     writer.text("city") && writer.text("Москва") &&
 			     writer.text("id") && writer.number(static_cast <uint64_t> (i)) &&
 			     writer.text("name") && writer.text("Товар") &&
-			     writer.text("note") && writer.nul() && writer.mapEnd()))
+			     writer.text("note") && writer.nil() && writer.mapEnd()))
 				// Выводим нулевой размер собранной записи
 				return 0;
 		}
@@ -172,7 +172,7 @@ namespace {
 		     writer.text("amount") && writer.number(static_cast <double> (42.5)) &&
 		     writer.text("id") && writer.number(static_cast <uint64_t> (17)) &&
 		     writer.text("name") && writer.text("Товар") &&
-		     writer.text("note") && writer.nul() &&
+		     writer.text("note") && writer.nil() &&
 		     writer.text("tags") && writer.arrayBegin(static_cast <uint64_t> (2)) &&
 		     writer.text("один") && writer.text("два") && writer.arrayEnd() && writer.mapEnd()))
 			// Выводим нулевой размер собранной записи

@@ -904,7 +904,7 @@ const awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const stri
  */
 awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const string & name) noexcept {
 	// Если значение вместимым иного вида является
-	if((this->_type != type_t::MAP) && this->valid() && (this->_type != type_t::NUL))
+	if((this->_type != type_t::MAP) && this->valid() && (this->_type != type_t::NIL))
 		// Выводим ссылку на отбросное значение
 		return value_t::scrap();
 	// Если значение отображением ещё не является
@@ -965,7 +965,7 @@ awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const size_t ind
 		// Выводим затребованное значение вместимого
 		return this->_items.at(index);
 	// Если значение вместимым иного вида является
-	if((this->_type != type_t::ARRAY) && this->valid() && (this->_type != type_t::NUL))
+	if((this->_type != type_t::ARRAY) && this->valid() && (this->_type != type_t::NIL))
 		// Выводим ссылку на отбросное значение
 		return value_t::scrap();
 	// Выполняем получение предела роста вместимого
@@ -1001,7 +1001,7 @@ awh::codec::abc::value_t & awh::codec::abc::Value::operator [] (const size_t ind
  */
 bool awh::codec::abc::Value::push(const value_t & value) noexcept {
 	// Если значение вместимым иного вида является
-	if((this->_type != type_t::ARRAY) && this->valid() && (this->_type != type_t::NUL))
+	if((this->_type != type_t::ARRAY) && this->valid() && (this->_type != type_t::NIL))
 		// Сообщаем, что добавление отвечено отказом
 		return false;
 	// Если значение перечнем ещё не является
@@ -1085,7 +1085,7 @@ bool awh::codec::abc::Value::insert(const value_t & name, const value_t & value,
 		// Сообщаем, что добавление отвечено отказом
 		return false;
 	// Если значение вместимым иного вида является
-	if((this->_type != type_t::MAP) && this->valid() && (this->_type != type_t::NUL))
+	if((this->_type != type_t::MAP) && this->valid() && (this->_type != type_t::NIL))
 		// Сообщаем, что добавление отвечено отказом
 		return false;
 	// Если значение отображением ещё не является
@@ -1532,7 +1532,7 @@ void awh::codec::abc::Value::absorb(const document_t::value_t & value) noexcept 
 				task.target->_negative = task.source.negative();
 			} break;
 			// Если значение является пустым
-			case static_cast <uint32_t> (type_t::NUL): break;
+			case static_cast <uint32_t> (type_t::NIL): break;
 			/**
 			 * Если значение является числом родного вида либо отметкой времени
 			 */
@@ -1608,10 +1608,10 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			 *       довода при месте не стояло вовсе. Установлено 04.09.2026
 			 *
 			 */
-			case static_cast <uint32_t> (type_t::NUL):
+			case static_cast <uint32_t> (type_t::NIL):
 			case static_cast <uint32_t> (type_t::UNDEFINED):
 				// Выполняем укладку NULL
-				return writer.nul();
+				return writer.nil();
 			// Если значение является логическим
 			case static_cast <uint32_t> (type_t::BOOL):
 				// Выполняем укладку булевого значения
@@ -1990,7 +1990,7 @@ bool awh::codec::abc::Value::operator == (const value_t & value) const noexcept 
 		 */
 		switch(static_cast <uint32_t> (first._type)){
 			// Если значения отсутствуют либо пусты
-			case static_cast <uint32_t> (type_t::NUL):
+			case static_cast <uint32_t> (type_t::NIL):
 			case static_cast <uint32_t> (type_t::UNDEFINED):
 				// Выводим положительный результат
 				return true;
@@ -2138,9 +2138,9 @@ awh::codec::abc::Value::Value(const kind_t kind) noexcept :
 	 */
 	switch(static_cast <uint8_t> (kind)){
 		// Если заводится пустое значение
-		case static_cast <uint8_t> (kind_t::NUL):
+		case static_cast <uint8_t> (kind_t::NIL):
 			// Устанавливаем тип пустого значения NULL
-			this->_type = type_t::NUL;
+			this->_type = type_t::NIL;
 		break;
 		// Если заводится логическое значение
 		case static_cast <uint8_t> (kind_t::BOOL):
@@ -2782,9 +2782,9 @@ bool awh::codec::abc::Builder::value(const string & value) noexcept {
  * @return признак успешности записи
  *
  */
-bool awh::codec::abc::Builder::nul() noexcept {
+bool awh::codec::abc::Builder::nil() noexcept {
 	// Выводим признак успешности записи пустого значения
-	return this->value(value_t(kind_t::NUL));
+	return this->value(value_t(kind_t::NIL));
 }
 /**
  * @brief Метод извлечения глубины открытых вместилищ

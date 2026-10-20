@@ -945,7 +945,7 @@ void awh::codec::abc::Writer::content(const void * buffer, const size_t size, co
  * @return признак успешности сборки
  *
  */
-bool awh::codec::abc::Writer::nul() noexcept {
+bool awh::codec::abc::Writer::nil() noexcept {
 	// Если место укладки значения негодно
 	if(!this->prepare(false))
 		// Сообщаем, что сборка отвечена отказом
@@ -953,7 +953,7 @@ bool awh::codec::abc::Writer::nul() noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку пустого значения
-	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::NUL));
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::NIL));
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }

@@ -57,10 +57,9 @@
  * STRICT и TEXT у MS Windows. Имена снимаются лишь на время объявлений -
  * возврат в конце файла
  *
- * @warning Препроцессор области видимости не разбирает и заменяет имя даже внутри
- *          «enum class»: объявление обращается в негодное, и сборка встаёт. Замерено
- *          16.09.2026 щупом, подавшим те же макросы ключами собирателя
- *
+ * Препроцессор области видимости не разбирает и заменяет имя даже внутри
+ * «enum class»: объявление обращается в негодное, и сборка встаёт. Замерено
+ * 16.09.2026 щупом, подавшим те же макросы ключами собирателя
  */
 #include "../sys/macro/suppress.hpp"
 
@@ -840,7 +839,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorb(const json::Document::value_t & value, abc::value_t & result, const uint32_t depth) noexcept;
+				[[nodiscard]] bool absorb(const json::document_t::value_t & value, abc::value_t & result, const uint32_t depth) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1069,7 +1068,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedYAML(const abc::value_t & value, yaml::Value & result, const uint32_t depth) noexcept;
+				[[nodiscard]] bool feedYAML(const abc::value_t & value, yaml::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись YAML
@@ -1107,7 +1106,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedTOML(const abc::value_t & value, toml::Value & result, const uint32_t depth) noexcept;
+				[[nodiscard]] bool feedTOML(const abc::value_t & value, toml::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись TOML
@@ -1145,7 +1144,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedXML(const abc::value_t & value, xml::Value & result, const uint32_t depth) noexcept;
+				[[nodiscard]] bool feedXML(const abc::value_t & value, xml::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись XML

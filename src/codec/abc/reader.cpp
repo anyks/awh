@@ -1816,13 +1816,13 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				/**
 				 * Если значение является пустым
 				 */
-				case static_cast <uint8_t> (single_t::NUL): {
+				case static_cast <uint8_t> (single_t::NIL): {
 					// Выполняем сдвиг смещения разбора
 					this->_offset = offset;
 					// Выполняем установку вида события пустого значения
-					record.event = event_t::NUL;
+					record.event = event_t::NIL;
 					// Выполняем установку вида пустого значения
-					record.type = type_t::NUL;
+					record.type = type_t::NIL;
 					// Выполняем выдачу события завершённого значения
 					return this->settle(record);
 				}

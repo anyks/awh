@@ -360,7 +360,7 @@ namespace {
 			     builder.key("amount") && builder.value(static_cast <double> (42.5)) &&
 			     builder.key("id") && builder.value(static_cast <uint64_t> (17)) &&
 			     builder.key("name") && builder.value(string("Товар")) &&
-			     builder.key("note") && builder.nul() &&
+			     builder.key("note") && builder.nil() &&
 			     builder.key("tags") && builder.array() &&
 			     builder.value(string("один")) && builder.value(string("два")) &&
 			     builder.close() && builder.close()))

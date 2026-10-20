@@ -26,6 +26,7 @@
  *          попутными включениями стандартной библиотеки, у иных систем иными:
  *          ровно так сборка встала у MinGW на заголовке «limits» разборщика
  *          доводов запуска. Замерено 16.09.2026 разбором зоны
+ *
  */
 #include <cmath>
 #include <cstdio>
@@ -51,6 +52,7 @@
  *
  * @note Заголовок этот в общий «xml/xml.hpp» не входит, а проверка `nameable`
  *       нужна мосту: имя поля отображения разметке годно не всякое
+ *
  */
 #include <codec/xml/encoding.hpp>
 
@@ -231,6 +233,7 @@ namespace {
 			 * @note Ограждается оно записью своего же кодового значения: иначе имя,
 			 *       потребителем писанное записью `a_x20_b`, обратным чтением
 			 *       обратилось бы в `a b` - знак, коего потребитель не писал
+			 *
 			 */
 			if((code == static_cast <uint32_t> ('_')) && ::escaped(name, i)){
 				// Выполняем добавление ограждённого подчёркивания
@@ -339,7 +342,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является пустым
-		case static_cast <uint32_t> (abc::type_t::NUL):
+		case static_cast <uint32_t> (abc::type_t::NIL):
 			// Выводим пустое значение записью JSON
 			return writer.null();
 		// Если значение является логическим
@@ -418,6 +421,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 					 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
 					 *       числом отвечало отказом при обоих правилах, и настройка различия
 					 *       не делала
+					 *
 					 */
 					if(this->_settings.narrow == narrow_t::TEXT)
 						// Выполняем обращение имени поля в запись
@@ -468,6 +472,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 		 *          перевод, и отказ указывал на изъян записи там, где негоден был
 		 *          вид значения. Прочие пять дорог то же дерево принимали. Замерено
 		 *          17.09.2026 сличением шести дорог
+		 *
 		 */
 		if(::isfinite(result))
 			// Выводим число дробное записью JSON
@@ -509,6 +514,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 		 *       ДО записи имени поля - ход этот спрашивается упреждающе, писателем
 		 *       черновым, и собранное им отбрасывается. У корня же дерева пропускать
 		 *       нечего, и пустое значение там и есть ответ
+		 *
 		 */
 		case static_cast <uint8_t> (narrow_t::SKIP):
 			// Запоминаем признак пропуска значения правилом сужения
@@ -544,6 +550,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 			 *       и какою читают его прочие дороги моста. Без этого правило сужения
 			 *       выражало всякий неведомый вид, КРОМЕ неконечного числа, и перевод
 			 *       валился отказом там, где правило обещало запись
+			 *
 			 */
 			if(value.is(abc::type_t::REAL)){
 				// Извлекаемое число дробное
@@ -576,7 +583,7 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
  * @return       результат укладки
  *
  */
-bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::value_t & result, const uint32_t depth) noexcept {
+bool awh::codec::Bridge::absorb(const json::document_t::value_t & value, abc::value_t & result, const uint32_t depth) noexcept {
 	// Если глубина обхода превысила предел перевода
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -595,9 +602,9 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является пустым
-		case static_cast <uint32_t> (json::type_t::NUL):
+		case static_cast <uint32_t> (json::type_t::NIL):
 			// Выполняем укладку пустого значения
-			result = abc::value_t(abc::kind_t::NUL);
+			result = abc::value_t(abc::kind_t::NIL);
 		// Выводим признак уложенного пустого значения
 		return true;
 		// Если значение является логическим
@@ -716,6 +723,7 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 	 *       именно запись. Накормить `decimal` октетами мосту нечем, не разбирая
 	 *       десятичную запись произвольной длины самому, - а это своё длинное
 	 *       число внутри моста, чего он делать не должен
+	 *
 	 */
 	result = abc::value_t(value.raw());
 	// Сообщаем, что укладка значения выполнена
@@ -743,6 +751,7 @@ bool awh::codec::Bridge::native(const abc::value_t & value) const noexcept {
 	 * @note Пустота остаётся законным исходом у правил НЕСТРОГИХ: обращение в знаки
 	 *       кладёт пустую запись, а пропуск роняет поле, - но исход этот назван
 	 *       правилом, а не выбран молча
+	 *
 	 */
 	return (
 		value.is(abc::type_t::BOOL) ||
@@ -910,6 +919,7 @@ bool awh::codec::Bridge::decodeJSON(const string_view text, abc::value_t & resul
 	 *          держал узлы, `at()` отдавал значения, а разобрано не было ничего.
 	 *          Тот же порок найден 03.09.2026 у `abc::Document::parse`:
 	 *          отказ на середине записи оставлял обломок
+	 *
 	 */
 	result.clear();
 	// Создаём документ записи JSON
@@ -1054,6 +1064,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 	 *          приведения. Замерено 04.09.2026 на образцах разбора - `0.25`
 	 *          ложилось в запись нулём, а `1.5` двойкой, и запись оставалась
 	 *          годной, теряя лишь дробную часть
+	 *
 	 */
 	if(value.is(abc::type_t::REAL) || value.is(abc::type_t::DECIMAL)){
 		// Извлекаемое число дробное
@@ -1073,6 +1084,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 			 *          пропадало целиком. Ход `num/lexical` пишет кратчайшую запись,
 			 *          обратным чтением дающую то же самое число, и чтение у моста
 			 *          идёт им же - дороги записи и чтения обязаны быть одной
+			 *
 			 */
 			const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
 			// Если запись числа дробного выполнить не удалось
@@ -1089,13 +1101,13 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 			 *          запись `3000` - обратное чтение вернуло бы целое, и круг
 			 *          перевода разомкнулся бы на всяком дробном числе с нулевой
 			 *          дробной частью
-			 */
-			/**
+			 *
 			 * @warning Числу НЕКОНЕЧНОМУ точка с нулём не приписывается: записи `nan`
 			 *          и `inf` точки не несут, и правило это обращало их в `nan.0` да
 			 *          `inf.0` - записи, ни одному наречию не принадлежащие и числом
 			 *          обратно не читаемые. Потребитель получал их в записи INI и
 			 *          разметки. Замерено 17.09.2026 сличением шести дорог
+			 *
 			 */
 			if(::isfinite(real) && (result.find('.') == string::npos) && (result.find('e') == string::npos) && (result.find('E') == string::npos))
 				// Выполняем добавление точки со значащим нулём дробной части
@@ -1110,6 +1122,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 	 * @warning Целое без знака спрашивается ПРЕЖДЕ целого со знаком: извлечение
 	 *          со знаком отвечает УСПЕХОМ и заворачивает величину по договору
 	 *          приведения, отчего предел разрядности выходил записью `-1`
+	 *
 	 */
 	if(value.is(abc::type_t::UNSIGNED)){
 		// Извлекаемое целое без знака
@@ -1124,6 +1137,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 	 *
 	 * @note Ходом этим берётся и отметка времени: своего вида у неё ни у одного
 	 *       текстового кодека нет, и записью её служит число октетов времени
+	 *
 	 */
 	int64_t number = 0;
 	// Если значение извлекается целым со знаком
@@ -1148,6 +1162,7 @@ string awh::codec::Bridge::record(const abc::value_t & value) const noexcept {
 		 * @warning Запись идёт `num/lexical` по тому же доводу, что и у ветви
 		 *          дробного выше: `std::to_string` пишет шесть знаков после точки
 		 *          и теряет саму величину, а не разряды
+		 *
 		 */
 		const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), real);
 		// Если запись числа дробного выполнена
@@ -1206,6 +1221,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 	 *          разных ответа на один вопрос об одной и той же обвязке. Замерено
 	 *          15.09.2026 аудитом, закреплено проверкой
 	 *          `CodecBridge.TheSurroundingSpacesDoNotChangeTheKind`
+	 *
 	 */
 	string record = text;
 	// Выполняем очистку записи от обвязки пробелами
@@ -1219,6 +1235,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 	 *
 	 * @note Ведущий нуль допускается лишь у записи `0` самой и у дробной записи
 	 *       вида `0.5`, где он значим
+	 *
 	 */
 	const bool zeroed = (
 		((record.front() == '0') && (record.size() > 1) && (record.at(1) != '.')) ||
@@ -1245,6 +1262,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		 *          разбором. Сняв его, я обратил `18446744073709551616` в дробное
 		 *          `1.8446744073709552e19`, потеряв разряды молча, - закреплённая
 		 *          проверка `CodecBridge.NumberEdges` тем и поймала правку
+		 *
 		 */
 		const bool integral = (record.find_first_of(".eE") == string::npos);
 		// Если запись является целым числом
@@ -1307,7 +1325,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
  * @return       результат подачи
  *
  */
-bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & result, const uint32_t depth) noexcept {
+bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::value_t & result, const uint32_t depth) noexcept {
 	// Выполняем сброс признака пропуска значения правилом сужения
 	this->_skipped = false;
 	// Если глубина обхода превысила предел перевода
@@ -1331,8 +1349,9 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 		 * @warning Значение, заведённое умолчанием, у записи YAML и есть пустое:
 		 *          заводителя пустоты у владеющего значения нет, он принадлежит
 		 *          СТРОИТЕЛЮ, а это иной класс
+		 *
 		 */
-		case static_cast <uint32_t> (abc::type_t::NUL):
+		case static_cast <uint32_t> (abc::type_t::NIL):
 			// Выходим из метода, пустое значение уже заведено
 			return true;
 		// Если значение является логическим
@@ -1344,14 +1363,14 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 				// Выходим из метода, извлечение отвечено отказом
 				return false;
 			// Выполняем заведение логического значения
-			result = yaml::Value(number);
+			result = yaml::value_t(number);
 			// Выходим из метода, пустое значение уже заведено
 			return true;
 		}
 		// Если значение является последовательностью знаков
 		case static_cast <uint32_t> (abc::type_t::STRING): {
 			// Выполняем заведение последовательности знаков
-			result = yaml::Value(value.text());
+			result = yaml::value_t(value.text());
 			// Выходим из метода, пустое значение уже заведено
 			return true;
 		}
@@ -1364,18 +1383,19 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			 *          перечень БЕЗ ЗВЕНЬЕВ доливом не заводится вовсе, и значение
 			 *          оставалось пустым - запись `e: []` уходила записью `e:`,
 			 *          означающей у наречия YAML пустое значение, а не пустой
-			 *          перечень. Обратное чтение возвращало вид NUL вместо ARRAY, и
+			 *          перечень. Обратное чтение возвращало вид NIL вместо ARRAY, и
 			 *          потеря шла МОЛЧА, мимо правила сужения: наречие перечень
 			 *          пустым выразить умеет, и сужать тут нечего. Замерено
 			 *          09.09.2026 аудитом
+			 *
 			 */
-			result = yaml::Value(yaml::kind_t::SEQUENCE);
+			result = yaml::value_t(yaml::kind_t::SEQUENCE);
 			/**
 			 * Выполняем перебор всех значений вместимого
 			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Собираемое значение перечня
-				yaml::Value item;
+				yaml::value_t item;
 				// Выполняем подачу значения вместимого значению перечня
 				if(!this->feedYAML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
@@ -1402,8 +1422,9 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			 * @warning Довод здесь тот же, что и у перечня: отображение БЕЗ ПОЛЕЙ
 			 *          одною вставкой не заводится, и запись `m: {}` уходила записью
 			 *          `m:` - пустым значением наречия. Замерено 09.09.2026 аудитом
+			 *
 			 */
-			result = yaml::Value(yaml::kind_t::MAPPING);
+			result = yaml::value_t(yaml::kind_t::MAPPING);
 			/**
 			 * Выполняем перебор всех полей отображения
 			 */
@@ -1425,6 +1446,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 					 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
 					 *       числом отвечало отказом при обоих правилах, и настройка различия
 					 *       не делала
+					 *
 					 */
 					if(this->_settings.narrow == narrow_t::TEXT)
 						// Выполняем обращение имени поля в запись
@@ -1438,7 +1460,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 					}
 				}
 				// Собираемое значение поля отображения
-				yaml::Value item;
+				yaml::value_t item;
 				// Выполняем подачу значения поля значению отображения
 				if(!this->feedYAML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
@@ -1453,6 +1475,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 				 * @warning Имя кладётся ИСХОДНЫМ, а не записанным по RFC 6901:
 				 *          отменяющая запись есть свойство ПУТИ, а не имени, и
 				 *          ход этот берёт именно имя
+				 *
 				 */
 				if(!result.insert(name, item))
 					// Выходим из метода, добавление отвечено отказом
@@ -1472,6 +1495,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 	 *          и заворачивает величину по договору приведения. Замерено 04.09.2026
 	 *          ворошителем - предел разрядности `18446744073709551615` ложился в
 	 *          запись числом `-1`, и запись оставалась годной
+	 *
 	 */
 	if(value.is(abc::type_t::NUMBER)){
 		// Если значение является целым без знака
@@ -1481,7 +1505,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 			// Если значение извлекается целым без знака
 			if(value.value(digit)){
 				// Выполняем заведение целого без знака
-				result = yaml::Value(digit);
+				result = yaml::value_t(digit);
 				// Выводим результат подачи
 				return true;
 			}
@@ -1491,7 +1515,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 		// Если значение является целым со знаком
 		if(value.is(abc::type_t::SIGNED) && value.value(number)){
 			// Выполняем заведение целого со знаком
-			result = yaml::Value(number);
+			result = yaml::value_t(number);
 			// Выводим результат подачи
 			return true;
 		}
@@ -1500,7 +1524,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 		// Если значение извлекается числом дробным
 		if(value.value(real)){
 			// Выполняем заведение числа дробного
-			result = yaml::Value(real);
+			result = yaml::value_t(real);
 			// Выводим результат подачи
 			return true;
 		}
@@ -1514,6 +1538,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 	 *          потери. Ход этот повторяет ход записи JSON намеренно: разойдись
 	 *          дороги, одно и то же дерево дало бы число у одного вида записи и
 	 *          строку у другого
+	 *
 	 */
 	if(value.is(abc::type_t::TIME)){
 		// Извлекаемая отметка времени
@@ -1521,7 +1546,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 		// Если отметка времени извлекается числом
 		if(value.value(stamp)){
 			// Выполняем заведение отметки времени числом
-			result = yaml::Value(stamp);
+			result = yaml::value_t(stamp);
 			// Выводим результат подачи
 			return true;
 		}
@@ -1544,10 +1569,11 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 		 *          Замерено 04.09.2026 - двоичные данные уходили в запись пустою
 		 *          строкою. Ход этот общий у всех дорог, и обходить его нельзя ни
 		 *          одной
+		 *
 		 */
 		case static_cast <uint8_t> (narrow_t::TEXT): {
 			// Выполняем заведение последовательности знаков
-			result = yaml::Value(this->record(value));
+			result = yaml::value_t(this->record(value));
 			// Выводим результат подачи
 			return true;
 		}
@@ -1577,6 +1603,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 	 *          Замерено: `{a: 17}` прививается лишь по затравке, а без неё
 	 *          отвечает кодом 41. Знаком начала документа затравка взята потому,
 	 *          что содержимого он не задаёт и толкованию не мешает
+	 *
 	 */
 	if(!document.parse(string("---"))){
 		// Запоминаем код отказа перевода
@@ -1585,7 +1612,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 		return false;
 	}
 	// Собираемое владеющее значение записи YAML
-	yaml::Value root;
+	yaml::value_t root;
 	// Выполняем подачу дерева значений владеющему значению
 	if(!this->feedYAML(value, root, 0)){
 		// Если код отказа перевода ещё не запомнен
@@ -1624,6 +1651,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 	 *
 	 *          Само решение садить значение разом замер под сомнение НЕ ставит:
 	 *          оно стоит на двух доводах выше, а не на опровергнутом
+	 *
 	 */
 	if(!root.graft(document)){
 		// Запоминаем код отказа перевода
@@ -1641,6 +1669,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 	 *          Спрос кода отказа стоит у ВСЕХ пяти дорог, а не у одной: правило
 	 *          это общее, и дорога, его обходящая, молчала бы там, где прочие
 	 *          отвечают
+	 *
 	 */
 	if(document.error() != yaml::error_t::NONE){
 		// Запоминаем код отказа перевода
@@ -1655,7 +1684,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
  * @brief Метод подачи значения ABC значению TOML
  *
  * @warning Пустого значения у записи TOML нет ВОВСЕ: запись `a = ` отвергается
- *          самим стандартом. Оттого вид NUL укладывается по правилу сужения, а
+ *          самим стандартом. Оттого вид NIL укладывается по правилу сужения, а
  *          не своим видом, и при умолчании TEXT ложится пустой строкой. Потеря
  *          вида здесь свойством формата вызвана
  *
@@ -1665,7 +1694,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
  * @return       результат подачи
  *
  */
-bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & result, const uint32_t depth) noexcept {
+bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::value_t & result, const uint32_t depth) noexcept {
 	// Выполняем сброс признака пропуска значения правилом сужения
 	this->_skipped = false;
 	// Если глубина обхода превысила предел перевода
@@ -1686,6 +1715,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 	 *          нетронутое значение у них пустым и является; у записи TOML пустого
 	 *          вида нет вовсе, и честный ответ здесь - пропуск. Замерено
 	 *          15.09.2026 аудитом
+	 *
 	 */
 	if(!value.valid()){
 		// Запоминаем признак пропуска значения
@@ -1706,14 +1736,14 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				// Выходим из метода, извлечение отвечено отказом
 				return false;
 			// Выполняем заведение логического значения
-			result = toml::Value(number);
+			result = toml::value_t(number);
 			// Выходим из метода
 			return true;
 		}
 		// Если значение является последовательностью знаков
 		case static_cast <uint32_t> (abc::type_t::STRING): {
 			// Выполняем заведение последовательности знаков
-			result = toml::Value(value.text());
+			result = toml::value_t(value.text());
 			// Выходим из метода
 			return true;
 		}
@@ -1729,14 +1759,15 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			 *          не ложилось ВОВСЕ, хотя наречие запись `x = []` выражает без
 			 *          труда. Довод тот же, что и у дороги YAML. Замерено 15.09.2026
 			 *          аудитом
+			 *
 			 */
-			result = toml::Value(toml::type_t::ARRAY);
+			result = toml::value_t(toml::type_t::ARRAY);
 			/**
 			 * Выполняем перебор всех значений вместимого
 			 */
 			for(size_t i = 0; i < value.size(); i++){
 				// Собираемое значение перечня
-				toml::Value item;
+				toml::value_t item;
 				// Выполняем подачу значения вместимого значению перечня
 				if(!this->feedTOML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
@@ -1763,8 +1794,9 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			 * @warning Довод здесь тот же, что и у перечня: таблица БЕЗ ПОЛЕЙ одною
 			 *          вставкой не заводится, и запись `x = {}` не выходила вовсе -
 			 *          дерево отвечалось отказом `WRITING`. Замерено 15.09.2026 аудитом
+			 *
 			 */
-			result = toml::Value(toml::type_t::TABLE);
+			result = toml::value_t(toml::type_t::TABLE);
 			/**
 			 * Выполняем перебор всех полей отображения
 			 */
@@ -1786,6 +1818,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 					 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
 					 *       числом отвечало отказом при обоих правилах, и настройка различия
 					 *       не делала
+					 *
 					 */
 					if(this->_settings.narrow == narrow_t::TEXT)
 						// Выполняем обращение имени поля в запись
@@ -1799,7 +1832,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 					}
 				}
 				// Собираемое значение поля отображения
-				toml::Value item;
+				toml::value_t item;
 				// Выполняем подачу значения поля значению отображения
 				if(!this->feedTOML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
@@ -1815,6 +1848,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				 *          ПУТИ, а не имени. Ограду же кавычками ставит сам кодек -
 				 *          голое имя ключа по стандарту TOML лишь ASCII, и
 				 *          кириллица кавычек требует
+				 *
 				 */
 				if(!result.insert(name, item))
 					// Выходим из метода, добавление отвечено отказом
@@ -1834,6 +1868,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 	 *          и заворачивает величину по договору приведения. Замерено 04.09.2026
 	 *          ворошителем - предел разрядности `18446744073709551615` ложился в
 	 *          запись числом `-1`, и запись оставалась годной
+	 *
 	 */
 	if(value.is(abc::type_t::NUMBER)){
 		// Если значение является целым без знака
@@ -1849,10 +1884,11 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 			 *          собирателем записи. Замерено 04.09.2026 - предел разрядности
 			 *          выходил записью `top = -1`, годной по виду и неверной по
 			 *          величине
+			 *
 			 */
 			if(value.value(digit) && (digit <= static_cast <uint64_t> (9223372036854775807ULL))){
 				// Выполняем заведение целого без знака
-				result = toml::Value(digit);
+				result = toml::value_t(digit);
 				// Выводим результат подачи
 				return true;
 			}
@@ -1871,7 +1907,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				return true;
 			}
 			// Выполняем заведение записи числа последовательностью знаков
-			result = toml::Value(this->record(value));
+			result = toml::value_t(this->record(value));
 			// Выводим результат подачи
 			return true;
 		}
@@ -1880,7 +1916,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 		// Если значение является целым со знаком
 		if(value.is(abc::type_t::SIGNED) && value.value(number)){
 			// Выполняем заведение целого со знаком
-			result = toml::Value(number);
+			result = toml::value_t(number);
 			// Выводим результат подачи
 			return true;
 		}
@@ -1889,7 +1925,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 		// Если значение извлекается числом дробным
 		if(value.value(real)){
 			// Выполняем заведение числа дробного
-			result = toml::Value(real);
+			result = toml::value_t(real);
 			// Выводим результат подачи
 			return true;
 		}
@@ -1903,6 +1939,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 	 *          потери. Ход этот повторяет ход записи JSON намеренно: разойдись
 	 *          дороги, одно и то же дерево дало бы число у одного вида записи и
 	 *          строку у другого
+	 *
 	 */
 	if(value.is(abc::type_t::TIME)){
 		// Извлекаемая отметка времени
@@ -1910,7 +1947,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 		// Если отметка времени извлекается числом
 		if(value.value(stamp)){
 			// Выполняем заведение отметки времени числом
-			result = toml::Value(stamp);
+			result = toml::value_t(stamp);
 			// Выводим результат подачи
 			return true;
 		}
@@ -1933,10 +1970,11 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 		 *          Замерено 04.09.2026 - двоичные данные уходили в запись пустою
 		 *          строкою. Ход этот общий у всех дорог, и обходить его нельзя ни
 		 *          одной
+		 *
 		 */
 		case static_cast <uint8_t> (narrow_t::TEXT): {
 			// Выполняем заведение последовательности знаков
-			result = toml::Value(this->record(value));
+			result = toml::value_t(this->record(value));
 			// Выводим результат подачи
 			return true;
 		}
@@ -1965,6 +2003,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	 *          да сообщением «empty key name» - потребитель, увидев его, искал
 	 *          изъян в ИМЕНАХ полей, тогда как имена были ни при чём, а негоден
 	 *          был корень. Замерено 15.09.2026 аудитом
+	 *
 	 */
 	if(!value.is(abc::type_t::MAP)){
 		// Запоминаем код отказа перевода
@@ -1993,6 +2032,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	 * @warning Путь посадки задаётся ПЕРЕЧНЕМ КУСКОВ, а не строкою, как у
 	 *          записи YAML: ходы прививки у двух кодеков покуда разной формы, и
 	 *          пустой перечень означает здесь корень документа
+	 *
 	 */
 	if(!root.graft(document, vector <string_view> ())){
 		// Запоминаем код отказа перевода
@@ -2013,6 +2053,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	 *          Прочие настройки собирателя берутся у САМОГО ДОКУМЕНТА ходом
 	 *          `writing()`, а не пишутся здесь заново: написанные заново, они
 	 *          разошлись бы с кодеком молча
+	 *
 	 */
 	settings.writer = document.writing();
 	// Определяем признак нарядной записи
@@ -2033,6 +2074,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	 *          Спрос кода отказа стоит у ВСЕХ пяти дорог, а не у одной: правило
 	 *          это общее, и дорога, его обходящая, молчала бы там, где прочие
 	 *          отвечают
+	 *
 	 */
 	if(document.error() != toml::error_t::NONE){
 		// Запоминаем код отказа перевода
@@ -2062,7 +2104,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
  *          обратному чтению перечнем уже не окажется
  *
  */
-bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result, const uint32_t depth) noexcept {
+bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::value_t & result, const uint32_t depth) noexcept {
 	// Если глубина обхода превысила предел перевода
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -2086,6 +2128,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *          свойств, и круг перестал бы быть неподвижным. Оттого правило
 		 *          таково: отображение из одних лишь простых значений ложится
 		 *          СВОЙСТВАМИ, а отображение, вместилище несущее, - ПОТОМКАМИ
+		 *
 		 */
 		bool nested = false;
 		/**
@@ -2095,6 +2138,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *       укладке, - и оттого узел получает потомка даже тогда, когда прочие
 		 *       поля его просты. Знать о том надо ЗАРАНЕЕ: от этого зависит, ложится
 		 *       ли текст узла текстом либо тоже узлом
+		 *
 		 */
 		const bool marked = (!this->_settings.array.empty() && value.contains(this->_settings.array));
 		/**
@@ -2121,6 +2165,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			 *
 			 * @note Перечень пустой вместилищем ОСТАЁТСЯ: пометка `array` возвращает
 			 *       его перечнем при обратном чтении, и круг на нём замкнут
+			 *
 			 */
 			if((value[i].is(abc::type_t::MAP) && ((value[i].size() > 0) || (this->_settings.empty == empty_t::OBJECT))) ||
 			   (value[i].is(abc::type_t::ARRAY) && (!this->_settings.array.empty() || (value[i].size() > 0)))){
@@ -2145,6 +2190,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *          полями - `value` свойством и `_value` текстом - уложили бы текстом
 		 *          свойство, а текст потеряли вовсе. Замерено 04.09.2026 на образцах
 		 *          разбора
+		 *
 		 */
 		string textual = "";
 		/**
@@ -2186,6 +2232,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *          записанное текстом оно возвращалось бы значением простым - круг
 		 *          перевода СБРАСЫВАЛ уровень за проходом. Замерено 04.09.2026
 		 *          ворошителем
+		 *
 		 */
 		if(value.size() < 2)
 			// Отменяем отбор имени, текст узла несущего
@@ -2204,6 +2251,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 *          `<uijtb>12515</uijtb>`, затем в свойство. Запись при этом
 		 *          оставалась годной, и ползла она медленно - оттого порок был вдвойне
 		 *          тих. Замерено 04.09.2026 ворошителем
+		 *
 		 */
 		for(size_t i = 0; !textual.empty() && (i < marks); i++){
 			// Собираемое имя звена цепи приставок
@@ -2239,6 +2287,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
 				 *       числом отвечало отказом при обоих правилах, и настройка различия
 				 *       не делала
+				 *
 				 */
 				if(this->_settings.narrow == narrow_t::TEXT)
 					// Выполняем обращение имени поля в запись
@@ -2273,6 +2322,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			 *          иначе имя, с цифры начатое, спрашивалось бы правилом сужения и
 			 *          при строгости отвечалось бы отказом, тогда как выразить его
 			 *          разметка МОЖЕТ
+			 *
 			 */
 			if(!name.empty() && (name.front() >= '0') && (name.front() <= '9'))
 				// Выполняем ограждение имени поля записью кодовых значений
@@ -2282,6 +2332,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			 *
 			 * @note Огораживается оно и будучи разметке годным: иначе обратное чтение
 			 *       обратило бы запись, потребителем писанную, в знак, коего он не писал
+			 *
 			 */
 			else if(!name.empty() && (name.find("_x") != string::npos))
 				// Выполняем ограждение имени поля записью кодовых значений
@@ -2297,6 +2348,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			 *          одинаков при всех трёх правилах сужения - при том что правило
 			 *          заведено ровно ради случаев, записи кодека неведомых.
 			 *          Замерено 15.09.2026 аудитом
+			 *
 			 */
 			if(!xml::nameable(name)){
 				// Если вид имени надлежит пропустить вовсе
@@ -2337,6 +2389,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			 *       При прочих правилах пустой узел вернётся значением простым, и
 			 *       отображение пустое разметкою невыразимо - цена тому отказ, запись
 			 *       знаками либо пропуск по настройке, а не молчаливая подмена вида
+			 *
 			 */
 			if(item.is(abc::type_t::MAP) && item.empty()){
 				// Если правило пустого узла велит укладывать отображением
@@ -2347,6 +2400,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 					 * @warning Узел стоит уровня глубины, какого свойство не стоит
 					 *          вовсе: без проверки запись выходила бы годной по виду и
 					 *          нечитаемой обратно
+					 *
 					 */
 					if((depth + 1) > this->_settings.depth){
 						// Запоминаем код отказа перевода
@@ -2355,7 +2409,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 						return false;
 					}
 					// Собираемый узел разметки
-					xml::Value node(name);
+					xml::value_t node(name);
 					// Выполняем добавление узла разметки потомком
 					if(!result.push(node))
 						// Выходим из метода, добавление отвечено отказом
@@ -2396,6 +2450,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *          ворошителем. Оттого при потомках текст ложится УЗЛОМ: имя
 				 *          узла есть имя настройки текста, и обратное чтение отдаёт его
 				 *          полем с тем же именем
+				 *
 				 */
 				if(name == textual){
 					// Если узлу достанется потомок вида пометки перечня
@@ -2411,7 +2466,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 							// Продолжаем перебор полей отображения дальше
 							continue;
 						// Собираемый узел разметки
-						xml::Value node(name);
+						xml::value_t node(name);
 						// Выполняем запись значения содержимым узла
 						if(!node.text(carried))
 							// Выходим из метода, запись отвечена отказом
@@ -2452,6 +2507,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 * @note Узлом же имя это ложится без двусмыслия: пометка есть свойство,
 				 *       и узел, ею названный, за пометку не принимается. Круг на таком
 				 *       дереве становится неподвижен
+				 *
 				 */
 				} else if(!this->_settings.array.empty() && (name == this->_settings.array)) {
 					/**
@@ -2463,6 +2519,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 					 *          же разбор отвечал бы на неё отказом по глубине.
 					 *          Замерено 15.09.2026 ворошителем сразу после правки
 					 *          столкновения имени с пометкой
+					 *
 					 */
 					if((depth + 1) > this->_settings.depth){
 						// Запоминаем код отказа перевода
@@ -2481,7 +2538,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 						// Продолжаем перебор полей отображения дальше
 						continue;
 					// Собираемый узел разметки
-					xml::Value node(name);
+					xml::value_t node(name);
 					// Выполняем запись значения содержимым узла
 					if(!node.text(carried))
 						// Выходим из метода, запись отвечена отказом
@@ -2521,6 +2578,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *          бы значением. Перечень же, звеном своим несущий другой
 				 *          перечень, повтором не выразим и подавно - звенья двух
 				 *          перечней легли бы вперемешку. Оба случая уходят пометкою
+				 *
 				 */
 				bool plain = (item.size() > 1);
 				/**
@@ -2543,6 +2601,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 *          перечень без пометки разметкою и вправду не выразим, но
 				 *          цена тому - отказ либо запись знаками по настройке, а не
 				 *          молчаливая пропажа. Замерено 09.09.2026 аудитом
+				 *
 				 */
 				if(item.empty() && this->_settings.array.empty()){
 					/**
@@ -2562,7 +2621,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 								// Выходим из метода, сборка отвечена отказом
 								return false;
 							// Собираемый узел разметки
-							xml::Value node(name);
+							xml::value_t node(name);
 							// Выполняем запись перечня содержимым узла
 							if(!node.text(carried))
 								// Выходим из метода, запись отвечена отказом
@@ -2582,7 +2641,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				// Если перечень повтором не выразим, а пометка разрешена
 				if(!plain && !this->_settings.array.empty()){
 					// Собираемый узел перечня
-					xml::Value node(name);
+					xml::value_t node(name);
 					// Выполняем подачу перечня узлу разметки
 					if(!this->feedXML(item, node, depth + 1))
 						// Выходим из метода, подача отвечена отказом
@@ -2599,7 +2658,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				 */
 				for(size_t j = 0; j < item.size(); j++){
 					// Собираемый узел разметки
-					xml::Value node(name);
+					xml::value_t node(name);
 					// Выполняем подачу значения вместимого узлу разметки
 					if(!this->feedXML(item[j], node, depth + 1))
 						// Выходим из метода, подача отвечена отказом
@@ -2612,6 +2671,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 					 *          узел, и от перечня уцелевал бы один последний.
 					 *          Замерено: перечень из двух узлов `item` давал в
 					 *          записи один лишь «второй»
+					 *
 					 */
 					if(!result.push(node))
 						// Выходим из метода, добавление отвечено отказом
@@ -2620,7 +2680,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			// Если значением поля оказалось значение обычное
 			} else {
 				// Собираемый узел разметки
-				xml::Value node(name);
+				xml::value_t node(name);
 				// Выполняем подачу значения поля узлу разметки
 				if(!this->feedXML(item, node, depth + 1))
 					// Выходим из метода, подача отвечена отказом
@@ -2635,7 +2695,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		return true;
 	}
 	// Если значение является пустым
-	if(value.is(abc::type_t::NUL))
+	if(value.is(abc::type_t::NIL))
 		// Выходим из метода, узел остаётся пустым
 		return true;
 	// Если значение вместимым верхнего уровня не оказалось
@@ -2664,6 +2724,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 	 * @warning Обнос звеньев обязателен и при звене простом: пометка велит
 	 *          обратному чтению собирать перечень из ПОТОМКОВ узла, а текст узла
 	 *          потомком разметки не является - перечень вышел бы пустым
+	 *
 	 */
 	if(!this->_settings.array.empty()){
 		// Выполняем пометку узла перечнем
@@ -2675,7 +2736,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Собираемый узел звена перечня
-			xml::Value node(this->_settings.item);
+			xml::value_t node(this->_settings.item);
 			// Выполняем подачу значения звена узлу разметки
 			if(!this->feedXML(value[i], node, depth + 1))
 				// Выходим из метода, подача отвечена отказом
@@ -2693,6 +2754,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 	 *
 	 * @warning Имени у такого вместилища нет, и одноимённых узлов из него не
 	 *          собрать: разметка перечня без имени выразить не может
+	 *
 	 */
 	switch(static_cast <uint8_t> (this->_settings.narrow)){
 		// Если вид надлежит пропустить вовсе
@@ -2750,6 +2812,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	 *          успех, и вложенный перечень уходил в запись пустым узлом `<a/>`,
 	 *          обратным же чтением пропадал вовсе. Потребитель, имя пометки
 	 *          обнуливший, терял содержимое МОЛЧА. Замерено 17.09.2026 аудитом
+	 *
 	 */
 	if(this->_settings.root.empty() || !xml::nameable(this->_settings.root) ||
 	   this->_settings.item.empty() || !xml::nameable(this->_settings.item) ||
@@ -2783,6 +2846,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	 * @note Спрашивается сам ход `carryable`, а не догадка о нём: уронить значение
 	 *       могут два разных правила - вид, записи неведомый, и знак, разметке
 	 *       негодный, - и повторять их здесь значило бы завести второй свод правил
+	 *
 	 */
 	bool dropped = false;
 	// Если правило сужения велит пропускать, а поле вместилищем не является
@@ -2823,13 +2887,14 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	 *          знаки и пропадало вовсе при пропуске - то есть обнос корня отменял
 	 *          правило сужения, мимо которого husk проходил. Замерено 17.09.2026
 	 *          щупом сличения одиночного поля с полем при соседе
+	 *
 	 */
 	if(!dropped && value.is(abc::type_t::MAP) && (value.size() == 1)){
 		// Получаем ссылку на значение единственного поля отображения
 		const abc::value_t & sole = value[static_cast <size_t> (0)];
 		// Если значение поля узла без содержимого не минует
 		dropped = (
-			!sole.valid() || sole.is(abc::type_t::NUL) ||
+			!sole.valid() || sole.is(abc::type_t::NIL) ||
 			(sole.is(abc::type_t::STRING) && sole.text().empty()) ||
 			((sole.is(abc::type_t::MAP) || sole.is(abc::type_t::ARRAY)) && (sole.size() == 0))
 		);
@@ -2851,6 +2916,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 			 *          соседом ложилось узлом `Item3` при всех правилах - сужение на
 			 *          него не спрашивалось вовсе, ибо приставка имя выправляла.
 			 *          Приставка накладывается ДО поверки, ровно как у полей
+			 *
 			 */
 			if(!local.empty() && (local.front() >= '0') && (local.front() <= '9'))
 				// Выполняем ограждение имени поля записью кодовых значений
@@ -2874,6 +2940,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 			 * @note Правило то же, что и у полей: пропуск оставляет корень настройке
 			 *       - содержимое поля тогда уходит целиком, ибо пропущено само поле,
 			 *       - строгость отвечает отказом, а обращение в знаки правит имя
+			 *
 			 */
 			if(!xml::nameable(local)){
 				// Если сужение велит отвечать отказом
@@ -2913,13 +2980,14 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 				 *          выходила годной и пустой, `<Item3/>` вместо
 				 *          `<Item3 a="1"/>`. Поле здесь единственное, и порядок его
 				 *          заведомо нулевой
+				 *
 				 */
 				content = &value[static_cast <size_t> (0)];
 			}
 		}
 	}
 	// Собираемый корневой узел записи XML
-	xml::Value root(name);
+	xml::value_t root(name);
 	/**
 	 * Выполняем подачу дерева значений корневому узлу
 	 *
@@ -2929,6 +2997,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	 *          потомком. Начни мы с нуля - запись собиралась бы на уровень глубже
 	 *          дозволенного, и разбор своего же перевода отвечал бы отказом по
 	 *          глубине. Замерено 04.09.2026 ворошителем при пределе в два уровня
+	 *
 	 */
 	if(!this->feedXML(* content, root, 1)){
 		// Если код отказа перевода ещё не запомнен
@@ -2956,6 +3025,7 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 	 *          негодным, переводилось успехом и записью пустою. Общий заслон
 	 *          пустой записи этого не ловил: при правиле сужения `SKIP` пустая
 	 *          запись законна, и заслон её пропускал
+	 *
 	 */
 	if(document.error() != xml::error_t::NONE){
 		// Запоминаем код отказа перевода
@@ -2999,6 +3069,7 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
 	 *          доживал до следующего, и пропуск одного поля уносил ВСЕХ соседей за
 	 *          ним. Замерено 15.09.2026 на первом же прогоне закрепляющей проверки -
 	 *          запись выходила пустым узлом `<config/>` вместо одного лишь пропуска
+	 *
 	 */
 	this->_skipped = false;
 	/**
@@ -3011,6 +3082,7 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
 	 *          скрывала порок: судьбу значения решало СОДЕРЖИМОЕ октетов, а не
 	 *          вид его. Спрос о виде стоит у всех пяти дорог, и разметка обязана
 	 *          спрашивать его прежде знаков. Замерено 15.09.2026 аудитом
+	 *
 	 */
 	if(!this->native(value)){
 		// Если вид надлежит пропустить вовсе
@@ -3132,6 +3204,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 	 *          собранной, а разбору своего же перевода не поддавалась. Замерено
 	 *          04.09.2026 ворошителем при пределе в один уровень: запись
 	 *          собиралась, разбор отвечал отказом по глубине
+	 *
 	 */
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -3147,6 +3220,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 	 *          из одного такого поля давало запись пустую, и отказ на неё выдавал
 	 *          общий заслон пустой записи, довод подменяя. Замерено 15.09.2026
 	 *          аудитом
+	 *
 	 */
 	if(!value.valid()){
 		// Запоминаем признак пропуска значения
@@ -3164,6 +3238,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 		 *          ниже. Не считай мы уровень этот здесь - запись собиралась бы, а
 		 *          разбор своего же перевода отвечал бы отказом по глубине.
 		 *          Замерено 04.09.2026 ворошителем при пределе в два уровня
+		 *
 		 */
 		if((depth + 1) > this->_settings.depth){
 			// Запоминаем код отказа перевода
@@ -3183,6 +3258,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 		 *          неотличима вовсе - оттого цена тому отказ либо запись знаками
 		 *          по настройке, а не молчаливая пропажа. Замерено 09.09.2026
 		 *          аудитом
+		 *
 		 */
 		if(value.empty()){
 			// Если вид надлежит пропустить вовсе
@@ -3263,6 +3339,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 	 *          выразимое, на этой дороге молчала, а обещающая пропуск - писала.
 	 *          Замерено 15.09.2026 аудитом: дерево с двоичным полем ложилось
 	 *          записью при всех трёх правилах
+	 *
 	 */
 	if(!this->native(value)){
 		// Если вид надлежит пропустить вовсе
@@ -3321,6 +3398,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	 *          у записи INI всё, что стоит после объявления раздела, разделу
 	 *          тому и принадлежит. Запиши мост их последними - они оказались бы
 	 *          свойствами последнего раздела, а не верхнего уровня
+	 *
 	 */
 	for(size_t i = 0; i < value.size(); i++){
 		// Извлекаемое имя поля отображения
@@ -3340,6 +3418,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 			 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
 			 *       числом отвечало отказом при обоих правилах, и настройка различия
 			 *       не делала
+			 *
 			 */
 			if(this->_settings.narrow == narrow_t::TEXT)
 				// Выполняем обращение имени поля в запись
@@ -3388,6 +3467,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 		 *          Разбор имён СВОЙСТВ был правлен прежде, а имён РАЗДЕЛОВ - нет:
 		 *          весь остаток отказов «запись» у дороги INI оказался именно ими.
 		 *          Замерено 15.09.2026 ворошителем
+		 *
 		 */
 		if(!document.create(name)){
 			// Если отказ разобран правилом сужения
@@ -3447,6 +3527,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	 *          кодека INI: дерево отвергает лишь то, чего не сделает записываемым
 	 *          НИ ОДНА настройка, и перевод строки к тому разряду не принадлежит -
 	 *          стало быть, выбрать настройку обязан ЗОВУЩИЙ
+	 *
 	 */
 	settings.writer = document.writing();
 	// Устанавливаем признак укладки отменяющими записями
@@ -3459,6 +3540,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	 *          МОЖЕТ: он не украшение, а единственный способ наречия записать
 	 *          значение со знаком конца строки, и снятие его унесло бы значения, а
 	 *          не пробелы
+	 *
 	 */
 	{
 		// Определяем признак нарядной записи
@@ -3480,6 +3562,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	 *          Спрос кода отказа стоит у ВСЕХ пяти дорог, а не у одной: правило
 	 *          это общее, и дорога, его обходящая, молчала бы там, где прочие
 	 *          отвечают
+	 *
 	 */
 	if(document.error() != ini::error_t::NONE){
 		// Запоминаем код отказа перевода
@@ -3516,7 +3599,7 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 	// Выполняем очистку укладываемого значения
 	result.clear();
 	// Выполняем извлечение значения документа YAML по пути
-	const yaml::Document::Value & value = document.at(path);
+	const yaml::document_t::value_t & value = document.at(path);
 	// Если значение документа YAML недействительно
 	if(!value.valid())
 		// Выходим из метода, укладывать нечего
@@ -3526,9 +3609,9 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 	 */
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является пустым
-		case static_cast <uint32_t> (yaml::type_t::NUL): {
+		case static_cast <uint32_t> (yaml::type_t::NIL): {
 			// Выполняем укладку пустого значения
-			result = abc::value_t(abc::kind_t::NUL);
+			result = abc::value_t(abc::kind_t::NIL);
 			// Выводим признак уложенного пустого значения
 			return true;
 		}
@@ -3579,6 +3662,7 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 				 *          кодек ждёт путь по RFC 6901, а контейнер ABC хранит имя
 				 *          исходное. Смешение этих двух видов теряет имена с косой
 				 *          чертой молча
+				 *
 				 */
 				if(!this->absorbYAML(document, path + "/" + link, result[this->unescape(link)], depth + 1))
 					// Выходим из метода, укладка отвечена отказом
@@ -3633,6 +3717,7 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
 	 * @warning Ход этот берёт на себя и вид STRING, и всякий вид, мостом не
 	 *          разобранный: запись YAML несёт метки (`!!binary`, `!!timestamp`),
 	 *          под которые у контейнера ABC свои виды, а у моста разбора пока нет
+	 *
 	 */
 	result = abc::value_t(string(value.text()));
 	// Выводим результат укладки
@@ -3648,6 +3733,8 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
  */
 bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & result) noexcept {
 	/**
+	 * Создаём документ записи YAML
+	 *
 	 * @warning Обход ведётся ходом `keys()`, и это верно ПОКУДА разбор держит
 	 *          умолчание: YAML 1.2 требует имена пар отображения уникальными, и
 	 *          умолчание повтор ОТВЕРГАЕТ, так что до моста он не доходит вовсе.
@@ -3658,8 +3745,8 @@ bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & resul
 	 *          стоит вне стандарта, и разомкнутость есть цена его, а не порок
 	 *          хода. Понадобится KEEP - брать пары перебором по номеру, а не
 	 *          обходом по звеньям
+	 *
 	 */
-	// Создаём документ записи YAML
 	yaml::document_t document;
 	// Выполняем разбор поданной записи YAML
 	if(!document.parse(string(text))){
@@ -3725,6 +3812,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 *
 	 * @note Свойства и текст берутся здесь лишь у узлов ВНУТРИ записи; корневой
 	 *       узел свои отдаёт на следующем витке обхода, придя туда потомком
+	 *
 	 */
 	const bool outer = path.empty();
 	// Выполняем извлечение перечня свойств узла разметки
@@ -3746,6 +3834,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 * @warning Пустота перечня звеньев признаком простого значения НЕ является:
 	 *          текстовое содержимое узла тоже ПОТОМОК и тоже звено. Признак
 	 *          берётся видом каждого потомка, а не их числом
+	 *
 	 */
 	for(auto & link : links){
 		// Выполняем извлечение потомка по звену пути
@@ -3783,6 +3872,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 * @details Узел этот прост, и ложится он ЗНАЧЕНИЕМ своим, а не отображением:
 	 *          обносить его отображением значило бы городить уровень, в записи
 	 *          не стоявший
+	 *
 	 */
 	if(children.empty() && (outer || attributes.empty())){
 		// Извлекаемый текст узла разметки
@@ -3795,6 +3885,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		 *          настройкою: согласия в мире нет, а `<NewEnabled/>` у настроек
 		 *          означает «включено», тогда как у разметки текста он значит
 		 *          пустую запись
+		 *
 		 */
 		if(text.empty() && !outer){
 			/**
@@ -3811,6 +3902,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 			 *       мирит два образца, требовавших умолчаний ПРОТИВОПОЛОЖНЫХ:
 			 *       журнал событий Windows кладёт `<Correlation/>` истиной, а
 			 *       перечень восьмого образца — пустою строкою
+			 *
 			 */
 			if(slot){
 				// Выполняем укладку звена перечня пустою последовательностью знаков
@@ -3830,7 +3922,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 				// Если пустой узел ложится пустым значением
 				case static_cast <uint8_t> (empty_t::NONE):
 					// Выполняем укладку узла пустым значением
-					result = abc::value_t(abc::kind_t::NUL);
+					result = abc::value_t(abc::kind_t::NIL);
 				break;
 				// Если пустой узел ложится пустою последовательностью знаков
 				case static_cast <uint8_t> (empty_t::STRING):
@@ -3860,6 +3952,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 *          вложенный в другой перечень, повтора не дают вовсе. Без пометки
 	 *          запись `[[1,2],[3]]` возвращалась отображением с полями обноса, и
 	 *          круг перевода не замыкался ни на одном проходе
+	 *
 	 */
 	bool marked = false;
 	// Если пометка перечня настройками разрешена
@@ -3882,6 +3975,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 *
 	 * @note Имена потомков здесь ЗНАЧЕНИЯ не имеют: перечень выражается их
 	 *       порядком, а имя всякому из них дано обносом при записи
+	 *
 	 */
 	if(marked){
 		// Выполняем заведение перечня контейнера ABC
@@ -3919,6 +4013,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 *          выражала бы их отличие ценою искажения имени, тогда как запись
 	 *          `<net host="localhost"/>` и запись `<net><host>localhost</host></net>`
 	 *          суть два написания одного и того же содержимого настроек
+	 *
 	 */
 	if(!outer){
 		/**
@@ -3936,6 +4031,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 			 *          поле МОЛЧА, и круг перевода полз: узел пустел, а пустой узел
 			 *          обратным чтением обращался в значение по настройке. Замерено
 			 *          04.09.2026 ворошителем
+			 *
 			 */
 			if(marked && !this->_settings.array.empty() && fmk::compare(this->_settings.array, name))
 				// Продолжаем перебор свойств узла дальше
@@ -3951,6 +4047,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 	 *          лечь уже не может - место занято отображением свойств. Имя поля
 	 *          берётся настройкою и при столкновении с одноимённым свойством
 	 *          получает приставку `_` столько раз, сколько нужно
+	 *
 	 */
 	if(children.empty()){
 		// Извлекаемый текст узла разметки
@@ -4048,7 +4145,7 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 	// Выполняем очистку укладываемого значения
 	result.clear();
 	// Выполняем извлечение значения документа TOML по пути
-	const toml::Value & value = document.at(path);
+	const toml::value_t & value = document.at(path);
 	// Если значение документа TOML недействительно
 	if(!value.valid())
 		// Выходим из метода, укладывать нечего
@@ -4148,6 +4245,7 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 	 * @note Начертание собирается ПИСАТЕЛЕМ кодека, а не мостом: правила записи
 	 *       четырёх видов времени живут у него, и повторённые здесь разошлись бы
 	 *       с ним молча
+	 *
 	 */
 	if(value.is(toml::type_t::OFFSET_DATETIME) || value.is(toml::type_t::LOCAL_DATETIME) ||
 	   value.is(toml::type_t::LOCAL_DATE) || value.is(toml::type_t::LOCAL_TIME)){
@@ -4161,6 +4259,7 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
 		 *          content after the record». Имя здесь подставное, и начертание
 		 *          отметки берётся хвостом записи за первым знаком равенства - иного
 		 *          хода, отдающего начертание отметки одно, у кодека нет
+		 *
 		 */
 		if(writer.key(string_view("x")) && writer.stamp(value.stamp(), value.type())){
 			// Собранная писателем запись свойства
@@ -4278,6 +4377,7 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 		 *          поставлены были ровно ради обратного. Круг перевода на таких
 		 *          значениях размыкался: мост писал их в кавычках, а читал числами.
 		 *          Замерено 15.09.2026 аудитом
+		 *
 		 */
 		const ini::value_t item = document.at(path);
 		// Если запись свойства взята в кавычки, она есть последовательность знаков
@@ -4305,6 +4405,7 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 	 *       их мосту нечем. Двусмысленность эта принадлежит записи путей кодека, а
 	 *       не мосту, и цену её - потеря имён, числами и бывших, - платить дешевле,
 	 *       чем потерю ВСЯКОГО раздела, чьё первое свойство названо числом
+	 *
 	 */
 	bool array = true;
 	/**
@@ -4363,6 +4464,7 @@ bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result
 	 *          удваивалась бы с каждым проходом. Замерено 15.09.2026 сразу
 	 *          после включения отмен у записи: правка одной стороны без другой
 	 *          испортила бы значения, прежде ходившие через круг без потерь
+	 *
 	 */
 	ini::document_t::settings_t settings;
 	// Устанавливаем признак разбора отменяющих записей
@@ -4411,6 +4513,7 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 	 *
 	 * @note Пустая запись при пустом дереве отказом НЕ считается, равно как и
 	 *       при правиле сужения `SKIP`: там пустота есть законный исход
+	 *
 	 */
 	auto guardFn = [this, &value, &result](const bool ok) noexcept -> bool {
 		/**
@@ -4421,6 +4524,7 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		 *          выглядит это как отказ без причины вовсе. Замерено 04.09.2026
 		 *          ворошителем - 5291 отказ из 37 463 приходил без кода, ибо часть
 		 *          путей отдаёт отказ собирателя записи, своего кода не запомнив
+		 *
 		 */
 		if(!ok){
 			// Если код отказа перевода не запомнен
@@ -4451,6 +4555,7 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		 *          Замерено 15.09.2026 ворошителем: весь остаток отказов «запись» у
 		 *          дорог TOML и INI оказался деревом из одного недействительного
 		 *          поля, и вина указывалась на кодек, ни при чём не бывший
+		 *
 		 */
 		this->_error = error_t::UNSUPPORTED;
 		// Выводим сообщение о пустой записи при непустом дереве
@@ -4516,6 +4621,7 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 	 *          дерево очищалось и при неведомом виде записи тоже: иначе
 	 *          потребитель, признака не проверивший, работал бы с ПРЕЖНИМ
 	 *          своим деревом как с новым
+	 *
 	 */
 	result.clear();
 	/**
@@ -4591,4 +4697,5 @@ void awh::codec::Bridge::settings(const settings_t & settings) noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::Bridge::Bridge() noexcept : _skipped(false), _error(error_t::NONE) {}
+awh::codec::Bridge::Bridge() noexcept :
+ _skipped(false), _error(error_t::NONE) {}

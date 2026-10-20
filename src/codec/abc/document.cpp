@@ -694,7 +694,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 	 */
 	switch(static_cast <uint32_t> (value.type)){
 		// Если значение является пустым
-		case static_cast <uint32_t> (type_t::NUL): break;
+		case static_cast <uint32_t> (type_t::NIL): break;
 		/**
 		 * Если значение является логическим
 		 */
@@ -983,9 +983,9 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 		 */
 		switch(static_cast <uint32_t> (node.type)){
 			// Если значение является пустым
-			case static_cast <uint32_t> (type_t::NUL):
+			case static_cast <uint32_t> (type_t::NIL):
 				// Выполняем укладку NULL значения
-				result = writer.nul();
+				result = writer.nil();
 			break;
 			// Если значение является логическим
 			case static_cast <uint32_t> (type_t::BOOL):

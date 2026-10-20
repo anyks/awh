@@ -904,7 +904,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool nul() noexcept;
+					[[nodiscard]] bool nil() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки логического значения

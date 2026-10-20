@@ -284,7 +284,7 @@ namespace {
 		 */
 		switch(kind){
 			// Если строится пустое значение
-			case 0: return writer.nul();
+			case 0: return writer.nil();
 			// Если строится логическое значение
 			case 1: return writer.boolean(number(0, 1) == 1);
 			// Если строится целое со знаком

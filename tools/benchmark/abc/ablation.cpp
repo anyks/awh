@@ -261,7 +261,7 @@ static bool writing(const rival::scene_t scene, std::string & record) noexcept {
 				 writer.text(fields[2]) && writer.text(object.city) &&
 				 writer.text(fields[3]) && writer.number(object.id) &&
 				 writer.text(fields[4]) && writer.text(object.name) &&
-				 writer.text(fields[5]) && writer.nul() && writer.mapEnd());
+				 writer.text(fields[5]) && writer.nil() && writer.mapEnd());
 			}
 			// Если укладка записей успешна
 			if(result)
@@ -384,7 +384,7 @@ static void walk(const awh::codec::abc::document_t::value_t & value) noexcept {
 	 */
 	switch(static_cast <uint8_t> (value.kind())){
 		// Если значение является пустым
-		case static_cast <uint8_t> (awh::codec::abc::kind_t::NUL):
+		case static_cast <uint8_t> (awh::codec::abc::kind_t::NIL):
 			// Выполняем учёт прочитанного пустого значения
 			rival::nothing();
 		break;
