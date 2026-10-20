@@ -111,236 +111,224 @@ namespace {
 	static constexpr double ROUND_DEADLINE = 5.0;
 
 	/**
-	 * @brief Структура состояния прогона сценария
+	 * @brief Структура состояния полного цикла подключения
 	 *
 	 */
 	typedef struct State {
-		// Флаг остановки цикла событий
-		bool stop;
-		// Флаг активности замера
-		bool measuring;
-		// Флаг завершения текущего цикла подключения
+		// Признак подтверждения подключения клиента
 		bool ready;
-		// Флаг несостоявшегося подключения текущего круга
-		bool refused;
-		// Количество выполненных циклов прогрева
-		size_t warmed;
-		// Количество выполненных циклов замера
-		size_t done;
-		// Идентификатор события текущего подключения
+		// Причина прекращения прогона
+		const char * failure;
+		// Идентификатор текущего клиента
 		awh::event::id_t client;
-		// Список принятых сервером подключений, подлежащих освобождению
-		vector <awh::event::id_t> accepted;
-		// Момент начала замера
-		std::chrono::steady_clock::time_point start;
-		// Момент окончания замера
-		std::chrono::steady_clock::time_point finish;
+		// Идентификатор принятого подключения
+		awh::event::id_t peer;
+		// Количество успешных подключений клиента
+		size_t connected;
+		// Количество принятых сервером подключений
+		size_t accepted;
+		// Количество полностью освобождённых событий
+		size_t closed;
+		// Количество полных циклов прогрева
+		size_t warmed;
+		// Количество полных измеренных циклов
+		size_t done;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit State() noexcept :
-		 stop(false), measuring(false), ready(false), refused(false),
-		 warmed(0), done(0), client(0) {}
+		 ready(false), failure(nullptr), client(0), peer(0), connected(0), accepted(0), closed(0), warmed(0), done(0) {}
 	} state_t;
 
 	/**
-	 * @brief Функция прогона сценария установления соединений
+	 * @brief Функция прогона полных циклов установления соединений
 	 *
-	 * @details Циклы выполняются последовательно: следующее подключение
-	 *          создаётся только после освобождения предыдущего с обеих сторон.
-	 *          Замер включает создание события, подключение, принятие его
-	 *          сервером и освобождение обоих событий - то есть полную стоимость
-	 *          обслуживания короткоживущего соединения. Освобождение выполняется
-	 *          вне функций обратного вызова: движок вправе обращаться к
-	 *          состоянию события после их возврата
+	 * @details Следующий клиент создаётся после успешного подключения,
+	 *          принятия сервером и фактического освобождения обеих сторон.
+	 *          Отложенное удаление AWH завершается опросом вне callback.
+	 *          Любой неполный прогон возвращает пустой результат
 	 *
-	 * @return итоги прогона сценария
+	 * @return итоги полного прогона либо пустой результат при отказе
 	 *
 	 */
 	static outcome_t handshake() noexcept {
 		// Итоги прогона сценария
 		outcome_t result;
-		// Состояние прогона сценария
+		// Состояние текущего цикла и общие счётчики
 		state_t state;
-		// Резервируем память под список принятых подключений
-		state.accepted.reserve(16);
-		// Создаём объект асинхронного движка ввода-вывода
+		// Создаём движок событий
 		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
-		// Добавляем новое событие сервера
+		// Создаём событие сервера
 		const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-		// Устанавливаем порт события сервера
-		io.setSourcePort(server, number);
-		// Если инициализация движка не выполнена
-		if(!io.initialize())
-			// Выводим пустые итоги прогона
-			return result;
-		// Устанавливаем опции события сервера
-		io.setOptions(server, options());
-		// Устанавливаем адрес события сервера
-		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
-		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
-			// Запоминаем принятое подключение для освобождения
-			state.accepted.push_back(cid);
+		// Проверяем создание и настройку сервера
+		if((server == 0) || !io.setSourcePort(server, number) || !io.initialize() || !io.setOptions(server, options()) || !io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"))
+			// Запоминаем отказ подготовки
+			state.failure = "server-setup";
+		// Подтверждаем принятие именно текущего цикла
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			// Не допускаем второй peer и приём вне активного цикла
+			if((state.client == 0) || (state.peer != 0) || (state.failure != nullptr)){
+				// Сохраняем первый отказ
+				if(state.failure == nullptr)
+					// Отмечаем нарушение последовательности
+					state.failure = "unexpected-accept";
+				// Освобождаем лишнее подключение
+				io.destroy(cid);
+				// Прекращаем обработку
+				return;
+			}
+			// Сохраняем принятое событие до общего закрытия
+			state.peer = cid;
+			// Учитываем серверную сторону
+			state.accepted++;
 		}));
-		// Выполняем фиксацию настроек события сервера
-		io.commit(server);
-		// Переводим событие сервера в режим прослушивания
-		io.listen(server, BACKLOG);
-		// Запускаем событие сервера
-		io.launch(server);
+		// Запускаем слушающий сервер только после успешной подготовки
+		if((state.failure == nullptr) && (!io.commit(server) || !io.listen(server, BACKLOG) || !io.launch(server)))
+			// Запоминаем отказ запуска
+			state.failure = "server-launch";
+		// Момент начала измеряемой части
+		auto start = std::chrono::steady_clock::time_point{};
+		// Момент окончания измеряемой части
+		auto finish = start;
 		/**
-		 * @brief Функция запуска очередного цикла подключения
-		 *
+		 * Выполняем полные циклы прогрева и измерения
 		 */
-		auto launch = [&io, &state, number]() noexcept -> void {
-			// Добавляем новое событие клиента
-			state.client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-			// Устанавливаем порт назначения события клиента
-			io.setTargetPort(state.client, number);
-			/**
-			 * Устанавливаем опции события клиента вместе с немедленным обрывом соединения
-			 *
-			 * @note Сценарий расходует по динамическому порту на круг, и без этой
-			 *       опции каждый из них остаётся в TIME_WAIT на тридцать секунд.
-			 *       Пул таких портов - шестнадцать тысяч, и на измеряемом здесь
-			 *       темпе он выбирается за считанные секунды: подключение начинает
-			 *       отказывать, и сценарий обрывается, не досчитав кругов
-			 */
-			io.setOptions(state.client, options() | awh::event::options::HARD_CLOSE);
-			// Устанавливаем адрес привязки события клиента
-			io.setAddress(state.client, awh::event::address_t::IPV4, "0.0.0.0");
-			// Устанавливаем адрес назначения события клиента
-			io.setTarget(state.client, "127.0.0.1");
-			// Устанавливаем функцию обратного вызова на подключение клиента
-			io.on(state.client, static_cast <awh::engine::callback::connect_t> ([&state]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
-				// Запоминаем исход подключения: несостоявшееся подключение засчитывать за принятое нельзя
-				state.refused = !ok;
-				// Отмечаем завершение текущего цикла подключения
-				state.ready = true;
-			}));
-			// Выполняем фиксацию настроек события клиента
-			io.commit(state.client);
-			// Выполняем подключение клиента к серверу
-			io.connect(state.client);
-			// Запускаем событие клиента
-			io.launch(state.client);
-		};
-		// Запускаем первый цикл подключения
-		launch();
-		/**
-		 * Выполняем опрос событий до выполнения требуемого количества циклов
-		 */
-		// Момент завершения последнего круга подключения
-		auto tick = std::chrono::steady_clock::now();
-		while(!state.stop){
-			// Если опрос событий завершился ошибкой
-			if(!io.poll(POLL_TIMEOUT))
-				// Прекращаем прогон сценария
-				break;
-			// Если текущий цикл подключения ещё не завершён
-			if(!state.ready){
-				// Если круг подключения не завершился в отведённый срок
-				if(std::chrono::duration <double> (std::chrono::steady_clock::now() - tick).count() > ROUND_DEADLINE){
-					// Сообщаем о незавершившемся круге: молча усечённый прогон читался бы как полный
-					::fprintf(stderr, "accept: круг подключения не завершился за %.0f с, выполнено кругов: прогрева %zu, замера %zu\n", ROUND_DEADLINE, state.warmed, state.done);
-					// Прекращаем прогон сценария
-					break;
-				}
-				// Ожидаем завершения текущего цикла подключения
-				continue;
+		for(size_t round = 0; (round < (WARMUP_ROUNDS + ACCEPT_ROUNDS)) && (state.failure == nullptr); round++){
+			// Открываем окно перед созданием первого измеряемого клиента
+			if(round == WARMUP_ROUNDS){
+				// Включаем учёт выделений
+				awh::benchmark::counting(true);
+				// Включаем учёт системных вызовов
+				awh::benchmark::syscall::counting(true);
+				// Запоминаем начало измерения
+				start = std::chrono::steady_clock::now();
 			}
-			// Сбрасываем флаг завершения текущего цикла подключения
+			// Сбрасываем подтверждение предыдущего клиента
 			state.ready = false;
-			// Запоминаем момент завершения круга подключения
-			tick = std::chrono::steady_clock::now();
-			// Освобождаем событие клиента
-			io.destroy(state.client);
-			/**
-			 * Освобождаем принятые сервером подключения
-			 */
-			for(auto & id : state.accepted)
-				// Освобождаем принятое подключение
-				io.destroy(id);
-			// Очищаем список принятых подключений
-			state.accepted.clear();
-			/**
-			 * Если подключение круга не состоялось, прогон прекращается
-			 *
-			 * @note Отказ здесь означает исчерпание динамических портов
-			 *       операционной системы: сценарий расходует по порту на круг, и
-			 *       каждый из них остаётся в TIME_WAIT. Продолжать после этого
-			 *       нельзя - несостоявшееся подключение обходится дешевле
-			 *       состоявшегося, и показатель тем выше, чем хуже дела
-			 */
-			if(state.refused){
-				// Сообщаем об усечении прогона: молча усечённый прогон читался бы как полный
-				::fprintf(stderr, "accept: подключение не состоялось, динамические порты исчерпаны, выполнено кругов: прогрева %zu, замера %zu\n", state.warmed, state.done);
-				// Прекращаем прогон сценария
+			// Устанавливаем общий срок подключения и освобождения
+			const auto tick = std::chrono::steady_clock::now();
+			// Создаём очередного клиента
+			state.client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			// Проверяем все настройки текущего клиента
+			if((state.client == 0) || !io.setTargetPort(state.client, number) || !io.setOptions(state.client, options() | awh::event::options::HARD_CLOSE) || !io.setAddress(state.client, awh::event::address_t::IPV4, "0.0.0.0") || !io.setTarget(state.client, "127.0.0.1")){
+				// Запоминаем отказ подготовки
+				state.failure = "client-setup";
+				// Прекращаем прогон
 				break;
 			}
-			// Если замер ещё не начат
-			if(!state.measuring){
-				// Считаем выполненный цикл прогрева
-				state.warmed++;
-				// Если прогрев завершён
-				if(state.warmed >= WARMUP_ROUNDS){
-					// Включаем режим замера
-					state.measuring = true;
-					// Включаем учёт выделений памяти
-					awh::benchmark::counting(true);
-					// Включаем учёт системных вызовов
-					awh::benchmark::syscall::counting(true);
-					// Запоминаем момент начала замера
-					state.start = std::chrono::steady_clock::now();
+			// Проверяем исход подключения и принадлежность текущему циклу
+			io.on(state.client, static_cast <awh::engine::callback::connect_t> ([&state](const awh::event::id_t eid, const bool ok) noexcept -> void {
+				// Не засчитываем отказ или повторный callback
+				if(!ok || (eid != state.client) || state.ready){
+					// Сохраняем первый отказ
+					if(state.failure == nullptr)
+						// Запоминаем отказ подключения
+						state.failure = "connect-failed";
+					// Прекращаем обработку
+					return;
 				}
-			// Если замер выполняется
-			} else {
-				// Считаем выполненный цикл замера
-				state.done++;
-				// Если требуемое количество циклов выполнено
-				if(state.done >= ACCEPT_ROUNDS){
-					// Запоминаем момент окончания замера
-					state.finish = std::chrono::steady_clock::now();
-					// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
-					awh::benchmark::counting(false);
-					awh::benchmark::syscall::counting(false);
-					// Останавливаем цикл событий
-					state.stop = true;
-					// Прекращаем прогон сценария
-					break;
-				}
+				// Подтверждаем клиентскую сторону
+				state.ready = true;
+				// Учитываем успешное подключение
+				state.connected++;
+			}));
+			// Проверяем запуск неблокирующего подключения
+			if(!io.commit(state.client) || !io.connect(state.client) || !io.launch(state.client))
+				// Запоминаем отказ запуска
+				state.failure = "client-launch";
+			/**
+			 * Ожидаем подтверждений обеих сторон текущего цикла
+			 */
+			while((state.failure == nullptr) && (!state.ready || (state.peer == 0))){
+				// Проверяем результат конечного опроса
+				if(!io.poll(POLL_TIMEOUT))
+					// Запоминаем отказ опроса
+					state.failure = "poll-failed";
+				// Проверяем общий срок текущего цикла
+				if(std::chrono::duration <double> (std::chrono::steady_clock::now() - tick).count() >= ROUND_DEADLINE)
+					// Запоминаем превышение срока
+					state.failure = "round-deadline";
 			}
-			// Запускаем очередной цикл подключения
-			launch();
+			// Не закрываем ошибочный цикл как успешный
+			if(state.failure != nullptr)
+				// Прекращаем прогон
+				break;
+			// Запрашиваем освобождение клиента
+			const bool clientClosed = io.destroy(state.client);
+			// Запрашиваем освобождение принятой стороны независимо от первого исхода
+			const bool peerClosed = io.destroy(state.peer);
+			// Проверяем оба запроса освобождения
+			if(!clientClosed || !peerClosed)
+				// Запоминаем отказ закрытия
+				state.failure = "destroy-failed";
+			/**
+			 * Дожидаемся удаления обоих узлов, не подменяя его пометкой DESTROYED
+			 */
+			while((state.failure == nullptr) && ((io.status(state.client) != awh::event::status_t::NONE) || (io.status(state.peer) != awh::event::status_t::NONE))){
+				// Продвигаем отложенное освобождение без ожидания новых подключений
+				if(!io.poll(0))
+					// Запоминаем отказ опроса
+					state.failure = "close-poll-failed";
+				// Ограничиваем также стадию освобождения
+				if(std::chrono::duration <double> (std::chrono::steady_clock::now() - tick).count() >= ROUND_DEADLINE)
+					// Запоминаем превышение срока
+					state.failure = "close-deadline";
+			}
+			// Не учитываем неполное освобождение
+			if(state.failure != nullptr)
+				// Прекращаем прогон
+				break;
+			// Учитываем освобождение обеих сторон
+			state.closed += 2;
+			// Снимаем идентификатор уничтоженного клиента
+			state.client = 0;
+			// Снимаем идентификатор уничтоженного peer
+			state.peer = 0;
+			// Учитываем полный цикл прогрева
+			if(round < WARMUP_ROUNDS)
+				// Увеличиваем счётчик прогрева
+				state.warmed++;
+			// Учитываем полный измеренный цикл
+			else state.done++;
 		}
-		/**
-		 * Если окно замера осталось незакрытым, закрываем его моментом выхода из цикла
-		 *
-		 * @note Выходов из цикла несколько - исчерпание портов, незавершившийся круг,
-		 *       отказ опроса, - и каждый обязан закрыть окно замера. Без этого
-		 *       момент окончания остался бы нулевым, а затраченное время вышло бы
-		 *       разностью с началом эпохи
-		 */
-		if(state.measuring && (state.finish <= state.start)){
-			// Запоминаем момент окончания замера
-			state.finish = std::chrono::steady_clock::now();
-			// Закрываем окно замера: счётчики обязаны остановиться там же, где часы
-			awh::benchmark::counting(false);
-			awh::benchmark::syscall::counting(false);
+		// Закрываем окно также при отказе
+		finish = std::chrono::steady_clock::now();
+		// Выключаем учёт выделений
+		awh::benchmark::counting(false);
+		// Выключаем учёт системных вызовов
+		awh::benchmark::syscall::counting(false);
+		// Проверяем полноту обеих сторон и всех освобождений
+		if((state.failure == nullptr) && ((state.warmed != WARMUP_ROUNDS) || (state.done != ACCEPT_ROUNDS) || (state.connected != (WARMUP_ROUNDS + ACCEPT_ROUNDS)) || (state.accepted != state.connected) || (state.closed != (2 * state.connected)) || (finish <= start)))
+			// Запоминаем неполный прогон
+			state.failure = "incomplete";
+		// Публикуем только полностью завершённую нагрузку
+		if(state.failure == nullptr){
+			// Устанавливаем точное количество измеренных циклов
+			result.operations = state.done;
+			// Устанавливаем длительность полного окна
+			result.seconds = std::chrono::duration <double> (finish - start).count();
+			// Снимаем показатели до завершающей очистки
+			collect(result);
 		}
-		// Устанавливаем количество выполненных операций
-		result.operations = state.done;
-		// Устанавливаем затраченное время
-		result.seconds = (state.measuring ? std::chrono::duration <double> (state.finish - state.start).count() : 0.0);
-		// Снимаем показатели окружения по итогам замера
-		collect(result);
-		// Выполняем деинициализацию движка
-		io.deinitialize();
-		// Выводим итоги прогона сценария
+		// Освобождаем также остатки ошибочного цикла
+		if(!io.deinitialize()){
+			// Отбрасываем результат при отказе очистки
+			result = outcome_t{};
+			// Запоминаем отказ очистки
+			state.failure = "cleanup-failed";
+		}
+		// Сообщаем отказ вне измеряемого окна
+		if(state.failure != nullptr)
+			// Выводим причину и фактически выполненную работу
+			::fprintf(stderr, "ACCEPT_BENCH_FAIL: %s warmed=%zu measured=%zu accepted=%zu closed=%zu\n", state.failure, state.warmed, state.done, state.accepted, state.closed);
+		// Подтверждаем полноту успешно завершённого прогона
+		else
+			// Выводим контрольные счётчики обеих сторон
+			::printf("ACCEPT_ACCOUNT warmed=%zu connected=%zu accepted=%zu closed=%zu measured=%zu\n", state.warmed, state.connected, state.accepted, state.closed, state.done);
+		// Выводим итоги либо пустой результат при отказе
 		return result;
 	}
 	/**

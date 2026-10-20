@@ -128,26 +128,44 @@ namespace {
 	 *
 	 */
 	typedef struct Stream {
-		// Дескриптор передатчика
-		uv_tcp_t * sender;
-		// Запрос отправки блока
-		uv_write_t request;
-		// Количество поставленных в очередь октетов
-		size_t queued;
-		// Количество принятых приёмником октетов
-		size_t received;
-		// Цикл событий стенда
+		// Цикл событий потока
 		uv_loop_t * loop;
-		// Момент начала замера
+		// Передатчик потока
+		uv_tcp_t * sender;
+		// Принятый приёмник потока
+		uv_tcp_t * peer;
+		// Единственный запрос записи
+		uv_write_t request;
+		// Признак успешного подключения клиента
+		bool ready;
+		// Признак открытого окна передачи
+		bool running;
+		// Признак полного завершения передачи
+		bool stop;
+		// Признак завершающей очистки
+		bool closing;
+		// Причина отказа
+		const char * failure;
+		// Остаток единственного незавершённого блока
+		size_t pending;
+		// Объём поставленных в очередь блоков
+		size_t queued;
+		// Объём подтверждённой записи
+		size_t written;
+		// Объём принятых октетов
+		size_t received;
+		// Начало измерения передачи
 		std::chrono::steady_clock::time_point start;
-		// Момент окончания замера
+		// Конец измерения передачи
 		std::chrono::steady_clock::time_point finish;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Stream() noexcept :
-		 sender(nullptr), request{}, queued(0), received(0), loop(nullptr) {}
+		 loop(nullptr), sender(nullptr), peer(nullptr), request{},
+		 ready(false), running(false), stop(false), closing(false), failure(nullptr),
+		 pending(0), queued(0), written(0), received(0), start{}, finish{} {}
 	} stream_t;
 
 	/**
@@ -155,31 +173,37 @@ namespace {
 	 *
 	 */
 	typedef struct Handshake {
-		// Цикл событий стенда
+		// Цикл событий сценария
 		uv_loop_t * loop;
-		// Параметры подключения к слушающему сокету
+		// Адрес слушающего сокета
 		struct sockaddr_in address;
-		// Дескриптор текущего подключения
+		// Дескриптор текущего клиента
 		uv_tcp_t * handle;
+		// Дескриптор принятой стороны
+		uv_tcp_t * peer;
 		// Запрос текущего подключения
 		uv_connect_t * request;
-		// Флаг активности замера
-		bool measuring;
-		// Количество выполненных циклов прогрева
+		// Признак подтверждения подключения клиента
+		bool ready;
+		// Причина прекращения сценария
+		const char * failure;
+		// Количество успешных подключений клиента
+		size_t connected;
+		// Количество подготовленных серверных сторон
+		size_t accepted;
+		// Количество завершённых закрытий сторон
+		size_t closed;
+		// Количество полных прогревочных циклов
 		size_t warmed;
-		// Количество выполненных циклов замера
+		// Количество полных измеренных циклов
 		size_t done;
-		// Момент начала замера
-		std::chrono::steady_clock::time_point start;
-		// Момент окончания замера
-		std::chrono::steady_clock::time_point finish;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Handshake() noexcept :
-		 loop(nullptr), address{}, handle(nullptr), request(nullptr),
-		 measuring(false), warmed(0), done(0) {}
+		 loop(nullptr), address{}, handle(nullptr), peer(nullptr), request(nullptr),
+		 ready(false), failure(nullptr), connected(0), accepted(0), closed(0), warmed(0), done(0) {}
 	} handshake_t;
 
 	/**
@@ -1234,328 +1258,646 @@ namespace {
 		return result;
 	}
 	/**
-	 * @brief Функция обратного вызова чтения приёмника потока
+	 * @brief Предельное время подготовки или передачи в секундах
+	 *
+	 */
+	static constexpr double STREAM_DEADLINE = 30.0;
+	/**
+	 * @brief Функция завершения полного потока
+	 *
+	 * @param state состояние потока
+	 *
+	 */
+	static void streamComplete(stream_t & state) noexcept {
+		// Останавливаем часы после полной записи и полного приёма
+		if(!state.stop && (state.failure == nullptr) && (state.written == STREAM_VOLUME) && (state.received == STREAM_VOLUME) && (state.pending == 0)){
+			// Запоминаем конец передачи
+			state.finish = now();
+			// Подтверждаем завершение обеих сторон
+			state.stop = true;
+		}
+	}
+	/**
+	 * @brief Функция подтверждения записи текущего блока
+	 *
+	 */
+	static void streamWrite(uv_write_t * request, int32_t status) noexcept;
+	/**
+	 * @brief Функция постановки одного блока после записи предыдущего
+	 *
+	 * @param state состояние потока
+	 *
+	 */
+	static void streamQueue(stream_t & state) noexcept {
+		// Не подаём лишний блок или блок после отказа
+		if((state.failure != nullptr) || (state.queued == STREAM_VOLUME))
+			// Завершаем постановку
+			return;
+		// Устанавливаем размер единственного незавершённого блока
+		state.pending = STREAM_CHUNK;
+		// Учитываем поставленный блок до вызова библиотеки
+		state.queued += STREAM_CHUNK;
+		// Формируем описание неизменяемого блока
+		uv_buf_t chunk = ::uv_buf_init(reinterpret_cast <char *> (gChunk.data()), STREAM_CHUNK);
+		// Проверяем постановку запроса записи
+		if(::uv_write(&state.request, reinterpret_cast <uv_stream_t *> (state.sender), &chunk, 1, &::streamWrite) != 0)
+			// Не ждём callback для отвергнутого запроса
+			state.failure = "write-start";
+	}
+	/**
+	 * @brief Функция подтверждения записи текущего блока
+	 *
+	 * @param request завершённый запрос
+	 * @param status  фактический исход записи
+	 *
+	 */
+	static void streamWrite(uv_write_t * request, int32_t status) noexcept {
+		// Получаем состояние потока
+		stream_t & state = *reinterpret_cast <stream_t *> (request->data);
+		// Допускаем ожидаемую отмену только при завершающей очистке
+		if(state.closing || (state.failure != nullptr))
+			// Не подаём новые данные
+			return;
+		// Не засчитываем ошибку записи как отправленный блок
+		if((status != 0) || (request != &state.request) || (state.pending != STREAM_CHUNK)){
+			// Сохраняем отказ подтверждения
+			state.failure = "write-failed";
+			// Завершаем обработку
+			return;
+		}
+		// Учитываем полностью записанный блок
+		state.written += state.pending;
+		// Снимаем остаток завершённой записи
+		state.pending = 0;
+		// Подаём следующий блок только после текущего callback
+		::streamQueue(state);
+		// Проверяем завершение обеих сторон
+		::streamComplete(state);
+	}
+	/**
+	 * @brief Функция приёма потока с проверкой EOF и ошибок
 	 *
 	 * @param stream дескриптор приёмника
-	 * @param size   размер принятых данных
+	 * @param size   исход чтения
 	 *
 	 */
 	static void streamRead(uv_stream_t * stream, ssize_t size, const uv_buf_t *) noexcept {
-		// Если данные не приняты
-		if(size <= 0)
-			// Ожидаем следующего чтения приёмника
+		// Получаем состояние потока
+		stream_t & state = *reinterpret_cast <stream_t *> (stream->data);
+		// Нулевая готовность libuv не означает EOF
+		if(state.closing || (state.failure != nullptr) || (size == 0))
+			// Не меняем счётчики
 			return;
-		// Получаем состояние прогона сценария
-		stream_t * state = reinterpret_cast <stream_t *> (stream->data);
-		// Накапливаем количество принятых октетов
-		state->received += static_cast <size_t> (size);
-		// Если весь объём передачи принят
-		if(state->received >= STREAM_VOLUME){
-			// Запоминаем момент окончания замера
-			state->finish = now();
-			// Останавливаем цикл событий
-			::uv_stop(state->loop);
+		// Отбрасываем EOF, ошибку, преждевременные или избыточные данные
+		if(!state.running || (size < 0) || (static_cast <size_t> (size) > (STREAM_VOLUME - state.received))){
+			// Прерываем незавершённый поток
+			state.failure = "read-size-or-eof";
+			// Завершаем обработку
+			return;
 		}
+		// Учитываем фактически принятый объём
+		state.received += static_cast <size_t> (size);
+		// Проверяем завершение обеих сторон
+		::streamComplete(state);
 	}
 	/**
-	 * @brief Функция обратного вызова записи блока передатчиком потока
+	 * @brief Функция подготовки принятой стороны потока
 	 *
-	 * @param request запрос отправки блока
-	 *
-	 */
-	static void streamWrite(uv_write_t * request, int32_t) noexcept {
-		// Получаем состояние прогона сценария
-		stream_t * state = reinterpret_cast <stream_t *> (request->data);
-		// Если весь объём передачи поставлен в очередь
-		if(state->queued >= STREAM_VOLUME)
-			// Завершаем передачу
-			return;
-		// Считаем поставленный в очередь объём
-		state->queued += STREAM_CHUNK;
-		// Формируем блок передаваемых данных
-		uv_buf_t chunk = ::uv_buf_init(reinterpret_cast <char *> (gChunk.data()), STREAM_CHUNK);
-		// Ставим в очередь следующий блок передачи
-		::uv_write(request, reinterpret_cast <uv_stream_t *> (state->sender), &chunk, 1, &::streamWrite);
-	}
-	/**
-	 * @brief Функция обратного вызова принятия входящего подключения сценария потока
-	 *
-	 * @param server дескриптор слушающего сокета
+	 * @param server слушающий дескриптор
+	 * @param status исход уведомления
 	 *
 	 */
 	static void streamAccept(uv_stream_t * server, int32_t status) noexcept {
-		// Если принятие подключения завершилось ошибкой
-		if(status < 0)
-			// Завершаем приём подключения
-			return;
-		// Создаём дескриптор принятого подключения
-		uv_tcp_t * peer = new uv_tcp_t;
-		// Выполняем инициализацию дескриптора принятого подключения
-		::uv_tcp_init(server->loop, peer);
-		// Если принятие подключения не выполнено
-		if(::uv_accept(server, reinterpret_cast <uv_stream_t *> (peer)) != 0){
-			// Выполняем закрытие дескриптора принятого подключения
-			::uv_close(reinterpret_cast <uv_handle_t *> (peer), &::release);
-			// Завершаем приём подключения
+		// Получаем состояние потока
+		stream_t & state = *reinterpret_cast <stream_t *> (server->data);
+		// Отбрасываем ошибку и лишнее подключение
+		if((status != 0) || (state.peer != nullptr) || (state.failure != nullptr)){
+			// Сохраняем первый отказ
+			if(state.failure == nullptr)
+				// Не начинаем поток с неверным составом
+				state.failure = "accept-status";
+			// Завершаем обработку
 			return;
 		}
-		// Отключаем алгоритм Нейгла принятого подключения
-		::uv_tcp_nodelay(peer, 1);
-		// Устанавливаем состояние прогона сценария приёмнику
-		peer->data = server->data;
-		// Запускаем чтение данных приёмника
-		::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::streamRead);
+		// Выделяем дескриптор приёмника
+		uv_tcp_t * peer = new (nothrow) uv_tcp_t;
+		// Проверяем инициализацию перед обязательным закрытием
+		if((peer == nullptr) || (::uv_tcp_init(state.loop, peer) != 0)){
+			// Освобождаем неинициализированный объект
+			delete peer;
+			// Запоминаем отказ подготовки
+			state.failure = "peer-init";
+			// Завершаем обработку
+			return;
+		}
+		// Сохраняем приёмник для завершающего закрытия
+		state.peer = peer;
+		// Связываем приёмник с состоянием
+		peer->data = &state;
+		// Проверяем приём и подписку на чтение до начала измерения
+		if((::uv_accept(server, reinterpret_cast <uv_stream_t *> (peer)) != 0) || (::uv_tcp_nodelay(peer, 1) != 0) || (::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::streamRead) != 0))
+			// Прерываем неполную подготовку
+			state.failure = "peer-registration";
 	}
 	/**
-	 * @brief Функция прогона сценария потоковой передачи
+	 * @brief Функция проверки успешного подключения клиента
 	 *
-	 * @return итоги прогона сценария
+	 * @param request запрос подключения
+	 * @param status  фактический исход подключения
+	 *
+	 */
+	static void streamConnect(uv_connect_t * request, int32_t status) noexcept {
+		// Получаем состояние потока
+		stream_t & state = *reinterpret_cast <stream_t *> (request->data);
+		// Не меняем первый отказ при отмене во время очистки
+		if(state.closing || (state.failure != nullptr))
+			// Завершаем обработку
+			return;
+		// Проверяем исход подключения
+		if(status != 0){
+			// Не оставляем отказавшее подключение в ожидании
+			state.failure = "connect-failed";
+			// Завершаем обработку
+			return;
+		}
+		// Получаем системный дескриптор клиента
+		uv_os_fd_t fd{};
+		// Настройки немедленного закрытия
+		struct linger value{};
+		// Не оставляем порт в TIME_WAIT
+		value.l_onoff = 1;
+		// Проверяем настройку сокета
+		if((::uv_fileno(reinterpret_cast <uv_handle_t *> (state.sender), &fd) != 0) || (::setsockopt(::native(fd), SOL_SOCKET, SO_LINGER, raw(&value), sizeof(value)) != 0)){
+			// Запоминаем отказ настройки
+			state.failure = "client-linger";
+			// Завершаем обработку
+			return;
+		}
+		// Подтверждаем клиентскую сторону без запуска передачи
+		state.ready = true;
+	}
+	/**
+	 * @brief Функция периодического возврата для проверки срока
+	 *
+	 */
+	static void streamTick(uv_timer_t *) noexcept {}
+	/**
+	 * @brief Функция полной передачи после подготовки обеих сторон
+	 *
+	 * @return итоги полного потока либо пустой результат
 	 *
 	 */
 	static outcome_t transfer() noexcept {
-		// Итоги прогона сценария
+		// Итоги потока
 		outcome_t result;
-		// Состояние прогона сценария
+		// Состояние передачи
 		stream_t state;
-		// Цикл событий стенда
+		// Отдельный цикл событий
 		uv_loop_t loop{};
-		// Выполняем инициализацию цикла событий стенда
-		::uv_loop_init(&loop);
-		// Устанавливаем цикл событий стенда состоянию прогона
+		// Проверяем инициализацию цикла
+		if(::uv_loop_init(&loop) != 0){
+			// Сообщаем отказ без частичного результата
+			::fprintf(stderr, "STREAM_BENCH_FAIL: loop-init\n");
+			// Возвращаем пустой исход
+			return result;
+		}
+		// Связываем состояние с циклом
 		state.loop = &loop;
-		// Параметры привязки слушающего сокета
-		struct sockaddr_in address{};
-		// Формируем адрес привязки слушающего сокета
-		::uv_ip4_addr("127.0.0.1", 0, &address);
-		// Дескриптор слушающего сокета
+		// Создаём дескриптор сервера
 		uv_tcp_t server{};
-		// Выполняем инициализацию дескриптора слушающего сокета
-		::uv_tcp_init(&loop, &server);
-		// Устанавливаем состояние прогона сценария слушающему сокету
-		server.data = &state;
-		// Выполняем привязку слушающего сокета
-		::uv_tcp_bind(&server, reinterpret_cast <const struct sockaddr *> (&address), 0);
-		// Размер структуры параметров сокета
-		int32_t length = sizeof(address);
-		// Извлекаем параметры привязки слушающего сокета
-		::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&address), &length);
-		// Переводим слушающий сокет в режим прослушивания
-		::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::streamAccept);
-		// Дескриптор передатчика
+		// Создаём дескриптор клиента
 		uv_tcp_t sender{};
-		// Запрос подключения передатчика
+		// Создаём периодический сторож
+		uv_timer_t timer{};
+		// Создаём запрос подключения
 		uv_connect_t connection{};
-		// Выполняем инициализацию дескриптора передатчика
-		::uv_tcp_init(&loop, &sender);
-		// Отключаем алгоритм Нейгла передатчика
-		::uv_tcp_nodelay(&sender, 1);
-		// Устанавливаем дескриптор передатчика состоянию прогона
+		// Сохраняем успешность инициализации сервера для очистки
+		const bool serverInitialized = (::uv_tcp_init(&loop, &server) == 0);
+		// Сохраняем успешность инициализации клиента для очистки
+		const bool senderInitialized = (::uv_tcp_init(&loop, &sender) == 0);
+		// Сохраняем успешность инициализации таймера для очистки
+		const bool timerInitialized = (::uv_timer_init(&loop, &timer) == 0);
+		// Связываем сервер с состоянием
+		server.data = &state;
+		// Связываем клиента с состоянием
+		sender.data = &state;
+		// Сохраняем передатчик для очереди блоков
 		state.sender = &sender;
-		// Устанавливаем состояние прогона сценария запросу отправки
-		state.request.data = &state;
-		// Устанавливаем состояние прогона сценария запросу подключения
+		// Связываем запрос подключения с состоянием
 		connection.data = &state;
+		// Связываем запрос записи с состоянием
+		state.request.data = &state;
+		// Параметры loopback-подключения
+		struct sockaddr_in address{};
+		// Размер адреса для получения порта
+		int32_t length = sizeof(address);
+		// Проверяем все операции подготовки сервера, клиента и сторожа
+		if(!serverInitialized || !senderInitialized || !timerInitialized || (::uv_ip4_addr("127.0.0.1", 0, &address) != 0) || (::uv_tcp_bind(&server, reinterpret_cast <struct sockaddr *> (&address), 0) != 0) || (::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&address), &length) != 0) || (::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::streamAccept) != 0) || (::uv_tcp_nodelay(&sender, 1) != 0) || (::uv_timer_start(&timer, &::streamTick, 250, 250) != 0))
+			// Запоминаем отказ подготовки
+			state.failure = "setup-failed";
+		// Запускаем подключение только после успешной подготовки
+		if((state.failure == nullptr) && (::uv_tcp_connect(&connection, &sender, reinterpret_cast <const struct sockaddr *> (&address), &::streamConnect) != 0))
+			// Не ждём callback для отвергнутого запроса
+			state.failure = "connect-start";
+		// Запоминаем начало ожидания подготовки
+		const auto prepared = now();
 		/**
-		 * @brief Функция обратного вызова завершения подключения передатчика
-		 *
+		 * Дожидаемся обеих готовых сторон до начала измерения
 		 */
-		auto connected = [](uv_connect_t * request, int32_t) noexcept -> void {
-			// Получаем состояние прогона сценария
-			stream_t * state = reinterpret_cast <stream_t *> (request->data);
-			// Запоминаем момент начала замера
-			state->start = now();
-			// Считаем поставленный в очередь объём
-			state->queued += STREAM_CHUNK;
-			// Формируем блок передаваемых данных
-			uv_buf_t chunk = ::uv_buf_init(reinterpret_cast <char *> (gChunk.data()), STREAM_CHUNK);
-			// Ставим в очередь первый блок передачи
-			::uv_write(&state->request, reinterpret_cast <uv_stream_t *> (state->sender), &chunk, 1, &::streamWrite);
-		};
-		// Выполняем подключение передатчика к слушающему сокету
-		::uv_tcp_connect(&connection, &sender, reinterpret_cast <const struct sockaddr *> (&address), connected);
+		while((state.failure == nullptr) && (!state.ready || (state.peer == nullptr))){
+			// Проверяем продолжение цикла событий
+			if(::uv_run(&loop, UV_RUN_ONCE) == 0)
+				// Запоминаем неожиданный конец цикла
+				state.failure = "setup-poll";
+			// Ограничиваем время подготовки
+			if(elapsed(prepared, now()) >= STREAM_DEADLINE)
+				// Прерываем незавершённое подключение
+				state.failure = "setup-deadline";
+		}
+		// Начинаем передачу после полной подготовки
+		if(state.failure == nullptr){
+			// Разрешаем обработку данных
+			state.running = true;
+			// Открываем окно перед первой записью
+			state.start = now();
+			// Подаём первый блок
+			::streamQueue(state);
+		}
 		/**
-		 * Запускаем цикл событий до передачи всего объёма
+		 * Ожидаем полной записи и приёма с общим ограничением времени
 		 */
+		while((state.failure == nullptr) && !state.stop){
+			// Продвигаем передачу конечным опросом
+			if(::uv_run(&loop, UV_RUN_ONCE) == 0)
+				// Запоминаем неожиданный конец цикла
+				state.failure = "transfer-poll";
+			// Ограничиваем время полного потока
+			if(elapsed(state.start, now()) >= STREAM_DEADLINE)
+				// Прерываем зависший поток
+				state.failure = "transfer-deadline";
+		}
+		// Разрешаем отменённые callbacks только на стадии очистки
+		state.closing = true;
+		// Закрываем принятый дескриптор с освобождением после callback
+		if(state.peer != nullptr)
+			// Не удаляем объект раньше фактического закрытия
+			::uv_close(reinterpret_cast <uv_handle_t *> (state.peer), &::release);
+		// Закрываем инициализированного клиента
+		if(senderInitialized)
+			// Отменяем также незавершённые запросы записи и подключения
+			::uv_close(reinterpret_cast <uv_handle_t *> (&sender), nullptr);
+		// Закрываем инициализированный сервер
+		if(serverInitialized)
+			// Отменяем приём новых соединений
+			::uv_close(reinterpret_cast <uv_handle_t *> (&server), nullptr);
+		// Закрываем инициализированный таймер
+		if(timerInitialized)
+			// Удаляем сторож ожидания
+			::uv_close(reinterpret_cast <uv_handle_t *> (&timer), nullptr);
+		// Дожидаемся отменённых запросов и всех закрытий до разрушения состояния
 		::uv_run(&loop, UV_RUN_DEFAULT);
-		// Устанавливаем количество выполненных операций
-		result.operations = (state.received / STREAM_CHUNK);
-		// Устанавливаем объём переданных данных
-		result.bytes = state.received;
-		// Устанавливаем затраченное время
-		result.seconds = elapsed(state.start, state.finish);
-		// Выводим итоги прогона сценария
+		// Проверяем освобождение самого цикла
+		if((::uv_loop_close(&loop) != 0) && (state.failure == nullptr))
+			// Не скрываем незавершённую очистку
+			state.failure = "loop-close";
+		// Проверяем полноту обеих сторон и корректное окно
+		if((state.failure == nullptr) && (!state.stop || (state.queued != STREAM_VOLUME) || (state.written != STREAM_VOLUME) || (state.received != STREAM_VOLUME) || (state.pending != 0) || (state.finish <= state.start)))
+			// Отбрасываем неполный результат
+			state.failure = "incomplete";
+		// Публикуем только полный поток
+		if(state.failure == nullptr){
+			// Устанавливаем точное число блоков
+			result.operations = (STREAM_VOLUME / STREAM_CHUNK);
+			// Устанавливаем точный объём
+			result.bytes = STREAM_VOLUME;
+			// Устанавливаем время передачи без очистки
+			result.seconds = elapsed(state.start, state.finish);
+			// Подтверждаем контрольные счётчики
+			::printf("STREAM_ACCOUNT queued=%zu written=%zu received=%zu pending=%zu\n", state.queued, state.written, state.received, state.pending);
+		// Отказываем без публикации частичной скорости
+		} else
+			// Сообщаем причину и фактический объём
+			::fprintf(stderr, "STREAM_BENCH_FAIL: %s queued=%zu written=%zu received=%zu pending=%zu\n", state.failure, state.queued, state.written, state.received, state.pending);
+		// Выводим только полный результат либо пустой исход
 		return result;
 	}
 	/**
-	 * @brief Функция обратного вызова принятия входящего подключения сценария соединений
+	 * @brief Функция обработки неожиданного чтения принятого подключения
 	 *
-	 * @param server дескриптор слушающего сокета
+	 * @param stream дескриптор принятой стороны
+	 * @param size   исход чтения
+	 *
+	 */
+	static void handshakeRead(uv_stream_t * stream, ssize_t size, const uv_buf_t *) noexcept {
+		// Получаем состояние сценария
+		handshake_t & state = *reinterpret_cast <handshake_t *> (stream->data);
+		// Нулевая готовность допустима, данные и EOF до закрытия не предусмотрены
+		if((size != 0) && (state.failure == nullptr))
+			// Отмечаем преждевременное событие принятой стороны
+			state.failure = "unexpected-peer-read";
+	}
+	/**
+	 * @brief Функция принятия серверной стороны текущего цикла
+	 *
+	 * @param server слушающий дескриптор
+	 * @param status исход уведомления
 	 *
 	 */
 	static void handshakeAccept(uv_stream_t * server, int32_t status) noexcept {
-		// Если принятие подключения завершилось ошибкой
-		if(status < 0)
-			// Завершаем приём подключения
+		// Получаем состояние сценария
+		handshake_t & state = *reinterpret_cast <handshake_t *> (server->data);
+		// Не допускаем ошибку, повторный приём и приём вне активного цикла
+		if((status < 0) || (state.peer != nullptr) || (state.handle == nullptr) || (state.failure != nullptr)){
+			// Сохраняем первый отказ
+			if(state.failure == nullptr)
+				// Отмечаем нарушение приёма
+				state.failure = "accept-status";
+			// Завершаем обработку
 			return;
-		// Создаём дескриптор принятого подключения
-		uv_tcp_t * peer = new uv_tcp_t;
-		// Выполняем инициализацию дескриптора принятого подключения
-		::uv_tcp_init(server->loop, peer);
-		// Выполняем принятие входящего подключения
-		::uv_accept(server, reinterpret_cast <uv_stream_t *> (peer));
-		/**
-		 * Подписываем принятое подключение на чтение
-		 *
-		 * @note Движок AWH отдаёт из приёма подключения готовый узел события,
-		 *       подписанный на чтение, - настоящему серверу принятый сокет и нужен
-		 *       именно таким. Прежде стенд принятое подключение сразу закрывал, и
-		 *       подписка ему не стоила ничего
-		 *
-		 */
-		::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::peerRead);
-		// Прекращаем чтение принятого подключения
-		::uv_read_stop(reinterpret_cast <uv_stream_t *> (peer));
-		// Выполняем закрытие принятого подключения
-		::uv_close(reinterpret_cast <uv_handle_t *> (peer), &::release);
+		}
+		// Выделяем дескриптор принятого подключения
+		uv_tcp_t * peer = new (nothrow) uv_tcp_t;
+		// Проверяем создание и инициализацию дескриптора
+		if((peer == nullptr) || (::uv_tcp_init(state.loop, peer) != 0)){
+			// Освобождаем неинициализированный объект
+			delete peer;
+			// Запоминаем отказ подготовки
+			state.failure = "peer-init";
+			// Завершаем обработку
+			return;
+		}
+		// Сохраняем инициализированный объект для обязательного закрытия
+		state.peer = peer;
+		// Связываем принятую сторону с состоянием сценария
+		peer->data = &state;
+		// Проверяем приём, настройку и реальную подписку на чтение
+		if((::uv_accept(server, reinterpret_cast <uv_stream_t *> (peer)) != 0) || (::uv_tcp_nodelay(peer, 1) != 0) || (::uv_read_start(reinterpret_cast <uv_stream_t *> (peer), &::allocate, &::handshakeRead) != 0)){
+			// Не засчитываем неподготовленную серверную сторону
+			state.failure = "peer-registration";
+			// Завершаем обработку
+			return;
+		}
+		// Подтверждаем серверную сторону
+		state.accepted++;
 	}
 	/**
-	 * @brief Функция запуска очередного цикла подключения
+	 * @brief Функция подтверждения фактического закрытия одной стороны
 	 *
-	 * @param state состояние прогона сценария
-	 *
-	 */
-	static void handshakeLaunch(handshake_t * state) noexcept;
-	/**
-	 * @brief Функция обратного вызова закрытия подключения
-	 *
-	 * @param handle закрытый дескриптор подключения
+	 * @param handle закрытый дескриптор
 	 *
 	 */
 	static void handshakeClosed(uv_handle_t * handle) noexcept {
-		// Получаем состояние прогона сценария
-		handshake_t * state = reinterpret_cast <handshake_t *> (handle->data);
-		// Выполняем освобождение дескриптора подключения
-		delete reinterpret_cast <uv_tcp_t *> (handle);
-		// Выполняем освобождение запроса подключения
-		delete state->request;
-		// Если замер ещё не начат
-		if(!state->measuring){
-			// Считаем выполненный цикл прогрева
-			state->warmed++;
-			// Если прогрев завершён
-			if(state->warmed >= ACCEPT_WARMUP){
-				// Включаем режим замера
-				state->measuring = true;
-				// Запоминаем момент начала замера
-				state->start = now();
-			}
-		// Если замер выполняется
-		} else {
-			// Считаем выполненный цикл замера
-			state->done++;
-			// Если требуемое количество циклов выполнено
-			if(state->done >= ACCEPT_ROUNDS){
-				// Запоминаем момент окончания замера
-				state->finish = now();
-				// Останавливаем цикл событий
-				::uv_stop(state->loop);
-				// Завершаем прогон сценария
-				return;
-			}
+		// Получаем состояние сценария
+		handshake_t & state = *reinterpret_cast <handshake_t *> (handle->data);
+		// Снимаем ссылку на закрытый клиент
+		if(handle == reinterpret_cast <uv_handle_t *> (state.handle))
+			// Подтверждаем закрытие клиентской стороны
+			state.handle = nullptr;
+		// Снимаем ссылку на закрытый peer
+		else if(handle == reinterpret_cast <uv_handle_t *> (state.peer))
+			// Подтверждаем закрытие серверной стороны
+			state.peer = nullptr;
+		// Не допускаем счёт чужого дескриптора
+		else {
+			// Сохраняем первый отказ
+			if(state.failure == nullptr)
+				// Запоминаем нарушение принадлежности
+				state.failure = "unexpected-close";
+			// Завершаем обработку неизвестного объекта
+			return;
 		}
-		// Запускаем очередной цикл подключения
-		::handshakeLaunch(state);
+		// Освобождаем объект только после close callback
+		delete reinterpret_cast <uv_tcp_t *> (handle);
+		// Учитываем реально завершённое закрытие
+		state.closed++;
 	}
 	/**
-	 * @brief Функция обратного вызова завершения подключения
+	 * @brief Функция проверки исхода подключения клиента
 	 *
-	 * @param request запрос подключения к серверу
+	 * @param request запрос подключения
+	 * @param status  фактический исход подключения
 	 *
 	 */
-	static void handshakeConnect(uv_connect_t * request, int32_t) noexcept {
-		// Получаем состояние прогона сценария
-		handshake_t * state = reinterpret_cast <handshake_t *> (request->data);
-		// Устанавливаем состояние прогона сценария дескриптору подключения
-		state->handle->data = state;
-		// Дескриптор сокета подключения
+	static void handshakeConnect(uv_connect_t * request, int32_t status) noexcept {
+		// Получаем состояние сценария
+		handshake_t & state = *reinterpret_cast <handshake_t *> (request->data);
+		// Проверяем успешность и принадлежность текущему циклу
+		if((status != 0) || (request != state.request) || state.ready){
+			// Сохраняем первый отказ, включая отмену при очистке
+			if(state.failure == nullptr)
+				// Не засчитываем отказ подключения
+				state.failure = "connect-failed";
+			// Завершаем обработку
+			return;
+		}
+		// Получаем системный дескриптор клиента
 		uv_os_fd_t fd{};
-		/**
-		 * Если дескриптор сокета подключения получен
-		 *
-		 * @note Библиотека создаёт сокет сама, и до завершения подключения
-		 *       дескриптора у стенда нет. Опция задержки закрытия нужна лишь
-		 *       к моменту закрытия, поэтому ставится здесь - и стенд перестаёт
-		 *       расходовать динамические порты иначе, чем остальные три
-		 *
-		 */
-		if(::uv_fileno(reinterpret_cast <uv_handle_t *> (state->handle), &fd) == 0)
-			// Включаем немедленный обрыв соединения при закрытии сокета
-			hardClose(::native(fd));
-		// Выполняем закрытие текущего подключения
-		::uv_close(reinterpret_cast <uv_handle_t *> (state->handle), &::handshakeClosed);
+		// Параметры немедленного закрытия
+		struct linger value{};
+		// Не оставляем порт в TIME_WAIT
+		value.l_onoff = 1;
+		// Проверяем получение сокета и применение опции
+		if((::uv_fileno(reinterpret_cast <uv_handle_t *> (state.handle), &fd) != 0) || (::setsockopt(::native(fd), SOL_SOCKET, SO_LINGER, raw(&value), sizeof(value)) != 0)){
+			// Запоминаем отказ настройки закрытия
+			state.failure = "client-linger";
+			// Завершаем обработку
+			return;
+		}
+		// Подтверждаем клиентскую сторону
+		state.ready = true;
+		// Учитываем успешное подключение отдельно от приёма
+		state.connected++;
 	}
 	/**
-	 * @brief Функция запуска очередного цикла подключения
-	 *
-	 * @param state состояние прогона сценария
+	 * @brief Функция периодического возврата из ожидания для проверки срока
 	 *
 	 */
-	static void handshakeLaunch(handshake_t * state) noexcept {
-		// Создаём дескриптор очередного подключения
-		state->handle = new uv_tcp_t;
-		// Создаём запрос очередного подключения
-		state->request = new uv_connect_t;
-		// Выполняем инициализацию дескриптора подключения
-		::uv_tcp_init(state->loop, state->handle);
-		// Отключаем алгоритм Нейгла подключения
-		::uv_tcp_nodelay(state->handle, 1);
-		// Устанавливаем состояние прогона сценария запросу подключения
-		state->request->data = state;
-		// Выполняем подключение к слушающему сокету
-		::uv_tcp_connect(state->request, state->handle, reinterpret_cast <const struct sockaddr *> (&state->address), &::handshakeConnect);
+	static void handshakeTick(uv_timer_t *) noexcept {}
+	/**
+	 * @brief Функция запроса закрытия обеих сторон текущего цикла
+	 *
+	 * @param state состояние сценария
+	 *
+	 */
+	static void handshakeClose(handshake_t & state) noexcept {
+		/**
+		 * Закрываем все созданные стороны, не освобождая объекты до callback
+		 */
+		for(uv_tcp_t * peer : {state.handle, state.peer}){
+			// Пропускаем несозданные и уже закрываемые объекты
+			if((peer == nullptr) || ::uv_is_closing(reinterpret_cast <uv_handle_t *> (peer)))
+				// Продолжаем закрытие остальных сторон
+				continue;
+			// Передаём освобождение подтверждающему callback
+			::uv_close(reinterpret_cast <uv_handle_t *> (peer), &::handshakeClosed);
+		}
 	}
 	/**
-	 * @brief Функция прогона сценария установления соединений
+	 * @brief Функция прогона полных циклов установления соединений
 	 *
-	 * @return итоги прогона сценария
+	 * @return итоги полного прогона либо пустой результат при отказе
 	 *
 	 */
 	static outcome_t handshake() noexcept {
 		// Итоги прогона сценария
 		outcome_t result;
-		// Состояние прогона сценария
+		// Состояние обеих сторон и счётчики
 		handshake_t state;
-		// Цикл событий стенда
+		// Отдельный цикл событий сценария
 		uv_loop_t loop{};
-		// Выполняем инициализацию цикла событий стенда
-		::uv_loop_init(&loop);
-		// Устанавливаем цикл событий стенда состоянию прогона
+		// Проверяем создание цикла
+		if(::uv_loop_init(&loop) != 0){
+			// Сообщаем отказ подготовки
+			::fprintf(stderr, "ACCEPT_BENCH_FAIL: loop-init\n");
+			// Возвращаем пустой результат
+			return result;
+		}
+		// Связываем состояние с циклом
 		state.loop = &loop;
-		// Формируем адрес привязки слушающего сокета
-		::uv_ip4_addr("127.0.0.1", 0, &state.address);
-		// Дескриптор слушающего сокета
+		// Слушающий дескриптор
 		uv_tcp_t server{};
-		// Выполняем инициализацию дескриптора слушающего сокета
-		::uv_tcp_init(&loop, &server);
-		// Выполняем привязку слушающего сокета
-		::uv_tcp_bind(&server, reinterpret_cast <const struct sockaddr *> (&state.address), 0);
-		// Размер структуры параметров сокета
+		// Общий сторож ожидания
+		uv_timer_t timer{};
+		// Проверяем и запоминаем инициализацию сервера для очистки
+		const bool serverInitialized = (::uv_tcp_init(&loop, &server) == 0);
+		// Проверяем и запоминаем инициализацию таймера для очистки
+		const bool timerInitialized = (::uv_timer_init(&loop, &timer) == 0);
+		// Связываем слушающий дескриптор с состоянием
+		server.data = &state;
+		// Размер адреса для получения назначенного порта
 		int32_t length = sizeof(state.address);
-		// Извлекаем параметры привязки слушающего сокета
-		::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&state.address), &length);
-		// Переводим слушающий сокет в режим прослушивания
-		::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::handshakeAccept);
-		// Запускаем первый цикл подключения
-		::handshakeLaunch(&state);
+		// Проверяем все операции подготовки сервера и сторожа
+		if(!serverInitialized || !timerInitialized || (::uv_ip4_addr("127.0.0.1", 0, &state.address) != 0) || (::uv_tcp_bind(&server, reinterpret_cast <const struct sockaddr *> (&state.address), 0) != 0) || (::uv_tcp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&state.address), &length) != 0) || (::uv_listen(reinterpret_cast <uv_stream_t *> (&server), BACKLOG, &::handshakeAccept) != 0) || (::uv_timer_start(&timer, &::handshakeTick, 250, 250) != 0))
+			// Запоминаем отказ подготовки
+			state.failure = "server-setup";
+		// Момент начала измеряемой части
+		auto start = std::chrono::steady_clock::time_point{};
 		/**
-		 * Запускаем цикл событий до выполнения требуемого количества циклов
+		 * Выполняем полные циклы прогрева и измерения
 		 */
+		for(size_t round = 0; (round < (ACCEPT_WARMUP + ACCEPT_ROUNDS)) && (state.failure == nullptr); round++){
+			// Открываем окно перед созданием первого измеряемого клиента
+			if(round == ACCEPT_WARMUP)
+				// Запоминаем начало измерения
+				start = now();
+			// Сбрасываем подтверждение клиента
+			state.ready = false;
+			// Устанавливаем общий срок подключения и закрытия
+			const auto tick = now();
+			// Выделяем очередной клиентский дескриптор
+			uv_tcp_t * handle = new (nothrow) uv_tcp_t;
+			// Проверяем создание и инициализацию клиента
+			if((handle == nullptr) || (::uv_tcp_init(&loop, handle) != 0)){
+				// Освобождаем неинициализированный объект
+				delete handle;
+				// Запоминаем отказ подготовки
+				state.failure = "client-init";
+				// Прекращаем прогон
+				break;
+			}
+			// Сохраняем инициализированный объект для обязательного закрытия
+			state.handle = handle;
+			// Связываем клиента с состоянием сценария
+			handle->data = &state;
+			// Выделяем запрос текущего подключения
+			state.request = new (nothrow) uv_connect_t;
+			// Проверяем запрос и обязательные опции клиента
+			if((state.request == nullptr) || (::uv_tcp_nodelay(handle, 1) != 0)){
+				// Запоминаем отказ подготовки
+				state.failure = "client-setup";
+				// Прекращаем прогон
+				break;
+			}
+			// Связываем запрос с состоянием
+			state.request->data = &state;
+			// Проверяем начало подключения
+			if(::uv_tcp_connect(state.request, handle, reinterpret_cast <const struct sockaddr *> (&state.address), &::handshakeConnect) != 0)
+				// Запоминаем немедленный отказ
+				state.failure = "connect-start";
+			/**
+			 * Ожидаем подтверждения обеих сторон текущего цикла
+			 */
+			while((state.failure == nullptr) && (!state.ready || (state.accepted != (round + 1)))){
+				// Проверяем наличие активного цикла событий
+				if(::uv_run(&loop, UV_RUN_ONCE) == 0)
+					// Запоминаем неожиданное завершение цикла
+					state.failure = "poll-failed";
+				// Ограничиваем длительность текущего цикла
+				if(elapsed(tick, now()) >= 5.0)
+					// Запоминаем превышение срока
+					state.failure = "round-deadline";
+			}
+			// Не засчитываем ошибочный цикл
+			if(state.failure != nullptr)
+				// Прекращаем прогон
+				break;
+			// Запрашиваем закрытие обеих сторон одновременно
+			::handshakeClose(state);
+			/**
+			 * Дожидаемся обоих close callback до освобождения запроса и следующего цикла
+			 */
+			while((state.failure == nullptr) && ((state.handle != nullptr) || (state.peer != nullptr))){
+				// Продвигаем обработку отложенных закрытий
+				::uv_run(&loop, UV_RUN_ONCE);
+				// Ограничиваем также стадию освобождения
+				if(elapsed(tick, now()) >= 5.0)
+					// Запоминаем превышение срока
+					state.failure = "close-deadline";
+			}
+			// Не учитываем неполное закрытие
+			if(state.failure != nullptr)
+				// Прекращаем прогон
+				break;
+			// Освобождаем завершённый запрос подключения
+			delete state.request;
+			// Снимаем указатель на освобождённый запрос
+			state.request = nullptr;
+			// Учитываем полный цикл прогрева
+			if(round < ACCEPT_WARMUP)
+				// Увеличиваем счётчик прогрева
+				state.warmed++;
+			// Учитываем полный измеренный цикл
+			else state.done++;
+		}
+		// Закрываем окно после обоих закрытий последнего цикла
+		const auto finish = now();
+		// Закрываем остатки ошибочного цикла
+		::handshakeClose(state);
+		// Закрываем сервер только после успешной инициализации
+		if(serverInitialized)
+			// Отменяем приём новых подключений
+			::uv_close(reinterpret_cast <uv_handle_t *> (&server), nullptr);
+		// Закрываем сторож только после успешной инициализации
+		if(timerInitialized)
+			// Отменяем периодический возврат
+			::uv_close(reinterpret_cast <uv_handle_t *> (&timer), nullptr);
+		// Дожидаемся завершения отменённых запросов и всех close callback
 		::uv_run(&loop, UV_RUN_DEFAULT);
-		// Устанавливаем количество выполненных операций
-		result.operations = state.done;
-		// Устанавливаем затраченное время
-		result.seconds = elapsed(state.start, state.finish);
-		// Выводим итоги прогона сценария
+		// Освобождаем оставшийся запрос после закрытия клиента
+		delete state.request;
+		// Снимаем указатель на освобождённый запрос
+		state.request = nullptr;
+		// Проверяем освобождение самого цикла событий
+		if((::uv_loop_close(&loop) != 0) && (state.failure == nullptr))
+			// Запоминаем незавершённую очистку
+			state.failure = "loop-close";
+		// Проверяем точное количество полных циклов и обеих сторон
+		if((state.failure == nullptr) && ((state.warmed != ACCEPT_WARMUP) || (state.done != ACCEPT_ROUNDS) || (state.connected != (ACCEPT_WARMUP + ACCEPT_ROUNDS)) || (state.accepted != state.connected) || (state.closed != (2 * state.connected)) || (finish <= start)))
+			// Отбрасываем неполный прогон
+			state.failure = "incomplete";
+		// Публикуем только полный корректный результат
+		if(state.failure == nullptr){
+			// Устанавливаем число полных измеренных циклов
+			result.operations = state.done;
+			// Устанавливаем длительность полного окна
+			result.seconds = elapsed(start, finish);
+			// Подтверждаем полноту обеих сторон
+			::printf("ACCEPT_ACCOUNT warmed=%zu connected=%zu accepted=%zu closed=%zu measured=%zu\n", state.warmed, state.connected, state.accepted, state.closed, state.done);
+		// Сообщаем отказ без публикации положительного результата
+		} else
+			// Выводим причину и фактические счётчики
+			::fprintf(stderr, "ACCEPT_BENCH_FAIL: %s warmed=%zu measured=%zu accepted=%zu closed=%zu\n", state.failure, state.warmed, state.done, state.accepted, state.closed);
+		// Выводим итог полного прогона либо пустой результат
 		return result;
 	}
 	/**
@@ -2101,6 +2443,10 @@ int32_t main(int32_t argc, char ** argv){
 	if(selected("net/io/stream/throughput", name)){
 		// Выполняем прогон сценария потоковой передачи
 		const outcome_t outcome = ::transfer();
+		// Не публикуем ошибочный или неполный поток
+		if((outcome.operations != (STREAM_VOLUME / STREAM_CHUNK)) || (outcome.bytes != STREAM_VOLUME) || (outcome.seconds <= 0))
+			// Возвращаем отказ вызывающему измерителю
+			return EXIT_FAILURE;
 		// Выводим результат прогона сценария
 		report("net/io/stream/throughput", "МБ/с", megabytes(outcome), outcome);
 	}
@@ -2108,6 +2454,10 @@ int32_t main(int32_t argc, char ** argv){
 	if(selected("net/io/accept/connections", name)){
 		// Выполняем прогон сценария установления соединений
 		const outcome_t outcome = ::handshake();
+		// Не публикуем неполный или ошибочный прогон
+		if((outcome.operations != ACCEPT_ROUNDS) || (outcome.seconds <= 0))
+			// Возвращаем отказ вызывающему измерителю
+			return EXIT_FAILURE;
 		// Выводим результат прогона сценария
 		report("net/io/accept/connections", "подключений/с", perSecond(outcome), outcome);
 	}
