@@ -793,6 +793,9 @@ void awh::codec::xml::Reader::report(const error_t error, const location_t & loc
 		                  {location.line, location.column}, awh::log::flag_t::WARNING,
 		                  static_cast <unsigned long long> (location.line),
 		                  static_cast <unsigned long long> (location.column), message(error));
+	/**
+	 * Если режим отладки не включён
+	 */
 	#else
 		// Записываем отказ разбора в журнал работы
 		awh::log::print("XML parsing failed at line %llu column %llu: %s", awh::log::flag_t::WARNING,
@@ -969,6 +972,9 @@ bool awh::codec::xml::Reader::oversize(const size_t end) const noexcept {
 	// Выводим признак превышения заданного настройками предела объёма события
 	return ((this->_settings.maxEvent > 0) && (end > this->_offset) && ((end - this->_offset) > this->_settings.maxEvent));
 }
+/**
+ * Уплотнение хранилища разбора
+ */
 void awh::codec::xml::Reader::compact() noexcept {
 	/**
 	 * Если открыта область подставленной сущности
@@ -1809,6 +1815,7 @@ bool awh::codec::xml::Reader::parseValue(size_t & offset, const size_t end, span
 				// Выполняем отказ разбора с сообщением о нём в журнал
 				return this->refuse(error_t::STORAGE_EXHAUSTED);
 			}
+			// Записываем длину события от его начала до края черновика
 			value.length = static_cast <uint32_t> (this->_scratch.size() - value.offset);
 			// Выводим положительный результат выполнения операции
 			return true;
@@ -3246,6 +3253,7 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * @note Копия здесь НЕОБХОДИМА, в отличие от имён сущности и обозначения:
 			 *       имя это становится ключом отображения объявленных умолчаний и
 			 *       обязано пережить сам разбор объявления
+			 *
 			 * @warning Проверки на разделитель префикса, какая стоит у сущности и у
 			 *          обозначения, здесь нет НАМЕРЕННО: имя это принадлежит узлу
 			 *          разметки, а узел вправе носить префикс. Запрет разделителя
@@ -4625,6 +4633,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 		 *          принял бы его, а договор такое объявление отвергает
 		 */
 		bool broken = false;
+		// Построение, вычитывающее свойство объявления с пропуском пробельных знаков
 		const auto field = [&content, &at, &spaces, &broken](const string_view name, string_view & value) noexcept -> bool {
 			// Запоминаем положение разбора до пропуска пробельных знаков
 			const size_t begin = at;
@@ -5341,7 +5350,6 @@ bool awh::codec::xml::Reader::bind() noexcept {
 			}
 		}
 	}
-
 	/**
 	 * Если разрешение префиксов по договору о пространствах имён включено
 	 */
@@ -5420,6 +5428,9 @@ bool awh::codec::xml::Reader::bind() noexcept {
 		 *       таком количестве попарное сличение обходится дешевле раскладки
 		 */
 		const bool pairwise = (this->_declares.size() <= 32);
+		/**
+		 * Перебираем объявления пространств имён узла
+		 */
 		for(size_t index = 0; index < this->_declares.size(); index++){
 			// Получаем очередное объявление пространства имён узла
 			const record_t & record = this->_declares[index];
@@ -7424,6 +7435,7 @@ awh::codec::xml::Reader::Reader() noexcept :
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _deferred(error_t::NONE), _postponed(0), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _tokenized(false) {
+	// Приводим разборчик к начальному состоянию
 	this->reset();
 }
 /**
@@ -7440,6 +7452,7 @@ awh::codec::xml::Reader::Reader(const settings_t & settings) noexcept :
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _deferred(error_t::NONE), _postponed(0), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _tokenized(false) {
+	// Приводим разборчик к начальному состоянию
 	this->reset();
 }
 /**
@@ -7632,3 +7645,39 @@ bool awh::codec::xml::Reader::inject(const size_t begin, const size_t end, const
 	// Выводим положительный результат выполнения операции
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Entity::Entity() noexcept : external(false), unparsed(false), active(false), markup(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Default::Default() noexcept : tokenized(false), defaulted(false) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Survey::Survey() noexcept : offset(9), begin(string::npos), stop(string::npos), quote(0), inside(false) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Digest::Digest() noexcept : hash(0), index(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Splice::Splice() noexcept : end(0), depth(0), delta(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Element::Element() noexcept : bindings(0), space(space_t::DEFAULT) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Reader::Record::Record() noexcept : defaulted(false) {}

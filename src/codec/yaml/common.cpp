@@ -1056,7 +1056,6 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 		// Выводим вид строкового значения
 		return type_t::STRING;
 	}
-	
 	/**
 	 * Если действует схема строгого соответствия правилам JSON
 	 */
@@ -1877,3 +1876,34 @@ awh::codec::yaml::encoding_t awh::codec::yaml::encoding(const string_view text) 
 	// Выводим неопределённую кодировку
 	return encoding_t::NONE;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Span::Span() noexcept : offset(0), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение начала отрезка в хранилище знаков
+ * @param length длина отрезка в байтах
+ *
+ */
+awh::codec::yaml::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0), depth(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Stamp::Stamp() noexcept :
+ year(0), month(0), day(0), hour(0), minute(0), second(0),
+ nanoseconds(0), offset(0), zulu(false), spaced(false) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Numeric::Numeric() noexcept : integer(0), natural(0), real(0.) {}

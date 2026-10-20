@@ -343,6 +343,7 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 				 */
 				// Заводим ссылку через полный путь при первом обращении
 				if(this->_structures == nullptr)
+					// Заводим ссылку на блок описаний через полный путь
 					this->_structures = & this->_root.place(string("/") + STRUCTURES);
 				// Получаем закешированную ссылку и заводим блок пустым отображением
 				(* this->_structures)[block] = abc::value_t(abc::kind_t::MAP);
@@ -394,7 +395,7 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 							// Выводим отрицательный признак разбора записи
 							return false;
 						// Ставим перечень значений на место объявленного значения
-						exists = ::std::move(list);
+						exists = ::move(list);
 					}
 				// Если имя поля блоком ещё не объявлено
 				} else fields[this->_reader.key()] = abc::value_t(this->_reader.value());
@@ -517,7 +518,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 		 */
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим в лог сообщение о подаче каталога вместо файла
-		awh::log::print("SysLog file \"%s\" is a directory", awh::log::flag_t::CRITICAL, filename.c_str());
+		log::print("SysLog file \"%s\" is a directory", log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -542,7 +543,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим в лог сообщение об ошибке открытия файла
-		awh::log::print("SysLog file \"%s\" could not be opened", awh::log::flag_t::CRITICAL, filename.c_str());
+		log::print("SysLog file \"%s\" could not be opened", log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -569,7 +570,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 		// Запоминаем код ошибки чтения файла
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим в лог сообщение об ошибке чтения файла
-		awh::log::print("SysLog file \"%s\" could not be read", awh::log::flag_t::CRITICAL, filename.c_str());
+		log::print("SysLog file \"%s\" could not be read", log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -599,7 +600,9 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 		if(counter.feed(content)){
 			// Количество записей, содержимым файла несомых
 			size_t records = 0;
-			// Выполняем перебор событий разбора содержимого файла
+			/**
+			 * Выполняем перебор событий разбора содержимого файла
+			 */
 			while(counter.next()){
 				// Если событием является конец разобранной записи
 				if(counter.event() == event_t::RECORD){
@@ -621,15 +624,16 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 				// Устанавливаем код ошибки многозаписного файла
 				this->_error = error_t::MULTIPLE_RECORDS;
 				// Выводим в лог сообщение о многозаписном файле
-				awh::log::print(
+				log::print(
 					"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream",
-					awh::log::flag_t::CRITICAL, "SysLog", filename.c_str()
+					log::flag_t::CRITICAL, "SysLog", filename.c_str()
 				);
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
 		}
 	}
+	// Отдаём собранное содержимое разбору
 	return this->parse(content);
 }
 
@@ -727,7 +731,7 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 			// Удаляем только файл этого сохранения
 			static_cast <void> (this->_fs.unlink(temporary));
 		// Выводим в лог сообщение об ошибке записи файла
-		awh::log::print("SysLog file \"%s\" could not be written", awh::log::flag_t::CRITICAL, filename.c_str());
+		log::print("SysLog file \"%s\" could not be written", log::flag_t::CRITICAL, filename.c_str());
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим отрицательный результат выполнения операции
@@ -748,7 +752,7 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 */
 	if(!this->_fs.flush(temporary, true, file))
 		// Выводим в лог сообщение о том, что записанное на носитель не сброшено
-		awh::log::print("SysLog file \"%s\" was written but not flushed onto the medium", awh::log::flag_t::WARNING, filename.c_str());
+		log::print("SysLog file \"%s\" was written but not flushed onto the medium", log::flag_t::WARNING, filename.c_str());
 	/**
 	 * Если перенос собранной записи на место цели не удался
 	 *
@@ -768,7 +772,7 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим в лог сообщение об ошибке подмены файла
-		awh::log::print("SysLog file \"%s\" could not be replaced by the temporary one", awh::log::flag_t::CRITICAL, filename.c_str());
+		log::print("SysLog file \"%s\" could not be replaced by the temporary one", log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -796,7 +800,7 @@ string awh::codec::syslog::Document::dump() const noexcept {
 		// Запоминаем код ошибки сборки записи
 		const_cast <Document *> (this)->_error = this->_writer.error();
 		// Выводим пустую запись системного журнала
-		return string("");
+		return "";
 	}
 	// Выводим собранную запись системного журнала
 	return result;
@@ -1174,7 +1178,7 @@ vector <string> awh::codec::syslog::Document::keys(const string & path) const no
 			 */
 			for(size_t i = 0; i < value.size(); i++)
 				// Добавляем номер значения перечня звеном пути
-				result.push_back(::std::to_string(i));
+				result.push_back(::to_string(i));
 		} break;
 	}
 	// Выводим результирующий перечень звеньев пути
@@ -1400,31 +1404,21 @@ const awh::codec::syslog::pos_t & awh::codec::syslog::Document::errorLocation() 
 	// Выводим положение обнаруженной ошибки
 	return this->_reader.errorLocation();
 }
-
-/**
- * @brief Метод получения настроек разбора записей
- *
- * @return настройки разбора записей
- */
-const awh::codec::syslog::reader_t::settings_t & awh::codec::syslog::Document::settings() const noexcept {
-	// Выводим настройки разбора записей
-	return this->_reader.settings();
-}
-
 /**
  * @brief Метод установки настроек разбора записей
  *
  * @param settings настройки разбора записей
  * @return         признак успешной установки настроек
+ *
  */
-bool awh::codec::syslog::Document::settings(const reader_t::settings_t & settings) noexcept {
+bool awh::codec::syslog::Document::settings(const settings_t & settings) noexcept {
 	/**
 	 * Выполняем сброс состояния чтения записей
 	 *
 	 * @details Чтение потоком смены правил посреди разбора не терпит: записи, разными
-	 * правилами прочтённые, ничем друг от друга не отличаются. У ДОКУМЕНТА же условия
-	 * этого нет: он держит одну запись целиком, и всякий его разбор сам начинается со
-	 * сброса - состояние чтения между вызовами не значимо вовсе
+	 *          правилами прочтённые, ничем друг от друга не отличаются. У ДОКУМЕНТА же условия
+	 *          этого нет: он держит одну запись целиком, и всякий его разбор сам начинается со
+	 *          сброса - состояние чтения между вызовами не значимо вовсе
 	 *
 	 * @warning Прежде настройки пробрасывались чтению как есть, и оно отвечало отказом,
 	 *          коль скоро уже что-то приняло. Потребитель, прочитавший одну запись, НЕ
@@ -1438,14 +1432,14 @@ bool awh::codec::syslog::Document::settings(const reader_t::settings_t & setting
 	 */
 	this->_reader.reset();
 	// Если установка настроек разбора записей отказом завершилась
-	if(!this->_reader.settings(settings)){
+	if(!this->_reader.settings(settings.reader)){
 		// Запоминаем код ошибки последней операции
 		this->_error = this->_reader.error();
 		// Выводим отрицательный признак установки настроек
 		return false;
 	}
 	// Получаем настройки записи событий
-	writer_t::settings_t current = this->_writer.settings();
+	writer_t::settings_t current = settings.writer;
 	/**
 	 * Сводим настройку постановки отмены знаков с настройкой снятия её
 	 *
@@ -1453,32 +1447,39 @@ bool awh::codec::syslog::Document::settings(const reader_t::settings_t & setting
 	 * наращивает косые при всяком обороте, а снятие без постановки их теряет. Пару
 	 * эту сводит документ, ибо только он держит обе стороны оборота
 	 */
-	current.escape = settings.unescape;
+	current.escape = settings.reader.unescape;
 	// Сводим настройку постановки метки порядка байтов с настройкой снятия её
-	current.bom = settings.bom;
+	current.bom = settings.reader.bom;
 	// Устанавливаем настройки записи событий
 	this->_writer.settings(current);
 	// Выводим положительный признак установки настроек
 	return true;
 }
-
 /**
- * @brief Метод установки настроек записи событий
+ * @brief Псевдоним сброса состояния документа (см. clear())
  *
- * @param settings настройки записи событий
  */
-void awh::codec::syslog::Document::settings(const writer_t::settings_t & settings) noexcept {
-	// Устанавливаем настройки записи событий
-	this->_writer.settings(settings);
+void awh::codec::syslog::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
 }
-
 /**
  * @brief Конструктор
  *
  */
 awh::codec::syslog::Document::Document() noexcept :
- _root(abc::kind_t::MAP), _error(error_t::NONE), _reader(),
- _writer(), _chrono(), _fs() {}
+ _root(abc::kind_t::MAP), _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора документа
+ *
+ */
+awh::codec::syslog::Document::Document(const settings_t & settings) noexcept :
+_root(abc::kind_t::MAP), _error(error_t::NONE) {
+	// Устанавливаем настройки чтения и записи событий
+	this->settings(settings);
+}
 
 /**
  * Возвращаем имена, системными макросами занятые

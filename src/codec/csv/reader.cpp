@@ -481,7 +481,7 @@ bool awh::codec::csv::Reader::complete() noexcept {
 			item.name = this->_header.at(this->_field);
 	}
 	// Заносим собранное событие в очередь выдачи
-	this->_items.push_back(::std::move(item));
+	this->_items.push_back(::move(item));
 	// Увеличиваем количество полей, накопленное записью
 	this->_count++;
 	// Увеличиваем номер поля в записи
@@ -524,7 +524,7 @@ bool awh::codec::csv::Reader::commit() noexcept {
 			// Запоминаем положение пустой строки в исходном тексте
 			item.location = this->_position;
 			// Заносим собранное событие в очередь выдачи
-			this->_items.push_back(::std::move(item));
+			this->_items.push_back(::move(item));
 		}
 		// Сбрасываем количество полей, накопленное записью
 		this->_count = 0;
@@ -596,7 +596,7 @@ bool awh::codec::csv::Reader::commit() noexcept {
 					// Запоминаем указание на имя поля события
 					item.name = this->_header.at(this->_field);
 				// Заносим собранное событие в очередь выдачи
-				this->_items.push_back(::std::move(item));
+				this->_items.push_back(::move(item));
 				// Увеличиваем количество полей, накопленное записью
 				this->_count++;
 				// Увеличиваем номер поля в записи
@@ -613,7 +613,7 @@ bool awh::codec::csv::Reader::commit() noexcept {
 	// Запоминаем количество полей записи
 	item.content = span_t(0, this->_count);
 	// Заносим собранное событие в очередь выдачи
-	this->_items.push_back(::std::move(item));
+	this->_items.push_back(::move(item));
 	/**
 	 * Если разбиралась обыкновенная запись
 	 *
@@ -666,8 +666,11 @@ void awh::codec::csv::Reader::marking() noexcept {
 	 *       значило бы держать две разметки ради знака, в поле без кавычек редкого
 	 */
 	this->_breakUnquoted[static_cast <uint8_t> (this->_separator)] = true;
+	// Отмечаем знак кавычки прерывающим поле без кавычек
 	this->_breakUnquoted[static_cast <uint8_t> (this->_settings.quote)] = true;
+	// Отмечаем возврат каретки прерывающим поле без кавычек
 	this->_breakUnquoted[static_cast <uint8_t> ('\r')] = true;
+	// Отмечаем перевод строки прерывающим поле без кавычек
 	this->_breakUnquoted[static_cast <uint8_t> ('\n')] = true;
 	/**
 	 * Отмечаем знаки, разбор поля в кавычках прерывающие
@@ -676,6 +679,7 @@ void awh::codec::csv::Reader::marking() noexcept {
 	 *       является. Перевод строки отмечается затем, что он двигает номер строки
 	 */
 	this->_breakQuoted[static_cast <uint8_t> (this->_settings.quote)] = true;
+	// Отмечаем перевод строки прерывающим поле в кавычках
 	this->_breakQuoted[static_cast <uint8_t> ('\n')] = true;
 	/**
 	 * Если способ записи кавычки признаёт знак отмены
@@ -877,6 +881,9 @@ bool awh::codec::csv::Reader::process(const string & text) noexcept {
 	// Выводим признак продолжения разбора
 	return true;
 }
+/**
+ * Обработка очередного знака разбираемого текста
+ */
 bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	/**
 	 * Признак того, что знак завершает запись, а не входит в её содержимое
@@ -916,6 +923,7 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	if(!terminator && (this->_storage.size() >= ::LIMIT))
 		// Выводим ошибку исчерпания разрядности хранилища
 		return this->fail(error_t::STORAGE_EXHAUSTED);
+	// Проверяем превышение предела длины записи
 	if(!terminator && (this->_settings.maxRecord > 0) && (this->_length >= this->_settings.maxRecord))
 		// Выводим ошибку превышения длины записи
 		return this->fail(error_t::RECORD_TOO_LONG);
@@ -1089,6 +1097,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				this->_begin = static_cast <uint32_t> (this->_storage.size());
 				// Сбрасываем границы значащей части заводимого поля
 				this->_from = this->_begin;
+				// Сбрасываем правую границу значащей части заводимого поля
 				this->_till = this->_begin;
 				// Переводим разбор в состояние строки примечания
 				this->_phase = phase_t::COMMENT;
@@ -1127,7 +1136,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 					// Запоминаем положение примечания в исходном тексте
 					item.location = this->_position;
 					// Заносим собранное событие в очередь выдачи
-					this->_items.push_back(::std::move(item));
+					this->_items.push_back(::move(item));
 				}
 				// Сбрасываем длину текущей записи
 				this->_length = 0;
@@ -1180,6 +1189,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			this->_begin = static_cast <uint32_t> (this->_storage.size());
 			// Сбрасываем границы значащей части заводимого поля
 			this->_from = this->_begin;
+			// Сбрасываем правую границу значащей части заводимого поля
 			this->_till = this->_begin;
 			/**
 			 * Если знаком является кавычка
@@ -1259,6 +1269,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				this->_begin = static_cast <uint32_t> (this->_storage.size());
 				// Сбрасываем границы значащей части заводимого поля
 				this->_from = this->_begin;
+				// Сбрасываем правую границу значащей части заводимого поля
 				this->_till = this->_begin;
 				// Переводим разбор в состояние начала поля
 				this->_phase = phase_t::FIELD_START;
@@ -1498,6 +1509,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 				this->_begin = static_cast <uint32_t> (this->_storage.size());
 				// Сбрасываем границы значащей части заводимого поля
 				this->_from = this->_begin;
+				// Сбрасываем правую границу значащей части заводимого поля
 				this->_till = this->_begin;
 				// Переводим разбор в состояние начала поля
 				this->_phase = phase_t::FIELD_START;
@@ -1743,7 +1755,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 				// Запоминаем положение примечания в исходном тексте
 				item.location = this->_position;
 				// Заносим собранное событие в очередь выдачи
-				this->_items.push_back(::std::move(item));
+				this->_items.push_back(::move(item));
 			}
 			// Переводим разбор в состояние начала записи
 			this->_phase = phase_t::RECORD_START;
@@ -2133,6 +2145,7 @@ void awh::codec::csv::Reader::reset() noexcept {
 	this->_begin = 0;
 	// Сбрасываем границы значащей части заводимого поля
 	this->_from = 0;
+	// Сбрасываем правую границу значащей части заводимого поля
 	this->_till = 0;
 	// Сбрасываем приведение исходного текста к кодировке UTF-8
 	this->_decoder.reset();
@@ -2211,6 +2224,7 @@ bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const
 		this->_begin = 0;
 		// Сбрасываем границы значащей части заводимого поля
 		this->_from = 0;
+		// Сбрасываем правую границу значащей части заводимого поля
 		this->_till = 0;
 	}
 	// Очищаем хранилище перекодированного текста
@@ -2726,3 +2740,8 @@ awh::codec::csv::Reader::Reader(const settings_t & settings) noexcept :
 	// Выполняем установку настроек разбора текста
 	this->settings(settings);
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::csv::Reader::Item::Item() noexcept : event(event_t::NONE), quoted(false), modified(false) {}

@@ -12,15 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация владеющего значения XML — заведение поддерева из значений языка,
  *        снятие его с дерева разметки, правка, извлечение значений и перезапись в текст
- *
- * \~english
- * @brief Implementation of an owning value of XML — the creation of a subtree from the values of the language,
- *        the taking of it off a markup tree, the editing, the extraction of the values and the rewriting into a text
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -72,7 +65,7 @@ namespace {
 	 *       при заведении приложения, а читается всяким потоком, обращающимся по номеру
 	 *
 	 */
-	static ::std::atomic <size_t> LIMIT(0x10000);
+	static std::atomic <size_t> LIMIT(0x10000);
 	/**
 	 * @brief Наибольший допустимый объём хранилища знаков дерева разметки
 	 *
@@ -168,7 +161,7 @@ namespace {
 				}
 			}
 			// Добавляем разобранное звено в перечень звеньев пути
-			result.push_back(::std::move(token));
+			result.push_back(::move(token));
 		}
 		// Выводим признак успешного разбора
 		return true;
@@ -593,6 +586,7 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 			 *          а записывало бы другое: размер узла до перезаписи выходил бы
 			 *          единицей, а после неё нулём, и обход выдавал бы призрачный узел,
 			 *          которого в тексте нет и быть не может
+			 *
 			 * @note Установлено сличением правки с её перезаписью 23.08.2026; приём
 			 *       сличения взят из работы над модулем YAML
 			 */
@@ -863,7 +857,7 @@ bool awh::codec::xml::Value::binding(const string & prefix, const string & uri) 
  */
 size_t awh::codec::xml::Value::limit() noexcept {
 	// Выводим установленный предел роста вместилища
-	return ::LIMIT.load(::std::memory_order_relaxed);
+	return ::LIMIT.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -873,7 +867,7 @@ size_t awh::codec::xml::Value::limit() noexcept {
  */
 void awh::codec::xml::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища
-	::LIMIT.store(value, ::std::memory_order_relaxed);
+	::LIMIT.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод извлечения значения неопределённого
@@ -1119,6 +1113,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	 *          стоят на местах, снятому предшествующих, и первое вхождение приходится на
 	 *          наименьшее из них - то есть на место, снятому НЕ равное. Сойтись эти два
 	 *          условия не могут никогда
+	 *
 	 * @note Ветвь оставлена намеренно и мёртвым кодом не считается: она стережёт то самое
 	 *       условие, каким довод выше и держится. Изменись правило ведения первого
 	 *       вхождения - и она обратится из недостижимой в работающую, а не в порчу
@@ -1674,7 +1669,7 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	 */
 	{
 		// Получаем поставленный предел роста вместилища
-		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
 		/**
 		 * Если предел поставлен и затребованный номер за него выходит
 		 */
@@ -1763,6 +1758,7 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
 	 *
 	 * @note Добавление уносит КОПИЮ узла, а не указание на него, и назвать
 	 *       добавленное потребитель уже не сможет: узел остался бы безымянным навсегда
+	 *
 	 * @warning Разметка без имени записи не подлежит, и записи не подлежало бы ВСЁ
 	 *          ДЕРЕВО целиком: запись отдавала бы пустую строку без всякого отказа.
 	 *          Оттого отказ выносится ЗДЕСЬ, на месте ошибки, а не вдали от неё.
@@ -2008,6 +2004,7 @@ bool awh::codec::xml::Value::value(bool & result) const noexcept {
  *       решением от 01.09.2026
  *
  * @tparam T      затребованный вид числа
+ *
  * @param  result переменная, куда помещается извлечённое значение
  * @return        признак успешности извлечения
  *
@@ -2698,10 +2695,10 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *          зависит от устройства СОСЕДА, а не от него самого
 	 */
 	this->_error = error_t::NONE;
-	// Дерево разметки, разбирающее поданный текст
-	document_t document;
+	// Создаём настройки документа
+	document_t::settings_t documentSettings;
 	// Настройки разбора, огранённые пределом возвратных работ
-	reader_t::settings_t bounded = settings;
+	documentSettings.reader = settings;
 	/**
 	 * Если предел вложенности поднят выше допустимого
 	 *
@@ -2724,13 +2721,15 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *       к самому тексту отношения не имеющей. Предел же выдаёт отказ
 	 *       `DEPTH_EXCEEDED` ровно там, где текст его и превысил
 	 */
-	if((bounded.maxDepth == 0) || (bounded.maxDepth > MAX_DEPTH))
+	if((documentSettings.reader.maxDepth == 0) || (documentSettings.reader.maxDepth > MAX_DEPTH))
 		// Выполняем огранение предела вложенности
-		bounded.maxDepth = MAX_DEPTH;
+		documentSettings.reader.maxDepth = MAX_DEPTH;
+	// Дерево разметки, разбирающее поданный текст
+	document_t document(documentSettings);
 	/**
 	 * Если разбор текста разметки завершился отказом
 	 */
-	if(!document.parse(text, bounded)){
+	if(!document.parse(text)){
 		// Получаем код отказа разбора текста разметки
 		const error_t error = document.error();
 		// Выполняем очистку прежнего содержимого значения
@@ -3314,21 +3313,21 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
 	// Выполняем перенос вида хранимого узла
 	this->_kind = value._kind;
 	// Выполняем перенос префикса пространства имён
-	this->_prefix = ::std::move(value._prefix);
+	this->_prefix = ::move(value._prefix);
 	// Выполняем перенос местного имени узла
-	this->_local = ::std::move(value._local);
+	this->_local = ::move(value._local);
 	// Выполняем перенос обозначения пространства имён
-	this->_uri = ::std::move(value._uri);
+	this->_uri = ::move(value._uri);
 	// Выполняем перенос собственного содержимого узла
-	this->_text = ::std::move(value._text);
+	this->_text = ::move(value._text);
 	// Выполняем перенос свойств узла
-	this->_attributes = ::std::move(value._attributes);
+	this->_attributes = ::move(value._attributes);
 	// Выполняем сброс отображения имён свойств узла
 	this->reproperty();
 	// Выполняем перенос связываний префиксов
-	this->_bindings = ::std::move(value._bindings);
+	this->_bindings = ::move(value._bindings);
 	// Выполняем перенос вложенных узлов
-	this->_items = ::std::move(value._items);
+	this->_items = ::move(value._items);
 	// Выполняем сброс отображения имён вложенных узлов
 	this->reindex();
 	// Выполняем очистку значения, у какого содержимое отобрано
@@ -3340,14 +3339,20 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
  * @brief Конструктор
  *
  */
-awh::codec::xml::Value::Value() noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {}
+awh::codec::xml::Value::Value() noexcept :
+ _indexed(false), _propertied(false),
+ _kind(kind_t::NONE), _error(error_t::NONE),
+ _uri{""}, _text{""}, _local{""}, _prefix{""} {}
 /**
  * @brief Конструктор узла указанного вида
  *
  * @param kind вид заводимого узла
  *
  */
-awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind), _indexed(false), _propertied(false) {}
+awh::codec::xml::Value::Value(const kind_t kind) noexcept :
+ _indexed(false), _propertied(false),
+ _kind(kind), _error(error_t::NONE),
+ _uri{""}, _text{""}, _local{""}, _prefix{""} {}
 /**
  * @brief Конструктор узла разметки с именем
  *
@@ -3357,7 +3362,9 @@ awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind), _indexe
  *
  */
 awh::codec::xml::Value::Value(const string & local, const string & uri, const string & prefix) noexcept :
- _kind(kind_t::ELEMENT), _prefix(prefix), _local(local), _uri(uri), _indexed(false), _propertied(false) {}
+ _indexed(false), _propertied(false),
+ _kind(kind_t::ELEMENT), _error(error_t::NONE),
+ _uri{uri}, _text{""}, _local{local}, _prefix{prefix} {}
 /**
  * @brief Конструктор узла указанного вида с содержимым
  *
@@ -3365,14 +3372,20 @@ awh::codec::xml::Value::Value(const string & local, const string & uri, const st
  * @param text содержимое заводимого узла
  *
  */
-awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept : _kind(kind), _text(text), _indexed(false), _propertied(false) {}
+awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept :
+ _indexed(false), _propertied(false),
+ _kind(kind), _error(error_t::NONE),
+ _uri{""}, _text{text}, _local{""}, _prefix{""} {}
 /**
  * @brief Конструктор снятия значения с узла дерева разметки
  *
  * @param node узел дерева разметки
  *
  */
-awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {
+awh::codec::xml::Value::Value(const node_t & node) noexcept :
+ _indexed(false), _propertied(false),
+ _kind(kind_t::NONE), _error(error_t::NONE),
+ _uri{""}, _text{""}, _local{""}, _prefix{""} {
 	// Выполняем снятие значения с узла дерева разметки
 	this->absorb(node, 0, false);
 }
@@ -3383,8 +3396,13 @@ awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE
  *
  */
 awh::codec::xml::Value::Value(const Value & value) noexcept :
- _kind(value._kind), _prefix(value._prefix), _local(value._local), _uri(value._uri),
- _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items), _indexed(false), _propertied(false) {}
+ _indexed(false), _propertied(false),
+ _kind(value._kind), _error(value._error),
+ _uri{value._uri}, _text{value._text},
+ _local{value._local}, _prefix{value._prefix},
+ _items(value._items), _bindings(value._bindings),
+ _attributes(value._attributes), _index(value._index),
+ _properties(value._properties) {}
 /**
  * @brief Конструктор переноса
  *
@@ -3392,10 +3410,13 @@ awh::codec::xml::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::xml::Value::Value(Value && value) noexcept :
- _kind(value._kind), _prefix(::std::move(value._prefix)), _local(::std::move(value._local)),
- _uri(::std::move(value._uri)), _text(::std::move(value._text)),
- _attributes(::std::move(value._attributes)), _bindings(::std::move(value._bindings)),
- _items(::std::move(value._items)), _indexed(false), _propertied(false) {
+ _indexed(false), _propertied(false),
+ _kind(value._kind), _error(value._error),
+ _uri(::move(value._uri)), _text(::move(value._text)),
+ _local(::move(value._local)), _prefix(::move(value._prefix)), 
+ _items(::move(value._items)), _bindings(::move(value._bindings)),
+ _attributes(::move(value._attributes)), _index(::move(value._index)),
+ _properties(::move(value._properties)) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }
@@ -3413,6 +3434,8 @@ awh::codec::xml::Builder::Builder() noexcept {}
  */
 awh::codec::xml::value_t * awh::codec::xml::Builder::attach(const value_t & value) noexcept {
 	/**
+	 * @brief Если ни одного узла ещё не открыто
+	 *
 	 * @note Оба отказа помещения ниже НЕДОСТИЖИМЫ и оттого не покрыты: помещение отвергает
 	 *       лишь узел, вложенных узлов иметь не могущий, а здесь и собираемое значение, и
 	 *       узел, открытый последним, таковыми быть не могут - первое заводится корнем
@@ -3430,9 +3453,6 @@ awh::codec::xml::value_t * awh::codec::xml::Builder::attach(const value_t & valu
 	 * @warning Снимать их нельзя: выданное указание разыменовывается вызывающими без
 	 *          оглядки, и послабление вида собираемого значения обратилось бы обращением
 	 *          по пустому указанию
-	 */
-	/**
-	 * Если ни одного узла ещё не открыто
 	 */
 	if(this->_nesting.empty()){
 		/**
@@ -3667,7 +3687,7 @@ void awh::codec::xml::Builder::reset() noexcept {
  */
 awh::codec::xml::value_t awh::codec::xml::Builder::finish() noexcept {
 	// Изымаем собранное значение
-	value_t result = ::std::move(this->_result);
+	value_t result = ::move(this->_result);
 	// Выполняем сброс состояния сборки
 	this->reset();
 	/**
@@ -3811,6 +3831,7 @@ awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Valu
 		// Выводим признак содержимого, записи подлежащего
 		return error_t::NONE;
 	};
+	// Построение, размещающее содержимое в хранилище значений
 	auto store = [this, &overflow, &unwritable, &writable](const string & text) noexcept -> span_t {
 		/**
 		 * Если размещаемое содержимое записи не подлежит
@@ -4248,7 +4269,7 @@ vector <string> awh::codec::xml::Document::keys(const string & path) const noexc
 			// Выполняем добавление имени узла звеном пути
 			result.emplace_back(local);
 		// Если имя отсутствует либо оно среди детей не единственное, звеном идёт номер
-		else result.push_back(::std::to_string(index));
+		else result.push_back(::to_string(index));
 	}
 	// Выводим перечень звеньев пути к вложенным узлам
 	return result;
@@ -4337,6 +4358,9 @@ static const awh::codec::xml::Value & unwrapDocument(const awh::codec::xml::Valu
 	// Выводим значение как оно есть, разворачиванию оно не подлежит
 	return value;
 }
+/**
+ * Установка владеющего значения по пути
+ */
 bool awh::codec::xml::Document::set(const string & path, const xml::Value & value) noexcept {
 	/**
 	 * Выполняем сброс кода отказа и положения прежней работы
@@ -4829,12 +4853,14 @@ bool awh::codec::xml::Document::reset(const string & path) noexcept {
  * Без этого метода `v['z']` молча обращался к узлу под номером 122
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
  * @param  name разыскиваемое имя из одного знака
  * @return      ссылка на дочерний узел
  *
  */
 template <typename T>
 typename std::enable_if <std::is_same <T, char>::value, const awh::codec::xml::Value &>::type
+// Оператор чтения дочернего узла по имени из одного знака
 awh::codec::xml::Value::operator [] (const T name) const noexcept {
 	// Выполняем обращение к дочернему узлу по имени из одного знака
 	return (* this)[string(1, name)];
@@ -4843,12 +4869,14 @@ awh::codec::xml::Value::operator [] (const T name) const noexcept {
  * @brief Метод обращения к дочернему узлу по написанию знака с заведением недостающего
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
  * @param  name разыскиваемое имя из одного знака
  * @return      ссылка на дочерний узел
  *
  */
 template <typename T>
 typename std::enable_if <std::is_same <T, char>::value, awh::codec::xml::Value &>::type
+// Оператор неконстантного обращения к дочернему узлу по имени из одного знака
 awh::codec::xml::Value::operator [] (const T name) noexcept {
 	// Выполняем обращение к дочернему узлу по имени из одного знака
 	return (* this)[string(1, name)];
@@ -4858,5 +4886,24 @@ awh::codec::xml::Value::operator [] (const T name) noexcept {
  */
 template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, const awh::codec::xml::Value &>::type
 awh::codec::xml::Value::operator [] <char> (const char) const noexcept;
+// Явное заведение обращения к дочернему узлу по имени из одного знака
 template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, awh::codec::xml::Value &>::type
 awh::codec::xml::Value::operator [] <char> (const char) noexcept;
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Value::Property::Property() noexcept : uri{""}, value{""}, local{""}, prefix{""} {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Value::Namespace::Namespace() noexcept : uri{""}, prefix{""} {}
+/**
+ * @brief Конструктор
+ *
+ * @param first номер первого вложенного узла с этим именем
+ *
+ */
+awh::codec::xml::Value::Entry::Entry(const size_t first) noexcept : first(first), count(1) {}

@@ -206,10 +206,10 @@ namespace awh {
 						 * \~
 						 */
 						duplicate_t duplicates;
-						// Настройки разбора текста
-						reader_t::settings_t reader;
-						// Настройки записи текста
+						// Настройки записи текста разметки
 						writer_t::settings_t writer;
+						// Настройки разбора текста разметки
+						reader_t::settings_t reader;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -1582,9 +1582,20 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					reader_t _reader;
-					// Настройки документа
-					settings_t _settings;
+					mutable reader_t _reader;
+					/**
+					 * \~russian
+					 * Запись текста документа
+					 *
+					 * \~english
+					 * Writing the text of a document
+					 *
+					 * \~
+					 */
+					mutable writer_t _writer;
+				private:
+					// Правило преобразования чисел при разборе
+					number_t _numbers;
 					/**
 					 * \~russian
 					 * Кодировка, какою исходный текст документа прочитан
@@ -1603,6 +1614,24 @@ namespace awh {
 					 * \~
 					 */
 					encoding_t _encoding;
+					/**
+					 * \~russian
+					 * @brief Правило обращения с повторяющимся именем поля объекта
+					 *
+					 * @note Правило это принадлежит документу, а не разбору: разбор
+					 *       событий имена не удерживает вовсе, а сличать их можно лишь у
+					 *       собранного объекта
+					 *
+					 * \~english
+					 * @brief Rule of the handling of a repeating name of a field of an object
+					 *
+					 * @note This rule belongs to the document rather than to the parsing: the
+					 *       parsing of the events does not hold the names at all, while they can
+					 *       be compared only at an assembled object
+					 *
+					 * \~
+					 */
+					duplicate_t _duplicates;
 				private:
 					/**
 					 * \~russian
@@ -1800,7 +1829,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод сборки дерева по очередному событию разбора
 					 *
-					 * @param reader   объект потокового чтения текста
 					 * @param event    вид очередного события разбора
 					 * @param content  указание на содержимое события в хранилище знаков разбора
 					 * @param modified признак изменения содержимого разбором
@@ -1809,7 +1837,6 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the assembly of the tree by the next event of the parsing
 					 *
-					 * @param reader   object of the streaming reading of a text
 					 * @param event    kind of the next event of the parsing
 					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
 					 * @param modified flag of the modification of the content by the parsing
@@ -1817,7 +1844,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool digest(reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept;
+					bool digest(const event_t event, const span_t content, const bool modified) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод переноса знаков разбора в хранилище документа
@@ -1828,8 +1855,6 @@ namespace awh {
 					 *
 					 * @note Перенос по одному значению стоил половины всего времени сборки дерева
 					 *
-					 * @param reader объект потокового чтения текста
-					 *
 					 * \~english
 					 * @brief Method of the transfer of the characters of the parsing into the storage of the document
 					 *
@@ -1839,11 +1864,9 @@ namespace awh {
 					 *
 					 * @note The transfer one value at a time cost half of the whole time of the assembly of the tree
 					 *
-					 * @param reader object of the streaming reading of a text
-					 *
 					 * \~
 					 */
-					void transfer(const reader_t & reader) noexcept;
+					void transfer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора повторяющихся имён полей объекта
@@ -1853,7 +1876,6 @@ namespace awh {
 					 *          можно лишь у собранного объекта.
 					 *
 					 * @param parent номер узла разбираемого объекта
-					 * @param reader объект потокового чтения текста
 					 * @return       признак успешности разбора
 					 *
 					 * \~english
@@ -1864,12 +1886,11 @@ namespace awh {
 					 *          can be compared only at an assembled object.
 					 *
 					 * @param parent index of the node of the object being analyzed
-					 * @param reader object of the streaming reading of a text
 					 * @return       sign of the success of the analysis
 					 *
 					 * \~
 					 */
-					bool deduplicate(const uint32_t parent, const reader_t & reader) noexcept;
+					bool deduplicate(const uint32_t parent) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод розыска узла дерева документа по звеньям указателя
@@ -2062,34 +2083,13 @@ namespace awh {
 					bool load(const string & filename) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод перезаписи документа в текст
-					 *
-					 * @param format вид оформления собираемого текста
-					 * @return       собранный текст документа
-					 *
-					 * \~english
-					 * @brief Method of the rewriting of the document into a text
-					 *
-					 * @param format kind of the formatting of the text being assembled
-					 * @return       assembled text of the document
-					 *
-					 * \~
-					 */
-					string dump() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод получения текста документа затребованным оформлением
 					 *
 					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи:
 					 *          прочие же настройки - способ экранирования и ширина отступа - берутся
 					 *          из настроек контейнера.
 					 *
-					 * @note Перегрузка эта заведена взамен довода с умолчанием: умолчание
-					 *       `COMPACT` перекрывало настройку `writer.format` ВСЕГДА, и настройка
-					 *       эта через общий путь силы не имела вовсе
-					 *
-					 * @param format затребованное оформление собираемого текста
-					 * @return       собранный текст документа
+					 * @return собранный текст документа
 					 *
 					 * \~english
 					 * @brief Method of the obtaining of the text of a document by a requested formatting
@@ -2098,62 +2098,31 @@ namespace awh {
 					 *          the rest of the settings — the manner of the escaping and the width of the indentation —
 					 *          are taken from the settings of the container.
 					 *
-					 * @note The present overload has been introduced instead of an argument with a default:
-					 *       the `COMPACT` default overrode the `writer.format` setting ALWAYS, and that setting
-					 *       had no force through the common path at all
-					 *
-					 * @param format requested formatting of the assembled text
-					 * @return       assembled text of the document
+					 * @return assembled text of the document
 					 *
 					 * \~
 					 */
-					string dump(const format_t format) const noexcept;
+					string dump() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод записи документа в файл
-					 *
-					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
-					 *      неделимость записи: отказ оставляет прежний файл нетронутым
-					 *
-					 * @param filename адрес записываемого файла
-					 * @param format   вид оформления собираемого текста
-					 * @return         признак успешности записи
-					 *
-					 * \~english
-					 * @brief Method of the writing of the document into a file
-					 *
-					 * @see This contract is verified by the `CodecContract.SavingKeepsThePreviousFileOnWriteFailure` test:
-					 *      the write operation is atomic—a failure leaves the original file untouched
-					 *
-					 * @param filename address of the file being written
-					 * @param format   kind of the formatting of the text being assembled
-					 * @return         sign of the success of the writing
-					 *
-					 * \~
-					 */
-					bool save(const string & filename) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод сохранения текста документа в файл затребованным оформлением
+					 * @brief Метод сохранения текста документа в файл
 					 *
 					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи.
 					 *
 					 * @param filename адрес файла для сохранения
-					 * @param format   затребованное оформление собираемого текста
 					 * @return         признак успешности сохранения
 					 *
 					 * \~english
-					 * @brief Method of the saving of the text of a document into a file by a requested formatting
+					 * @brief Method of the saving of the text of a document into a file
 					 *
 					 * @details The formatting requested here OVERRIDES the setting of the writing.
 					 *
 					 * @param filename address of the file for the saving
-					 * @param format   requested formatting of the assembled text
 					 * @return         flag of the success of the saving
 					 *
 					 * \~
 					 */
-					bool save(const string & filename, const format_t format) const noexcept;
+					bool save(const string & filename) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод прививки владеющего значения в дерево документа
@@ -2690,20 +2659,6 @@ namespace awh {
 					encoding_t encoding() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод извлечения настроек документа
-					 *
-					 * @return настройки документа
-					 *
-					 * \~english
-					 * @brief Method of the extraction of the settings of the document
-					 *
-					 * @return settings of the document
-					 *
-					 * \~
-					 */
-					const settings_t & settings() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек документа
 					 *
 					 * @param settings устанавливаемые настройки документа
@@ -2719,6 +2674,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Document(Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -2727,6 +2724,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Document() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки дерева настроек
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the settings tree
+					 *
+					 * \~
+					 */
+					explicit Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

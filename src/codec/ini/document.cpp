@@ -21,12 +21,17 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Стандартный заголовочный файл
  */
-#include <encoding/ascii.hpp>
-#include <encoding/unicode/utf8.hpp>
 #include <set>
-#include <codec/ini/document.hpp>
+
+/**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
+ */
+#include <sys/macro/suppress.hpp>
+
 /**
  * Подключаем общее приведение и разбор чисел кодеков
  *
@@ -50,12 +55,12 @@
 #include <codec/ini/value.hpp>
 
 /**
- * Подавляем системные макросы, занявшие имена членов перечислений ниже:
- * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
- * Имена снимаются лишь на время объявлений - возврат в конце файла
+ * Подключаем заголовочные файлы проекта
  */
-#include <sys/macro/suppress.hpp>
 #include <sys/log.hpp>
+#include <encoding/ascii.hpp>
+#include <encoding/unicode/utf8.hpp>
+#include <codec/ini/document.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -368,10 +373,12 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 		 *       «x[]» - записанное имя с прочитанным совпадает. Читающий же, берущий
 		 *       первую, прочтёт «x[» с лишним хвостом. Правило одно с правилом записи
 		 */
-		bool invalid = ((name[i] == '\n') || (name[i] == '\r') ||
-		                (section ? (!this->_settings.reader.greedySections && ((name[i] == '[') || (name[i] == ']'))) :
-		                 (this->_settings.reader.arrays ? ((name[i] == '[') || (name[i] == ']')) : false)) ||
-		                (!section && (i == 0) && commented(name[i], this->_settings.reader.comments)));
+		bool invalid = (
+			(name[i] == '\n') || (name[i] == '\r') ||
+		    (section ? (!this->_settings.reader.greedySections && ((name[i] == '[') || (name[i] == ']'))) :
+		    (this->_settings.reader.arrays ? ((name[i] == '[') || (name[i] == ']')) : false)) ||
+		    (!section && (i == 0) && commented(name[i], this->_settings.reader.comments))
+		);
 		/**
 		 * Если читающий признаёт примечание в конце строки
 		 *
@@ -384,8 +391,7 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 		 * @note Требование то же, что и у читающего: примечанием знак признаётся, лишь
 		 *       когда стоит первым либо отделён пробельным знаком
 		 */
-		if(this->_settings.reader.inlineComments && commented(name[i], this->_settings.reader.comments) &&
-		   ((i == 0) || ascii::isSpace(name[i - 1])))
+		if(this->_settings.reader.inlineComments && commented(name[i], this->_settings.reader.comments) && ((i == 0) || ascii::isSpace(name[i - 1])))
 			// Дополняем признак недопустимости знаком начала примечания
 			invalid = true;
 		/**
@@ -1184,6 +1190,54 @@ const awh::codec::ini::Document::settings_t & awh::codec::ini::Document::setting
 void awh::codec::ini::Document::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки дерева настроек
 	this->_settings = settings;
+	{
+		/**
+		 * Снимаем расстановку пустых строк перед объявлениями разделов
+		 *
+		 * @note Расстановка эта взята из исходного текста и хранится записями пустых
+		 *       строк: добавлять к ней свою значило бы наращивать пустые строки при
+		 *       каждом обороте «чтение - запись»
+		 */
+		this->_settings.writer.separated = false;
+		// Устанавливаем настройки объекта записи событий
+		this->_writer.settings(this->_settings.writer);
+	}{
+		// Устанавливаем выдачу пустых строк отдельным событием
+		this->_settings.reader.emitBlanks = true;
+		/**
+		 * Устанавливаем выдачу примечаний отдельным событием
+		 *
+		 * @note Примечания и пустые строки читаются всегда: дерево держит оформление
+		 *       текста, и отказ от них лишил бы его возможности переписать файл
+		 *       настроек, не обеднив его
+		 */
+		this->_settings.reader.emitComments = true;
+		/**
+		 * Выполняем огранение предела вложенности потолком допустимого
+		 *
+		 * @details Разбор вложенности ведётся стопою вызовов, а работы по готовому дереву -
+		 *          снятие владеющим значением да запись - идут возвратом, и глубина ложится прямо на
+		 *          стек. Настройка, поднятая потребителем выше потолка, обходила его вовсе, и текст
+		 *          из одних открывающих скобок срывал стек: замерено 04.09.2026 щупом - при
+		 *          `maxDepth = 200000` глубина 100000 валила процесс по SIGSEGV, а при настройке по
+		 *          умолчанию тот же текст отвечал честным отказом.
+		 *
+		 * @note Ноль огранивается НАРАВНЕ с числом завышенным: ноль значит «без предела» у
+		 *       всех кодеков рамки. Запрет подразделов выражается ныне признаком `nesting`,
+		 *       а не нулём предела
+		 *
+		 * @note Огранение идёт молча и до разбора: отказ выдаёт сам разбор - ровно там, где
+		 *       текст предел и превысил, и с местом в тексте
+		 *
+		 * @note Устроено это тем же порядком, что и у контейнера JSON с деревом разметки
+		 *
+		 */
+		if((this->_settings.reader.maxDepth == 0) || (this->_settings.reader.maxDepth > MAX_DEPTH))
+			// Выполняем огранение предела вложенности потолком допустимого
+			this->_settings.reader.maxDepth = MAX_DEPTH;
+		// Устанавливаем настройки объекта потокового чтения записей
+		this->_reader.settings(this->_settings.reader);
+	}
 	/**
 	 * Выполняем перестроение указателей поиска
 	 *
@@ -1206,46 +1260,16 @@ void awh::codec::ini::Document::settings(const settings_t & settings) noexcept {
 bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 	// Выполняем освобождение дерева настроек
 	this->clear();
-	// Получаем настройки разбора текста настроек
-	reader_t::settings_t settings = this->_settings.reader;
-	/**
-	 * Устанавливаем выдачу примечаний отдельным событием
-	 *
-	 * @note Примечания и пустые строки читаются всегда: дерево держит оформление
-	 *       текста, и отказ от них лишил бы его возможности переписать файл
-	 *       настроек, не обеднив его
-	 */
-	settings.emitComments = true;
-	// Устанавливаем выдачу пустых строк отдельным событием
-	settings.emitBlanks = true;
-	/**
-	 * Выполняем огранение предела вложенности потолком допустимого
-	 *
-	 * @details Разбор вложенности ведётся стопою вызовов, а работы по готовому дереву -
-	 * снятие владеющим значением да запись - идут возвратом, и глубина ложится прямо на
-	 * стек. Настройка, поднятая потребителем выше потолка, обходила его вовсе, и текст
-	 * из одних открывающих скобок срывал стек: замерено 04.09.2026 щупом - при
-	 * `maxDepth = 200000` глубина 100000 валила процесс по SIGSEGV, а при настройке по
-	 * умолчанию тот же текст отвечал честным отказом
-	 *
-	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: ноль значит «без предела» у
-	 *       всех кодеков рамки. Запрет подразделов выражается ныне признаком `nesting`,
-	 *       а не нулём предела
-	 *
-	 * @note Огранение идёт молча и до разбора: отказ выдаёт сам разбор - ровно там, где
-	 *       текст предел и превысил, и с местом в тексте
-	 *
-	 * @note Устроено это тем же порядком, что и у контейнера JSON с деревом разметки
-	 */
-	if((settings.maxDepth == 0) || (settings.maxDepth > MAX_DEPTH))
-		// Выполняем огранение предела вложенности потолком допустимого
-		settings.maxDepth = MAX_DEPTH;
-	// Объект потокового чтения текста настроек
-	reader_t reader(settings);
-	// Выполняем заведение раздела без имени
-	this->_sections.emplace_back();
+	// Отводим место под перечень записей дерева
+	this->_records.reserve(text.length() / 4);
+	// Отводим место под перечень разделов дерева
+	this->_sections.reserve(text.length() / 4);
 	// Порядковый номер раздела, которому принадлежат разбираемые записи
 	uint32_t current = 0;
+	// Выполняем сброс потокового чтения текста
+	this->_reader.reset();
+	// Выполняем заведение раздела без имени
+	this->_sections.emplace_back();
 	/**
 	 * Если передачу разбираемого текста выполнить не удалось
 	 *
@@ -1270,28 +1294,28 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
 	 *          слоями, и разойдись слои - станет видимым немедля
 	 */
-	if(!reader.feed(text)){
+	if(!this->_reader.feed(text)){
 		// Запоминаем код ошибки разбора
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение обнаруженной ошибки
-		this->_errorLocation = reader.errorLocation();
+		this->_errorLocation = this->_reader.errorLocation();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
 	/**
 	 * Выполняем перебор всех событий разбора
 	 */
-	while(reader.next()){
+	while(this->_reader.next()){
 		// Собираемая запись разобранного текста
 		record_t record;
 		/**
 		 * Определяем вид текущего события разбора
 		 */
-		switch(static_cast <uint8_t> (reader.event())){
+		switch(static_cast <uint8_t> (this->_reader.event())){
 			// Если событием является объявление раздела
 			case static_cast <uint8_t> (event_t::SECTION): {
 				// Собираем ключ указателя разделов
-				const string label = this->label(reader.section().section, reader.section().subsection);
+				const string label = this->label(this->_reader.section().section, this->_reader.section().subsection);
 				// Выполняем поиск раздела в указателе разделов
 				const auto i = this->_index.find(label);
 				/**
@@ -1311,9 +1335,9 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 					// Собираемый раздел разобранного текста
 					section_t section;
 					// Запоминаем место имени раздела в хранилище знаков
-					section.name = this->add(reader.section().section);
+					section.name = this->add(this->_reader.section().section);
 					// Запоминаем место имени подраздела в хранилище знаков
-					section.subsection = this->add(reader.section().subsection);
+					section.subsection = this->add(this->_reader.section().subsection);
 					// Запоминаем признак объявления раздела в тексте настроек
 					section.declared = true;
 					// Запоминаем порядковый номер объявленного раздела
@@ -1331,9 +1355,9 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 				// Запоминаем вид собираемой записи
 				record.kind = kind_t::PROPERTY;
 				// Запоминаем место имени свойства в хранилище знаков
-				record.key = this->add(reader.key());
+				record.key = this->add(this->_reader.key());
 				// Запоминаем место значения свойства в хранилище знаков
-				record.value = this->add(reader.text());
+				record.value = this->add(this->_reader.text());
 				/**
 				 * Если хранилище знаков предел разрядности отрезка превысило
 				 *
@@ -1348,11 +1372,11 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 				// Запоминаем место значения свойства до подстановки обращений
 				record.raw = record.value;
 				// Запоминаем признак заключения значения в кавычки
-				record.quoted = reader.property().quoted;
+				record.quoted = this->_reader.property().quoted;
 				// Запоминаем признак свойства без разделителя и значения
-				record.valueless = reader.property().valueless;
+				record.valueless = this->_reader.property().valueless;
 				// Запоминаем признак свойства, добавляющего значение к перечню
-				record.append = reader.property().append;
+				record.append = this->_reader.property().append;
 			} break;
 			// Если событием является примечание
 			case static_cast <uint8_t> (event_t::COMMENT): {
@@ -1365,7 +1389,7 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 				 *       заводить ради него отдельное поле незачем, а запись эта
 				 *       свойством не является и значения не несёт
 				 */
-				record.value = this->add(reader.text());
+				record.value = this->add(this->_reader.text());
 				/**
 				 * Если хранилище знаков предел разрядности отрезка превысило
 				 *
@@ -1378,9 +1402,9 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				// Запоминаем знак, которым примечание начато
-				record.marker = reader.comment().marker;
+				record.marker = this->_reader.comment().marker;
 				// Запоминаем расположение примечания в тексте настроек
-				record.placement = reader.comment().placement;
+				record.placement = this->_reader.comment().placement;
 			} break;
 			// Если событием является пустая строка
 			case static_cast <uint8_t> (event_t::BLANK):
@@ -1398,11 +1422,11 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 	/**
 	 * Если разбор прекращён ошибкой
 	 */
-	if(reader.state() == state_t::FAILED){
+	if(this->_reader.state() == state_t::FAILED){
 		// Получаем код ошибки разбора
-		const error_t error = reader.error();
+		const error_t error = this->_reader.error();
 		// Получаем положение обнаруженной ошибки
-		const location_t location = reader.errorLocation();
+		const location_t location = this->_reader.errorLocation();
 		/**
 		 * Выполняем освобождение дерева настроек
 		 *
@@ -1444,7 +1468,7 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 	 *       текста, - а дерево лишь несёт её потребителю. Своего опознания дерево не
 	 *       ведёт: два опознания разошлись бы молча
 	 */
-	this->_encoding = reader.encoding();
+	this->_encoding = this->_reader.encoding();
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1656,7 +1680,7 @@ string_view awh::codec::ini::Document::get(const string_view key, const string_v
 	 */
 	if(records == nullptr)
 		// Выводим пустую последовательность знаков
-		return string_view();
+		return "";
 	/**
 	 * Выводим значение последнего объявления свойства
 	 *
@@ -1985,7 +2009,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
  */
 bool awh::codec::ini::Document::reset(const string & path) noexcept {
 	// Выводим результат постановки пустой записи по указанному пути
-	return this->graft(path, ::awh::codec::ini::Value(string()));
+	return this->graft(path, codec::ini::Value(string()));
 }
 /**
  * @brief Метод постановки владеющего значения по пути
@@ -2004,7 +2028,7 @@ bool awh::codec::ini::Document::reset(const string & path) noexcept {
  * @return      признак успешной постановки значения
  *
  */
-bool awh::codec::ini::Document::graft(const string & path, const ::awh::codec::ini::Value & value) noexcept {
+bool awh::codec::ini::Document::graft(const string & path, const codec::ini::Value & value) noexcept {
 	// Выполняем сброс кода ошибки последней операции
 	this->fault(error_t::NONE);
 	// Получаем путь без ведущей косой черты
@@ -2054,7 +2078,7 @@ bool awh::codec::ini::Document::graft(const string & path, const ::awh::codec::i
 	 *       сущее, и проводить его надлежит правкою кода по трём кодекам разом
 	 */
 	// Снимаем настройки владеющим значением
-	::awh::codec::ini::Value whole(* this);
+	codec::ini::Value whole(* this);
 	/**
 	 * Если вместилища правимого значения в дереве нет
 	 *
@@ -2070,7 +2094,7 @@ bool awh::codec::ini::Document::graft(const string & path, const ::awh::codec::i
 		return false;
 	}
 	// Получаем вместилище правимого значения
-	::awh::codec::ini::Value & owner = (head.empty() ? whole : whole.place(head));
+	codec::ini::Value & owner = (head.empty() ? whole : whole.place(head));
 	/**
 	 * Если вместилище правимого значения негодно
 	 *
@@ -2145,7 +2169,7 @@ bool awh::codec::ini::Document::graft(const string & path, const ::awh::codec::i
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа - ослабни
 		 *       поверка звена впредь, и запись нецифровая без него легла бы номером нуль
 		 */
-		if(!::awh::codec::numeric <uint64_t> (name, number)){
+		if(!codec::numeric <uint64_t> (name, number)){
 			// Запоминаем код отказа постановки значения
 			this->fault(error_t::INVALID_KEY);
 			// Выводим признак неудачной постановки значения
@@ -2169,6 +2193,9 @@ bool awh::codec::ini::Document::graft(const string & path, const ::awh::codec::i
 	// Выводим результат переноса правленого дерева обратно в настройки
 	return whole.graft(* this);
 }
+/**
+ * Установка свойства настройки по ключу и разделу
+ */
 bool awh::codec::ini::Document::set(const string_view key, const string_view value, const string_view section, const string_view subsection) noexcept {
 	/**
 	 * Выполняем сброс кода ошибки последней операции
@@ -2774,9 +2801,9 @@ bool awh::codec::ini::Document::remove(const string_view section, const string_v
  * @return     разысканное значение настроек
  *
  */
-::awh::codec::ini::Value awh::codec::ini::Document::at(const string & path) const noexcept {
+awh::codec::ini::Value awh::codec::ini::Document::at(const string & path) const noexcept {
 	// Выводим значение настроек, путём разысканное
-	return ::awh::codec::ini::Value(* this).at(path);
+	return codec::ini::Value(* this).at(path);
 }
 /**
  * @brief Метод получения количества детей корня
@@ -2817,7 +2844,7 @@ size_t awh::codec::ini::Document::size() const noexcept {
 	 *       этого же дерева, а не набор стандартной библиотеки, и краткая запись давала
 	 *       отказ сборки «обращение к нестатическому члену обязано быть вызовом»
 	 */
-	::std::set <string_view> names;
+	std::set <string_view> names;
 	/**
 	 * Выполняем перебор всех имён свойств верхнего уровня
 	 */
@@ -2897,13 +2924,6 @@ void awh::codec::ini::Document::clear() noexcept {
 	this->_last.clear();
 }
 /**
- * @brief Метод записи дерева обратно в текст настроек
- *
- * @param settings настройки записи текста настроек
- * @return         собранный текст настроек
- *
- */
-/**
  * @brief Метод получения настроек записи, отвечающих настройкам разбора
  *
  * @return настройки записи текста настроек
@@ -2973,8 +2993,9 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	result.greedySections = this->_settings.reader.greedySections;
 	// Устанавливаем признак признания свойств до первого раздела читающим
 	result.global = this->_settings.reader.global;
-	// Устанавливаем признак признания свойства без значения читающим
 	/**
+	 * Устанавливаем признак признания свойства без значения читающим
+	 *
 	 * @warning Передача эта ныне НЕ НАБЛЮДАЕМА через дерево: свойство без значения дерево
 	 *          несёт дословным переносом исходной строки, и приём записи `property(имя)`,
 	 *          настройкою этой ведомый, с пути дерева не зовётся ни разу. Замерено порчею
@@ -2992,12 +3013,6 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	// Выводим собранные настройки записи
 	return result;
 }
-/**
- * @brief Метод записи дерева обратно в текст настроек
- *
- * @return собранный текст настроек
- *
- */
 /**
  * @brief Метод чтения настроек из файла
  *
@@ -3067,7 +3082,7 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 		return false;
 	}
 	// Собираемое содержимое читаемого файла настроек
-	string text;
+	string text = "";
 	// Выполняем чтение содержимого файла настроек
 	this->_fs.read(filename, text);
 	/**
@@ -3086,7 +3101,6 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 		// Выводим признак неудачного чтения настроек
 		return false;
 	}
-
 	// Выводим признак успешного чтения настроек
 	return this->parse(text);
 }
@@ -3151,8 +3165,8 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		log::print("INI document failed: %s", log::flag_t::CRITICAL,
+		 codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -3173,8 +3187,8 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		log::print("INI document failed: %s", log::flag_t::CRITICAL,
+		 codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -3190,7 +3204,7 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		/**
-		 * Выполняем оглашение отказа в журнал
+		 * Выполняем вывод сообщения об отказе записи
 		 *
 		 * @warning Отказ обязан быть ОГЛАШЁН, а не проглочен молча: потребитель, ложь без
 		 *          слова получивший, не узнает ни места отказа, ни рода его
@@ -3203,9 +3217,7 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		 *          был НЕМ: замерено подачею пути в каталог, отказ приходил при коде НОЛЬ,
 		 *          тогда как JSON, XML и CSV называли причину
 		 */
-		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		log::print("INI document failed: %s", log::flag_t::CRITICAL, codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -3222,7 +3234,7 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
  * @return кодировка, какою текст настроек прочитан
  *
  */
-::awh::codec::ini::encoding_t awh::codec::ini::Document::encoding() const noexcept {
+awh::codec::ini::encoding_t awh::codec::ini::Document::encoding() const noexcept {
 	// Выводим кодировку, какою текст настроек прочитан
 	return this->_encoding;
 }
@@ -3233,10 +3245,6 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
  *
  */
 string awh::codec::ini::Document::dump() const noexcept {
-	// Выполняем запись дерева настройками, отвечающими настройкам разбора
-	return this->dump(this->writing());
-}
-string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода ошибки последней операции
 	this->fault(error_t::NONE);
 	// Выполняем пересчёт подстановки обращений, устаревшей после правки
@@ -3245,9 +3253,9 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 	 * Если дерево несёт неразрешимое обращение
 	 *
 	 * @details Правка вправе удалить источник обращения, и чтение такое значение выдаёт
-	 * в записанном виде. Записать же дерево целиком нельзя: текст с обращением в пустоту
-	 * разбор отвергает по неизвестному обращению, и выдать его значило бы отдать
-	 * заведомо негодный файл настроек тому, кто отказа не спросил
+	 *          в записанном виде. Записать же дерево целиком нельзя: текст с обращением в пустоту
+	 *          разбор отвергает по неизвестному обращению, и выдать его значило бы отдать
+	 *          заведомо негодный файл настроек тому, кто отказа не спросил
 	 */
 	if(this->_dangling){
 		// Запоминаем код ошибки записи
@@ -3255,22 +3263,14 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим пустой текст настроек
-		return string();
+		return "";
 	}
-	// Получаем настройки записи текста настроек
-	writer_t::settings_t options = settings;
-	/**
-	 * Снимаем расстановку пустых строк перед объявлениями разделов
-	 *
-	 * @note Расстановка эта взята из исходного текста и хранится записями пустых
-	 *       строк: добавлять к ней свою значило бы наращивать пустые строки при
-	 *       каждом обороте «чтение - запись»
-	 */
-	options.separated = false;
-	// Объект записи текста настроек
-	writer_t writer(options);
 	// Признак успешной записи очередной записи дерева
 	bool result = true;
+	// Очищаем объект записи текста
+	this->_writer.clear();
+	// Выполняем установку настроек записи текста настроек
+	this->_writer.settings(this->_settings.writer);
 	/**
 	 * Выполняем перебор всех записей разобранного текста
 	 */
@@ -3282,7 +3282,7 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 			// Если записью является объявление раздела
 			case static_cast <uint8_t> (kind_t::SECTION):
 				// Выполняем запись объявления раздела
-				result = writer.section(this->get(this->_sections.at(this->_records.at(i).section).name), this->get(this->_sections.at(this->_records.at(i).section).subsection));
+				result = this->_writer.section(this->get(this->_sections.at(this->_records.at(i).section).name), this->get(this->_sections.at(this->_records.at(i).section).subsection));
 			break;
 			// Если записью является свойство со значением
 			case static_cast <uint8_t> (kind_t::PROPERTY): {
@@ -3291,7 +3291,7 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 				 */
 				if(this->_records.at(i).valueless)
 					// Выполняем запись свойства без разделителя и значения
-					result = writer.property(this->get(this->_records.at(i).key));
+					result = this->_writer.property(this->get(this->_records.at(i).key));
 				else {
 					/**
 					 * Если значение было заключено в кавычки, а запись ставит их по надобности
@@ -3300,21 +3300,21 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 					 *       человек, писавший файл руками, поставил их сам, и снимать их при
 					 *       перезаписи значило бы править то, о чём не просили
 					 */
-					if(this->_records.at(i).quoted && (writer.settings().quoting == quoting_t::AUTO)){
+					if(this->_records.at(i).quoted && (this->_writer.settings().quoting == quoting_t::AUTO)){
 						// Получаем настройки записи текста настроек
-						writer_t::settings_t current = writer.settings();
+						writer_t::settings_t current = this->_writer.settings();
 						// Устанавливаем ограждение значения кавычками
 						current.quoting = quoting_t::ALWAYS;
 						// Выполняем установку настроек записи текста настроек
-						writer.settings(current);
+						this->_writer.settings(current);
 						// Выполняем запись свойства со значением
-						result = writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
+						result = this->_writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
 						// Возвращаем ограждение значения кавычками по надобности
 						current.quoting = quoting_t::AUTO;
 						// Выполняем установку настроек записи текста настроек
-						writer.settings(current);
+						this->_writer.settings(current);
 					// Выполняем запись свойства со значением
-					} else result = writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
+					} else result = this->_writer.property(this->get(this->_records.at(i).key), this->get(this->_records.at(i).raw), this->_records.at(i).append);
 				}
 			} break;
 			// Если записью является примечание
@@ -3329,28 +3329,28 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 				 *       наречие, знака этого не признающее, сохранять его нельзя: строка
 				 *       примечания досталась бы читающему свойством и была бы отвергнута
 				 */
-				if((writer.settings().marker != this->_records.at(i).marker) &&
-				   commented(this->_records.at(i).marker, writer.settings().comments)){
+				if((this->_writer.settings().marker != this->_records.at(i).marker) &&
+				   commented(this->_records.at(i).marker, this->_writer.settings().comments)){
 					// Получаем настройки записи текста настроек
-					writer_t::settings_t current = writer.settings();
+					writer_t::settings_t current = this->_writer.settings();
 					// Запоминаем знак начала примечания записи
 					current.marker = this->_records.at(i).marker;
 					// Выполняем установку настроек записи текста настроек
-					writer.settings(current);
+					this->_writer.settings(current);
 				}
 				/**
 				 * Если примечание занимает строку целиком
 				 */
 				if(this->_records.at(i).placement == placement_t::OWN)
 					// Выполняем запись примечания отдельной строкой
-					result = writer.comment(this->get(this->_records.at(i).value));
+					result = this->_writer.comment(this->get(this->_records.at(i).value));
 				// Выполняем дописывание примечания к последней записанной строке
-				else result = writer.trailing(this->get(this->_records.at(i).value));
+				else result = this->_writer.trailing(this->get(this->_records.at(i).value));
 			} break;
 			// Если записью является пустая строка
 			case static_cast <uint8_t> (kind_t::BLANK):
 				// Выполняем запись пустой строки
-				result = writer.blank();
+				result = this->_writer.blank();
 			break;
 		}
 		/**
@@ -3363,13 +3363,13 @@ string awh::codec::ini::Document::dump(const writer_t::settings_t & settings) co
 		 */
 		if(!result){
 			// Запоминаем код ошибки записи текста настроек
-			this->_error = writer.error();
+			this->_error = this->_writer.error();
 			// Выводим пустой текст настроек
-			return string();
+			return "";
 		}
 	}
 	// Выводим собранный текст настроек
-	return writer.text();
+	return this->_writer.text();
 }
 /**
  * @brief Метод запоминания кода отказа работы над деревом
@@ -3398,14 +3398,15 @@ bool awh::codec::ini::Document::fault(const error_t error) const noexcept {
  */
 void awh::codec::ini::Document::report() const noexcept {
 	// Выполняем вывод сообщения об отказе
-	awh::log::print("INI document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+	log::print("INI document failed: %s at line %u column %u", log::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 }
 /**
  * @brief Конструктор
  *
  */
 awh::codec::ini::Document::Document() noexcept :
- _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
+ _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE),
+ _referenced(false), _stale(false), _dangling(false) {}
 /**
  * @brief Конструктор
  *
@@ -3413,7 +3414,8 @@ awh::codec::ini::Document::Document() noexcept :
  *
  */
 awh::codec::ini::Document::Document(const settings_t & settings) noexcept :
- _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
+ _encoding(encoding_t::NONE), _error(error_t::NONE),
+ _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
 /**
  * @brief Шаблон типа числа результата разбора
  *
@@ -3523,7 +3525,7 @@ vector <string> awh::codec::ini::Document::children(const string_view path) cons
 	// Перечень звеньев пути к детям значения
 	vector <string> result;
 	// Выполняем розыск значения по указанному пути
-	const ::awh::codec::ini::Value value = this->at(string(path));
+	const codec::ini::Value value = this->at(string(path));
 	/**
 	 * Если значение по пути не разыскано
 	 *
@@ -3629,9 +3631,9 @@ bool awh::codec::ini::Document::prune(const string & path) noexcept {
 		return false;
 	}
 	// Снимаем настройки владеющим значением
-	::awh::codec::ini::Value whole(* this);
+	codec::ini::Value whole(* this);
 	// Получаем вместилище, снимаемому значению принадлежащее
-	::awh::codec::ini::Value & owner = ((separator == string::npos) ?
+	codec::ini::Value & owner = ((separator == string::npos) ?
 	 whole : whole.place(route.substr(0, separator)));
 	/**
 	 * Если вместилище снимаемого значения не разыскано
@@ -3650,8 +3652,7 @@ bool awh::codec::ini::Document::prune(const string & path) noexcept {
 	 * @note Вид вместилища решает раньше вида записи: свойство, именем числовым
 	 *       названное, сносится именем, а не номером
 	 */
-	if(owner.is(type_t::ARRAY) && !name.empty() &&
-	 (name.find_first_not_of("0123456789") == string::npos)){
+	if(owner.is(type_t::ARRAY) && !name.empty() && (name.find_first_not_of("0123456789") == string::npos)){
 		/**
 		 * Номер значения перечня, звеном пути заданный
 		 *
@@ -3676,7 +3677,7 @@ bool awh::codec::ini::Document::prune(const string & path) noexcept {
 		 * @note Нашло это объединённое покрытие набора с ворошителем: заход лежал
 		 *       непокрытым, а щуп по нему уронил приложение
 		 */
-		result = (::awh::codec::numeric <uint64_t> (name, number) &&
+		result = (codec::numeric <uint64_t> (name, number) &&
 		 owner.erase(static_cast <size_t> (number)));
 	}
 	// Выполняем снятие значения вместилища по имени его
@@ -3694,4 +3695,24 @@ bool awh::codec::ini::Document::prune(const string & path) noexcept {
 	this->clear();
 	// Выводим результат переноса правленого дерева обратно в настройки
 	return whole.graft(* this);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Document::Record::Record() noexcept :
+ kind(kind_t::NONE), section(0), marker(';'), placement(placement_t::OWN),
+ quoted(false), valueless(false), append(false) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::ini::Document::Section::Section() noexcept : declared(false) {}
+/**
+ * @brief Псевдоним сброса состояния документа (см. clear())
+ *
+ */
+void awh::codec::ini::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
 }

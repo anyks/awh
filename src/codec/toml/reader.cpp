@@ -3761,13 +3761,13 @@ bool awh::codec::toml::Reader::settings(const settings_t & settings) noexcept {
 	return true;
 }
 /**
- * @brief Метод подачи очередного куска исходного текста
- *
- * @param buffer буфер очередного куска исходного текста
- * @param size   размер буфера очередного куска исходного текста
- * @param end    признак того, что кусок является последним
- * @return       результат выполнения операции
- *
+	 * @brief Метод подачи очередного куска исходного текста
+	 *
+	 * @param buffer буфер очередного куска исходного текста
+	 * @param size   размер буфера очередного куска исходного текста
+	 * @param end    признак того, что кусок является последним
+	 * @return       результат выполнения операции
+	 *
 	 *
 	 * @note ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА ныне ЕДИН, и замерен он заново 09.09.2026 по
 	 *       шести кодекам рамки разом - две подачи с признаком конца подряд:
@@ -3792,7 +3792,7 @@ bool awh::codec::toml::Reader::settings(const settings_t & settings) noexcept {
 	 * @note Отсюда правило: запись, объявляющая нечто НЕВОЗМОЖНЫМ, обязана быть снесена
 	 *       той самой правкой, какая это возможным делает. Иначе она обращается доводом
 	 *       против работы уже сделанной
- */
+	 */
 bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
 	 * Если разбор прекращён ошибкой
@@ -3864,7 +3864,9 @@ bool awh::codec::toml::Reader::feed(const void * buffer, const size_t size, cons
 	if(this->_current < this->_items.size())
 		// Выводим положительный результат выполнения операции
 		return true;
-	// Выполняем разбор накопленного текста настроек
+	/**
+	 * Выполняем разбор накопленного текста настроек
+	 */
 	while(this->record(end && (this->_decoding == error_t::NONE))){
 		/**
 		 * Если очередь собранных событий не пуста
@@ -4193,6 +4195,39 @@ awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
 	// Выполняем установку навязанной извне кодировки исходного текста
 	this->_decoder.encoding(settings.encoding);
 }
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Reader::Span::Span() noexcept : length(0), offset(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Reader::Segment::Segment() noexcept : naming(naming_t::BARE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Reader::Item::Item() noexcept :
+ boolean(false), trailing(false), real(.0),
+ part(0), parts(0), integer(0),
+ type(type_t::NONE), event(event_t::NONE),
+ radix(radix_t::DECIMAL), quoting(string_t::BASIC) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param name    объявляемое полное имя
+ * @param kind    род объявляемого имени
+ * @param implied признак того, что имя заведено исподволь
+ *
+ */
+awh::codec::toml::Reader::Pending::Pending(string_view name, const kind_t kind, const bool implied) noexcept :
+ implied(implied), kind(kind), name(name) {}
 
 /**
  * Возвращаем системные макросы потребителю библиотеки:

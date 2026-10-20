@@ -146,6 +146,33 @@ namespace awh {
 			 *       - **прочие** затенены соседом либо берегут работу, и у каждого назван свой
 			 *       довод при коде
 			 *
+			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
+			 *       100 заслонов части, под сторожем 47. Молчали ПЯТЬДЕСЯТ ТРИ - доля высшая по
+			 *       кодеку, и причина её в способе проверять: дерево поверяют КРУГОВЫМ обходом
+			 *       (собрали, разобрали, сличили), а обход этот ходит дорогами удачными. Заслоны
+			 *       же стоят на дорогах отказа, и круг их не касается, оставаясь зелёным.
+			 *       Сведение молчавших:
+			 *       - **одиннадцать** - `!valid()` у каждой работы ссылки порознь
+			 *       (`TheInvalidCursorAnswersEmptinessToEverything`). Все одиннадцать закреплены
+			 *       ПАДЕНИЕМ, привязанным отдельным щупом: ссылка в никуда получается путём
+			 *       обычным, а спрашивать у непригодной прочее не пробовал никто;
+			 *       - **три** - несоответствие вида (`TheDemandAgainstTheKindIsAnsweredWithEmptiness`):
+			 *       имя поля у массива, порядок у строки, свой вид записи у неё же;
+			 *       - **пара** обращения по номеру закреплена СОВМЕСТНО: `!container()` и
+			 *       `index >= size()` затеняют друг друга, ибо у невместимого число значений
+			 *       нулевое. Приговор о паре слабее одиночного;
+			 *       - **шесть** отсева повторяющихся имён стерегут ЦЕНУ, а не правильность, и
+			 *       проверкою не закрываются по существу - разбор при самой работе;
+			 *       - **прочие** суть последние руки носителя и хранилища да места, объявленные
+			 *       недостижимыми ранее
+			 *
+			 * @warning Воронка `Document::fail` чёрным ящиком НЕДОСТИЖИМА, и писанная было
+			 *          под неё проверка оказалась ЗЕЛЕНА И СЛЕПА: донесение, какое видит подписчик
+			 *          журнала, приходит от `Reader::fail`. Ныне она честно объявляет, что стережёт
+			 *          разбирателя. Опора на чужое ДОНЕСЕНИЕ есть та же слепота, что и опора на
+			 *          чужой заслон, но заметить её труднее: сообщение в журнале есть, и причина в
+			 *          нём верная
+			 *
 			 * @warning **Затенение поверкой действительности бывает СЛУЧАЙНЫМ.** Три заслона
 			 *          доступа - корень пустого дерева, обход по недействительной ссылке, обход по
 			 *          пути - затенены `valid()` вправду: узел за концом дерева ею и отсеивается. Три
@@ -222,57 +249,6 @@ namespace awh {
 			 *       - **the rest** are shadowed by a neighbour or guard the work, and each has its own argument
 			 *       named at the code
 			 *
-			 * @warning **Shadowing by the validity check can be ACCIDENTAL.** Three access guards - the root of
-			 *          an empty tree, a walk by an invalid reference, a walk by a path - are truly shadowed by
-			 *          `valid()`: a node past the end of the tree is filtered by it. But three OTHERS - a name
-			 *          demand beyond a mapping, a walk of an EMPTY container, and a field-name demand of an ARRAY
-			 *          - are shadowed by nothing: past the end of a container stands a REAL node, a neighbouring
-			 *          value, and a walk past the bound would have issued it under a foreign kind, and `valid()`
-			 *          would not have noticed - the node is in the tree after all. The set stood silent by one
-			 *          coincidence in all three: the container stood in the checks as the LAST value, and past
-			 *          its end lay the end of the tree. Closed by
-			 *          `CodecAbcDocument.TheDemandBeyondTheContainerDoesNotYieldTheNeighbour`, where the container
-			 *          is taken not the last on purpose
-			 *
-			 * @warning **Field names of different KINDS are not repetitions.** An empty string and empty binary
-			 *          data both hold a zero length, the content of both lies in the octet storage, and the
-			 *          comparison of their content passes over ZERO octets - that is, it always matches. They are
-			 *          distinguished only by the kind check, and without it the `FIRST` rule would have filtered
-			 *          a pair that is not a repetition, and the document would have silently lost a field. Fixed
-			 *          by `CodecAbcDocument.KeysOfDifferentKindsAreNotDuplicates`
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
-			 * @note **Щуп НУЖНОСТИ (заслон снимается), 08.09.2026.** Обесточены порознь все
-			 *       100 заслонов части, под сторожем 47. Молчали ПЯТЬДЕСЯТ ТРИ - доля высшая по
-			 *       кодеку, и причина её в способе проверять: дерево поверяют КРУГОВЫМ обходом
-			 *       (собрали, разобрали, сличили), а обход этот ходит дорогами удачными. Заслоны
-			 *       же стоят на дорогах отказа, и круг их не касается, оставаясь зелёным.
-			 *       Сведение молчавших:
-			 *       - **одиннадцать** - `!valid()` у каждой работы ссылки порознь
-			 *       (`TheInvalidCursorAnswersEmptinessToEverything`). Все одиннадцать закреплены
-			 *       ПАДЕНИЕМ, привязанным отдельным щупом: ссылка в никуда получается путём
-			 *       обычным, а спрашивать у непригодной прочее не пробовал никто;
-			 *       - **три** - несоответствие вида (`TheDemandAgainstTheKindIsAnsweredWithEmptiness`):
-			 *       имя поля у массива, порядок у строки, свой вид записи у неё же;
-			 *       - **пара** обращения по номеру закреплена СОВМЕСТНО: `!container()` и
-			 *       `index >= size()` затеняют друг друга, ибо у невместимого число значений
-			 *       нулевое. Приговор о паре слабее одиночного;
-			 *       - **шесть** отсева повторяющихся имён стерегут ЦЕНУ, а не правильность, и
-			 *       проверкою не закрываются по существу - разбор при самой работе;
-			 *       - **прочие** суть последние руки носителя и хранилища да места, объявленные
-			 *       недостижимыми ранее
-			 *
-			 * @warning Воронка `Document::fail` чёрным ящиком НЕДОСТИЖИМА, и писанная было
-			 *          под неё проверка оказалась ЗЕЛЕНА И СЛЕПА: донесение, какое видит подписчик
-			 *          журнала, приходит от `Reader::fail`. Ныне она честно объявляет, что стережёт
-			 *          разбирателя. Опора на чужое ДОНЕСЕНИЕ есть та же слепота, что и опора на
-			 *          чужой заслон, но заметить её труднее: сообщение в журнале есть, и причина в
-			 *          нём верная
-			 *
-			 * \~english
 			 * @note **The NEEDNESS audit (a guard is removed), 2026-09-08.** All 100 guards of the
 			 *       part were de-energized apart, under the watch 47. FIFTY-THREE stood silent - the
 			 *       highest share across the codec, and its cause lies in the way of checking: the
@@ -301,6 +277,26 @@ namespace awh {
 			 *          guard, but it is harder to notice: there is a message in the log, and the cause
 			 *          in it is correct
 			 *
+			 * @warning **Shadowing by the validity check can be ACCIDENTAL.** Three access guards - the root of
+			 *          an empty tree, a walk by an invalid reference, a walk by a path - are truly shadowed by
+			 *          `valid()`: a node past the end of the tree is filtered by it. But three OTHERS - a name
+			 *          demand beyond a mapping, a walk of an EMPTY container, and a field-name demand of an ARRAY
+			 *          - are shadowed by nothing: past the end of a container stands a REAL node, a neighbouring
+			 *          value, and a walk past the bound would have issued it under a foreign kind, and `valid()`
+			 *          would not have noticed - the node is in the tree after all. The set stood silent by one
+			 *          coincidence in all three: the container stood in the checks as the LAST value, and past
+			 *          its end lay the end of the tree. Closed by
+			 *          `CodecAbcDocument.TheDemandBeyondTheContainerDoesNotYieldTheNeighbour`, where the container
+			 *          is taken not the last on purpose
+			 *
+			 * @warning **Field names of different KINDS are not repetitions.** An empty string and empty binary
+			 *          data both hold a zero length, the content of both lies in the octet storage, and the
+			 *          comparison of their content passes over ZERO octets - that is, it always matches. They are
+			 *          distinguished only by the kind check, and without it the `FIRST` rule would have filtered
+			 *          a pair that is not a repetition, and the document would have silently lost a field. Fixed
+			 *          by `CodecAbcDocument.KeysOfDifferentKindsAreNotDuplicates`
+			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:
@@ -541,6 +537,43 @@ namespace awh {
 					 */
 					static_assert(sizeof(Node) == 20, "ABC: ширина узла дерева документа переменилась, договор класса устарел");
 				public:
+					/**
+					 * \~russian
+					 * @brief Структура настроек дерева разметки
+					 *
+					 * @details Настройки разбора и записи держатся раздельно: прочитать разметку
+					 *          с одними пределами и записать её иным видом - обыкновенное дело, и
+					 *          связывать их незачем.
+					 *
+					 * @note Построение это заведено ради согласия кодеков рамки: у всех у них
+					 *       настройки дерева спрашиваются и ставятся одинаково, а вид их свой
+					 *       у каждого кодека
+					 *
+					 * @warning Настройки разбора, поданные ходу `parse()` доводом, действуют
+					 *          лишь на этот заход и хранимых настроек НЕ меняют
+					 *
+					 * \~english
+					 * @brief Markup tree settings structure
+					 *
+					 * @details The settings of the parsing and of the writing are kept separately: to read
+					 *          the markup with one limits and to write it in another form is an ordinary
+					 *          affair, and there is no sense in binding them.
+					 *
+					 * @note This construction is made for the sake of the consent of the codecs of the framework:
+					 *       at all of them the settings of a tree are asked and set in the same way, while their
+					 *       form is own to each codec
+					 *
+					 * @warning The settings of the parsing fed to the `parse()` step as an argument act only on
+					 *          this going and do NOT change the stored settings
+					 *
+					 * \~
+					 */
+					typedef struct Settings {
+						// Настройки записи текста разметки
+						writer_t::settings_t writer;
+						// Настройки разбора текста разметки
+						reader_t::settings_t reader;
+					} settings_t;
 					/**
 					 * \~russian
 					 * @brief Класс ссылки на значение документа
@@ -1023,11 +1056,24 @@ namespace awh {
 							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept;
 					} value_t;
 				private:
-					// Хранилище содержимого значений и имён полей
-					string _storage;
+					/**
+					 * Правило обращения с повторяющимся именем поля отображения
+					 *
+					 * Правило это живёт состоянием сборки, а не документом: применяется оно в миг
+					 * закрытия отображения, а собранному документу знать о нём уже незачем
+					 */
+					duplicate_t _duplicates;
+				private:
+					// Объект потокового чтения записей
+					mutable reader_t _reader;
+					// Объект записи событий
+					mutable writer_t _writer;
 				private:
 					// Код отказа разбора записи
 					mutable error_t _error;
+				private:
+					// Хранилище содержимого значений и имён полей
+					string _storage;
 				private:
 					// Вместилище узлов дерева документа
 					vector <node_t> _nodes;
@@ -1048,23 +1094,6 @@ namespace awh {
 					 * \~
 					 */
 					location_t _location;
-				private:
-					/**
-					 * \~russian
-					 * Настройки разбора записи, хранимые деревом
-					 *
-					 * @details Хранятся они ради согласия договоров кодеков: у шести прочих
-					 *          настройки живут при документе и опрашиваются `settings()`
-					 *
-					 * \~english
-					 * Settings of the parsing of a record stored by the tree
-					 *
-					 * @details They are kept for the sake of the agreement of the codec contracts: for six other codecs
-					 *          the settings live at the document and are queried by `settings()`
-					 *
-					 * \~
-					 */
-					reader_t::settings_t _parsing;
 				private:
 					// Указатели имён полей отображений, заводимые по требованию
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
@@ -1297,41 +1326,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод разбора записи в дерево документа
 					 *
-					 * @param buffer   буфер разбираемой записи
-					 * @param size     размер разбираемой записи в октетах
-					 * @param settings настройки разбора записи
-					 * @return         признак успешности разбора
-					 *
-					 * @note Настройка `stream` записью из НЕСКОЛЬКИХ документов складывает их
-					 *       в ОДНО дерево: корень отдаёт первый документ, прочие стоят за ним
-					 *       значениями верхнего уровня, достижимыми обходом `next()`, но не
-					 *       спросом `size()`/`at()`/`get()`. Порчи при том нет - сборка
-					 *       воспроизводит запись октет в октет (замер 05.10.2026). Разбор
-					 *       ПОТОКА документов есть дело `Loader`, дереву поток не обещан
-					 *
-					 * \~english
-					 * @brief Method of the parsing of a record into a tree of a document
-					 *
-					 * @param buffer   buffer of the record being parsed
-					 * @param size     size of the record being parsed in octets
-					 * @param settings settings of the parsing of the record
-					 * @return         sign of the success of the parsing
-					 *
-					 * @note The `stream` setting folds a record of SEVERAL documents into a SINGLE
-					 *       tree: the root gives the first document, the others stand after it as
-					 *       top-level values, reachable by the `next()` walk but not by
-					 *       `size()`/`at()`/`get()`. No corruption happens - the building reproduces
-					 *       the record octet for octet (a measurement of 05.10.2026). The parsing
-					 *       of a STREAM of documents is the business of the `Loader`, a stream is
-					 *       not promised to the tree
-					 *
-					 * \~
-					 */
-					[[nodiscard]] bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод разбора записи в дерево документа
-					 *
 					 * @details Разбор опустошает прежнее дерево сам, СОХРАНЯЯ запас его
 					 *          вместилищ: разбирающему многие записи подряд надлежит держать ОДНО
 					 *          дерево и звать разбор по кругу, а не заводить дерево на всякую запись.
@@ -1429,44 +1423,6 @@ namespace awh {
 					vector <uint8_t> dump() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод сборки записи из дерева документа затребованными настройками
-					 *
-					 * @param settings настройки сборки записи
-					 * @return         собранная запись, пустая при отказе сборки
-					 *
-					 * \~english
-					 * @brief Method of the assembling of a record out of the tree of a document by the requested settings
-					 *
-					 * @param settings settings of the assembling of the record
-					 * @return         assembled record, empty upon a failure of the assembling
-					 *
-					 * \~
-					 */
-					vector <uint8_t> dump(const writer_t::settings_t & settings) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод извлечения настроек разбора записи
-					 *
-					 * @details Настройки эти берутся разбором, зовомым БЕЗ них: работа
-					 *          `parse(buffer, size)` опирается на них, а `parse(buffer, size, settings)`
-					 *          берёт отданные ей и хранимых не трогает.
-					 *
-					 * @return настройки разбора записи
-					 *
-					 * \~english
-					 * @brief Method of the extraction of the settings of the parsing of a record
-					 *
-					 * @details These settings are taken by the parser, which is called WITHOUT them: the
-					 *          `parse(buffer, size)` work relies on them, while `parse(buffer, size, settings)` takes the
-					 *          ones given to it and does not touch the stored ones.
-					 *
-					 * @return settings of the parsing of the record
-					 *
-					 * \~
-					 */
-					const reader_t::settings_t & settings() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек разбора записи
 					 *
 					 * @param settings устанавливаемые настройки разбора записи
@@ -1478,7 +1434,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void settings(const reader_t::settings_t & settings) noexcept;
+					void settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1692,6 +1648,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Document(Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -1700,6 +1698,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Document() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора документа
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the parsing of a document
+					 *
+					 * \~
+					 */
+					explicit Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

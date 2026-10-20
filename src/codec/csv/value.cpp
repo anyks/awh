@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Исходный файл владеющего значения CSV
- *
- * \~english
- * @brief Source file of the owning value of CSV
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -607,6 +601,7 @@ bool awh::codec::csv::Value::erase(const size_t index) noexcept {
  * @brief Метод извлечения числового значения поля
  *
  * @tparam T     вид числа, к какому ведётся извлечение
+ *
  * @param result извлекаемое значение
  * @return       признак успешности извлечения
  *
@@ -1017,38 +1012,11 @@ bool awh::codec::csv::Value::graft(Document & document) const noexcept {
  */
 bool awh::codec::csv::Value::parse(const string & text) noexcept {
 	// Объект таблицы для разбора текста
-	Document document;
+	document_t document;
 	/**
 	 * Если разбор текста таблицы завершился отказом
 	 */
 	if(!document.parse(text)){
-		// Выполняем очистку прежнего содержимого значения
-		this->clear();
-		// Запоминаем код отказа разбора текста таблицы
-		this->_error = document.error();
-		// Запоминаем место отказа разбора текста таблицы
-		this->_errorLocation = document.errorLocation();
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	// Выводим итог снятия значения с разобранной таблицы
-	return this->absorb(document);
-}
-/**
- * @brief Метод разбора текста таблицы с указанными настройками
- *
- * @param text     исходный текст таблицы
- * @param settings настройки разбора текста таблицы
- * @return         признак успешности разбора
- *
- */
-bool awh::codec::csv::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
-	// Объект таблицы для разбора текста
-	Document document;
-	/**
-	 * Если разбор текста таблицы завершился отказом
-	 */
-	if(!document.parse(text, settings)){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
 		// Запоминаем код отказа разбора текста таблицы
@@ -1070,36 +1038,7 @@ bool awh::codec::csv::Value::parse(const string & text, const Document::settings
  */
 bool awh::codec::csv::Value::load(const string & filename) noexcept {
 	// Объект таблицы для чтения файла
-	Document document;
-	/**
-	 * Если чтение файла таблицы завершилось отказом
-	 */
-	if(!document.load(filename)){
-		// Выполняем очистку прежнего содержимого значения
-		this->clear();
-		// Запоминаем код отказа чтения файла таблицы
-		this->_error = document.error();
-		// Запоминаем место отказа чтения файла таблицы
-		this->_errorLocation = document.errorLocation();
-		// Выводим признак неудачного чтения
-		return false;
-	}
-	// Выводим итог снятия значения с прочитанной таблицы
-	return this->absorb(document);
-}
-/**
- * @brief Метод чтения таблицы из файла с указанными настройками
- *
- * @param filename адрес файла таблицы
- * @param settings настройки разбора текста таблицы
- * @return         признак успешности чтения
- *
- */
-bool awh::codec::csv::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
-	// Объект таблицы для чтения файла
-	Document document;
-	// Выполняем установку настроек разбора текста таблицы
-	document.settings(settings);
+	document_t document;
 	/**
 	 * Если чтение файла таблицы завершилось отказом
 	 */
@@ -1465,7 +1404,9 @@ bool awh::codec::csv::Builder::field(const double number) noexcept {
 	 * Выполняем отсечение незначащих нулей хвоста записи
 	 */
 	if(text.find('.') != string::npos){
-		// Выполняем отсечение нулей хвоста записи числа
+		/**
+		 * Выполняем отсечение нулей хвоста записи числа
+		 */
 		while(!text.empty() && (text.back() == '0'))
 			// Выполняем снятие очередного нуля хвоста
 			text.pop_back();

@@ -137,3 +137,8 @@ const char * awh::codec::syslog::name(const severity_t severity) noexcept {
 	// Выводим краткое имя степени важности сообщения
 	return ((entry != nullptr) ? entry->name.data() : "");
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::syslog::Position::Position() noexcept : offset(0), line(1), column(1) {}

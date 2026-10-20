@@ -41,9 +41,10 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочные файлы модуля
  */
 #include "reader.hpp"
+#include "writer.hpp"
 
 /**
  * Подключаем заголовочный файл проекта
@@ -1195,21 +1196,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
+					typedef struct Settings {
 						// Настройки записи текста разметки
-						writer_settings_t writer;
+						writer_t::settings_t writer;
 						// Настройки разбора текста разметки
 						reader_t::settings_t reader;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						explicit Settings() noexcept = default;
 					} settings_t;
 				private:
 					/**
@@ -1257,8 +1248,6 @@ namespace awh {
 					 */
 					fs_t _fs;
 				private:
-					// Настройки дерева разметки
-					settings_t _settings;
 					/**
 					 * \~russian
 					 * Кодировка, какою исходный текст разметки прочитан
@@ -1283,6 +1272,11 @@ namespace awh {
 					 * \~
 					 */
 					encoding_t _encoding;
+				private:
+					// Объект потокового чтения записей
+					mutable reader_t _reader;
+					// Объект записи событий
+					mutable writer_t _writer;
 				private:
 					/**
 					 * \~russian
@@ -1573,30 +1567,6 @@ namespace awh {
 					bool parse(const string_view text) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод разбора текста разметки с указанными настройками
-					 *
-					 * @note Настройки эти действуют лишь на этот заход и хранимых настроек
-					 *       дерева НЕ меняют
-					 *
-					 * @param text     исходный текст разметки целиком
-					 * @param settings настройки разбора текста разметки
-					 * @return         признак успешности разбора
-					 *
-					 * \~english
-					 * @brief Method of parsing a markup text with the given settings
-					 *
-					 * @note These settings act only on this going and do NOT change the stored settings
-					 *       of the tree
-					 *
-					 * @param text     source text of the markup in its entirety
-					 * @param settings settings of the parsing of the text of the markup
-					 * @return         flag of the success of the parsing
-					 *
-					 * \~
-					 */
-					bool parse(const string_view text, const reader_t::settings_t & settings) noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод извлечения кода отказа последней работы над деревом
 					 *
 					 * @details Разбор текста, чтение файла, выдача текста и запись его в файл
@@ -1756,34 +1726,6 @@ namespace awh {
 					string dump() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод записи дерева разметки текстом с указанными настройками
-					 *
-					 * @details Настройки записи подаются свои: вид записи, отступ, схлопывание
-					 *          пустых узлов и прочее.
-					 *
-					 * @note Вид настроек тут свой у каждого кодека рамки, а общею сделана лишь
-					 *       ПОДПИСЬ: потребитель, знающий кодек, подаёт его настройки
-					 *
-					 * @param settings настройки записи текста разметки
-					 * @return         текст разметки собранного дерева
-					 *
-					 * \~english
-					 * @brief Method of writing the markup tree as a text with the given settings
-					 *
-					 * @details The settings of the writing are fed own: the form of the writing, an
-					 *          indent, the collapsing of the empty nodes and the rest.
-					 *
-					 * @note The form of the settings here is own to each codec of the framework, while only
-					 *       the SIGNATURE is made common: a consumer knowing the codec feeds its settings
-					 *
-					 * @param settings settings of the writing of the text of the markup
-					 * @return         text of the markup of the assembled tree
-					 *
-					 * \~
-					 */
-					string dump(const writer_settings_t & settings) const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод разбора текста разметки из файла
 					 *
 					 * @details Файл читается целиком, после чего текст его разбирается ходом
@@ -1823,20 +1765,6 @@ namespace awh {
 					 * \~
 					 */
 					bool load(const string & filename) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод извлечения настроек дерева разметки
-					 *
-					 * @return настройки дерева разметки
-					 *
-					 * \~english
-					 * @brief Method of the extraction of the settings of the markup tree
-					 *
-					 * @return settings of the markup tree
-					 *
-					 * \~
-					 */
-					const settings_t & settings() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки настроек дерева разметки
@@ -1888,24 +1816,6 @@ namespace awh {
 					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод записи дерева разметки в файл с указанными настройками
-					 *
-					 * @param filename адрес файла разметки
-					 * @param settings настройки записи текста разметки
-					 * @return         признак успешности записи
-					 *
-					 * \~english
-					 * @brief Method of writing the markup tree to a file with the given settings
-					 *
-					 * @param filename address of the file of the markup
-					 * @param settings settings of the writing of the text of the markup
-					 * @return         flag of the success of the writing
-					 *
-					 * \~
-					 */
-					bool save(const string & filename, const writer_settings_t & settings) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения корня дерева
@@ -2391,6 +2301,48 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Document(Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * \~english
@@ -2399,6 +2351,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Document() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора документа
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the parsing of a document
+					 *
+					 * \~
+					 */
+					explicit Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

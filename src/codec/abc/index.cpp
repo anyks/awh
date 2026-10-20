@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации оглавления бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the index of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -365,7 +359,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		return false;
 	}
 	// Выполняем установку работы чтения октетов контейнера
-	this->_source = ::std::move(source);
+	this->_source = ::move(source);
 	// Буфер вычитанных октетов заголовка опознания контейнера
 	vector <uint8_t> buffer;
 	/**
@@ -765,3 +759,8 @@ awh::codec::abc::packer_t & awh::codec::abc::Fetcher::packer() noexcept {
  */
 awh::codec::abc::Fetcher::Fetcher() noexcept :
  _index(), _packer(), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Entry::Entry() noexcept : chunk(0), offset(0), length(0), marks(static_cast <uint32_t> (mark_t::NONE)) {}

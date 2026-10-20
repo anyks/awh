@@ -88,15 +88,6 @@ namespace awh {
 		namespace yaml {
 			/**
 			 * \~russian
-			 * @brief Состояния потокового чтения текста
-			 *
-			 * \~english
-			 * @brief States of the streaming reading of a text
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
 			 * @note Имя `HUNGRY` при значении 0x01 общее со всеми прочими кодеками рамки -
 			 *       CSV, INI, JSON, TOML, XML, CEF и syslog, - и значит оно «разбору требуется
 			 *       продолжение текста». Прежде у одного лишь YAML оно звалось `PARSING`:
@@ -127,13 +118,13 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Значение, выданное событием чтения
+			 * @brief Структура значения, выданное событием чтения
 			 *
 			 * @details Поле содержимого ссылается на память, принадлежащую хранилищу
 			 *          чтения, и живёт до получения следующего события.
 			 *
 			 * \~english
-			 * @brief Value issued by an event of the reading
+			 * @brief Structure of the value provided by a read event
 			 *
 			 * @details The field of the content refers to the memory belonging to the storage
 			 *          of the reading and lives until the obtaining of the next event.
@@ -141,10 +132,89 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Content {
+				/**
+				 * \~russian
+				 * Признак того, что значение собрано внутри поточного построения
+				 *
+				 * @note Записи поточного построения строкою не отделены: их стоит на строке
+				 *       сколько угодно, и привязать значение к отрезку строк нельзя. Держащему
+				 *       документ целиком признак этот велит не переносить такое значение
+				 *       дословно, а собирать заново
+				 *
+				 * \~english
+				 * Sign that a value was collected inside a flow construction
+				 *
+				 * @note The records of a flow construction are not separated by a line: any number of them may
+				 *       stand on one line, and a value cannot be tied to a span of the lines. For the one holding
+				 *       a document in full this sign orders not to carry such a value verbatim, but to collect it anew
+				 *
+				 * \~
+				 */
+				bool flow;
+				/**
+				 * \~russian
+				 * Признак того, что документ наречие своё директивой объявил
+				 *
+				 * @note Признак этот принадлежит документу, а не потоку: директива есть
+				 *       принадлежность документа и стоит перед каждою чертою начала своею.
+				 *       Держащему документ целиком он велит вернуть директиву перезаписью
+				 *       ровно тем документам, у каких она стояла
+				 *
+				 * \~english
+				 * Sign that a document declared its dialect by a directive
+				 *
+				 * @note This sign belongs to a document rather than to a stream: a directive is an appurtenance of
+				 *       a document and stands before each of the dashes of its beginning. For the one holding a document
+				 *       in full it orders a rewriting to return the directive exactly to those documents where it
+				 *       had stood
+				 *
+				 * \~
+				 */
+				bool versioned;
 				// Вид значения, разрешённый действующей схемой
 				type_t type;
 				// Вид записи значения в исходном тексте
 				style_t style;
+				/**
+				 * \~russian
+				 * Схема, действовавшая при выдаче события
+				 *
+				 * @note Схема эта берётся событием, а не чтением целиком: директива `%YAML 1.1`
+				 *       переводит на наречие 1.1 один свой документ, а поток вправе нести
+				 *       документы обоих наречий. Спроси схему у чтения по концу разбора - и
+				 *       получишь наречие документа последнего, каким бы ни был первый
+				 *
+				 * \~english
+				 * The schema in force at the moment of the issuance of an event
+				 *
+				 * @note This schema is taken by an event rather than by the reading as a whole: the directive `%YAML 1.1`
+				 *       switches to the dialect 1.1 one document of its own, while a stream is entitled to carry the
+				 *       documents of both dialects. Ask the schema of the reading by the place of the parsing — and you
+				 *       receive the dialect of the last document, whichever the first one was
+				 *
+				 * \~
+				 */
+				schema_t schema;
+				// Положение значения в исходном тексте
+				location_t location;
+				/**
+				 * \~russian
+				 * Метка типа, значению предпосланная, приведённая к полному виду
+				 *
+				 * @note Сокращение раскрывается объявлением своим: `!!str` выдаётся записью
+				 *       `tag:yaml.org,2002:str`, а `!свой` - записью `!свой`. Потребителю
+				 *       незачем знать, каким сокращением метка записана была
+				 *
+				 * \~english
+				 * A tag placed before a value, brought to its full form
+				 *
+				 * @note An abbreviation is expanded by its own declaration: `!!str` is issued as the record
+				 *       `tag:yaml.org,2002:str`, while `!own` as the record `!own`. A consumer has no need to know
+				 *       by which abbreviation the tag had been written
+				 *
+				 * \~
+				 */
+				string_view tag;
 				// Содержимое значения, приведённое к окончательному виду
 				string_view text;
 				/**
@@ -167,101 +237,18 @@ namespace awh {
 				string_view anchor;
 				/**
 				 * \~russian
-				 * Метка типа, значению предпосланная, приведённая к полному виду
-				 *
-				 * @note Сокращение раскрывается объявлением своим: `!!str` выдаётся записью
-				 *       `tag:yaml.org,2002:str`, а `!свой` - записью `!свой`. Потребителю
-				 *       незачем знать, каким сокращением метка записана была
-				 *
-				 * \~english
-				 * A tag placed before a value, brought to its full form
-				 *
-				 * @note An abbreviation is expanded by its own declaration: `!!str` is issued as the record
-				 *       `tag:yaml.org,2002:str`, while `!own` as the record `!own`. A consumer has no need to know
-				 *       by which abbreviation the tag had been written
-				 *
-				 * \~
-				 */
-				string_view tag;
-				// Положение значения в исходном тексте
-				location_t location;
-				/**
-				 * \~russian
-				 * Признак того, что значение собрано внутри поточного построения
-				 *
-				 * @note Записи поточного построения строкою не отделены: их стоит на строке
-				 *       сколько угодно, и привязать значение к отрезку строк нельзя. Держащему
-				 *       документ целиком признак этот велит не переносить такое значение
-				 *       дословно, а собирать заново
-				 *
-				 * \~english
-				 * Sign that a value was collected inside a flow construction
-				 *
-				 * @note The records of a flow construction are not separated by a line: any number of them may
-				 *       stand on one line, and a value cannot be tied to a span of the lines. For the one holding
-				 *       a document in full this sign orders not to carry such a value verbatim, but to collect it anew
-				 *
-				 * \~
-				 */
-				bool flow;
-				/**
-				 * \~russian
-				 * Схема, действовавшая при выдаче события
-				 *
-				 * @note Схема эта берётся событием, а не чтением целиком: директива `%YAML 1.1`
-				 *       переводит на наречие 1.1 один свой документ, а поток вправе нести
-				 *       документы обоих наречий. Спроси схему у чтения по концу разбора - и
-				 *       получишь наречие документа последнего, каким бы ни был первый
-				 *
-				 * \~english
-				 * The schema in force at the moment of the issuance of an event
-				 *
-				 * @note This schema is taken by an event rather than by the reading as a whole: the directive `%YAML 1.1`
-				 *       switches to the dialect 1.1 one document of its own, while a stream is entitled to carry the
-				 *       documents of both dialects. Ask the schema of the reading by the place of the parsing — and you
-				 *       receive the dialect of the last document, whichever the first one was
-				 *
-				 * \~
-				 */
-				schema_t schema;
-				/**
-				 * \~russian
-				 * Признак того, что документ наречие своё директивой объявил
-				 *
-				 * @note Признак этот принадлежит документу, а не потоку: директива есть
-				 *       принадлежность документа и стоит перед каждою чертою начала своею.
-				 *       Держащему документ целиком он велит вернуть директиву перезаписью
-				 *       ровно тем документам, у каких она стояла
-				 *
-				 * \~english
-				 * Sign that a document declared its dialect by a directive
-				 *
-				 * @note This sign belongs to a document rather than to a stream: a directive is an appurtenance of
-				 *       a document and stands before each of the dashes of its beginning. For the one holding a document
-				 *       in full it orders a rewriting to return the directive exactly to those documents where it
-				 *       had stood
-				 *
-				 * \~
-				 */
-				bool versioned;
-				/**
-				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Content() noexcept :
-				 type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false), schema(schema_t::CORE),
-				 versioned(false) {}
+				explicit Content() noexcept;
 			} content_t;
-
 			/**
 			 * \~russian
-			 * @brief Потоковое чтение текста YAML
+			 * @brief Класс потокового чтения текста YAML
 			 *
 			 * @details Текст подаётся кусками и разбирается построчно: событие выдаётся
 			 *          лишь тогда, когда строка прочитана целиком и прирасти уже не может. Оттого
@@ -309,7 +296,7 @@ namespace awh {
 			 *       исправности: копия и там от исходника не независима
 			 *
 			 * \~english
-			 * @brief Streaming reading of a YAML text
+			 * @brief Class for streaming YAML text reading
 			 *
 			 * @details A text is fed by the chunks and is parsed line by line: an event is issued
 			 *          only when a line is read in full and can no longer grow. Whereby the issuance
@@ -357,45 +344,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
-				public:
-					/**
-					 * \~russian
-					 * @brief Настройки разбора текста
-					 *
-					 * \~english
-					 * @brief Settings of the parsing of a text
-					 *
-					 * \~
-					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Схема разрешения видов скалярных значений
-						schema_t schema;
-						// Кодировка, навязанная извне вопреки метке порядка байтов
-						encoding_t encoding;
-						// Правило обращения с повторяющимся именем пары отображения
-						duplicate_t duplicates;
-						// Признак выдачи примечаний отдельным событием
-						bool emitComments;
-						// Признак выдачи пустых строк отдельным событием
-						bool emitBlanks;
-						// Наибольшая допустимая глубина вложенности, ноль - предел по умолчанию
-						uint32_t maxDepth;
-						// Наибольшая допустимая длина скалярного значения, ноль - предел по умолчанию
-						uint32_t maxScalar;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						Settings() noexcept :
-						 schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
-						 emitComments(false), emitBlanks(false), maxDepth(0), maxScalar(0) {}
-					} settings_t;
 				private:
 					/**
 					 * \~russian
@@ -423,46 +371,55 @@ namespace awh {
 						ENTRY = 0x00, // Ожидается очередное значение либо закрывающая скобка
 						AFTER = 0x01  // Ожидается запятая, двоеточие либо закрывающая скобка
 					};
+				public:
 					/**
 					 * \~russian
-					 * @brief Открытое поточное построение
+					 * @brief Структура настроек разбора текста
 					 *
 					 * \~english
-					 * @brief Opened flow construction
+					 * @brief Structure of text parsing settings
 					 *
 					 * \~
 					 */
-					typedef struct Bracket {
-						// Вид открытого поточного построения
-						nesting_t kind;
-						// Признак того, что построение уже несёт значения
-						bool filled;
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Признак выдачи пустых строк отдельным событием
+						bool emitBlanks;
+						// Признак выдачи примечаний отдельным событием
+						bool emitComments;
+						// Наибольшая допустимая глубина вложенности, ноль - предел по умолчанию
+						uint32_t maxDepth;
+						// Наибольшая допустимая длина скалярного значения, ноль - предел по умолчанию
+						uint32_t maxScalar;
+						// Схема разрешения видов скалярных значений
+						schema_t schema;
+						// Кодировка, навязанная извне вопреки метке порядка байтов
+						encoding_t encoding;
+						// Правило обращения с повторяющимся именем пары отображения
+						duplicate_t duplicates;
 						/**
 						 * \~russian
-						 * Признак того, что запись построения начата и разделителем не закрыта
-						 *
-						 * @details Признак наполнения не годится: он объявляет, что построение
-						 *          значения несло когда-либо, а нужно знать, начата ли запись СЕЙЧАС.
-						 *          Запись `{a}` пустое значение пары получает, а запись `{a: 1,}` -
-						 *          нет: запятая запись закрыла, и закрывающей скобке пары уже не видно.
-						 *
-						 * @note Прежде обе получали его поровну, и запятая перед скобкою рождала
-						 *       лишнюю пустую пару. Случаи 4ABK и FRK4 набора yaml-test-suite
+						 * @brief Конструктор
 						 *
 						 * \~english
-						 * Sign that a record of a construction is begun and is not closed by a separator
-						 *
-						 * @details A sign of the filling does not serve: it declares that a construction of a value carried
-						 *          something ever, while what is needed is to know whether a record is begun NOW. The record
-						 *          `{a}` receives an empty value of a pair, while the record `{a: 1,}` does not: a comma closed
-						 *          the record, and a closing bracket no longer sees a pair.
-						 *
-						 * @note Formerly both received it alike, and a comma before a bracket gave birth to a superfluous empty
-						 *       pair. Cases 4ABK and FRK4 of the yaml-test-suite set
+						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						bool entered;
+						explicit Settings() noexcept;
+					} settings_t;
+				private:
+					/**
+					 * \~russian
+					 * @brief Структура открытого поточного построения
+					 *
+					 * \~english
+					 * @brief Structure of an open flow-line configuration
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Bracket {
+						// Признак того, что построение уже несёт значения
+						bool filled;
 						/**
 						 * \~russian
 						 * Признак того, что запись объявлена вопросом составного имени
@@ -520,6 +477,32 @@ namespace awh {
 						bool paired;
 						/**
 						 * \~russian
+						 * Признак того, что запись построения начата и разделителем не закрыта
+						 *
+						 * @details Признак наполнения не годится: он объявляет, что построение
+						 *          значения несло когда-либо, а нужно знать, начата ли запись СЕЙЧАС.
+						 *          Запись `{a}` пустое значение пары получает, а запись `{a: 1,}` -
+						 *          нет: запятая запись закрыла, и закрывающей скобке пары уже не видно.
+						 *
+						 * @note Прежде обе получали его поровну, и запятая перед скобкою рождала
+						 *       лишнюю пустую пару. Случаи 4ABK и FRK4 набора yaml-test-suite
+						 *
+						 * \~english
+						 * Sign that a record of a construction is begun and is not closed by a separator
+						 *
+						 * @details A sign of the filling does not serve: it declares that a construction of a value carried
+						 *          something ever, while what is needed is to know whether a record is begun NOW. The record
+						 *          `{a}` receives an empty value of a pair, while the record `{a: 1,}` does not: a comma closed
+						 *          the record, and a closing bracket no longer sees a pair.
+						 *
+						 * @note Formerly both received it alike, and a comma before a bracket gave birth to a superfluous empty
+						 *       pair. Cases 4ABK and FRK4 of the yaml-test-suite set
+						 *
+						 * \~
+						 */
+						bool entered;
+						/**
+						 * \~russian
 						 * Место начала событий очередной записи в накопителе строки
 						 *
 						 * @details Отображение об одной паре опознаётся двоеточием, за именем стоящим, -
@@ -536,6 +519,8 @@ namespace awh {
 						 * \~
 						 */
 						size_t origin;
+						// Вид открытого поточного построения
+						nesting_t kind;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -549,23 +534,18 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Bracket(const nesting_t kind) noexcept :
-						 kind(kind), filled(false), entered(false), asked(false), valued(false), paired(false), origin(0) {}
+						explicit Bracket(const nesting_t kind) noexcept;
 					} bracket_t;
 					/**
 					 * \~russian
-					 * @brief Открытый уровень вложенности
+					 * @brief Структура открытого уровеня вложенности
 					 *
 					 * \~english
-					 * @brief Opened level of the nesting
+					 * @brief Structure of an open nesting level
 					 *
 					 * \~
 					 */
-					typedef struct Level {
-						// Вид открытого уровня вложенности
-						nesting_t kind;
-						// Отступ, на котором уровень открыт
-						uint32_t indent;
+					typedef struct __AWH_SHARED_EXPORT__ Level {
 						/**
 						 * \~russian
 						 * Признак того, что уровень открыт значением пары, стоящим на отступе имени её
@@ -586,6 +566,10 @@ namespace awh {
 						 * \~
 						 */
 						bool implied;
+						// Отступ, на котором уровень открыт
+						uint32_t indent;
+						// Вид открытого уровня вложенности
+						nesting_t kind;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -603,231 +587,77 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Level(const nesting_t kind, const uint32_t indent, const bool implied) noexcept :
-						 kind(kind), indent(indent), implied(implied) {}
+						explicit Level(const nesting_t kind, const uint32_t indent, const bool implied) noexcept;
 					} level_t;
 					/**
 					 * \~russian
-					 * @brief Событие разбора, собранное для выдачи
+					 * @brief Структура события разбора, собранное для выдачи
 					 *
 					 * \~english
-					 * @brief Event of the parsing assembled for the issuance
+					 * @brief Structure of the parsing event, assembled for output
 					 *
 					 * \~
 					 */
-					typedef struct Piece {
-						// Смещение куска в хранилище знаков
-						size_t offset;
+					typedef struct __AWH_SHARED_EXPORT__ Piece {
 						// Длина куска в хранилище знаков
 						size_t length;
+						// Смещение куска в хранилище знаков
+						size_t offset;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Piece() noexcept : offset(0), length(0) {}
+						explicit Piece() noexcept;
 					} piece_t;
 					/**
 					 * \~russian
-					 * @brief Событие разбора, собранное для выдачи
+					 * @brief Структура события разбора, собранное для выдачи
 					 *
 					 * \~english
-					 * @brief Event of the parsing assembled for the issuance
+					 * @brief Structure of the parsing event, assembled for output
 					 *
 					 * \~
 					 */
-					typedef struct Item {
-						// Вид собранного события
-						event_t event;
-						// Вид значения, разрешённый действующей схемой
-						type_t type;
-						// Вид записи значения в исходном тексте
-						style_t style;
+					typedef struct __AWH_SHARED_EXPORT__ Item {
+						// Признак того, что событие собрано внутри поточного построения
+						bool flow;
+						// Признак того, что документ наречие своё директивой объявил
+						bool versioned;
 						// Смещение содержимого события в хранилище знаков
 						size_t offset;
 						// Длина содержимого события в хранилище знаков
 						size_t length;
-						// Имя метки, событию предпосланной, в хранилище знаков
-						piece_t anchor;
+						// Вид значения, разрешённый действующей схемой
+						type_t type;
 						// Метка типа, событию предпосланная, в хранилище знаков
 						piece_t tag;
-						// Положение события в исходном тексте
-						location_t location;
-						// Признак того, что событие собрано внутри поточного построения
-						bool flow;
+						// Имя метки, событию предпосланной, в хранилище знаков
+						piece_t anchor;
+						// Вид записи значения в исходном тексте
+						style_t style;
+						// Вид собранного события
+						event_t event;
 						// Схема, действовавшая при выдаче события
 						schema_t schema;
-						// Признак того, что документ наречие своё директивой объявил
-						bool versioned;
+						// Положение события в исходном тексте
+						location_t location;
 						/**
 						 * \~russian
 						 * @brief Конструктор
-						 *
 						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Item() noexcept :
-						 event(event_t::NONE), type(type_t::UNDEFINED), style(style_t::PLAIN),
-						 offset(0), length(0), flow(false), schema(schema_t::CORE), versioned(false) {}
+						explicit Item() noexcept;
 					} item_t;
 				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-				private:
-					// Настройки разбора текста
-					settings_t _settings;
-					// Объект приведения кодировки исходного текста
-					decoder_t _decoder;
-					// Состояние потокового чтения текста
-					state_t _state;
-					// Код ошибки разбора текста
-					error_t _error;
-					// Положение отказа разбора в исходном тексте
-					location_t _location;
-					// Накопитель поданного текста, приведённого к UTF-8
-					string _buffer;
-					// Смещение начала неразобранного текста в накопителе
-					size_t _offset;
-					// Хранилище содержимого собранных событий
-					string _storage;
-					// Очередь собранных событий разбора, готовых к выдаче
-					/**
-					 * \~russian
-					 * Очередь событий, выдачи ожидающих
-					 *
-					 * @details Держится она перечнем с указателем на выданное, а не двусторонней
-					 *          очередью: очередь освобождает опустевший кусок памяти и заводит его заново
-					 *          приходом следующего события, отчего разбор крупного текста обходился в
-					 *          десятки тысяч выделений. Перечень же память свою переиспользует, и
-					 *          выделений на весь разбор приходится десяток.
-					 *
-					 * \~english
-					 * The queue of the events awaiting the issuance
-					 *
-					 * @details It is held by a list with a pointer onto the issued one, and not by a two-sided
-					 *          queue: a queue releases a memory chunk that has emptied and creates it anew at the arrival
-					 *          of the next event, whereby the parsing of a large text cost tens of thousands of allocations.
-					 *          A list, on the contrary, reuses its memory, and a dozen allocations fall to the whole parsing.
-					 *
-					 * \~
-					 */
-					vector <item_t> _events;
-					// Номер очередного события очереди, выдачи ожидающего
-					size_t _reading;
-					/**
-					 * \~russian
-					 * События разбираемой строки, выдачи ещё не ожидающие
-					 *
-					 * @note Строка собирается целиком и лишь затем переносится в очередь выдачи:
-					 *       отказ посреди строки не вправе оставить потребителя с началом
-					 *       построения без конца его, а исход разбора не вправе зависеть от того,
-					 *       на каком куске отказ случился
-					 *
-					 * \~english
-					 * The events of the line being parsed, not awaiting the issuance yet
-					 *
-					 * @note A line is collected in full and only then transferred into the queue of the issuance: a
-					 *       refusal in the middle of a line is not entitled to leave a consumer with a beginning of a
-					 *       construction without its end, and the outcome of the parsing is not entitled to depend on which
-					 *       chunk the refusal happened at
-					 *
-					 * \~
-					 */
-					vector <item_t> _staged;
-					// Событие, выданное последним
-					item_t _current;
-					// Значение, выданное последним событием
-					content_t _content;
-					// Стопа открытых уровней вложенности
-					vector <level_t> _levels;
-					// Номер разбираемой строки, считая с единицы
-					uint32_t _line;
-					// Смещение от начала текста в байтах
-					uint64_t _position;
-					// Признак того, что начало потока уже выдано
-					bool _started;
-				private:
-					/**
-					 * \~russian
-					 * Признак получения последнего куска исходного текста
-					 *
-					 * @note Признак этот заведён затем, чтобы состояние окончания разбора
-					 *       ставилось ПОСЛЕ вычерпывания очереди событий, как оно ставится у
-					 *       прочих кодеков рамки. Заслон подачи после объявленного конца стоит
-					 *       на нём же, а не на состоянии: перенеси состояние, а заслон оставь -
-					 *       и подача после конца снова стала бы приниматься
-					 *
-					 * \~english
-					 * Sign of the receiving of the last chunk of the source text
-					 *
-					 * @note This sign was created so that the state of the end of the parsing is set AFTER the queue of
-					 *       the events is drained, as it is set in the other codecs of the frame. The guard of a feeding
-					 *       after the declared end stands on this very sign, and not on the state: move the state and keep
-					 *       the guard — and a feeding after the end would again be accepted
-					 *
-					 * \~
-					 */
-					bool _final;
-					// Признак того, что документ открыт
-					bool _opened;
-					// Признак того, что открытый документ уже нёс содержимое
-					bool _filled;
-					// Признак того, что собирается блочное значение
-					bool _blocking;
-					// Вид собираемого блочного значения
-					style_t _block;
-					// Правило усечения переводов строк собираемого блочного значения
-					chomp_t _chomp;
-					// Отступ, заданный заголовком блочного значения, ноль - отступ по первой строке
-					uint8_t _marked;
-					// Отступ строки, заголовок блочного значения несущей
-					uint32_t _outer;
-					// Отступ разбираемой строки
-					uint32_t _margin;
-					/**
-					 * \~russian
-					 * Количество строк, к разбираемой присоединённых склейкой
-					 *
-					 * @details Значение огранённое вправе стоять в несколько строк, и строки те
-					 *          сводятся в одну логическую прежде разбора. Счёт строк ведётся по строкам
-					 *          телесным, а не логическим, оттого присоединённые и учитываются отдельно.
-					 *
-					 * @note Место события, за таким значением стоящего, называет строкою ту, в
-					 *       какой значение началось: логическая строка одна, и столбец в ней
-					 *       считается от начала её
-					 *
-					 * \~english
-					 * Number of the lines joined to the one being parsed
-					 *
-					 * @details A quoted value is entitled to stand in several lines, and those lines are
-					 *          brought into a single logical one before the parsing. The count of the lines is conducted over
-					 *          the physical lines rather than over the logical ones, hence the joined ones are counted separately.
-					 *
-					 * @note The place of an event standing after such a value names the line in which the value
-					 *       began: the logical line is one, and the column in it is counted from its beginning
-					 *
-					 * \~
-					 */
-					uint32_t _joined;
-					// Признак того, что логическая строка несёт огранённое значение в несколько строк
-					bool _stretched;
-					// Наименьший отступ строк, склейкой присоединённых
-					uint32_t _shallow;
 					/**
 					 * \~russian
 					 * Признак того, что имя пары объявлено вопросом составного имени
@@ -856,64 +686,29 @@ namespace awh {
 					bool _asked;
 					/**
 					 * \~russian
-					 * Признак того, что ожидается значение имени, вопросом объявленного
+					 * Признак получения последнего куска исходного текста
 					 *
-					 * @details Признак ожидания у имени и у значения его один и тот же, и
-					 *          различить их надлежит: пустота имени принадлежит отображению вопроса
-					 *          прямо, а пустота значения приходит за закрытием построения имени.
-					 *          Двоеточие же ответа пустоту значения откладывает, а пустоту имени
-					 *          выдать обязано - иначе метка, имени предпосланная, узла своего не
-					 *          получает вовсе.
-					 *
-					 * @note Прежде признака этого не было, и написание `? &метка` с ответом
-					 *       строкою ниже отказ получало: метка имени пустого откладывалась
-					 *       вместилищу и его не дожидалась. Случай PW8X набора
-					 *       yaml-test-suite
+					 * @note Признак этот заведён затем, чтобы состояние окончания разбора
+					 *       ставилось ПОСЛЕ вычерпывания очереди событий, как оно ставится у
+					 *       прочих кодеков рамки. Заслон подачи после объявленного конца стоит
+					 *       на нём же, а не на состоянии: перенеси состояние, а заслон оставь -
+					 *       и подача после конца снова стала бы приниматься
 					 *
 					 * \~english
-					 * Sign that a value of a name declared by a question is expected
+					 * Sign of the receiving of the last chunk of the source text
 					 *
-					 * @details The sign of the expectation is one and the same for a name and for its value, and the two
-					 *          are to be told apart: an emptiness of a name belongs to a mapping of a question directly, while
-					 *          an emptiness of a value comes after the closing of a construction of a name. The colon of an
-					 *          answer, however, postpones an emptiness of a value, but an emptiness of a name it is obliged
-					 *          to issue — otherwise a label placed before a name does not receive its node at all.
-					 *
-					 * @note Formerly there was no such sign, and the writing `? &label` with an answer by a line below
-					 *       received a refusal: a label of an empty name was deferred to a container and did not wait for
-					 *       it. Case PW8X of the yaml-test-suite set
+					 * @note This sign was created so that the state of the end of the parsing is set AFTER the queue of
+					 *       the events is drained, as it is set in the other codecs of the frame. The guard of a feeding
+					 *       after the declared end stands on this very sign, and not on the state: move the state and keep
+					 *       the guard — and a feeding after the end would again be accepted
 					 *
 					 * \~
 					 */
-					bool _answering;
-					// Отступ, на котором стоит вопрос составного имени
-					uint32_t _questioned;
-					/**
-					 * \~russian
-					 * Количество открытых уровней на миг объявления имени вопросом
-					 *
-					 * @details Имя, вопросом объявленное, вправе быть построением, и стоит оно
-					 *          на отступе самого вопроса: закрыть его отступом нельзя - отступ у имени
-					 *          и у двоеточия один. Оттого закрывается оно счётом уровней: двоеточие
-					 *          снимает всё, что открылось за вопросом его.
-					 *
-					 * @note Прежде перечень имени и перечень значения сливались в один: записи
-					 *       второго дописывались к первому. Случай 6PBE набора yaml-test-suite
-					 *
-					 * \~english
-					 * The number of the opened levels at the moment of the declaration of a name by a question
-					 *
-					 * @details A name declared by a question is entitled to be a construction, and it stands at the
-					 *          indentation of the very question: it cannot be closed by an indentation — the indentation of a
-					 *          name and of a colon is one. Whereby it is closed by a count of the levels: a colon removes
-					 *          all that opened after the question of its own.
-					 *
-					 * @note Formerly a list of a name and a list of a value merged into one: the records of the second
-					 *       were appended to the first. Case 6PBE of the yaml-test-suite set
-					 *
-					 * \~
-					 */
-					size_t _asking;
+					bool _final;
+					// Признак того, что документ открыт
+					bool _opened;
+					// Признак того, что открытый документ уже нёс содержимое
+					bool _filled;
 					/**
 					 * \~russian
 					 * Признак того, что документ открыт чертою начала своего
@@ -932,124 +727,6 @@ namespace awh {
 					 * \~
 					 */
 					bool _dashed;
-					/**
-					 * \~russian
-					 * Признак того, что внутри скобок собирается простое значение
-					 *
-					 * @details Записи поточного построения строкою не отделены, и простое значение
-					 *          внутри скобок вправе стоять в несколько строк: обрывает его лишь запятая,
-					 *          скобка либо двоеточие. Строка, разделителя не принёсшая, значение продолжает.
-					 *
-					 * \~english
-					 * Sign that a plain value is being collected inside the brackets
-					 *
-					 * @details The entries of a flow construction are not separated by the lines, and a plain value
-					 *          inside the brackets is entitled to stand in several lines: it is broken only by a comma,
-					 *          by a bracket or by a colon. A line which has not brought a separator continues the value.
-					 *
-					 * \~
-					 */
-					bool _flowning;
-					// Собираемое содержимое простого значения внутри скобок
-					string _flown;
-					// Положение начала простого значения, внутри скобок собираемого
-					location_t _flowned;
-				private:
-					/**
-					 * \~russian
-					 * Положение, на котором ожидается значение записи либо пары
-					 *
-					 * @details Пустое значение выдаётся не там, где оно ожидалось, а там, где
-					 *          ожидание оборвалось - строкою ниже, чертою следующей записи. Место
-					 *          события есть место значения, и без этого положения пустота записи `-`
-					 *          получала бы место соседа.
-					 *
-					 * @note Наружу это торчит удержанием исходного текста: начала записей
-					 *       узлов сдвигались на строку, и перезапись правки теряла запись перечня
-					 *
-					 * \~english
-					 * Position at which a value of an entry or of a pair is expected
-					 *
-					 * @details An empty value is issued not where it was expected but where
-					 *          the expectation broke off — a line below, at the dash of the next entry. The place
-					 *          of the event is the place of the value, and without this position the emptiness of the entry `-`
-					 *          would receive the place of its neighbour.
-					 *
-					 * @note Outwards this sticks out through the retention of the source text: the beginnings of the records
-					 *       of the nodes shifted by a line, and a rewriting of an edit lost an entry of the sequence
-					 *
-					 * \~
-					 */
-					location_t _awaiting;
-					// Отступ содержимого собираемого блочного значения
-					uint32_t _inner;
-					// Положение заголовка блочного значения в строке
-					size_t _opening;
-					// Собираемое содержимое блочного значения
-					string _block_text;
-					// Количество пустых строк, содержимого ещё не дождавшихся
-					size_t _breaks;
-					/**
-					 * \~russian
-					 * @brief Наибольший отступ пустых строк, содержимому блочного значения предпосланных
-					 *
-					 * @note Стандарт запрещает предпосланной пустой строке стоять глубже первой
-					 *       непустой строки содержимого: отступ содержимого берётся именно по
-					 *       ней, и строка, её глубже, оказалась бы содержимым, отступ которого
-					 *       заголовком не задан и первою строкой не подтверждён
-					 *
-					 * \~english
-					 * @brief The greatest indentation of the empty lines preceding a content of a block value
-					 *
-					 * @note The standard forbids a preceding empty line to stand deeper than the first non-empty line of
-					 *       the content: the indentation of the content is taken exactly by that line, and a line deeper
-					 *       than it would turn into a content whose indentation is neither set by a heading nor confirmed
-					 *       by a first line
-					 *
-					 * \~
-					 */
-					uint32_t _padding;
-					/**
-					 * \~russian
-					 * @brief Признак того, что последняя присоединённая строка стояла глубже отступа содержимого
-					 *
-					 * @note Свёртка строк применяется лишь тогда, когда обе строки, перевод
-					 *       разделяющий, стоят на отступе содержимого: строка, стоящая глубже,
-					 *       свёртке не подлежит ни собою, ни соседкой своей, и переводы вокруг
-					 *       неё сохраняются как есть
-					 *
-					 * \~english
-					 * @brief A sign that the last appended line stood deeper than the indentation of the content
-					 *
-					 * @note A folding of the lines applies only when both lines, a line feed dividing them, stand at the
-					 *       indentation of the content: a line standing deeper is not subject to a folding either by
-					 *       itself or by its neighbour, and the line feeds around it are preserved as they are
-					 *
-					 * \~
-					 */
-					bool _deepened;
-					// Признак того, что ожидается значение пары, объявленной прежде
-					bool _expected;
-					/**
-					 * \~russian
-					 * @brief Признак того, что строка подаёт значение пары, объявленной прежде
-					 *
-					 * @note Признак ожидания гасится разбором строки прежде разбора содержимого
-					 *       её, и содержимому нечем отличить значение пары, строкою ниже имени
-					 *       её стоящее, от записи, глубже уже завершённой пары стоящей.
-					 *       Написание первое описанием дозволено, второе - запрещено
-					 *
-					 * \~english
-					 * @brief A sign that a line gives a value of a pair declared earlier
-					 *
-					 * @note The sign of an expectation is extinguished by the parsing of a line before the parsing of its
-					 *       content, and a content has nothing by which to distinguish a value of a pair standing by a
-					 *       line below its name from a record standing deeper than an already completed pair. The first
-					 *       writing is allowed by the description, the second is forbidden
-					 *
-					 * \~
-					 */
-					bool _awaited;
 					/**
 					 * \~russian
 					 * @brief Признак того, что разбирается значение пары, в той же строке стоящее
@@ -1086,24 +763,6 @@ namespace awh {
 					bool _headed;
 					/**
 					 * \~russian
-					 * @brief Признак разбора свойств узла в разбираемой строке
-					 *
-					 * @note Свойства блочного построения отделяются от него переводом
-					 *       строки, и признак этот отличает написание `&метка - запись`
-					 *       от написания той же метки строкою выше черты
-					 *
-					 * \~english
-					 * @brief A sign of a parsing of the properties of a node in the line being parsed
-					 *
-					 * @note The properties of a block construction are separated from it by a line feed, and this sign
-					 *       distinguishes a writing `&label - record` from a writing of the same label by a line above
-					 *       the dash
-					 *
-					 * \~
-					 */
-					bool _propped;
-					/**
-					 * \~russian
 					 * @brief Признак подачи в отступе вложенного построения
 					 *
 					 * @note Отступ вложенного построения задан правилом `s-indent`
@@ -1136,8 +795,46 @@ namespace awh {
 					 * \~
 					 */
 					bool _rooted;
-					// Признак того, что отступ содержимого блочного значения определён
-					bool _detected;
+					// Признак того, что начало потока уже выдано
+					bool _started;
+					/**
+					 * \~russian
+					 * @brief Признак того, что строка подаёт значение пары, объявленной прежде
+					 *
+					 * @note Признак ожидания гасится разбором строки прежде разбора содержимого
+					 *       её, и содержимому нечем отличить значение пары, строкою ниже имени
+					 *       её стоящее, от записи, глубже уже завершённой пары стоящей.
+					 *       Написание первое описанием дозволено, второе - запрещено
+					 *
+					 * \~english
+					 * @brief A sign that a line gives a value of a pair declared earlier
+					 *
+					 * @note The sign of an expectation is extinguished by the parsing of a line before the parsing of its
+					 *       content, and a content has nothing by which to distinguish a value of a pair standing by a
+					 *       line below its name from a record standing deeper than an already completed pair. The first
+					 *       writing is allowed by the description, the second is forbidden
+					 *
+					 * \~
+					 */
+					bool _awaited;
+					/**
+					 * \~russian
+					 * @brief Признак разбора свойств узла в разбираемой строке
+					 *
+					 * @note Свойства блочного построения отделяются от него переводом
+					 *       строки, и признак этот отличает написание `&метка - запись`
+					 *       от написания той же метки строкою выше черты
+					 *
+					 * \~english
+					 * @brief A sign of a parsing of the properties of a node in the line being parsed
+					 *
+					 * @note The properties of a block construction are separated from it by a line feed, and this sign
+					 *       distinguishes a writing `&label - record` from a writing of the same label by a line above
+					 *       the dash
+					 *
+					 * \~
+					 */
+					bool _propped;
 					/**
 					 * \~russian
 					 * @brief Признак того, что ожидаемое значение принадлежит записи перечня, а не паре
@@ -1156,8 +853,263 @@ namespace awh {
 					 * \~
 					 */
 					bool _entered;
+					// Признак того, что отступ содержимого блочного значения определён
+					bool _detected;
+					// Признак того, что собирается блочное значение
+					bool _blocking;
+					/**
+					 * \~russian
+					 * Признак того, что внутри скобок собирается простое значение
+					 *
+					 * @details Записи поточного построения строкою не отделены, и простое значение
+					 *          внутри скобок вправе стоять в несколько строк: обрывает его лишь запятая,
+					 *          скобка либо двоеточие. Строка, разделителя не принёсшая, значение продолжает.
+					 *
+					 * \~english
+					 * Sign that a plain value is being collected inside the brackets
+					 *
+					 * @details The entries of a flow construction are not separated by the lines, and a plain value
+					 *          inside the brackets is entitled to stand in several lines: it is broken only by a comma,
+					 *          by a bracket or by a colon. A line which has not brought a separator continues the value.
+					 *
+					 * \~
+					 */
+					bool _flowning;
+					/**
+					 * \~russian
+					 * @brief Признак того, что последняя присоединённая строка стояла глубже отступа содержимого
+					 *
+					 * @note Свёртка строк применяется лишь тогда, когда обе строки, перевод
+					 *       разделяющий, стоят на отступе содержимого: строка, стоящая глубже,
+					 *       свёртке не подлежит ни собою, ни соседкой своей, и переводы вокруг
+					 *       неё сохраняются как есть
+					 *
+					 * \~english
+					 * @brief A sign that the last appended line stood deeper than the indentation of the content
+					 *
+					 * @note A folding of the lines applies only when both lines, a line feed dividing them, stand at the
+					 *       indentation of the content: a line standing deeper is not subject to a folding either by
+					 *       itself or by its neighbour, and the line feeds around it are preserved as they are
+					 *
+					 * \~
+					 */
+					bool _deepened;
+					// Признак того, что ожидается значение пары, объявленной прежде
+					bool _expected;
+					/**
+					 * \~russian
+					 * @brief Признак того, что собирается простое значение, могущее прирасти
+					 *
+					 * @note Простое значение, добежавшее до конца строки, вправе продолжиться
+					 *       строкою ниже, и оттого выдача его откладывается до строки той:
+					 *       выдать его сразу значило бы выдать половину значения
+					 *
+					 * \~english
+					 * @brief A sign that a simple value able to grow is being assembled
+					 *
+					 * @note A simple value having reached the end of a line is entitled to continue by a line below,
+					 *       and therefore its issuance is deferred until that line: to issue it at once would mean to
+					 *       issue a half of a value
+					 *
+					 * \~
+					 */
+					bool _plaining;
+					// Признак того, что документу предпосланы директивы
+					bool _directed;
+					/**
+					 * \~russian
+					 * Признак того, что наречие объявлялось директивой хоть раз за текст
+					 *
+					 * @details Признак `_versioned` сбрасывается закрытием всякого документа, и
+					 *          после разбора он всегда ложен. Перезаписи же знать надобно, стояла ли
+					 *          директива в тексте вообще, - оттого признак этот и заведён отдельно.
+					 *
+					 * \~english
+					 * Sign that the dialect was declared by a directive at least once over the text
+					 *
+					 * @details The `_versioned` sign is reset by the closing of every document, and
+					 *          after the parsing it is always false. The rewriting, however, needs to know whether
+					 *          a directive stood in the text at all — that is why this sign is created separately.
+					 *
+					 * \~
+					 */
+					bool _declared;
+					// Признак того, что наречие документа объявлено директивой
+					bool _versioned;
+					// Признак того, что логическая строка несёт огранённое значение в несколько строк
+					bool _stretched;
+					/**
+					 * \~russian
+					 * Признак того, что ожидается значение имени, вопросом объявленного
+					 *
+					 * @details Признак ожидания у имени и у значения его один и тот же, и
+					 *          различить их надлежит: пустота имени принадлежит отображению вопроса
+					 *          прямо, а пустота значения приходит за закрытием построения имени.
+					 *          Двоеточие же ответа пустоту значения откладывает, а пустоту имени
+					 *          выдать обязано - иначе метка, имени предпосланная, узла своего не
+					 *          получает вовсе.
+					 *
+					 * @note Прежде признака этого не было, и написание `? &метка` с ответом
+					 *       строкою ниже отказ получало: метка имени пустого откладывалась
+					 *       вместилищу и его не дожидалась. Случай PW8X набора
+					 *       yaml-test-suite
+					 *
+					 * \~english
+					 * Sign that a value of a name declared by a question is expected
+					 *
+					 * @details The sign of the expectation is one and the same for a name and for its value, and the two
+					 *          are to be told apart: an emptiness of a name belongs to a mapping of a question directly, while
+					 *          an emptiness of a value comes after the closing of a construction of a name. The colon of an
+					 *          answer, however, postpones an emptiness of a value, but an emptiness of a name it is obliged
+					 *          to issue — otherwise a label placed before a name does not receive its node at all.
+					 *
+					 * @note Formerly there was no such sign, and the writing `? &label` with an answer by a line below
+					 *       received a refusal: a label of an empty name was deferred to a container and did not wait for
+					 *       it. Case PW8X of the yaml-test-suite set
+					 *
+					 * \~
+					 */
+					bool _answering;
+					// Признак объявления метки типа в разбираемой строке
+					bool _taggedHere;
+					/**
+					 * \~russian
+					 * @brief Признак объявления метки узла в разбираемой строке
+					 *
+					 * @note Признак разбора свойств один на оба вида их, и метка типа,
+					 *       строкою выше объявленная, отвергалась бы им при метке узла,
+					 *       в этой строке стоящей. Слежение ведётся оттого порознь
+					 *
+					 * \~english
+					 * @brief A sign of a declaration of a label of a node in the line being parsed
+					 *
+					 * @note The sign of a parsing of the properties is one for both kinds of them, and a label of a
+					 *       type, declared by a line above, would be refused by it at a label of a node standing in
+					 *       this line. The tracking is conducted separately for that reason
+					 *
+					 * \~
+					 */
+					bool _anchoredHere;
+				private:
+					// Отступ, заданный заголовком блочного значения, ноль - отступ по первой строке
+					uint8_t _marked;
+				private:
+					// Количество пустых строк, содержимого ещё не дождавшихся
+					size_t _folds;
+					// Смещение начала неразобранного текста в накопителе
+					size_t _offset;
+					// Количество пустых строк, содержимого ещё не дождавшихся
+					size_t _breaks;
+					/**
+					 * \~russian
+					 * Количество открытых уровней на миг объявления имени вопросом
+					 *
+					 * @details Имя, вопросом объявленное, вправе быть построением, и стоит оно
+					 *          на отступе самого вопроса: закрыть его отступом нельзя - отступ у имени
+					 *          и у двоеточия один. Оттого закрывается оно счётом уровней: двоеточие
+					 *          снимает всё, что открылось за вопросом его.
+					 *
+					 * @note Прежде перечень имени и перечень значения сливались в один: записи
+					 *       второго дописывались к первому. Случай 6PBE набора yaml-test-suite
+					 *
+					 * \~english
+					 * The number of the opened levels at the moment of the declaration of a name by a question
+					 *
+					 * @details A name declared by a question is entitled to be a construction, and it stands at the
+					 *          indentation of the very question: it cannot be closed by an indentation — the indentation of a
+					 *          name and of a colon is one. Whereby it is closed by a count of the levels: a colon removes
+					 *          all that opened after the question of its own.
+					 *
+					 * @note Formerly a list of a name and a list of a value merged into one: the records of the second
+					 *       were appended to the first. Case 6PBE of the yaml-test-suite set
+					 *
+					 * \~
+					 */
+					size_t _asking;
+					// Номер очередного события очереди, выдачи ожидающего
+					size_t _reading;
+					// Положение заголовка блочного значения в строке
+					size_t _opening;
+				private:
+					// Номер разбираемой строки, считая с единицы
+					uint32_t _line;
+					// Отступ строки, заголовок блочного значения несущей
+					uint32_t _outer;
+					// Отступ содержимого собираемого блочного значения
+					uint32_t _inner;
+					// Отступ разбираемой строки
+					uint32_t _margin;
+					/**
+					 * \~russian
+					 * Количество строк, к разбираемой присоединённых склейкой
+					 *
+					 * @details Значение огранённое вправе стоять в несколько строк, и строки те
+					 *          сводятся в одну логическую прежде разбора. Счёт строк ведётся по строкам
+					 *          телесным, а не логическим, оттого присоединённые и учитываются отдельно.
+					 *
+					 * @note Место события, за таким значением стоящего, называет строкою ту, в
+					 *       какой значение началось: логическая строка одна, и столбец в ней
+					 *       считается от начала её
+					 *
+					 * \~english
+					 * Number of the lines joined to the one being parsed
+					 *
+					 * @details A quoted value is entitled to stand in several lines, and those lines are
+					 *          brought into a single logical one before the parsing. The count of the lines is conducted over
+					 *          the physical lines rather than over the logical ones, hence the joined ones are counted separately.
+					 *
+					 * @note The place of an event standing after such a value names the line in which the value
+					 *       began: the logical line is one, and the column in it is counted from its beginning
+					 *
+					 * \~
+					 */
+					uint32_t _joined;
+					// Наименьший отступ строк, склейкой присоединённых
+					uint32_t _shallow;
+					/**
+					 * \~russian
+					 * @brief Наибольший отступ пустых строк, содержимому блочного значения предпосланных
+					 *
+					 * @note Стандарт запрещает предпосланной пустой строке стоять глубже первой
+					 *       непустой строки содержимого: отступ содержимого берётся именно по
+					 *       ней, и строка, её глубже, оказалась бы содержимым, отступ которого
+					 *       заголовком не задан и первою строкой не подтверждён
+					 *
+					 * \~english
+					 * @brief The greatest indentation of the empty lines preceding a content of a block value
+					 *
+					 * @note The standard forbids a preceding empty line to stand deeper than the first non-empty line of
+					 *       the content: the indentation of the content is taken exactly by that line, and a line deeper
+					 *       than it would turn into a content whose indentation is neither set by a heading nor confirmed
+					 *       by a first line
+					 *
+					 * \~
+					 */
+					uint32_t _padding;
 					// Отступ, на котором ожидается значение пары либо записи перечня
 					uint32_t _pending;
+					// Отступ, который обязано превышать продолжение простого значения
+					uint32_t _required;
+					// Отступ, на котором стоит вопрос составного имени
+					uint32_t _questioned;
+				private:
+					// Смещение от начала текста в байтах
+					uint64_t _position;
+				private:
+					// Собираемое содержимое простого значения внутри скобок
+					string _flown;
+					// Состояние разбора поточного построения
+					flow_t _phase;
+					// Состояние потокового чтения текста
+					state_t _state;
+					// Код ошибки разбора текста
+					error_t _error;
+					// Вид собираемого блочного значения
+					style_t _block;
+					// Правило усечения переводов строк собираемого блочного значения
+					chomp_t _chomp;
+					// Событие, выданное последним
+					item_t _current;
 					/**
 					 * \~russian
 					 * @brief Схема разрешения видов, действующая над разбираемым документом
@@ -1177,10 +1129,57 @@ namespace awh {
 					 * \~
 					 */
 					schema_t _schema;
-					// Имя метки, узлу предпосланной, ожидающее узла своего
-					string _anchor;
+					// Схема, директивой наречия назначенная
+					schema_t _dialect;
+					// Значение, выданное последним событием
+					content_t _content;
+					// Объект приведения кодировки исходного текста
+					decoder_t _decoder;
+					// Положение начала простого значения в исходном тексте
+					location_t _origin;
+					// Положение начала простого значения, внутри скобок собираемого
+					location_t _flowned;
+					// Положение отказа разбора в исходном тексте
+					location_t _location;
+					// Настройки разбора текста
+					settings_t _settings;
+					/**
+					 * \~russian
+					 * Положение, на котором ожидается значение записи либо пары
+					 *
+					 * @details Пустое значение выдаётся не там, где оно ожидалось, а там, где
+					 *          ожидание оборвалось - строкою ниже, чертою следующей записи. Место
+					 *          события есть место значения, и без этого положения пустота записи `-`
+					 *          получала бы место соседа.
+					 *
+					 * @note Наружу это торчит удержанием исходного текста: начала записей
+					 *       узлов сдвигались на строку, и перезапись правки теряла запись перечня
+					 *
+					 * \~english
+					 * Position at which a value of an entry or of a pair is expected
+					 *
+					 * @details An empty value is issued not where it was expected but where
+					 *          the expectation broke off — a line below, at the dash of the next entry. The place
+					 *          of the event is the place of the value, and without this position the emptiness of the entry `-`
+					 *          would receive the place of its neighbour.
+					 *
+					 * @note Outwards this sticks out through the retention of the source text: the beginnings of the records
+					 *       of the nodes shifted by a line, and a rewriting of an edit lost an entry of the sequence
+					 *
+					 * \~
+					 */
+					location_t _awaiting;
+				private:
 					// Метка типа, узлу предпосланная, ожидающая узла своего
 					string _tag;
+					// Собираемое содержимое простого значения
+					string _plain;
+					// Имя метки, узлу предпосланной, ожидающее узла своего
+					string _anchor;
+					// Накопитель поданного текста, приведённого к UTF-8
+					string _buffer;
+					// Хранилище содержимого собранных событий
+					string _storage;
 					/**
 					 * \~russian
 					 * @brief Имя метки, вместилищу отложенное, строкою выше объявленное
@@ -1208,88 +1207,61 @@ namespace awh {
 					 * \~
 					 */
 					string _delayed;
+					// Собираемое содержимое блочного значения
+					string _blockText;
 					// Метка типа, вместилищу отложенная, строкою выше объявленная
 					string _delayedTag;
+				private:
 					/**
 					 * \~russian
-					 * @brief Признак объявления метки узла в разбираемой строке
+					 * Очередь событий, выдачи ожидающих
 					 *
-					 * @note Признак разбора свойств один на оба вида их, и метка типа,
-					 *       строкою выше объявленная, отвергалась бы им при метке узла,
-					 *       в этой строке стоящей. Слежение ведётся оттого порознь
+					 * @details Держится она перечнем с указателем на выданное, а не двусторонней
+					 *          очередью: очередь освобождает опустевший кусок памяти и заводит его заново
+					 *          приходом следующего события, отчего разбор крупного текста обходился в
+					 *          десятки тысяч выделений. Перечень же память свою переиспользует, и
+					 *          выделений на весь разбор приходится десяток.
 					 *
 					 * \~english
-					 * @brief A sign of a declaration of a label of a node in the line being parsed
+					 * The queue of the events awaiting the issuance
 					 *
-					 * @note The sign of a parsing of the properties is one for both kinds of them, and a label of a
-					 *       type, declared by a line above, would be refused by it at a label of a node standing in
-					 *       this line. The tracking is conducted separately for that reason
+					 * @details It is held by a list with a pointer onto the issued one, and not by a two-sided
+					 *          queue: a queue releases a memory chunk that has emptied and creates it anew at the arrival
+					 *          of the next event, whereby the parsing of a large text cost tens of thousands of allocations.
+					 *          A list, on the contrary, reuses its memory, and a dozen allocations fall to the whole parsing.
 					 *
 					 * \~
 					 */
-					bool _anchoredHere;
-					// Признак объявления метки типа в разбираемой строке
-					bool _taggedHere;
+					vector <item_t> _events;
+					/**
+					 * \~russian
+					 * События разбираемой строки, выдачи ещё не ожидающие
+					 *
+					 * @note Строка собирается целиком и лишь затем переносится в очередь выдачи:
+					 *       отказ посреди строки не вправе оставить потребителя с началом
+					 *       построения без конца его, а исход разбора не вправе зависеть от того,
+					 *       на каком куске отказ случился
+					 *
+					 * \~english
+					 * The events of the line being parsed, not awaiting the issuance yet
+					 *
+					 * @note A line is collected in full and only then transferred into the queue of the issuance: a
+					 *       refusal in the middle of a line is not entitled to leave a consumer with a beginning of a
+					 *       construction without its end, and the outcome of the parsing is not entitled to depend on which
+					 *       chunk the refusal happened at
+					 *
+					 * \~
+					 */
+					vector <item_t> _staged;
+					// Стопа открытых уровней вложенности
+					vector <level_t> _levels;
+					// Стопа открытых поточных построений
+					vector <bracket_t> _flow;
+				private:
 					// Имена меток, объявленных разбираемым документом
 					unordered_set <string> _anchors;
 					// Сокращения меток типов, объявленные директивами документа
-					unordered_map <string, string> _handles;
-					/**
-					 * \~russian
-					 * @brief Признак того, что собирается простое значение, могущее прирасти
-					 *
-					 * @note Простое значение, добежавшее до конца строки, вправе продолжиться
-					 *       строкою ниже, и оттого выдача его откладывается до строки той:
-					 *       выдать его сразу значило бы выдать половину значения
-					 *
-					 * \~english
-					 * @brief A sign that a simple value able to grow is being assembled
-					 *
-					 * @note A simple value having reached the end of a line is entitled to continue by a line below,
-					 *       and therefore its issuance is deferred until that line: to issue it at once would mean to
-					 *       issue a half of a value
-					 *
-					 * \~
-					 */
-					bool _plaining;
-					// Собираемое содержимое простого значения
-					string _plain;
-					// Количество пустых строк, содержимого ещё не дождавшихся
-					size_t _folds;
-					// Отступ, который обязано превышать продолжение простого значения
-					uint32_t _required;
-					// Положение начала простого значения в исходном тексте
-					location_t _origin;
-					// Стопа открытых поточных построений
-					vector <bracket_t> _flow;
-					// Состояние разбора поточного построения
-					flow_t _phase;
-					// Признак того, что документу предпосланы директивы
-					bool _directed;
-					// Признак того, что наречие документа объявлено директивой
-					bool _versioned;
-				private:
-					/**
-					 * \~russian
-					 * Признак того, что наречие объявлялось директивой хоть раз за текст
-					 *
-					 * @details Признак `_versioned` сбрасывается закрытием всякого документа, и
-					 *          после разбора он всегда ложен. Перезаписи же знать надобно, стояла ли
-					 *          директива в тексте вообще, - оттого признак этот и заведён отдельно.
-					 *
-					 * \~english
-					 * Sign that the dialect was declared by a directive at least once over the text
-					 *
-					 * @details The `_versioned` sign is reset by the closing of every document, and
-					 *          after the parsing it is always false. The rewriting, however, needs to know whether
-					 *          a directive stood in the text at all — that is why this sign is created separately.
-					 *
-					 * \~
-					 */
-					bool _declared;
-				private:
-					// Схема, директивой наречия назначенная
-					schema_t _dialect;
+					unordered_map <string, string> _handles;	
 				private:
 					/**
 					 * \~russian
@@ -1302,9 +1274,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the declaration of a refusal of the parsing
 					 *
-					 * @param error error code of the parsing
+					 * @param error  error code of the parsing
 					 * @param column position of the refusal in the line being parsed
-					 * @return sign of the termination of the parsing
+					 * @return       sign of the termination of the parsing
 					 *
 					 * \~
 					 */
@@ -1339,7 +1311,7 @@ namespace awh {
 					 *          between the codecs in such a small question would surface at a consumer reading
 					 *          both of them.
 					 *
-					 * @param line line being parsed
+					 * @param line     line being parsed
 					 * @param position position of the comment character in the line
 					 *
 					 * \~
@@ -1356,9 +1328,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the placing of an assembled event into the queue of the issuance
 					 *
-					 * @param event kind of the assembled event
+					 * @param event  kind of the assembled event
 					 * @param column position of the event in the line being parsed
-					 * @return reference to the placed event
+					 * @return       reference to the placed event
 					 *
 					 * \~
 					 */
@@ -1375,10 +1347,10 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the placing of an event of a scalar value
 					 *
-					 * @param text content of the scalar value
-					 * @param style kind of the notation of the value in the source text
+					 * @param text   content of the scalar value
+					 * @param style  kind of the notation of the value in the source text
 					 * @param column position of the value in the line being parsed
-					 * @return sign of the successful placing of the event
+					 * @return       sign of the successful placing of the event
 					 *
 					 * \~
 					 */
@@ -1396,7 +1368,7 @@ namespace awh {
 					 *
 					 * @param indent indentation down to which the levels are closed
 					 * @param column position of the closing in the line being parsed
-					 * @return sign of the successful closing of the levels
+					 * @return       sign of the successful closing of the levels
 					 *
 					 * \~
 					 */
@@ -1409,7 +1381,7 @@ namespace awh {
 					 * @param indent  отступ, на котором уровень открывается
 					 * @param implied признак открытия уровня значением пары на отступе имени её
 					 * @param column  положение открытия в разбираемой строке
-					 * @return       признак успешного открытия уровня
+					 * @return        признак успешного открытия уровня
 					 *
 					 * \~english
 					 * @brief Method of the opening of a level of the nesting of a given kind
@@ -1418,7 +1390,7 @@ namespace awh {
 					 * @param indent  indentation at which the level is opened
 					 * @param implied sign of the opening of a level by the value of a pair at the indentation of its name
 					 * @param column  position of the opening in the line being parsed
-					 * @return sign of the successful opening of the level
+					 * @return        sign of the successful opening of the level
 					 *
 					 * \~
 					 */
@@ -1442,9 +1414,9 @@ namespace awh {
 					 *          mapping is a divergence of the declared from the written anywhere, and two sets of the
 					 *          rules would diverge at a consumer reading both notations.
 					 *
-					 * @param kind kind of the construction being opened
+					 * @param kind   kind of the construction being opened
 					 * @param column position of the opening in the line being parsed
-					 * @return sign of the correspondence of the tag to the kind of the construction
+					 * @return       sign of the correspondence of the tag to the kind of the construction
 					 *
 					 * \~
 					 */
@@ -1460,7 +1432,7 @@ namespace awh {
 					 * @brief Method of the closing of an opened document
 					 *
 					 * @param column position of the closing in the line being parsed
-					 * @return sign of the successful closing of the document
+					 * @return       sign of the successful closing of the document
 					 *
 					 * \~
 					 */
@@ -1484,11 +1456,11 @@ namespace awh {
 					 * @details The quoting is removed together with the escape sequences of a double
 					 *          quoting and the doubling of the quote of a single one.
 					 *
-					 * @param text record of the value being parsed together with the quoting
-					 * @param style kind of the quoting of the value being parsed
+					 * @param text   record of the value being parsed together with the quoting
+					 * @param style  kind of the quoting of the value being parsed
 					 * @param column position of the value in the line being parsed
 					 * @param result string into which the content of the value is placed
-					 * @return sign of the successful removal of the quoting
+					 * @return       sign of the successful removal of the quoting
 					 *
 					 * \~
 					 */
@@ -1514,11 +1486,11 @@ namespace awh {
 					 *          ends by the separator of a pair, by the comment character after a whitespace character
 					 *          or by the end of the line, while a quoted one — by the closing quoting.
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the beginning of the value in the line
-					 * @param style kind of the notation of the value determined by the first character
+					 * @param style  kind of the notation of the value determined by the first character
 					 * @param length length of the record of the value together with the quoting
-					 * @return sign of the fact that the value is read in full
+					 * @return       sign of the fact that the value is read in full
 					 *
 					 * \~
 					 */
@@ -1534,7 +1506,7 @@ namespace awh {
 					 * @brief Method of the parsing of one logical line of a text
 					 *
 					 * @param line line being parsed without the line break character
-					 * @return sign of the successful parsing of the line
+					 * @return     sign of the successful parsing of the line
 					 *
 					 * \~
 					 */
@@ -1564,7 +1536,7 @@ namespace awh {
 					 * @param offset offset of the separator of the name of a pair in the line
 					 * @param indent indentation of the line being parsed
 					 * @param origin place of the beginning of the record of the name in the accumulator
-					 * @return sign of the successful parsing of the name of a pair
+					 * @return       sign of the successful parsing of the name of a pair
 					 *
 					 * \~
 					 */
@@ -1610,11 +1582,11 @@ namespace awh {
 					 * @details A tag overrides the resolution by the schema: `!!str 12` is a string
 					 *          rather than a number, for the tag is said directly while the schema only guesses by the notation.
 					 *
-					 * @param text content of the scalar value
-					 * @param style kind of the notation of the value in the source text
+					 * @param text   content of the scalar value
+					 * @param style  kind of the notation of the value in the source text
 					 * @param column position of the value in the line being parsed
-					 * @param type resolved kind of the scalar value
-					 * @return sign of the successful resolution of the kind
+					 * @param type   resolved kind of the scalar value
+					 * @return       sign of the successful resolution of the kind
 					 *
 					 * \~
 					 */
@@ -1646,9 +1618,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the parsing of the properties of a node standing before it
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the beginning of the properties in the line, at the exit — the offset after them
-					 * @return sign of the successful parsing of the properties of a node
+					 * @return       sign of the successful parsing of the properties of a node
 					 *
 					 * \~
 					 */
@@ -1664,9 +1636,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the parsing of an alias to a declared anchor
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the beginning of the alias in the line, at the exit — the offset after it
-					 * @return sign of the successful parsing of the alias
+					 * @return       sign of the successful parsing of the alias
 					 *
 					 * \~
 					 */
@@ -1690,9 +1662,9 @@ namespace awh {
 					 *          without a refusal: the subsequent versions are entitled to introduce their own, and a text
 					 *          written by them remains understandable to a previous reader.
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the beginning of the directive in the line
-					 * @return sign of the successful parsing of the directive
+					 * @return       sign of the successful parsing of the directive
 					 *
 					 * \~
 					 */
@@ -1709,10 +1681,10 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the parsing of the header of a block scalar
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the header of the block scalar in the line
 					 * @param indent indentation of the line carrying the header
-					 * @return sign of the successful parsing of the header
+					 * @return       sign of the successful parsing of the header
 					 *
 					 * \~
 					 */
@@ -1736,9 +1708,9 @@ namespace awh {
 					 *          a line with a smaller indentation terminates the block scalar and is then parsed
 					 *          by the usual order.
 					 *
-					 * @param line line being attached
+					 * @param line     line being attached
 					 * @param attached sign of the attaching of the line to the block scalar
-					 * @return sign of the successful attaching of the line
+					 * @return         sign of the successful attaching of the line
 					 *
 					 * \~
 					 */
@@ -1754,7 +1726,7 @@ namespace awh {
 					 * @brief Method of the termination of a block scalar being assembled
 					 *
 					 * @param column position of the termination in the line being parsed
-					 * @return sign of the successful termination of the block scalar
+					 * @return       sign of the successful termination of the block scalar
 					 *
 					 * \~
 					 */
@@ -1790,9 +1762,9 @@ namespace awh {
 					 *          is obliged to break at the end of a line and to continue from the next one exactly
 					 *          from the place where it broke.
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the beginning of the parsing in the line, at the exit — the offset after it
-					 * @return sign of the successful parsing of the construction
+					 * @return       sign of the successful parsing of the construction
 					 *
 					 * \~
 					 */
@@ -1830,9 +1802,9 @@ namespace awh {
 					 *          continue on the line below, and there is nothing to know it by now: it is learned
 					 *          only by the indentation of the next line. The issuance is therefore postponed until it.
 					 *
-					 * @param text content of the plain scalar
+					 * @param text   content of the plain scalar
 					 * @param column position of the value in the line being parsed
-					 * @return sign of the successful postponement of the issuance
+					 * @return       sign of the successful postponement of the issuance
 					 *
 					 * \~
 					 */
@@ -1870,9 +1842,9 @@ namespace awh {
 					 *          of the construction enclosing the value; a line with a smaller indentation terminates the value
 					 *          and is then parsed by the usual order.
 					 *
-					 * @param line line being attached
+					 * @param line     line being attached
 					 * @param attached sign of the attaching of the line to the plain scalar
-					 * @return sign of the successful attaching of the line
+					 * @return         sign of the successful attaching of the line
 					 *
 					 * \~
 					 */
@@ -1888,9 +1860,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the parsing of a value inside a flow construction
 					 *
-					 * @param line line being parsed
+					 * @param line   line being parsed
 					 * @param offset offset of the beginning of the value in the line, at the exit — the offset after it
-					 * @return sign of the successful parsing of the value
+					 * @return       sign of the successful parsing of the value
 					 *
 					 * \~
 					 */
@@ -1907,10 +1879,10 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the parsing of the content of a line after the indentation
 					 *
-					 * @param line line being parsed without the line break character
+					 * @param line   line being parsed without the line break character
 					 * @param offset offset of the beginning of the content in the line
 					 * @param indent indentation at which the content stands
-					 * @return sign of the successful parsing of the content
+					 * @return       sign of the successful parsing of the content
 					 *
 					 * \~
 					 */
@@ -1941,7 +1913,7 @@ namespace awh {
 					 * @brief Method of the setting of the settings of the parsing of a text
 					 *
 					 * @param settings settings of the parsing being set
-					 * @return sign of the acceptance of the settings of the parsing
+					 * @return         sign of the acceptance of the settings of the parsing
 					 *
 					 * \~
 					 */
@@ -1959,9 +1931,9 @@ namespace awh {
 					 * @brief Method of the feeding of the next chunk of the source text
 					 *
 					 * @param buffer chunk of the source text being fed
-					 * @param size size of the chunk being fed
-					 * @param end sign of the fact that the text is ended
-					 * @return sign of the successful parsing of the fed chunk
+					 * @param size   size of the chunk being fed
+					 * @param end    sign of the fact that the text is ended
+					 * @return       sign of the successful parsing of the fed chunk
 					 *
 					 * \~
 					 */
@@ -1977,7 +1949,7 @@ namespace awh {
 					 * @brief Method of the feeding of the source text in full
 					 *
 					 * @param text source text being fed
-					 * @return sign of the successful parsing of the fed text
+					 * @return     sign of the successful parsing of the fed text
 					 *
 					 * \~
 					 */
@@ -2147,7 +2119,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2161,7 +2133,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const settings_t & settings) noexcept;
+					explicit Reader(const settings_t & settings) noexcept;
 			} reader_t;
 		};
 	};

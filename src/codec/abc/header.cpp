@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации заголовка опознания бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the identifying header of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *

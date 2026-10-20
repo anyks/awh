@@ -1732,6 +1732,9 @@ bool awh::codec::yaml::Writer::key(const string & name, const string & anchor, c
 	// Выполняем запись имени пары отображения
 	return this->key(name);
 }
+/**
+ * Запись имени пары отображения
+ */
 bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
@@ -3215,3 +3218,13 @@ bool awh::codec::yaml::Writer::finish() noexcept {
 	// Выводим признак успешного завершения записи
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param kind     вид открытого вместилища
+ * @param layout   построение, каким записывается вместилище
+ * @param indent   отступ содержимого вместилища
+ * @param attached признак продолжения строки первой записью
+ *
+ */
+awh::codec::yaml::Writer::Level::Level(const kind_t kind, const layout_t layout, const uint32_t indent, const bool attached) noexcept : kind(kind), layout(layout), indent(indent), empty(true), attached(attached) {}

@@ -38,7 +38,7 @@
 #include <type_traits>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -79,7 +79,7 @@ namespace awh {
 		namespace yaml {
 			/**
 			 * \~russian
-			 * @brief Запись текста YAML
+			 * @brief Класс записи текста YAML
 			 *
 			 * @details Текст собирается вызовами по мере обхода записываемого: открытие
 			 *          построения, имя пары, значение, закрытие построения. Отступы, ограда значений
@@ -113,7 +113,7 @@ namespace awh {
 			 *       описанием, и оттого ноль у нас несёт смысл третий - умолчание
 			 *
 			 * \~english
-			 * @brief Writing of a YAML text
+			 * @brief YAML text entry class
 			 *
 			 * @details A text is assembled by the calls as the traversal of what is being written goes on:
 			 *          the opening of a construction, the name of a pair, a value, the closing of a construction.
@@ -154,14 +154,40 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Настройки записи текста
+					 * @brief Структура наастроек записи текста
 					 *
 					 * \~english
-					 * @brief Settings of the writing of a text
+					 * @brief Structure of text recording settings
 					 *
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Признак записи директивы наречия текста
+						bool version;
+						// Признак записи черты конца документа
+						bool explicitEnd;
+						// Признак записи черты начала документа
+						bool explicitStart;
+						/**
+						 * \~russian
+						 * @brief Признак отступа перечня, значением пары стоящего
+						 *
+						 * @note Оба написания описанием дозволены и читаются одинаково, а
+						 *       расходятся лишь видом. Умолчанием взято написание без отступа -
+						 *       его пишет большинство и его же выдаёт большинство записывающих
+						 *
+						 * \~english
+						 * @brief A sign of the indentation of a list standing as the value of a pair
+						 *
+						 * @note Both writings are allowed by the description and are read identically, while they diverge
+						 *       only by the appearance. The default is taken by the writing without an indentation — the
+						 *       majority writes it, and the same majority of the ones writing issues it
+						 *
+						 * \~
+						 */
+						bool sequenceIndent;
+						// Ширина отступа в пробелах, ноль не принимается
+						uint8_t indent;
 						// Схема, по которой решается нужда значения в ограде
 						schema_t schema;
 						// Построение, каким записываются вместилища по умолчанию
@@ -193,32 +219,6 @@ namespace awh {
 						 * \~
 						 */
 						style_t quoting;
-						// Ширина отступа в пробелах, ноль не принимается
-						uint8_t indent;
-						/**
-						 * \~russian
-						 * @brief Признак отступа перечня, значением пары стоящего
-						 *
-						 * @note Оба написания описанием дозволены и читаются одинаково, а
-						 *       расходятся лишь видом. Умолчанием взято написание без отступа -
-						 *       его пишет большинство и его же выдаёт большинство записывающих
-						 *
-						 * \~english
-						 * @brief A sign of the indentation of a list standing as the value of a pair
-						 *
-						 * @note Both writings are allowed by the description and are read identically, while they diverge
-						 *       only by the appearance. The default is taken by the writing without an indentation — the
-						 *       majority writes it, and the same majority of the ones writing issues it
-						 *
-						 * \~
-						 */
-						bool sequenceIndent;
-						// Признак записи черты начала документа
-						bool explicitStart;
-						// Признак записи черты конца документа
-						bool explicitEnd;
-						// Признак записи директивы наречия текста
-						bool version;
 						/**
 						 * \~russian
 						 * Правило обращения с негодной последовательностью UTF-8
@@ -241,31 +241,24 @@ namespace awh {
 						 * \~russian
 						 * @brief Конструктор
 						 *
-						 *
 						 * \~english
 						 * @brief Constructor
 						 *
 						 * \~
 						 */
-						Settings() noexcept;
+						explicit Settings() noexcept;
 					} settings_t;
 				private:
 					/**
 					 * \~russian
-					 * @brief Открытое вместилище записи
+					 * @brief Структура открытого вместилищя записи
 					 *
 					 * \~english
-					 * @brief Opened container of the writing
+					 * @brief Structure of an open record container
 					 *
 					 * \~
 					 */
-					typedef struct Level {
-						// Вид открытого вместилища
-						kind_t kind;
-						// Построение, каким записывается вместилище
-						layout_t layout;
-						// Отступ, на котором записывается содержимое вместилища
-						uint32_t indent;
+					typedef struct __AWH_SHARED_EXPORT__ Level {
 						// Признак того, что вместилище ещё не получило ни одного значения
 						bool empty;
 						/**
@@ -285,6 +278,12 @@ namespace awh {
 						 * \~
 						 */
 						bool attached;
+						// Отступ, на котором записывается содержимое вместилища
+						uint32_t indent;
+						// Вид открытого вместилища
+						kind_t kind;
+						// Построение, каким записывается вместилище
+						layout_t layout;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -297,30 +296,20 @@ namespace awh {
 						 * \~english
 						 * @brief Constructor
 						 *
-						 * @param kind kind of the opened container
-						 * @param layout layout by which the container is written
-						 * @param indent indentation of the content of the container
+						 * @param kind     kind of the opened container
+						 * @param layout   layout by which the container is written
+						 * @param indent   indentation of the content of the container
 						 * @param attached sign of the continuation of the line by the first record
 						 *
 						 * \~
 						 */
-						Level(const kind_t kind, const layout_t layout, const uint32_t indent, const bool attached) noexcept :
-						 kind(kind), layout(layout), indent(indent), empty(true), attached(attached) {}
+						Level(const kind_t kind, const layout_t layout, const uint32_t indent, const bool attached) noexcept;
 					} level_t;
 				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-				private:
-					// Настройки записи текста
-					settings_t _settings;
-					// Собираемый текст
+					// Признак того, что имя пары записано, а значение её ещё нет
+					bool _keyed;
+					// Признак того, что документ уже открыт
+					bool _opened;
 					/**
 					 * \~russian
 					 * Признак того, что запись отвергнута негодной кодировкой
@@ -347,25 +336,6 @@ namespace awh {
 					 * \~
 					 */
 					bool _refused;
-				private:
-					// Код ошибки последней операции записи
-					error_t _error;
-				private:
-					string _result;
-					// Стопа открытых вместилищ записи
-					vector <level_t> _levels;
-					// Имя метки, узлу предпосланной, ожидающее узла своего
-					string _anchor;
-					// Имя метки, ИМЕНИ ПАРЫ предпосылаемой
-					string _keyAnchor;
-					// Метка типа, ИМЕНИ ПАРЫ предпосылаемая
-					string _keyTag;
-					// Метка типа, узлу предпосланная, ожидающая узла своего
-					string _tag;
-					// Признак того, что имя пары записано, а значение её ещё нет
-					bool _keyed;
-					// Отступ, следующему вместилищу назначенный, ноль - по ширине настроек
-					uint32_t _margin;
 					// Признак того, что записанное строку не закрыло
 					bool _hanging;
 					/**
@@ -405,10 +375,31 @@ namespace awh {
 					 * \~
 					 */
 					bool _transferred;
-					// Признак того, что документ уже открыт
-					bool _opened;
+				private:
+					// Отступ, следующему вместилищу назначенный, ноль - по ширине настроек
+					uint32_t _margin;
+				private:
 					// Количество байтов, изъятых из сборщика за всё время работы
 					uint64_t _taken;
+				private:
+					// Код ошибки последней операции записи
+					error_t _error;
+					// Настройки записи текста
+					settings_t _settings;
+				private:
+					// Метка типа, узлу предпосланная, ожидающая узла своего
+					string _tag;
+					// Метка типа, ИМЕНИ ПАРЫ предпосылаемая
+					string _keyTag;
+					// Результат сформированной записи
+					string _result;
+					// Имя метки, узлу предпосланной, ожидающее узла своего
+					string _anchor;
+					// Имя метки, ИМЕНИ ПАРЫ предпосылаемой
+					string _keyAnchor;
+				private:
+					// Стопа открытых вместилищ записи
+					vector <level_t> _levels;
 				private:
 					/**
 					 * \~russian
@@ -512,7 +503,7 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the writing of a scalar value by a chosen quoting
 					 *
-					 * @param text content of the value being written
+					 * @param text  content of the value being written
 					 * @param style quoting by which the value is enclosed
 					 *
 					 * \~
@@ -526,9 +517,9 @@ namespace awh {
 					 *          второе такое тело разошлось бы с первым, и запись выдавала бы то, чего
 					 *          чтение не принимает.
 					 *
-					 * @param text     приводимая запись
-					 * @param result   переменная, куда помещается приведённая запись
-					 * @return         признак пригодности записи к записи
+					 * @param text   приводимая запись
+					 * @param result переменная, куда помещается приведённая запись
+					 * @return       признак пригодности записи к записи
 					 *
 					 * \~english
 					 * @brief Method of the bringing of a record to a valid UTF-8 encoding
@@ -537,9 +528,9 @@ namespace awh {
 					 *          a second such body would diverge from the first one, and the writing would give away what
 					 *          the reading does not accept.
 					 *
-					 * @param text record being brought
+					 * @param text   record being brought
 					 * @param result variable where the brought record is placed
-					 * @return sign of the suitability of the record for the writing
+					 * @return       sign of the suitability of the record for the writing
 					 *
 					 * \~
 					 */
@@ -625,9 +616,9 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the opening of a container of a given kind
 					 *
-					 * @param kind kind of the container being opened
+					 * @param kind   kind of the container being opened
 					 * @param layout layout by which the container is written
-					 * @return sign of the successful opening of the container
+					 * @return       sign of the successful opening of the container
 					 *
 					 * \~
 					 */
@@ -658,7 +649,7 @@ namespace awh {
 					 * @brief Method of the opening of a mapping of the pairs by a given layout
 					 *
 					 * @param layout layout by which the mapping is written
-					 * @return sign of the successful opening of the mapping
+					 * @return       sign of the successful opening of the mapping
 					 *
 					 * \~
 					 */
@@ -688,7 +679,7 @@ namespace awh {
 					 * @brief Method of the opening of a sequence of the values by a given layout
 					 *
 					 * @param layout layout by which the sequence is written
-					 * @return sign of the successful opening of the sequence
+					 * @return       sign of the successful opening of the sequence
 					 *
 					 * \~
 					 */
@@ -727,7 +718,7 @@ namespace awh {
 					 * @brief Method of the writing of the name of a pair of a mapping
 					 *
 					 * @param name name of the pair of the mapping being written
-					 * @return sign of the successful writing of the name of the pair
+					 * @return     sign of the successful writing of the name of the pair
 					 *
 					 * \~
 					 */
@@ -753,9 +744,9 @@ namespace awh {
 					 *          anchor method — and they must not be confused: a reference to a name anchor and a
 					 *          reference to a value anchor lead to different records.
 					 *
-					 * @param name name of the pair of the mapping being written
+					 * @param name   name of the pair of the mapping being written
 					 * @param anchor anchor being placed before the name of the pair
-					 * @return sign of the successful writing of the name of the pair
+					 * @return       sign of the successful writing of the name of the pair
 					 *
 					 * \~
 					 */
@@ -782,10 +773,10 @@ namespace awh {
 					 *          properties of a value are set in the ordinary way — by the @c anchor and @c tag
 					 *          methods — and they must not be confused: they concern different records.
 					 *
-					 * @param name name of the pair of the mapping being written
+					 * @param name   name of the pair of the mapping being written
 					 * @param anchor anchor being placed before the name of the pair
-					 * @param tag tag being placed before the name of the pair
-					 * @return sign of the successful writing of the name of the pair
+					 * @param tag    tag being placed before the name of the pair
+					 * @return       sign of the successful writing of the name of the pair
 					 *
 					 * \~
 					 */
@@ -803,11 +794,11 @@ namespace awh {
 					 * \~english
 					 * @brief Method of the writing of the name of a pair with the properties and the kind of the tag
 					 *
-					 * @param name name of the pair of the mapping being written
+					 * @param name   name of the pair of the mapping being written
 					 * @param anchor anchor being placed before the name of the pair
-					 * @param tag tag being placed before the name of the pair
-					 * @param local sign of the local kind of the tag: its handle is a single `!`
-					 * @return sign of the successful writing of the name of the pair
+					 * @param tag    tag being placed before the name of the pair
+					 * @param local  sign of the local kind of the tag: its handle is a single `!`
+					 * @return       sign of the successful writing of the name of the pair
 					 *
 					 * \~
 					 */
@@ -823,7 +814,7 @@ namespace awh {
 					 * @brief Method of the writing of an anchor placed before the next node
 					 *
 					 * @param name name of the anchor being written
-					 * @return sign of the successful writing of the anchor
+					 * @return     sign of the successful writing of the anchor
 					 *
 					 * \~
 					 */
@@ -846,7 +837,7 @@ namespace awh {
 					 *          by the shorthand: the notation `tag:yaml.org,2002:str` will come out as `!!str`
 					 *
 					 * @param name tag being written
-					 * @return sign of the successful writing of the tag
+					 * @return     sign of the successful writing of the tag
 					 *
 					 * \~
 					 */
@@ -876,9 +867,9 @@ namespace awh {
 					 *          by the shorthand `!!y` means to issue a DIFFERENT tag — fixed by the specification —
 					 *          and silently besides.
 					 *
-					 * @param name tag being written
+					 * @param name  tag being written
 					 * @param local sign of the local kind of the tag: its handle is a single `!`
-					 * @return sign of the successful writing of the tag
+					 * @return      sign of the successful writing of the tag
 					 *
 					 * \~
 					 */
@@ -894,7 +885,7 @@ namespace awh {
 					 * @brief Method of the writing of an alias to a declared anchor
 					 *
 					 * @param name name of the anchor to which the alias points
-					 * @return sign of the successful writing of the alias
+					 * @return     sign of the successful writing of the alias
 					 *
 					 * \~
 					 */
@@ -962,13 +953,15 @@ namespace awh {
 					 * @brief Method of the writing of a boolean value
 					 *
 					 * @param value boolean value being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
 					bool value(const bool value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Шаблон вида записываемого целого числа
+					 *
 					 * @note Приём записи ЗНАКА - `value(const char)` - снят 09.09.2026. Он писал
 					 *       знак строкою из одного знака, и довод его гласил, что без него
 					 *       `value('z')` молча стало бы числом 122. Довод тот верен, но неполон:
@@ -992,7 +985,11 @@ namespace awh {
 					 *       оставлено как есть - оно у JSON тоже имеется, и трогать его значило бы
 					 *       разойтись с образцом
 					 *
+					 * @tparam T вид записываемого целого числа
+					 *
 					 * \~english
+					 * @brief Template of the kind of the integer being written
+					 *
 					 * @note The accepting of the writing of a CHARACTER — `value(const char)` — is REMOVED
 					 *       2026-09-09. It wrote a character as a string of one character, and its argument said that
 					 *       without it `value('z')` would silently become the number 122. That argument is true but
@@ -1014,16 +1011,6 @@ namespace awh {
 					 * @note A character can still be written by a string: `value("z")` or `value(string(1, letter))`.
 					 *       The institution of a character as an OWNING value is left as it is — JSON has it too, and to
 					 *       touch it would mean to diverge from the sample
-					 *
-					 */
-					/**
-					 * \~russian
-					 * @brief Шаблон вида записываемого целого числа
-					 *
-					 * @tparam T вид записываемого целого числа
-					 *
-					 * \~english
-					 * @brief Template of the kind of the integer being written
 					 *
 					 * @tparam T kind of the integer being written
 					 *
@@ -1063,7 +1050,7 @@ namespace awh {
 					 *       `int64_t` would turn `4294967295u` into a negative one
 					 *
 					 * @param value integer being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1079,7 +1066,7 @@ namespace awh {
 					 * @brief Method of the writing of a string value
 					 *
 					 * @param value string value being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1097,7 +1084,7 @@ namespace awh {
 					 *
 					 * @param value string value being written
 					 * @param style quoting by which the value is enclosed
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1113,7 +1100,7 @@ namespace awh {
 					 * @brief Method of the writing of a string value
 					 *
 					 * @param value string value being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1129,7 +1116,7 @@ namespace awh {
 					 * @brief Method of the writing of a signed integer
 					 *
 					 * @param value integer being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1145,7 +1132,7 @@ namespace awh {
 					 * @brief Method of the writing of an unsigned integer
 					 *
 					 * @param value integer being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1168,7 +1155,7 @@ namespace awh {
 					 *          the specification knows them directly, and there is no point in refusing them.
 					 *
 					 * @param value floating point number being written
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1203,10 +1190,10 @@ namespace awh {
 					 *       mark the refusal by a code, that code would outlive the successful writing and would
 					 *       lie to the consumer that checked it
 					 *
-					 * @param text content of the value being written
+					 * @param text  content of the value being written
 					 * @param style kind of the block scalar, literal or folded
 					 * @param chomp rule of the chomping of the line breaks at the end of the value
-					 * @return sign of the successful writing of the value
+					 * @return      sign of the successful writing of the value
 					 *
 					 * \~
 					 */
@@ -1229,7 +1216,7 @@ namespace awh {
 					 *          the transfer of the pieces of a source text already read by the parsing.
 					 *
 					 * @param value content being written
-					 * @return sign of the successful writing of the content
+					 * @return      sign of the successful writing of the content
 					 *
 					 * \~
 					 */
@@ -1246,7 +1233,7 @@ namespace awh {
 					 * @brief Method of the writing of a comment by its own line
 					 *
 					 * @param text content of the comment being written
-					 * @return sign of the successful writing of the comment
+					 * @return     sign of the successful writing of the comment
 					 *
 					 * \~
 					 */
@@ -1262,7 +1249,7 @@ namespace awh {
 					 * @brief Method of the writing of a comment at the end of a written line
 					 *
 					 * @param text content of the comment being written
-					 * @return sign of the successful writing of the comment
+					 * @return     sign of the successful writing of the comment
 					 *
 					 * \~
 					 */
@@ -1497,9 +1484,9 @@ namespace awh {
 					 *          construction, behind a name of a pair waiting for a value, and by the first record of a
 					 *          container continuing the line of the enclosing record
 					 *
-					 * @param text lines of the text being transferred
+					 * @param text   lines of the text being transferred
 					 * @param indent indentation at which the lines stood in the source text
-					 * @return sign of the successful transfer of the lines
+					 * @return       sign of the successful transfer of the lines
 					 *
 					 * \~
 					 */
@@ -1553,7 +1540,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1567,7 +1554,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer(const settings_t & settings) noexcept;
+					explicit Writer(const settings_t & settings) noexcept;
 			} writer_t;
 		};
 	};

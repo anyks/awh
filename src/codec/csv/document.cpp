@@ -28,9 +28,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <codec/numeric.hpp>
 #include <codec/csv/document.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -43,6 +43,11 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Используем пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Размер куска, каким читается файл таблицы
 	 *
 	 * @details Файл читается кусками, а не целиком: таблица в несколько гигабайт
@@ -51,14 +56,15 @@ namespace {
 	 */
 	constexpr size_t CHUNK = 0x10000;
 
+	template <typename T, typename = void>
 	/**
-	 * @brief Посредник приведения вида ЯЗЫКА к тождественному разрядному виду
+	 * @brief Структура посредника приведения вида ЯЗЫКА к тождественному разрядному виду
 	 *
 	 * @details Общее место кодеков порождено разрядными обозначениями - `int8_t`…`uint64_t`, -
-	 * и телами располагает только по ним. Порождение же здесь ведётся видами ЯЗЫКА, ибо
-	 * лишь их перечень одинаков на всякой системе. Посредник этот и сводит одно с другим:
-	 * всякому виду языка он отвечает разрядным видом ТОЙ ЖЕ ширины и ТОЙ ЖЕ знаковости, а
-	 * такой вид есть то же самое представление, и перенос через него не теряет ни разряда
+	 *          и телами располагает только по ним. Порождение же здесь ведётся видами ЯЗЫКА, ибо
+	 *          лишь их перечень одинаков на всякой системе. Посредник этот и сводит одно с другим:
+	 *          всякому виду языка он отвечает разрядным видом ТОЙ ЖЕ ширины и ТОЙ ЖЕ знаковости, а
+	 *          такой вид есть то же самое представление, и перенос через него не теряет ни разряда
 	 *
 	 * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ, и какому виду языка они
 	 *          отвечают, решает система. У macOS ARM64 `int64_t` есть `long long`, у Linux
@@ -71,18 +77,19 @@ namespace {
 	 *       обращения, а ведёт вызов к уже порождённому. Общее место остаётся заботою
 	 *       того, кто зовёт `awh::codec::numeric` НАПРЯМУЮ, минуя кодек
 	 */
-	template <typename T, typename = void>
 	struct fixed_t {
 		// Виду неразрядному отвечает он сам
 		typedef T type;
 	};
+	
+	template <typename T>
 	/**
 	 * @brief Посредник приведения для видов целочисленных
 	 *
 	 * @note Признак `bool` исключён намеренно: ширина его системою не задана, и разрядного
 	 *       вида, ему тождественного, не существует вовсе
+	 *
 	 */
-	template <typename T>
 	struct fixed_t <T, typename std::enable_if <std::is_integral <T>::value && !std::is_same <T, bool>::value>::type> {
 		// Разрядный вид той же ширины и той же знаковости
 		typedef typename std::conditional <std::is_signed <T>::value,
@@ -92,14 +99,10 @@ namespace {
 			typename std::conditional <sizeof(T) == 1, uint8_t,
 				typename std::conditional <sizeof(T) == 2, uint16_t,
 					typename std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type
+		// Завершаем определение беззнакового типа соответствующей ширины
 		>::type type;
 	};
-}
-
-/**
- * Используем пространство имён библиотеки
- */
-using namespace awh;
+};
 
 /**
  * @brief Метод вывода сообщения об отказе в лог
@@ -107,7 +110,7 @@ using namespace awh;
  */
 void awh::codec::csv::Document::report() const noexcept {
 	// Выполняем вывод сообщения об отказе
-	awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+	log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 }
 /**
  * @brief Метод получения содержимого по указанию в хранилище знаков
@@ -154,13 +157,11 @@ static constexpr size_t LIMIT = static_cast <size_t> (0xFFFFFFFFu);
  * @brief Метод переноса заголовка из чтения в контейнер
  *
  * @details Перенос идёт единожды и лишь при заголовке ещё не снятом: зовётся он по ходу
- * подачи текста, до выдачи записей обработчику, - тем имена столбцов и оказываются
- * доступны прямо из обработчика, как и обещано договором потокового чтения
- *
- * @param reader чтение, заголовок которого переносится
+ *          подачи текста, до выдачи записей обработчику, - тем имена столбцов и оказываются
+ *          доступны прямо из обработчика, как и обещано договором потокового чтения
  *
  */
-void awh::codec::csv::Document::adopt(const reader_t & reader) noexcept {
+void awh::codec::csv::Document::adopt() noexcept {
 	/**
 	 * Если заголовок уже снят
 	 *
@@ -173,7 +174,7 @@ void awh::codec::csv::Document::adopt(const reader_t & reader) noexcept {
 	/**
 	 * Выполняем перебор всех имён столбцов заголовка
 	 */
-	for(const string_view name : reader.header()){
+	for(const string_view name : this->_reader.header()){
 		// Заносим указание на имя столбца
 		this->_header.emplace_back(static_cast <uint32_t> (this->_names.size()), static_cast <uint32_t> (name.length()));
 		// Переносим имя столбца в хранилище имён
@@ -187,18 +188,11 @@ void awh::codec::csv::Document::adopt(const reader_t & reader) noexcept {
 		this->reindex();
 }
 /**
- * @brief Метод разбора текста таблицы
- *
- * @param text разбираемый текст таблицы
- * @return     результат разбора
- *
- */
-/**
  * @brief Функция проверки годности каталога, куда ложится файл
  *
  * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
- * недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
- * записи отвергают нулевой размер и файла не заводят
+ *          недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+ *          записи отвергают нулевой размер и файла не заводят
  *
  * @note Путь без разделителя означает каталог текущий, и он годен всегда: отсечение
  *       имени дало бы пустую строку, а её разряд не опознаётся ничем
@@ -223,25 +217,25 @@ static bool writable(const awh::fs_t & fs, const string & path) noexcept {
 /**
  * @brief Метод сбора событий разбора в таблицу
  *
- * @param reader чтение, выдающее события разбора
- *
  */
-void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
+void awh::codec::csv::Document::consume() noexcept {
 	/**
 	 * Выполняем перебор всех событий разбора
 	 */
-	while(reader.next()){
+	while(this->_reader.next()){
 		/**
 		 * Определяем вид события разбора
 		 */
-		switch(reader.event()){
+		switch(this->_reader.event()){
 			/**
 			 * Если событием является поле заголовка
 			 */
 			case event_t::HEADER: {
 				// Получаем содержимое поля заголовка
-				const string_view value = reader.field().value;
+				const string_view value = this->_reader.field().value;
 				/**
+				 * Если имя столбца в разрядность хранилища имён уже не помещается
+				 *
 				 * @warning Место это набором НЕ покрыто и покрыто быть не может: порог здесь -
 				 *          четыре гигабайта, разрядность самого указания. Доказанная подмена
 				 *          кода (05.09.2026) не красит ни одной проверки. Достижим порог лишь
@@ -250,9 +244,6 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 				 *          несоразмерная. Сторож остаётся ради устройства, а не ради замера:
 				 *          без него переполнение УСЕКАЕТ смещение молча, и поля указывают на
 				 *          чужое содержимое, отказа при этом нет никакого
-				 */
-				/**
-				 * Если имя столбца в разрядность хранилища имён уже не помещается
 				 *
 				 * @note Довод общий со сторожем полей: указания на имена хранятся
 				 *       четырёхбайтовыми смещениями
@@ -273,8 +264,17 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 			 */
 			case event_t::FIELD: {
 				// Получаем содержимое поля записи
-				const string_view value = reader.field().value;
+				const string_view value = this->_reader.field().value;
 				/**
+				 * Если содержимое поля в разрядность хранилища знаков уже не помещается
+				 *
+				 * @details Указания на поля хранятся четырёхбайтовыми смещениями, и
+				 *          переполнение это молча УСЕКАЛО смещение: поля таблицы, за четвёртым
+				 *          гигабайтом лежащие, указывали бы в начало хранилища - на чужое
+				 *          содержимое, отказа при этом не было никакого. Разбор разметки XML то же
+				 *          место стережёт отказом `STORAGE_EXHAUSTED` с самого начала, а таблица не
+				 *          стерегла вовсе: у неё не было даже кода на этот случай
+				 *
 				 * @warning Место это набором НЕ покрыто и покрыто быть не может: порог здесь -
 				 *          четыре гигабайта, разрядность самого указания. Доказанная подмена
 				 *          кода (05.09.2026) не красит ни одной проверки. Достижим порог лишь
@@ -283,16 +283,6 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 				 *          несоразмерная. Сторож остаётся ради устройства, а не ради замера:
 				 *          без него переполнение УСЕКАЕТ смещение молча, и поля указывают на
 				 *          чужое содержимое, отказа при этом нет никакого
-				 */
-				/**
-				 * Если содержимое поля в разрядность хранилища знаков уже не помещается
-				 *
-				 * @details Указания на поля хранятся четырёхбайтовыми смещениями, и
-				 * переполнение это молча УСЕКАЛО смещение: поля таблицы, за четвёртым
-				 * гигабайтом лежащие, указывали бы в начало хранилища - на чужое
-				 * содержимое, отказа при этом не было никакого. Разбор разметки XML то же
-				 * место стережёт отказом `STORAGE_EXHAUSTED` с самого начала, а таблица не
-				 * стерегла вовсе: у неё не было даже кода на этот случай
 				 *
 				 * @note Предел этот - разрядность указания, а не выдумка: поднять его можно
 				 *       лишь расширением самих указаний, а это иной размер памяти на всякую
@@ -355,8 +345,16 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
-	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
+	// Сбрасываем объект потокового чтения записей
+	this->_reader.reset();
+	// Отводим место под хранилище значений полей
+	this->_storage.reserve(text.length());
+	// Отводим место под перечень полей таблицы
+	this->_fields.reserve(text.length() / 2);
+	// Отводим место под хранилище имён столбцов
+	this->_names.reserve(text.length() / 20);
+	// Отводим место под перечень записей таблицы
+	this->_records.reserve(text.length() / 4);
 	/**
 	 * Выполняем подачу текста таблицы кусками
 	 *
@@ -386,19 +384,26 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 		// Получаем размер очередного подаваемого куска
 		const size_t size = (((offset + ::CHUNK) > text.size()) ? (text.size() - offset) : ::CHUNK);
 		// Выполняем подачу очередного куска текста таблицы
-		reader.feed(text.data() + offset, size, ((offset + size) >= text.size()));
+		this->_reader.feed(text.data() + offset, size, ((offset + size) >= text.size()));
 		// Выполняем сбор событий разбора в таблицу
-		this->consume(reader);
+		this->consume();
 	}
 	/**
 	 * Если текст таблицы пуст
 	 */
 	if(text.empty()){
 		// Выполняем подачу пустого текста таблицы
-		reader.feed(text.data(), 0, true);
+		this->_reader.feed(text.data(), 0, true);
 		// Выполняем сбор событий разбора в таблицу
-		this->consume(reader);
+		this->consume();
 	}
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = this->_reader.encoding();
 	/**
 	 * Если своего отказа сборка таблицы не выдала
 	 *
@@ -406,18 +411,11 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
-	/**
-	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
-	 *
-	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
-	 *       спросить его после выхода нельзя вовсе
-	 */
-	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение ошибки в исходном тексте
-		this->_location = reader.errorLocation();
+		this->_location = this->_reader.errorLocation();
 	}
 	/**
 	 * Если разбор окончился отказом
@@ -450,20 +448,6 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 	this->reindex();
 	// Выводим признак успешного разбора
 	return true;
-}
-/**
- * @brief Метод разбора текста таблицы с заданными настройками
- *
- * @param text     разбираемый текст таблицы
- * @param settings настройки контейнера
- * @return         результат разбора
- *
- */
-bool awh::codec::csv::Document::parse(const string_view text, const settings_t & settings) noexcept {
-	// Выполняем установку настроек контейнера
-	this->settings(settings);
-	// Выполняем разбор текста таблицы
-	return this->parse(text);
 }
 /**
  * @brief Метод выдачи событий разбора записями обработчику
@@ -578,7 +562,8 @@ static bool dispatch(awh::codec::csv::reader_t & reader, string & storage, vecto
 bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
-
+	// Сбрасываем объект потокового чтения записей
+	this->_reader.reset();
 	/**
 	 * Разряд пути спрашивается ОДНАЖДЫ: ходу этому стоит обращение к файловой
 	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
@@ -603,7 +588,7 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -614,21 +599,20 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 */
 	if(type != fs_t::type_t::FILE){
-		//
-		// Запоминаем код ошибки чтения
-		//
-		// @note Отказ этот наш собственный внутренний изъян не означает: путь передан
-		//       извне, и прежний код внутренней ошибки разбора вводил потребителя в
-		//       заблуждение, отправляя искать дефект у нас
-		//
+		/**
+		 * Запоминаем код ошибки чтения
+		 *
+		 * @note Отказ этот наш собственный внутренний изъян не означает: путь передан
+		 *       извне, и прежний код внутренней ошибки разбора вводил потребителя в
+		 *       заблуждение, отправляя искать дефект у нас
+		 *
+		 */
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим признак неудачного чтения
 		return false;
 	}
-	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
 	/**
 	 * Величина файла таблицы, чтением ожидаемая
 	 *
@@ -655,14 +639,14 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 		/**
 		 * Если подача куска чтению не удалась
 		 */
-		if(!reader.feed(buffer, size, (left == 0))){
+		if(!this->_reader.feed(buffer, size, (left == 0))){
 			// Запоминаем, что подача прекращена самим разбором
 			stopped = true;
 			// Прекращаем чтение файла таблицы
 			return false;
 		}
 		// Выполняем сбор событий разбора в таблицу
-		this->consume(reader);
+		this->consume();
 		// Выводим признак продолжения чтения файла таблицы
 		return true;
 	});
@@ -694,10 +678,17 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
 		return false;
 	}
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = this->_reader.encoding();
 	/**
 	 * Если своего отказа сборка таблицы не выдала
 	 *
@@ -705,18 +696,11 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
-	/**
-	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
-	 *
-	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
-	 *       спросить его после выхода нельзя вовсе
-	 */
-	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение ошибки в исходном тексте
-		this->_location = reader.errorLocation();
+		this->_location = this->_reader.errorLocation();
 	}
 	/**
 	 * Если разбор окончился отказом
@@ -761,6 +745,8 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 bool awh::codec::csv::Document::read(const string & filename, const function <bool (const vector <string_view> &)> & callback) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
+	// Сбрасываем объект потокового чтения записей
+	this->_reader.reset();
 	/**
 	 * Если обработчик записей не передан
 	 */
@@ -796,7 +782,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -807,23 +793,22 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 */
 	if(type != fs_t::type_t::FILE){
-		//
-		// Запоминаем код ошибки чтения
-		//
-		// @note Отказ этот наш собственный внутренний изъян не означает: путь передан
-		//       извне, и прежний код внутренней ошибки разбора вводил потребителя в
-		//       заблуждение, отправляя искать дефект у нас
-		//
+		/**
+		 * Запоминаем код ошибки чтения
+		 *
+		 * @note Отказ этот наш собственный внутренний изъян не означает: путь передан
+		 *       извне, и прежний код внутренней ошибки разбора вводил потребителя в
+		 *       заблуждение, отправляя искать дефект у нас
+		 *
+		 */
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим признак неудачного чтения
 		return false;
 	}
-	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
 	// Буфер знаков текущей записи
-	string storage;
+	string storage = "";
 	// Указания на поля текущей записи в буфере
 	vector <span_t> spans;
 	// Поля текущей записи, собранные для выдачи
@@ -854,7 +839,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		/**
 		 * Если подача куска чтению не удалась
 		 */
-		if(!reader.feed(buffer, size, (left == 0))){
+		if(!this->_reader.feed(buffer, size, (left == 0))){
 			// Запоминаем, что чтение прекращено разбором
 			stopped = true;
 			// Прекращаем чтение файла таблицы
@@ -866,11 +851,11 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		 * @note Порядок значим: имена столбцов обещаны обработчику прямо из него самого,
 		 *       и перенос, отложенный до конца цикла, обещания того не исполнял вовсе
 		 */
-		this->adopt(reader);
+		this->adopt();
 		/**
 		 * Если обработчик затребовал прекращение чтения
 		 */
-		if(!::dispatch(reader, storage, spans, fields, callback)){
+		if(!::dispatch(this->_reader, storage, spans, fields, callback)){
 			// Запоминаем, что чтение прекращено обработчиком
 			stopped = true;
 			// Прекращаем чтение файла таблицы
@@ -907,10 +892,17 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
 		return false;
 	}
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = this->_reader.encoding();
 	/**
 	 * Если своего отказа сборка таблицы не выдала
 	 *
@@ -918,18 +910,11 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
-	/**
-	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
-	 *
-	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
-	 *       спросить его после выхода нельзя вовсе
-	 */
-	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение ошибки в исходном тексте
-		this->_location = reader.errorLocation();
+		this->_location = this->_reader.errorLocation();
 	}
 	/**
 	 * Выполняем перенос заголовка в контейнер
@@ -940,7 +925,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 * @note Зов этот покрывает таблицу из одного заголовка: записей у неё нет, выдачи
 	 *       не случается, и перенос по ходу подачи не отрабатывает ни разу
 	 */
-	this->adopt(reader);
+	this->adopt();
 	// Выводим результат чтения
 	return (this->_error == error_t::NONE);
 }
@@ -955,6 +940,8 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 bool awh::codec::csv::Document::parse(const string_view text, const function <bool (const vector <string_view> &)> & callback) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
+	// Сбрасываем объект потокового чтения записей
+	this->_reader.reset();
 	/**
 	 * Если обработчик записей не передан
 	 */
@@ -966,10 +953,8 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 		// Выводим признак неудачного разбора
 		return false;
 	}
-	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
 	// Буфер знаков текущей записи
-	string storage;
+	string storage = "";
 	// Указания на поля текущей записи в буфере
 	vector <span_t> spans;
 	// Поля текущей записи, собранные для выдачи
@@ -989,7 +974,7 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 		/**
 		 * Если подача куска чтению не удалась
 		 */
-		if(!reader.feed(text.data() + offset, size, ((offset + size) >= text.size())))
+		if(!this->_reader.feed(text.data() + offset, size, ((offset + size) >= text.size())))
 			// Прекращаем подачу текста таблицы
 			break;
 		/**
@@ -998,11 +983,11 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 		 * @note Порядок значим: имена столбцов обещаны обработчику прямо из него самого,
 		 *       и перенос, отложенный до конца цикла, обещания того не исполнял вовсе
 		 */
-		this->adopt(reader);
+		this->adopt();
 		/**
 		 * Если обработчик затребовал прекращение разбора
 		 */
-		if(!::dispatch(reader, storage, spans, fields, callback))
+		if(!::dispatch(this->_reader, storage, spans, fields, callback))
 			// Прекращаем подачу текста таблицы
 			break;
 	}
@@ -1014,7 +999,14 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	 */
 	if(text.empty())
 		// Выполняем подачу пустого текста таблицы
-		reader.feed(text.data(), 0, true);
+		this->_reader.feed(text.data(), 0, true);
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = this->_reader.encoding();
 	/**
 	 * Если своего отказа сборка таблицы не выдала
 	 *
@@ -1022,18 +1014,11 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
-	/**
-	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
-	 *
-	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
-	 *       спросить его после выхода нельзя вовсе
-	 */
-	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение ошибки в исходном тексте
-		this->_location = reader.errorLocation();
+		this->_location = this->_reader.errorLocation();
 	}
 	/**
 	 * Выполняем перенос заголовка в контейнер
@@ -1041,7 +1026,7 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	 * @note Зов этот покрывает таблицу из одного заголовка: записей у неё нет, выдачи
 	 *       не случается, и перенос по ходу подачи не отрабатывает ни разу
 	 */
-	this->adopt(reader);
+	this->adopt();
 	// Выводим результат разбора
 	return (this->_error == error_t::NONE);
 }
@@ -1056,19 +1041,6 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
  *
  */
 bool awh::codec::csv::Document::save(const string & filename) const noexcept {
-	/**
-	 * Адрес временного файла, куда собирается таблица
-	 *
-	 * @details Таблица пишется рядом с целью и переносится на неё лишь по успешном
-	 * завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ, случись
-	 * он посреди сбора, - непредставимое поле либо переполненный носитель, - оставлял
-	 * ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину новой таблицы.
-	 * Замер щупом: файл о годном содержимом обращался в пустой, а вызов отвечал отказом
-	 *
-	 * @note Собрать таблицу целиком в памяти и записать разом было бы проще, однако
-	 *       ради того сбор и ведётся кусками, что таблица в несколько гигабайт иначе
-	 *       держалась бы в памяти дважды
-	 */
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
 	/**
@@ -1081,6 +1053,19 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 * текст, которого более нет
 	 */
 	this->_location = location_t();
+	/**
+	 * Адрес временного файла, куда собирается таблица
+	 *
+	 * @details Таблица пишется рядом с целью и переносится на неё лишь по успешном
+	 *          завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ, случись
+	 *          он посреди сбора, - непредставимое поле либо переполненный носитель, - оставлял
+	 *          ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину новой таблицы.
+	 *          Замер щупом: файл о годном содержимом обращался в пустой, а вызов отвечал отказом.
+	 *
+	 * @note Собрать таблицу целиком в памяти и записать разом было бы проще, однако
+	 *       ради того сбор и ведётся кусками, что таблица в несколько гигабайт иначе
+	 *       держалась бы в памяти дважды
+	 */
 	const string temporary = (filename + ".awh-tmp");
 	/**
 	 * Выполняем снос остатка прежней работы под тем же именем
@@ -1105,9 +1090,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 * Объект временного файла таблицы, дозаписи её обслуживающий
 	 *
 	 * @details Таблица пишется ДОЛЯМИ, и без объекта этого всякая доля стоила бы своего
-	 * открытия файла. Замер по модулю: дозапись двадцати тысяч долей идёт с ним в
-	 * двадцать один раз быстрее у macOS, а у MS Windows одно открытие стоит 0.37 мс против
-	 * 0.02 мс у POSIX - там разрыв шире вдесятеро
+	 *          открытия файла. Замер по модулю: дозапись двадцати тысяч долей идёт с ним в
+	 *          двадцать один раз быстрее у macOS, а у MS Windows одно открытие стоит 0.37 мс против
+	 *          0.02 мс у POSIX - там разрыв шире вдесятеро
 	 *
 	 * @note Объект несёт права той работы, какая его завела, и заведён он дозаписью: читать
 	 *       им нельзя, и адрес при заведённом объекте более не разбирается - работа ляжет в
@@ -1120,8 +1105,8 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 * Если каталог, куда ложится временный файл таблицы, для записи недоступен
 	 *
 	 * @details Годность его спрашивается разрядом САМОГО КАТАЛОГА, а не пробною записью:
-	 * ходы записи отвергают нулевой размер и пустого файла не заводят вовсе, оттого проба
-	 * пустотою ничего бы не показала. Каталог берётся отсечением имени от пути
+	 *          ходы записи отвергают нулевой размер и пустого файла не заводят вовсе, оттого проба
+	 *          пустотою ничего бы не показала. Каталог берётся отсечением имени от пути
 	 *
 	 * @note Отказ этот идёт мимо разбора, а вывод в лог ведёт именно он: без настоящего
 	 *       вывода запись файла отказывала бы молча, тогда как чтение того же файла
@@ -1131,19 +1116,20 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
+		 * Выполняем вывод сообщения об отказе
+		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: прежде
 		 *          код стоял в этом месте ДВАЖДЫ - в сообщении и в поле, - и половины
 		 *          эти могли разойтись молча. Замерено щупом по местам отказа
 		 *          04.09.2026: проверка сличала сообщение и потому подмену кода в поле
 		 *          не видела вовсе, а звучащий судит именно по коду
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Запись текста таблицы
-	writer_t writer(this->_settings.writer);
+	// Очищаем объект записи событий
+	this->_writer.clear();
 	/**
 	 * Если таблица имеет заголовок
 	 */
@@ -1159,18 +1145,19 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			 *       каким сохранение оглашает отказ открытия файла: сохранение
 			 *       константно намеренно, и кода отказа разбора оно не трогает
 			 */
-			if(!writer.field(string_view(this->_names.data() + name.offset, name.length))){
+			if(!this->_writer.field(string_view(this->_names.data() + name.offset, name.length))){
 				// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 				static_cast <void> (this->_fs.unlink(temporary));
 				// Запоминаем код отказа сохранения таблицы
 				if(this->_error == error_t::NONE)
-					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
+					// Запоминаем код отказа записи с запасным FILE_NOT_WRITTEN
+					this->_error = ((this->_writer.error() != error_t::NONE) ? this->_writer.error() : error_t::FILE_NOT_WRITTEN);
 				// Выводим признак неудачного сохранения таблицы
 				return false;
 			}
 		}
 		// Завершаем запись заголовка
-		writer.record();
+		this->_writer.record();
 		/**
 		 * Если завершение записи окончилось отказом
 		 *
@@ -1178,10 +1165,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		 *       запрещённых настройками кавычках пометить её нечем. Не спроси мы его здесь,
 		 *       файл ушёл бы МОЛЧА КОРОЧЕ на эту запись, а вызов отчитался бы успехом
 		 */
-		if(writer.error() != error_t::NONE){
+		if(this->_writer.error() != error_t::NONE){
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 			static_cast <void> (this->_fs.unlink(temporary));
-			// Запоминаем код отказа сохранения таблицы
 			/**
 			 * Запоминаем код отказа сохранения таблицы
 			 *
@@ -1189,7 +1175,8 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			 *       тождественно, и запасной код `FILE_NOT_WRITTEN` был бы недостижим
 			 */
 			if(this->_error == error_t::NONE)
-				this->_error = writer.error();
+				// Запоминаем код отказа записи
+				this->_error = this->_writer.error();
 			// Выводим признак неудачного сохранения таблицы
 			return false;
 		}
@@ -1207,18 +1194,19 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		 */
 		for(uint32_t j = begin; j < end; j++){
 			// Если очередное поле записи записать не удалось
-			if(!writer.field(this->get(this->_fields.at(j)))){
+			if(!this->_writer.field(this->get(this->_fields.at(j)))){
 				// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 				static_cast <void> (this->_fs.unlink(temporary));
 				// Запоминаем код отказа сохранения таблицы
 				if(this->_error == error_t::NONE)
-					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
+					// Запоминаем код отказа записи с запасным FILE_NOT_WRITTEN
+					this->_error = ((this->_writer.error() != error_t::NONE) ? this->_writer.error() : error_t::FILE_NOT_WRITTEN);
 				// Выводим признак неудачного сохранения таблицы
 				return false;
 			}
 		}
 		// Завершаем запись
-		writer.record();
+		this->_writer.record();
 		/**
 		 * Если завершение записи окончилось отказом
 		 *
@@ -1226,7 +1214,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		 *       запрещённых настройками кавычках пометить её нечем. Не спроси мы его здесь,
 		 *       файл ушёл бы МОЛЧА КОРОЧЕ на эту запись, а вызов отчитался бы успехом
 		 */
-		if(writer.error() != error_t::NONE){
+		if(this->_writer.error() != error_t::NONE){
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 			static_cast <void> (this->_fs.unlink(temporary));
 			/**
@@ -1236,16 +1224,17 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			 *       тождественно, и запасной код `FILE_NOT_WRITTEN` был бы недостижим
 			 */
 			if(this->_error == error_t::NONE)
-				this->_error = writer.error();
+				// Запоминаем код отказа записи
+				this->_error = this->_writer.error();
 			// Выводим признак неудачного сохранения таблицы
 			return false;
 		}
 		/**
 		 * Если собранного текста накопилось довольно
 		 */
-		if(writer.size() >= ::CHUNK){
+		if(this->_writer.size() >= ::CHUNK){
 			// Изымаем собранный текст
-			const string text = writer.take();
+			const string text = this->_writer.take();
 			// Дописываем изъятый текст в хвост файла таблицы
 			written = this->_fs.append(temporary, text.data(), text.size(), handle);
 			/**
@@ -1257,7 +1246,7 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		}
 	}
 	// Изымаем остаток собранного текста
-	const string text = writer.take();
+	const string text = this->_writer.take();
 	/**
 	 * Если доли записаны сполна, дописываем остаток собранного текста
 	 *
@@ -1287,12 +1276,13 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
+		 * Выполняем вывод сообщения об отказе
+		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду: код, записанный в месте
 		 *          отказа дважды, разошёлся бы молча, а проверка, сличающая сообщение,
 		 *          подмены кода в поле не увидела бы вовсе
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1300,13 +1290,13 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
 	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
-	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
-	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
-	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
-	 * и заведён
+	 *          лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 *          указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 *          у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл и заведён
 	 *
 	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
 	 *       разницу берёт на себя
+	 *
 	 */
 	static_cast <void> (this->_fs.flush(temporary, true, handle));
 	/**
@@ -1321,11 +1311,12 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		// Запоминаем код отказа переименования временного файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
+		 * Выполняем вывод сообщения об отказе
+		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду по доводу, изложенному
 		 *          у места отказа записи выше
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		log::print("CSV document failed: %s", log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1637,6 +1628,7 @@ vector <string_view> awh::codec::csv::Document::col(const string_view name) cons
  * @brief Метод приведения содержимого поля к числу либо логическому значению
  *
  * @tparam T тип получаемого значения
+ *
  * @param result полученное значение
  * @param row    номер записи, считая с нуля
  * @param col    номер столбца, считая с нуля
@@ -1740,6 +1732,7 @@ static bool writable(const string_view text) noexcept {
  * @brief Метод приведения содержимого поля к числу либо логическому значению по имени столбца
  *
  * @tparam T тип получаемого значения
+ *
  * @param result полученное значение
  * @param row    номер записи, считая с нуля
  * @param name   имя столбца
@@ -1900,6 +1893,7 @@ bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
 			// Выводим признак неудачной установки
 			return false;
 		}
+		// Заносим в заголовок смещение и длину имени столбца
 		this->_header.emplace_back(static_cast <uint32_t> (this->_names.size()), static_cast <uint32_t> (name.length()));
 		// Переносим имя столбца в хранилище имён
 		this->_names.append(name);
@@ -1945,9 +1939,9 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 	 * Выполняем сброс кода отказа и положения прежней работы
 	 *
 	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
-	 * иначе код прежнего отказа переживал бы работу удавшуюся. Замер: разбор отказывал
-	 * лишним полем, следом удавалось занесение записи, а `error()` отвечал кодом
-	 * разбора - вместе с положением в тексте, которого более нет
+	 *          иначе код прежнего отказа переживал бы работу удавшуюся. Замер: разбор отказывал
+	 *          лишним полем, следом удавалось занесение записи, а `error()` отвечал кодом
+	 *          разбора - вместе с положением в тексте, которого более нет
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения отказа прежней работы
@@ -1956,10 +1950,10 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 	 * Выполняем перебор полей добавляемой записи
 	 *
 	 * @details Содержимое, записи не подлежащее, отвергается ЗДЕСЬ, а не при записи текста:
-	 * прежде добавление принимало его молча - возврата у метода не было вовсе, - и таблица
-	 * оставалась непригодной к записи, а узнавал о том звучащий лишь пустою строкою от
-	 * `dump()`. Найдено 08.09.2026 тем же разбором, каким найдено принятие негодного имени
-	 * у разметки и глубины у документа JSON
+	 *          прежде добавление принимало его молча - возврата у метода не было вовсе, - и таблица
+	 *          оставалась непригодной к записи, а узнавал о том звучащий лишь пустою строкою от
+	 *          `dump()`. Найдено 08.09.2026 тем же разбором, каким найдено принятие негодного имени
+	 *          у разметки и глубины у документа JSON
 	 *
 	 * @note Проверка стоит ДО заведения указания на запись: таблица при отказе остаётся
 	 *       нетронутой и записи подлежит по-прежнему
@@ -1981,9 +1975,22 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 	}
 	// Общая длина содержимого полей добавляемой записи
 	size_t length = 0;
-	// Выполняем подсчёт общей длины содержимого полей записи
+	/**
+	 * Выполняем подсчёт общей длины содержимого полей записи
+	 */
 	for(const string & value : fields) length += value.length();
 	/**
+	 * Если запись в разрядность хранилища знаков уже не помещается
+	 *
+	 * @details Указания на поля хранятся четырёхбайтовыми смещениями, и переполнение их
+	 *          молча УСЕКАЕТ смещение: поля, за пределом лежащие, указывают в начало хранилища -
+	 *          на чужое содержимое. Сборка таблицы из разбора этот предел стережёт, а построение
+	 *          её вручную не стерегло: тот же дефект жил во втором пути роста таблицы.
+	 *
+	 * @note Отказ сообщается кодом, а не выводом: метод ничего не выводит по устройству,
+	 *       и звучащему надлежит спросить `error()` - тем же порядком, каким сообщает об
+	 *       отказе завершение записи у сборщика текста
+	 *
 	 * @warning Место это набором НЕ покрыто и покрыто быть не может: порог здесь -
 	 *          четыре гигабайта, разрядность самого указания. Доказанная подмена
 	 *          кода (05.09.2026) не красит ни одной проверки. Достижим порог лишь
@@ -1992,18 +1999,7 @@ bool awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 	 *          несоразмерная. Сторож остаётся ради устройства, а не ради замера:
 	 *          без него переполнение УСЕКАЕТ смещение молча, и поля указывают на
 	 *          чужое содержимое, отказа при этом нет никакого
-	 */
-	/**
-	 * Если запись в разрядность хранилища знаков уже не помещается
 	 *
-	 * @details Указания на поля хранятся четырёхбайтовыми смещениями, и переполнение их
-	 * молча УСЕКАЕТ смещение: поля, за пределом лежащие, указывают в начало хранилища -
-	 * на чужое содержимое. Сборка таблицы из разбора этот предел стережёт, а построение
-	 * её вручную не стерегло: тот же дефект жил во втором пути роста таблицы
-	 *
-	 * @note Отказ сообщается кодом, а не выводом: метод ничего не выводит по устройству,
-	 *       и звучащему надлежит спросить `error()` - тем же порядком, каким сообщает об
-	 *       отказе завершение записи у сборщика текста
 	 */
 	if((this->_storage.size() + length) > ::LIMIT){
 		// Запоминаем код отказа построения таблицы
@@ -2077,6 +2073,11 @@ bool awh::codec::csv::Document::append(const vector <string_view> & fields) noex
 		// Накапливаем длину полей записи
 		length += value.length();
 	/**
+	 * Если запись в разрядность хранилища знаков уже не помещается
+	 *
+	 * @note Довод общий с перегрузкой по строкам: указание на поле хранится
+	 *       четырёхбайтовым смещением, а переполнение его усекает молча
+	 *
 	 * @warning Место это набором НЕ покрыто и покрыто быть не может: порог здесь -
 	 *          четыре гигабайта, разрядность самого указания. Доказанная подмена
 	 *          кода (05.09.2026) не красит ни одной проверки. Достижим порог лишь
@@ -2085,12 +2086,7 @@ bool awh::codec::csv::Document::append(const vector <string_view> & fields) noex
 	 *          несоразмерная. Сторож остаётся ради устройства, а не ради замера:
 	 *          без него переполнение УСЕКАЕТ смещение молча, и поля указывают на
 	 *          чужое содержимое, отказа при этом нет никакого
-	 */
-	/**
-	 * Если запись в разрядность хранилища знаков уже не помещается
 	 *
-	 * @note Довод общий с перегрузкой по строкам: указание на поле хранится
-	 *       четырёхбайтовым смещением, а переполнение его усекает молча
 	 */
 	if((this->_storage.size() + length) > ::LIMIT){
 		// Запоминаем код отказа построения таблицы
@@ -2110,7 +2106,7 @@ bool awh::codec::csv::Document::append(const vector <string_view> & fields) noex
 	 *       наперёд беды не избыть: перераспределяет хранилище и оно само, обесценивая
 	 *       поданные виды ещё до первого долива
 	 */
-	string buffer;
+	string buffer = "";
 	// Резервируем память под поля записи
 	buffer.reserve(length);
 	/**
@@ -2148,14 +2144,14 @@ string awh::codec::csv::Document::dump() const noexcept {
 	 * Выполняем сброс положения ошибки прежней работы
 	 *
 	 * @details У отказа записи места в исходном тексте нет вовсе, а положение прежнего
-	 * разбора, его пережив, складывалось бы с новым кодом в донесение стройное, но
-	 * ложное. Замер: разбор отказывал в строке 1 столбце 5, следом отказывала запись
-	 * непредставимым полем - и `errorLocation()` отвечал тем же местом, указывая в
-	 * текст, которого более нет
+	 *          разбора, его пережив, складывалось бы с новым кодом в донесение стройное, но
+	 *          ложное. Замер: разбор отказывал в строке 1 столбце 5, следом отказывала запись
+	 *          непредставимым полем - и `errorLocation()` отвечал тем же местом, указывая в
+	 *          текст, которого более нет
 	 */
 	this->_location = location_t();
-	// Запись текста таблицы
-	writer_t writer(this->_settings.writer);
+	// Очищаем объект записи событий
+	this->_writer.clear();
 	/**
 	 * Если таблица имеет заголовок
 	 */
@@ -2172,19 +2168,19 @@ string awh::codec::csv::Document::dump() const noexcept {
 			 *       звучащему таблицей законченной. Причину оглашает журналом сама
 			 *       запись, а таблица непустая пустого текста не даёт никогда
 			 */
-			if(!writer.field(string_view(this->_names.data() + name.offset, name.length))){
+			if(!this->_writer.field(string_view(this->_names.data() + name.offset, name.length))){
 				// Запоминаем код отказа записи текста таблицы
-				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
+				this->_error = ((this->_writer.error() != error_t::NONE) ? this->_writer.error() : error_t::INTERNAL);
 				// Выводим пустой текст таблицы
 				return string();
 			}
 		}
 		// Завершаем запись заголовка
-		writer.record();
+		this->_writer.record();
 		/**
 		 * Если завершение записи заголовка окончилось отказом
 		 */
-		if(writer.error() != error_t::NONE){
+		if(this->_writer.error() != error_t::NONE){
 			/**
 			 * Запоминаем код отказа записи текста таблицы
 			 *
@@ -2192,7 +2188,7 @@ string awh::codec::csv::Document::dump() const noexcept {
 			 *       и запасной код `INTERNAL` был бы недостижим. Стоит он там, где входом
 			 *       служит отказ записи поля - тот вправе прийти и без кода
 			 */
-			this->_error = writer.error();
+			this->_error = this->_writer.error();
 			// Выводим пустой текст таблицы
 			return string();
 		}
@@ -2208,15 +2204,15 @@ string awh::codec::csv::Document::dump() const noexcept {
 		 */
 		for(size_t j = 0; j < count; j++){
 			// Если очередное поле записи записать не удалось
-			if(!writer.field(this->get(this->_fields.at(this->_records.at(i) + j)))){
+			if(!this->_writer.field(this->get(this->_fields.at(this->_records.at(i) + j)))){
 				// Запоминаем код отказа записи текста таблицы
-				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
+				this->_error = ((this->_writer.error() != error_t::NONE) ? this->_writer.error() : error_t::INTERNAL);
 				// Выводим пустой текст таблицы
 				return string();
 			}
 		}
 		// Завершаем запись
-		writer.record();
+		this->_writer.record();
 		/**
 		 * Если завершение записи окончилось отказом
 		 *
@@ -2225,7 +2221,7 @@ string awh::codec::csv::Document::dump() const noexcept {
 		 *       таблица ушла бы МОЛЧА КОРОЧЕ на эту запись - ровно та потеря, ради какой
 		 *       отказ и заведён
 		 */
-		if(writer.error() != error_t::NONE){
+		if(this->_writer.error() != error_t::NONE){
 			/**
 			 * Запоминаем код отказа записи текста таблицы
 			 *
@@ -2233,13 +2229,13 @@ string awh::codec::csv::Document::dump() const noexcept {
 			 *       и запасной код `INTERNAL` был бы недостижим. Стоит он там, где входом
 			 *       служит отказ записи поля - тот вправе прийти и без кода
 			 */
-			this->_error = writer.error();
+			this->_error = this->_writer.error();
 			// Выводим пустой текст таблицы
 			return string();
 		}
 	}
 	// Выводим собранный текст таблицы
-	return writer.text();
+	return this->_writer.text();
 }
 /**
  * @brief Метод очистки таблицы
@@ -2270,16 +2266,6 @@ void awh::codec::csv::Document::clear() noexcept {
 	this->_columns.clear();
 }
 /**
- * @brief Метод получения настроек контейнера
- *
- * @return настройки контейнера
- *
- */
-const awh::codec::csv::Document::settings_t & awh::codec::csv::Document::settings() const noexcept {
-	// Выводим настройки контейнера
-	return this->_settings;
-}
-/**
  * @brief Оператор вывода таблицы последовательностью знаков
  *
  * @return собранный текст таблицы
@@ -2296,15 +2282,17 @@ awh::codec::csv::Document::operator string() const noexcept {
  *
  */
 void awh::codec::csv::Document::settings(const settings_t & settings) noexcept {
-	// Запоминаем настройки контейнера
-	this->_settings = settings;
+	// Устанавливаем настройки объекта чтения текста таблицы
+	this->_reader.settings(settings.reader);
+	// Устанавливаем настройки объекта записи текста таблицы
+	this->_writer.settings(settings.writer);
 }
 /**
  * @brief Конструктор
  *
  */
 awh::codec::csv::Document::Document() noexcept :
- _fs(), _error(error_t::NONE), _opened(false) {}
+ _opened(false), _encoding(encoding_t::NONE), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
@@ -2312,6 +2300,13 @@ awh::codec::csv::Document::Document() noexcept :
  *
  */
 awh::codec::csv::Document::Document(const settings_t & settings) noexcept :
- _fs(),
- _settings(settings), _error(error_t::NONE), _opened(false) {}
+ _opened(false), _encoding(encoding_t::NONE), _error(error_t::NONE) {}
 
+/**
+ * @brief Псевдоним сброса состояния документа (см. clear())
+ *
+ */
+void awh::codec::csv::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
+}

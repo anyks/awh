@@ -326,6 +326,44 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
+				public:
+					/**
+					 * \~russian
+					 * @brief Структура настроек дерева разметки
+					 *
+					 * @details Настройки разбора и записи держатся раздельно: прочитать разметку
+					 *          с одними пределами и записать её иным видом - обыкновенное дело, и
+					 *          связывать их незачем.
+					 *
+					 * @note Построение это заведено ради согласия кодеков рамки: у всех у них
+					 *       настройки дерева спрашиваются и ставятся одинаково, а вид их свой
+					 *       у каждого кодека
+					 *
+					 * @warning Настройки разбора, поданные ходу `parse()` доводом, действуют
+					 *          лишь на этот заход и хранимых настроек НЕ меняют
+					 *
+					 * \~english
+					 * @brief Markup tree settings structure
+					 *
+					 * @details The settings of the parsing and of the writing are kept separately: to read
+					 *          the markup with one limits and to write it in another form is an ordinary
+					 *          affair, and there is no sense in binding them.
+					 *
+					 * @note This construction is made for the sake of the consent of the codecs of the framework:
+					 *       at all of them the settings of a tree are asked and set in the same way, while their
+					 *       form is own to each codec
+					 *
+					 * @warning The settings of the parsing fed to the `parse()` step as an argument act only on
+					 *          this going and do NOT change the stored settings
+					 *
+					 * \~
+					 */
+					typedef struct Settings {
+						// Настройки записи текста разметки
+						writer_t::settings_t writer;
+						// Настройки разбора текста разметки
+						reader_t::settings_t reader;
+					} settings_t;
 				private:
 					/**
 					 * \~russian
@@ -881,20 +919,6 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод получения настроек разбора записей
-					 *
-					 * @return настройки разбора записей
-					 *
-					 * \~english
-					 * @brief Method of getting the settings of the parsing of the records
-					 *
-					 * @return settings of the parsing of the records
-					 *
-					 * \~
-					 */
-					const reader_t::settings_t & settings() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек разбора записей
 					 *
 					 * @param settings настройки разбора записей
@@ -908,21 +932,49 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool settings(const reader_t::settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
+				public:
 					/**
 					 * \~russian
-					 * @brief Метод установки настроек записи событий
-					 *
-					 * @param settings настройки записи событий
+					 * @brief Разрешаем оператор копирования
 					 *
 					 * \~english
-					 * @brief Method of setting the settings of the writing of the events
-					 *
-					 * @param settings settings of the writing of the events
+					 * @brief Enable the copy operator
 					 *
 					 * \~
 					 */
-					void settings(const writer_t::settings_t & settings) noexcept;
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Document(Document &&) noexcept = default;
 				public:
 					/**
 					 * \~russian
@@ -934,6 +986,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Document() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора документа
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the parsing of a document
+					 *
+					 * \~
+					 */
+					explicit Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

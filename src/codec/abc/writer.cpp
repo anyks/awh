@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации сборки записи бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the assembling of a record of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -131,15 +125,15 @@ bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__,
+			log::debug("ABC: %s", __PRETTY_FUNCTION__,
 			 {static_cast <uint16_t> (error), this->_record.size()},
-			 awh::log::flag_t::WARNING, abc::message(error));
+			 log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
+			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что сборка отвечена отказом
@@ -643,7 +637,9 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 		}
 		// Выполняем вычисление размаха закрытого вместимого
 		const uint64_t width = static_cast <uint64_t> ((this->_record.size() + referenced) - (spanned + SPAN_LENGTH));
-		// Выполняем перебор всех октетов записи размаха
+		/**
+		 * Выполняем перебор всех октетов записи размаха
+		 */
 		for(size_t i = 0; i < SPAN_LENGTH; i++)
 			// Выполняем укладку очередного октета размаха
 			this->_record.at(spanned + i) = static_cast <uint8_t> ((width >> (i * 8)) & 0xFF);
@@ -764,7 +760,9 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 	result.reserve(this->length());
 	// Смещение вклеенной части буфера собираемой записи
 	size_t offset = 0;
-	// Выполняем перебор врезок чужого содержимого
+	/**
+	 * Выполняем перебор врезок чужого содержимого
+	 */
 	for(auto & cut : this->_cuts){
 		// Выполняем вклейку части буфера, стоящей перед врезкой
 		result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset),
@@ -796,7 +794,9 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 		if(frame.spanned > 0){
 			// Размер содержимого, вклеенного перед местом записи размаха
 			size_t moved = 0;
-			// Выполняем перебор врезок чужого содержимого
+			/**
+			 * Выполняем перебор врезок чужого содержимого
+			 */
 			for(auto & cut : this->_cuts){
 				// Если врезка стоит после места записи размаха
 				if(cut.offset > frame.spanned)
@@ -823,7 +823,9 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 			continue;
 		// Размер содержимого, вклеенного перед отрезком имени поля
 		size_t shift = 0;
-		// Выполняем перебор врезок чужого содержимого
+		/**
+		 * Выполняем перебор врезок чужого содержимого
+		 */
 		for(auto & cut : this->_cuts){
 			/**
 			 * Если врезка стоит после отрезка имени поля
@@ -1454,7 +1456,9 @@ vector <awh::codec::abc::piece_t> awh::codec::abc::Writer::pieces() const noexce
 	result.reserve((this->_cuts.size() * 2) + 1);
 	// Смещение выданной части буфера собираемой записи
 	size_t offset = 0;
-	// Выполняем перебор врезок чужого содержимого
+	/**
+	 * Выполняем перебор врезок чужого содержимого
+	 */
 	for(auto & cut : this->_cuts){
 		// Если перед врезкой стоит часть буфера собираемой записи
 		if(cut.offset > offset)
@@ -1481,7 +1485,9 @@ vector <awh::codec::abc::piece_t> awh::codec::abc::Writer::pieces() const noexce
 size_t awh::codec::abc::Writer::length() const noexcept {
 	// Результат работы функции
 	size_t result = this->_record.size();
-	// Выполняем перебор врезок чужого содержимого
+	/**
+	 * Выполняем перебор врезок чужого содержимого
+	 */
 	for(auto & cut : this->_cuts)
 		// Выполняем учёт размера октетов врезки
 		result += cut.size;
@@ -1534,3 +1540,38 @@ void awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {
  */
 awh::codec::abc::Writer::Writer() noexcept :
  _error(error_t::NONE), _failed(false), _documents(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение записи имени поля
+ * @param length длина записи имени поля
+ * @param digest свёртка записи имени поля
+ *
+ */
+awh::codec::abc::Writer::Naming::Naming() noexcept : offset(0), length(0), digest(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение записи имени поля
+ * @param length длина записи имени поля
+ * @param digest свёртка записи имени поля
+ *
+ */
+awh::codec::abc::Writer::Naming::Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept : offset(offset), length(length), digest(digest) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Writer::Frame::Frame() noexcept :
+ mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
+ base(0), hashed(0), spanned(0), segment(type_t::UNDEFINED) {}
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение врезки в буфере собираемой записи
+ * @param buffer буфер октетов врезки
+ * @param size   размер октетов врезки
+ *
+ */
+awh::codec::abc::Writer::Cut::Cut(const size_t offset, const void * buffer, const size_t size) noexcept : offset(offset), buffer(buffer), size(size) {}

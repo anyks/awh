@@ -404,7 +404,7 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 				// Выводим отрицательный признак укладки пары
 				return false;
 			// Ставим перечень значений на место объявленного значения
-			exists = ::std::move(list);
+			exists = ::move(list);
 			// Выводим положительный признак укладки пары
 			return true;
 		}
@@ -412,7 +412,7 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 		return exists.push(current);
 	}
 	// Ставим значение пары расширения в дерево события
-	extension[key] = ::std::move(current);
+	extension[key] = ::move(current);
 	// Выводим положительный признак укладки пары
 	return true;
 }
@@ -538,7 +538,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *          числа. Принимать их значило бы заводить в дереве значение, какое
 			 *          запись обратно выразить не может
 			 */
-			if(!::std::isfinite(number)){
+			if(!::isfinite(number)){
 				// Устанавливаем код ошибки несоответствия значения виду
 				this->_error = error_t::INVALID_NUMBER;
 				// Выводим отрицательный признак обращения значения
@@ -776,7 +776,9 @@ bool awh::codec::cef::Document::parse(const string_view text) noexcept {
 	 * до конца `parse()`
 	 */
 	this->_root.reserve(3);
-	// Выполняем перебор событий разбора первой записи
+	/**
+	 * Выполняем перебор событий разбора первой записи
+	 */
 	while(this->_reader.next()){
 		/**
 		 * Определяем вид события разбора
@@ -833,7 +835,9 @@ bool awh::codec::cef::Document::parse(const string_view text) noexcept {
 					if(this->_extension != nullptr){
 						// Получаем закешированную ссылку на вместилище пар расширения
 						const abc::value_t & extension = (* this->_extension);
-						// Выполняем перебор всех имён пар расширения
+						/**
+						 * Выполняем перебор всех имён пар расширения
+						 */
 						for(size_t i = 0; i < extension.size(); i++){
 							// Получаем имя очередной пары расширения
 							const string name = extension.key(i).text();
@@ -1205,7 +1209,9 @@ string awh::codec::cef::Document::dump() const noexcept {
 			const abc::value_t & current = extension[key];
 			// Количество значений, ключом объявленных: повтор ключа даёт перечень
 			const size_t count = ((current.type() == abc::type_t::ARRAY) ? current.size() : 1);
-			// Выполняем перебор всех значений, ключом объявленных
+			/**
+			 * Выполняем перебор всех значений, ключом объявленных
+			 */
 			for(size_t j = 0; j < count; j++){
 				// Получаем очередное значение, ключом объявленное
 				const abc::value_t & item = ((current.type() == abc::type_t::ARRAY) ? current[j] : current);
@@ -1301,7 +1307,7 @@ string awh::codec::cef::Document::dump() const noexcept {
 	 */
 	if(!const_cast <writer_t &> (this->_writer).write(this->_root, result)){
 		// Запоминаем код ошибки сборки записи
-		const_cast <Document *> (this)->_error = this->_writer.error();
+		const_cast <document_t *> (this)->_error = this->_writer.error();
 		// Выводим пустую запись CEF
 		return "";
 	}
@@ -1670,7 +1676,7 @@ vector <string> awh::codec::cef::Document::keys(const string & path) const noexc
 			 */
 			for(size_t i = 0; i < value.size(); i++)
 				// Добавляем номер значения перечня звеном пути
-				result.push_back(::std::to_string(i));
+				result.push_back(::to_string(i));
 		} break;
 	}
 	// Выводим результирующий перечень звеньев пути
@@ -1892,25 +1898,25 @@ const awh::codec::cef::pos_t & awh::codec::cef::Document::errorLocation() const 
 	return this->_reader.errorLocation();
 }
 /**
- * @brief Метод получения настроек разбора записей
+ * @brief Псевдоним сброса состояния документа (см. clear())
  *
- * @return настройки разбора записей
  */
-const awh::codec::cef::reader_t::settings_t & awh::codec::cef::Document::settings() const noexcept {
-	// Выводим настройки разбора записей
-	return this->_reader.settings();
+void awh::codec::cef::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
 }
 /**
  * @brief Метод установки настроек разбора записей
  *
  * @param settings настройки разбора записей
  * @return         результат выполнения операции
+ *
  */
-bool awh::codec::cef::Document::settings(const reader_t::settings_t & settings) noexcept {
+bool awh::codec::cef::Document::settings(const settings_t & settings) noexcept {
 	// Выполняем сброс состояния чтения записей
 	this->_reader.reset();
 	// Получаем настройки записи событий
-	writer_t::settings_t writing = this->_writer.settings();
+	writer_t::settings_t writing = settings.writer;
 	/**
 	 * Связываем постановку отмены знаков со снятием её при чтении
 	 *
@@ -1923,28 +1929,27 @@ bool awh::codec::cef::Document::settings(const reader_t::settings_t & settings) 
 	 * @note Найдено ворошителем 04.09.2026 расхождением деревьев после оборота
 	 *
 	 */
-	writing.escape = settings.unescape;
+	writing.escape = settings.reader.unescape;
 	// Устанавливаем настройки записи событий
 	this->_writer.settings(writing);
 	// Выводим результат установки настроек разбора записей
-	return this->_reader.settings(settings);
-}
-/**
- * @brief Метод установки настроек записи событий
- *
- * @param settings настройки записи событий
- */
-void awh::codec::cef::Document::settings(const writer_t::settings_t & settings) noexcept {
-	// Устанавливаем настройки записи событий
-	this->_writer.settings(settings);
+	return this->_reader.settings(settings.reader);
 }
 /**
  * @brief Конструктор
  *
  */
-awh::codec::cef::Document::Document() noexcept :
- _reader(), _writer(), _net(), _chrono(),
- _fs(), _error(error_t::NONE) {}
+awh::codec::cef::Document::Document() noexcept : _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора документа
+ *
+ */
+awh::codec::cef::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE) {
+	// Устанавливаем настройки чтения и записи событий
+	this->settings(settings);
+}
 
 /**
  * Возвращаем имена, системными макросами занятые

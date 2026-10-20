@@ -390,6 +390,7 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::git() noexc
 	 *       не требуя: имя со знаком примечания внутри ему не записать вовсе
 	 */
 	result.spacedComments = false;
+	// Устанавливаем знак примечания решёткой
 	result.marker = '#';
 	// Устанавливаем обращение с ограждением значения кавычками
 	result.quoting = quoting_t::AUTO;
@@ -1440,10 +1441,16 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	// Выводим положительный результат выполнения операции
 	return true;
 }
+/**
+ * Запись свойства со значением и признаком добавления
+ */
 bool awh::codec::ini::Writer::property(const string_view key, const string_view value, const bool append) noexcept {
 	// Выполняем запись свойства со значением
 	return this->emit(key, value, append);
 }
+/**
+ * Запись свойства со значением
+ */
 bool awh::codec::ini::Writer::property(const string_view key, const string_view value) noexcept {
 	// Выполняем запись свойства со значением
 	return this->emit(key, value, false);
@@ -1633,6 +1640,7 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	if(!this->_settings.inlineComments || (!this->_settings.trim && this->_valued))
 		// Выполняем запись примечания отдельной строкой
 		return this->comment(text);
+	// Снимаем ограждение значения для записи примечания в строке
 	this->_guarded = false;
 	/**
 	 * Выполняем перебор знаков содержимого примечания

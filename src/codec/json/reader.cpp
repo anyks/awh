@@ -1497,6 +1497,9 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 		                  {this->_position.line, this->_position.column}, awh::log::flag_t::WARNING,
 		                  static_cast <unsigned long long> (this->_position.line),
 		                  static_cast <unsigned long long> (this->_position.column), message(error));
+	/**
+	 * Если режим отладки не включён
+	 */
 	#else
 		// Записываем отказ разбора в журнал работы
 		awh::log::print("JSON parsing failed at line %llu column %llu: %s", awh::log::flag_t::WARNING,
@@ -1554,7 +1557,7 @@ void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, 
 	// Устанавливаем признак изменения содержимого разбором
 	item.modified = this->_modified;
 	// Выполняем постановку собранного события в очередь выдачи
-	this->_items.push_back(::std::move(item));
+	this->_items.push_back(::move(item));
 	// Сбрасываем признак изменения содержимого разбором
 	this->_modified = false;
 }
@@ -2909,3 +2912,14 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 	// Выводим признак успешного разбора
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Reader::Value::Value() noexcept : kind(kind_t::NONE), modified(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Reader::Item::Item() noexcept : event(event_t::NONE), modified(false) {}

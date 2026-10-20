@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации общих объявлений бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the common declarations of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -696,3 +690,35 @@ bool awh::codec::abc::indexed(const string_view segment, size_t & result) noexce
 	// Сообщаем, что звено является номером
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Span::Span() noexcept : offset(0), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение начала отрезка в хранилище октетов
+ * @param length длина отрезка в октетах
+ *
+ */
+awh::codec::abc::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Piece::Piece() noexcept : buffer(nullptr), size(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param buffer буфер октетов куска выдачи
+ * @param size   размер октетов куска выдачи
+ *
+ */
+awh::codec::abc::Piece::Piece(const void * buffer, const size_t size) noexcept : buffer(buffer), size(size) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Location::Location() noexcept : offset(NO_OFFSET), depth(0) {}

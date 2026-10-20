@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации проволочной укладки бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the wire laying of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -52,10 +46,17 @@ using namespace std;
  * записи, и посредник обязан разворачиваться на месте обращения целиком
  */
 #if defined(_MSC_VER)
-	// Принудительная подстановка средствами Visual Studio
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
 	#define AWH_ABC_FIXED_INLINE __forceinline
+/**
+ * Если компилятор не Visual Studio
+ */
 #else
-	// Принудительная подстановка средствами GCC и Clang
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
 	#define AWH_ABC_FIXED_INLINE inline __attribute__((always_inline))
 #endif
 
@@ -470,7 +471,7 @@ bool awh::codec::abc::utf8(const uint8_t * buffer, const size_t size, size_t & p
 				// Очередное слово проверяемой строки
 				uint64_t word = 0;
 				// Выполняем снятие слова побайтовым переносом, без требований к совмещению
-				memcpy(&word, text.data() + run, sizeof(word));
+				::memcpy(&word, text.data() + run, sizeof(word));
 				/**
 				 * Если в слове встретился октет со старшим разрядом, равным единице
 				 */
@@ -664,3 +665,8 @@ void awh::codec::abc::repair(const uint8_t * buffer, const size_t size, vector <
 		offset += (taken + 1);
 	}
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Item::Item() noexcept : group(group_t::UNSIGNED), detail(0), value(0), indefinite(false) {}

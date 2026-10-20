@@ -85,6 +85,7 @@ namespace {
 			typename std::conditional <sizeof(T) == 1, uint8_t,
 				typename std::conditional <sizeof(T) == 2, uint16_t,
 					typename std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type
+		// Завершаем определение беззнакового типа соответствующей ширины
 		>::type type;
 	};
 
@@ -694,7 +695,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 */
 	if((value.compare("INF") == 0) || (value.compare("+INF") == 0)){
 		// Запоминаем положительную бесконечность
-		result = ::std::numeric_limits <double>::infinity();
+		result = std::numeric_limits <double>::infinity();
 		// Выводим признак успешного приведения
 		return true;
 	/**
@@ -702,7 +703,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 */
 	} else if(value.compare("-INF") == 0) {
 		// Запоминаем отрицательную бесконечность
-		result = -::std::numeric_limits <double>::infinity();
+		result = -std::numeric_limits <double>::infinity();
 		// Выводим признак успешного приведения
 		return true;
 	/**
@@ -710,7 +711,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 */
 	} else if(value.compare("NaN") == 0) {
 		// Запоминаем нечисло
-		result = ::std::numeric_limits <double>::quiet_NaN();
+		result = std::numeric_limits <double>::quiet_NaN();
 		// Выводим признак успешного приведения
 		return true;
 	}
@@ -814,6 +815,7 @@ bool awh::codec::xml::boolean(const string_view text, bool & result) noexcept {
  * от 01.09.2026
  *
  * @tparam T      затребованный вид числа
+ *
  * @param  text   разбираемое содержимое
  * @param  result ссылка на результат разбора
  * @return        признак успешного разбора
@@ -891,3 +893,27 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <long long> (const 
 template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <float> (const string_view, float &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <double> (const string_view, double &) noexcept;
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Span::Span() noexcept : offset(0), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение начала отрезка в хранилище знаков
+ * @param length длина отрезка в байтах
+ *
+ */
+awh::codec::xml::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Attribute::Attribute() noexcept : defaulted(false) {}

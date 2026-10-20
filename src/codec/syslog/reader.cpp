@@ -202,6 +202,9 @@ namespace {
 		// Выводим признак попадания числа в назначенные границы
 		return ((value >= least) && (value <= most));
 	}
+	/**
+	 * Проверка строгого вида метки времени
+	 */
 	bool strictTimestamp(const string_view timestamp) noexcept {
 		// Наименьшая запись даты описания: «1985-04-12T23:20:50Z»
 		if(timestamp.size() < 20)
@@ -251,7 +254,9 @@ namespace {
 		if(timestamp[offset] == '.'){
 			// Смещение начала знаков долей секунды
 			const size_t begin = ++offset;
-			// Выполняем перебор знаков долей секунды
+			/**
+			 * Выполняем перебор знаков долей секунды
+			 */
 			while((offset < timestamp.size()) && (timestamp[offset] >= '0') && (timestamp[offset] <= '9'))
 				// Сдвигаем смещение поверки за знак долей секунды
 				offset++;
@@ -595,7 +600,9 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	 * Выполняем перебор слов, дату сообщения составляющих
 	 */
 	while((i < record.size()) && (words < LEGACY_DATE_WORDS)){
-		// Пропускаем разделители, слову предшествующие
+		/**
+		 * Пропускаем разделители, слову предшествующие
+		 */
 		while((i < record.size()) && (record[i] == ' '))
 			// Сдвигаем указатель перебора знаков
 			i++;
@@ -630,7 +637,9 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 			timing = true;
 			// Смещение перебора слова, за временем следующего
 			size_t next = i;
-			// Пропускаем разделители, слову года предшествующие
+			/**
+			 * Пропускаем разделители, слову года предшествующие
+			 */
 			while((next < record.size()) && (record[next] == ' '))
 				// Сдвигаем смещение перебора
 				next++;
@@ -657,7 +666,9 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 			if(((next - year) == 4) && ((next >= record.size()) || (record[next] == ' '))){
 				// Смещение перебора слова, за годом следующего
 				size_t after = next;
-				// Пропускаем разделители, слову за годом предшествующие
+				/**
+				 * Пропускаем разделители, слову за годом предшествующие
+				 */
 				while((after < record.size()) && (record[after] == ' '))
 					// Сдвигаем смещение перебора
 					after++;
@@ -1570,6 +1581,7 @@ bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, co
 		if(this->_offset >= COMPACT_THRESHOLD){
 			// Определяем положение нового начала хранилища до удаления текста
 			pos_t origin;
+			// Снимаем координаты нового начала хранилища
 			this->place(this->_offset, origin);
 			// Сохраняем координаты удалённого начала для последующих событий
 			this->_origin = origin;
@@ -1969,3 +1981,11 @@ awh::codec::syslog::Reader::Reader() noexcept :
  _offset(0), _record(0), _end(false), _stage(stage_t::RECORD), _field(field_t::NONE),
  _index(0), _block(0), _messaged(false), _standard(standard_t::AUTO), _priority(0),
  _prioritized(false), _version(0), _chrono() {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::syslog::Reader::Settings::Settings() noexcept :
+ standard(standard_t::AUTO), mode(mode_t::NONE), nil(nil_t::OMIT),
+ bom(true), unescape(true), maxRecord(MAX_RECORD),
+ maxStructures(MAX_STRUCTURES), maxParams(MAX_PARAMS) {}

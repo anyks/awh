@@ -260,50 +260,6 @@ namespace awh {
 		namespace yaml {
 			/**
 			 * \~russian
-			 * @brief Наибольшая допустимая длина скалярного значения в байтах
-			 *
-			 * @details Предел считается по значению уже со снятой оградой и выполненной
-			 *          свёрткой строк.
-			 *
-			 * @note Записи чисел предел этот стережёт наравне с прочими: своего предела длине
-			 *       числа здесь нет намеренно. Описание YAML длину записи числа не ограничивает
-			 *       вовсе, и запись в тысячу разрядов законна - удерживается она дословно видом
-			 *       EXTENDED. Предел, отдельно числу отведённый, отверг бы законный текст, а
-			 *       отвергнув его лишь при записи, а не при чтении, ещё и потерял бы значение
-			 *       при дословной перезаписи. Кодек JSON такой предел держит, и держит верно:
-			 *       там длина записи числа ограничена самим описанием
-			 *
-			 * \~english
-			 * @brief Largest admissible length of a scalar value in bytes
-			 *
-			 * @details The limit is counted over the value already with the quoting removed and the folding
-			 *          of the lines performed.
-			 *
-			 * @note This limit guards the records of the numbers on a par with the others: a limit of its own for
-			 *       the length of a number is absent here deliberately. The description of the YAML does not limit
-			 *       the length of the record of a number at all, and a record of a thousand digits is lawful — it is
-			 *       held verbatim by the EXTENDED kind. A limit allotted to a number separately would refuse a lawful
-			 *       text, and having refused it only at the writing rather than at the reading, it would also lose
-			 *       the value at the verbatim rewriting. The JSON codec holds such a limit, and holds it rightly:
-			 *       there the length of the record of a number is limited by the description itself
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_SCALAR = 0x1000000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина имени метки либо ссылки в байтах
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the name of an anchor or of an alias in bytes
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_ANCHOR = 0x100;
-
-			/**
-			 * \~russian
 			 * @brief Глубина вложенности по умолчанию при чтении и предельная при записи
 			 *
 			 * @details При чтении предел ограничивает глубину разбираемого текста и размер
@@ -344,7 +300,44 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_DEPTH = 0x400;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина имени метки либо ссылки в байтах
+			 *
+			 * \~english
+			 * @brief Largest admissible length of the name of an anchor or of an alias in bytes
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_ANCHOR = 0x100;
+			/**
+			 * \~russian
+			 * @brief Количество пар отображения, начиная с какого заводится указатель имён
+			 *
+			 * @details Ниже этого порога имя разыскивается перебором, и это дешевле всякого
+			 *          указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
+			 *          выделения памяти и подсчёта хеша на всякое имя. Выше порога перебор обращает
+			 *          обход отображения по именам в квадратичный, и указатель окупается.
+			 *
+			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
+			 *       не при разборе. Отображение, к которому по имени не обращались, не платит
+			 *       ничего
+			 *
+			 * \~english
+			 * @brief Number of the pairs of a mapping starting from which the index of the names is created
+			 *
+			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
+			 *          index: the comparison of the names goes through the memory consecutively, while the creation of an index
+			 *          costs an allocation of the memory and a computation of a hash for every name. Above the threshold an enumeration
+			 *          turns the traversal of a mapping by the names into a quadratic one, and the index pays off.
+			 *
+			 * @note The index is created **on demand** — at the first access by a name rather
+			 *       than at the parsing. A mapping which has not been accessed by a name pays
+			 *       nothing
+			 *
+			 * \~
+			 */
+			constexpr uint32_t INDEX_THRESHOLD = 16;
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое количество узлов в документе
@@ -355,7 +348,38 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_NODES = 0x4000000;
-
+			/**
+			 * \~russian
+			 * @brief Наибольшая допустимая длина скалярного значения в байтах
+			 *
+			 * @details Предел считается по значению уже со снятой оградой и выполненной
+			 *          свёрткой строк.
+			 *
+			 * @note Записи чисел предел этот стережёт наравне с прочими: своего предела длине
+			 *       числа здесь нет намеренно. Описание YAML длину записи числа не ограничивает
+			 *       вовсе, и запись в тысячу разрядов законна - удерживается она дословно видом
+			 *       EXTENDED. Предел, отдельно числу отведённый, отверг бы законный текст, а
+			 *       отвергнув его лишь при записи, а не при чтении, ещё и потерял бы значение
+			 *       при дословной перезаписи. Кодек JSON такой предел держит, и держит верно:
+			 *       там длина записи числа ограничена самим описанием
+			 *
+			 * \~english
+			 * @brief Largest admissible length of a scalar value in bytes
+			 *
+			 * @details The limit is counted over the value already with the quoting removed and the folding
+			 *          of the lines performed.
+			 *
+			 * @note This limit guards the records of the numbers on a par with the others: a limit of its own for
+			 *       the length of a number is absent here deliberately. The description of the YAML does not limit
+			 *       the length of the record of a number at all, and a record of a thousand digits is lawful — it is
+			 *       held verbatim by the EXTENDED kind. A limit allotted to a number separately would refuse a lawful
+			 *       text, and having refused it only at the writing rather than at the reading, it would also lose
+			 *       the value at the verbatim rewriting. The JSON codec holds such a limit, and holds it rightly:
+			 *       there the length of the record of a number is limited by the description itself
+			 *
+			 * \~
+			 */
+			constexpr uint32_t MAX_SCALAR = 0x1000000;
 			/**
 			 * \~russian
 			 * @brief Наибольшее допустимое количество узлов, порождаемых раскрытием ссылок
@@ -404,47 +428,26 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t MAX_EXPANSION = 0x1000000;
-
 			/**
 			 * \~russian
-			 * @brief Количество пар отображения, начиная с какого заводится указатель имён
-			 *
-			 * @details Ниже этого порога имя разыскивается перебором, и это дешевле всякого
-			 *          указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
-			 *          выделения памяти и подсчёта хеша на всякое имя. Выше порога перебор обращает
-			 *          обход отображения по именам в квадратичный, и указатель окупается.
-			 *
-			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
-			 *       не при разборе. Отображение, к которому по имени не обращались, не платит
-			 *       ничего
+			 * @brief Обозначение отсутствующего указателя отступа блочного значения
 			 *
 			 * \~english
-			 * @brief Number of the pairs of a mapping starting from which the index of the names is created
-			 *
-			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
-			 *          index: the comparison of the names goes through the memory consecutively, while the creation of an index
-			 *          costs an allocation of the memory and a computation of a hash for every name. Above the threshold an enumeration
-			 *          turns the traversal of a mapping by the names into a quadratic one, and the index pays off.
-			 *
-			 * @note The index is created **on demand** — at the first access by a name rather
-			 *       than at the parsing. A mapping which has not been accessed by a name pays
-			 *       nothing
+			 * @brief Designation of an absent indentation indicator of a block scalar
 			 *
 			 * \~
 			 */
-			constexpr uint32_t INDEX_THRESHOLD = 16;
-
+			constexpr uint8_t NO_INDENT = static_cast <uint8_t> (0);
 			/**
 			 * \~russian
-			 * @brief Обозначение отсутствующего положения в исходном тексте
+			 * @brief Обозначение отсутствующего номера узла
 			 *
 			 * \~english
-			 * @brief Designation of an absent position in the source text
+			 * @brief Designation of an absent number of a node
 			 *
 			 * \~
 			 */
-			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (~0ull);
-
+			constexpr uint32_t NO_INDEX = static_cast <uint32_t> (~0u);
 			/**
 			 * \~russian
 			 * @brief Смещение, записи в исходном тексте не имеющее
@@ -461,170 +464,16 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint32_t NO_ORIGIN = static_cast <uint32_t> (~0u);
-
 			/**
 			 * \~russian
-			 * @brief Обозначение отсутствующего номера узла
+			 * @brief Обозначение отсутствующего положения в исходном тексте
 			 *
 			 * \~english
-			 * @brief Designation of an absent number of a node
+			 * @brief Designation of an absent position in the source text
 			 *
 			 * \~
 			 */
-			constexpr uint32_t NO_INDEX = static_cast <uint32_t> (~0u);
-
-			/**
-			 * \~russian
-			 * @brief Обозначение отсутствующего указателя отступа блочного значения
-			 *
-			 * \~english
-			 * @brief Designation of an absent indentation indicator of a block scalar
-			 *
-			 * \~
-			 */
-			constexpr uint8_t NO_INDENT = static_cast <uint8_t> (0);
-
-			/**
-			 * \~russian
-			 * @brief Виды узлов документа
-			 *
-			 * @details Виды эти отвечают описанию: узел есть либо скалярное значение, либо
-			 *          перечень, либо отображение. Разделение скалярных значений по содержимому
-			 *          принадлежит не узлу, а виду значения.
-			 *
-			 * @note Ссылка видом узла не является: дерево её раскрывает, и в дереве стоит
-			 *       уже тот узел, на который ссылались. Событие ссылки есть лишь у потока
-			 *
-			 * \~english
-			 * @brief Kinds of the nodes of a document
-			 *
-			 * @details These kinds correspond to the specification: a node is either a scalar value, or
-			 *          a sequence, or a mapping. The division of the scalar values by their content
-			 *          belongs not to the node but to the kind of the value.
-			 *
-			 * @note An alias is not a kind of a node: the tree expands it, and in the tree there stands
-			 *       already that node which was referred to. The event of an alias exists only in the stream
-			 *
-			 * \~
-			 */
-			enum class kind_t : uint8_t {
-				NONE     = 0x00, // Узел не определён либо ссылка недействительна
-				NUL      = 0x01, // Пустое значение null
-				BOOL     = 0x02, // Логическое значение
-				NUMBER   = 0x03, // Число любого вида
-				STRING   = 0x04, // Строка
-				BINARY   = 0x05, // Двоичное содержимое, записанное меткой !!binary
-				STAMP    = 0x06, // Отметка времени, признаваемая лишь наречием 1.1
-				SEQUENCE = 0x07, // Перечень значений
-				MAPPING  = 0x08  // Отображение пар
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды значений документа
-			 *
-			 * @details Виды заданы разрядами, чтобы вопрос о принадлежности значения к
-			 *          набору видов решался одним наложением разрядов: точный вопрос (`INT32`) и
-			 *          сборный (`NUMBER`) стоят ровно одинаково.
-			 *
-			 * @note Вид хранения извлечению не указ: `INT8` извлекается и как `double`, и
-			 *       как `uint64_t`. Извлечение сличает с пределами затребованного вида само
-			 *       значение, а не вид его хранения
-			 *
-			 * @note Число, не вместимое ни в один родной вид, - целое свыше `2^64` либо
-			 *       запись точнее `double` - получает вид `EXTENDED` и хранится записью.
-			 *       Точность такого числа сохраняется целиком, а извлечение разбирает запись
-			 *
-			 * @warning Перечень этот обязан совпадать с перечнем контейнера JSON во всём,
-			 *          что есть у обоих: расхождение означало бы, что одно и то же число
-			 *          читается двумя кодеками по-разному
-			 *
-			 * \~english
-			 * @brief Kinds of the values of a document
-			 *
-			 * @details The kinds are set by the bits so that the question of the belonging of a value to
-			 *          a set of the kinds is decided by one overlaying of the bits: an exact question (`INT32`) and
-			 *          a composite one (`NUMBER`) cost exactly the same.
-			 *
-			 * @note The kind of the storage is not a directive to the extraction: an `INT8` is extracted both as a `double` and
-			 *       as a `uint64_t`. The extraction compares with the limits of the demanded kind the value
-			 *       itself rather than the kind of its storage
-			 *
-			 * @note A number not containable in any native kind — an integer above `2^64` or
-			 *       a record more precise than a `double` — receives the kind `EXTENDED` and is stored as a record.
-			 *       The precision of such a number is preserved completely, while the extraction parses the record
-			 *
-			 * @warning This list must coincide with the list of the JSON container in everything
-			 *          that both of them have: a divergence would mean that one and the same number
-			 *          is read by the two codecs differently
-			 *
-			 * \~
-			 */
-			enum class type_t : uint32_t {
-				UNDEFINED = 0x00000000, // Значения нет вовсе: ссылка недействительна
-				NUL       = 0x00000001, // Пустое значение null
-				BOOL      = 0x00000002, // Логическое значение
-				STRING    = 0x00000004, // Строка
-				SEQUENCE  = 0x00000008, // Перечень значений
-				MAPPING   = 0x00000010, // Отображение пар
-				INT8      = 0x00000020, // Целое со знаком шириною в один байт
-				INT16     = 0x00000040, // Целое со знаком шириною в два байта
-				INT32     = 0x00000080, // Целое со знаком шириною в четыре байта
-				INT64     = 0x00000100, // Целое со знаком шириною в восемь байтов
-				UINT8     = 0x00000200, // Целое без знака шириною в один байт
-				UINT16    = 0x00000400, // Целое без знака шириною в два байта
-				UINT32    = 0x00000800, // Целое без знака шириною в четыре байта
-				UINT64    = 0x00001000, // Целое без знака шириною в восемь байтов
-				FLOAT     = 0x00002000, // Дробное, точно представимое одинарной точностью
-				DOUBLE    = 0x00004000, // Дробное двойной точности
-				EXTENDED  = 0x00008000, // Число, не вместимое ни в один родной вид
-				BINARY    = 0x00010000, // Двоичное содержимое, записанное меткой !!binary
-				STAMP     = 0x00020000, // Отметка времени, признаваемая лишь наречием 1.1
-				// Целое со знаком любой ширины
-				SIGNED    = (INT8 | INT16 | INT32 | INT64),
-				// Целое без знака любой ширины
-				UNSIGNED  = (UINT8 | UINT16 | UINT32 | UINT64),
-				// Целое любой ширины и любой знаковости
-				INT       = (SIGNED | UNSIGNED),
-				// Дробное любой точности
-				REAL      = (FLOAT | DOUBLE),
-				// Число любого вида
-				NUMBER    = (INT | REAL | EXTENDED)
-			};
-
-			/**
-			 * \~russian
-			 * @brief Схемы разрешения видов скалярных значений
-			 *
-			 * @details Схема решает, чем окажется запись, оградою не обнесённая: `0777` есть
-			 *          число 511 по наречию 1.1 и строка по наречию 1.2, а `12:30` - число 750 по
-			 *          первому и строка по второму.
-			 *
-			 * @note Схема действует лишь при разборе: вид значения разрешается однажды, а
-			 *       извлечение его только преобразует. Смена схемы после разбора ничего не
-			 *       переразрешает - иначе одно и то же дерево отвечало бы на один вопрос
-			 *       по-разному в зависимости от того, когда спросили
-			 *
-			 * \~english
-			 * @brief Schemas of the resolution of the kinds of the scalar values
-			 *
-			 * @details A schema decides what a record not surrounded by a quoting turns out to be: `0777` is
-			 *          the number 511 by the 1.1 dialect and a string by the 1.2 dialect, while `12:30` — the number 750 by
-			 *          the first one and a string by the second one.
-			 *
-			 * @note A schema acts only at the parsing: the kind of a value is resolved once, while
-			 *       its extraction only converts it. A change of the schema after the parsing re-resolves
-			 *       nothing — otherwise one and the same tree would answer one question
-			 *       differently depending on when it was asked
-			 *
-			 * \~
-			 */
-			enum class schema_t : uint8_t {
-				FAILSAFE = 0x00, // Всякое скалярное значение есть строка
-				JSON     = 0x01, // Разрешение строго по правилам JSON
-				CORE     = 0x02, // Ядровая схема наречия 1.2, правило по умолчанию
-				LEGACY   = 0x03  // Схема наречия 1.1: yes и no, восьмеричные с ведущим нулём, шестидесятиричные, отметки времени
-			};
+			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (~0ull);
 
 			/**
 			 * \~russian
@@ -748,6 +597,354 @@ namespace awh {
 			 *       them and to write by them a parsing that will never work
 			 *
 			 */
+
+			/**
+			 * \~russian
+			 * @brief Виды построения перечня либо отображения
+			 *
+			 * \~english
+			 * @brief Kinds of the construction of a sequence or of a mapping
+			 *
+			 * \~
+			 */
+			enum class layout_t : uint8_t {
+				BLOCK = 0x00, // Построение отступом
+				FLOW  = 0x01  // Построение скобками, как в JSON
+			};
+			/**
+			 * \~russian
+			 * @brief Правила преобразования чисел при разборе
+			 *
+			 * @details Правило задаёт лишь то, как поступать с числом, не вместимым ни в один
+			 *          родной вид, - целым свыше `2^64` либо записью точнее `double`
+			 *
+			 * \~english
+			 * @brief Rules of the conversion of the numbers at the parsing
+			 *
+			 * @details The rule sets only how to handle a number not containable in any
+			 *          native kind — an integer above `2^64` or a record more precise than a `double`
+			 *
+			 * \~
+			 */
+			enum class number_t : uint8_t {
+				NATIVE = 0x00, // Число, не вместимое ни в один родной вид, хранится записью
+				CHECK  = 0x01  // Число, не вместимое ни в один родной вид, есть отказ разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Правила усечения переводов строк в конце блочного значения
+			 *
+			 * \~english
+			 * @brief Rules of the chomping of the line breaks at the end of a block scalar
+			 *
+			 * \~
+			 */
+			enum class chomp_t : uint8_t {
+				CLIP  = 0x00, // Оставляется один перевод строки, правило по умолчанию
+				STRIP = 0x01, // Переводы строк снимаются все
+				KEEP  = 0x02  // Переводы строк сохраняются все
+			};
+			/**
+			 * \~russian
+			 * @note Настройка эта стояла прежде лишь у ДВУХ кодеков рамки из семи - YAML и JSON, -
+			 *       тогда как довод выше гласит, что правило положено ОДИНАКОВЫМ для
+			 *       всех. Хуже того, у TOML и INI отказ был БЕЗУСЛОВЕН и снабжён доводом,
+			 *       ПРОТИВОПОЛОЖНЫМ здешнему: там писано, что отказ лучше подмены, ибо подмена
+			 *       меняет данные молча. Два довода, друг другу перечащих, стояли в одной рамке
+			 *
+			 * @note Разведено 08.09.2026 в пользу общего довода: настройка заведена у TOML и
+			 *       INI тем же составом и тем же умолчанием, а запись о расхождении снята ВМЕСТЕ
+			 *       с заведением, а не после него. У CSV, XML и CEF её по-прежнему нет - кодеки
+			 *       эти чужие, и расхождение вынесено к тем кодекам
+			 *
+			 * \~english
+			 * @note This setting stood formerly only at TWO codecs of the frame of seven — YAML and JSON —
+			 *       while the argument above says that the rule is bound to be COMMON for all of them. Worse
+			 *       still, at TOML and INI the refusal was UNCONDITIONAL and furnished with an argument
+			 *       OPPOSITE to this one: there it is written that a refusal is better than a substitution, for
+			 *       a substitution changes the data silently. Two arguments contradicting each other stood in
+			 *       one frame
+			 *
+			 * @note Divided 2026-09-08 in favour of the common argument: the setting was instituted at TOML and
+			 *       INI by the same composition and the same default, and the record about the divergence was
+			 *       removed TOGETHER with the institution, and not after it. At CSV, XML and CEF it is still
+			 *       absent — those codecs are foreign, and the divergence is carried out to those codecs
+			 *
+			 */
+			enum class malformed_t : uint8_t {
+				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
+				REFUSE  = 0x01, // Запись отвергается, ничего не записав
+				PASS    = 0x02  // Байты пропускаются как есть
+			};
+			/**
+			 * \~russian
+			 * @brief Схемы разрешения видов скалярных значений
+			 *
+			 * @details Схема решает, чем окажется запись, оградою не обнесённая: `0777` есть
+			 *          число 511 по наречию 1.1 и строка по наречию 1.2, а `12:30` - число 750 по
+			 *          первому и строка по второму.
+			 *
+			 * @note Схема действует лишь при разборе: вид значения разрешается однажды, а
+			 *       извлечение его только преобразует. Смена схемы после разбора ничего не
+			 *       переразрешает - иначе одно и то же дерево отвечало бы на один вопрос
+			 *       по-разному в зависимости от того, когда спросили
+			 *
+			 * \~english
+			 * @brief Schemas of the resolution of the kinds of the scalar values
+			 *
+			 * @details A schema decides what a record not surrounded by a quoting turns out to be: `0777` is
+			 *          the number 511 by the 1.1 dialect and a string by the 1.2 dialect, while `12:30` — the number 750 by
+			 *          the first one and a string by the second one.
+			 *
+			 * @note A schema acts only at the parsing: the kind of a value is resolved once, while
+			 *       its extraction only converts it. A change of the schema after the parsing re-resolves
+			 *       nothing — otherwise one and the same tree would answer one question
+			 *       differently depending on when it was asked
+			 *
+			 * \~
+			 */
+			enum class schema_t : uint8_t {
+				FAILSAFE = 0x00, // Всякое скалярное значение есть строка
+				JSON     = 0x01, // Разрешение строго по правилам JSON
+				CORE     = 0x02, // Ядровая схема наречия 1.2, правило по умолчанию
+				LEGACY   = 0x03  // Схема наречия 1.1: yes и no, восьмеричные с ведущим нулём, шестидесятиричные, отметки времени
+			};
+			/**
+			 * \~russian
+			 * @brief Правила обращения с повторяющимся именем пары отображения
+			 *
+			 * @details Описание повторяющиеся имена запрещает, однако реализации расходятся:
+			 *          одни берут первое значение, другие последнее, третьи отвергают текст.
+			 *
+			 * @warning Перечень этот и порядок его членов совпадают с перечнем контейнера
+			 *          JSON намеренно
+			 *
+			 * \~english
+			 * @brief Rules of the handling of a repeating name of a pair of a mapping
+			 *
+			 * @details The specification forbids the repeating names, however the implementations diverge:
+			 *          some take the first value, others the last one, the third ones reject the text.
+			 *
+			 * @warning This list and the order of its members coincide with the list of the JSON
+			 *          container deliberately
+			 *
+			 * \~
+			 */
+			enum class duplicate_t : uint8_t {
+				ERROR = 0x00, // Отказ разбора, правило по умолчанию
+				FIRST = 0x01, // Берётся первое встреченное значение, прочие отбрасываются
+				LAST  = 0x02, // Берётся последнее встреченное значение
+				KEEP  = 0x03  // Удерживаются все, доступ по имени отдаёт первое
+			};
+			/**
+			 * \~russian
+			 * @brief Виды записи скалярного значения
+			 *
+			 * @details Вид записи хранится при узле не ради красоты, а ради перезаписи:
+			 *          значение, записанное человеком дословной оградой, обязано такою и остаться,
+			 *          иначе правка одного ключа переписала бы весь файл.
+			 *
+			 * \~english
+			 * @brief Kinds of the notation of a scalar value
+			 *
+			 * @details The kind of the notation is held at a node not for the sake of the beauty but for the sake of the rewriting:
+			 *          a value written by a person with a literal quoting must remain such,
+			 *          otherwise an editing of one key would rewrite the whole file.
+			 *
+			 * \~
+			 */
+			enum class style_t : uint8_t {
+				PLAIN   = 0x00, // Значение записано без ограды
+				SINGLE  = 0x01, // Значение обнесено одинарной оградой
+				DOUBLE  = 0x02, // Значение обнесено двойной оградой, отменяющие последовательности признаются
+				LITERAL = 0x03, // Блочное значение с сохранением переводов строк
+				FOLDED  = 0x04  // Блочное значение со свёрткой строк пробелом
+			};
+			/**
+			 * \~russian
+			 * @brief Виды узлов документа
+			 *
+			 * @details Виды эти отвечают описанию: узел есть либо скалярное значение, либо
+			 *          перечень, либо отображение. Разделение скалярных значений по содержимому
+			 *          принадлежит не узлу, а виду значения.
+			 *
+			 * @note Ссылка видом узла не является: дерево её раскрывает, и в дереве стоит
+			 *       уже тот узел, на который ссылались. Событие ссылки есть лишь у потока
+			 *
+			 * \~english
+			 * @brief Kinds of the nodes of a document
+			 *
+			 * @details These kinds correspond to the specification: a node is either a scalar value, or
+			 *          a sequence, or a mapping. The division of the scalar values by their content
+			 *          belongs not to the node but to the kind of the value.
+			 *
+			 * @note An alias is not a kind of a node: the tree expands it, and in the tree there stands
+			 *       already that node which was referred to. The event of an alias exists only in the stream
+			 *
+			 * \~
+			 */
+			enum class kind_t : uint8_t {
+				NONE     = 0x00, // Узел не определён либо ссылка недействительна
+				NUL      = 0x01, // Пустое значение null
+				BOOL     = 0x02, // Логическое значение
+				NUMBER   = 0x03, // Число любого вида
+				STRING   = 0x04, // Строка
+				BINARY   = 0x05, // Двоичное содержимое, записанное меткой !!binary
+				STAMP    = 0x06, // Отметка времени, признаваемая лишь наречием 1.1
+				SEQUENCE = 0x07, // Перечень значений
+				MAPPING  = 0x08  // Отображение пар
+			};
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста
+			 *
+			 * @details Описание предписывает **UTF-8**, **UTF-16** и **UTF-32** и дозволяет
+			 *          метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
+			 *          отсутствии - по расположению нулевых байтов в первых четырёх октетах.
+			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - описанием
+			 *       не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
+			 *       записан иначе, и отвергать его целиком значило бы оставлять потребителя без
+			 *       всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
+			 *       опознанию не поддаются: принимаются только навязанными извне
+			 *
+			 * \~english
+			 * @brief Encodings of the source text
+			 *
+			 * @details The specification prescribes **UTF-8**, **UTF-16** and **UTF-32** and permits
+			 *          a byte order mark at the beginning of a stream. The encoding is recognised by the mark, while at its
+			 *          absence — by the arrangement of the zero bytes in the first four octets.
+			 *
+			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — are not prescribed
+			 *       by the specification and are made beyond it: a file received from a foreign tooling is
+			 *       sometimes written otherwise, and to refuse it wholly would mean to leave the consumer
+			 *       without any means to read it. They have no byte order marks at all and are not amenable
+			 *       to recognition: they are accepted only as imposed from outside
+			 *
+			 * \~
+			 */
+			enum class encoding_t : uint8_t {
+				NONE    = 0x00, // Кодировка не определена, определяется по метке порядка байтов
+				UTF8    = 0x01, // Кодировка UTF-8
+				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
+				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
+				UTF32LE = 0x04, // Кодировка UTF-32 с обратным порядком байтов
+				UTF32BE = 0x05, // Кодировка UTF-32 с прямым порядком байтов
+				LATIN1  = 0x06, // Кодировка ISO-8859-1
+				ASCII   = 0x07, // Кодировка US-ASCII
+				CP1252  = 0x08  // Кодировка Windows-1252
+			};
+			/**
+			 * \~russian
+			 * @brief Виды событий чтения текста
+			 *
+			 * @details Названия событий взяты в точности из эталонного набора
+			 *          `yaml-test-suite`: он печатает ожидаемый исход разбора рядом событий, и
+			 *          совпадение имён обращает сличение с ним в сличение строка в строку, без
+			 *          переводчика между моделями.
+			 *
+			 * @note Ссылка выдаётся событием, а не раскрывается: раскрытие есть дело дерева
+			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a text
+			 *
+			 * @details The names of the events are taken exactly from the reference set
+			 *          `yaml-test-suite`: it prints the expected outcome of a parsing as a series of the events, and
+			 *          the coincidence of the names turns the comparison with it into a comparison line by line, without
+			 *          a translator between the models.
+			 *
+			 * @note An alias is issued by an event rather than expanded: the expansion is the business of the tree
+			 *
+			 * \~
+			 */
+			enum class event_t : uint8_t {
+				NONE            = 0x00, // Событие не определено
+				STREAM_START    = 0x01, // Начало потока документов
+				STREAM_END      = 0x02, // Конец потока документов
+				DOCUMENT_START  = 0x03, // Начало очередного документа
+				DOCUMENT_END    = 0x04, // Конец очередного документа
+				MAPPING_START   = 0x05, // Начало отображения пар
+				MAPPING_END     = 0x06, // Конец отображения пар
+				SEQUENCE_START  = 0x07, // Начало перечня значений
+				SEQUENCE_END    = 0x08, // Конец перечня значений
+				SCALAR          = 0x09, // Скалярное значение
+				ALIAS           = 0x0A, // Ссылка на объявленную метку
+				COMMENT         = 0x0B, // Примечание, выдаётся лишь при затребованной выдаче
+				BLANK           = 0x0C, // Пустая строка, выдаётся лишь при затребованной выдаче
+				FINISH          = 0x0D  // Текст разобран до конца, событие видно после цикла разбора
+			};
+			/**
+			 * \~russian
+			 * @brief Виды значений документа
+			 *
+			 * @details Виды заданы разрядами, чтобы вопрос о принадлежности значения к
+			 *          набору видов решался одним наложением разрядов: точный вопрос (`INT32`) и
+			 *          сборный (`NUMBER`) стоят ровно одинаково.
+			 *
+			 * @note Вид хранения извлечению не указ: `INT8` извлекается и как `double`, и
+			 *       как `uint64_t`. Извлечение сличает с пределами затребованного вида само
+			 *       значение, а не вид его хранения
+			 *
+			 * @note Число, не вместимое ни в один родной вид, - целое свыше `2^64` либо
+			 *       запись точнее `double` - получает вид `EXTENDED` и хранится записью.
+			 *       Точность такого числа сохраняется целиком, а извлечение разбирает запись
+			 *
+			 * @warning Перечень этот обязан совпадать с перечнем контейнера JSON во всём,
+			 *          что есть у обоих: расхождение означало бы, что одно и то же число
+			 *          читается двумя кодеками по-разному
+			 *
+			 * \~english
+			 * @brief Kinds of the values of a document
+			 *
+			 * @details The kinds are set by the bits so that the question of the belonging of a value to
+			 *          a set of the kinds is decided by one overlaying of the bits: an exact question (`INT32`) and
+			 *          a composite one (`NUMBER`) cost exactly the same.
+			 *
+			 * @note The kind of the storage is not a directive to the extraction: an `INT8` is extracted both as a `double` and
+			 *       as a `uint64_t`. The extraction compares with the limits of the demanded kind the value
+			 *       itself rather than the kind of its storage
+			 *
+			 * @note A number not containable in any native kind — an integer above `2^64` or
+			 *       a record more precise than a `double` — receives the kind `EXTENDED` and is stored as a record.
+			 *       The precision of such a number is preserved completely, while the extraction parses the record
+			 *
+			 * @warning This list must coincide with the list of the JSON container in everything
+			 *          that both of them have: a divergence would mean that one and the same number
+			 *          is read by the two codecs differently
+			 *
+			 * \~
+			 */
+			enum class type_t : uint32_t {
+				UNDEFINED = 0x00000000, // Значения нет вовсе: ссылка недействительна
+				NUL       = 0x00000001, // Пустое значение null
+				BOOL      = 0x00000002, // Логическое значение
+				STRING    = 0x00000004, // Строка
+				SEQUENCE  = 0x00000008, // Перечень значений
+				MAPPING   = 0x00000010, // Отображение пар
+				INT8      = 0x00000020, // Целое со знаком шириною в один байт
+				INT16     = 0x00000040, // Целое со знаком шириною в два байта
+				INT32     = 0x00000080, // Целое со знаком шириною в четыре байта
+				INT64     = 0x00000100, // Целое со знаком шириною в восемь байтов
+				UINT8     = 0x00000200, // Целое без знака шириною в один байт
+				UINT16    = 0x00000400, // Целое без знака шириною в два байта
+				UINT32    = 0x00000800, // Целое без знака шириною в четыре байта
+				UINT64    = 0x00001000, // Целое без знака шириною в восемь байтов
+				FLOAT     = 0x00002000, // Дробное, точно представимое одинарной точностью
+				DOUBLE    = 0x00004000, // Дробное двойной точности
+				EXTENDED  = 0x00008000, // Число, не вместимое ни в один родной вид
+				BINARY    = 0x00010000, // Двоичное содержимое, записанное меткой !!binary
+				STAMP     = 0x00020000, // Отметка времени, признаваемая лишь наречием 1.1
+				// Целое со знаком любой ширины
+				SIGNED = (INT8 | INT16 | INT32 | INT64),
+				// Целое без знака любой ширины
+				UNSIGNED = (UINT8 | UINT16 | UINT32 | UINT64),
+				// Целое любой ширины и любой знаковости
+				INT = (SIGNED | UNSIGNED),
+				// Дробное любой точности
+				REAL = (FLOAT | DOUBLE),
+				// Число любого вида
+				NUMBER = (INT | REAL | EXTENDED)
+			};
 			/**
 			 * \~russian
 			 * @brief Коды ошибок разбора текста
@@ -804,325 +1001,109 @@ namespace awh {
 			 *          разу не выданный, есть либо застава с доводом, либо путь, проверкою не взятый
 			 */
 			enum class error_t : uint8_t {
-				NONE                  = 0x00, // Ошибок не обнаружено
-				INTERNAL              = 0x01, // Внутренняя ошибка разбора
-				UNEXPECTED_EOF        = 0x02, // Текст оборвался посреди значения
-				INVALID_CHARACTER     = 0x03, // Знак недопустим в этом месте текста
-				INVALID_ENCODING      = 0x04, // Последовательность байтов не отвечает объявленной кодировке
-				UNSUPPORTED_ENCODING  = 0x05, // Объявленная кодировка не поддерживается
-				INVALID_INDENTATION   = 0x06, // Отступ не отвечает ни одному из открытых уровней
-				TAB_IN_INDENTATION    = 0x07, // Отступ содержит знак горизонтальной подачи, описанием запрещённый
-				UNTERMINATED_SCALAR   = 0x08, // Скалярное значение не закрыто оградой до конца текста
-				INVALID_ESCAPE        = 0x09, // Отменяющая последовательность не опознана
-				INVALID_UNICODE       = 0x0A, // Запись знака Юникода содержит недопустимые знаки
-				UNPAIRED_SURROGATE    = 0x0B, // Суррогат не образует пары
-				INVALID_BLOCK_HEADER  = 0x0C, // Заголовок блочного значения построен ошибочно
-				INVALID_NUMBER        = 0x0D, // Запись числа не отвечает действующей схеме
-				NUMBER_OUT_OF_RANGE   = 0x0E, // Число не представимо затребованным видом
-				INVALID_BINARY        = 0x0F, // Содержимое метки !!binary не отвечает записи base64
-				INVALID_STAMP         = 0x10, // Ошибочное построение отметки времени
-				EXPECTED_VALUE        = 0x11, // Ожидалось значение
-				EXPECTED_KEY          = 0x12, // Ожидалось имя пары отображения
-				EXPECTED_COLON        = 0x13, // Ожидалось двоеточие после имени пары
-				EXPECTED_COMMA        = 0x14, // Ожидалась запятая либо закрывающая скобка поточного построения
-				UNCLOSED_FLOW         = 0x15, // Поточное построение не закрыто скобкой
-				MIXED_COLLECTION      = 0x16, // Перечень и отображение смешаны на одном уровне
-				DUPLICATE_KEY         = 0x17, // Имя пары отображения объявлено повторно
-				COMPLEX_KEY           = 0x18, // Составное имя пары при запрещённых составных именах
-				UNKNOWN_ALIAS         = 0x19, // Ссылка указывает на метку, ещё не объявленную
-				DUPLICATE_ANCHOR      = 0x1A, // Метка с таким именем уже объявлена при строгом разборе
-				RECURSIVE_ALIAS       = 0x1B, // Ссылка указывает сама на себя через цепочку меток
-				EXPANSION_EXCEEDED    = 0x1C, // Раскрытие ссылок порождает больше узлов, чем дозволено
-				INVALID_TAG           = 0x1D, // Метка типа построена ошибочно
-				UNKNOWN_TAG_HANDLE    = 0x1E, // Сокращение метки типа не объявлено директивой %TAG
-				TAG_MISMATCH          = 0x1F, // Содержимое не отвечает виду, заданному меткой типа
-				INVALID_DIRECTIVE     = 0x20, // Директива построена ошибочно
-				UNSUPPORTED_VERSION   = 0x21, // Наречие, объявленное директивой %YAML, не поддерживается
-				UNEXPECTED_DOCUMENT   = 0x22, // Начало нового документа посреди значения
-				TRAILING_CHARACTERS   = 0x23, // Знаки за окончанием документа
-				DEPTH_EXCEEDED        = 0x24, // Глубина вложенности превышает допустимую
-				SCALAR_TOO_LONG       = 0x25, // Длина скалярного значения превышает допустимую
-				NUMBER_TOO_LONG       = 0x26, // Длина записи числа превышает допустимую
-				ANCHOR_TOO_LONG       = 0x27, // Длина имени метки превышает допустимую
-				TOO_MANY_NODES        = 0x28, // Количество узлов документа превышает допустимое
-				EMPTY_TEXT            = 0x29, // Текст пуст, а документ затребован
-				OVERFLOW_LIMIT        = 0x2A, // Превышен предел, ЗАДАННЫЙ НАСТРОЙКАМИ разбора: разрядность хранилища сюда не входит
-				CONFLICTING_SETTINGS  = 0x2B, // Настройки записи противоречат толкованию читающего
-				FILE_NOT_OPENED       = 0x2C, // Файл документа открыть не удалось
-				UNKNOWN_NODE          = 0x2D, // Узла по такому пути документ не несёт
-				INVALID_PATH          = 0x2E, // Путь к узлу построен ошибочно
-				FILE_NOT_WRITTEN      = 0x31, // Текст документа записать в файл не удалось
-				UNEXPECTED_CONTENT    = 0x2F, // Запись не отвечает построению, на этом месте открытому
-				STORAGE_EXHAUSTED     = 0x30, // Разбираемый текст не помещается в разрядность хранилища
-				FILE_NOT_READ         = 0x32, // Текст документа из файла прочитать не удалось
-				TEXT_ALREADY_ENDED    = 0x33, // Подача текста продолжена после объявленного конца его
-				ENCODING_ALREADY_CHOSEN = 0x34, // Кодировка сменена посреди подачи текста
-				SETTINGS_ALREADY_APPLIED = 0x35 // Настройки сменены посреди подачи текста
+				NONE                     = 0x00, // Ошибок не обнаружено
+				INTERNAL                 = 0x01, // Внутренняя ошибка разбора
+				UNEXPECTED_EOF           = 0x02, // Текст оборвался посреди значения
+				INVALID_CHARACTER        = 0x03, // Знак недопустим в этом месте текста
+				INVALID_ENCODING         = 0x04, // Последовательность байтов не отвечает объявленной кодировке
+				UNSUPPORTED_ENCODING     = 0x05, // Объявленная кодировка не поддерживается
+				INVALID_INDENTATION      = 0x06, // Отступ не отвечает ни одному из открытых уровней
+				TAB_IN_INDENTATION       = 0x07, // Отступ содержит знак горизонтальной подачи, описанием запрещённый
+				UNTERMINATED_SCALAR      = 0x08, // Скалярное значение не закрыто оградой до конца текста
+				INVALID_ESCAPE           = 0x09, // Отменяющая последовательность не опознана
+				INVALID_UNICODE          = 0x0A, // Запись знака Юникода содержит недопустимые знаки
+				UNPAIRED_SURROGATE       = 0x0B, // Суррогат не образует пары
+				INVALID_BLOCK_HEADER     = 0x0C, // Заголовок блочного значения построен ошибочно
+				INVALID_NUMBER           = 0x0D, // Запись числа не отвечает действующей схеме
+				NUMBER_OUT_OF_RANGE      = 0x0E, // Число не представимо затребованным видом
+				INVALID_BINARY           = 0x0F, // Содержимое метки !!binary не отвечает записи base64
+				INVALID_STAMP            = 0x10, // Ошибочное построение отметки времени
+				EXPECTED_VALUE           = 0x11, // Ожидалось значение
+				EXPECTED_KEY             = 0x12, // Ожидалось имя пары отображения
+				EXPECTED_COLON           = 0x13, // Ожидалось двоеточие после имени пары
+				EXPECTED_COMMA           = 0x14, // Ожидалась запятая либо закрывающая скобка поточного построения
+				UNCLOSED_FLOW            = 0x15, // Поточное построение не закрыто скобкой
+				MIXED_COLLECTION         = 0x16, // Перечень и отображение смешаны на одном уровне
+				DUPLICATE_KEY            = 0x17, // Имя пары отображения объявлено повторно
+				COMPLEX_KEY              = 0x18, // Составное имя пары при запрещённых составных именах
+				UNKNOWN_ALIAS            = 0x19, // Ссылка указывает на метку, ещё не объявленную
+				DUPLICATE_ANCHOR         = 0x1A, // Метка с таким именем уже объявлена при строгом разборе
+				RECURSIVE_ALIAS          = 0x1B, // Ссылка указывает сама на себя через цепочку меток
+				EXPANSION_EXCEEDED       = 0x1C, // Раскрытие ссылок порождает больше узлов, чем дозволено
+				INVALID_TAG              = 0x1D, // Метка типа построена ошибочно
+				UNKNOWN_TAG_HANDLE       = 0x1E, // Сокращение метки типа не объявлено директивой %TAG
+				TAG_MISMATCH             = 0x1F, // Содержимое не отвечает виду, заданному меткой типа
+				INVALID_DIRECTIVE        = 0x20, // Директива построена ошибочно
+				UNSUPPORTED_VERSION      = 0x21, // Наречие, объявленное директивой %YAML, не поддерживается
+				UNEXPECTED_DOCUMENT      = 0x22, // Начало нового документа посреди значения
+				TRAILING_CHARACTERS      = 0x23, // Знаки за окончанием документа
+				DEPTH_EXCEEDED           = 0x24, // Глубина вложенности превышает допустимую
+				SCALAR_TOO_LONG          = 0x25, // Длина скалярного значения превышает допустимую
+				NUMBER_TOO_LONG          = 0x26, // Длина записи числа превышает допустимую
+				ANCHOR_TOO_LONG          = 0x27, // Длина имени метки превышает допустимую
+				TOO_MANY_NODES           = 0x28, // Количество узлов документа превышает допустимое
+				EMPTY_TEXT               = 0x29, // Текст пуст, а документ затребован
+				OVERFLOW_LIMIT           = 0x2A, // Превышен предел, ЗАДАННЫЙ НАСТРОЙКАМИ разбора: разрядность хранилища сюда не входит
+				CONFLICTING_SETTINGS     = 0x2B, // Настройки записи противоречат толкованию читающего
+				FILE_NOT_OPENED          = 0x2C, // Файл документа открыть не удалось
+				UNKNOWN_NODE             = 0x2D, // Узла по такому пути документ не несёт
+				INVALID_PATH             = 0x2E, // Путь к узлу построен ошибочно
+				FILE_NOT_WRITTEN         = 0x31, // Текст документа записать в файл не удалось
+				UNEXPECTED_CONTENT       = 0x2F, // Запись не отвечает построению, на этом месте открытому
+				STORAGE_EXHAUSTED        = 0x30, // Разбираемый текст не помещается в разрядность хранилища
+				FILE_NOT_READ            = 0x32, // Текст документа из файла прочитать не удалось
+				TEXT_ALREADY_ENDED       = 0x33, // Подача текста продолжена после объявленного конца его
+				ENCODING_ALREADY_CHOSEN  = 0x34, // Кодировка сменена посреди подачи текста
+				SETTINGS_ALREADY_APPLIED = 0x35  // Настройки сменены посреди подачи текста
 			};
 
 			/**
 			 * \~russian
-			 * @brief Виды событий чтения текста
+			 * @brief Структура числа, разобранное из записи своей
 			 *
-			 * @details Названия событий взяты в точности из эталонного набора
-			 *          `yaml-test-suite`: он печатает ожидаемый исход разбора рядом событий, и
-			 *          совпадение имён обращает сличение с ним в сличение строка в строку, без
-			 *          переводчика между моделями.
-			 *
-			 * @note Ссылка выдаётся событием, а не раскрывается: раскрытие есть дело дерева
+			 * @details Разобранное кладётся во все три поля разом, а какое из них взято -
+			 *          сказывает вид числа: целое со знаком лежит в первом, целое без знака во втором,
+			 *          дробное в третьем.
 			 *
 			 * \~english
-			 * @brief Kinds of the events of the reading of a text
+			 * @brief The structure of a number, broken down from its representation
 			 *
-			 * @details The names of the events are taken exactly from the reference set
-			 *          `yaml-test-suite`: it prints the expected outcome of a parsing as a series of the events, and
-			 *          the coincidence of the names turns the comparison with it into a comparison line by line, without
-			 *          a translator between the models.
-			 *
-			 * @note An alias is issued by an event rather than expanded: the expansion is the business of the tree
+			 * @details What is parsed is placed into all the three fields at once, and which of them is taken
+			 *          is told by the kind of the number. An integer with a sign lies in the first,
+			 *          an integer without a sign in the second, a fraction in the third.
 			 *
 			 * \~
 			 */
-			enum class event_t : uint8_t {
-				NONE            = 0x00, // Событие не определено
-				STREAM_START    = 0x01, // Начало потока документов
-				STREAM_END      = 0x02, // Конец потока документов
-				DOCUMENT_START  = 0x03, // Начало очередного документа
-				DOCUMENT_END    = 0x04, // Конец очередного документа
-				MAPPING_START   = 0x05, // Начало отображения пар
-				MAPPING_END     = 0x06, // Конец отображения пар
-				SEQUENCE_START  = 0x07, // Начало перечня значений
-				SEQUENCE_END    = 0x08, // Конец перечня значений
-				SCALAR          = 0x09, // Скалярное значение
-				ALIAS           = 0x0A, // Ссылка на объявленную метку
-				COMMENT         = 0x0B, // Примечание, выдаётся лишь при затребованной выдаче
-				BLANK           = 0x0C, // Пустая строка, выдаётся лишь при затребованной выдаче
-				FINISH          = 0x0D  // Текст разобран до конца, событие видно после цикла разбора
-			};
-
+			typedef struct __AWH_SHARED_EXPORT__ Numeric {
+				// Дробное число двойной точности
+				double real;
+				// Целое число со знаком
+				int64_t integer;
+				// Целое число без знака
+				uint64_t natural;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Numeric() noexcept;
+			} numeric_t;
 			/**
 			 * \~russian
-			 * @brief Кодировки исходного текста
-			 *
-			 * @details Описание предписывает **UTF-8**, **UTF-16** и **UTF-32** и дозволяет
-			 *          метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
-			 *          отсутствии - по расположению нулевых байтов в первых четырёх октетах.
-			 *
-			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - описанием
-			 *       не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
-			 *       записан иначе, и отвергать его целиком значило бы оставлять потребителя без
-			 *       всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
-			 *       опознанию не поддаются: принимаются только навязанными извне
-			 *
-			 * \~english
-			 * @brief Encodings of the source text
-			 *
-			 * @details The specification prescribes **UTF-8**, **UTF-16** and **UTF-32** and permits
-			 *          a byte order mark at the beginning of a stream. The encoding is recognised by the mark, while at its
-			 *          absence — by the arrangement of the zero bytes in the first four octets.
-			 *
-			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — are not prescribed
-			 *       by the specification and are made beyond it: a file received from a foreign tooling is
-			 *       sometimes written otherwise, and to refuse it wholly would mean to leave the consumer
-			 *       without any means to read it. They have no byte order marks at all and are not amenable
-			 *       to recognition: they are accepted only as imposed from outside
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена, определяется по метке порядка байтов
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				UTF32LE = 0x04, // Кодировка UTF-32 с обратным порядком байтов
-				UTF32BE = 0x05, // Кодировка UTF-32 с прямым порядком байтов
-				LATIN1  = 0x06, // Кодировка ISO-8859-1
-				ASCII   = 0x07, // Кодировка US-ASCII
-				CP1252  = 0x08  // Кодировка Windows-1252
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с повторяющимся именем пары отображения
-			 *
-			 * @details Описание повторяющиеся имена запрещает, однако реализации расходятся:
-			 *          одни берут первое значение, другие последнее, третьи отвергают текст.
-			 *
-			 * @warning Перечень этот и порядок его членов совпадают с перечнем контейнера
-			 *          JSON намеренно
-			 *
-			 * \~english
-			 * @brief Rules of the handling of a repeating name of a pair of a mapping
-			 *
-			 * @details The specification forbids the repeating names, however the implementations diverge:
-			 *          some take the first value, others the last one, the third ones reject the text.
-			 *
-			 * @warning This list and the order of its members coincide with the list of the JSON
-			 *          container deliberately
-			 *
-			 * \~
-			 */
-			enum class duplicate_t : uint8_t {
-				ERROR = 0x00, // Отказ разбора, правило по умолчанию
-				FIRST = 0x01, // Берётся первое встреченное значение, прочие отбрасываются
-				LAST  = 0x02, // Берётся последнее встреченное значение
-				KEEP  = 0x03  // Удерживаются все, доступ по имени отдаёт первое
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила преобразования чисел при разборе
-			 *
-			 * @details Правило задаёт лишь то, как поступать с числом, не вместимым ни в один
-			 *          родной вид, - целым свыше `2^64` либо записью точнее `double`
-			 *
-			 * \~english
-			 * @brief Rules of the conversion of the numbers at the parsing
-			 *
-			 * @details The rule sets only how to handle a number not containable in any
-			 *          native kind — an integer above `2^64` or a record more precise than a `double`
-			 *
-			 * \~
-			 */
-			enum class number_t : uint8_t {
-				NATIVE = 0x00, // Число, не вместимое ни в один родной вид, хранится записью
-				CHECK  = 0x01  // Число, не вместимое ни в один родной вид, есть отказ разбора
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды записи скалярного значения
-			 *
-			 * @details Вид записи хранится при узле не ради красоты, а ради перезаписи:
-			 *          значение, записанное человеком дословной оградой, обязано такою и остаться,
-			 *          иначе правка одного ключа переписала бы весь файл.
-			 *
-			 * \~english
-			 * @brief Kinds of the notation of a scalar value
-			 *
-			 * @details The kind of the notation is held at a node not for the sake of the beauty but for the sake of the rewriting:
-			 *          a value written by a person with a literal quoting must remain such,
-			 *          otherwise an editing of one key would rewrite the whole file.
-			 *
-			 * \~
-			 */
-			enum class style_t : uint8_t {
-				PLAIN   = 0x00, // Значение записано без ограды
-				SINGLE  = 0x01, // Значение обнесено одинарной оградой
-				DOUBLE  = 0x02, // Значение обнесено двойной оградой, отменяющие последовательности признаются
-				LITERAL = 0x03, // Блочное значение с сохранением переводов строк
-				FOLDED  = 0x04  // Блочное значение со свёрткой строк пробелом
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила усечения переводов строк в конце блочного значения
-			 *
-			 * \~english
-			 * @brief Rules of the chomping of the line breaks at the end of a block scalar
-			 *
-			 * \~
-			 */
-			enum class chomp_t : uint8_t {
-				CLIP  = 0x00, // Оставляется один перевод строки, правило по умолчанию
-				STRIP = 0x01, // Переводы строк снимаются все
-				KEEP  = 0x02  // Переводы строк сохраняются все
-			};
-
-			/**
-			 * \~russian
-			 * @brief Виды построения перечня либо отображения
-			 *
-			 * \~english
-			 * @brief Kinds of the construction of a sequence or of a mapping
-			 *
-			 * \~
-			 */
-			enum class layout_t : uint8_t {
-				BLOCK = 0x00, // Построение отступом
-				FLOW  = 0x01  // Построение скобками, как в JSON
-			};
-
-			/**
-			 * \~russian
-			 * @brief Правила обращения с негодной последовательностью UTF-8 при записи
-			 *
-			 * @details Чтение байты, кодировке не отвечающие, отвергает - того требует
-			 *          описание. Запись же их пропускала, и кодек выдавал текст, какой сам же
-			 *          прочитать не мог. Случай этот не выдуманный: значения, взятые из журналов и
-			 *          сетевых сообщений, битые байты несут обычным делом.
-			 *
-			 * @details Правилом по умолчанию взята замена, а не отказ. Отказ записи
-			 *          обрывает **весь** текст, а не одно значение, и один битый байт в одном
-			 *          сообщении обнулил бы целый документ. Знак замены же предписан самим
-			 *          Юникодом и в выданном тексте виден глазом, а не проглатывается молча.
-			 *
-			 * @note Правило это положено одинаковым у всех кодеков
-			 *
-			 * \~english
-			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
-			 *
-			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
-			 *          requires that. The writing, however, passed them through, and the codec gave away a text which it itself
-			 *          could not read. This case is not invented: the values taken from the logs and
-			 *          the network messages carry the broken bytes as a usual matter.
-			 *
-			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
-			 *          cuts off the **whole** text rather than a single value, and one broken byte in one
-			 *          message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
-			 *          and is visible to the eye in the given text rather than being swallowed silently.
-			 *
-			 * @note This rule is decided by the owner to be identical for all the codecs
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
-			 * @note Настройка эта стояла прежде лишь у ДВУХ кодеков рамки из семи - YAML и JSON, -
-			 *       тогда как довод выше гласит, что правило положено ОДИНАКОВЫМ для
-			 *       всех. Хуже того, у TOML и INI отказ был БЕЗУСЛОВЕН и снабжён доводом,
-			 *       ПРОТИВОПОЛОЖНЫМ здешнему: там писано, что отказ лучше подмены, ибо подмена
-			 *       меняет данные молча. Два довода, друг другу перечащих, стояли в одной рамке
-			 *
-			 * @note Разведено 08.09.2026 в пользу общего довода: настройка заведена у TOML и
-			 *       INI тем же составом и тем же умолчанием, а запись о расхождении снята ВМЕСТЕ
-			 *       с заведением, а не после него. У CSV, XML и CEF её по-прежнему нет - кодеки
-			 *       эти чужие, и расхождение вынесено к тем кодекам
-			 *
-			 * \~english
-			 * @note This setting stood formerly only at TWO codecs of the frame of seven — YAML and JSON —
-			 *       while the argument above says that the rule is bound to be COMMON for all of them. Worse
-			 *       still, at TOML and INI the refusal was UNCONDITIONAL and furnished with an argument
-			 *       OPPOSITE to this one: there it is written that a refusal is better than a substitution, for
-			 *       a substitution changes the data silently. Two arguments contradicting each other stood in
-			 *       one frame
-			 *
-			 * @note Divided 2026-09-08 in favour of the common argument: the setting was instituted at TOML and
-			 *       INI by the same composition and the same default, and the record about the divergence was
-			 *       removed TOGETHER with the institution, and not after it. At CSV, XML and CEF it is still
-			 *       absent — those codecs are foreign, and the divergence is carried out to those codecs
-			 *
-			 */
-			enum class malformed_t : uint8_t {
-				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
-				REFUSE  = 0x01, // Запись отвергается, ничего не записав
-				PASS    = 0x02  // Байты пропускаются как есть
-			};
-
-			/**
-			 * \~russian
-			 * @brief Отрезок в хранилище знаков
+			 * @brief Структура отрезка в хранилище знаков
 			 *
 			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт
-			 *          дописыванием и вправе переехать в памяти, и указатель после переезда стал бы
-			 *          недействителен.
+			 *          дописыванием и вправе переехать в памяти, и указатель после переезда стал бы недействителен.
 			 *
 			 * \~english
-			 * @brief Segment in the storage of the characters
+			 * @brief Structure of a segment in a character store
 			 *
 			 * @details A segment holds an offset and a length rather than a pointer: the storage grows
-			 *          by an appending and may move in the memory, and a pointer after the move would become
-			 *          invalid.
+			 *          by an appending and may move in the memory, and a pointer after the move would become invalid.
 			 *
 			 * \~
 			 */
@@ -1135,13 +1116,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Span() noexcept : offset(0), length(0) {}
+				explicit Span() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -1157,15 +1137,13 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+				explicit Span(const uint32_t offset, const uint32_t length) noexcept;
 			} span_t;
-
 			/**
 			 * \~russian
-			 * @brief Положение в исходном тексте
+			 * @brief Структура положения в исходном тексте
 			 *
-			 * @details Служит для указания места отказа и для привязки значений к исходному
-			 *          тексту.
+			 * @details Служит для указания места отказа и для привязки значений к исходному тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а смещение -
 			 *       в байтах текста, к UTF-8 приведённого и метки порядка байтов лишённого.
@@ -1174,10 +1152,9 @@ namespace awh {
 			 *       на всю разницу двух кодировок
 			 *
 			 * \~english
-			 * @brief Position in the source text
+			 * @brief Structure of the provision in the source text
 			 *
-			 * @details Serves for indicating the place of a refusal and for binding the values to the source
-			 *          text.
+			 * @details Serves for indicating the place of a refusal and for binding the values to the source text.
 			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while the offset —
 			 *       in the bytes of the text brought to UTF-8 and deprived of the byte order mark. For a UTF-8 text
@@ -1188,30 +1165,28 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Смещение от начала текста в байтах
-				uint64_t offset;
 				// Номер строки, считая с единицы
 				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
 				// Глубина вложенности, считая с нуля
 				uint32_t depth;
+				// Положение в строке, считая с единицы
+				uint32_t column;
+				// Смещение от начала текста в байтах
+				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Location() noexcept : offset(NO_OFFSET), line(0), column(0), depth(0) {}
+				explicit Location() noexcept;
 			} location_t;
-
 			/**
 			 * \~russian
-			 * @brief Отметка времени
+			 * @brief Структура отметки времени
 			 *
 			 * @details Признаётся лишь схемою наречия 1.1: описание 1.2 отметок времени не
 			 *          знает вовсе, и `2001-12-14` есть там обыкновенная строка.
@@ -1220,7 +1195,7 @@ namespace awh {
 			 *       они одну и ту же запись по ISO 8601, и расходиться им незачем
 			 *
 			 * \~english
-			 * @brief Timestamp
+			 * @brief Timestamp structure
 			 *
 			 * @details It is recognised only by the schema of the 1.1 dialect: the 1.2 specification does not know the timestamps
 			 *          at all, and `2001-12-14` is an ordinary string there.
@@ -1231,39 +1206,36 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Stamp {
-				// Год отметки времени
-				int32_t year;
-				// Месяц отметки времени, считая с единицы
-				uint8_t month;
-				// День отметки времени, считая с единицы
-				uint8_t day;
-				// Час отметки времени
-				uint8_t hour;
-				// Минута отметки времени
-				uint8_t minute;
-				// Секунда отметки времени
-				uint8_t second;
-				// Доля секунды в наносекундах
-				uint32_t nanoseconds;
-				// Смещение часового пояса в минутах
-				int16_t offset;
 				// Признак того, что часовой пояс объявлен буквою Z
 				bool zulu;
 				// Признак того, что дата отделена от времени пробелом, а не буквою T
 				bool spaced;
+				// День отметки времени, считая с единицы
+				uint8_t day;
+				// Час отметки времени
+				uint8_t hour;
+				// Месяц отметки времени, считая с единицы
+				uint8_t month;
+				// Минута отметки времени
+				uint8_t minute;
+				// Секунда отметки времени
+				uint8_t second;
+				// Смещение часового пояса в минутах
+				int16_t offset;
+				// Год отметки времени
+				int32_t year;
+				// Доля секунды в наносекундах
+				uint32_t nanoseconds;
 				/**
 				 * \~russian
 				 * @brief Конструктор
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * \~
 				 */
-				Stamp() noexcept :
-				 year(0), month(0), day(0), hour(0), minute(0), second(0),
-				 nanoseconds(0), offset(0), zulu(false), spaced(false) {}
+				explicit Stamp() noexcept;
 			} stamp_t;
 
 			/**
@@ -1277,7 +1249,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the textual description of a refusal code
 			 *
 			 * @param error error code of the parsing
-			 * @return textual description of the error code
+			 * @return      textual description of the error code
 			 *
 			 * \~
 			 */
@@ -1293,7 +1265,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the name of a kind of a node
 			 *
 			 * @param kind kind of a node of a document
-			 * @return name of the kind of the node
+			 * @return     name of the kind of the node
 			 *
 			 * \~
 			 */
@@ -1315,7 +1287,7 @@ namespace awh {
 			 *       named, for it is a set of the kinds rather than a kind
 			 *
 			 * @param type kind of a value of a document
-			 * @return name of the kind of the value
+			 * @return     name of the kind of the value
 			 *
 			 * \~
 			 */
@@ -1337,21 +1309,20 @@ namespace awh {
 			 *          the comparison with it is conducted by them.
 			 *
 			 * @param event kind of an event of the reading
-			 * @return name of the event of the reading
+			 * @return      name of the event of the reading
 			 *
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const event_t event) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод получения названия кодировки
+			 * @brief Функция получения названия кодировки
 			 *
 			 * @param encoding кодировка исходного текста
 			 * @return         общепринятое название кодировки
 			 *
 			 * \~english
-			 * @brief Method of getting the name of an encoding
+			 * @brief Function of getting the name of an encoding
 			 *
 			 * @param encoding encoding of the source text
 			 * @return         commonly accepted name of the encoding
@@ -1359,10 +1330,9 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
-
 			/**
 			 * \~russian
-			 * @brief Метод определения кодировки по её названию
+			 * @brief Функция определения кодировки по её названию
 			 *
 			 * @details Договор этот один у INI, TOML и YAML: кодек, кодировки принимающий,
 			 *          обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
@@ -1372,7 +1342,7 @@ namespace awh {
 			 * @return     определённая кодировка исходного текста
 			 *
 			 * \~english
-			 * @brief Method of determining an encoding by its name
+			 * @brief Function of determining an encoding by its name
 			 *
 			 * @details This contract is one for INI, TOML and YAML: a codec accepting the encodings is
 			 *          obliged to be able both to name them and to recognise them by a name — otherwise a
@@ -1402,7 +1372,7 @@ namespace awh {
 			 *          every number, by whichever kind it is stored, is a node of the kind `NUMBER`
 			 *
 			 * @param type kind of a value of a document
-			 * @return kind of a node of a document
+			 * @return     kind of a node of a document
 			 *
 			 * \~
 			 */
@@ -1435,48 +1405,13 @@ namespace awh {
 			 *       — by the very same order as in the JSON container, by the narrowest of the fitting
 			 *       kinds
 			 *
-			 * @param text record of a value being resolved
+			 * @param text   record of a value being resolved
 			 * @param schema acting schema of the resolution
-			 * @return kind of the value corresponding to the record
+			 * @return       kind of the value corresponding to the record
 			 *
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ type_t resolve(const string_view text, const schema_t schema) noexcept;
-			/**
-			 * \~russian
-			 * @brief Число, разобранное из записи своей
-			 *
-			 * @details Разобранное кладётся во все три поля разом, а какое из них взято -
-			 *          сказывает вид числа: целое со знаком лежит в первом, целое без знака во втором,
-			 *          дробное в третьем.
-			 *
-			 * \~english
-			 * @brief Number parsed from its record
-			 *
-			 * @details What is parsed is placed into all the three fields at once, and which of them is taken
-			 *          is told by the kind of the number.
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Numeric {
-				// Целое число со знаком
-				int64_t integer;
-				// Целое число без знака
-				uint64_t natural;
-				// Дробное число двойной точности
-				double real;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				Numeric() noexcept : integer(0), natural(0), real(0.) {}
-			} numeric_t;
 			/**
 			 * \~russian
 			 * @brief Функция разбора записи числа к самому узкому вмещающему виду
@@ -1499,15 +1434,18 @@ namespace awh {
 			 * @brief Function of the parsing of a record of a number to the narrowest containing kind
 			 *
 			 * @details The parsing is conducted by the acting schema: `0777` is 511 by the 1.1 dialect and
-			 *          a string by the 1.2 dialect, while `12:30` is 750 there as well.
+			 *          a string by the 1.2 dialect, while `12:30` is 750 there as well. The underscore
+			 *          sign between the digits the 1.1 dialect allows, and it is removed before the parsing.
 			 *
 			 * @note The streaming reading does not parse a number at all and issues the composite kind `NUMBER`:
-			 *       to parse every number not demanded by anyone would mean to pay for what the consumer did not ask for
+			 *       to parse every number not demanded by anyone would mean to pay for what the consumer did not ask for.
+			 *       It is the tree which parses it at the building of its own — there the number is already kept,
+			 *       and it needs to be parsed only once
 			 *
-			 * @param text record of a number being parsed
+			 * @param text   record of a number being parsed
 			 * @param schema acting schema of the resolution
 			 * @param result parsed number
-			 * @return kind of the parsed number, `UNDEFINED` — the record is not a number
+			 * @return       kind of the parsed number, `UNDEFINED` — the record is not a number
 			 *
 			 * \~
 			 */
@@ -1529,7 +1467,7 @@ namespace awh {
 			 *          a flow construction: `[`, `]`, `{`, `}` and the comma.
 			 *
 			 * @param text name of an anchor being checked
-			 * @return sign of the admissibility of the name of the anchor
+			 * @return     sign of the admissibility of the name of the anchor
 			 *
 			 * \~
 			 */
@@ -1574,10 +1512,10 @@ namespace awh {
 			 *       coincided with the verdict of the writing everywhere. This strictness is deliberate —
 			 *       otherwise a consumer having changed the layout would receive a record read otherwise
 			 *
-			 * @param text value being written
+			 * @param text   value being written
 			 * @param schema acting schema of the resolution
-			 * @param key sign of the fact that the value is written as the name of a pair
-			 * @return least obtrusive admissible kind of the notation
+			 * @param key    sign of the fact that the value is written as the name of a pair
+			 * @return       least obtrusive admissible kind of the notation
 			 *
 			 * \~
 			 */
@@ -1623,11 +1561,11 @@ namespace awh {
 			 *          string: a string which has received this argument as false would come back as a number
 			 *          or as a logical value
 			 *
-			 * @param text value being written
-			 * @param schema acting schema of the resolution
-			 * @param key sign of the fact that the value is written as the name of a pair
+			 * @param text     value being written
+			 * @param schema   acting schema of the resolution
+			 * @param key      sign of the fact that the value is written as the name of a pair
 			 * @param stringly sign of the fact that it is necessary to retain the value as a string
-			 * @return least obtrusive admissible kind of the notation
+			 * @return         least obtrusive admissible kind of the notation
 			 *
 			 * \~
 			 */

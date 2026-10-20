@@ -36,12 +36,6 @@
 #include <sys/macro/suppress.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <sys/log.hpp>
-#include <codec/toml/document.hpp>
-
-/**
  * Подключаем общее приведение и разбор чисел кодеков
  *
  * @note Приведение вынесено из шести кодеков в одно место 01.09.2026; своя копия его,
@@ -63,8 +57,14 @@
  *          числом, и сборка развалилась бы вдали от места
  */
 #include <codec/toml/value.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/log.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
+#include <codec/toml/document.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -101,9 +101,9 @@ namespace {
 	 *          разрядный той же ширины и знаковости - перенос этот точен и разряда не теряет.
 	 *
 	 */
-	using fixed_t = typename ::std::conditional <::std::is_signed <T>::value,
-		typename ::std::conditional <sizeof(T) == 1, int8_t, typename ::std::conditional <sizeof(T) == 2, int16_t, typename ::std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
-		typename ::std::conditional <sizeof(T) == 1, uint8_t, typename ::std::conditional <sizeof(T) == 2, uint16_t, typename ::std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
+	using fixed_t = typename conditional <is_signed <T>::value,
+		typename conditional <sizeof(T) == 1, int8_t, typename conditional <sizeof(T) == 2, int16_t, typename conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
+		typename conditional <sizeof(T) == 1, uint8_t, typename conditional <sizeof(T) == 2, uint16_t, typename conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
 	/**
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
@@ -274,10 +274,10 @@ namespace {
  *
  */
 awh::codec::toml::Document::Settings::Settings() noexcept {
-	// Задаём выдачу примечаний разбором текста настроек
-	this->reader.emitComments = true;
 	// Задаём выдачу пустых строк разбором текста настроек
 	this->reader.emitBlanks = true;
+	// Задаём выдачу примечаний разбором текста настроек
+	this->reader.emitComments = true;
 }
 
 /**
@@ -1022,12 +1022,11 @@ void awh::codec::toml::Document::assign(const uint32_t node, const content_t & v
 /**
  * @brief Метод записи узла значения собираемым текстом
  *
- * @param writer запись собираемого текста настроек
- * @param node   порядковый номер записываемого узла значения
- * @return       результат выполнения операции
+ * @param node порядковый номер записываемого узла значения
+ * @return     результат выполнения операции
  *
  */
-bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node) const noexcept {
+bool awh::codec::toml::Document::compose(const uint32_t node) const noexcept {
 	// Получаем записываемый узел значения
 	const node_t & item = this->_nodes.at(node);
 	/**
@@ -1037,19 +1036,19 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 		// Если записывается последовательность знаков
 		case static_cast <uint8_t> (type_t::STRING):
 			// Выполняем запись строкового значения
-			return writer.text(this->get(item.text), item.quoting);
+			return this->_writer.text(this->get(item.text), item.quoting);
 		// Если записывается логическое значение
 		case static_cast <uint8_t> (type_t::BOOLEAN):
 			// Выполняем запись логического значения
-			return writer.boolean(item.boolean);
+			return this->_writer.boolean(item.boolean);
 		// Если записывается целое число
 		case static_cast <uint8_t> (type_t::INTEGER):
 			// Выполняем запись целого числа
-			return writer.integer(item.integer, item.radix);
+			return this->_writer.integer(item.integer, item.radix);
 		// Если записывается число с плавающей точкой
 		case static_cast <uint8_t> (type_t::FLOAT):
 			// Выполняем запись числа с плавающей точкой
-			return writer.real(item.real);
+			return this->_writer.real(item.real);
 		// Если записывается отметка времени со смещением часового пояса
 		case static_cast <uint8_t> (type_t::OFFSET_DATETIME):
 		// Если записывается отметка времени без смещения часового пояса
@@ -1059,13 +1058,13 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 		// Если записывается местное время
 		case static_cast <uint8_t> (type_t::LOCAL_TIME):
 			// Выполняем запись отметки времени
-			return writer.stamp(item.stamp, item.type);
+			return this->_writer.stamp(item.stamp, item.type);
 		// Если записывается перечень значений
 		case static_cast <uint8_t> (type_t::ARRAY): {
 			/**
 			 * Если записать начало перечня значений не удалось
 			 */
-			if(!writer.arrayOpen(item.multiline))
+			if(!this->_writer.arrayOpen(item.multiline))
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			/**
@@ -1088,9 +1087,11 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 					// Получаем очередное примечание перечня
 					const remark_t & remark = item.remarks.at(next);
 					// Признак успешной записи примечания перечня
-					const bool result = (remark.trailing ?
-						writer.remarked(this->get(remark.text), (remark.index < static_cast <uint32_t> (item.items.size()))) :
-						writer.remark(this->get(remark.text)));
+					const bool result = (
+						remark.trailing ?
+						this->_writer.remarked(this->get(remark.text), (remark.index < static_cast <uint32_t> (item.items.size()))) :
+						this->_writer.remark(this->get(remark.text))
+					);
 					/**
 					 * Если записать примечание перечня не удалось
 					 *
@@ -1124,19 +1125,19 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 				/**
 				 * Если записать очередное значение перечня не удалось
 				 */
-				if(!this->compose(writer, item.items.at(i)))
+				if(!this->compose(item.items.at(i)))
 					// Выводим отрицательный результат выполнения операции
 					return false;
 			}
 			// Выполняем запись конца перечня значений
-			return writer.arrayClose();
+			return this->_writer.arrayClose();
 		}
 		// Если записывается встроенная таблица
 		case static_cast <uint8_t> (type_t::TABLE): {
 			/**
 			 * Если записать начало встроенной таблицы не удалось
 			 */
-			if(!writer.inlineOpen())
+			if(!this->_writer.inlineOpen())
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			/**
@@ -1169,18 +1170,18 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 				/**
 				 * Если записать имя ключа пары встроенной таблицы не удалось
 				 */
-				if(!writer.key(path))
+				if(!this->_writer.key(path))
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				/**
 				 * Если записать значение пары встроенной таблицы не удалось
 				 */
-				if(!this->compose(writer, item.items.at(i)))
+				if(!this->compose(item.items.at(i)))
 					// Выводим отрицательный результат выполнения операции
 					return false;
 			}
 			// Выполняем запись конца встроенной таблицы
-			return writer.inlineClose();
+			return this->_writer.inlineClose();
 		}
 	}
 	/**
@@ -1763,12 +1764,40 @@ const awh::codec::toml::Document::settings_t & awh::codec::toml::Document::setti
  *
  */
 void awh::codec::toml::Document::settings(const settings_t & settings) noexcept {
-	// Выполняем установку настроек дерева настроек
+	// Выполняем установку дерева настроек
 	this->_settings = settings;
-	// Задаём выдачу примечаний разбором текста настроек
-	this->_settings.reader.emitComments = true;
-	// Задаём выдачу пустых строк разбором текста настроек
-	this->_settings.reader.emitBlanks = true;
+	// Устанавливаем настройки объекта записи текста
+	this->_writer.settings(this->_settings.writer);
+	{
+		// Задаём выдачу пустых строк разбором текста настроек
+		this->_settings.reader.emitBlanks = true;
+		// Задаём выдачу примечаний разбором текста настроек
+		this->_settings.reader.emitComments = true;
+		/**
+		 * Выполняем огранение предела вложенности потолком допустимого
+		 *
+		 * @details Разбор вложенности ведётся стопою вызовов, а работы по готовому дереву -
+		 * снятие владеющим значением да запись - идут возвратом, и глубина ложится прямо на
+		 * стек. Настройка, поднятая потребителем выше потолка, обходила его вовсе, и текст
+		 * из одних открывающих скобок срывал стек: замерено 04.09.2026 щупом - при
+		 * `maxDepth = 200000` глубина 100000 валила процесс по SIGSEGV, а при настройке по
+		 * умолчанию тот же текст отвечал честным отказом
+		 *
+		 * @note Ноль огранивается НАРАВНЕ с числом завышенным: ноль значит «без предела» у
+		 *       всех кодеков рамки, а дерево без предела срывает стек. Запрет вложенности
+		 *       выражается ныне признаком `nesting`, а не нулём предела
+		 *
+		 * @note Огранение идёт молча и до разбора: отказ выдаёт сам разбор - ровно там, где
+		 *       текст предел и превысил, и с местом в тексте
+		 *
+		 * @note Устроено это тем же порядком, что и у контейнера JSON с деревом разметки
+		 */
+		if((this->_settings.reader.maxDepth == 0) || (this->_settings.reader.maxDepth > MAX_DEPTH))
+			// Выполняем огранение предела вложенности потолком допустимого
+			this->_settings.reader.maxDepth = MAX_DEPTH;
+		// Устанавливаем настройки объекта потокового чтения текста
+		this->_reader.settings(this->_settings.reader);
+	}
 }
 /**
  * @brief Метод разбора текста настроек
@@ -1802,51 +1831,27 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
-	// Получаем настройки разбора текста настроек
-	reader_t::settings_t settings = this->_settings.reader;
-	/**
-	 * Выполняем огранение предела вложенности потолком допустимого
-	 *
-	 * @details Разбор вложенности ведётся стопою вызовов, а работы по готовому дереву -
-	 * снятие владеющим значением да запись - идут возвратом, и глубина ложится прямо на
-	 * стек. Настройка, поднятая потребителем выше потолка, обходила его вовсе, и текст
-	 * из одних открывающих скобок срывал стек: замерено 04.09.2026 щупом - при
-	 * `maxDepth = 200000` глубина 100000 валила процесс по SIGSEGV, а при настройке по
-	 * умолчанию тот же текст отвечал честным отказом
-	 *
-	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: ноль значит «без предела» у
-	 *       всех кодеков рамки, а дерево без предела срывает стек. Запрет вложенности
-	 *       выражается ныне признаком `nesting`, а не нулём предела
-	 *
-	 * @note Огранение идёт молча и до разбора: отказ выдаёт сам разбор - ровно там, где
-	 *       текст предел и превысил, и с местом в тексте
-	 *
-	 * @note Устроено это тем же порядком, что и у контейнера JSON с деревом разметки
-	 */
-	if((settings.maxDepth == 0) || (settings.maxDepth > MAX_DEPTH))
-		// Выполняем огранение предела вложенности потолком допустимого
-		settings.maxDepth = MAX_DEPTH;
-	// Объект потокового чтения текста настроек
-	reader_t reader(settings);
+	// Очищаем объект потокового чтения текста
+	this->_reader.clear();
 	/**
 	 * Если подача разбираемого текста не удалась
 	 */
-	if(!reader.feed(text.data(), text.length(), true)){
+	if(!this->_reader.feed(text.data(), text.length(), true)){
 		// Запоминаем код ошибки разбора текста настроек
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение обнаруженной ошибки
-		this->_errorLocation = reader.errorLocation();
+		this->_errorLocation = this->_reader.errorLocation();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
-	// Порядковый номер записи объявления таблицы разбираемых записей
-	uint32_t table = NO_RECORD;
-	// Порядковый номер узла значения, ожидающего своё содержимое
-	uint32_t target = NO_RECORD;
 	// Стопа узлов составных значений, разбираемых в настоящее время
 	vector <uint32_t> stack;
 	// Номера строк начала составных значений, разбираемых в настоящее время
 	vector <uint32_t> lines;
+	// Порядковый номер записи объявления таблицы разбираемых записей
+	uint32_t table = NO_RECORD;
+	// Порядковый номер узла значения, ожидающего своё содержимое
+	uint32_t target = NO_RECORD;
 	/**
 	 * Выполняем предварительный отвод памяти под хранилища дерева
 	 *
@@ -1873,11 +1878,11 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 	/**
 	 * Выполняем перебор выданных разбором событий
 	 */
-	while(reader.next()){
+	while(this->_reader.next()){
 		/**
 		 * Выполняем выбор разновидности события разбора
 		 */
-		switch(static_cast <uint8_t> (reader.event())){
+		switch(static_cast <uint8_t> (this->_reader.event())){
 			// Если событием является объявление таблицы
 			case static_cast <uint8_t> (event_t::TABLE):
 			// Если событием является объявление очередной таблицы набора таблиц
@@ -1885,9 +1890,9 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 				// Собираемая запись объявления таблицы
 				record_t record;
 				// Запоминаем вид собираемой записи
-				record.kind = ((reader.event() == event_t::TABLE) ? kind_t::TABLE : kind_t::ARRAY_TABLE);
+				record.kind = ((this->_reader.event() == event_t::TABLE) ? kind_t::TABLE : kind_t::ARRAY_TABLE);
 				// Выполняем добавление имени таблицы к перечню частей имён
-				record.path = this->keep(reader.path());
+				record.path = this->keep(this->_reader.path());
 				// Выполняем добавление записи объявления таблицы
 				this->_records.push_back(record);
 				// Запоминаем порядковый номер записи объявления таблицы
@@ -1902,7 +1907,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 					// Выполняем заведение узла значения пары встроенной таблицы
 					target = this->reserve();
 					// Выполняем добавление имени ключа к перечню частей имён
-					const span_t path = this->keep(reader.path());
+					const span_t path = this->keep(this->_reader.path());
 					// Выполняем добавление имени ключа к встроенной таблице
 					this->_nodes.at(stack.back()).names.push_back(path);
 					// Выполняем добавление узла значения к встроенной таблице
@@ -1915,7 +1920,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 				// Запоминаем вид собираемой записи
 				record.kind = kind_t::PAIR;
 				// Выполняем добавление имени ключа к перечню частей имён
-				record.path = this->keep(reader.path());
+				record.path = this->keep(this->_reader.path());
 				// Выполняем заведение узла значения пары
 				record.node = this->reserve();
 				// Запоминаем порядковый номер записи объявления таблицы
@@ -1960,7 +1965,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 					// Выполняем переход к следующему событию разбора
 					break;
 				// Выполняем перенос значения разбора в узел дерева
-				this->assign(target, reader.value());
+				this->assign(target, this->_reader.value());
 				// Выполняем сброс узла значения, ожидающего своё содержимое
 				target = NO_RECORD;
 			} break;
@@ -2001,11 +2006,11 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 					// Выполняем переход к следующему событию разбора
 					break;
 				// Запоминаем тип составного значения
-				this->_nodes.at(target).type = ((reader.event() == event_t::ARRAY_OPEN) ? type_t::ARRAY : type_t::TABLE);
+				this->_nodes.at(target).type = ((this->_reader.event() == event_t::ARRAY_OPEN) ? type_t::ARRAY : type_t::TABLE);
 				// Выполняем добавление узла составного значения к стопе
 				stack.push_back(target);
 				// Запоминаем номер строки начала составного значения
-				lines.push_back(reader.location().line);
+				lines.push_back(this->_reader.location().line);
 				// Выполняем сброс узла значения, ожидающего своё содержимое
 				target = NO_RECORD;
 			} break;
@@ -2033,7 +2038,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 				 *       местам событий: перечень, закрытый строкою ниже той, где он
 				 *       начат, записан несколькими строками
 				 */
-				this->_nodes.at(stack.back()).multiline = ((reader.location().line > lines.back()) ||
+				this->_nodes.at(stack.back()).multiline = ((this->_reader.location().line > lines.back()) ||
 				 !this->_nodes.at(stack.back()).remarks.empty());
 				// Выполняем снятие узла составного значения со стопы
 				stack.pop_back();
@@ -2057,9 +2062,9 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 					// Запоминаем количество значений перечня, записанных до примечания
 					remark.index = static_cast <uint32_t> (node.items.size());
 					// Выполняем добавление содержимого примечания к хранилищу знаков
-					remark.text = this->add(reader.comment().text);
+					remark.text = this->add(this->_reader.comment().text);
 					// Запоминаем признак примечания, дописанного к строке значения
-					remark.trailing = reader.comment().trailing;
+					remark.trailing = this->_reader.comment().trailing;
 					// Выполняем добавление собранного примечания перечня значений
 					node.remarks.push_back(remark);
 					// Выполняем переход к следующему событию разбора
@@ -2070,9 +2075,9 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 				// Запоминаем вид собираемой записи
 				record.kind = kind_t::COMMENT;
 				// Выполняем добавление содержимого примечания к хранилищу знаков
-				record.text = this->add(reader.comment().text);
+				record.text = this->add(this->_reader.comment().text);
 				// Запоминаем признак примечания, дописанного к готовой строке
-				record.trailing = reader.comment().trailing;
+				record.trailing = this->_reader.comment().trailing;
 				// Запоминаем порядковый номер записи объявления таблицы
 				record.table = table;
 				// Выполняем добавление записи примечания
@@ -2094,11 +2099,11 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 	/**
 	 * Если разбор текста настроек завершился ошибкой
 	 */
-	if(reader.error() != error_t::NONE){
+	if(this->_reader.error() != error_t::NONE){
 		// Получаем код ошибки разбора текста настроек
-		const error_t error = reader.error();
+		const error_t error = this->_reader.error();
 		// Получаем положение обнаруженной ошибки
-		const location_t location = reader.errorLocation();
+		const location_t location = this->_reader.errorLocation();
 		/**
 		 * Выполняем освобождение дерева настроек
 		 *
@@ -2124,7 +2129,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 	 *       текста, - а дерево лишь несёт её потребителю. Своего опознания дерево не
 	 *       ведёт: два опознания разошлись бы молча
 	 */
-	this->_encoding = reader.encoding();
+	this->_encoding = this->_reader.encoding();
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -2442,7 +2447,7 @@ vector <string_view> awh::codec::toml::Document::keys(const vector <string_view>
  */
 bool awh::codec::toml::Document::reset(const string & path) noexcept {
 	// Выводим результат постановки пустого значения по указанному пути
-	return this->graft(string_view(path), ::awh::codec::toml::Value(string()));
+	return this->graft(string_view(path), codec::toml::Value(string()));
 }
 /**
  * @brief Метод перечисления звеньев пути к детям значения
@@ -2470,7 +2475,7 @@ vector <string> awh::codec::toml::Document::children(const string_view path) con
 	// Перечень звеньев пути к детям значения
 	vector <string> result;
 	// Выполняем розыск значения по указанному пути
-	const ::awh::codec::toml::Value value = this->at(string(path));
+	const codec::toml::Value value = this->at(string(path));
 	/**
 	 * Если значение по пути не разыскано
 	 *
@@ -2846,9 +2851,9 @@ bool awh::codec::toml::Document::prune(const string & path) noexcept {
 		return false;
 	}
 	// Снимаем настройки владеющим значением
-	::awh::codec::toml::Value whole(* this);
+	codec::toml::Value whole(* this);
 	// Получаем вместилище, снимаемому значению принадлежащее
-	::awh::codec::toml::Value & owner = ((separator == string::npos) ?
+	codec::toml::Value & owner = ((separator == string::npos) ?
 	 whole : whole.place(route.substr(0, separator)));
 	/**
 	 * Если вместилище снимаемого значения не разыскано
@@ -2902,7 +2907,7 @@ bool awh::codec::toml::Document::prune(const string & path) noexcept {
 		 * @note Нашло это объединённое покрытие набора с ворошителем: заход лежал
 		 *       непокрытым, а щуп по нему уронил приложение
 		 */
-		removed = (::awh::codec::numeric <uint64_t> (name, number) &&
+		removed = (codec::numeric <uint64_t> (name, number) &&
 		 owner.erase(static_cast <size_t> (number)));
 	}
 	// Выполняем снятие значения вместилища по имени его
@@ -2941,7 +2946,7 @@ bool awh::codec::toml::Document::prune(const string & path) noexcept {
  * @return      признак успешной постановки значения
  *
  */
-bool awh::codec::toml::Document::graft(const string_view path, const ::awh::codec::toml::Value & value) noexcept {
+bool awh::codec::toml::Document::graft(const string_view path, const codec::toml::Value & value) noexcept {
 	// Получаем путь без ведущей косой черты
 	const string route((!path.empty() && (path.front() == '/')) ? string(path.substr(1)) : string(path));
 	/**
@@ -2990,7 +2995,7 @@ bool awh::codec::toml::Document::graft(const string_view path, const ::awh::code
 				return false;
 			}
 			// Выполняем добавление снятого звена в хранилище
-			store.push_back(::std::move(part));
+			store.push_back(::move(part));
 			// Выполняем добавление вида на снятое звено в перечень кусков пути
 			parts.push_back(string_view(store.back()));
 			/**
@@ -3006,6 +3011,9 @@ bool awh::codec::toml::Document::graft(const string_view path, const ::awh::code
 	// Выводим результат переноса владеющего значения в дерево настроек
 	return value.graft(* this, parts);
 }
+/**
+ * Установка текстового значения записи по пути
+ */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const string_view value, const string_t quoting) noexcept {
 	/**
 	 * Выполняем сброс кода отказа прежней работы
@@ -3736,9 +3744,9 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
  * @return     разысканное значение настроек
  *
  */
-::awh::codec::toml::Value awh::codec::toml::Document::at(const string & path) const noexcept {
+codec::toml::Value awh::codec::toml::Document::at(const string & path) const noexcept {
 	// Выводим значение настроек, путём разысканное
-	return ::awh::codec::toml::Value(* this).at(path);
+	return codec::toml::Value(* this).at(path);
 }
 /**
  * @brief Метод проверки наличия значения по пути
@@ -3752,7 +3760,7 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
  */
 bool awh::codec::toml::Document::present(const string & path) const noexcept {
 	// Выводим признак наличия значения по указанному пути
-	return ::awh::codec::toml::Value(* this).at(path).valid();
+	return codec::toml::Value(* this).at(path).valid();
 }
 /**
  * @brief Метод получения количества детей корня
@@ -3894,176 +3902,6 @@ void awh::codec::toml::Document::clear() noexcept {
 	this->_compacted = 0;
 }
 /**
- * @brief Метод записи дерева обратно в текст настроек
- *
- * @param settings настройки записи текста настроек
- * @return         собранный текст настроек
- *
- */
-string awh::codec::toml::Document::dump(const writer_t::settings_t & settings) const noexcept {
-	/**
-	 * Выполняем сброс кода отказа прежней работы
-	 *
-	 * @note Сборка текста отвечает за себя наравне с работами над деревом: код её
-	 *       обязан говорить о ней, а не о прежнем разборе
-	 */
-	this->fault(error_t::NONE);
-	/**
-	 * Если запись дозволяет Юникод в голом имени, а чтение его не признаёт
-	 *
-	 * @details Настройки эти друг другу противоречат ПО ПОСЛЕДСТВИЮ: запись, признаком
-	 * `unicode` наделённая, кладёт имя с кириллицей голым, а чтение без того же признака
-	 * такое имя ОТВЕРГАЕТ, - круг рвётся. Замерено: запись даёт `ключ = "значение"`,
-	 * обратный разбор отвечает отказом `INVALID_KEY`
-	 *
-	 * @note Разлад судится ПО ПОСЛЕДСТВИЮ, а не по самому факту расхождения: разлад с
-	 *       законным употреблением дозволяется - так у кодека JSON запись бесконечности
-	 *       при чтении, её отвергающем, годна стороннему потребителю, - а разлад, круг
-	 *       рвущий либо искажающий само значение, отвергается. Здесь текст выходит негодным
-	 *       для читающего, ОБЪЯВЛЕННОГО ЭТИМИ ЖЕ настройками, и годного употребления у
-	 *       послабления нет
-	 *
-	 * @note Код `CONFLICTING_SETTINGS` был у кодека МЁРТВ: он обещал суд о разладе, какого
-	 *       не велось. У кодека INI суд этот был (ограда при читающем, её не снимающем), у
-	 *       TOML не было, и расхождение то случайно; заслон, здесь стоящий, его и снял
-	 *
-	 * @note Кодек YAML в один ряд с ними НЕ становится, и прежняя запись, ставившая его
-	 *       туда, сваливала два разных случая в один: у TOML суда не было при НАЛИЧИИ пары,
-	 *       круг рвущей, а у YAML самой пары нет вовсе - настройки `unicode` там ни у
-	 *       записи, ни у чтения не заведено. Код у него мёртв ЗА ОТСУТСТВИЕМ ПРЕДМЕТА, и
-	 *       довод тот записан при самом коде в `yaml/common.hpp` вместе с замером по
-	 *       сочетаниям схем разрешения
-	 *
-	 * @warning Обратное сочетание - чтение Юникод признаёт, запись нет - разладом НЕ
-	 *          является: имя обносится оградою и читается тем же чтением вполне. Судить
-	 *          надлежит одну лишь пару, круг рвущую
-	 */
-	if(settings.unicode && !this->_settings.reader.unicode){
-		// Запоминаем код отказа противоречивых настроек
-		this->_error = error_t::CONFLICTING_SETTINGS;
-		// Выполняем вывод сообщения об отказе в лог
-		this->report();
-		// Выводим пустой текст настроек
-		return string();
-	}
-	// Объект записи текста настроек
-	writer_t writer(settings);
-	/**
-	 * Собираемое составное имя очередной записи
-	 *
-	 * @note Буфер заведён единожды на весь обход: имя записи живёт лишь до её
-	 *       записи, и заводить его заново на каждую запись значило бы просить
-	 *       памяти столько раз, сколько записей в дереве
-	 */
-	vector <part_t> path;
-	/**
-	 * Выполняем перебор всех записей дерева настроек
-	 */
-	for(auto & record : this->_records){
-		// Признак успешной записи очередной записи дерева
-		bool result = true;
-		/**
-		 * Выполняем выбор вида записи дерева настроек
-		 */
-		switch(static_cast <uint8_t> (record.kind)){
-			// Если запись снята пометкой удаления
-			case static_cast <uint8_t> (kind_t::NONE): continue;
-			// Если записью является пустая строка
-			case static_cast <uint8_t> (kind_t::BLANK): {
-				// Выполняем запись пустой строки
-				result = writer.blank();
-			} break;
-			// Если записью является примечание
-			case static_cast <uint8_t> (kind_t::COMMENT): {
-				/**
-				 * Если примечание дописано к готовой строке
-				 */
-				if(record.trailing)
-					// Выполняем дописывание примечания к записанной строке
-					result = writer.trailing(this->get(record.text));
-				// Выполняем запись примечания отдельной строкой
-				else result = writer.comment(this->get(record.text));
-			} break;
-			// Если записью является объявление таблицы
-			case static_cast <uint8_t> (kind_t::TABLE):
-			// Если записью является объявление очередной таблицы набора таблиц
-			case static_cast <uint8_t> (kind_t::ARRAY_TABLE):
-			// Если записью является пара
-			case static_cast <uint8_t> (kind_t::PAIR): {
-				// Выполняем подготовку буфера составного имени записи
-				path.clear();
-				// Выполняем отведение места под составные части имени записи
-				path.resize(record.path.length);
-				/**
-				 * Выполняем перебор всех составных частей имени записи
-				 */
-				for(uint32_t i = 0; i < record.path.length; i++){
-					// Получаем очередную составную часть имени записи
-					const key_t & key = this->_keys.at(record.path.offset + i);
-					// Запоминаем имя составной части
-					path.at(i).name = this->get(key.name);
-					// Запоминаем запись имени составной части
-					path.at(i).naming = key.naming;
-				}
-				/**
-				 * Если записью является объявление таблицы
-				 */
-				if(record.kind == kind_t::TABLE)
-					// Выполняем запись объявления таблицы
-					result = writer.table(path);
-				/**
-				 * Если записью является объявление очередной таблицы набора таблиц
-				 */
-				else if(record.kind == kind_t::ARRAY_TABLE)
-					// Выполняем запись объявления очередной таблицы набора таблиц
-					result = writer.arrayTable(path);
-				/**
-				 * Если записью является пара
-				 */
-				else result = (writer.key(path) && this->compose(writer, record.node));
-			} break;
-		}
-		/**
-		 * Если записать очередную запись дерева не удалось
-		 */
-		if(!result){
-			/**
-			 * Если код отказа дерево себе ещё не назначило
-			 *
-			 * @warning Отказ вправе прийти и от записи, и от самого дерева: «compose»
-			 *          поверяет вид значения сам, код себе назначает и в журнал о том
-			 *          сообщает. Перезапись кода кодом записи стирала причину, дереву
-			 *          известную: запись отдавала пустоту вместе с кодом «отказа нет», и
-			 *          потребитель оставался с пустым текстом без причины его
-			 *
-			 * @note Заход ДОСТИЖИМ и берётся. Замерено родным покрытием clang: набор
-			 *       кодека берёт его 7 раз, ворошитель за 60 000 проходов - 147, общий
-			 *       набор - 7. Прежде тут стояло «путём открытым заход ныне НЕДОСТИЖИМ»,
-			 *       и это было ЛОЖНО: довод снят был после правки, узел вида
-			 *       неопределённого закрывшей, но иных дорог сюда никто не искал
-			 *
-			 * @warning Ошибка эта родом из замера МАЛЫМ ЧИСЛОМ подач: закрыв одну дорогу,
-			 *          довод объявил недостижимым весь заход. Недостижимость доказывается
-			 *          отсутствием ВСЯКОЙ дороги, а закрытие известной - лишь тем, что
-			 *          известная закрыта
-			 */
-			if(this->_error == error_t::NONE)
-				// Запоминаем код ошибки записи дерева настроек
-				this->_error = writer.error();
-			// Выводим пустой собранный текст настроек
-			return string();
-		}
-	}
-	// Выводим собранный текст настроек
-	return writer.text();
-}
-/**
- * @brief Метод записи дерева обратно в текст настроек
- *
- * @return собранный текст настроек
- *
- */
-/**
  * @brief Метод чтения настроек из файла
  *
  * @details Ход этот общий у всех семи кодеков рамки
@@ -4151,7 +3989,6 @@ bool awh::codec::toml::Document::load(const string & filename) noexcept {
 		// Выводим признак неудачного чтения настроек
 		return false;
 	}
-
 	// Выводим признак успешного чтения настроек
 	return this->parse(text);
 }
@@ -4167,14 +4004,13 @@ bool awh::codec::toml::Document::load(const string & filename) noexcept {
 bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 	// Получаем собранный текст настроек
 	const string text = this->dump();
-	// Выполняем открытие записываемого файла настроек
 	/**
 	 * Путь ко временному файлу, рядом с целевым лежащему
 	 *
 	 * @details Запись ведётся во временный файл, а цель подменяется переименованием -
-	 * действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
-	 * знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
-	 * работа прервана - оставлял потребителя без прежнего содержимого И без нового разом
+	 *          действием неделимым. Прямая запись усекала цель ПЕРВЫМ ЖЕ действием, ещё до подачи
+	 *          знаков, и отказ на середине - место на устройстве кончилось, предел размера достигнут,
+	 *          работа прервана - оставлял потребителя без прежнего содержимого И без нового разом
 	 *
 	 * @warning Временный файл кладётся РЯДОМ с целевым, а не во временный каталог системы:
 	 *          переименование неделимо лишь в пределах одной файловой системы, а через
@@ -4214,8 +4050,7 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "TOML",
-		 ::awh::codec::toml::message(this->_error));
+		log::print("%s document failed: %s", log::flag_t::CRITICAL, "TOML", codec::toml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -4232,8 +4067,7 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "TOML",
-		 ::awh::codec::toml::message(this->_error));
+		log::print("%s document failed: %s", log::flag_t::CRITICAL, "TOML", codec::toml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -4252,8 +4086,7 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "TOML",
-		 ::awh::codec::toml::message(this->_error));
+		log::print("%s document failed: %s", log::flag_t::CRITICAL, "TOML", codec::toml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -4270,7 +4103,7 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
  * @return кодировка, какою текст настроек прочитан
  *
  */
-::awh::codec::toml::encoding_t awh::codec::toml::Document::encoding() const noexcept {
+codec::toml::encoding_t awh::codec::toml::Document::encoding() const noexcept {
 	// Выводим кодировку, какою текст настроек прочитан
 	return this->_encoding;
 }
@@ -4281,8 +4114,161 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
  *
  */
 string awh::codec::toml::Document::dump() const noexcept {
-	// Выполняем запись дерева обратно в текст настроек
-	return this->dump(this->writing());
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Сборка текста отвечает за себя наравне с работами над деревом: код её
+	 *       обязан говорить о ней, а не о прежнем разборе
+	 */
+	this->fault(error_t::NONE);
+	/**
+	 * Если запись дозволяет Юникод в голом имени, а чтение его не признаёт
+	 *
+	 * @details Настройки эти друг другу противоречат ПО ПОСЛЕДСТВИЮ: запись, признаком
+	 * `unicode` наделённая, кладёт имя с кириллицей голым, а чтение без того же признака
+	 * такое имя ОТВЕРГАЕТ, - круг рвётся. Замерено: запись даёт `ключ = "значение"`,
+	 * обратный разбор отвечает отказом `INVALID_KEY`
+	 *
+	 * @note Разлад судится ПО ПОСЛЕДСТВИЮ, а не по самому факту расхождения: разлад с
+	 *       законным употреблением дозволяется - так у кодека JSON запись бесконечности
+	 *       при чтении, её отвергающем, годна стороннему потребителю, - а разлад, круг
+	 *       рвущий либо искажающий само значение, отвергается. Здесь текст выходит негодным
+	 *       для читающего, ОБЪЯВЛЕННОГО ЭТИМИ ЖЕ настройками, и годного употребления у
+	 *       послабления нет
+	 *
+	 * @note Код `CONFLICTING_SETTINGS` был у кодека МЁРТВ: он обещал суд о разладе, какого
+	 *       не велось. У кодека INI суд этот был (ограда при читающем, её не снимающем), у
+	 *       TOML не было, и расхождение то случайно; заслон, здесь стоящий, его и снял
+	 *
+	 * @note Кодек YAML в один ряд с ними НЕ становится, и прежняя запись, ставившая его
+	 *       туда, сваливала два разных случая в один: у TOML суда не было при НАЛИЧИИ пары,
+	 *       круг рвущей, а у YAML самой пары нет вовсе - настройки `unicode` там ни у
+	 *       записи, ни у чтения не заведено. Код у него мёртв ЗА ОТСУТСТВИЕМ ПРЕДМЕТА, и
+	 *       довод тот записан при самом коде в `yaml/common.hpp` вместе с замером по
+	 *       сочетаниям схем разрешения
+	 *
+	 * @warning Обратное сочетание - чтение Юникод признаёт, запись нет - разладом НЕ
+	 *          является: имя обносится оградою и читается тем же чтением вполне. Судить
+	 *          надлежит одну лишь пару, круг рвущую
+	 */
+	if(this->_settings.writer.unicode && !this->_settings.reader.unicode){
+		// Запоминаем код отказа противоречивых настроек
+		this->_error = error_t::CONFLICTING_SETTINGS;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
+		// Выводим пустой текст настроек
+		return "";
+	}
+	// Очищаем объект потокового чтения текста
+	this->_writer.clear();
+	/**
+	 * Собираемое составное имя очередной записи
+	 *
+	 * @note Буфер заведён единожды на весь обход: имя записи живёт лишь до её
+	 *       записи, и заводить его заново на каждую запись значило бы просить
+	 *       памяти столько раз, сколько записей в дереве
+	 */
+	vector <part_t> path;
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(auto & record : this->_records){
+		// Признак успешной записи очередной записи дерева
+		bool result = true;
+		/**
+		 * Выполняем выбор вида записи дерева настроек
+		 */
+		switch(static_cast <uint8_t> (record.kind)){
+			// Если запись снята пометкой удаления
+			case static_cast <uint8_t> (kind_t::NONE): continue;
+			// Если записью является пустая строка
+			case static_cast <uint8_t> (kind_t::BLANK): {
+				// Выполняем запись пустой строки
+				result = this->_writer.blank();
+			} break;
+			// Если записью является примечание
+			case static_cast <uint8_t> (kind_t::COMMENT): {
+				/**
+				 * Если примечание дописано к готовой строке
+				 */
+				if(record.trailing)
+					// Выполняем дописывание примечания к записанной строке
+					result = this->_writer.trailing(this->get(record.text));
+				// Выполняем запись примечания отдельной строкой
+				else result = this->_writer.comment(this->get(record.text));
+			} break;
+			// Если записью является объявление таблицы
+			case static_cast <uint8_t> (kind_t::TABLE):
+			// Если записью является объявление очередной таблицы набора таблиц
+			case static_cast <uint8_t> (kind_t::ARRAY_TABLE):
+			// Если записью является пара
+			case static_cast <uint8_t> (kind_t::PAIR): {
+				// Выполняем подготовку буфера составного имени записи
+				path.clear();
+				// Выполняем отведение места под составные части имени записи
+				path.resize(record.path.length);
+				/**
+				 * Выполняем перебор всех составных частей имени записи
+				 */
+				for(uint32_t i = 0; i < record.path.length; i++){
+					// Получаем очередную составную часть имени записи
+					const key_t & key = this->_keys.at(record.path.offset + i);
+					// Запоминаем имя составной части
+					path.at(i).name = this->get(key.name);
+					// Запоминаем запись имени составной части
+					path.at(i).naming = key.naming;
+				}
+				/**
+				 * Если записью является объявление таблицы
+				 */
+				if(record.kind == kind_t::TABLE)
+					// Выполняем запись объявления таблицы
+					result = this->_writer.table(path);
+				/**
+				 * Если записью является объявление очередной таблицы набора таблиц
+				 */
+				else if(record.kind == kind_t::ARRAY_TABLE)
+					// Выполняем запись объявления очередной таблицы набора таблиц
+					result = this->_writer.arrayTable(path);
+				/**
+				 * Если записью является пара
+				 */
+				else result = (this->_writer.key(path) && this->compose(record.node));
+			} break;
+		}
+		/**
+		 * Если записать очередную запись дерева не удалось
+		 */
+		if(!result){
+			/**
+			 * Если код отказа дерево себе ещё не назначило
+			 *
+			 * @warning Отказ вправе прийти и от записи, и от самого дерева: «compose»
+			 *          поверяет вид значения сам, код себе назначает и в журнал о том
+			 *          сообщает. Перезапись кода кодом записи стирала причину, дереву
+			 *          известную: запись отдавала пустоту вместе с кодом «отказа нет», и
+			 *          потребитель оставался с пустым текстом без причины его
+			 *
+			 * @note Заход ДОСТИЖИМ и берётся. Замерено родным покрытием clang: набор
+			 *       кодека берёт его 7 раз, ворошитель за 60 000 проходов - 147, общий
+			 *       набор - 7. Прежде тут стояло «путём открытым заход ныне НЕДОСТИЖИМ»,
+			 *       и это было ЛОЖНО: довод снят был после правки, узел вида
+			 *       неопределённого закрывшей, но иных дорог сюда никто не искал
+			 *
+			 * @warning Ошибка эта родом из замера МАЛЫМ ЧИСЛОМ подач: закрыв одну дорогу,
+			 *          довод объявил недостижимым весь заход. Недостижимость доказывается
+			 *          отсутствием ВСЯКОЙ дороги, а закрытие известной - лишь тем, что
+			 *          известная закрыта
+			 */
+			if(this->_error == error_t::NONE)
+				// Запоминаем код ошибки записи дерева настроек
+				this->_error = this->_writer.error();
+			// Выводим пустой собранный текст настроек
+			return string();
+		}
+	}
+	// Выводим собранный текст настроек
+	return this->_writer.text();
 }
 /**
  * @brief Метод получения настроек записи, отвечающих настройкам разбора
@@ -4341,7 +4327,7 @@ bool awh::codec::toml::Document::fault(const error_t error) const noexcept {
  */
 void awh::codec::toml::Document::report() const noexcept {
 	// Выполняем вывод сообщения об отказе
-	awh::log::print("TOML document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+	log::print("TOML document failed: %s at line %u column %u", log::flag_t::CRITICAL, awh::codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 }
 /**
  * @brief Конструктор
@@ -4483,7 +4469,7 @@ bool awh::codec::toml::Document::value(T & result, const vector <string_view> & 
 			 */
 			if(node->type == type_t::FLOAT){
 				// Выполняем установку целого числа приведением дробного
-				result = ::awh::codec::convert <T> (node->real);
+				result = codec::convert <T> (node->real);
 				// Выводим положительный результат выполнения операции
 				return true;
 			}
@@ -4545,3 +4531,78 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <double> (
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include <sys/macro/restore.hpp>
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Span::Span() noexcept : offset(0), length(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Key::Key() noexcept : naming(naming_t::BARE) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Remark::Remark() noexcept : index(0), trailing(false) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Node::Node() noexcept :
+ type(type_t::NONE), quoting(string_t::BASIC), radix(radix_t::DECIMAL),
+ boolean(false), multiline(false), integer(0), real(0.0) {
+	// Отводим место под перечень дочерних узлов
+	this->items.reserve(4);
+	// Отводим место под перечень имён дочерних узлов
+	this->names.reserve(4);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Record::Record() noexcept : kind(kind_t::NONE), node(0), table(0), trailing(false) {}
+/**
+ * @brief Метод сброса состояния обхода записей
+ *
+ */
+void awh::codec::toml::Document::Traversal::reset() noexcept {
+	// Выполняем очистку ключа указателя таблицы
+	this->table.clear();
+	// Выполняем очистку имени таблицы без номеров
+	this->named.clear();
+	// Выполняем очистку ключей объявленных таблиц
+	this->anchors.clear();
+	// Выполняем очистку количества таблиц наборов
+	this->ordinals.clear();
+	// Выполняем очистку объявленных дочерних имён
+	this->declared.clear();
+	// Выполняем очистку подсказок места вставки записи
+	this->hints.clear();
+}
+/**
+ * @brief Метод получения вида значения записи по пути
+ *
+ * @param path составное имя искомой пары
+ * @return     вид значения найденной пары
+ *
+ */
+awh::codec::kind_t awh::codec::toml::Document::kind(const vector <string_view> & path) const noexcept {
+	/**
+	 * Переводим тип записи в вид значения
+	 */
+	switch(this->type(path)){
+		case type_t::STRING:	return codec::kind_t::STRING;
+		case type_t::INTEGER:
+		case type_t::FLOAT:	return codec::kind_t::NUMBER;
+		case type_t::BOOLEAN:	return codec::kind_t::BOOL;
+		case type_t::OFFSET_DATETIME:
+		case type_t::LOCAL_DATETIME:
+		case type_t::LOCAL_DATE:
+		case type_t::LOCAL_TIME:	return codec::kind_t::TIME;
+		case type_t::ARRAY:	return codec::kind_t::ARRAY;
+		case type_t::TABLE:	return codec::kind_t::MAP;
+		default:	return codec::kind_t::NONE;
+	}
+}

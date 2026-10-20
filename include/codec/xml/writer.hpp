@@ -44,7 +44,7 @@
 /**
  * Подключаем заголовочный файл модуля
  */
-#include "document.hpp"
+#include "common.hpp"
 
 /**
  * Подключаем заголовочный файл проекта
@@ -86,6 +86,17 @@ namespace awh {
 		 * \~
 		 */
 		namespace xml {
+			/**
+			 * \~russian
+			 * @brief Прототип класса узла дерева разметки
+			 *
+			 * \~english
+			 * @brief Prototype of a markup tree node class
+			 *
+			 * \~
+			 */
+			class Node;
+
 			/**
 			 * \~russian
 			 * @brief Класс записи текста разметки
@@ -165,24 +176,73 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * Настройки записи текста разметки
+					 * @brief Структура настройки записи текста разметки
 					 *
-					 * @note Само построение вынесено в общий заголовок кодека оттого, что дерево
-					 *       разметки записывает себя ходом `dump(settings)`, а включить у себя
-					 *       запись оно не может: запись сама зависит от дерева. Имя же оставлено
-					 *       прежним, и потребитель разницы не видит вовсе
+					 * @note Построение это лежит в общем заголовке, а не в записи, оттого что дерево
+					 *       разметки записывает себя ходом `dump(settings)`, а включить у себя запись
+					 *       не может: запись сама зависит от дерева. Внутри записи оно доступно
+					 *       прежним именем `writer_t::settings_t`
 					 *
 					 * \~english
-					 * Settings of the writing of a markup text
+					 * @brief Structure for configuring markup text recording
 					 *
-					 * @note The construction itself is moved into a common header of the codec because a
+					 * @note This construction lies in a common header rather than in the writing, because a
 					 *       markup tree writes itself by the `dump(settings)` step, while it cannot include the
-					 *       writing into itself: the writing itself depends on the tree. The name, however, is
-					 *       left the former one, and the consumer sees no difference at all
+					 *       writing into itself: the writing itself depends on the tree. Inside the writing it is
+					 *       available by the former name `writer_t::settings_t`
 					 *
 					 * \~
 					 */
-					typedef awh::codec::xml::writer_settings_t settings_t;
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Флаг записи узлов без содержимого самозакрывающейся меткой
+						bool collapse;
+						// Флаг экранирования знаков, выходящих за пределы US-ASCII, числовыми ссылками
+						bool escapeNonAscii;
+						// Количество знаков отступа на один уровень вложенности
+						uint8_t indent;
+						/**
+						 * \~russian
+						 * Наибольшая допустимая глубина вложенности узлов, ноль - без предела
+						 *
+						 * @details Предела по умолчанию нет: обход дерева ведётся собственным
+						 *          стеком, а не рекурсией, и стеку задачи глубина записи не грозит. Держи
+						 *          запись предел разбора, дерево, разобранное с поднятым `maxDepth`,
+						 *          обратно бы не записывалось - а разобранное обязано записываться.
+						 *
+						 * @note Предел нужен лишь тому, кто открывает узлы сам, не имея дерева:
+						 *       ошибка в его собственном ходе иначе растит стек открытых узлов, пока
+						 *       не исчерпается память. Превышение отвечает отказом `DEPTH_EXCEEDED`
+						 *
+						 * \~english
+						 * Largest admissible depth of the nesting of the nodes, zero — without a limit
+						 *
+						 * @details There is no limit by default: the traversal of the tree is conducted by an own
+						 *          stack rather than by a recursion, and the depth of the writing does not threaten the stack of the task. Were the
+						 *          writing to keep the limit of the parsing, a tree parsed with a raised `maxDepth`
+						 *          would not be written back — while what has been parsed is obliged to be writable.
+						 *
+						 * @note The limit is needed only by the one who opens the nodes himself, having no tree:
+						 *       an error in his own course would otherwise grow the stack of the open nodes until
+						 *       the memory is exhausted. An excess answers with a `DEPTH_EXCEEDED` refusal
+						 *
+						 * \~
+						 */
+						uint32_t maxDepth;
+						// Вид записи собираемого текста разметки
+						format_t format;
+						// Знак, которым ставится отступ нарядной записи
+						separator_t separator;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						explicit Settings() noexcept;
+					} settings_t;
 				private:
 					/**
 					 * \~russian
@@ -592,7 +652,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool element(const node_t & node, const bool preserve) noexcept;
+					bool element(const Node & node, const bool preserve) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -967,7 +1027,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool element(const node_t & node) noexcept;
+					bool element(const Node & node) noexcept;
 				public:
 					/**
 					 * \~russian

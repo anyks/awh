@@ -343,7 +343,9 @@ namespace awh {
 						uint32_t maxReferenceDepth;
 						// Построение обращения к значению другого свойства
 						reference_t references;
-						// Настройки разбора текста настроек
+						// Настройки записи текста разметки
+						writer_t::settings_t writer;
+						// Настройки разбора текста разметки
 						reader_t::settings_t reader;
 						/**
 						 * \~russian
@@ -567,6 +569,11 @@ namespace awh {
 					encoding_t _encoding;
 					// Настройки дерева настроек
 					settings_t _settings;
+				private:
+					// Объект потокового чтения записей
+					mutable reader_t _reader;
+					// Объект записи событий
+					mutable writer_t _writer;
 				private:
 					/**
 					 * \~russian
@@ -2174,38 +2181,6 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод записи дерева обратно в текст настроек
-					 *
-					 * @details Записи выдаются в том же порядке, в каком они прочитаны,
-					 *          вместе с примечаниями и пустыми строками.
-					 *
-					 * @note Пустая строка перед объявлением раздела настройками записи не
-					 *       ставится: расстановка их взята из исходного текста, и добавлять к
-					 *       ней свою значило бы наращивать пустые строки при каждом обороте
-					 *       «чтение - запись»
-					 *
-					 * @param settings настройки записи текста настроек
-					 * @return         собранный текст настроек
-					 *
-					 * \~english
-					 * @brief Method of writing the tree back into a settings text
-					 *
-					 * @details The records are issued in the same order in which they have been read,
-					 *          together with the comments and the empty lines.
-					 *
-					 * @note An empty line before a section declaration is not put by the settings of the writing:
-					 *       their arrangement is taken from the source text, and to add one's own to
-					 *       it would mean to increase the empty lines at every «reading — writing»
-					 *       turn
-					 *
-					 * @param settings settings of the writing of a settings text
-					 * @return         assembled settings text
-					 *
-					 * \~
-					 */
-					string dump(const writer_t::settings_t & settings) const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод чтения настроек из файла
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки.
@@ -2430,6 +2405,16 @@ namespace awh {
 					 * \~
 					 */
 					explicit Document(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Document() noexcept = default;
 			} document_t;
 		};
 	};

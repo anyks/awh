@@ -244,7 +244,9 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 					 */
 					// Признак того, что значение отображением является
 					const bool mapped = (value.type() == abc::type_t::MAP);
-					// Выполняем перебор всех вложенных значений
+					/**
+					 * Выполняем перебор всех вложенных значений
+					 */
 					for(size_t i = 0; i < value.size(); i++){
 						// Знаки очередного вложенного значения
 						string item = "";
@@ -310,7 +312,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Запоминаем целое значение результирующим значением
-		result = ::std::to_string(current);
+		result = ::to_string(current);
 		// Выводим положительный признак обращения значения
 		return true;
 	}
@@ -323,7 +325,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Запоминаем целое значение результирующим значением
-		result = ::std::to_string(current);
+		result = ::to_string(current);
 		// Выводим положительный признак обращения значения
 		return true;
 	}
@@ -346,7 +348,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		 * @note Отказ честнее записи: пара с «nan» ушла бы к принимающему и была бы им
 		 *       отвергнута там, где поправить её уже некому
 		 */
-		if(!::std::isfinite(current))
+		if(!::isfinite(current))
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Хранилище записи дробного числа
@@ -391,7 +393,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		// Выводим отрицательный признак обращения значения
 		return false;
 	// Запоминаем значение знаками результирующим значением
-	result = ::std::move(current);
+	result = ::move(current);
 	// Выводим положительный признак обращения значения
 	return true;
 }
@@ -521,7 +523,7 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			// Если номер редакции записи деревом не объявлен
 			if(text.empty())
 				// Устанавливаем номер редакции записи из настроек записи
-				text = ::std::to_string(this->_settings.version);
+				text = ::to_string(this->_settings.version);
 			/**
 			 * Выполняем поверку номера редакции записи
 			 *
@@ -757,7 +759,7 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 						uint64_t number = 0;
 						// Если значение беззнаковым является и предел знакового превосходит
 						if(((static_cast <uint32_t> (item.type()) & static_cast <uint32_t> (abc::type_t::UNSIGNED)) > 0) &&
-						   item.value(number) && (number > static_cast <uint64_t> (::std::numeric_limits <int64_t>::max())))
+						   item.value(number) && (number > static_cast <uint64_t> (std::numeric_limits <int64_t>::max())))
 							// Выводим отказ записи значением, вид словаря выразить не может
 							return this->fail(error_t::UNREPRESENTABLE_VALUE, key);
 					}
@@ -796,3 +798,8 @@ awh::codec::cef::Writer::Writer() noexcept :
  * Возвращаем имена, системными макросами занятые
  */
 #include <sys/macro/restore.hpp>
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::cef::Writer::Settings::Settings() noexcept : nested(nested_t::STRICT), syslog(true), terminate(true), escape(true), version(0) {}

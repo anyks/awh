@@ -1311,7 +1311,9 @@ void awh::codec::toml::Writer::settings(const settings_t & settings) noexcept {
 bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
 	// Проверяем имена частей, могущие ссылаться на собственный выходной буфер
 	bool shared = false;
-	// Перебираем все части составного имени
+	/**
+	 * Перебираем все части составного имени
+	 */
 	for(const part_t & part : path)
 		// Учитываем срез имени каждой части
 		shared = (shared || ::overlaps(this->_text, part.name));
@@ -1323,7 +1325,9 @@ bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
 		vector <part_t> parts(path);
 		// Отводим место заранее, чтобы перемещение строк не портило срезы
 		stored.reserve(path.size());
-		// Копируем имена частей до изменения выходного буфера
+		/**
+		 * Копируем имена частей до изменения выходного буфера
+		 */
 		for(size_t i = 0; i < path.size(); i++){
 			// Сохраняем строку имени очередной части
 			stored.emplace_back(path[i].name);
@@ -1390,7 +1394,9 @@ bool awh::codec::toml::Writer::table(const string_view name) noexcept {
 bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept {
 	// Проверяем имена частей, могущие ссылаться на собственный выходной буфер
 	bool shared = false;
-	// Перебираем все части составного имени
+	/**
+	 * Перебираем все части составного имени
+	 */
 	for(const part_t & part : path)
 		// Учитываем срез имени каждой части
 		shared = (shared || ::overlaps(this->_text, part.name));
@@ -1402,7 +1408,9 @@ bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept
 		vector <part_t> parts(path);
 		// Отводим место заранее, чтобы перемещение строк не портило срезы
 		stored.reserve(path.size());
-		// Копируем имена частей до изменения выходного буфера
+		/**
+		 * Копируем имена частей до изменения выходного буфера
+		 */
 		for(size_t i = 0; i < path.size(); i++){
 			// Сохраняем строку имени очередной части
 			stored.emplace_back(path[i].name);
@@ -1535,7 +1543,9 @@ bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) n
 bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
 	// Проверяем имена частей, могущие ссылаться на собственный выходной буфер
 	bool shared = false;
-	// Перебираем все части составного имени
+	/**
+	 * Перебираем все части составного имени
+	 */
 	for(const part_t & part : path)
 		// Учитываем срез имени каждой части
 		shared = (shared || ::overlaps(this->_text, part.name));
@@ -1547,7 +1557,9 @@ bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
 		vector <part_t> parts(path);
 		// Отводим место заранее, чтобы перемещение строк не портило срезы
 		stored.reserve(path.size());
-		// Копируем имена частей до изменения выходного буфера
+		/**
+		 * Копируем имена частей до изменения выходного буфера
+		 */
 		for(size_t i = 0; i < path.size(); i++){
 			// Сохраняем строку имени очередной части
 			stored.emplace_back(path[i].name);
@@ -1648,7 +1660,7 @@ bool awh::codec::toml::Writer::value(const uint64_t value) noexcept {
 	 *       со знаком переменило бы число молча - потребитель получил бы текст с числом
 	 *       отрицательным вместо затребованного
 	 */
-	if(value > static_cast <uint64_t> (::std::numeric_limits <int64_t>::max())){
+	if(value > static_cast <uint64_t> (std::numeric_limits <int64_t>::max())){
 		// Запоминаем код отказа записи значения
 		this->_error = error_t::NUMBER_OVERFLOW;
 		// Выводим признак неудачной записи значения
@@ -1785,6 +1797,9 @@ bool awh::codec::toml::Writer::value(const string_view value) noexcept {
 	// Выводим результат записи строкового значения
 	return this->text(value);
 }
+/**
+ * Запись значения в содержимое записи
+ */
 bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
@@ -3132,3 +3147,11 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <double> (c
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include <sys/macro/restore.hpp>
+/**
+ * @brief Конструктор
+ *
+ * @param context   вид окружения записываемого значения
+ * @param multiline признак многострочной записи перечня
+ *
+ */
+awh::codec::toml::Writer::Level::Level(const context_t context, const bool multiline) noexcept : context(context), count(0), multiline(multiline), separated(false), remarked(false) {}

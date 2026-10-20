@@ -40,11 +40,14 @@
 #include <unordered_map>
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
-#include <sys/fs.hpp>
-
 #include "document.hpp"
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../sys/fs.hpp"
 
 /**
  * \~russian
@@ -83,7 +86,7 @@ namespace awh {
 		namespace yaml {
 			/**
 			 * \~russian
-			 * @brief Владеющее значение YAML
+			 * @brief Класс владеющий значением YAML
 			 *
 			 * @details Тип этот стоит **над** документом, а не вместо него. Документ
 			 *          разбирает текст, удерживает его оформление и правится путями, отчего
@@ -103,7 +106,7 @@ namespace awh {
 			 *          наречия не теряет.
 			 *
 			 * \~english
-			 * @brief Owning value of YAML
+			 * @brief A class that holds a YAML value
 			 *
 			 * @details This type stands **above** the document rather than instead of it. The document
 			 *          parses a text, retains its formatting and is edited by paths, whereby
@@ -125,120 +128,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
-				private:
-					/**
-					 * \~russian
-					 * Код отказа последней работы над владеющим значением
-					 *
-					 * @details Держится он ради того, чтобы отказ НАЗЫВАЛ ПРИЧИНУ: запись
-					 *          отвечает текстом, и пустой текст у неё означал разом и значение пустое, и
-					 *          отказ записи, - различить их потребителю было нечем вовсе. Причину
-					 *          писатель знал и выбрасывал: объект записи живёт внутри одного вызова.
-					 *
-					 * @note Немота эта найдена разбором, а не отказом: пустой текст ни к падению,
-					 *       ни к расхождению не ведёт - потребитель просто сохраняет пустой файл
-					 *       вместо своего документа
-					 *
-					 * \~english
-					 * Code of the failure of the last operation over the owning value
-					 *
-					 * @details It is held for the refusal to NAME THE REASON: the writing answers with a text, and an
-					 *          empty text at it would mean at once an empty value and a refusal of the writing — and
-					 *          there was no way whatsoever to tell them apart for the consumer. The writer knew the
-					 *          reason and threw it away: the object of the writing lives within one call.
-					 *
-					 * @note This muteness was found by a parsing, and not by a refusal: an empty text leads neither to
-					 *       a fall nor to a divergence — the consumer simply saves an empty file instead of his
-					 *       document
-					 *
-					 * \~
-					 */
-					mutable error_t _error = error_t::NONE;
-				private:
-					// Вид хранимого значения
-					kind_t _kind;
-				private:
-					// Вид числа, опознанный при установке значения
-					type_t _type;
-				private:
-					/**
-					 * \~russian
-					 * Схема, какою опознан вид числа
-					 *
-					 * @details Схема хранится значением, а не берётся у документа: значение
-					 *          владеющее документ пережить обязано, и вид числа его переопределяться
-					 *          настройками чужого разбора не должен.
-					 *
-					 * \~english
-					 * Schema by which the kind of the number is recognized
-					 *
-					 * @details The schema is stored by the value rather than taken from the document: an owning
-					 *          value must outlive the document, and the kind of its number must not be redefined
-					 *          by the settings of a foreign parsing.
-					 *
-					 * \~
-					 */
-					schema_t _schema;
-				private:
-					/**
-					 * \~russian
-					 * Число, разобранное из записи значения
-					 *
-					 * @details Хранится оно рядом с записью, а не вместо неё: запись `0x1F`
-					 *          обязана вернуться записью `0x1F`, а извлечение числа обязано выдать 31,
-					 *          и одно другому не замена.
-					 *
-					 * \~english
-					 * Number parsed from the record of the value
-					 *
-					 * @details It is stored alongside the record rather than instead of it: the record `0x1F`
-					 *          must return as the record `0x1F`, while the extraction of the number must give away 31,
-					 *          and one is not a replacement for the other.
-					 *
-					 * \~
-					 */
-					numeric_t _number;
-				private:
-					// Оформление записи значения
-					style_t _style;
-				private:
-					/**
-					 * \~russian
-					 * Правило усечения переводов строк блочного значения
-					 *
-					 * @details Умолчанием взято правило сохраняющее, а не отсекающее: у
-					 *          значения владеющего запись есть само содержимое, и правило это
-					 *          единственное, при каком содержимое возвращается тем же, сколько бы
-					 *          переводов строк ни стояло в конце.
-					 *
-					 * @note Потребитель волен назначить иное, и назначает он его знаючи:
-					 *       правила `CLIP` и `STRIP` переводы строк в конце содержимого теряют
-					 *
-					 * \~english
-					 * Rule of the chomping of the line breaks of a block value
-					 *
-					 * @details The keeping rather than the clipping rule is taken as the default: for an owning
-					 *          value the record is the content itself, and this rule is the only one under which
-					 *          the content returns the same, however many line breaks stand at the end.
-					 *
-					 * @note The consumer is free to assign another one, and assigns it knowingly:
-					 *       the `CLIP` and `STRIP` rules lose the line breaks at the end of the content
-					 *
-					 * \~
-					 */
-					chomp_t _chomp;
-				private:
-					// Построение вместилища
-					layout_t _layout;
-				private:
-					// Содержимое значения, записанное тем же видом, каким оно ложится в текст
-					string _text;
-				private:
-					// Якорь значения, пустой - якоря нет
-					string _anchor;
-				private:
-					// Метка значения, пустая - метки нет
-					string _tag;
 				private:
 					/**
 					 * \~russian
@@ -270,7 +159,116 @@ namespace awh {
 					 * \~
 					 */
 					bool _local;
+					// Признак МЕСТНОГО вида метки типа имени пары
+					bool _keyLocal;
 				private:
+					// Вид хранимого значения
+					kind_t _kind;
+					// Вид числа, опознанный при установке значения
+					type_t _type;
+					/**
+					 * \~russian
+					 * Правило усечения переводов строк блочного значения
+					 *
+					 * @details Умолчанием взято правило сохраняющее, а не отсекающее: у
+					 *          значения владеющего запись есть само содержимое, и правило это
+					 *          единственное, при каком содержимое возвращается тем же, сколько бы
+					 *          переводов строк ни стояло в конце.
+					 *
+					 * @note Потребитель волен назначить иное, и назначает он его знаючи:
+					 *       правила `CLIP` и `STRIP` переводы строк в конце содержимого теряют
+					 *
+					 * \~english
+					 * Rule of the chomping of the line breaks of a block value
+					 *
+					 * @details The keeping rather than the clipping rule is taken as the default: for an owning
+					 *          value the record is the content itself, and this rule is the only one under which
+					 *          the content returns the same, however many line breaks stand at the end.
+					 *
+					 * @note The consumer is free to assign another one, and assigns it knowingly:
+					 *       the `CLIP` and `STRIP` rules lose the line breaks at the end of the content
+					 *
+					 * \~
+					 */
+					chomp_t _chomp;
+					// Оформление записи значения
+					style_t _style;
+					// Построение вместилища
+					layout_t _layout;
+					/**
+					 * \~russian
+					 * Схема, какою опознан вид числа
+					 *
+					 * @details Схема хранится значением, а не берётся у документа: значение
+					 *          владеющее документ пережить обязано, и вид числа его переопределяться
+					 *          настройками чужого разбора не должен.
+					 *
+					 * \~english
+					 * Schema by which the kind of the number is recognized
+					 *
+					 * @details The schema is stored by the value rather than taken from the document: an owning
+					 *          value must outlive the document, and the kind of its number must not be redefined
+					 *          by the settings of a foreign parsing.
+					 *
+					 * \~
+					 */
+					schema_t _schema;
+					/**
+					 * \~russian
+					 * Число, разобранное из записи значения
+					 *
+					 * @details Хранится оно рядом с записью, а не вместо неё: запись `0x1F`
+					 *          обязана вернуться записью `0x1F`, а извлечение числа обязано выдать 31,
+					 *          и одно другому не замена.
+					 *
+					 * \~english
+					 * Number parsed from the record of the value
+					 *
+					 * @details It is stored alongside the record rather than instead of it: the record `0x1F`
+					 *          must return as the record `0x1F`, while the extraction of the number must give away 31,
+					 *          and one is not a replacement for the other.
+					 *
+					 * \~
+					 */
+					numeric_t _number;
+				private:
+					/**
+					 * \~russian
+					 * Код отказа последней работы над владеющим значением
+					 *
+					 * @details Держится он ради того, чтобы отказ НАЗЫВАЛ ПРИЧИНУ: запись
+					 *          отвечает текстом, и пустой текст у неё означал разом и значение пустое, и
+					 *          отказ записи, - различить их потребителю было нечем вовсе. Причину
+					 *          писатель знал и выбрасывал: объект записи живёт внутри одного вызова.
+					 *
+					 * @note Немота эта найдена разбором, а не отказом: пустой текст ни к падению,
+					 *       ни к расхождению не ведёт - потребитель просто сохраняет пустой файл
+					 *       вместо своего документа
+					 *
+					 * \~english
+					 * Code of the failure of the last operation over the owning value
+					 *
+					 * @details It is held for the refusal to NAME THE REASON: the writing answers with a text, and an
+					 *          empty text at it would mean at once an empty value and a refusal of the writing — and
+					 *          there was no way whatsoever to tell them apart for the consumer. The writer knew the
+					 *          reason and threw it away: the object of the writing lives within one call.
+					 *
+					 * @note This muteness was found by a parsing, and not by a refusal: an empty text leads neither to
+					 *       a fall nor to a divergence — the consumer simply saves an empty file instead of his
+					 *       document
+					 *
+					 * \~
+					 */
+					mutable error_t _error;
+				private:
+					// Метка значения, пустая - метки нет
+					string _tag;
+					// Содержимое значения, записанное тем же видом, каким оно ложится в текст
+					string _text;
+					// Метка типа, ИМЕНИ ПАРЫ предпосланная, пустая - метки нет
+					string _keyTag;
+					// Якорь значения, пустой - якоря нет
+					string _anchor;
 					/**
 					 * \~russian
 					 * Имя метки, ИМЕНИ ПАРЫ предпосланной, пустое - метки нет
@@ -299,12 +297,8 @@ namespace awh {
 					 */
 					string _keyAnchor;
 				private:
-					// Метка типа, ИМЕНИ ПАРЫ предпосланная, пустая - метки нет
-					string _keyTag;
-				private:
-					// Признак МЕСТНОГО вида метки типа имени пары
-					bool _keyLocal;
-				private:
+					// Значения вместилища в порядке их следования
+					vector <Value> _items;
 					/**
 					 * \~russian
 					 * Имена полей отображения
@@ -321,9 +315,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <string> _names;
-				private:
-					// Значения вместилища в порядке их следования
-					vector <Value> _items;
 				private:
 					/**
 					 * \~russian
@@ -371,7 +362,7 @@ namespace awh {
 					 * @brief Method of the searching of a pair by a name
 					 *
 					 * @param name name of the pair being searched for
-					 * @return number of the pair, size of the container at the absence
+					 * @return     number of the pair, size of the container at the absence
 					 *
 					 * \~
 					 */
@@ -414,22 +405,33 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * @brief Шаблонный метод извлечения числа затребованным видом
+					 * @brief Шамблон метода извлечения числа затребованным видом
 					 *
-					 * @tparam T      затребованный вид числа
-					 * @param  result переменная, куда помещается извлечённое значение
-					 * @return        признак успешности извлечения
+					 * @tparam T затребованный вид числа
 					 *
 					 * \~english
-					 * @brief Template method of the extraction of a number by the demanded kind
+					 * @brief Template for a method to extract a number in a requested format
 					 *
 					 * @tparam T demanded kind of the number
-					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Метод извлечения числа затребованным видом
+					 *
+					 * @param result переменная, куда помещается извлечённое значение
+					 * @return       признак успешности извлечения
+					 *
+					 * \~english
+					 * @brief Method for extracting a number in a requested format
+					 *
+					 * @param result variable where the extracted value is placed
+					 * @return       sign of the success of the extraction
+					 *
+					 * \~
+					 */
 					bool extract(T & result) const noexcept;
 				private:
 					/**
@@ -566,7 +568,7 @@ namespace awh {
 					 * @brief Method of the check of the kind of the storage of the value
 					 *
 					 * @param type kind of the storage being compared, allowing a union of the kinds
-					 * @return sign of the coincidence of the kind
+					 * @return     sign of the coincidence of the kind
 					 *
 					 * \~
 					 */
@@ -636,7 +638,7 @@ namespace awh {
 					 * @brief Method of the extraction of the name of a field of a mapping by an index
 					 *
 					 * @param index index of the field of the mapping
-					 * @return name of the field of the mapping, an empty one — there is no field with such index
+					 * @return      name of the field of the mapping, an empty one — there is no field with such index
 					 *
 					 * \~
 					 */
@@ -881,7 +883,7 @@ namespace awh {
 					 * @brief Method of the check of the presence of a field of a mapping with the indicated name
 					 *
 					 * @param name name of the field of the mapping being searched for
-					 * @return sign of the presence of the field of the mapping
+					 * @return     sign of the presence of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -905,7 +907,8 @@ namespace awh {
 					 * @details The search is conducted by the index of the names when it is established: an enumeration
 					 *          would turn the assembling of a container by the calls into a quadratic one.
 					 *
-					 * @note The size of the container is issued when there is no pair with such a name
+					 * @note The size of the container is issued when there is no pair with such a name: this way
+					 *       is the same as the one `npos` of a string answers with
 					 *
 					 * @param name name of the pair being searched for
 					 * @return     number of the pair, size of the container at the absence
@@ -932,7 +935,7 @@ namespace awh {
 					 *          and gives away an undefined value.
 					 *
 					 * @param path path to the value being searched for
-					 * @return reference to the found value
+					 * @return     reference to the found value
 					 *
 					 * \~
 					 */
@@ -956,7 +959,7 @@ namespace awh {
 					 *          met on the path instead of a container is reborn as a container.
 					 *
 					 * @param path path to the value being searched for
-					 * @return reference to the found or created value
+					 * @return     reference to the found or created value
 					 *
 					 * \~
 					 */
@@ -973,7 +976,7 @@ namespace awh {
 					 * @brief Method of the access to a field of a mapping by a name
 					 *
 					 * @param name name of the field of the mapping
-					 * @return reference to the value of the field of the mapping
+					 * @return     reference to the value of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -995,7 +998,7 @@ namespace awh {
 					 *          value, exactly as `nlohmann::json` does it.
 					 *
 					 * @param name name of the field of the mapping
-					 * @return reference to the value of the field of the mapping
+					 * @return     reference to the value of the field of the mapping
 					 *
 					 * \~
 					 */
@@ -1011,7 +1014,7 @@ namespace awh {
 					 * @brief Method of the access to a value of a container by an index
 					 *
 					 * @param index index of the value in the container
-					 * @return reference to the value of the container
+					 * @return      reference to the value of the container
 					 *
 					 * \~
 					 */
@@ -1033,7 +1036,7 @@ namespace awh {
 					 *          the demanded index by the undefined values.
 					 *
 					 * @param index index of the value in the container
-					 * @return reference to the value of the container
+					 * @return      reference to the value of the container
 					 *
 					 * \~
 					 */
@@ -1144,7 +1147,7 @@ namespace awh {
 					 *          is not subject to the rebirth and the addition responds with a refusal.
 					 *
 					 * @param value value being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1166,9 +1169,9 @@ namespace awh {
 					 * @details A field with an already occupied name is overwritten in its place, while
 					 *          the order of the fields of the mapping is thereby preserved.
 					 *
-					 * @param name name of the field of the mapping
+					 * @param name  name of the field of the mapping
 					 * @param value value of the field being set
-					 * @return sign of the success of the setting
+					 * @return      sign of the success of the setting
 					 *
 					 * \~
 					 */
@@ -1193,14 +1196,16 @@ namespace awh {
 					 * @brief Method of the addition of a field of a mapping next to a field of the same name
 					 *
 					 * @details The field is laid next to rather than over: the parsing with the setting
-					 *          `duplicate_t::KEEP` retains all the occurrences of a repeating name.
+					 *          `duplicate_t::KEEP` retains all the occurrences of a repeating name, and such a mapping
+					 *          cannot be reproduced by the setting of a field — it would overwrite the field of the same
+					 *          name in its place.
 					 *
 					 * @note The method conducts no search by a name at all: the name is laid right after the last
 					 *       field of the mapping
 					 *
-					 * @param name name of the field of the mapping
+					 * @param name  name of the field of the mapping
 					 * @param value value of the field being added
-					 * @return sign of the success of the addition
+					 * @return      sign of the success of the addition
 					 *
 					 * \~
 					 */
@@ -1216,7 +1221,7 @@ namespace awh {
 					 * @brief Method of the removal of a field of a mapping by a name
 					 *
 					 * @param name name of the field of the mapping being removed
-					 * @return sign of the success of the removal
+					 * @return     sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1232,7 +1237,7 @@ namespace awh {
 					 * @brief Method of the removal of a value of a container by an index
 					 *
 					 * @param index index of the value of the container being removed
-					 * @return sign of the success of the removal
+					 * @return      sign of the success of the removal
 					 *
 					 * \~
 					 */
@@ -1249,7 +1254,7 @@ namespace awh {
 					 * @brief Method of the extraction of a logical value
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1283,45 +1288,99 @@ namespace awh {
 					 *          as a minus two. There is no truncation towards zero here.
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					bool value(int8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(int64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint8_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint16_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint32_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(uint64_t & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(float & result) const noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Value::value(int8_t &) const
+					 *
+					 * \~
 					 */
 					bool value(double & result) const noexcept;
 					/**
@@ -1361,6 +1420,7 @@ namespace awh {
 					 *          record `true`, an empty value by the record `~` or that very record by which it
 					 *          was written. A container - a mapping and a list - answers with a refusal.
 
+					 *
 					 * @note This rule is DIFFERENT among the five codecs of the framework, and different
 					 *       deliberately - it follows from the arrangement of the dialect, and was not taken
 					 *       at random:
@@ -1381,7 +1441,7 @@ namespace awh {
 					 *       where there is none by the arrangement
 					 *
 					 * @param result variable where the extracted value is placed
-					 * @return sign of the success of the extraction
+					 * @return       sign of the success of the extraction
 					 *
 					 * \~
 					 */
@@ -1406,7 +1466,7 @@ namespace awh {
 					 *          of the source text is not retained at the taking.
 					 *
 					 * @param text YAML text being parsed
-					 * @return sign of the success of the parsing
+					 * @return     sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1436,9 +1496,9 @@ namespace awh {
 					 * @note This particularity is peculiar to the YAML dialect: for the codecs having no schemas,
 					 *       the parsing does not require the settings at all
 					 *
-					 * @param text YAML text being parsed
+					 * @param text     YAML text being parsed
 					 * @param settings settings of the parsing of the text
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1454,7 +1514,7 @@ namespace awh {
 					 * @brief Method of the parsing of a YAML text from a file
 					 *
 					 * @param filename address of the file being parsed
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1472,7 +1532,7 @@ namespace awh {
 					 *
 					 * @param filename address of the file being parsed
 					 * @param settings settings of the parsing of the text
-					 * @return sign of the success of the parsing
+					 * @return         sign of the success of the parsing
 					 *
 					 * \~
 					 */
@@ -1502,7 +1562,7 @@ namespace awh {
 					 * @brief Method of the rewriting of the value into a YAML text with the indicated settings
 					 *
 					 * @param settings settings of the writing of the text
-					 * @return YAML text
+					 * @return         YAML text
 					 *
 					 * \~
 					 */
@@ -1518,7 +1578,7 @@ namespace awh {
 					 * @brief Method of the writing of the value into a file
 					 *
 					 * @param filename address of the file being written
-					 * @return sign of the success of the writing
+					 * @return         sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -1635,7 +1695,7 @@ namespace awh {
 					 *          and are merely written differently.
 					 *
 					 * @param value value being compared
-					 * @return sign of the coincidence of the values
+					 * @return      sign of the coincidence of the values
 					 *
 					 * \~
 					 */
@@ -1651,7 +1711,7 @@ namespace awh {
 					 * @brief Method of the comparison of the values for a mismatch
 					 *
 					 * @param value value being compared
-					 * @return sign of the mismatch of the values
+					 * @return      sign of the mismatch of the values
 					 *
 					 * \~
 					 */
@@ -1668,7 +1728,7 @@ namespace awh {
 					 * @brief Copy assignment operator
 					 *
 					 * @param value value being assigned
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
@@ -1684,7 +1744,7 @@ namespace awh {
 					 * @brief Move assignment operator
 					 *
 					 * @param value value being moved
-					 * @return reference to the current value
+					 * @return      reference to the current value
 					 *
 					 * \~
 					 */
@@ -1774,27 +1834,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Шаблон вида заводимого целого числа
 					 *
-					 * @tparam T вид заводимого целого числа
-					 *
-					 * \~english
-					 * @brief Template of the kind of the integer being created
-					 *
-					 * @tparam T kind of the integer being created
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
 					 * @note Ограда `enable_if` обязательна: без неё заводитель перехватывал бы и
 					 *       написание дробное - `Value(1.5f)` доводится до `float` точным
 					 *       совпадением, а до `double` приведением, и сборка искала бы шаблон,
 					 *       созданный лишь для целых чисел. Замерено отказом связывания
 					 *
+					 * @tparam T вид заводимого целого числа
+					 *
 					 * \~english
+					 * @brief Template of the kind of the integer being created
+					 *
 					 * @note The `enable_if` fence is mandatory: without it the constructor would intercept a
 					 *       fractional writing as well — `Value(1.5f)` is brought to `float` by an exact match, and to
 					 *       `double` by a conversion, and the assembly would look for a template created only for the
 					 *       integers. Measured by a refusal of the binding
+					 *
+					 * @tparam T kind of the integer being created
 					 *
 					 * \~
 					 */
@@ -1946,11 +2001,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Value() noexcept {}
+					~Value() noexcept = default;
 			} value_t;
 			/**
 			 * \~russian
-			 * @brief Потоковая сборка владеющего значения
+			 * @brief Класс потоковой сборки владеющего значения
 			 *
 			 * @details Сборка эта есть второй способ построить дерево, стоящий рядом с
 			 *          путями, а не вместо них. Потребитель, поля подряд заносящий, вложенностей не
@@ -1963,7 +2018,7 @@ namespace awh {
 			 *          требует переучиваться.
 			 *
 			 * \~english
-			 * @brief Streaming assembly of an owning value
+			 * @brief Streaming builder class for an owned value
 			 *
 			 * @details This assembly is the second way to build a tree, standing alongside
 			 *          the paths rather than instead of them. A consumer entering the fields in a row does not
@@ -1978,51 +2033,6 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
-				private:
-					// Собираемое значение
-					Value _root;
-				private:
-					/**
-					 * \~russian
-					 * Путь к вместилищу, сборкой открытому
-					 *
-					 * @details Путь хранится номерами, а не указателями: значения вместилища
-					 *          лежат в перечне, и всякое добавление переселяет его в памяти, отчего
-					 *          указатель на открытое вместилище стал бы висячим на первом же поле.
-					 *
-					 * \~english
-					 * Path to the container opened by the assembly
-					 *
-					 * @details The path is stored by the indices rather than by the pointers: the values of a container
-					 *          lie in a list, and every addition relocates it in the memory, whereby
-					 *          a pointer to an opened container would become dangling at the very first field.
-					 *
-					 * \~
-					 */
-					vector <size_t> _path;
-				private:
-					// Имя поля отображения, значения ожидающее
-					string _key;
-				private:
-					// Признак того, что имя поля отображения назначено
-					bool _keyed;
-				private:
-					/**
-					 * \~russian
-					 * @brief Признак того, что поле кладётся рядом с одноимённым
-					 *
-					 * @note Признак принадлежит имени, а не сборке: всякое назначение имени
-					 *       обычным способом его снимает
-					 *
-					 * \~english
-					 * @brief A sign that a field is laid next to one of the same name
-					 *
-					 * @note The sign belongs to a name and not to an assembly: any appointment of a name
-					 *       in the ordinary way removes it
-					 *
-					 * \~
-					 */
-					bool _appended;
 				private:
 					/**
 					 * \~russian
@@ -2042,12 +2052,53 @@ namespace awh {
 					 * \~
 					 */
 					bool _done;
+					// Признак того, что имя поля отображения назначено
+					bool _keyed;
+					/**
+					 * \~russian
+					 * @brief Признак того, что поле кладётся рядом с одноимённым
+					 *
+					 * @note Признак принадлежит имени, а не сборке: всякое назначение имени
+					 *       обычным способом его снимает
+					 *
+					 * \~english
+					 * @brief A sign that a field is laid next to one of the same name
+					 *
+					 * @note The sign belongs to a name and not to an assembly: any appointment of a name
+					 *       in the ordinary way removes it
+					 *
+					 * \~
+					 */
+					bool _appended;
 				private:
+					// Собираемое значение
+					value_t _root;
+				private:
+					// Имя поля отображения, значения ожидающее
+					string _key;
+					// Метка, значению предпосылаемая
+					string _tag;
 					// Якорь, значению предпосылаемый
 					string _anchor;
 				private:
-					// Метка, значению предпосылаемая
-					string _tag;
+					/**
+					 * \~russian
+					 * Путь к вместилищу, сборкой открытому
+					 *
+					 * @details Путь хранится номерами, а не указателями: значения вместилища
+					 *          лежат в перечне, и всякое добавление переселяет его в памяти, отчего
+					 *          указатель на открытое вместилище стал бы висячим на первом же поле.
+					 *
+					 * \~english
+					 * Path to the container opened by the assembly
+					 *
+					 * @details The path is stored by the indices rather than by the pointers: the values of a container
+					 *          lie in a list, and every addition relocates it in the memory, whereby
+					 *          a pointer to an opened container would become dangling at the very first field.
+					 *
+					 * \~
+					 */
+					vector <size_t> _path;
 				private:
 					/**
 					 * \~russian
@@ -2074,11 +2125,11 @@ namespace awh {
 					 * @brief Method of the entering of an assembled value into the container
 					 *
 					 * @param value value being entered
-					 * @return index of the entered value in the container
+					 * @return      index of the entered value in the container
 					 *
 					 * \~
 					 */
-					size_t deposit(Value && value) noexcept;
+					size_t deposit(value_t && value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища указанного вида
@@ -2090,11 +2141,11 @@ namespace awh {
 					 * @brief Method of the opening of a container of the indicated kind
 					 *
 					 * @param value container being opened
-					 * @return sign of the success of the opening
+					 * @return      sign of the success of the opening
 					 *
 					 * \~
 					 */
-					bool expand(Value && value) noexcept;
+					bool expand(value_t && value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2107,7 +2158,7 @@ namespace awh {
 					 * @brief Method of the opening of a mapping
 					 *
 					 * @param layout layout of the mapping being opened
-					 * @return sign of the success of the opening
+					 * @return       sign of the success of the opening
 					 *
 					 * \~
 					 */
@@ -2123,7 +2174,7 @@ namespace awh {
 					 * @brief Method of the opening of a sequence of the values
 					 *
 					 * @param layout layout of the sequence being opened
-					 * @return sign of the success of the opening
+					 * @return       sign of the success of the opening
 					 *
 					 * \~
 					 */
@@ -2160,7 +2211,7 @@ namespace awh {
 					 *          the writing stream, where the name and the value are two different actions.
 					 *
 					 * @param name name of the field of the mapping being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2192,7 +2243,7 @@ namespace awh {
 					 *       fields additions until the end of the assembly
 					 *
 					 * @param name name of the field of the mapping being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2208,7 +2259,7 @@ namespace awh {
 					 * @brief Method of the assignment of an anchor prefixed to a value
 					 *
 					 * @param name name of the anchor being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2224,7 +2275,7 @@ namespace awh {
 					 * @brief Method of the assignment of a tag prefixed to a value
 					 *
 					 * @param name name of the tag being assigned
-					 * @return sign of the success of the assignment
+					 * @return     sign of the success of the assignment
 					 *
 					 * \~
 					 */
@@ -2255,11 +2306,11 @@ namespace awh {
 					 * @brief Method of the writing of a ready value
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
-					bool value(const Value & value) noexcept;
+					bool value(const value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи логического значения
@@ -2271,7 +2322,7 @@ namespace awh {
 					 * @brief Method of the writing of a logical value
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
@@ -2293,17 +2344,29 @@ namespace awh {
 					 *          collecting a record would force the consumer to parse it back.
 					 *
 					 * @param value value being written
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
 					bool value(const int64_t value) noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Builder::value(const int64_t)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Builder::value(const int64_t)
+					 *
+					 * \~
 					 */
 					bool value(const uint64_t value) noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Builder::value(const int64_t)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Builder::value(const int64_t)
+					 *
+					 * \~
 					 */
 					bool value(const double value) noexcept;
 					/**
@@ -2319,13 +2382,19 @@ namespace awh {
 					 *
 					 * @param value value being written
 					 * @param style formatting of the record of the value
-					 * @return sign of the success of the writing
+					 * @return      sign of the success of the writing
 					 *
 					 * \~
 					 */
 					bool value(const string & value, const style_t style = style_t::PLAIN) noexcept;
 					/**
+					 * \~russian
 					 * @copydoc awh::codec::yaml::Builder::value(const string &, const style_t)
+					 *
+					 * \~english
+					 * @copydoc awh::codec::yaml::Builder::value(const string &, const style_t)
+					 *
+					 * \~
 					 */
 					bool value(const char * value, const style_t style = style_t::PLAIN) noexcept;
 				public:
@@ -2374,7 +2443,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value finish() noexcept;
+					value_t finish() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2385,7 +2454,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept;
+					explicit Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -2395,7 +2464,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					~Builder() noexcept {}
+					~Builder() noexcept = default;
 			} builder_t;
 		};
 	};

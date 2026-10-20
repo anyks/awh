@@ -192,7 +192,8 @@ uint32_t awh::codec::json::decode(const char * buffer, const size_t size, size_t
  * @param valid  признак годности разобранной последовательности
  * @return       количество разобранных байтов содержимого
  *
- */size_t awh::codec::json::decode(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept {
+ */
+size_t awh::codec::json::decode(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept {
 	/**
 	 * Выводим разобранное встраиваемым посредником
 	 *
@@ -1290,6 +1291,9 @@ bool awh::codec::json::Decoder::refuse(const error_t error) noexcept {
 		// Записываем отказ приведения в журнал работы
 		awh::log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {},
 		                  awh::log::flag_t::WARNING, message(error));
+	/**
+	 * Если режим отладки не включён
+	 */
 	#else
 		// Записываем отказ приведения в журнал работы
 		awh::log::print("JSON decoding failed: %s", awh::log::flag_t::WARNING, message(error));
@@ -1315,3 +1319,8 @@ awh::codec::json::Decoder::Decoder() noexcept :
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака
 	this->_pending[3] = 0;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Decoder::Chunk::Chunk() noexcept : head(nullptr), count(0), body(nullptr), length(0) {}

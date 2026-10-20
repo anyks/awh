@@ -34,7 +34,7 @@
 #pragma once
 
 /**
- * Подключаем заголовочные файлы модуля
+ * Подключаем заголовочный файл модуля
  */
 #include "common.hpp"
 
@@ -122,7 +122,7 @@ namespace awh {
 			 * @brief Function of the obtaining of the length of a UTF-8 sequence by the leading byte
 			 *
 			 * @param leading leading byte of the sequence
-			 * @return number of the bytes of the sequence, a zero — the byte is constructed erroneously
+			 * @return        number of the bytes of the sequence, a zero — the byte is constructed erroneously
 			 *
 			 * \~
 			 */
@@ -148,11 +148,11 @@ namespace awh {
 			 *          the check of the continuation bytes, the prohibition of a record longer than necessary and the prohibition
 			 *          of the surrogates. A second such body would diverge from the first one at the very first editing.
 			 *
-			 * @param text sequence of the characters from which the reading is conducted
+			 * @param text   sequence of the characters from which the reading is conducted
 			 * @param offset position of the beginning of the character in the sequence
-			 * @param code obtained Unicode character, at an unsuccessful parsing it is not set
+			 * @param code   obtained Unicode character, at an unsuccessful parsing it is not set
 			 * @param length number of the bytes passed by the parsing, at a shortage of the bytes — the number of the bytes at hand
-			 * @return outcome of the parsing of the sequence
+			 * @return       outcome of the parsing of the sequence
 			 *
 			 * \~
 			 */
@@ -169,10 +169,10 @@ namespace awh {
 			 * \~english
 			 * @brief Function of the obtaining of the next Unicode character of a UTF-8 sequence
 			 *
-			 * @param text sequence of the characters from which the reading is conducted
+			 * @param text   sequence of the characters from which the reading is conducted
 			 * @param offset position of the beginning of the character in the sequence
-			 * @param code obtained Unicode character
-			 * @return number of the bytes of the character, a zero — the character is broken or cut off
+			 * @param code   obtained Unicode character
+			 * @return       number of the bytes of the character, a zero — the character is broken or cut off
 			 *
 			 * \~
 			 */
@@ -188,9 +188,9 @@ namespace awh {
 			 * \~english
 			 * @brief Function of the writing of a Unicode character by a UTF-8 sequence
 			 *
-			 * @param code Unicode character being written
+			 * @param code   Unicode character being written
 			 * @param result string to which the sequence is appended
-			 * @return sign of the successful writing of the character
+			 * @return       sign of the successful writing of the character
 			 *
 			 * \~
 			 */
@@ -216,7 +216,7 @@ namespace awh {
 			 *          are written by the escape sequences inside a double quoting.
 			 *
 			 * @param code Unicode character being checked
-			 * @return sign of the belonging of the character to the printable ones
+			 * @return     sign of the belonging of the character to the printable ones
 			 *
 			 * \~
 			 */
@@ -224,7 +224,7 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Приведение исходного текста к кодировке UTF-8
+			 * @brief Класс приведения исходного текста к кодировке UTF-8
 			 *
 			 * @details Опознаёт кодировку по метке порядка байтов, а при её отсутствии - по
 			 *          расположению нулевых байтов в первых четырёх октетах, и приводит поданный текст
@@ -232,11 +232,10 @@ namespace awh {
 			 *
 			 * @note Текст в UTF-8 приведения не требует вовсе, и приводить его копированием
 			 *       значило бы платить за него памятью и временем на всяком куске. Признак
-			 *       `direct()` о том и сообщает: чтение вправе разбирать поданный кусок на
-			 *       месте
+			 *       `direct()` о том и сообщает: чтение вправе разбирать поданный кусок на месте
 			 *
 			 * \~english
-			 * @brief Conversion of the source text to the UTF-8 encoding
+			 * @brief A class for converting source text to UTF-8 encoding
 			 *
 			 * @details It recognises the encoding by the byte order mark, while at its absence — by
 			 *          the arrangement of the zero bytes in the first four octets, and converts the fed text
@@ -250,6 +249,26 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Decoder {
+				private:
+					// Признак того, что кодировка навязана извне
+					bool _forced;
+					// Признак того, что начало текста ещё не пройдено
+					bool _leading;
+					// Признак того, что кодировка уже опознана
+					bool _sniffed;
+					// Признак того, что текст открывался меткой порядка байтов
+					bool _signature;
+				private:
+					// Старший суррогат, ожидающий пары своей
+					uint32_t _surrogate;
+				private:
+					// Код ошибки приведения кодировки
+					error_t _error;
+					// Опознанная кодировка исходного текста
+					encoding_t _encoding;
+				private:
+					// Байты, оставшиеся от прошлого куска до полного знака
+					string _tail;
 				private:
 					/**
 					 * \~russian
@@ -270,33 +289,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-				private:
-					// Опознанная кодировка исходного текста
-					encoding_t _encoding;
-					// Код ошибки приведения кодировки
-					error_t _error;
-					// Признак того, что кодировка уже опознана
-					bool _sniffed;
-					// Признак того, что текст открывался меткой порядка байтов
-					bool _signature;
-					// Признак того, что кодировка навязана извне
-					bool _forced;
-					// Признак того, что начало текста ещё не пройдено
-					bool _leading;
-					// Старший суррогат, ожидающий пары своей
-					uint32_t _surrogate;
-					// Байты, оставшиеся от прошлого куска до полного знака
-					string _tail;
-				private:
-					/**
-					 * \~russian
 					 * @brief Метод опознания кодировки по началу исходного текста
 					 *
 					 * @param buffer начало исходного текста
@@ -308,9 +300,9 @@ namespace awh {
 					 * @brief Method of the recognition of the encoding by the beginning of the source text
 					 *
 					 * @param buffer beginning of the source text
-					 * @param size size of the beginning of the source text
-					 * @param end sign of the fact that the text is ended
-					 * @return sign of the fact that the encoding is recognised
+					 * @param size   size of the beginning of the source text
+					 * @param end    sign of the fact that the text is ended
+					 * @return       sign of the fact that the encoding is recognised
 					 *
 					 * \~
 					 */
@@ -342,7 +334,7 @@ namespace awh {
 					 *       one place is surer than in four
 					 *
 					 * @param code character of the Unicode being checked
-					 * @return sign of the permissibility of the character in a text
+					 * @return     sign of the permissibility of the character in a text
 					 *
 					 * \~
 					 */
@@ -361,10 +353,10 @@ namespace awh {
 					 * @brief Method of the conversion of a chunk of a text written by the pairs of the bytes
 					 *
 					 * @param buffer chunk of the source text being converted
-					 * @param size size of the chunk being converted
-					 * @param end sign of the fact that the text is ended
+					 * @param size   size of the chunk being converted
+					 * @param end    sign of the fact that the text is ended
 					 * @param result string to which the converted text is appended
-					 * @return sign of the successful conversion of the chunk
+					 * @return       sign of the successful conversion of the chunk
 					 *
 					 * \~
 					 */
@@ -383,10 +375,10 @@ namespace awh {
 					 * @brief Method of the conversion of a chunk of a text written by the quadruples of the bytes
 					 *
 					 * @param buffer chunk of the source text being converted
-					 * @param size size of the chunk being converted
-					 * @param end sign of the fact that the text is ended
+					 * @param size   size of the chunk being converted
+					 * @param end    sign of the fact that the text is ended
 					 * @param result string to which the converted text is appended
-					 * @return sign of the successful conversion of the chunk
+					 * @return       sign of the successful conversion of the chunk
 					 *
 					 * \~
 					 */
@@ -415,9 +407,9 @@ namespace awh {
 					 *          UTF-32, is not required here at all.
 					 *
 					 * @param buffer chunk of the source text being converted
-					 * @param size size of the chunk being converted
+					 * @param size   size of the chunk being converted
 					 * @param result string to which the converted text is appended
-					 * @return sign of the successful conversion of the chunk
+					 * @return       sign of the successful conversion of the chunk
 					 *
 					 * \~
 					 */
@@ -458,7 +450,7 @@ namespace awh {
 					 *          many.
 					 *
 					 * @param encoding encoding of the source text being imposed
-					 * @return sign of the fact that the encoding is accepted
+					 * @return         sign of the fact that the encoding is accepted
 					 *
 					 * \~
 					 */
@@ -527,10 +519,10 @@ namespace awh {
 					 *          of the conversion does not depend on how the text is cut.
 					 *
 					 * @param buffer chunk of the source text being converted
-					 * @param size size of the chunk being converted
-					 * @param end sign of the fact that the text is ended
+					 * @param size   size of the chunk being converted
+					 * @param end    sign of the fact that the text is ended
 					 * @param result string to which the converted text is appended
-					 * @return sign of the successful conversion of the chunk
+					 * @return       sign of the successful conversion of the chunk
 					 *
 					 * \~
 					 */
@@ -555,7 +547,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Decoder() noexcept;
+					explicit Decoder() noexcept;
 			} decoder_t;
 		};
 	};

@@ -368,8 +368,7 @@ namespace {
 				finish++;
 			/**
 			 * Если имя метки пусто
-			 */
-			/**
+			 *
 			 * @note Заход ДОСТИЖИМ и ныне ПОКРЫТ проверкою `LoneStarInTheSpanIsNotAReference`:
 			 *       знак `*`, имени за собою не несущий, ссылкою не является, и пролёт с ним
 			 *       переносится дословно. Замерено родным покрытием clang - выдача берётся
@@ -395,8 +394,7 @@ namespace {
 			for(size_t position = result.find('&'); position != string_view::npos; position = result.find('&', (position + 1))){
 				/**
 				 * Если знак объявление метки не открывает
-				 */
-				/**
+				 *
 				 * @warning Снятие стража этого УЛИЧИТЬ НЕЧЕМ: подмена условия на ложь оставляет
 				 *          набор из 397 проверок зелёным, а ворошитель на 20 000 текстов даёт
 				 *          выдачу ПОБАЙТНО ту же - 2 013 285 событий, число в число. Замерено
@@ -459,7 +457,7 @@ namespace {
 	 *       приведения расходятся молча: правка края округления в одном месте оставляет
 	 *       второе с прежним изъяном
 	 */
-}
+};
 
 /**
  * @brief Конструктор
@@ -468,29 +466,32 @@ namespace {
 awh::codec::yaml::Document::Settings::Settings() noexcept :
  schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
  maxDepth(0), maxScalar(0), maxExpansion(0), retain(false) {}
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::yaml::Document::Document() noexcept :
- _fs(), _generation(0), _prologue(0), _encoding(encoding_t::NONE), _versioned(false),
- _schema(schema_t::CORE), _error(error_t::NONE) {}
+awh::codec::yaml::Document::Properties::Properties() noexcept :
+ anchor(0), anchored(0), tag(0), tagged(0),
+ keyAnchor(0), keyAnchored(0), keyTag(0), keyTagged(0) {}
+
 /**
  * @brief Конструктор
  *
- * @param settings настройки разбора документа
- *
  */
-awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
- _fs(), _settings(settings), _generation(0), _prologue(0), _encoding(encoding_t::NONE),
- _versioned(false), _schema(settings.schema), _error(error_t::NONE) {}
+awh::codec::yaml::Document::Node::Node() noexcept :
+ type(type_t::UNDEFINED), style(style_t::PLAIN),
+ keyed(false), touched(false), severed(false),
+ origin(NO_ORIGIN), dwelling(NO_ORIGIN), edge(NO_ORIGIN),
+ offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
+
 /**
  * @brief Метод вывода сообщения об отказе в лог
  *
  */
 void awh::codec::yaml::Document::report() const noexcept {
 	// Выполняем вывод сообщения об отказе построения дерева документа
-	awh::log::print("YAML document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
+	log::print("YAML document failed: %s at line %u column %u", log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
 }
 /**
  * @brief Метод получения настроек разбора документа
@@ -511,6 +512,51 @@ const awh::codec::yaml::Document::settings_t & awh::codec::yaml::Document::setti
 void awh::codec::yaml::Document::settings(const settings_t & settings) noexcept {
 	// Запоминаем настройки разбора документа
 	this->_settings = settings;
+	// Устанавливаем настройки объекта записи текста документа
+	this->_writer.settings(settings.writer);
+	 // Собираемые настройки потокового чтения текста
+	reader_t::settings_t readerSettings;
+	// Устанавливаем схему разрешения видов скалярных значений
+	readerSettings.schema = this->_settings.schema;
+	// Устанавливаем кодировку, навязанную извне
+	readerSettings.encoding = this->_settings.encoding;
+	// Устанавливаем правило обращения с повторяющимся именем пары
+	readerSettings.duplicates = this->_settings.duplicates;
+	/**
+	 * Устанавливаем наибольшую допустимую глубину вложенности
+	 *
+	 * @note Положительное значение «maxDepth» заменяет предел чтения по умолчанию
+	 *       без ограничения сверху значением «MAX_DEPTH». Разбор вложенности
+	 *       использует явный стек
+	 *
+	 * @note Предел записи фиксирован значением «MAX_DEPTH» и настройкой чтения не
+	 *       меняется. Поэтому успешно разобранное дерево может оказаться глубже
+	 *       предела записи. Настройки для увеличения глубины записи нет
+	 *
+	 * @warning При превышении предела записи «dump()» возвращает пустую строку
+	 *          и устанавливает код «DEPTH_EXCEEDED», если документ ещё не несёт
+	 *          другой ошибки
+	 */
+	readerSettings.maxDepth = this->_settings.maxDepth;
+	// Устанавливаем наибольшую допустимую длину скалярного значения
+	readerSettings.maxScalar = this->_settings.maxScalar;
+	/**
+	 * Если удержание исходного текста затребовано
+	 */
+	if(this->_settings.retain){
+		// Устанавливаем выдачу пустых строк отдельным событием
+		readerSettings.emitBlanks = true;
+		/**
+		 * Устанавливаем выдачу примечаний и пустых строк отдельными событиями
+		 *
+		 * @note Знать о них надлежит ради дословной перезаписи: примечание стоит над тем, к
+		 *       чему относится, и уходить обязано вместе с ним. Отличить примечание от
+		 *       строки блочного значения, знаком решётки открытой, может лишь само чтение
+		 */
+		readerSettings.emitComments = true;
+	}
+	// Устанавливаем настройки объекта потокового чтения текста
+	this->_reader.settings(readerSettings);
 }
 /**
  * @brief Метод сброса дерева документа
@@ -609,7 +655,7 @@ awh::codec::yaml::Document::value_t awh::codec::yaml::Document::at(const string 
  */
 bool awh::codec::yaml::Document::has(const string & path) const noexcept {
 	// Выводим признак наличия значения по указанному пути
-	return ::awh::codec::yaml::Value(this->root()).at(path).valid();
+	return codec::yaml::Value(this->root()).at(path).valid();
 }
 /**
  * @brief Метод перечисления звеньев пути к детям значения
@@ -894,16 +940,6 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 	 *
 	 */
 	struct Level {
-		// Номер узла вместилища в перечне узлов
-		uint32_t index;
-		// Признак того, что вместилище является отображением пар
-		bool mapping;
-		// Признак того, что ожидается имя пары отображения
-		bool awaited;
-		// Собранное имя пары, значения своего ожидающее
-		string name;
-		// Смещение начала записи имени пары в удержанном исходном тексте
-		uint32_t origin;
 		/**
 		 * Признак того, что вместилище записано поточным построением
 		 *
@@ -912,6 +948,16 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		 *       событие закрытия - за нею, и признак поточности снят у обоих
 		 */
 		bool flow;
+		// Признак того, что вместилище является отображением пар
+		bool mapping;
+		// Признак того, что ожидается имя пары отображения
+		bool awaited;
+		// Номер узла вместилища в перечне узлов
+		uint32_t index;
+		// Смещение начала записи имени пары в удержанном исходном тексте
+		uint32_t origin;
+		// Собранное имя пары, значения своего ожидающее
+		string name;
 		/**
 		 * @brief Конструктор
 		 *
@@ -921,7 +967,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		 *
 		 */
 		Level(const uint32_t index, const bool mapping, const bool flow) noexcept :
-		 index(index), mapping(mapping), awaited(mapping), origin(NO_ORIGIN), flow(flow) {}
+		 flow(flow), mapping(mapping), awaited(mapping), index(index), origin(NO_ORIGIN) {}
 	};
 	// Стопа открытых вместилищ постройки дерева
 	vector <Level> levels;
@@ -1445,6 +1491,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		node_t & node = this->_nodes.back();
 		// Запоминаем вид значения поставленного узла
 		node.type = type;
+		// Признак того, что начало записи узла взято у отображения, имя его несущего
+		const bool inherited = (!levels.empty() && levels.back().mapping && (levels.back().origin != NO_ORIGIN));
 		/**
 		 * Запоминаем начало записи узла в удержанном исходном тексте
 		 *
@@ -1452,8 +1500,6 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		 *       написание `имя:` со значением строкою ниже есть одна запись, и делить её
 		 *       надвое нельзя
 		 */
-		// Признак того, что начало записи узла взято у отображения, имя его несущего
-		const bool inherited = (!levels.empty() && levels.back().mapping && (levels.back().origin != NO_ORIGIN));
 		node.origin = (reader.value().flow ? NO_ORIGIN : (inherited ? levels.back().origin : origin));
 		/**
 		 * Если узел строку свою не открывает, начала записи у имени не взяв
@@ -1470,20 +1516,6 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		if(!reader.value().flow && !inherited && (node.origin != NO_ORIGIN) && !entering())
 			// Выводим узел из дословного переноса вовсе
 			node.origin = NO_ORIGIN;
-		/**
-		 * Если начало записи узла позже собственной строки его оказалось
-		 *
-		 * @details Начало записи копится с первого события, узлу принадлежащего: примечания
-		 *          да пустые строки стоят над узлом и уходят вместе с ним. Но пустое
-		 *          значение записи `-` выдаётся **отложенно** - лишь тогда, когда ожидание
-		 *          его оборвётся строкою ниже, - и пустые строки, за ним стоящие, приходят
-		 *          событиями раньше него самого. Копящееся начало брало их строку, и запись
-		 *          узла начиналась ниже собственного содержимого своего
-		 *
-		 * @note Запись, начатая ниже содержимого своего, накладывается на запись соседа:
-		 *       два узла получали одно начало, дословный перенос выдавал их текст дважды, и
-		 *       перезапись правки рассыпала построение. Нашёл это ворошитель правкой дерева
-		 */
 		/**
 		 * Запоминаем собственную строку узла, содержимое его несущую
 		 *
@@ -1512,7 +1544,18 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 			// Оставляем накопленное начало записи следующему узлу
 			carried = origin;
 		/**
-		 * Если собственная строка события выше начала записи стоит
+		 * Если начало записи узла позже собственной строки его оказалось
+		 *
+		 * @details Начало записи копится с первого события, узлу принадлежащего: примечания
+		 *          да пустые строки стоят над узлом и уходят вместе с ним. Но пустое
+		 *          значение записи `-` выдаётся **отложенно** - лишь тогда, когда ожидание
+		 *          его оборвётся строкою ниже, - и пустые строки, за ним стоящие, приходят
+		 *          событиями раньше него самого. Копящееся начало брало их строку, и запись
+		 *          узла начиналась ниже собственного содержимого своего
+		 *
+		 * @note Запись, начатая ниже содержимого своего, накладывается на запись соседа:
+		 *       два узла получали одно начало, дословный перенос выдавал их текст дважды, и
+		 *       перезапись правки рассыпала построение. Нашёл это ворошитель правкой дерева
 		 */
 		if((node.origin != NO_ORIGIN) && !reader.value().flow &&
 		   (node.dwelling != NO_ORIGIN) && (node.dwelling < node.origin)){
@@ -1972,7 +2015,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					 *          обратно не читалась вовсе. Нашёл это ворошитель
 					 */
 					levels.back().origin = ((reader.value().flow || !entering()) ? NO_ORIGIN :
-					 ((origin != NO_ORIGIN) ? ::std::min(origin, opening()) : opening()));
+					 ((origin != NO_ORIGIN) ? ::min(origin, opening()) : opening()));
 					// Выполняем сброс начала записи следующего узла
 					origin = NO_ORIGIN;
 					/**
@@ -2008,7 +2051,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 							 */
 							if(properties.anchored > 0){
 								// Запоминаем метку имени пары среди объявленных документом
-								keyed[string(this->_storage, properties.anchor, properties.anchored)] = ::std::move(record);
+								keyed[string(this->_storage, properties.anchor, properties.anchored)] = ::move(record);
 								// Запоминаем смещение имени метки, имени пары предпосланной
 								keyedProps.keyAnchor = properties.anchor;
 								// Запоминаем длину имени метки, имени пары предпосланной
@@ -2081,6 +2124,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					const schema_t narrowing = ((!reader.value().tag.empty() &&
 					 ((reader.value().schema == schema_t::FAILSAFE) || (reader.value().schema == schema_t::JSON))) ?
 						schema_t::CORE : reader.value().schema);
+					// Сужаем текст записи к виду значения, выбранному схемой
 					const type_t narrowed = narrow(reader.value().text, narrowing, number);
 					/**
 					 * Если разобрать запись числа удалось
@@ -2537,32 +2581,6 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 		// Выводим признак неудачного разбора текста документа
 		return false;
 	}
-	// Собираемые настройки потокового чтения текста
-	reader_t::settings_t settings;
-	// Устанавливаем схему разрешения видов скалярных значений
-	settings.schema = this->_settings.schema;
-	// Устанавливаем кодировку, навязанную извне
-	settings.encoding = this->_settings.encoding;
-	// Устанавливаем правило обращения с повторяющимся именем пары
-	settings.duplicates = this->_settings.duplicates;
-	/**
-	 * Устанавливаем наибольшую допустимую глубину вложенности
-	 *
-	 * @note Положительное значение «maxDepth» заменяет предел чтения по умолчанию
-	 *       без ограничения сверху значением «MAX_DEPTH». Разбор вложенности
-	 *       использует явный стек
-	 *
-	 * @note Предел записи фиксирован значением «MAX_DEPTH» и настройкой чтения не
-	 *       меняется. Поэтому успешно разобранное дерево может оказаться глубже
-	 *       предела записи. Настройки для увеличения глубины записи нет
-	 *
-	 * @warning При превышении предела записи «dump()» возвращает пустую строку
-	 *          и устанавливает код «DEPTH_EXCEEDED», если документ ещё не несёт
-	 *          другой ошибки
-	 */
-	settings.maxDepth = this->_settings.maxDepth;
-	// Устанавливаем наибольшую допустимую длину скалярного значения
-	settings.maxScalar = this->_settings.maxScalar;
 	/**
 	 * Если удержание исходного текста затребовано
 	 */
@@ -2579,25 +2597,19 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 		if(this->_source.compare(0, 3, "\xEF\xBB\xBF") == 0)
 			// Запоминаем длину метки порядка байтов
 			this->_prologue = 3;
-		/**
-		 * Устанавливаем выдачу примечаний и пустых строк отдельными событиями
-		 *
-		 * @note Знать о них надлежит ради дословной перезаписи: примечание стоит над тем, к
-		 *       чему относится, и уходить обязано вместе с ним. Отличить примечание от
-		 *       строки блочного значения, знаком решётки открытой, может лишь само чтение
-		 */
-		settings.emitComments = true;
-		// Устанавливаем выдачу пустых строк отдельным событием
-		settings.emitBlanks = true;
 	}
+	// Очищаем объект потокового чтения текста
+	this->_reader.clear();
 	/**
-	 * Огранения предела вложенности здесь НЕТ намеренно
+	 * @brief Функция снятия удержания при кодировке, отличной от UTF-8
+	 *
+	 * @note Огранения предела вложенности здесь НЕТ намеренно
 	 *
 	 * @details Разбор рекурсии не берёт, а работы по готовому дереву - сборка текста,
-	 * снятие в значение владеющее да размножение его - идут возвратом, и дерево небывалой
-	 * глубины срывает на них стек. Ограда от того - предел ПО УМОЛЧАНИЮ, а не потолок:
-	 * подпись `MAX_DEPTH` велит прямо, что предел этот настройкою поднимается, и поднявший
-	 * выше десяти тысяч лишается ограды сам, а поднимая предел, обязан поднять и стек потока
+	 *          снятие в значение владеющее да размножение его - идут возвратом, и дерево небывалой
+	 *          глубины срывает на них стек. Ограда от того - предел ПО УМОЛЧАНИЮ, а не потолок:
+	 *          подпись `MAX_DEPTH` велит прямо, что предел этот настройкою поднимается, и поднявший
+	 *          выше десяти тысяч лишается ограды сам, а поднимая предел, обязан поднять и стек потока
 	 *
 	 * @note Замерено 04.09.2026 при снятом огранении: глубина 20000 проходит целиком, на
 	 *       50000 срыв приходит на разрушении дерева, на 100000 - уже на снятии владеющим
@@ -2610,24 +2622,16 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 	 *          этот нет, и расхождение то законное: там рекурсия живёт в САМОМ разборе, и
 	 *          потребитель обойти её ничем не может, здесь же она живёт в работах по
 	 *          готовому дереву, о которых подпись предупреждает прямо
-	 */
-	// Объект потокового чтения текста
-	reader_t reader(settings);
-	/**
-	 * @brief Функция снятия удержания при кодировке, отличной от UTF-8
-	 *
 	 * @details Смещения событий чтение считает по тексту исходному, до приведения к
 	 *          UTF-8, и дословный перенос вырезал бы из текста UTF-16 куски в два байта
 	 *          на знак, кладя их рядом с собранным UTF-8. Удержание оттого снимается, а
 	 *          перезапись идёт сборкою заново - оформление теряется, но текст остаётся
 	 *          читаемым
 	 *
-	 * @param reader чтение, кодировку опознавшее
-	 *
 	 */
-	const auto retained = [this](const reader_t & reader) noexcept -> void {
+	const auto retained = [this]() noexcept -> void {
 		// Запоминаем кодировку, какою текст прочитан
-		this->_encoding = reader.encoding();
+		this->_encoding = this->_reader.encoding();
 		/**
 		 * Запоминаем признак объявленного директивой наречия
 		 *
@@ -2638,13 +2642,13 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 		 *
 		 * @note Нашёл это ворошитель круговым ходом снятого значения
 		 */
-		this->_versioned = reader.declared();
+		this->_versioned = this->_reader.declared();
 		// Запоминаем схему, директивой наречия назначенную
-		this->_schema = reader.dialect();
+		this->_schema = this->_reader.dialect();
 		/**
 		 * Если кодировка исходного текста от UTF-8 отлична
 		 */
-		if((reader.encoding() != encoding_t::NONE) && (reader.encoding() != encoding_t::UTF8))
+		if((this->_reader.encoding() != encoding_t::NONE) && (this->_reader.encoding() != encoding_t::UTF8))
 			// Выполняем снятие удержания исходного текста
 			this->_source.clear();
 	};
@@ -2655,7 +2659,7 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 	 *       снимается с чтения тотчас, а дерево строится настолько, насколько текст
 	 *       прочитан - потребителю оно скажет больше, чем пустота
 	 */
-	if(!reader.feed(text)){
+	if(!this->_reader.feed(text)){
 		/**
 		 * Выполняем снятие удержания исходного текста
 		 *
@@ -2665,22 +2669,22 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 		 */
 		this->_source.clear();
 		// Запоминаем код ошибки разбора текста
-		this->_error = reader.error();
+		this->_error = this->_reader.error();
 		// Запоминаем положение отказа разбора
-		this->_location = reader.location();
+		this->_location = this->_reader.location();
 		// Выполняем снятие удержания при кодировке, отличной от UTF-8
-		retained(reader);
+		retained();
 		// Выполняем постройку дерева по событиям, до отказа собранным
-		this->digest(reader);
+		this->digest(this->_reader);
 		// Выводим признак неудачного разбора текста
 		return false;
 	}
 	// Выполняем снятие удержания при кодировке, отличной от UTF-8
-	retained(reader);
+	retained();
 	/**
 	 * Если построить дерево по выданным событиям не удалось
 	 */
-	if(!this->digest(reader))
+	if(!this->digest(this->_reader))
 		// Выводим признак неудачного разбора текста
 		return false;
 	// Выполняем отнесение пустых строк к узлам, под ними стоящим
@@ -2854,15 +2858,6 @@ static awh::codec::yaml::chomp_t __awh_chomping__(const string & text) noexcept 
 	// Выводим правило простое, один перевод строки оставляющее
 	return awh::codec::yaml::chomp_t::CLIP;
 }
-/**
- * @brief Метод дословной записи пролёта соседних узлов исходными байтами
- *
- * @param writer сборка текста
- * @param first  номер первого узла переписываемого пролёта
- * @param last   номер последнего узла переписываемого пролёта
- * @return       признак успешной дословной записи пролёта
- *
- */
 /**
  * @brief Функция обрезки строк предисловия, из одних пробелов составленных
  *
@@ -3042,6 +3037,15 @@ size_t awh::codec::yaml::Document::blocked(const uint32_t index, const uint32_t 
 	// Выводим отступ строки блочного значения соседа сверху
 	return (letter - own);
 }
+/**
+ * @brief Метод дословной записи пролёта соседних узлов исходными байтами
+ *
+ * @param writer сборка текста
+ * @param first  номер первого узла переписываемого пролёта
+ * @param last   номер последнего узла переписываемого пролёта
+ * @return       признак успешной дословной записи пролёта
+ *
+ */
 bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry, const bool gapped) const noexcept {
 	/**
 	 * Если исходный текст не удержан
@@ -3107,8 +3111,7 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	 *          новой: граница пролёта совпадала с началом записи её, и пролёт нёс одну лишь
 	 *          пару первую, а вторая из текста исчезала. Дерево держало три пары, а
 	 *          обратное чтение находило две
-	 */
-	/**
+	 *
 	 * @note Отказ этот не берётся ни разу: ни набором кодека, ни ворошителем за 60 000
 	 *       проходов, ни общим набором, при 32.6 тыс. заходов сторожа
 	 *
@@ -3194,7 +3197,6 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	if(!::referable(string_view(this->_source).substr(origin, (edge - origin)), writer.text()))
 		// Выводим признак неудачной дословной записи пролёта
 		return false;
-	// Выводим признак дословной записи пролёта исходными байтами
 	/**
 	 * Если пролёту предпослано предисловие
 	 *
@@ -3204,21 +3206,19 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	 */
 	if(gapped && (own != NO_ORIGIN) && (own > origin)){
 		// Собираемая запись пролёта со строками одних пробелов, обрезанными до пустоты
-		string prepared;
+		string prepared = "";
 		/**
 		 * Если обрезка предисловие пролёта изменила
 		 */
-		if(::__awh_trimmed__(string_view(this->_source).substr(origin, (own - origin)), prepared,
-		 this->blocked(first, origin))){
+		if(::__awh_trimmed__(string_view(this->_source).substr(origin, (own - origin)), prepared, this->blocked(first, origin))){
 			// Выполняем добавление записи пролёта за предисловием его
 			prepared.append(string_view(this->_source).substr(own, (edge - own)));
 			// Выполняем дословную запись пролёта с обрезанным предисловием
-			return writer.verbatim(string_view(prepared),
-			 static_cast <uint32_t> ((position < edge) ? (position - started) : 0));
+			return writer.verbatim(string_view(prepared), static_cast <uint32_t> ((position < edge) ? (position - started) : 0));
 		}
 	}
-	return writer.verbatim(string_view(this->_source).substr(origin, (edge - origin)),
-	 static_cast <uint32_t> (position - started));
+	// Отдаём писателю дословный остаток строки от начала записи до края
+	return writer.verbatim(string_view(this->_source).substr(origin, (edge - origin)), static_cast <uint32_t> (position - started));
 }
 /**
  * @brief Метод опознания блочного значения, хвост свой сохраняющего
@@ -3393,8 +3393,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 	for(size_t i = 1; i < this->_starts.size(); i++){
 		/**
 		 * Если начала документа в удержанном тексте не стоит
-		 */
-		/**
+		 *
 		 * @warning Ветвь эта истины не принимает: начала документов заводятся приёмом `opening`, а тот
 		 *          отвечает «записи нет» лишь при пустом удержанном тексте, при событии без смещения
 		 *          либо при смещении за концом текста. Пустой текст отсекается выходом в начале приёма,
@@ -3419,8 +3418,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 		 *       перезаписи его, а место - щуп в дословном переносе пролёта: пролёт
 		 *       кончался ровно одним байтом выше содержимого блока
 		 */
-		const uint32_t bottom = ((i > 0) && ((i - 1) < this->_roots.size()) ?
-		 this->trailing(this->_roots.at(i - 1)) : NO_ORIGIN);
+		const uint32_t bottom = ((i > 0) && ((i - 1) < this->_roots.size()) ? this->trailing(this->_roots.at(i - 1)) : NO_ORIGIN);
 		/**
 		 * Выполняем перебор строк, документу предшествующих
 		 */
@@ -3436,8 +3434,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 *
 			 * @note Розыск ведётся от `offset - 2`, и смещение мельче двух уходит за нуль
 			 *       беззнаково, обращая розыск поиском по всему тексту
-			 */
-			/**
+			 *
 			 * @warning Ветвь эта истины не принимает: сюда заходят лишь документы со второго, а второй
 			 *          документ раньше второго знака начаться не может - первому положен хотя бы один знак
 			 *          и перевод строки за ним. Замерено: начала документов у `a: 1\n---\nb: 2` суть 0 и 5,
@@ -3464,9 +3461,6 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 * @note Строки пустые да несущие одно примечание идут об руку с директивами:
 			 *       стоят они над документом и уходят вместе с ним. Строка иная - содержимое
 			 *       соседа сверху либо черта `...`, его закрывающая, - и заходить за неё нельзя
-			 */
-			/**
-			 * Если строка содержимое несёт
 			 */
 			if(letter < (offset - 1)){
 				// Получаем знак, содержимое строки открывающий
@@ -3498,9 +3492,9 @@ void awh::codec::yaml::Document::spread() noexcept {
 	 * Выполняем перебор всех узлов дерева документа
 	 *
 	 * @details Черта записи перечня принадлежит записи ребёнка, а не перечня: значение,
-	 * строкою ниже черты стоящее, начало записи своей берёт строкою этого значения, и
-	 * черта осталась бы вне всякого узла. Дословный перенос соседей, правкой не
-	 * тронутых, потерял бы её тогда молча, и правленый текст читался бы уже иначе
+	 *          строкою ниже черты стоящее, начало записи своей берёт строкою этого значения, и
+	 *          черта осталась бы вне всякого узла. Дословный перенос соседей, правкой не
+	 *          тронутых, потерял бы её тогда молча, и правленый текст читался бы уже иначе
 	 *
 	 * @note Нашёл это ворошитель правкой дерева: запись `- ` со значением строкою ниже
 	 *       теряла черту свою, и построение разъезжалось на отступ
@@ -3573,6 +3567,9 @@ void awh::codec::yaml::Document::spread() noexcept {
 		 */
 		// Номер ребёнка, прежде разобранного
 		uint32_t former = NO_ORIGIN;
+		/**
+		 * Перебираем детей узла, шагая размером их поддеревьев
+		 */
 		for(uint32_t child = (i + 1); child < bound; child += this->_nodes.at(child).extent()){
 			/**
 			 * Если запись ребёнка своей черты не включает, а сосед сверху её поглотил
@@ -3767,8 +3764,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			const size_t start = ((opened < this->_prologue) ? this->_prologue : opened);
 			/**
 			 * Если строка черты за границею записи ребёнка не умещается
-			 */
-			/**
+			 *
 			 * @warning Ветвь эта истины не принимает ни при одном написании: запись соседей по перечню
 			 *          смежна - начало записи очередного ребёнка совпадает с концом записи прежнего, а
 			 *          `start`, начало строки над собственной строкой ребёнка, совпадает с границею. Оттого
@@ -3889,6 +3885,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			if((trailing != NO_ORIGIN) && this->hanging(trailing))
 				// Запоминаем началом промежутка собственную строку соседа
 				opening = start;
+			// Проверяем, сокращает ли черта в начале строки найденный промежуток
 			if(solely && (letter < origin) && (this->_source.at(letter) == '-')){
 				/**
 				 * Если начало строки черты запись ребёнка не сокращает
@@ -4842,13 +4839,12 @@ void awh::codec::yaml::Document::compose(writer_t & writer, const uint32_t index
 /**
  * @brief Метод сборки текста по дереву документа заданными настройками
  *
- * @param settings настройки записи собираемого текста
- * @return         собранный текст документа
+ * @return собранный текст документа
  *
  */
-string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) const noexcept {
-	// Объект записи текста документа
-	writer_t writer(settings);
+string awh::codec::yaml::Document::dump() const noexcept {
+	// Очищаем объект записи текста документа
+	this->_writer.clear();
 	/**
 	 * Если исходный текст удержан, а документов он не несёт
 	 *
@@ -4861,6 +4857,8 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 		return this->_source;
 	// Признак того, что документ прежний перенесён дословно
 	bool literal = false;
+	// Получаем настройки записи собираемого текста
+	writer_t::settings_t appointed = this->_writer.settings();
 	/**
 	 * Выполняем перебор всех документов текста
 	 */
@@ -4883,13 +4881,14 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 			 * @note Границею служит начало документа следующего: `...`, документ
 			 *       закрывающая, стоит прежде неё и достаётся документу своему
 			 */
-			const uint32_t edge = (((i + 1) < this->_starts.size()) ?
-			 this->_starts.at(i + 1) : static_cast <uint32_t> (this->_source.size()));
+			const uint32_t edge = (
+				((i + 1) < this->_starts.size()) ?
+				this->_starts.at(i + 1) : static_cast <uint32_t> (this->_source.size())
+			);
 			/**
 			 * Если переписать документ дословно удалось
 			 */
-			if((origin != NO_ORIGIN) && (edge != NO_ORIGIN) && (edge > origin) &&
-			   (edge <= this->_source.size())){
+			if((origin != NO_ORIGIN) && (edge != NO_ORIGIN) && (edge > origin) && (edge <= this->_source.size())){
 				/**
 				 * Если документ прежний собран заново, а не перенесён дословно
 				 *
@@ -4901,18 +4900,17 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 				 */
 				if((i > 0) && !literal)
 					// Выполняем добавление черты конца документа прежнего
-					writer.verbatim(string_view("...\n"), 0);
+					this->_writer.verbatim(string_view("...\n"), 0);
 				/**
 				 * Если перенести документ дословно удалось
-				 */
-				/**
+				 *
 				 * @note Отказ дословного переноса разбирается проваливанием: перенос отвечает отказом лишь
 				 *       тогда, когда запись уже отказала, - и съём её всё равно пуст. Оттого ход этот приметен
 				 *       покрытием, а поведения собою не держит: порча его переходом к следующему документу
 				 *       набора не валит вовсе. Держать его надлежит на случай, если отказ записи перестанет
 				 *       быть окончательным. Ход берётся написанием из проверки VerbatimAfterWriterRefusal
 				 */
-				if(writer.verbatim(string_view(this->_source).substr(origin, (edge - origin)), 0)){
+				if(this->_writer.verbatim(string_view(this->_source).substr(origin, (edge - origin)), 0)){
 					// Запоминаем признак дословного переноса документа
 					literal = true;
 					// Выполняем переход к следующему документу текста
@@ -4920,18 +4918,6 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 				}
 			}
 		}
-		/**
-		 * Если документ является не первым либо тело его пусто вовсе
-		 *
-		 * @details Документ с пустым телом ничего в текст не пишет, и без черты начала он
-		 *          пропал бы из потока: следующий документ слился бы с ним в один. Прежде
-		 *          пустота корня писалась словом `null`, и черты не требовалось, - но
-		 *          схема защитная слова того не знает, и значение возвращалось обратно
-		 *          строкою. Присутствие документа держит черта, а не выдуманное значение
-		 *
-		 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте `---` с
-		 *       пустым телом
-		 */
 		/**
 		 * Если наречие очередного документа известно
 		 *
@@ -4946,8 +4932,6 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 		 *       только вид его
 		 */
 		if((i < this->_dialects.size()) && (i < this->_versions.size())){
-			// Получаем настройки записи собираемого текста
-			writer_t::settings_t appointed = writer.settings();
 			// Устанавливаем наречие очередного документа схемою записи
 			appointed.schema = this->_dialects.at(i);
 			// Устанавливаем запись директивы наречия очередного документа
@@ -4963,7 +4947,7 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 				// Возвращаем схему разрешения видов к настроечной
 				appointed.schema = this->_settings.schema;
 			// Выполняем назначение настроек записи очередного документа
-			writer.settings(appointed);
+			this->_writer.settings(appointed);
 		}
 		/**
 		 * Признак того, что документу предпосланы объявления начал меток типа
@@ -4985,13 +4969,24 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 		bool declared = false;
 		/**
 		 * Если исходный текст удержан, а начало документа в нём известно
+		 *
+		 * @details Документ с пустым телом ничего в текст не пишет, и без черты начала он
+		 *          пропал бы из потока: следующий документ слился бы с ним в один. Прежде
+		 *          пустота корня писалась словом `null`, и черты не требовалось, - но
+		 *          схема защитная слова того не знает, и значение возвращалось обратно
+		 *          строкою. Присутствие документа держит черта, а не выдуманное значение
+		 *
+		 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте `---` с
+		 *       пустым телом
 		 */
 		if(!this->_source.empty() && (i < this->_starts.size()) && (this->_starts.at(i) != NO_ORIGIN) &&
 		   (static_cast <size_t> (this->_starts.at(i)) < this->_source.size())){
 			// Граница розыска объявлений, началом документа следующего ставимая
-			const size_t limit = (((i + 1) < this->_starts.size()) && (this->_starts.at(i + 1) != NO_ORIGIN) &&
-			 (static_cast <size_t> (this->_starts.at(i + 1)) <= this->_source.size()) ?
-			 static_cast <size_t> (this->_starts.at(i + 1)) : this->_source.size());
+			const size_t limit = (
+				((i + 1) < this->_starts.size()) && (this->_starts.at(i + 1) != NO_ORIGIN) &&
+				(static_cast <size_t> (this->_starts.at(i + 1)) <= this->_source.size()) ?
+				static_cast <size_t> (this->_starts.at(i + 1)) : this->_source.size()
+			);
 			/**
 			 * Смещение начала разбираемой строки предисловия документа
 			 *
@@ -5003,7 +4998,7 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 			 *          объявления его, и своё же чтение отвергало её отказом «сокращение
 			 *          метки типа не объявлено директивой %TAG». Нашёл это ворошитель
 			 */
-			size_t offset = ::std::max(static_cast <size_t> (this->_starts.at(i)), static_cast <size_t> (this->_prologue));
+			size_t offset = ::max(static_cast <size_t> (this->_starts.at(i)), static_cast <size_t> (this->_prologue));
 			/**
 			 * Выполняем перебор строк предисловия документа
 			 */
@@ -5011,8 +5006,7 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 				// Разыскиваем знак конца разбираемой строки предисловия
 				const size_t breaking = ::forward(this->_source, offset);
 				// Получаем смещение за концом разбираемой строки предисловия
-				const size_t following = (((breaking == string::npos) || ((breaking + 1) > limit)) ?
-				 limit : (breaking + 1));
+				const size_t following = (((breaking == string::npos) || ((breaking + 1) > limit)) ? limit : (breaking + 1));
 				/**
 				 * Если строка директивой не открывается
 				 *
@@ -5039,9 +5033,9 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 					 */
 					if(!declared && (i > 0) && !literal)
 						// Выполняем добавление черты конца документа прежнего
-						writer.verbatim(string_view("...\n"), 0);
+						this->_writer.verbatim(string_view("...\n"), 0);
 					// Выполняем дословный перенос объявления начала меток типа
-					writer.verbatim(string_view(this->_source.data() + offset, (following - offset)), 0);
+					this->_writer.verbatim(string_view(this->_source.data() + offset, (following - offset)), 0);
 					// Запоминаем признак перенесённых объявлений
 					declared = true;
 				}
@@ -5054,23 +5048,23 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 		 *       черты не стоит, читается отказом, а тело сливается с нею в одну запись
 		 */
 		if(declared || (i > 0) || ((kind(this->_nodes.at(root).type) == kind_t::NUL) &&
-		 (this->_nodes.at(root).length() == 0) && (this->_nodes.at(root).props == 0)))
+		  (this->_nodes.at(root).length() == 0) && (this->_nodes.at(root).props == 0)))
 			// Выполняем открытие очередного документа потока
-			writer.document();
+			this->_writer.document();
 		// Выполняем сборку поддерева корня очередного документа вместе с предисловием его
-		this->produce(writer, root);
+		this->produce(this->_writer, root);
 		// Выполняем сброс признака дословного переноса документа
 		literal = false;
 	}
 	// Выполняем завершение записи текста
-	writer.finish();
+	this->_writer.finish();
 	/**
 	 * Если запись текста документа завершилась отказом
 	 *
 	 * @details Исход записи прежде не спрашивался вовсе: сборщик отдавал то, что вышло,
-	 * а вышла при отказе ПУСТАЯ строка. Потребитель получал успех и пустой документ -
-	 * содержимое терялось молча. Замерено вложенностью свыше потолка `MAX_DEPTH`:
-	 * глубина 900 давала 1801 байт, а глубина 1100 - нуль байтов при коде `NONE`
+	 *          а вышла при отказе ПУСТАЯ строка. Потребитель получал успех и пустой документ -
+	 *          содержимое терялось молча. Замерено вложенностью свыше потолка `MAX_DEPTH`:
+	 *          глубина 900 давала 1801 байт, а глубина 1100 - нуль байтов при коде `NONE`
 	 *
 	 * @note Устроено складом документов INI и TOML: код отказа записи ложится на документ
 	 *       лишь тогда, когда своего кода тот ещё не несёт - первый отказ важнее
@@ -5080,18 +5074,291 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 	 *       оборванный посередине, разбору не поддался бы, а признак отказа потребитель
 	 *       вправе и не спросить
 	 */
-	if(writer.error() != error_t::NONE){
+	if(this->_writer.error() != error_t::NONE){
 		/**
 		 * Если своего кода отказа документ ещё не несёт
 		 */
 		if(this->_error == error_t::NONE)
 			// Запоминаем код ошибки записи текста документа
-			this->_error = writer.error();
+			this->_error = this->_writer.error();
 		// Выводим пустой текст документа
-		return string();
+		return "";
 	}
 	// Получаем собранный текст документа
-	string result = writer.take();
+	string result = this->_writer.take();
+	// Устанавливаем настройки объекта записи текста документа
+	this->_writer.settings(this->_settings.writer);
+	/**
+	 * Если удержанный текст меткою порядка байтов открывался, а собранный её не несёт
+	 *
+	 * @details Метка принадлежит тексту целиком, а не первому узлу его, и правка одного
+	 *          значения менять её не вправе: удержание тем и обещано, что нетронутые байты
+	 *          текст сохраняет. Дословный перенос метку и держит - она уходит вместе с
+	 *          пролётом, - а сборка заново теряла её, и правка одного значения ТИХО меняла
+	 *          кодировку файла: потребитель, метку положивший, получал текст без неё
+	 *
+	 * @note Сверка ведётся по собранному тексту, а не по признаку правки: дословный перенос
+	 *       метку уже принёс, и приписка второю выдала бы её дважды
+	 */
+	if((this->_prologue > 0) && (result.compare(0, 3, "\xEF\xBB\xBF") != 0))
+		// Выполняем приписку метки порядка байтов к собранному тексту
+		result.insert(0, "\xEF\xBB\xBF");
+	// Выводим собранный текст документа
+	return result;
+}
+/**
+ * @brief Метод сборки текста по дереву документа заданными настройками
+ *
+ * @param settings настройки записи собираемого текста
+ * @return         собранный текст документа
+ *
+ */
+string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) const noexcept {
+	// Очищаем объект записи текста документа
+	this->_writer.clear();
+	// Устанавливаем настройки объекта записи текста документа
+	this->_writer.settings(settings);
+	/**
+	 * Если исходный текст удержан, а документов он не несёт
+	 *
+	 * @note Текст, несущий одни директивы да примечания, документа не открывает вовсе, и
+	 *       собирать по дереву нечего: выдаётся он удержанными байтами своими, иначе
+	 *       перезапись вернула бы пустоту вместо текста
+	 */
+	if(!this->_source.empty() && this->_roots.empty())
+		// Выводим удержанный исходный текст перезаписью его
+		return this->_source;
+	// Признак того, что документ прежний перенесён дословно
+	bool literal = false;
+	// Получаем настройки записи собираемого текста
+	writer_t::settings_t appointed = this->_writer.settings();
+	/**
+	 * Выполняем перебор всех документов текста
+	 */
+	for(size_t i = 0; i < this->_roots.size(); i++){
+		// Получаем номер корневого узла очередного документа
+		const uint32_t root = this->_roots.at(i);
+		/**
+		 * Если исходный текст удержан, а документ правкой не тронут
+		 *
+		 * @details Документ переписывается дословно целиком - вместе с директивами своими,
+		 *          чертою открытия и чертою закрытия, - и открывать его записью оттого
+		 *          незачем: черта пришла бы дважды
+		 */
+		if(!this->_source.empty() && !this->_nodes.at(root).touched){
+			// Получаем смещение начала очередного документа
+			const uint32_t origin = this->_starts.at(i);
+			/**
+			 * Получаем границу очередного документа
+			 *
+			 * @note Границею служит начало документа следующего: `...`, документ
+			 *       закрывающая, стоит прежде неё и достаётся документу своему
+			 */
+			const uint32_t edge = (
+				((i + 1) < this->_starts.size()) ?
+				this->_starts.at(i + 1) : static_cast <uint32_t> (this->_source.size())
+			);
+			/**
+			 * Если переписать документ дословно удалось
+			 */
+			if((origin != NO_ORIGIN) && (edge != NO_ORIGIN) && (edge > origin) && (edge <= this->_source.size())){
+				/**
+				 * Если документ прежний собран заново, а не перенесён дословно
+				 *
+				 * @details Документ, собранный заново, черты конца за собою не оставляет, а
+				 *          переносимый вправе открываться директивами: директива же за
+				 *          содержимым без черты конца читается отказом. Черта эта ставится
+				 *          оттого сама. Нашла это правка ворошителем: пара, документу первому
+				 *          добавленная, оставляла директиву второго без документа своего
+				 */
+				if((i > 0) && !literal)
+					// Выполняем добавление черты конца документа прежнего
+					this->_writer.verbatim(string_view("...\n"), 0);
+				/**
+				 * Если перенести документ дословно удалось
+				 *
+				 * @note Отказ дословного переноса разбирается проваливанием: перенос отвечает отказом лишь
+				 *       тогда, когда запись уже отказала, - и съём её всё равно пуст. Оттого ход этот приметен
+				 *       покрытием, а поведения собою не держит: порча его переходом к следующему документу
+				 *       набора не валит вовсе. Держать его надлежит на случай, если отказ записи перестанет
+				 *       быть окончательным. Ход берётся написанием из проверки VerbatimAfterWriterRefusal
+				 */
+				if(this->_writer.verbatim(string_view(this->_source).substr(origin, (edge - origin)), 0)){
+					// Запоминаем признак дословного переноса документа
+					literal = true;
+					// Выполняем переход к следующему документу текста
+					continue;
+				}
+			}
+		}
+		/**
+		 * Если наречие очередного документа известно
+		 *
+		 * @details Наречие назначается перед открытием каждого документа: директива есть
+		 *          принадлежность документа, а не потока, и поток вправе нести документы
+		 *          разных наречий. Схемою решается и ограда значений, и запись самой
+		 *          директивы, оттого назначаются они вместе
+		 *
+		 * @note Без того директива возвращалась перезаписью лишь потоку об одном
+		 *       документе, а поток из нескольких терял её вовсе: записи вроде `on`
+		 *       возвращались тогда строками, и перезапись меняла смысл документа, а не
+		 *       только вид его
+		 */
+		if((i < this->_dialects.size()) && (i < this->_versions.size())){
+			// Устанавливаем наречие очередного документа схемою записи
+			appointed.schema = this->_dialects.at(i);
+			// Устанавливаем запись директивы наречия очередного документа
+			appointed.version = this->_versions.at(i);
+			/**
+			 * Если директива наречия не записывается
+			 *
+			 * @note Схема тогда возвращается настроечной: решать ограду схемою 1.1,
+			 *       директивы не записав, значило бы выдать текст, читаемый иначе, чем он
+			 *       записан
+			 */
+			if(!appointed.version)
+				// Возвращаем схему разрешения видов к настроечной
+				appointed.schema = this->_settings.schema;
+			// Выполняем назначение настроек записи очередного документа
+			this->_writer.settings(appointed);
+		}
+		/**
+		 * Признак того, что документу предпосланы объявления начал меток типа
+		 *
+		 * @details Директива `%TAG` переопределяет начало меток типа, и запись `!!str` при
+		 *          ней значит метку СВОЮ, а не общую. Дословный перенос документа её
+		 *          сохранял, а сборка теряла: у записи объявлений этих нет вовсе - настройки
+		 *          её несут один признак `version` для директивы наречия, - и объявленные
+		 *          читающим начала наружу не выходят. Перезапись правленого документа
+		 *          оттого МЕНЯЛА СМЫСЛ его: сокращение `!!` разрешалось общим началом, и
+		 *          дерево перезаписи расходилось с деревом исходника
+		 *
+		 * @note Переносятся одни объявления `%TAG`: директиву наречия запись ставит сама
+		 *       признаком `version`, и перенос её выдал бы её дважды
+		 *
+		 * @note Нашёл это ворошитель сличением чтения правленого дерева с чтением
+		 *       перезаписи его
+		 */
+		bool declared = false;
+		/**
+		 * Если исходный текст удержан, а начало документа в нём известно
+		 *
+		 * @details Документ с пустым телом ничего в текст не пишет, и без черты начала он
+		 *          пропал бы из потока: следующий документ слился бы с ним в один. Прежде
+		 *          пустота корня писалась словом `null`, и черты не требовалось, - но
+		 *          схема защитная слова того не знает, и значение возвращалось обратно
+		 *          строкою. Присутствие документа держит черта, а не выдуманное значение
+		 *
+		 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте `---` с
+		 *       пустым телом
+		 */
+		if(!this->_source.empty() && (i < this->_starts.size()) && (this->_starts.at(i) != NO_ORIGIN) &&
+		   (static_cast <size_t> (this->_starts.at(i)) < this->_source.size())){
+			// Граница розыска объявлений, началом документа следующего ставимая
+			const size_t limit = (
+				((i + 1) < this->_starts.size()) && (this->_starts.at(i + 1) != NO_ORIGIN) &&
+				(static_cast <size_t> (this->_starts.at(i + 1)) <= this->_source.size()) ?
+				static_cast <size_t> (this->_starts.at(i + 1)) : this->_source.size()
+			);
+			/**
+			 * Смещение начала разбираемой строки предисловия документа
+			 *
+			 * @warning Розыск ведётся от начала текста, а метка порядка байтов стоит ПЕРЕД
+			 *          ним: без поправки на длину её первым знаком выходила сама метка,
+			 *          строка директивою не признавалась, и розыск обрывался на первом же
+			 *          обороте. Объявления `%TAG` тогда терялись при всякой правке текста,
+			 *          меткою открытого: перезапись выдавала сокращение `!e!x` без
+			 *          объявления его, и своё же чтение отвергало её отказом «сокращение
+			 *          метки типа не объявлено директивой %TAG». Нашёл это ворошитель
+			 */
+			size_t offset = ::max(static_cast <size_t> (this->_starts.at(i)), static_cast <size_t> (this->_prologue));
+			/**
+			 * Выполняем перебор строк предисловия документа
+			 */
+			while(offset < limit){
+				// Разыскиваем знак конца разбираемой строки предисловия
+				const size_t breaking = ::forward(this->_source, offset);
+				// Получаем смещение за концом разбираемой строки предисловия
+				const size_t following = (((breaking == string::npos) || ((breaking + 1) > limit)) ? limit : (breaking + 1));
+				/**
+				 * Если строка директивой не открывается
+				 *
+				 * @note Предисловие исчерпывается директивами: строка иная есть уже черта
+				 *       начала документа либо тело его, и розыск на ней и кончается
+				 */
+				if(this->_source.at(offset) != '%')
+					// Выходим из перебора строк предисловия
+					break;
+				/**
+				 * Если строка объявляет начало меток типа
+				 */
+				if(this->_source.compare(offset, 4, "%TAG") == 0){
+					/**
+					 * Если документ является не первым, а прежний собран заново
+					 *
+					 * @details Документ, собранный заново, черты конца за собою не оставляет,
+					 *          а директива за содержимым без черты той читается ОТКАЗОМ.
+					 *          Правило это ветвь дословного переноса несёт с самого начала, и
+					 *          перенос объявлений обязан нести его наравне: без него
+					 *          перезапись правленого потока о двух документах отвергалась
+					 *          своим же чтением. Нашла это кампания ворошителя сразу по
+					 *          заведении переноса
+					 */
+					if(!declared && (i > 0) && !literal)
+						// Выполняем добавление черты конца документа прежнего
+						this->_writer.verbatim(string_view("...\n"), 0);
+					// Выполняем дословный перенос объявления начала меток типа
+					this->_writer.verbatim(string_view(this->_source.data() + offset, (following - offset)), 0);
+					// Запоминаем признак перенесённых объявлений
+					declared = true;
+				}
+				// Выполняем переход к следующей строке предисловия
+				offset = following;
+			}
+		}
+		/**
+		 * @note Черта начала документа обязательна за объявлениями: директива, за какою
+		 *       черты не стоит, читается отказом, а тело сливается с нею в одну запись
+		 */
+		if(declared || (i > 0) || ((kind(this->_nodes.at(root).type) == kind_t::NUL) &&
+		  (this->_nodes.at(root).length() == 0) && (this->_nodes.at(root).props == 0)))
+			// Выполняем открытие очередного документа потока
+			this->_writer.document();
+		// Выполняем сборку поддерева корня очередного документа вместе с предисловием его
+		this->produce(this->_writer, root);
+		// Выполняем сброс признака дословного переноса документа
+		literal = false;
+	}
+	// Выполняем завершение записи текста
+	this->_writer.finish();
+	/**
+	 * Если запись текста документа завершилась отказом
+	 *
+	 * @details Исход записи прежде не спрашивался вовсе: сборщик отдавал то, что вышло,
+	 *          а вышла при отказе ПУСТАЯ строка. Потребитель получал успех и пустой документ -
+	 *          содержимое терялось молча. Замерено вложенностью свыше потолка `MAX_DEPTH`:
+	 *          глубина 900 давала 1801 байт, а глубина 1100 - нуль байтов при коде `NONE`
+	 *
+	 * @note Устроено складом документов INI и TOML: код отказа записи ложится на документ
+	 *       лишь тогда, когда своего кода тот ещё не несёт - первый отказ важнее
+	 *       последующих, ибо он и есть причина
+	 *
+	 * @note Пустая строка при отказе выдаётся НАМЕРЕННО, а не полусобранный текст: текст,
+	 *       оборванный посередине, разбору не поддался бы, а признак отказа потребитель
+	 *       вправе и не спросить
+	 */
+	if(this->_writer.error() != error_t::NONE){
+		/**
+		 * Если своего кода отказа документ ещё не несёт
+		 */
+		if(this->_error == error_t::NONE)
+			// Запоминаем код ошибки записи текста документа
+			this->_error = this->_writer.error();
+		// Выводим пустой текст документа
+		return "";
+	}
+	// Получаем собранный текст документа
+	string result = this->_writer.take();
 	/**
 	 * Если удержанный текст меткою порядка байтов открывался, а собранный её не несёт
 	 *
@@ -5669,6 +5936,7 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 	 *       платил бы выделениями на каждую пару, чего розыск и должен избегать
 	 */
 	const auto key = [this](const uint32_t node) noexcept {
+		// Выдаём имя узла взглядом на хранилище текста без выделений
 		return string_view(this->_storage.data() + this->_nodes.at(node).offset, this->_nodes.at(node).named);
 	};
 	/**
@@ -5678,7 +5946,7 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 	 *       находятся одним проходом. У отображения в тридцать два имени это шестьдесят
 	 *       сличений вместо тысячи, а не выделений на каждое имя, как у указателя
 	 */
-	::std::sort(order.begin(), order.end(), [&key](const uint32_t left, const uint32_t right) noexcept { return key(left) < key(right); });
+	std::sort(order.begin(), order.end(), [&key](const uint32_t left, const uint32_t right) noexcept { return key(left) < key(right); });
 	/**
 	 * Выполняем розыск повторов среди соседних по имени пар
 	 *
@@ -5760,7 +6028,7 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 	 *       номер пары ПРЕЖНЕЙ, и порядок встречи повторов порядку номеров тем самым не
 	 *       равен вовсе. Нашёл это ворошитель обращением за пределы перечня узлов
 	 */
-	::std::sort(removed.begin(), removed.end());
+	std::sort(removed.begin(), removed.end());
 	/**
 	 * Выполняем снос пар отображения с конца перечня к началу
 	 *
@@ -5806,7 +6074,9 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 		 *       валила разбор обращением за пределы перечня узлов
 		 */
 		{
-			// Выполняем перебор всех меток, документом объявленных
+			/**
+			 * Выполняем перебор всех меток, документом объявленных
+			 */
 			for(auto i = anchors.begin(); i != anchors.end();){
 				/**
 				 * Если метка внутри снесённого поддерева объявлена
@@ -6734,15 +7004,6 @@ bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view 
 	return true;
 }
 /**
- * @brief Метод установки строкового значения по пути к нему
- *
- * @param path  путь к устанавливаемому узлу
- * @param value устанавливаемое строковое значение
- * @param style ограда, какою обносится значение
- * @return      признак успешной установки значения
- *
- */
-/**
  * @brief Метод постановки владеющего значения по пути
  *
  * @details Ход этот есть тот же перенос, какой ведёт `Value::graft()`, и зовётся он
@@ -6757,7 +7018,7 @@ bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view 
  * @return      признак успешной постановки значения
  *
  */
-bool awh::codec::yaml::Document::set(const string & path, const ::awh::codec::yaml::Value & value) noexcept {
+bool awh::codec::yaml::Document::set(const string & path, const codec::yaml::Value & value) noexcept {
 	/**
 	 * Выполняем сброс кода отказа прежней работы
 	 *
@@ -6771,6 +7032,15 @@ bool awh::codec::yaml::Document::set(const string & path, const ::awh::codec::ya
 	// Выводим результат переноса владеющего значения в дерево документа
 	return value.graft(* this, path);
 }
+/**
+ * @brief Метод установки строкового значения по пути к нему
+ *
+ * @param path  путь к устанавливаемому узлу
+ * @param value устанавливаемое строковое значение
+ * @param style ограда, какою обносится значение
+ * @return      признак успешной установки значения
+ *
+ */
 bool awh::codec::yaml::Document::set(const string & path, const string_view value, const style_t style) noexcept {
 	/**
 	 * Выполняем сброс кода отказа прежней работы
@@ -7194,6 +7464,7 @@ bool awh::codec::yaml::Document::touch(const value_t & value) noexcept {
 	return true;
 }
 /**
+ * \~russian
  * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
  *
  * @details Выводит настройки записи из того разбора, какой состоялся: схему разрешения
@@ -7211,6 +7482,19 @@ bool awh::codec::yaml::Document::touch(const value_t & value) noexcept {
  *
  * \~english
  * @brief Method of getting the settings of the writing corresponding to the parsing that has taken place
+ *
+ * @details Outputs the settings of the writing from the parsing that has taken place: the scheme
+ *          of resolution of the kinds of scalar values, the recording of the directive of the
+ *          dialect and the marks of the beginning and the end of the document. What is written
+ *          with these settings is recorded so that it reads back without losses
+ *
+ * @note This handle is needed by the caller taking `writer_t` on its own: the parsing scheme is
+ *       derived from the TEXT - the `%YAML 1.1` directive switches the parsing to the 1.1 dialect,
+ *       - and the `settings()` handle does not return it at all, giving out the settings assigned.
+ *       Without this handle the writing outside would decide the guard by another scheme than the
+ *       reading did, and `on` would be returned as a string. The INI and TOML codecs have this
+ *       handle from the very beginning
+ *
  * @return settings of the writing of a text of a document
  *
  * \~
@@ -7232,8 +7516,7 @@ awh::codec::yaml::Writer::Settings awh::codec::yaml::Document::writing() const n
 	 * @details Директива записывается лишь тогда, когда она в исходном тексте стояла:
 	 *          навязывать её тексту, её не имевшему, значило бы менять написание там, где
 	 *          потребитель ничего не менял
-	 */
-	/**
+	 *
 	 * @note Настройки эти суть настройки документа первого: директива есть принадлежность
 	 *       документа, а не потока, и всякий следующий документ назначает наречие своё сам
 	 *       - сборка потока переустанавливает настройки записи перед открытием каждого
@@ -7250,8 +7533,7 @@ awh::codec::yaml::Writer::Settings awh::codec::yaml::Document::writing() const n
 	 * @note Прежде черта переживала правку лишь дословным переносом текста целиком: строка
 	 *       её узлу не принадлежит, и всякая правка её теряла, тогда как директива наречия,
 	 *       строкою выше стоящая, правку переживала. Расхождение это найдено замером
-	 */
-	/**
+	 *
 	 * @warning Половина `settings.explicitStart` здесь ИЗЛИШНЯ: настройки записи заведены
 	 *          строкою выше построением умолчальным, и черта начала у них выключена всегда.
 	 *          Замерено обездвиживанием: подмена этого чтения умолчанием не роняет ни одной
@@ -7267,8 +7549,7 @@ awh::codec::yaml::Writer::Settings awh::codec::yaml::Document::writing() const n
 	 * @note Берётся черта документа ПОСЛЕДНЕГО, а не первого: черта конца закрывает текст,
 	 *       и записью её ведает завершение записи, тогда как черты промежуточные ставит
 	 *       сборка потока перед открытием документа следующего
-	 */
-	/**
+	 *
 	 * @warning Половина `settings.explicitEnd` здесь ИЗЛИШНЯ по тому же доводу, что и у
 	 *          черты начала: настройки заведены построением умолчальным
 	 */
@@ -7294,16 +7575,6 @@ awh::codec::yaml::Writer::Settings awh::codec::yaml::Document::writing() const n
 	return settings;
 }
 /**
- * @brief Метод сборки текста по дереву документа
- *
- * @return собранный текст документа
- *
- */
-string awh::codec::yaml::Document::dump() const noexcept {
-	// Выводим собранный текст документа настройками состоявшегося разбора
-	return this->dump(this->writing());
-}
-/**
  * @brief Метод записи текста документа в файл
  *
  * @param filename путь к записываемому файлу
@@ -7320,7 +7591,6 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 	 *          TOML и YAML
 	 */
 	const string text = this->dump();
-	// Выполняем открытие записываемого файла
 	/**
 	 * Путь ко временному файлу, рядом с целевым лежащему
 	 *
@@ -7367,8 +7637,7 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
-		 ::awh::codec::yaml::message(this->_error));
+		log::print("%s document failed: %s", log::flag_t::CRITICAL, "YAML", codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -7385,8 +7654,7 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
-		 ::awh::codec::yaml::message(this->_error));
+		log::print("%s document failed: %s", log::flag_t::CRITICAL, "YAML", codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -7405,14 +7673,44 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
-		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
-		 ::awh::codec::yaml::message(this->_error));
+		log::print("%s document failed: %s", log::flag_t::CRITICAL, "YAML", codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
 	// Выводим признак успешной записи текста
 	return true;
 }
+/**
+ * @brief Псевдоним сброса состояния документа (см. clear())
+ *
+ */
+void awh::codec::yaml::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Document::Document() noexcept :
+ _versioned(false), _prologue(0), _generation(0),
+ _schema(schema_t::CORE), _encoding(encoding_t::NONE),
+ _error(error_t::NONE), _source{""}, _storage{""} {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора документа
+ *
+ */
+awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
+ _versioned(false), _prologue(0), _generation(0),
+ _schema(settings.schema), _settings(settings),
+ _encoding(encoding_t::NONE), _error(error_t::NONE),
+ _source{""}, _storage{""} {
+	// Устанавливаем настройки чтения и записи событий
+	this->settings(settings);
+}
+
 /**
  * @brief Метод проверки действительности ссылки
  *
@@ -7823,7 +8121,7 @@ awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::operator 
 				 */
 				index.emplace(child.name(), child._index);
 			// Запоминаем заведённый указатель имён пар отображения
-			i = this->_doc->_index.emplace(this->_index, ::std::move(index)).first;
+			i = this->_doc->_index.emplace(this->_index, ::move(index)).first;
 		}
 		// Разыскиваем имя пары отображения в указателе
 		auto j = i->second.find(string_view(name));
@@ -7976,6 +8274,7 @@ awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::at(const 
  * @brief Шаблонный метод извлечения числа затребованным видом
  *
  * @tparam T      вид извлекаемого числа
+ *
  * @param  result извлечённое число
  * @return        признак успешного извлечения числа
  *
@@ -8032,7 +8331,7 @@ bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
 	 */
 	if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::REAL)){
 		// Устанавливаем извлечённое значение приведением дробного
-		result = ::awh::codec::convert <T> (node.numberOf <double> ());
+		result = codec::convert <T> (node.numberOf <double> ());
 		// Выводим признак успешного извлечения
 		return true;
 	}
@@ -8052,7 +8351,7 @@ bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
 		 */
 		narrow(text, this->_doc->_schema, number);
 		// Устанавливаем извлечённое значение приведением дробного
-		result = ::awh::codec::convert <T> (number.real);
+		result = codec::convert <T> (number.real);
 		// Выводим признак успешного извлечения
 		return true;
 	}
@@ -8192,6 +8491,7 @@ bool awh::codec::yaml::Document::Value::value(double & result) const noexcept {
  * @brief Метод извлечения целого числа вида языка
  *
  * @tparam T    вид извлекаемого числа
+ *
  * @param result извлечённое число
  * @return       признак успешного извлечения числа
  *
@@ -8208,7 +8508,7 @@ bool awh::codec::yaml::Document::Value::value(double & result) const noexcept {
 template <typename T, typename>
 bool awh::codec::yaml::Document::Value::value(T & result) const noexcept {
 	// Если извлекается число без знака
-	if constexpr(::std::is_unsigned <T>::value){
+	if constexpr(std::is_unsigned <T>::value){
 		// Извлекаемое число без знака
 		uint64_t number = 0;
 		// Если извлечение числа не выполнено
@@ -8238,8 +8538,7 @@ bool awh::codec::yaml::Document::Value::value(T & result) const noexcept {
  *          обеих системах, только по-разному. Вид char голым намеренно не порождён -
  *          число им не извлекают, ему отвечает извлечение строковое.
  *
- */
-/**
+ *
  * @note Вид `char` порождается наравне с `signed char` и `unsigned char`, и лишним он НЕ
  *       является: у систем Sun вид `int8_t` объявлен КАК `char`, а не как `signed char`
  *       (замерено 09.09.2026 на 10.100.1.105 через `is_same`), и всякий зовущий, подающий
@@ -8304,3 +8603,19 @@ bool awh::codec::yaml::Document::Value::value(string & result) const noexcept {
 	// Выводим признак успешного извлечения
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Document::Value::Value() noexcept :
+ _index(0), _stamp(0), _bound(0), _doc(nullptr) {}
+/**
+ * @brief Конструктор
+ *
+ * @param doc   документ, которому принадлежит узел
+ * @param index номер узла в перечне узлов документа
+ * @param bound номер узла за последним узлом вместилища
+ *
+ */
+awh::codec::yaml::Document::Value::Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
+ _index(index), _stamp((doc != nullptr) ? doc->_generation : 0), _bound(bound), _doc(doc) {}

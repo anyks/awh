@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Исходный файл владеющего значения INI
- *
- * \~english
- * @brief Source file of the owning value of INI
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -71,7 +65,7 @@ namespace {
 	 * этот рост стережёт. Нуль снимает его вовсе
 	 *
 	 */
-	static ::std::atomic <size_t> LIMIT(0x10000);
+	static atomic <size_t> LIMIT(0x10000);
 	/**
 	 * @brief Предел глубины заведения по пути
 	 *
@@ -286,7 +280,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::scrap() noexcept {
  */
 size_t awh::codec::ini::Value::limit() noexcept {
 	// Выводим предел роста вместилища по номеру
-	return ::LIMIT.load(::std::memory_order_relaxed);
+	return ::LIMIT.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -296,7 +290,7 @@ size_t awh::codec::ini::Value::limit() noexcept {
  */
 void awh::codec::ini::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища по номеру
-	::LIMIT.store(value, ::std::memory_order_relaxed);
+	::LIMIT.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод проверки определённости значения
@@ -614,7 +608,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const size_t index
 	 */
 	if(index >= this->_items.size()){
 		// Получаем предел роста вместилища по номеру
-		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
 		/**
 		 * Если рост вместилища предел превышает
 		 */
@@ -986,6 +980,7 @@ bool awh::codec::ini::Value::erase(const size_t index) noexcept {
  * @brief Шаблонный метод извлечения числа затребованным видом
  *
  * @tparam T      затребованный вид числа
+ *
  * @param  result переменная, куда помещается извлечённое значение
  * @return        признак успешности извлечения
  *
@@ -1250,13 +1245,13 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (const Value & value
 	// Выполняем копирование признака значения, записанного в кавычках
 	this->_quoted = quoted;
 	// Выполняем перенос подготовленной копии содержимого простого значения
-	this->_text = ::std::move(text);
+	this->_text = ::move(text);
 	// Выполняем перенос подготовленной копии имён пар вместилища
-	this->_names = ::std::move(names);
+	this->_names = ::move(names);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем перенос подготовленной копии значений вместилища
-	this->_items = ::std::move(items);
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1279,13 +1274,13 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	// Получаем признак значения, записанного в кавычках, до изменения текущего дерева
 	const bool quoted = value._quoted;
 	// Получаем содержимое простого значения до изменения текущего дерева
-	string text(::std::move(value._text));
+	string text(::move(value._text));
 	// Получаем имена пар вместилища до изменения текущего дерева
-	vector <string> names(::std::move(value._names));
+	vector <string> names(::move(value._names));
 	// Получаем указатель поиска до изменения текущего дерева
-	unique_ptr <unordered_map <string, size_t>> index(::std::move(value._index));
+	unique_ptr <unordered_map <string, size_t>> index(::move(value._index));
 	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items(::std::move(value._items));
+	vector <Value> items(::move(value._items));
 	/**
 	 * Выполняем сброс перенесённого значения
 	 *
@@ -1298,13 +1293,13 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	// Выполняем перенос признака значения, записанного в кавычках
 	this->_quoted = quoted;
 	// Выполняем перенос содержимого простого значения
-	this->_text = ::std::move(text);
+	this->_text = ::move(text);
 	// Выполняем перенос имён пар вместилища
-	this->_names = ::std::move(names);
+	this->_names = ::move(names);
 	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = ::std::move(index);
+	this->_index = ::move(index);
 	// Выполняем перенос значений вместилища
-	this->_items = ::std::move(items);
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1312,14 +1307,16 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
  * @brief Конструктор
  *
  */
-awh::codec::ini::Value::Value() noexcept : _type(type_t::NONE), _quoted(false) {}
+awh::codec::ini::Value::Value() noexcept :
+ _quoted(false), _type(type_t::NONE), _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор вместилища затребованного типа
  *
  * @param type тип заводимого значения
  *
  */
-awh::codec::ini::Value::Value(const type_t type) noexcept : _type(type), _quoted(false) {}
+awh::codec::ini::Value::Value(const type_t type) noexcept :
+ _quoted(false), _type(type), _error(error_t::NONE), _text{""} {}
 /**
  * @brief Конструктор простого значения
  *
@@ -1328,7 +1325,7 @@ awh::codec::ini::Value::Value(const type_t type) noexcept : _type(type), _quoted
  *
  */
 awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept :
- _type(type_t::STRING), _quoted(quoted), _text(value) {}
+ _quoted(quoted), _type(type_t::STRING), _error(error_t::NONE), _text(value) {}
 /**
  * @brief Конструктор простого значения из строки языка
  *
@@ -1337,7 +1334,8 @@ awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept 
  *
  */
 awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
- _type(type_t::STRING), _quoted(quoted), _text((value != nullptr) ? value : "") {}
+ _quoted(quoted), _type(type_t::STRING),
+ _error(error_t::NONE), _text((value != nullptr) ? value : "") {}
 /**
  * @brief Конструктор копирования
  *
@@ -1345,8 +1343,9 @@ awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
  *
  */
 awh::codec::ini::Value::Value(const Value & value) noexcept :
- _type(value._type), _quoted(value._quoted), _text(value._text),
- _names(value._names), _items(value._items) {}
+ _quoted(value._quoted), _type(value._type),
+ _error(value._error), _text(value._text),
+ _items(value._items), _names(value._names) {}
 /**
  * @brief Конструктор переноса
  *
@@ -1354,9 +1353,10 @@ awh::codec::ini::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::ini::Value::Value(Value && value) noexcept :
- _type(value._type), _quoted(value._quoted), _text(::std::move(value._text)),
- _names(::std::move(value._names)), _items(::std::move(value._items)),
- _index(::std::move(value._index)) {
+ _quoted(value._quoted), _type(value._type),
+ _error(value._error), _text(::move(value._text)),
+ _items(::move(value._items)), _names(::move(value._names)),
+ _index(::move(value._index)) {
 	// Выполняем сброс перенесённого значения
 	value._type = type_t::NONE;
 }
@@ -1978,6 +1978,9 @@ awh::codec::ini::error_t awh::codec::ini::Value::error() const noexcept {
 	// Выводим код отказа последней работы над владеющим значением
 	return this->_error;
 }
+/**
+ * Сборка текста значений настройками записи по умолчанию
+ */
 string awh::codec::ini::Value::dump() const noexcept {
 	// Выводим записанный текст настроек с настройками записи по умолчанию
 	return this->dump(writer_t::settings_t());
@@ -2016,7 +2019,7 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		 codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2062,7 +2065,7 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		static_cast <void> (fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		 codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2080,7 +2083,7 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		static_cast <void> (fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		 codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2094,7 +2097,7 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		static_cast <void> (fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::ini::message(this->_error));
+		 codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2407,7 +2410,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 		}
 	}
 	// Выполняем подмену дерева настроек деревом переноса
-	document = ::std::move(staging);
+	document = ::move(staging);
 	// Выводим признак успешного переноса
 	return true;
 }
@@ -2522,12 +2525,12 @@ bool awh::codec::ini::Builder::expand(Value && value) noexcept {
 			// Выводим признак неудачного открытия
 			return false;
 		// Выполняем установку корневого вместилища
-		this->_root = ::std::move(value);
+		this->_root = ::move(value);
 		// Выводим признак успешного открытия
 		return true;
 	}
 	// Выполняем занесение открываемого вместилища
-	const size_t index = this->deposit(::std::move(value));
+	const size_t index = this->deposit(::move(value));
 	// Выполняем добавление номера открытого вместилища в путь
 	this->_path.push_back(index);
 	// Выводим признак успешного открытия
@@ -2703,7 +2706,7 @@ void awh::codec::ini::Builder::reset() noexcept {
  */
 awh::codec::ini::Value awh::codec::ini::Builder::finish() noexcept {
 	// Выполняем изъятие собранного значения переносом
-	Value result(::std::move(this->_root));
+	Value result(::move(this->_root));
 	// Выполняем сброс сборки в исходное состояние
 	this->reset();
 	// Выводим собранное значение

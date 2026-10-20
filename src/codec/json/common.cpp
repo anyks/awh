@@ -12,15 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация общих объявлений контейнера JSON — описания кодов отказов, названия
  *        видов узлов, проверка записи числа и разбор необходимости экранирования
- *
- * \~english
- * @brief Implementation of the common declarations of the JSON container — the descriptions of the codes of the refusals, the names
- *        of the kinds of the nodes, the check of the record of a number and the analysis of the necessity of the escaping
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -579,3 +572,22 @@ bool awh::codec::json::escapable(const string & text, const escape_t escape) noe
 	// Выводим признак отсутствия необходимости экранирования
 	return false;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Span::Span() noexcept : offset(0), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение начала отрезка в хранилище знаков
+ * @param length длина отрезка в байтах
+ *
+ */
+awh::codec::json::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0), depth(0) {}

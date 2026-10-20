@@ -838,38 +838,35 @@ void awh::codec::abc::Document::clear() noexcept {
 /**
  * @brief Метод разбора записи в дерево документа
  *
- * @param buffer   буфер разбираемой записи
- * @param size     размер разбираемой записи в октетах
- * @param settings настройки разбора записи
- * @return         признак успешности разбора
+ * @param buffer буфер разбираемой записи
+ * @param size   размер разбираемой записи в октетах
+ * @return       признак успешности разбора
  *
  */
-bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept {
+bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) noexcept {
 	// Выполняем сброс состояния документа
 	this->clear();
-	// Читатель бинарной записи
-	reader_t reader;
-	// Выполняем установку настроек разбора записи
-	reader.settings(settings);
 	// Состояние сборки дерева документа
 	building_t state;
 	// Устанавливаем текущий значение текущего объекта
 	state.self = this;
 	// Устанавливаем значение правило обращения с повторяющимся именем поля отображения
-	state.duplicates = settings.duplicates;
+	state.duplicates = this->_duplicates;
 	// Устанавливаем номер узла значения, собираемого кусками, либо предел, если такого нет
 	state.segment = numeric_limits <uint32_t>::max();
+	// Выполняем сброс состояния разбора
+	this->_reader.reset();
 	/**
 	 * Выполняем установку обработчика прямой выдачи событий разбора.
 	 *
 	 * События приходят прямо в сборку дерева, минуя очередь выдачи разбирателя:
 	 * событие ложилось в неё, а затем снималось с неё же копией, - работа двойная
 	 */
-	reader.handler(& document_t::assemble, & state);
+	this->_reader.handler(& document_t::assemble, & state);
 	// Выполняем подачу записи разбирателю
-	const bool result = reader.feed(buffer, size, true);
+	const bool result = this->_reader.feed(buffer, size, true);
 	// Выполняем снятие обработчика прямой выдачи событий разбора
-	reader.handler(nullptr, nullptr);
+	this->_reader.handler(nullptr, nullptr);
 	/**
 	 * Если подача записи отвечена отказом
 	 */
@@ -891,7 +888,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 		 */
 		if(!state.failed)
 			// Выполняем установку кода отказа разбора
-			this->_error = reader.error();
+			this->_error = this->_reader.error();
 		/**
 		 * Выполняем перенос места, где отказ произошёл
 		 *
@@ -900,7 +897,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 		 *       разбор стоит, - а разбиратель разрушается концом работы, и после него
 		 *       спрашивать уже некого
 		 */
-		this->_location = reader.location();
+		this->_location = this->_reader.location();
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
@@ -909,7 +906,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 		// Выполняем снятие содержимого, собранного до отказа
 		this->discard();
 		// Выполняем перенос места, где отказ произошёл
-		this->_location = reader.location();
+		this->_location = this->_reader.location();
 		// Выполняем установку кода внутреннего отказа
 		this->fail(error_t::INTERNAL);
 		// Сообщаем, что разбор отвечен отказом
@@ -930,7 +927,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	 */
 	if(this->_nodes.empty()){
 		// Выполняем перенос места, где отказ произошёл
-		this->_location = reader.location();
+		this->_location = this->_reader.location();
 		// Выполняем установку кода отказа пустой записи
 		this->fail(error_t::EMPTY_RECORD);
 		// Сообщаем, что разбор отвечен отказом
@@ -938,24 +935,6 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	}
 	// Сообщаем, что разбор успешен
 	return true;
-}
-/**
- * @brief Метод разбора записи в дерево документа
- *
- * @param buffer буфер разбираемой записи
- * @param size   размер разбираемой записи в октетах
- * @return       признак успешности разбора
- *
- */
-bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) noexcept {
-	/**
-	 * Выполняем разбор записи настройками, деревом хранимыми
-	 *
-	 * @note Хранимые настройки берутся ЗДЕСЬ, а не у работы с настройками доводом: та
-	 *       берёт отданные ей и хранимых не трогает вовсе. Устройство это равняется на
-	 *       шесть прочих кодеков рамки
-	 */
-	return this->parse(buffer, size, this->_parsing);
 }
 /**
  * @brief Метод сборки записи из дерева документа
@@ -982,10 +961,10 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 	 * Выполняем обход всех узлов дерева документа
 	 */
 	for(size_t index = 0; index < this->_nodes.size(); index++){
-		// Выполняем получение очередного узла дерева документа
-		const node_t & node = this->_nodes.at(index);
 		// Признак успешности укладки значения
 		bool result = true;
+		// Выполняем получение очередного узла дерева документа
+		const node_t & node = this->_nodes.at(index);
 		/**
 		 * Определяем вид значения узла документа
 		 */
@@ -1232,8 +1211,8 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
  *
  */
 vector <uint8_t> awh::codec::abc::Document::dump() const noexcept {
-	// Сборщик бинарной записи
-	writer_t writer;
+	// Выполняем сброс состояния сборки
+	this->_writer.reset();
 	/**
 	 * Если сборка записи из дерева документа отвечена отказом
 	 *
@@ -1243,40 +1222,11 @@ vector <uint8_t> awh::codec::abc::Document::dump() const noexcept {
 	 *       принимаемых. Собранная наполовину запись есть запись негодная, и отличить её
 	 *       от годной зовущему нечем
 	 */
-	if(!this->build(writer))
+	if(!this->build(this->_writer))
 		// Выводим пустую запись
 		return vector <uint8_t> ();
 	// Выводим собранную запись
-	return writer.record();
-}
-/**
- * @brief Метод сборки записи из дерева документа затребованными настройками
- *
- * @param settings настройки сборки записи
- * @return         собранная запись, пустая при отказе сборки
- *
- */
-vector <uint8_t> awh::codec::abc::Document::dump(const writer_t::settings_t & settings) const noexcept {
-	// Сборщик бинарной записи
-	writer_t writer;
-	// Выполняем установку затребованных настроек сборки записи
-	writer.settings(settings);
-	// Если сборка записи из дерева документа отвечена отказом
-	if(!this->build(writer))
-		// Выводим пустую запись
-		return vector <uint8_t> ();
-	// Выводим собранную запись
-	return writer.record();
-}
-/**
- * @brief Метод извлечения настроек разбора записи
- *
- * @return настройки разбора записи
- *
- */
-const awh::codec::abc::reader_t::settings_t & awh::codec::abc::Document::settings() const noexcept {
-	// Выводим настройки разбора записи
-	return this->_parsing;
+	return this->_writer.record();
 }
 /**
  * @brief Метод установки настроек разбора записи
@@ -1284,9 +1234,13 @@ const awh::codec::abc::reader_t::settings_t & awh::codec::abc::Document::setting
  * @param settings устанавливаемые настройки разбора записи
  *
  */
-void awh::codec::abc::Document::settings(const reader_t::settings_t & settings) noexcept {
+void awh::codec::abc::Document::settings(const settings_t & settings) noexcept {
+	// Устанавливаем значение правило обращения с повторяющимся именем поля отображения
+	this->_duplicates = settings.reader.duplicates;
 	// Выполняем установку настроек разбора записи
-	this->_parsing = settings;
+	this->_writer.settings(settings.writer);
+	// Выполняем установку настроек разбора чтения
+	this->_reader.settings(settings.reader);
 }
 /**
  * @brief Метод извлечения корня дерева документа
@@ -1474,7 +1428,18 @@ void awh::codec::abc::Document::reset() noexcept {
  *
  */
 awh::codec::abc::Document::Document() noexcept :
- _storage{""}, _error(error_t::NONE) {}
+ _duplicates(duplicate_t::REFUSE), _error(error_t::NONE), _storage{""} {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора документа
+ *
+ */
+awh::codec::abc::Document::Document(const settings_t & settings) noexcept :
+ _duplicates(duplicate_t::REFUSE), _error(error_t::NONE), _storage{""} {
+	// Устанавливаем настройки чтения и записи событий
+	this->settings(settings);
+}
 
 /**
  * @brief Конструктор

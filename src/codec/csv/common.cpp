@@ -633,7 +633,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 */
 	if((value.compare("INF") == 0) || (value.compare("+INF") == 0)){
 		// Запоминаем положительную бесконечность
-		result = ::std::numeric_limits <double>::infinity();
+		result = std::numeric_limits <double>::infinity();
 		// Выводим признак успешного приведения
 		return true;
 	/**
@@ -641,7 +641,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 */
 	} else if(value.compare("-INF") == 0) {
 		// Запоминаем отрицательную бесконечность
-		result = -::std::numeric_limits <double>::infinity();
+		result = -std::numeric_limits <double>::infinity();
 		// Выводим признак успешного приведения
 		return true;
 	/**
@@ -649,7 +649,7 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	 */
 	} else if(value.compare("NaN") == 0) {
 		// Запоминаем нечисло
-		result = ::std::numeric_limits <double>::quiet_NaN();
+		result = std::numeric_limits <double>::quiet_NaN();
 		// Выводим признак успешного приведения
 		return true;
 	}
@@ -761,3 +761,29 @@ bool awh::codec::csv::boolean(const string_view text, bool & result) noexcept {
 	// Выводим признак неудачного приведения
 	return false;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::csv::Span::Span() noexcept : offset(0), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение начала отрезка в хранилище знаков
+ * @param length длина отрезка в байтах
+ *
+ */
+awh::codec::csv::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::csv::Location::Location() noexcept :
+ offset(NO_OFFSET), line(0), column(0),
+ record(0), field(NO_INDEX) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::csv::Field::Field() noexcept : quoted(false), modified(false) {}

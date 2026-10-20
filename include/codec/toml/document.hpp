@@ -374,7 +374,9 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Настройки разбора текста настроек
+						// Настройки записи текста разметки
+						writer_t::settings_t writer;
+						// Настройки разбора текста разметки
 						reader_t::settings_t reader;
 						/**
 						 * \~russian
@@ -851,6 +853,11 @@ namespace awh {
 					 * \~
 					 */
 					traversal_t _traversal;
+				private:
+					// Объект потокового чтения записей
+					mutable reader_t _reader;
+					// Объект записи событий
+					mutable writer_t _writer;
 				private:
 					// Код ошибки последней операции
 					mutable error_t _error;
@@ -1368,20 +1375,18 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи узла значения собираемым текстом
 					 *
-					 * @param writer запись собираемого текста настроек
-					 * @param node   порядковый номер записываемого узла значения
-					 * @return       результат выполнения операции
+					 * @param node порядковый номер записываемого узла значения
+					 * @return     результат выполнения операции
 					 *
 					 * \~english
 					 * @brief Method of writing a node of a value into the text being assembled
 					 *
-					 * @param writer writing of the settings text being assembled
-					 * @param node   ordinal number of the node of the value being written
-					 * @return       result of performing the operation
+					 * @param node ordinal number of the node of the value being written
+					 * @return     result of performing the operation
 					 *
 					 * \~
 					 */
-					bool compose(writer_t & writer, const uint32_t node) const noexcept;
+					bool compose(const uint32_t node) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки составного имени на пригодность к записи
@@ -2690,28 +2695,6 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод записи дерева обратно в текст настроек
-					 *
-					 * @details Записи выдаются в том же порядке, в каком они прочитаны,
-					 *          вместе с примечаниями и пустыми строками.
-					 *
-					 * @param settings настройки записи текста настроек
-					 * @return         собранный текст настроек
-					 *
-					 * \~english
-					 * @brief Method of writing the tree back into a settings text
-					 *
-					 * @details The records are issued in the same order in which they have been read,
-					 *          together with the comments and the empty lines.
-					 *
-					 * @param settings settings of the writing of a settings text
-					 * @return         assembled settings text
-					 *
-					 * \~
-					 */
-					string dump(const writer_t::settings_t & settings) const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод чтения настроек из файла
 					 *
 					 * @details Ход этот общий у всех семи кодеков рамки.
@@ -2889,6 +2872,16 @@ namespace awh {
 					 * \~
 					 */
 					explicit Document(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Document() noexcept = default;
 			} document_t;
 		};
 	};

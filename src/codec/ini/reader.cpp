@@ -2233,13 +2233,13 @@ void awh::codec::ini::Reader::reset() noexcept {
 	this->_keys.clear();
 }
 /**
- * @brief Метод передачи очередного куска исходного текста
- *
- * @param buffer буфер очередного куска исходного текста
- * @param size   размер буфера очередного куска исходного текста
- * @param end    признак того, что кусок является последним
- * @return       результат выполнения операции
- *
+	 * @brief Метод передачи очередного куска исходного текста
+	 *
+	 * @param buffer буфер очередного куска исходного текста
+	 * @param size   размер буфера очередного куска исходного текста
+	 * @param end    признак того, что кусок является последним
+	 * @return       результат выполнения операции
+	 *
 	 *
 	 * @note ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА ныне ЕДИН, и замерен он заново 09.09.2026 по
 	 *       шести кодекам рамки разом - две подачи с признаком конца подряд:
@@ -2264,7 +2264,7 @@ void awh::codec::ini::Reader::reset() noexcept {
 	 * @note Отсюда правило: запись, объявляющая нечто НЕВОЗМОЖНЫМ, обязана быть снесена
 	 *       той самой правкой, какая это возможным делает. Иначе она обращается доводом
 	 *       против работы уже сделанной
- */
+	 */
 bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
 	 * Если разбор прекращён ошибкой
@@ -2872,3 +2872,12 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <double> (dou
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include <sys/macro/restore.hpp>
+/**
+ * @brief Конструктор
+ *
+ * @param logical положение начала отрезка в собранной логической строке
+ * @param source  положение начала отрезка в приведённом исходном тексте
+ * @param length  длина отрезка в байтах
+ *
+ */
+awh::codec::ini::Reader::Piece::Piece(const size_t logical, const size_t source, const size_t length) noexcept : logical(logical), source(source), length(length) {}

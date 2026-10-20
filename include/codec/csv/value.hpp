@@ -926,24 +926,6 @@ namespace awh {
 					bool parse(const string & text) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод разбора текста таблицы с указанными настройками
-					 *
-					 * @param text     исходный текст таблицы
-					 * @param settings настройки разбора текста таблицы
-					 * @return         признак успешности разбора
-					 *
-					 * \~english
-					 * @brief Method of the parsing of a text of a table with the specified settings
-					 *
-					 * @param text     source text of the table
-					 * @param settings settings of the parsing of the text of the table
-					 * @return         sign of the success of the parsing
-					 *
-					 * \~
-					 */
-					bool parse(const string & text, const Document::settings_t & settings) noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод чтения таблицы из файла
 					 *
 					 * @param filename адрес файла таблицы
@@ -958,24 +940,6 @@ namespace awh {
 					 * \~
 					 */
 					bool load(const string & filename) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод чтения таблицы из файла с указанными настройками
-					 *
-					 * @param filename адрес файла таблицы
-					 * @param settings настройки разбора текста таблицы
-					 * @return         признак успешности чтения
-					 *
-					 * \~english
-					 * @brief Method of the reading of a table from a file with the specified settings
-					 *
-					 * @param filename address of the file of the table
-					 * @param settings settings of the parsing of the text of the table
-					 * @return         sign of the success of the reading
-					 *
-					 * \~
-					 */
-					bool load(const string & filename, const Document::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сохранения таблицы в файл

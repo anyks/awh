@@ -1277,6 +1277,9 @@ bool awh::codec::xml::Decoder::refuse(const error_t error) noexcept {
 		// Записываем отказ приведения в журнал работы
 		awh::log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {},
 		                  awh::log::flag_t::WARNING, message(error));
+	/**
+	 * Если режим отладки не включён
+	 */
 	#else
 		// Записываем отказ приведения в журнал работы
 		awh::log::print("XML decoding failed: %s", awh::log::flag_t::WARNING, message(error));

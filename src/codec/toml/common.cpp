@@ -778,3 +778,41 @@ awh::codec::toml::encoding_t awh::codec::toml::encoding(const string_view text) 
 	// Выводим неопределённую кодировку
 	return encoding_t::NONE;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Location::Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Date::Date() noexcept : year(0), month(0), day(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Time::Time() noexcept : nanosecond(0), hour(0), minute(0), second(0), digits(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Stamp::Stamp() noexcept : offset(NO_TIMEZONE), zulu(false), negative(false), spaced(false) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Part::Part() noexcept : naming(naming_t::BARE) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Content::Content() noexcept :
+ type(type_t::NONE), quoting(string_t::BASIC), radix(radix_t::DECIMAL),
+ boolean(false), integer(0), real(0.0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Comment::Comment() noexcept : trailing(false) {}

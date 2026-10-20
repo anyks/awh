@@ -210,7 +210,9 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 			return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
 		// Запоминаем приставку syslog значением события
 		this->_value.assign(record.begin(), record.begin() + begin);
-		// Снимаем пробелы в конце приставки syslog
+		/**
+		 * Снимаем пробелы в конце приставки syslog
+		 */
 		while(!this->_value.empty() && ((this->_value.back() == ' ') || (this->_value.back() == '\t')))
 			// Удаляем пробельный знак в конце приставки
 			this->_value.pop_back();
@@ -861,6 +863,7 @@ bool awh::codec::cef::Reader::feed(const void * buffer, const size_t size, const
 		if(this->_offset >= COMPACT_THRESHOLD){
 			// Определяем положение нового начала хранилища до удаления текста
 			pos_t origin;
+			// Снимаем координаты нового начала хранилища
 			this->place(this->_offset, origin);
 			// Сохраняем координаты удалённого начала для последующих событий
 			this->_origin = origin;
@@ -1189,3 +1192,12 @@ awh::codec::cef::Reader::Reader() noexcept :
  * Возвращаем имена, системными макросами занятые
  */
 #include <sys/macro/restore.hpp>
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::cef::Reader::Settings::Settings() noexcept :
+ mode(mode_t::NONE), empty(empty_t::STRING),
+ timestamp(TIMESTAMP_FORMAT), fraction(TIMESTAMP_FRACTION_FORMAT),
+ syslog(true), unescape(true),
+ maxRecord(MAX_RECORD), maxExtensions(MAX_EXTENSIONS) {}

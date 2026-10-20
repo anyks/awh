@@ -12,15 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация записи текста JSON — сборка исходящего текста значение за
  *        значением с потоковым изъятием собранного
- *
- * \~english
- * @brief Implementation of the writing of a JSON text — the assembly of the outgoing text value by
- *        value with the streaming extraction of what has been assembled
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -136,11 +129,14 @@ bool awh::codec::json::Writer::refuse(const error_t error) noexcept {
 	 */
 	#if defined(DEBUG_MODE)
 		// Записываем отказ записи в журнал работы
-		awh::log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {},
-		                  awh::log::flag_t::CRITICAL, reason);
+		log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {},
+		                  log::flag_t::CRITICAL, reason);
+	/**
+	 * Если режим отладки не включён
+	 */
 	#else
 		// Записываем отказ записи в журнал работы
-		awh::log::print("JSON writing refused: %s", awh::log::flag_t::CRITICAL, reason);
+		log::print("JSON writing refused: %s", log::flag_t::CRITICAL, reason);
 	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
@@ -782,6 +778,7 @@ bool awh::codec::json::Writer::value(const string & value) noexcept {
  * @brief Шаблон записи целого числа записи любой
  *
  * @tparam T     вид записываемого целого числа
+ *
  * @param number записываемое целое число
  * @return       признак успешности записи
  *
@@ -1317,7 +1314,7 @@ string awh::codec::json::Writer::take() noexcept {
 	// Увеличиваем количество изъятых из сборщика байтов
 	this->_taken += static_cast <uint64_t> (this->_result.size());
 	// Выполняем изъятие собранного текста
-	string result(::std::move(this->_result));
+	string result(::move(this->_result));
 	// Выполняем очистку собранного текста
 	this->_result.clear();
 	// Выводим изъятый собранный текст

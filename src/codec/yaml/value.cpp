@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Исходный файл владеющего значения YAML
- *
- * \~english
- * @brief Source file of the owning value of YAML
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -300,7 +294,10 @@ namespace {
 	 *       по номеру
 	 *
 	 */
-	static ::std::atomic <size_t> LIMIT(0x10000);
+	static atomic <size_t> LIMIT(0x10000);
+	/**
+	 * Получение неопределённого значения-заглушки
+	 */
 	static const awh::codec::yaml::Value & missing() noexcept {
 		// Неопределённое значение, обращением неудачным выдаваемое
 		static const awh::codec::yaml::Value result;
@@ -766,7 +763,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::scrap() noexcept {
  */
 size_t awh::codec::yaml::Value::limit() noexcept {
 	// Выводим установленный предел роста вместилища
-	return ::LIMIT.load(::std::memory_order_relaxed);
+	return ::LIMIT.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -776,7 +773,7 @@ size_t awh::codec::yaml::Value::limit() noexcept {
  */
 void awh::codec::yaml::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища
-	::LIMIT.store(value, ::std::memory_order_relaxed);
+	::LIMIT.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод обращения к значению вместилища по номеру с заведением недостающего
@@ -806,7 +803,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t ind
 	 */
 	{
 		// Получаем поставленный предел роста вместилища
-		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
 		/**
 		 * Если предел поставлен и затребованный номер за него выходит
 		 */
@@ -1164,6 +1161,7 @@ bool awh::codec::yaml::Value::append(const string & name, const Value & value) n
 	if(this->_index)
 		// Выполняем добавление заводимого имени в указатель поиска
 		this->_index->emplace(key, this->_names.size());
+	// Присоединяем заводимое имя к перечню имён
 	this->_names.push_back(::move(key));
 	// Выполняем добавление значения заводимого поля отображения
 	this->_items.push_back(::move(item));
@@ -1241,6 +1239,7 @@ bool awh::codec::yaml::Value::erase(const size_t index) noexcept {
  * @brief Шаблонный метод извлечения числа затребованным видом
  *
  * @tparam T      затребованный вид числа
+ *
  * @param  result переменная, куда помещается извлечённое значение
  * @return        признак успешности извлечения
  *
@@ -1270,7 +1269,7 @@ bool awh::codec::yaml::Value::extract(T & result) const noexcept {
 	 */
 	if(static_cast <uint32_t> (this->_type) & (static_cast <uint32_t> (type_t::REAL) | static_cast <uint32_t> (type_t::EXTENDED))){
 		// Устанавливаем извлечённое значение приведением дробного
-		result = ::awh::codec::convert <T> (this->_number.real);
+		result = codec::convert <T> (this->_number.real);
 		// Выводим признак успешного извлечения
 		return true;
 	}
@@ -2045,6 +2044,9 @@ awh::codec::yaml::error_t awh::codec::yaml::Value::error() const noexcept {
 	// Выводим код отказа последней работы над владеющим значением
 	return this->_error;
 }
+/**
+ * Сборка текста значения строкой
+ */
 string awh::codec::yaml::Value::dump() const noexcept {
 	// Настройки записи собираемого текста
 	writer_t::settings_t settings;
@@ -2184,10 +2186,13 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 		return false;
 	}
 	// Выполняем подмену дерева документа деревом переноса
-	document = ::std::move(staging);
+	document = ::move(staging);
 	// Выводим признак успешного переноса
 	return true;
 }
+/**
+ * Внедрение значения в документ по пути
+ */
 bool awh::codec::yaml::Value::implant(Document & document, const string & path) const noexcept {
 	/**
 	 * @brief Функция установки свойств уложенному узлу
@@ -2421,7 +2426,7 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		static_cast <void> (fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::yaml::message(this->_error));
+		 codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2439,7 +2444,7 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		static_cast <void> (fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::yaml::message(this->_error));
+		 codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2453,7 +2458,7 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		static_cast <void> (fs.unlink(temporary));
 		// Выполняем вывод сообщения об отказе записи
 		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-		 ::awh::codec::yaml::message(this->_error));
+		 codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2722,25 +2727,25 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	// Выполняем копирование построения вместилища
 	this->_layout = layout;
 	// Выполняем перенос подготовленной копии содержимого значения
-	this->_text = ::std::move(text);
+	this->_text = ::move(text);
 	// Выполняем перенос подготовленной копии якоря значения
-	this->_anchor = ::std::move(anchor);
+	this->_anchor = ::move(anchor);
 	// Выполняем перенос подготовленной копии метки значения
-	this->_tag = ::std::move(tag);
+	this->_tag = ::move(tag);
 	// Выполняем копирование признака местного вида метки
 	this->_local = local;
 	// Выполняем перенос подготовленной копии метки узла, имени пары предпосланной
-	this->_keyAnchor = ::std::move(keyAnchor);
+	this->_keyAnchor = ::move(keyAnchor);
 	// Выполняем перенос подготовленной копии метки типа, имени пары предпосланной
-	this->_keyTag = ::std::move(keyTag);
+	this->_keyTag = ::move(keyTag);
 	// Выполняем копирование признака местного вида метки типа имени пары
 	this->_keyLocal = keyLocal;
 	// Выполняем перенос подготовленной копии имён полей отображения
-	this->_names = ::std::move(names);
+	this->_names = ::move(names);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выполняем перенос подготовленной копии значений вместилища
-	this->_items = ::std::move(items);
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -2773,25 +2778,25 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	// Получаем построение вместилища до изменения текущего дерева
 	const layout_t layout = value._layout;
 	// Получаем содержимое значения до изменения текущего дерева
-	string text(::std::move(value._text));
+	string text(::move(value._text));
 	// Получаем якорь значения до изменения текущего дерева
-	string anchor(::std::move(value._anchor));
+	string anchor(::move(value._anchor));
 	// Получаем метку значения до изменения текущего дерева
-	string tag(::std::move(value._tag));
+	string tag(::move(value._tag));
 	// Получаем признак местного вида метки до изменения текущего дерева
 	const bool local = value._local;
 	// Получаем метку узла, имени пары предпосланную, до изменения текущего дерева
-	string keyAnchor(::std::move(value._keyAnchor));
+	string keyAnchor(::move(value._keyAnchor));
 	// Получаем метку типа, имени пары предпосланную, до изменения текущего дерева
-	string keyTag(::std::move(value._keyTag));
+	string keyTag(::move(value._keyTag));
 	// Получаем признак местного вида метки типа имени пары до изменения текущего дерева
 	const bool keyLocal = value._keyLocal;
 	// Получаем имена полей отображения до изменения текущего дерева
-	vector <string> names(::std::move(value._names));
+	vector <string> names(::move(value._names));
 	// Получаем указатель поиска до изменения текущего дерева
-	unique_ptr <unordered_map <string, size_t>> index(::std::move(value._index));
+	unique_ptr <unordered_map <string, size_t>> index(::move(value._index));
 	// Получаем значения вместилища до изменения текущего дерева
-	vector <Value> items(::std::move(value._items));
+	vector <Value> items(::move(value._items));
 	/**
 	 * Выполняем сброс перенесённого значения
 	 *
@@ -2814,25 +2819,25 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	// Выполняем перенос построения вместилища
 	this->_layout = layout;
 	// Выполняем перенос содержимого значения
-	this->_text = ::std::move(text);
+	this->_text = ::move(text);
 	// Выполняем перенос якоря значения
-	this->_anchor = ::std::move(anchor);
+	this->_anchor = ::move(anchor);
 	// Выполняем перенос метки значения
-	this->_tag = ::std::move(tag);
+	this->_tag = ::move(tag);
 	// Выполняем перенос признака местного вида метки
 	this->_local = local;
 	// Выполняем перенос метки узла, имени пары предпосланной
-	this->_keyAnchor = ::std::move(keyAnchor);
+	this->_keyAnchor = ::move(keyAnchor);
 	// Выполняем перенос метки типа, имени пары предпосланной
-	this->_keyTag = ::std::move(keyTag);
+	this->_keyTag = ::move(keyTag);
 	// Выполняем перенос признака местного вида метки типа имени пары
 	this->_keyLocal = keyLocal;
 	// Выполняем перенос имён полей отображения
-	this->_names = ::std::move(names);
+	this->_names = ::move(names);
 	// Выполняем перенесение указателя поиска вместе с именами
-	this->_index = ::std::move(index);
+	this->_index = ::move(index);
 	// Выполняем перенос значений вместилища
-	this->_items = ::std::move(items);
+	this->_items = ::move(items);
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -2841,9 +2846,11 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
  *
  */
 awh::codec::yaml::Value::Value() noexcept :
- _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
- _style(style_t::PLAIN), _chomp(chomp_t::KEEP), _layout(layout_t::BLOCK), _local(false),
- _keyLocal(false) {}
+ _local(false), _keyLocal(false),
+ _kind(kind_t::NONE), _type(type_t::UNDEFINED),
+ _chomp(chomp_t::KEEP), _style(style_t::PLAIN),
+ _layout(layout_t::BLOCK), _schema(schema_t::CORE),
+ _error(error_t::NONE) {}
 /**
  * @brief Конструктор вместилища указанного вида
  *

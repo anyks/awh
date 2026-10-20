@@ -933,7 +933,6 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				result.push_back(buffer[i]);
 			}
 		} break;
-
 		/**
 		 * Если кодировка исходного текста не определена
 		 *

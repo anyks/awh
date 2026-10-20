@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации владеющего значения бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the owning value of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -269,10 +263,10 @@ void awh::codec::abc::Value::clone(const Value & value) noexcept {
 		into._kind = from._kind;
 		// Выполняем установку вида значения
 		into._type = from._type;
-		// Выполняем установку числа значения
-		into._number = from._number;
 		// Выполняем установку содержимого значения
 		into._text = from._text;
+		// Выполняем установку числа значения
+		into._number = from._number;
 		// Выполняем установку десятичного порядка величины
 		into._exponent = from._exponent;
 		// Выполняем установку признака отрицательности величины
@@ -452,18 +446,18 @@ void awh::codec::abc::Value::clear() noexcept {
 			node._keys.clear();
 		}
 	}
-	// Выполняем сброс вида узла значения
-	this->_kind = kind_t::NONE;
-	// Выполняем сброс вида значения
-	this->_type = type_t::UNDEFINED;
-	// Выполняем сброс числа значения
-	this->_number.natural = 0;
 	// Выполняем очистку содержимого значения
 	this->_text.clear();
 	// Выполняем сброс десятичного порядка величины
 	this->_exponent = 0;
+	// Выполняем сброс числа значения
+	this->_number.natural = 0;
 	// Выполняем сброс признака отрицательности величины
 	this->_negative = false;
+	// Выполняем сброс вида узла значения
+	this->_kind = kind_t::NONE;
+	// Выполняем сброс вида значения
+	this->_type = type_t::UNDEFINED;
 }
 /**
  * @brief Метод сброса значения в указанный вид с сохранением capacity
@@ -1597,18 +1591,24 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			 *       довода при месте не стояло вовсе. Установлено 04.09.2026
 			 *
 			 */
+			case static_cast <uint32_t> (type_t::NUL):
 			case static_cast <uint32_t> (type_t::UNDEFINED):
-			case static_cast <uint32_t> (type_t::NUL): return writer.nul();
+				return writer.nul();
 			// Если значение является логическим
-			case static_cast <uint32_t> (type_t::BOOL): return writer.boolean(node._number.flag);
+			case static_cast <uint32_t> (type_t::BOOL):
+				return writer.boolean(node._number.flag);
 			// Если значение является строкой
-			case static_cast <uint32_t> (type_t::STRING): return writer.text(node._text);
+			case static_cast <uint32_t> (type_t::STRING):
+				return writer.text(node._text);
 			// Если значение является двоичными данными
-			case static_cast <uint32_t> (type_t::BLOB): return writer.blob(node._text.data(), node._text.size());
+			case static_cast <uint32_t> (type_t::BLOB):
+				return writer.blob(node._text.data(), node._text.size());
 			// Если значение является опознавателем
-			case static_cast <uint32_t> (type_t::UUID): return writer.uuid(node._text.data(), node._text.size());
+			case static_cast <uint32_t> (type_t::UUID):
+				return writer.uuid(node._text.data(), node._text.size());
 			// Если значение является отметкой времени
-			case static_cast <uint32_t> (type_t::TIME): return writer.timestamp(node._number.integer);
+			case static_cast <uint32_t> (type_t::TIME):
+				return writer.timestamp(node._number.integer);
 			// Если значение является открытым расширением
 			case static_cast <uint32_t> (type_t::CUSTOM):
 				// Выполняем укладку открытого расширения
@@ -1616,8 +1616,8 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			/**
 			 * Если значение является числом неограниченной ширины
 			 */
-			case static_cast <uint32_t> (type_t::EXTENDED):
 			case static_cast <uint32_t> (type_t::DECIMAL):
+			case static_cast <uint32_t> (type_t::EXTENDED):
 				// Выполняем укладку числа неограниченной ширины
 				return writer.decimal(node._text.data(), node._text.size(), node._negative, node._exponent);
 		}
@@ -1750,14 +1750,17 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexc
  * @return         признак успешного разбора
  *
  */
-bool awh::codec::abc::Value::parse(const void * buffer, const size_t size,
- const reader_t::settings_t & settings) noexcept {
+bool awh::codec::abc::Value::parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept {
 	// Выполняем очистку разбираемого значения
 	this->clear();
+	// Создаём параметры настроек документа
+	document_t::settings_t documentSettings;
+	// Устанавливаем настройки парсера
+	documentSettings.reader = settings;
 	// Дерево разбираемого документа
-	document_t document;
+	document_t document(documentSettings);
 	// Если разбор записи в дерево документа отвечен отказом
-	if(!document.parse(buffer, size, settings))
+	if(!document.parse(buffer, size))
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	// Выполняем перенесение корня дерева документа
@@ -1774,8 +1777,7 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size,
  * @return         признак успешности сборки
  *
  */
-bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error,
- const writer_t::settings_t & settings) const noexcept {
+bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error, const writer_t::settings_t & settings) const noexcept {
 	// Выполняем очистку буфера собираемой записи
 	result.clear();
 	// Выполняем сброс кода отказа сборки записи
@@ -1964,16 +1966,20 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
 		 */
 		switch(static_cast <uint32_t> (first._type)){
 			// Если значения отсутствуют либо пусты
+			case static_cast <uint32_t> (type_t::NUL):
 			case static_cast <uint32_t> (type_t::UNDEFINED):
-			case static_cast <uint32_t> (type_t::NUL): return true;
+				return true;
 			// Если значения являются логическими
-			case static_cast <uint32_t> (type_t::BOOL): return (first._number.flag == second._number.flag);
+			case static_cast <uint32_t> (type_t::BOOL):
+				return (first._number.flag == second._number.flag);
 			// Если значения хранятся отрезком октетов
-			case static_cast <uint32_t> (type_t::STRING):
 			case static_cast <uint32_t> (type_t::BLOB):
-			case static_cast <uint32_t> (type_t::UUID): return (first._text.compare(second._text) == 0);
+			case static_cast <uint32_t> (type_t::UUID):
+			case static_cast <uint32_t> (type_t::STRING):
+				return (first._text.compare(second._text) == 0);
 			// Если значения являются отметками времени
-			case static_cast <uint32_t> (type_t::TIME): return (first._number.integer == second._number.integer);
+			case static_cast <uint32_t> (type_t::TIME):
+				return (first._number.integer == second._number.integer);
 			/**
 			 * Если значения являются открытыми расширениями. Сличаются они вместе с
 			 * номером подвида: одни и те же октеты у разных подвидов означают разное

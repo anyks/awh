@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация хранения бинарного контейнера ABC в файле
- *
- * \~english
- * @brief Implementation of the storing of the ABC binary container in a file
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -42,7 +36,13 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+/**
+ * Подписываемся на пространство имён фреймворка
+ */
 using namespace awh;
+/**
+ * Подписываемся на пространство имён кодеков
+ */
 using namespace awh::codec;
 
 /**

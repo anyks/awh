@@ -12,15 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация владеющего значения JSON — заведение дерева из значений языка,
  *        снятие его с документа, правка, извлечение значений и перезапись в текст
- *
- * \~english
- * @brief Implementation of an owning value of JSON — the creation of a tree from the values of the language,
- *        the taking of it off a document, the editing, the extraction of the values and the rewriting into a text
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -68,7 +61,7 @@ namespace {
 	 *       при заведении приложения, а читается всяким потоком, обращающимся по номеру
 	 *
 	 */
-	static ::std::atomic <size_t> LIMIT(0x10000);
+	static atomic <size_t> LIMIT(0x10000);
 	/**
 	 * @brief Функция извлечения пустой строки
 	 *
@@ -156,7 +149,7 @@ namespace {
 				}
 			}
 			// Добавляем разобранное звено в перечень звеньев указателя
-			result.push_back(::std::move(token));
+			result.push_back(::move(token));
 		}
 		// Выводим признак успешного разбора
 		return true;
@@ -342,6 +335,7 @@ void awh::codec::json::Value::reindex() const noexcept {
  * является вовсе
  *
  * @tparam T      затребованный вид числа
+ *
  * @param  result переменная, куда помещается извлечённое значение
  * @return        признак успешности извлечения
  *
@@ -841,7 +835,7 @@ awh::codec::json::Value & awh::codec::json::Value::scrap() noexcept {
  */
 size_t awh::codec::json::Value::limit() noexcept {
 	// Выводим установленный предел роста вместилища
-	return ::LIMIT.load(::std::memory_order_relaxed);
+	return ::LIMIT.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод установки предела роста вместилища по номеру
@@ -851,7 +845,7 @@ size_t awh::codec::json::Value::limit() noexcept {
  */
 void awh::codec::json::Value::limit(const size_t value) noexcept {
 	// Выполняем установку предела роста вместилища
-	::LIMIT.store(value, ::std::memory_order_relaxed);
+	::LIMIT.store(value, std::memory_order_relaxed);
 }
 /**
  * @brief Метод проверки определённости значения
@@ -1128,7 +1122,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t ind
 	 */
 	{
 		// Получаем поставленный предел роста вместилища
-		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
 		/**
 		 * Если предел поставлен и затребованный номер за него выходит
 		 */
@@ -1291,7 +1285,7 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 			 */
 			{
 				// Получаем поставленный предел роста массива
-				const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+				const size_t limit = ::LIMIT.load(std::memory_order_relaxed);
 				/**
 				 * Если предел поставлен и затребованный номер за него выходит
 				 */
@@ -2258,11 +2252,11 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) n
 	// Выполняем перенос хранимого числа
 	this->_number = value._number;
 	// Выполняем перенос содержимого значения
-	this->_text = ::std::move(value._text);
+	this->_text = ::move(value._text);
 	// Выполняем перенос имён полей объекта
-	this->_names = ::std::move(value._names);
+	this->_names = ::move(value._names);
 	// Выполняем перенос значений вместилища
-	this->_items = ::std::move(value._items);
+	this->_items = ::move(value._items);
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
 	// Выполняем очистку значения, у какого содержимое отобрано
@@ -2274,9 +2268,18 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) n
  * @brief Конструктор
  *
  */
-awh::codec::json::Value::Value() noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value() noexcept :
+ _indexed(false), _kind(kind_t::NONE),
+ _type(type_t::UNDEFINED),
+ _error(error_t::NONE), _text{""} {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 }
 /**
  * @brief Конструктор значения указанного вида
@@ -2284,9 +2287,18 @@ awh::codec::json::Value::Value() noexcept : _kind(kind_t::NONE), _type(type_t::U
  * @param kind вид заводимого значения
  *
  */
-awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(type_t::UNDEFINED), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value(const kind_t kind) noexcept :
+ _indexed(false), _kind(kind),
+ _type(type_t::UNDEFINED),
+ _error(error_t::NONE), _text{""} {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 	/**
 	 * Определяем вид заводимого значения
 	 */
@@ -2335,8 +2347,7 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(
 		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
 		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
 		 */
-		case kind_t::NONE:
-		break;
+		case kind_t::NONE: break;
 	}
 }
 /**
@@ -2345,9 +2356,15 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const bool value) noexcept : _kind(kind_t::BOOL), _type(type_t::BOOL), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value(const bool value) noexcept :
+ _indexed(false), _kind(kind_t::BOOL),
+ _type(type_t::BOOL), _error(error_t::NONE), _text{""} {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
 	// Устанавливаем заводимое логическое значение
 	this->_number.flag = value;
 }
@@ -2360,11 +2377,17 @@ awh::codec::json::Value::Value(const bool value) noexcept : _kind(kind_t::BOOL),
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const int64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::INT64), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value(const int64_t value) noexcept :
+ _indexed(false), _kind(kind_t::NUMBER),
+ _type(type_t::INT64), _error(error_t::NONE), _text{""} {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число со знаком
+	// Устанавливаем заводимое целое число
 	this->_number.integer = value;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 	/**
 	 * Устанавливаем самый узкий из вмещающих видов числа
 	 */
@@ -2382,11 +2405,17 @@ awh::codec::json::Value::Value(const int64_t value) noexcept : _kind(kind_t::NUM
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const uint64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::UINT64), _indexed(false) {
-	// Выполняем сброс хранимого числа
-	this->_number.natural = 0;
-	// Устанавливаем заводимое целое число без знака
+awh::codec::json::Value::Value(const uint64_t value) noexcept :
+ _indexed(false), _kind(kind_t::NUMBER),
+ _type(type_t::UINT64), _error(error_t::NONE), _text{""}  {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = value;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 	/**
 	 * Устанавливаем самый узкий из вмещающих видов числа
 	 */
@@ -2408,11 +2437,17 @@ awh::codec::json::Value::Value(const uint64_t value) noexcept : _kind(kind_t::NU
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const double value) noexcept : _kind(kind_t::NUMBER), _type(type_t::DOUBLE), _indexed(false) {
-	// Выполняем сброс хранимого числа
-	this->_number.natural = 0;
+awh::codec::json::Value::Value(const double value) noexcept :
+ _indexed(false), _kind(kind_t::NUMBER),
+ _type(type_t::DOUBLE), _error(error_t::NONE), _text{""} {
 	// Устанавливаем заводимое дробное число
 	this->_number.real = value;
+	// Устанавливаем заводимое хранимое число
+	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 	/**
 	 * Если одинарной точности довольно для точного представления числа
 	 */
@@ -2489,9 +2524,17 @@ awh::codec::json::Value::Value(const std::conditional <std::is_same <uint64_t, u
  * @param value заводимая строка
  *
  */
-awh::codec::json::Value::Value(const string & value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING), _text(value), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value(const string & value) noexcept :
+ _indexed(false), _kind(kind_t::STRING),
+ _type(type_t::STRING), _error(error_t::NONE), _text(value) {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 }
 /**
  * @brief Конструктор строкового значения, поданного строкой языка Си
@@ -2499,9 +2542,17 @@ awh::codec::json::Value::Value(const string & value) noexcept : _kind(kind_t::ST
  * @param value заводимое значение, ноль - значение пустое
  *
  */
-awh::codec::json::Value::Value(const char * value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value(const char * value) noexcept :
+ _indexed(false), _kind(kind_t::STRING),
+ _type(type_t::STRING), _error(error_t::NONE), _text{} {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 	/**
 	 * Если строковое значение подано
 	 */
@@ -2515,9 +2566,17 @@ awh::codec::json::Value::Value(const char * value) noexcept : _kind(kind_t::STRI
  * @param value ссылка на узел документа
  *
  */
-awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED), _indexed(false) {
-	// Выполняем сброс хранимого числа
+awh::codec::json::Value::Value(const document_t::value_t & value) noexcept :
+ _indexed(false), _kind(kind_t::NONE),
+ _type(type_t::UNDEFINED),  _text{""} {
+	// Устанавливаем заводимое дробное число
+	this->_number.real = .0;
+	// Устанавливаем заводимое хранимое число
 	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число
+	this->_number.integer = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = false;
 	// Выполняем снятие значения со ссылки на узел документа
 	this->absorb(value);
 }
@@ -2528,8 +2587,11 @@ awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind
  *
  */
 awh::codec::json::Value::Value(const Value & value) noexcept :
- _kind(value._kind), _type(value._type), _number(value._number),
- _text(value._text), _names(value._names), _items(value._items), _indexed(false) {}
+ _indexed(false), _kind(value._kind),
+ _type(value._type), _number(value._number),
+ _error(value._error), _text(value._text),
+ _items(value._items), _names(value._names),
+ _index(value._index) {}
 /**
  * @brief Конструктор переноса
  *
@@ -2537,8 +2599,11 @@ awh::codec::json::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::json::Value::Value(Value && value) noexcept :
- _kind(value._kind), _type(value._type), _number(value._number),
- _text(::std::move(value._text)), _names(::std::move(value._names)), _items(::std::move(value._items)), _indexed(false) {
+ _indexed(false), _kind(value._kind),
+ _type(value._type), _number(value._number),
+ _error(value._error), _text(::move(value._text)),
+ _items(::move(value._items)), _names(::move(value._names)),
+ _index(::move(value._index)) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }
@@ -2913,7 +2978,7 @@ void awh::codec::json::Builder::reset() noexcept {
  */
 awh::codec::json::value_t awh::codec::json::Builder::finish() noexcept {
 	// Изымаем собранное значение
-	value_t result = ::std::move(this->_result);
+	value_t result = ::move(this->_result);
 	// Выполняем сброс состояния сборки
 	this->reset();
 	// Выводим собранное значение
@@ -3516,12 +3581,14 @@ bool awh::codec::json::Document::erase(const string & pointer) noexcept {
  * Без этого метода `v['z']` молча обращался к элементу под номером 122
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
  * @param  name разыскиваемое имя из одного знака
  * @return      ссылка на значение поля объекта
  *
  */
 template <typename T>
 typename std::enable_if <std::is_same <T, char>::value, const awh::codec::json::Value &>::type
+// Оператор чтения поля объекта по имени из одного знака
 awh::codec::json::Value::operator [] (const T name) const noexcept {
 	// Выполняем обращение к полю объекта по имени из одного знака
 	return (* this)[string(1, name)];
@@ -3530,12 +3597,14 @@ awh::codec::json::Value::operator [] (const T name) const noexcept {
  * @brief Метод обращения к полю объекта по написанию знака с заведением недостающего
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
  * @param  name разыскиваемое имя из одного знака
  * @return      ссылка на значение поля объекта
  *
  */
 template <typename T>
 typename std::enable_if <std::is_same <T, char>::value, awh::codec::json::Value &>::type
+// Оператор неконстантного обращения к полю объекта по имени из одного знака
 awh::codec::json::Value::operator [] (const T name) noexcept {
 	// Выполняем обращение к полю объекта по имени из одного знака
 	return (* this)[string(1, name)];
@@ -3547,5 +3616,6 @@ awh::codec::json::Value::operator [] (const T name) noexcept {
  */
 template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, const awh::codec::json::Value &>::type
 awh::codec::json::Value::operator [] <char> (const char) const noexcept;
+// Явное заведение обращения к полю объекта по имени из одного знака
 template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::Value &>::type
 awh::codec::json::Value::operator [] <char> (const char) noexcept;

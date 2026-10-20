@@ -73,9 +73,9 @@ namespace {
 	 *          той же ширины и знаковости - перенос этот точен и разряда не теряет.
 	 *
 	 */
-	using fixed_t = typename ::std::conditional <::std::is_signed <T>::value,
-		typename ::std::conditional <sizeof(T) == 1, int8_t, typename ::std::conditional <sizeof(T) == 2, int16_t, typename ::std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
-		typename ::std::conditional <sizeof(T) == 1, uint8_t, typename ::std::conditional <sizeof(T) == 2, uint16_t, typename ::std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
+	using fixed_t = typename std::conditional <std::is_signed <T>::value,
+		typename std::conditional <sizeof(T) == 1, int8_t, typename std::conditional <sizeof(T) == 2, int16_t, typename std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
+		typename std::conditional <sizeof(T) == 1, uint8_t, typename std::conditional <sizeof(T) == 2, uint16_t, typename std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
 
 	/**
 	 * @brief Функция сличения последовательностей знаков без учёта регистра
@@ -819,7 +819,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 		// Разбираемое число видом разрядным
 		fixed_t <T> number = 0;
 		// Если разбор числа не выполнен
-		if(!::awh::codec::ini::numeric(text, number, forms))
+		if(!codec::ini::numeric(text, number, forms))
 			// Выводим признак неудачного разбора
 			return false;
 		// Выполняем перенос разобранного числа
@@ -911,7 +911,7 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
 			 *       вид не вместившиеся. Отказ им прежде выдавался оттого, что целого разбора
 			 *       они не проходят вовсе
 			 */
-			result = ::awh::codec::convert <T> (value);
+			result = codec::convert <T> (value);
 			// Выводим признак успешного разбора
 			return true;
 		}

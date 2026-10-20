@@ -126,10 +126,15 @@ namespace {
 	 *          описание RFC 5424 называет всякое из них, и разыскиваются они по имени
 	 */
 	constexpr string_view VERSION     = "version";
+	// Имя свойства метки времени
 	constexpr string_view TIMESTAMP   = "timestamp";
+	// Имя свойства имени узла
 	constexpr string_view HOSTNAME    = "hostname";
+	// Имя свойства приложения
 	constexpr string_view APPLICATION = "application";
+	// Имя свойства идентификатора процесса
 	constexpr string_view PROCESS     = "process";
+	// Имя свойства номера сообщения
 	constexpr string_view MESSAGE_ID  = "messageId";
 }
 
@@ -296,7 +301,9 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 					 */
 					// Признак того, что значение отображением является
 					const bool mapped = (value.type() == abc::type_t::MAP);
-					// Выполняем перебор всех вложенных значений
+					/**
+					 * Выполняем перебор всех вложенных значений
+					 */
 					for(size_t i = 0; i < value.size(); i++){
 						// Знаки очередного вложенного значения
 						string item = "";
@@ -361,7 +368,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Запоминаем целое значение результирующим значением
-		result = ::std::to_string(current);
+		result = ::to_string(current);
 		// Выводим положительный признак обращения значения
 		return true;
 	}
@@ -374,7 +381,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Запоминаем целое значение результирующим значением
-		result = ::std::to_string(current);
+		result = ::to_string(current);
 		// Выводим положительный признак обращения значения
 		return true;
 	}
@@ -428,7 +435,7 @@ bool awh::codec::syslog::Writer::stringify(const abc::value_t & value, string & 
 		// Выводим отрицательный признак обращения значения
 		return false;
 	// Запоминаем значение знаками результирующим значением
-	result = ::std::move(current);
+	result = ::move(current);
 	// Выводим положительный признак обращения значения
 	return true;
 }
@@ -503,7 +510,6 @@ void awh::codec::syslog::Writer::timestamp(const string_view text, const standar
 	(void) standard;
 	// Запоминаем дату сообщения как есть
 	result.assign(text);
-
 }
 
 /**
@@ -944,7 +950,7 @@ bool awh::codec::syslog::Writer::modern(const abc::value_t & value, string & res
 		version = static_cast <uint32_t> (current);
 	}
 	// Добавляем номер описания записи в результирующую запись
-	result.append(::std::to_string(version));
+	result.append(::to_string(version));
 	// Если получение даты сообщения отказом завершилось
 	if(!this->extract(header, TIMESTAMP, text))
 		// Выводим отказ сборки записи
@@ -1219,7 +1225,7 @@ bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & resu
 		// Открываем приставку приоритета угловой скобкой
 		result.append(1, '<');
 		// Добавляем приоритет записи в результирующую запись
-		result.append(::std::to_string(priority));
+		result.append(::to_string(priority));
 		// Закрываем приставку приоритета угловой скобкой
 		result.append(1, '>');
 	}
@@ -1265,3 +1271,10 @@ awh::codec::syslog::Writer::Writer() noexcept :
  * Возвращаем имена, системными макросами занятые
  */
 #include <sys/macro/restore.hpp>
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::syslog::Writer::Settings::Settings() noexcept :
+ standard(standard_t::AUTO), nested(nested_t::STRICT), prefix(true),
+ bom(true), escape(true), terminate(true) {}

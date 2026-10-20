@@ -12,15 +12,8 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Реализация документа JSON — сборка дерева по событиям разбора, обход его,
  *        извлечение значений и перезапись в текст
- *
- * \~english
- * @brief Implementation of a JSON document — the assembly of the tree by the events of the parsing, its traversal,
- *        the extraction of the values and the rewriting into a text
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -149,6 +142,9 @@ bool awh::codec::json::Document::empty() const noexcept {
  *       стережёт постоянной `STORAGE_LIMIT` того же смысла
  */
 static constexpr uint64_t STORAGE_LIMIT = static_cast <uint64_t> (0xFFFFFFFFu);
+/**
+ * Проверка наличия поля объекта по имени
+ */
 bool awh::codec::json::Document::Value::contains(const string & name) const noexcept {
 	// Выводим признак наличия поля объекта
 	return (* this)[name].valid();
@@ -199,7 +195,7 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::operator []
 				index.emplace(string_view(this->_doc->_storage.data() + (item.offset - item.named), item.named), child);
 			}
 			// Запоминаем заведённое отображение имён полей объекта
-			i = this->_doc->_index.emplace(this->_index, ::std::move(index)).first;
+			i = this->_doc->_index.emplace(this->_index, ::move(index)).first;
 		}
 		// Выполняем поиск имени поля объекта в отображении
 		auto j = i->second.find(string_view(name));
@@ -420,6 +416,7 @@ bool awh::codec::json::Document::Value::value(bool & result) const noexcept {
  *       а неопределённого поведения в кодеке не будет
  *
  * @tparam T      затребованный вид числа
+ *
  * @param  result переменная, куда помещается извлечённое значение
  * @return        признак успешности извлечения
  *
@@ -640,7 +637,7 @@ string awh::codec::json::Document::Value::raw() const noexcept {
 	 */
 	if(!this->valid())
 		// Выводим отсутствие записи числа
-		return string();
+		return "";
 	// Получаем узел, на какой указывает ссылка
 	const node_t & node = this->_doc->_nodes[this->_index];
 	/**
@@ -654,7 +651,7 @@ string awh::codec::json::Document::Value::raw() const noexcept {
 	 */
 	if(!this->is(type_t::NUMBER))
 		// Выводим отсутствие записи числа
-		return string();
+		return "";
 	// Объект записи текста документа
 	writer_t writer;
 	// Выполняем запись числа, хранимого узлом
@@ -673,6 +670,13 @@ awh::codec::json::Document::value_t awh::codec::json::Document::at(const string 
 	// Выводим ссылку на узел, разысканный указателем
 	return this->root().at(pointer);
 }
+/**
+ * @brief Метод извлечения строкового значения
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
 bool awh::codec::json::Document::Value::value(string & result) const noexcept {
 	/**
 	 * Если узел строкой не является
@@ -699,16 +703,22 @@ string_view awh::codec::json::Document::Value::text() const noexcept {
 	 */
 	if(this->kind() != kind_t::STRING)
 		// Выводим отсутствие строкового значения
-		return string_view();
+		return "";
 	// Получаем узел, на какой указывает ссылка
 	const node_t & node = this->_doc->_nodes[this->_index];
 	// Выводим строковое значение узла
 	return string_view(this->_doc->_storage.data() + node.offset, node.length());
 }
 /**
- * @brief Метод сборки дерева документа из события разбора
+ * @brief Метод сборки дерева по очередному событию разбора
+ *
+ * @param event    вид очередного события разбора
+ * @param content  указание на содержимое события в хранилище знаков разбора
+ * @param modified признак изменения содержимого разбором
+ * @return         признак успешности сборки
+ *
  */
-bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept {
+bool awh::codec::json::Document::digest(const event_t event, const span_t content, const bool modified) noexcept {
 	/**
 	 * Если событие является примечанием
 	 */
@@ -730,15 +740,15 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 		 */
 		if((this->_callback != nullptr) && (* this->_callback)){
 			// Выполняем перенос знаков разбора в хранилище документа
-			this->transfer(reader);
+			this->transfer();
 			/**
 			 * Сквозное положение первого знака хранилища СЛЕДУЮЩЕГО документа потока
 			 *
 			 * @details Считается оно ДО выдачи намеренно: обработчик выдачи вправе звать
-			 * `clear()`, освобождая память по ходу длинного потока, а очистка сбрасывает и
-			 * хранилище, и само это положение. Считай мы его после выдачи, сдвиг вышел бы
-			 * нулевым, база откатилась бы в ноль позади разбора, и смещения узлов
-			 * следующего документа указывали бы мимо своих знаков
+			 *          `clear()`, освобождая память по ходу длинного потока, а очистка сбрасывает и
+			 *          хранилище, и само это положение. Считай мы его после выдачи, сдвиг вышел бы
+			 *          нулевым, база откатилась бы в ноль позади разбора, и смещения узлов
+			 *          следующего документа указывали бы мимо своих знаков
 			 *
 			 * @warning Замер: поток из 3000 документов с очисткой из обработчика давал
 			 *          `origin=81609` при базе 0, 526 значений выдавались ПОРЧЕНЫМИ, а
@@ -767,8 +777,8 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 		 * Если документ потока собран не первым
 		 *
 		 * @details Поток несёт документы один за другим, а дерево вмещает один. Прежде
-		 * второй документ уходил в никуда молча: узлы его ложились за корнем
-		 * недостижимыми, выдача текста отдавала первый документ, и разбор отвечал успехом
+		 *          второй документ уходил в никуда молча: узлы его ложились за корнем
+		 *          недостижимыми, выдача текста отдавала первый документ, и разбор отвечал успехом.
 		 *
 		 * @note Отказ выносится лишь при разборе БЕЗ обработчика потоковой выдачи:
 		 *       с обработчиком поток разбирается как поток, и всякий документ его
@@ -794,35 +804,29 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	 * @note Перенос по одному значению стоил половины всего времени сборки дерева.
 	 * Обнаружено разложением стоимости по частям
 	 */
-	const uint64_t position = (reader.origin() + static_cast <uint64_t> (content.offset));
-	/**
-	 * Если сквозное положение содержимого выходит за предел хранилища знаков
-	 *
-	 * @note Хранилище знаков ограничено четырьмя гигабайтами: смещение в нём
-	 *       занимает четыре байта, и содержимое за этой границей указать нечем
-	 */
-	/**
-	 * @warning Ограда эта набором НЕ СЛИЧАЕТСЯ и сличена быть не может дёшево: добраться до
-	 *          неё требует четырёх гигабайтов исходного текста в одном разборе. Молчание
-	 *          карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не исправность, и всякая
-	 *          правка счёта сквозных положений обязана перечитывать эту ветвь глазами
-	 */
+	const uint64_t position = (this->_reader.origin() + static_cast <uint64_t> (content.offset));
 	/**
 	 * Сквозное положение, какое ляжет смещением узла
 	 *
 	 * @note Сличать надлежит ту самую величину, какую узел и запомнит: у вместилища
 	 *       смещением служит конец имени поля, а не положение события. Прежде сторож
 	 *       смотрел на положение события ВСЕГДА - и на потоке документов сличал не то
+	 *
+	 * @warning Ограда эта набором НЕ СЛИЧАЕТСЯ и сличена быть не может дёшево: добраться до
+	 *          неё требует четырёх гигабайтов исходного текста в одном разборе. Молчание
+	 *          карты покрытия здесь означает НЕПРОВЕРЕННОСТЬ, а не исправность, и всякая
+	 *          правка счёта сквозных положений обязана перечитывать эту ветвь глазами
+	 *
 	 */
 	const uint64_t anchor = (((event == event_t::OBJECT_BEGIN) || (event == event_t::ARRAY_BEGIN)) ? this->_pointer : position);
 	/**
 	 * Если положение содержимого лежит внутри хранилища нынешнего документа
 	 *
 	 * @details Отставание от базы - не переполнение: поток документов сдвигает базу по
-	 * мере выдачи, и вместилище, имени поля не имеющее, приходит с концом имени от
-	 * ПРЕЖНЕГО документа. Указывать такому вместилищу не на что, и смещение его не
-	 * читается никогда. Вычитание же без этой проверки уходило в переполнение: щуп дал
-	 * `position=0` при базе 2 и разность в 2^64-2
+	 *          мере выдачи, и вместилище, имени поля не имеющее, приходит с концом имени от
+	 *          ПРЕЖНЕГО документа. Указывать такому вместилищу не на что, и смещение его не
+	 *          читается никогда. Вычитание же без этой проверки уходило в переполнение: щуп дал
+	 *          `position=0` при базе 2 и разность в 2^64-2.
 	 *
 	 * @note Прежде сличение шло с `NO_OFFSET` - пределом ВОСЬМИБАЙТОВОГО значения, - и
 	 *       сторож не срабатывал никогда, пряча собою эту самую разность: смещение узла
@@ -962,11 +966,11 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 			/**
 			 * Если закрывается объект, а повторяющиеся имена полей затребовано разбирать
 			 */
-			if((event == event_t::OBJECT_END) && (this->_settings.duplicates != duplicate_t::KEEP)){
+			if((event == event_t::OBJECT_END) && (this->_duplicates != duplicate_t::KEEP)){
 				/**
 				 * Если разбор повторяющихся имён полей объекта завершился отказом
 				 */
-				if(!this->deduplicate(parent, reader))
+				if(!this->deduplicate(parent))
 					// Выводим признак неудачной сборки
 					return false;
 			}
@@ -993,7 +997,7 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 		 */
 		case event_t::NUMBER: {
 			// Получаем запись разбираемого числа
-			const string_view text(reader.storage().data() + content.offset, content.length);
+			const string_view text(this->_reader.storage().data() + content.offset, content.length);
 			/**
 			 * Выполняем определение вида числа вместе с преобразованием его
 			 *
@@ -1005,11 +1009,11 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 				/**
 				 * Если число не вместимо ни в один родной вид, а такие затребовано отвергать
 				 */
-				if(this->_settings.numbers == number_t::CHECK){
+				if(this->_numbers == number_t::CHECK){
 					// Запоминаем код отказа разбора
 					this->_error = error_t::NUMBER_OUT_OF_RANGE;
 					// Запоминаем положение отказа разбора в исходном тексте
-					this->_position = reader.location();
+					this->_position = this->_reader.location();
 					// Выводим признак неудачной сборки
 					return false;
 				}
@@ -1022,9 +1026,6 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 				node.type = type_t::EXTENDED;
 			}
 		} break;
-		/**
-		 * Если событие не опознано
-		 */
 		/**
 		 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: всякий вид события разобран либо
 		 *       ветвью этого выбора, либо заслоном выше по телу
@@ -1079,7 +1080,7 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	 *       бы выдавать отказы сборки уже по заведённому узлу, а отказ обязан оставлять
 	 *       перечень нетронутым
 	 */
-	this->_nodes.push_back(::std::move(node));
+	this->_nodes.push_back(::move(node));
 	/**
 	 * Если узел вместилищем является
 	 */
@@ -1110,14 +1111,12 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 /**
  * @brief Метод переноса знаков разбора в хранилище документа
  *
- * @param reader объект потокового чтения текста
- *
  */
-void awh::codec::json::Document::transfer(const reader_t & reader) noexcept {
+void awh::codec::json::Document::transfer() noexcept {
 	// Получаем количество байтов, выброшенных из хранилища знаков разбора
-	const uint64_t origin = reader.origin();
+	const uint64_t origin = this->_reader.origin();
 	// Получаем хранилище знаков разбора
-	const string & storage = reader.storage();
+	const string & storage = this->_reader.storage();
 	/**
 	 * Если хранилище документа отстаёт от хранилища разбора
 	 */
@@ -1158,17 +1157,23 @@ void awh::codec::json::Document::transfer(const reader_t & reader) noexcept {
 /**
  * @brief Метод приёма события разбора, выданного прямо из чтения
  *
- * @param context указание на документ, собирающий дерево
- * @param reader  объект потокового чтения текста
+ * @details Стоит посредником между обработчиком чтения, какому возвращать
+ *          нечего, и сборкой дерева: отказ сборки прекращает разбор вызовом `abort()`
+ *
+ * @param context  указание на документ, собирающий дерево
+ * @param reader   объект потокового чтения текста
+ * @param event    вид очередного события разбора
+ * @param content  указание на содержимое события в хранилище знаков разбора
+ * @param modified признак изменения содержимого разбором
  *
  */
 void awh::codec::json::Document::handler(void * context, reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept {
 	// Получаем документ, собирающий дерево
-	Document * self = reinterpret_cast <Document *> (context);
+	document_t * self = reinterpret_cast <document_t *> (context);
 	/**
 	 * Если сборка дерева по очередному событию разбора завершилась отказом
 	 */
-	if(!self->digest(reader, event, content, modified))
+	if(!self->digest(event, content, modified))
 		/**
 		 * Выполняем прекращение разбора
 		 *
@@ -1181,17 +1186,17 @@ void awh::codec::json::Document::handler(void * context, reader_t & reader, cons
  * @brief Метод разбора повторяющихся имён полей объекта
  *
  * @details Лишние поля сносятся поддеревьями и с конца перечня к началу: снос с
- * начала сдвинул бы номера ещё не снесённых полей
+ *          начала сдвинул бы номера ещё не снесённых полей
  *
  * @note Знаки снесённых полей остаются в хранилище знаков мёртвым грузом. Сжатие
- * хранилища потребовало бы правки смещений у всех узлов документа, а повтор имени
- * поля - случай редкий и обыкновенно отвергаемый вовсе
+ *       хранилища потребовало бы правки смещений у всех узлов документа, а повтор имени
+ *       поля - случай редкий и обыкновенно отвергаемый вовсе
  *
  * @param parent номер узла разбираемого объекта
  * @return       признак успешности разбора
  *
  */
-bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader_t & reader) noexcept {
+bool awh::codec::json::Document::deduplicate(const uint32_t parent) noexcept {
 	/**
 	 * @brief Метод извлечения имени поля объекта, где бы знаки его ни лежали
 	 *
@@ -1204,7 +1209,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 	 * @return     имя поля объекта
 	 *
 	 */
-	const auto naming = [this, &reader](const node_t & node) noexcept -> string_view {
+	const auto naming = [this](const node_t & node) noexcept -> string_view {
 		// Получаем сквозное положение имени поля объекта
 		const uint64_t position = ((this->_base + static_cast <uint64_t> (node.offset)) - static_cast <uint64_t> (node.named));
 		/**
@@ -1212,7 +1217,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 		 */
 		if(position >= (this->_base + static_cast <uint64_t> (this->_storage.size())))
 			// Выводим имя поля объекта из хранилища разбора
-			return string_view(reader.storage().data() + (position - reader.origin()), node.named);
+			return string_view(this->_reader.storage().data() + (position - this->_reader.origin()), node.named);
 		/**
 		 * Выводим имя поля объекта из хранилища документа
 		 *
@@ -1328,7 +1333,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 			/**
 			 * Определяем правило обращения с повторяющимся именем поля объекта
 			 */
-			switch(this->_settings.duplicates){
+			switch(this->_duplicates){
 				// Если повторяющееся имя поля объекта отвергается
 				case duplicate_t::ERROR: {
 					// Запоминаем код отказа разбора
@@ -1368,7 +1373,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 		// Выводим признак успешного разбора
 		return true;
 	// Выполняем упорядочивание номеров узлов сносимых полей объекта
-	::std::sort(removed.begin(), removed.end());
+	::sort(removed.begin(), removed.end());
 	/**
 	 * Выполняем снос полей объекта с конца перечня к началу
 	 */
@@ -1383,10 +1388,10 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 		 * Уменьшаем размер поддерева объекта на размер снесённого поддерева
 		 *
 		 * @details Размах правится лишь у НЕПОСРЕДСТВЕННОГО родителя, а не у всех предков
-		 * выше, и это верно ровно потому, что снос идёт при закрытии САМОГО объекта, когда
-		 * предки ещё открыты: размах их выставится позже строкою «extent(index - parent)»,
-		 * а номер заводимого узла берётся от «_nodes.size()» заново на каждом событии, и
-		 * снос его уже уменьшил
+		 *          выше, и это верно ровно потому, что снос идёт при закрытии САМОГО объекта, когда
+		 *          предки ещё открыты: размах их выставится позже строкою «extent(index - parent)»,
+		 *          а номер заводимого узла берётся от «_nodes.size()» заново на каждом событии, и
+		 *          снос его уже уменьшил
 		 *
 		 * @warning Довод держится ПОРЯДКОМ событий, а не свойством кода на месте, и оттого
 		 *          хрупок: снос, перенесённый к концу разбора либо к отдельному проходу,
@@ -1533,12 +1538,17 @@ bool awh::codec::json::Document::classify(const string_view text, node_t & node)
 /**
  * @brief Метод записи числа, хранимого узлом
  *
- * @details Запись собирается кратчайшей записью, читающейся обратно тем же самым
- * числом. Метод этот один на перезапись документа и на выдачу записи числа: две
- * отдельные записи одного и того же числа неминуемо разошлись бы видом
+ * @details Метод этот один на перезапись документа и на выдачу записи
+ *          числа: две отдельные записи одного и того же числа неминуемо разошлись
+ *          бы видом.
+ *
+ * @note Исход сличается выдачей текста: отказ записи МЕСТНЫЙ, и выдача,
+ *       идущая до конца не глядя, получала последний его код вместо
+ *       первого - звучащему называлась не та причина
  *
  * @param writer объект записи текста документа
  * @param node   узел, число какого записывается
+ * @return       признак успешности записи
  *
  */
 bool awh::codec::json::Document::compose(writer_t & writer, const node_t & node) const noexcept {
@@ -1693,44 +1703,14 @@ bool awh::codec::json::Document::parse(const string_view text) noexcept {
 bool awh::codec::json::Document::parse(const string_view text, const callback_t & callback) noexcept {
 	// Выполняем очистку документа
 	this->clear();
-	// Выполняем сброс состояния чтения текста документа
-	this->_reader.reset();
-	// Получаем чтение текста документа
-	reader_t & reader = this->_reader;
-	// Выполняем установку настроек разбора текста
-	/**
-	 * Выполняем установку настроек разбора текста, огранённых пределом вложенности
-	 *
-	 * @note Огранение это обязательно: дерево документа плоско и глубины не боится, а
-	 *       вот работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим значением и запись - идут
-	 *       возвратом, и глубина дерева ложится прямо на стек вызовов
-	 *
-	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: разбору ноль значит
-	 *       отсутствие предела, и дерево из него выходит какой угодно глубины
-	 *
-	 * @note Огранение идёт молча и до разбора: прежде предел этот стоял заслоном у
-	 *       самой сборки дерева, и настройка, поднятая звучащим выше `MAX_DEPTH`,
-	 *       молча не имела силы вовсе. Ныне отказ выдаёт разбор - ровно там, где текст
-	 *       предел и превысил, и с местом в тексте
-	 *
-	 * @note Устроено это тем же порядком, что и у владеющего значения разметки
-	 */
-	{
-		// Настройки разбора, огранённые пределом вложенности
-		reader_t::settings_t bounded = this->_settings.reader;
-		// Если предел вложенности снят либо поднят выше допустимого
-		if((bounded.maxDepth == 0) || (bounded.maxDepth > MAX_DEPTH))
-			// Выполняем огранение предела вложенности
-			bounded.maxDepth = MAX_DEPTH;
-		// Выполняем установку настроек разбора текста
-		reader.settings(bounded);
-	}
 	// Снимаем признак прекращения разбора по требованию обработчика
 	this->_halted = false;
 	// Запоминаем обработчик потоковой выдачи значений
 	this->_callback = & callback;
 	// Получаем признак потоковой выдачи значений
 	const bool streaming = static_cast <bool> (callback);
+	// Выполняем сброс состояния чтения текста документа
+	this->_reader.reset();
 	/**
 	 * Выполняем установку удержания хранилища знаков разбора
 	 *
@@ -1742,7 +1722,7 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 	 * @note Потоковой выдаче удержание не годится: хранилище росло бы во весь
 	 *       разбираемый поток, а он у неё без конца
 	 */
-	reader.keep(!streaming);
+	this->_reader.keep(!streaming);
 	/**
 	 * Выполняем установку обработчика прямой выдачи событий разбора
 	 *
@@ -1752,7 +1732,7 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 	 * @note Очередь стоила трети всего времени сборки дерева. Обнаружено разложением
 	 *       стоимости по частям
 	 */
-	reader.handler(& Document::handler, this);
+	this->_reader.handler(& document_t::handler, this);
 	// Признак успешности разбора текста документа
 	bool result = true;
 	/**
@@ -1770,13 +1750,13 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 		// Получаем размер очередного подаваемого куска
 		const size_t length = (((offset + ::CHUNK) < text.size()) ? ::CHUNK : (text.size() - offset));
 		// Выполняем подачу очередного куска текста документа чтению
-		result = reader.feed(text.data() + offset, length, ((offset + length) >= text.size()));
+		result = this->_reader.feed(text.data() + offset, length, ((offset + length) >= text.size()));
 		/**
 		 * Если знаки разбора удержанию не подлежат
 		 */
 		if(streaming)
 			// Выполняем перенос знаков разбора в хранилище документа
-			this->transfer(reader);
+			this->transfer();
 		/**
 		 * Если разбор куска текста документа завершился отказом
 		 */
@@ -1791,14 +1771,14 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 			break;
 	}
 	// Выполняем снятие обработчика прямой выдачи событий разбора
-	reader.handler(nullptr, nullptr);
+	this->_reader.handler(nullptr, nullptr);
 	/**
 	 * Запоминаем кодировку, какою исходный текст документа прочитан
 	 *
 	 * @note Кодировка снимается и при отказе разбора, и снимается ПОСЛЕ подачи текста:
 	 *       обработчик потоковой выдачи вправе позвать очистку, а та кодировку сбрасывает
 	 */
-	this->_encoding = reader.encoding();
+	this->_encoding = this->_reader.encoding();
 	// Сбрасываем обработчик потоковой выдачи значений
 	this->_callback = nullptr;
 	/**
@@ -1806,7 +1786,7 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 	 */
 	if(!streaming)
 		// Выполняем перенос знаков разбора в хранилище документа целиком, без копии
-		reader.release(this->_storage);
+		this->_reader.release(this->_storage);
 	/**
 	 * Если разбор текста документа завершился отказом
 	 */
@@ -1824,7 +1804,7 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 		 *       того, как разбор уже отказал, и прекращение не должно выдавать отказ
 		 *       за успех
 		 */
-		if(this->_halted && (this->_error == error_t::NONE) && (reader.error() == error_t::NONE)){
+		if(this->_halted && (this->_error == error_t::NONE) && (this->_reader.error() == error_t::NONE)){
 			// Выполняем очистку перечня узлов документа
 			this->_nodes.clear();
 			// Выводим признак успешного разбора
@@ -1838,9 +1818,9 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 		 */
 		if(this->_error == error_t::NONE)
 			// Запоминаем код отказа разбора
-			this->_error = reader.error();
+			this->_error = this->_reader.error();
 		// Запоминаем положение отказа разбора в исходном тексте
-		this->_position = reader.location();
+		this->_position = this->_reader.location();
 		// Выполняем очистку перечня узлов документа
 		this->_nodes.clear();
 		// Выводим признак неудачного разбора
@@ -1886,7 +1866,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		// Запоминаем код отказа чтения файла документа
 		this->_error = error_t::FILE_NOT_READ;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON document failed: %s", log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -1897,69 +1877,34 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 */
 	if(type != fs_t::type_t::FILE){
-		//
-		// Запоминаем код отказа разбора
-		//
-		// @note Отказ этот нашего внутреннего изъяна не означает: путь передан извне, и
-		//       прежний код внутренней ошибки вводил потребителя в заблуждение, отправляя
-		//       искать дефект у нас
-		//
-		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
-		 *       настоящего вывода открытие файла отказывало бы молча, тогда как отказ
-		 *       разбора того же файла в лог уходит
+		 * Запоминаем код отказа разбора
+		 *
+		 * @note Отказ этот нашего внутреннего изъяна не означает: путь передан извне, и
+		 *       прежний код внутренней ошибки вводил потребителя в заблуждение, отправляя
+		 *       искать дефект у нас
 		 */
+		this->_error = error_t::FILE_NOT_OPENED;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON document failed: %s", log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Выполняем сброс состояния чтения текста документа
 	this->_reader.reset();
-	// Получаем чтение текста документа
-	reader_t & reader = this->_reader;
-	// Выполняем установку настроек разбора текста
-	/**
-	 * Выполняем установку настроек разбора текста, огранённых пределом вложенности
-	 *
-	 * @note Огранение это обязательно: дерево документа плоско и глубины не боится, а
-	 *       вот работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим значением и запись - идут
-	 *       возвратом, и глубина дерева ложится прямо на стек вызовов
-	 *
-	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: разбору ноль значит
-	 *       отсутствие предела, и дерево из него выходит какой угодно глубины
-	 *
-	 * @note Огранение идёт молча и до разбора: прежде предел этот стоял заслоном у
-	 *       самой сборки дерева, и настройка, поднятая звучащим выше `MAX_DEPTH`,
-	 *       молча не имела силы вовсе. Ныне отказ выдаёт разбор - ровно там, где текст
-	 *       предел и превысил, и с местом в тексте
-	 *
-	 * @note Устроено это тем же порядком, что и у владеющего значения разметки
-	 */
-	{
-		// Настройки разбора, огранённые пределом вложенности
-		reader_t::settings_t bounded = this->_settings.reader;
-		// Если предел вложенности снят либо поднят выше допустимого
-		if((bounded.maxDepth == 0) || (bounded.maxDepth > MAX_DEPTH))
-			// Выполняем огранение предела вложенности
-			bounded.maxDepth = MAX_DEPTH;
-		// Выполняем установку настроек разбора текста
-		reader.settings(bounded);
-	}
 	/**
 	 * Выполняем установку обработчика прямой выдачи событий разбора
 	 *
 	 * @details События приходят прямо в сборку дерева, минуя очередь выдачи чтения
 	 */
-	reader.handler(& Document::handler, this);
+	this->_reader.handler(& document_t::handler, this);
 	/**
 	 * Выполняем установку удержания хранилища знаков разбора
 	 *
 	 * @note Потоковой выдачи значений разбор файла не ведёт, и знаки переносятся
 	 *       документу по окончании целиком, без копии
 	 */
-	reader.keep(true);
+	this->_reader.keep(true);
 	// Признак успешности разбора текста документа
 	bool result = true;
 	/**
@@ -1984,7 +1929,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		// Наращиваем количество байтов, поданных разбору
 		consumed += static_cast <uintmax_t> (size);
 		// Выполняем подачу куска файла документа чтению
-		result = reader.feed(buffer, size, (left == 0));
+		result = this->_reader.feed(buffer, size, (left == 0));
 		// Выводим признак продолжения чтения файла документа
 		return result;
 	});
@@ -1992,16 +1937,15 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 * Если чтение файла оборвалось отказом
 	 *
 	 * @details Отказ чтения от конца файла по одному лишь количеству прочитанного
-	 * неотличим: каталог, поданный вместо файла, ОТКРЫВАЕТСЯ успешно, а читается
-	 * отказом, и без этой проверки он выглядел бы файлом пустым. Разбор таблицы пустой
-	 * текст принимает таблицей без записей и отвечал на каталог УСПЕХОМ, а разбор JSON и
-	 * разметки отвечали `EMPTY_TEXT` - доводом ложным, отправляющим искать изъян в
-	 * содержимом файла вместо изъяна доступа к нему
+	 *          неотличим: каталог, поданный вместо файла, ОТКРЫВАЕТСЯ успешно, а читается
+	 *          отказом, и без этой проверки он выглядел бы файлом пустым. Разбор таблицы пустой
+	 *          текст принимает таблицей без записей и отвечал на каталог УСПЕХОМ, а разбор JSON и
+	 *          разметки отвечали `EMPTY_TEXT` - доводом ложным, отправляющим искать изъян в
+	 *          содержимом файла вместо изъяна доступа к нему
 	 *
 	 * @note Проверка стоит после цикла, а не внутри: признак негодности потока
 	 *       сбрасывается лишь явно, и после цикла он тот же
-	 */
-	/**
+	 *
 	 * @note СЕТЬ БЕЗОПАСНОСТИ. Не покрыто набором ТЕЛО заслона: сам он исполняется 9 раз,
 	 *       а не срабатывает ни разу - счета эти разные, и прежняя редакция, звавшая
 	 *       непокрытым заслон, приписывала счёт тела ему. Замерено 07.09.2026. Прежде он
@@ -2017,8 +1961,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *
 	 * @warning Снимать заслон нельзя: без него оборванное чтение выглядело бы
 	 *          документом, прочитанным до конца, - то есть успехом на половине данных
-	 */
-	/**
+	 *
 	 * @note Заслон этот ПЕРЕКРЫТ по всем воспроизводимым дорогам и оттого набором не покрыт:
 	 *       каталог отсеивается проверкой до открытия, файл неоткрываемый - проверкой
 	 *       открытия, а `bad()` требует сбоя самого устройства ввода-вывода. Замерено
@@ -2031,22 +1974,22 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 */
 	if(result && (consumed < expected)){
 		// Выполняем снятие обработчика прямой выдачи событий разбора
-		reader.handler(nullptr, nullptr);
+		this->_reader.handler(nullptr, nullptr);
 		// Выполняем перенос знаков разбора в хранилище документа
-		reader.release(this->_storage);
+		this->_reader.release(this->_storage);
 		// Выполняем очистку собранного к мигу отказа
 		this->clear();
 		// Запоминаем код отказа чтения файла документа
 		this->_error = error_t::FILE_NOT_READ;
 		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON document failed: %s", log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Выполняем снятие обработчика прямой выдачи событий разбора
-	reader.handler(nullptr, nullptr);
+	this->_reader.handler(nullptr, nullptr);
 	// Выполняем перенос знаков разбора в хранилище документа целиком, без копии
-	reader.release(this->_storage);
+	this->_reader.release(this->_storage);
 	/**
 	 * Если разбор текста документа завершился отказом
 	 */
@@ -2056,9 +1999,9 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		 */
 		if(this->_error == error_t::NONE)
 			// Запоминаем код отказа разбора
-			this->_error = reader.error();
+			this->_error = this->_reader.error();
 		// Запоминаем положение отказа разбора в исходном тексте
-		this->_position = reader.location();
+		this->_position = this->_reader.location();
 		// Выполняем очистку перечня узлов документа
 		this->_nodes.clear();
 		// Выводим признак неудачного разбора
@@ -2071,25 +2014,13 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
  * @brief Метод перезаписи документа в текст
  *
  * @details Обход идёт вперёд по памяти перечнем узлов, а не спуском по дереву:
- * дети лежат сразу за родителем, и обход оттого не выделяет памяти вовсе, кроме
- * стека закрываемых вместилищ
+ *          дети лежат сразу за родителем, и обход оттого не выделяет памяти вовсе, кроме
+ *          стека закрываемых вместилищ
  *
- * @param format вид оформления собираемого текста
- * @return       собранный текст документа
+ * @return собранный текст документа
  *
  */
 string awh::codec::json::Document::dump() const noexcept {
-	// Выводим собранный текст документа оформлением из настроек записи
-	return this->dump(this->_settings.writer.format);
-}
-/**
- * @brief Метод получения текста документа затребованным оформлением
- *
- * @param format затребованное оформление собираемого текста
- * @return       собранный текст документа
- *
- */
-string awh::codec::json::Document::dump(const format_t format) const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
 	/**
@@ -2100,23 +2031,6 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 	 *       но ложное. Таблица CSV держится того же правила
 	 */
 	this->_position = location_t();
-	// Запись текста документа
-	writer_t writer;
-	// Получаем настройки записи текста
-	writer_t::settings_t settings = this->_settings.writer;
-	// Устанавливаем затребованный вид оформления собираемого текста
-	settings.format = format;
-	/**
-	 * Дозволяем записи NaN и бесконечности, коль скоро разбор их принимает
-	 *
-	 * @note Дозволение это выводится из настроек разбора намеренно: числа такие
-	 *       попадают в дерево лишь с его дозволения, а запрет на записи их у
-	 *       сборщика молча выбросил бы значение из перезаписанного текста.
-	 *       Обнаружено обкаткой искажёнными текстами
-	 */
-	settings.allowInfinityAndNan = (settings.allowInfinityAndNan || this->_settings.reader.allowInfinityAndNan);
-	// Выполняем установку настроек записи текста
-	writer.settings(settings);
 	/**
 	 * Если документ пуст
 	 *
@@ -2131,8 +2045,10 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 		// Запоминаем код отказа записи документа без значения
 		this->_error = error_t::EMPTY_TEXT;
 		// Выводим пустой текст документа
-		return string();
+		return "";
 	}
+	// Объект записи текста документа
+	this->_writer.clear();
 	// Стек номеров узлов за последними узлами открытых вместилищ
 	vector <uint32_t> nesting;
 	/**
@@ -2154,11 +2070,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			 *       называлась не та причина. Замер: число `NaN` давало
 			 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 			 */
-			if(!writer.close()){
+			if(!this->_writer.close()){
 				// Запоминаем код отказа записи текста документа
-				this->_error = writer.error();
+				this->_error = this->_writer.error();
 				// Выводим пустой текст документа
-				return string();
+				return "";
 			}
 		}
 		// Получаем очередной узел документа
@@ -2176,11 +2092,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			 *       называлась не та причина. Замер: число `NaN` давало
 			 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 			 */
-			if(!writer.key(string(this->_storage.data() + (node.offset - node.named), node.named))){
+			if(!this->_writer.key(string(this->_storage.data() + (node.offset - node.named), node.named))){
 				// Запоминаем код отказа записи текста документа
-				this->_error = writer.error();
+				this->_error = this->_writer.error();
 				// Выводим пустой текст документа
-				return string();
+				return "";
 			}
 		/**
 		 * Определяем вид очередного узла документа
@@ -2197,11 +2113,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				 *       называлась не та причина. Замер: число `NaN` давало
 				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 				 */
-				if(!writer.null()){
+				if(!this->_writer.null()){
 					// Запоминаем код отказа записи текста документа
-					this->_error = writer.error();
+					this->_error = this->_writer.error();
 					// Выводим пустой текст документа
-					return string();
+					return "";
 				}
 			break;
 			// Если узел является логическим значением
@@ -2215,11 +2131,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				 *       называлась не та причина. Замер: число `NaN` давало
 				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 				 */
-				if(!writer.value(node.length() == 4)){
+				if(!this->_writer.value(node.length() == 4)){
 					// Запоминаем код отказа записи текста документа
-					this->_error = writer.error();
+					this->_error = this->_writer.error();
 					// Выводим пустой текст документа
-					return string();
+					return "";
 				}
 			break;
 			/**
@@ -2238,9 +2154,9 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				 *       называлась не та причина. Замер: число `NaN` давало
 				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 				 */
-				if(!this->compose(writer, node)){
+				if(!this->compose(this->_writer, node)){
 					// Запоминаем код отказа записи текста документа
-					this->_error = writer.error();
+					this->_error = this->_writer.error();
 					// Выводим пустой текст документа
 					return string();
 				}
@@ -2256,11 +2172,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				 *       называлась не та причина. Замер: число `NaN` давало
 				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 				 */
-				if(!writer.value(string(this->_storage.data() + node.offset, node.length()))){
+				if(!this->_writer.value(string(this->_storage.data() + node.offset, node.length()))){
 					// Запоминаем код отказа записи текста документа
-					this->_error = writer.error();
+					this->_error = this->_writer.error();
 					// Выводим пустой текст документа
-					return string();
+					return "";
 				}
 			break;
 			// Если узел является массивом
@@ -2274,11 +2190,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				 *       называлась не та причина. Замер: число `NaN` давало
 				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 				 */
-				if(!writer.array()){
+				if(!this->_writer.array()){
 					// Запоминаем код отказа записи текста документа
-					this->_error = writer.error();
+					this->_error = this->_writer.error();
 					// Выводим пустой текст документа
-					return string();
+					return "";
 				}
 				// Добавляем номер узла за последним узлом массива в стек
 				nesting.push_back(index + node.extent());
@@ -2294,11 +2210,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				 *       называлась не та причина. Замер: число `NaN` давало
 				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
 				 */
-				if(!writer.object()){
+				if(!this->_writer.object()){
 					// Запоминаем код отказа записи текста документа
-					this->_error = writer.error();
+					this->_error = this->_writer.error();
 					// Выводим пустой текст документа
-					return string();
+					return "";
 				}
 				// Добавляем номер узла за последним узлом объекта в стек
 				nesting.push_back(index + node.extent());
@@ -2324,11 +2240,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 		/**
 		 * Если закрытие вместилища отказало
 		 */
-		if(!writer.close()){
+		if(!this->_writer.close()){
 			// Запоминаем код отказа записи текста документа
-			this->_error = writer.error();
+			this->_error = this->_writer.error();
 			// Выводим пустой текст документа
-			return string();
+			return "";
 		}
 	}
 	/**
@@ -2351,45 +2267,32 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 	 *          пустым текстом при пустом коде - и звучащий не отличил бы его от документа,
 	 *          вправду пустого
 	 */
-	if(writer.error() != error_t::NONE){
+	if(this->_writer.error() != error_t::NONE){
 		// Запоминаем код отказа записи текста документа
-		this->_error = writer.error();
+		this->_error = this->_writer.error();
 		// Выводим пустой текст документа
-		return string();
+		return "";
 	}
 	// Выводим собранный текст документа
-	return writer.take();
+	return this->_writer.take();
 }
 /**
- * @brief Метод записи документа в файл
- *
- * @param filename адрес записываемого файла
- * @param format   вид оформления собираемого текста
- * @return         признак успешности записи
- *
- */
-bool awh::codec::json::Document::save(const string & filename) const noexcept {
-	// Выводим результат сохранения текста документа оформлением из настроек записи
-	return this->save(filename, this->_settings.writer.format);
-}
-/**
- * @brief Метод сохранения текста документа в файл затребованным оформлением
+ * @brief Метод сохранения текста документа в файл
  *
  * @param filename адрес файла для сохранения
- * @param format   затребованное оформление собираемого текста
  * @return         признак успешности сохранения
  *
  */
-bool awh::codec::json::Document::save(const string & filename, const format_t format) const noexcept {
+bool awh::codec::json::Document::save(const string & filename) const noexcept {
 	/**
 	 * Получаем собранный текст документа
 	 *
 	 * @details Текст собирается ДО открытия файла нарочно: прежде файл усекался первым,
-	 * и документ, записи не подлежащий, оставлял на его месте файл ПУСТОЙ, а запись
-	 * отвечала при том успехом. Тем же порядком пользуются ныне владеющие значения
-	 * обоих кодеков и таблица CSV
+	 *          и документ, записи не подлежащий, оставлял на его месте файл ПУСТОЙ, а запись
+	 *          отвечала при том успехом. Тем же порядком пользуются ныне владеющие значения
+	 *          обоих кодеков и таблица CSV
 	 */
-	const string text = this->dump(format);
+	const string text = this->dump();
 	/**
 	 * Если собранный текст документа пуст
 	 *
@@ -2425,12 +2328,13 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 * Адрес временного файла, куда собирается текст
 	 *
 	 * @details Текст пишется рядом с целью и переносится на неё лишь по успешном
-	 * завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
-	 * записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
-	 * ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
-	 * как вызов отвечал отказом. Замер щупом при пределе `RLIMIT_FSIZE`: файл о годном
-	 * содержимом в 4096 октетов обращался в обрубок о 8192, а сохранение выводило `false`.
-	 * Тем же порядком пользуется таблица CSV
+	 *          завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
+	 *          записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
+	 *          ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
+	 *          как вызов отвечал отказом. Замер щупом при пределе `RLIMIT_FSIZE`: файл о годном
+	 *          содержимом в 4096 октетов обращался в обрубок о 8192, а сохранение выводило `false`.
+	 *          Тем же порядком пользуется таблица CSV.
+	 *
 	 */
 	const string temporary = (filename + ".awh-tmp");
 	/**
@@ -2440,6 +2344,7 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 *       и остаток прежнего сохранения, длиною своей превзошедший нынешнее, торчал бы
 	 *       хвостом за концом записанного. Прежде усечение делал сам поток признаком
 	 *       `trunc`
+	 *
 	 */
 	static_cast <void> (this->_fs.unlink(temporary));
 	/**
@@ -2447,6 +2352,7 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 *
 	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
 	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 *
 	 */
 	const bool written = this->_fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
 	/**
@@ -2456,13 +2362,14 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		// Запоминаем код отказа открытия файла документа
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
+		 * Выполняем вывод сообщения об отказе
+		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON document failed: %s", log::flag_t::CRITICAL, json::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2470,7 +2377,7 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 * Если запись файла документа не удалась
 	 *
 	 * @details Исход спрашивается у САМОЙ записи: ход её отдаёт признак успеха, и успехом
-	 * считается запись всего буфера - частичная есть тот же отказ
+	 *          считается запись всего буфера - частичная есть тот же отказ.
 	 *
 	 * @note Прежде здесь сличалась ВЕЛИЧИНА записанного: ходы записи были объявлены `void`
 	 *       и отказ оглашали одним лишь журналом. Мера та была слаба - длина сходилась и на
@@ -2482,13 +2389,15 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		// Выполняем снос недописанного временного файла
 		static_cast <void> (this->_fs.unlink(temporary));
 		/**
+		 * Выполняем вывод сообщения об отказе
+		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 *
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON document failed: %s", log::flag_t::CRITICAL, json::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2496,13 +2405,14 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
 	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
-	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
-	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
-	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
-	 * и заведён
+	 *          лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 *          указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 *          у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
+	 *          и заведён
 	 *
 	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
 	 *       разницу берёт на себя
+	 *
 	 */
 	static_cast <void> (this->_fs.flush(temporary, true));
 	/**
@@ -2517,13 +2427,14 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		// Выполняем снос временного файла
 		static_cast <void> (this->_fs.unlink(temporary));
 		/**
+		 * Выполняем вывод сообщения об отказе
+		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		log::print("JSON document failed: %s", log::flag_t::CRITICAL, json::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2646,7 +2557,7 @@ vector <string> awh::codec::json::Document::keys(const string & pointer) const n
 					}
 				}
 				// Выполняем добавление собранного звена указателя
-				result.push_back(::std::move(token));
+				result.push_back(::move(token));
 			}
 		} break;
 		/**
@@ -2663,7 +2574,7 @@ vector <string> awh::codec::json::Document::keys(const string & pointer) const n
 			 */
 			for(size_t i = 0; i < value.size(); i++)
 				// Выполняем добавление номера значения звеном указателя
-				result.push_back(::std::to_string(i));
+				result.push_back(::to_string(i));
 		} break;
 	}
 	// Выводим перечень звеньев указателя к детям значения
@@ -2710,30 +2621,69 @@ awh::codec::json::encoding_t awh::codec::json::Document::encoding() const noexce
 	return this->_encoding;
 }
 /**
- * @brief Метод извлечения настроек документа
- *
- * @return настройки документа
- *
- */
-const awh::codec::json::Document::settings_t & awh::codec::json::Document::settings() const noexcept {
-	// Выводим настройки документа
-	return this->_settings;
-}
-/**
  * @brief Метод установки настроек документа
  *
  * @param settings устанавливаемые настройки документа
  *
  */
 void awh::codec::json::Document::settings(const settings_t & settings) noexcept {
-	// Выполняем установку настроек документа
-	this->_settings = settings;
+	// Устанавливаем правило преобразования чисел при разборе
+	this->_numbers = settings.numbers;
+	// Устанавливаем правило обращения с повторяющимся именем поля объекта
+	this->_duplicates = settings.duplicates;
+	/**
+	 * Выполняем установку настроек разбора текста, огранённых пределом вложенности
+	 *
+	 * @note Огранение это обязательно: дерево документа плоско и глубины не боится, а
+	 *       вот работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим значением и запись - идут
+	 *       возвратом, и глубина дерева ложится прямо на стек вызовов
+	 *
+	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: разбору ноль значит
+	 *       отсутствие предела, и дерево из него выходит какой угодно глубины
+	 *
+	 * @note Огранение идёт молча и до разбора: прежде предел этот стоял заслоном у
+	 *       самой сборки дерева, и настройка, поднятая звучащим выше `MAX_DEPTH`,
+	 *       молча не имела силы вовсе. Ныне отказ выдаёт разбор - ровно там, где текст
+	 *       предел и превысил, и с местом в тексте
+	 *
+	 * @note Устроено это тем же порядком, что и у владеющего значения разметки
+	 *
+	 */
+	{
+		// Настройки разбора, огранённые пределом вложенности
+		reader_t::settings_t readerSettings = settings.reader;
+		// Если предел вложенности снят либо поднят выше допустимого
+		if((readerSettings.maxDepth == 0) || (readerSettings.maxDepth > MAX_DEPTH))
+			// Выполняем огранение предела вложенности
+			readerSettings.maxDepth = MAX_DEPTH;
+		// Выполняем установку настроек разбора текста
+		this->_reader.settings(readerSettings);
+	}{
+		// Создаём объект настроек записи текста
+		writer_t::settings_t writerSettings = settings.writer;
+		/**
+		 * Дозволяем записи NaN и бесконечности, коль скоро разбор их принимает
+		 *
+		 * @note Дозволение это выводится из настроек разбора намеренно: числа такие
+		 *       попадают в дерево лишь с его дозволения, а запрет на записи их у
+		 *       сборщика молча выбросил бы значение из перезаписанного текста.
+		 *       Обнаружено обкаткой искажёнными текстами
+		 */
+		writerSettings.allowInfinityAndNan = (settings.writer.allowInfinityAndNan || settings.reader.allowInfinityAndNan);
+		// Выполняем установку настроек записи текста
+		this->_writer.settings(writerSettings);
+	}
 }
 /**
  * @brief Конструктор
  *
  */
-awh::codec::json::Document::Document() noexcept : _reader(), _error(error_t::NONE), _fs(), _stamp(0), _named(0), _keyed(false), _completed(false), _halted(false), _pointer(0), _base(0), _callback(nullptr) {
+awh::codec::json::Document::Document() noexcept :
+ _keyed(false), _halted(false), _completed(false),
+ _stamp(0), _named(0), _base(0), _pointer(0),
+ _numbers(number_t::NATIVE), _encoding(encoding_t::NONE),
+ _duplicates(duplicate_t::ERROR), _error(error_t::NONE),
+ _storage{""}, _callback(nullptr) {
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *
@@ -2747,9 +2697,46 @@ awh::codec::json::Document::Document() noexcept : _reader(), _error(error_t::NON
 	 *
 	 */
 	this->_nodes.reserve(NODES);
-	this->_storage.reserve(STORAGE);
-	this->_nesting.reserve(NESTING);
+	// Отводим место под перечень имён
 	this->_naming.reserve(NAMING);
+	// Отводим место под хранилище текста
+	this->_storage.reserve(STORAGE);
+	// Отводим место под стек вложенности
+	this->_nesting.reserve(NESTING);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора документа
+ *
+ */
+awh::codec::json::Document::Document(const settings_t & settings) noexcept :
+ _keyed(false), _halted(false), _completed(false),
+ _stamp(0), _named(0), _base(0), _pointer(0),
+ _numbers(number_t::NATIVE), _encoding(encoding_t::NONE),
+ _duplicates(duplicate_t::ERROR), _error(error_t::NONE),
+ _storage{""}, _callback(nullptr) {
+	/**
+	 * Выполняем заведение запаса памяти под сборку дерева документа
+	 *
+	 * @details Запас берётся единожды на объект, а не по мере надобности: без него всякое
+	 * вместилище растёт с нуля, а рост этот на малом документе стоит нескольких обращений
+	 * к куче с перекладыванием прежнего содержимого. Разбор мелких документов — а таковых
+	 * у служб большинство — почти целиком из этого роста и состоит
+	 *
+	 * @note Запас переживает сброс: вместилища очищаются, но память свою удерживают, и
+	 *       второй разобранный тем же объектом документ не платит уже ничего
+	 *
+	 */
+	this->_nodes.reserve(NODES);
+	// Отводим место под перечень имён
+	this->_naming.reserve(NAMING);
+	// Отводим место под хранилище текста
+	this->_storage.reserve(STORAGE);
+	// Отводим место под стек вложенности
+	this->_nesting.reserve(NESTING);
+	// Устанавливаем настройки чтения и записи событий
+	this->settings(settings);
 }
 /**
  * @brief Метод обращения снятого значения по написанию знака
@@ -2757,12 +2744,14 @@ awh::codec::json::Document::Document() noexcept : _reader(), _error(error_t::NON
  * @details Написание знака есть ТЕКСТ: разыскивается имя из одного знака, а не номер
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
  * @param  name разыскиваемое имя из одного знака
  * @return      снятое значение
  *
  */
 template <typename T>
 typename std::enable_if <std::is_same <T, char>::value, awh::codec::json::Document::Value>::type
+// Оператор обращения к значению по имени из одного знака
 awh::codec::json::Document::Value::operator [] (const T name) const noexcept {
 	// Выполняем обращение по имени из одного знака
 	return (* this)[string(1, name)];
@@ -2771,12 +2760,14 @@ awh::codec::json::Document::Value::operator [] (const T name) const noexcept {
  * @brief Метод обращения документа по написанию знака
  *
  * @tparam T разряд обращения, ограда пропускает ровно знак
+ *
  * @param  name разыскиваемое имя из одного знака
  * @return      снятое значение
  *
  */
 template <typename T>
 typename std::enable_if <std::is_same <T, char>::value, awh::codec::json::Document::value_t>::type
+// Оператор обращения к документу по имени из одного знака
 awh::codec::json::Document::operator [] (const T name) const noexcept {
 	// Выполняем обращение по имени из одного знака
 	return (* this)[string(1, name)];
@@ -2786,5 +2777,38 @@ awh::codec::json::Document::operator [] (const T name) const noexcept {
  */
 template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::Document::Value>::type
 awh::codec::json::Document::Value::operator [] <char> (const char) const noexcept;
+// Явное заведение обращения к документу по имени из одного знака
 template __AWH_SHARED_EXPORT__ typename std::enable_if <std::is_same <char, char>::value, awh::codec::json::Document::value_t>::type
 awh::codec::json::Document::operator [] <char> (const char) const noexcept;
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Document::Settings::Settings() noexcept :
+ numbers(number_t::NATIVE), duplicates(duplicate_t::ERROR) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Document::Value::Value() noexcept :
+ _doc(nullptr), _index(NO_INDEX), _bound(0), _stamp(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param doc   документ, которому принадлежит узел
+ * @param index номер узла в перечне узлов документа
+ * @param bound номер узла за последним узлом вместилища
+ *
+ */
+awh::codec::json::Document::Value::Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
+ _doc(doc), _index(index), _bound(bound), _stamp((doc != nullptr) ? doc->_stamp : 0) {}
+/**
+ * @brief Псевдоним сброса состояния документа (см. clear())
+ *
+ */
+void awh::codec::json::Document::reset() noexcept {
+	// Сносим содержимое документа, возвращая его к пустому состоянию
+	this->clear();
+}

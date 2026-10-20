@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации кадра бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of a chunk of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -687,3 +681,10 @@ void awh::codec::abc::Packer::settings(const settings_t & settings) noexcept {
  */
 awh::codec::abc::Packer::Packer() noexcept :
  _error(error_t::NONE), _compressor(nullptr), _crypto(nullptr) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Chunk::Chunk() noexcept :
+ method(compressor::method_t::NONE), length(0), origin(0),
+ number(0), generation(0), encrypted(false), waste(false) {}

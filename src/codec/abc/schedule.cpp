@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации отбоя срока бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the beating out of the deadline of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -67,7 +61,7 @@ void awh::codec::abc::Schedule::run(const uint64_t round) noexcept {
 	 */
 	while(true){
 		// Выполняем захват замка состояния отбоя срока
-		unique_lock <mutex> lock(this->_mtx);
+		unique_lock <std::shared_mutex> lock(static_cast <std::shared_mutex &> (this->_mtx));
 		/**
 		 * Выполняем ожидание наступления срока на условной переменной.
 		 *
@@ -115,9 +109,9 @@ void awh::codec::abc::Schedule::run(const uint64_t round) noexcept {
  */
 void awh::codec::abc::Schedule::callback(function <void (void)> callback) noexcept {
 	// Выполняем захват замка состояния отбоя срока
-	lock_guard <mutex> lock(this->_mtx);
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку работы, зовомой по наступлении срока
-	this->_callback = ::std::move(callback);
+	this->_callback = ::move(callback);
 }
 /**
  * @brief Метод запуска отбоя срока
@@ -137,7 +131,7 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 		// Выводим признак того, что отбой срока не запущен
 		return false;
 	// Выполняем захват замка состояния отбоя срока
-	unique_lock <mutex> lock(this->_mtx);
+	unique_lock <std::shared_mutex> lock(static_cast <std::shared_mutex &> (this->_mtx));
 	// Выполняем установку способа отбоя срока
 	this->_mode = mode;
 	// Выполняем установку срока отбоя
@@ -185,7 +179,7 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 void awh::codec::abc::Schedule::stop() noexcept {
 	{
 		// Выполняем захват замка состояния отбоя срока
-		lock_guard <mutex> lock(this->_mtx);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем снятие признака работы отбоя срока
 		this->_working = false;
 	}
@@ -217,7 +211,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 		 *          Прежде касания эти шли без замка вовсе, и выходила гонка данных -
 		 *          найдена ThreadSanitizer 13.09.2026
 		 */
-		lock_guard <mutex> lock(this->_mtx);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		/**
 		 * Если поток отбоя срока заведён
 		 *
@@ -254,9 +248,9 @@ void awh::codec::abc::Schedule::stop() noexcept {
 			 */
 			if(this->_thread.get_id() != this_thread::get_id())
 				// Выполняем изъятие потока отбоя срока под ожидание вне замка
-				awaited.push_back(::std::move(this->_thread));
+				awaited.push_back(::move(this->_thread));
 			// Иначе отправляем поток отбоя срока в отставку, освобождая место под новый
-			else this->_retired.push_back(::std::move(this->_thread));
+			else this->_retired.push_back(::move(this->_thread));
 		}
 		/**
 		 * Выполняем изъятие потоков, ушедших в отставку
@@ -277,7 +271,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 			 */
 			else if(retired.get_id() != this_thread::get_id()){
 				// Выполняем изъятие отставного потока под ожидание вне замка
-				awaited.push_back(::std::move(retired));
+				awaited.push_back(::move(retired));
 				// Выполняем снятие отставного потока с учёта
 				this->_retired.erase(this->_retired.begin() + static_cast <ptrdiff_t> (i - 1));
 			}
@@ -293,7 +287,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
 			item.join();
 	}
 	// Выполняем захват замка состояния отбоя срока
-	lock_guard <mutex> lock(this->_mtx);
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем сброс способа отбоя срока
 	this->_mode = mode_t::NONE;
 }
@@ -305,7 +299,7 @@ void awh::codec::abc::Schedule::stop() noexcept {
  */
 bool awh::codec::abc::Schedule::touch() noexcept {
 	// Выполняем захват замка состояния отбоя срока
-	lock_guard <mutex> lock(this->_mtx);
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	/**
 	 * Если срок отбивается не штампом времени, поверка эта не о нём
 	 */
@@ -338,7 +332,7 @@ bool awh::codec::abc::Schedule::working() const noexcept {
 	 * @note Признак этот правится потоком отбоя, и чтение его без замка есть гонка -
 	 *       TSan её видит. Замок здесь ничего не стоит: спрашивают состояние редко
 	 */
-	lock_guard <mutex> lock(this->_mtx);
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим признак работы отбоя срока
 	return this->_working;
 }
@@ -350,7 +344,7 @@ bool awh::codec::abc::Schedule::working() const noexcept {
  */
 awh::codec::abc::Schedule::mode_t awh::codec::abc::Schedule::mode() const noexcept {
 	// Выполняем захват замка состояния отбоя срока
-	lock_guard <mutex> lock(this->_mtx);
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим способ отбоя срока
 	return this->_mode;
 }

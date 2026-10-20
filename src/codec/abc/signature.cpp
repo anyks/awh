@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации подписи владельца бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the signature of the owner of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -185,7 +179,7 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
 		// Выводим признак неудачного внесения кадра
 		return this->fail("Merkle tree: the digest of a leaf is of a wrong length");
 	// Выполняем внесение свёртки листа в дерево
-	this->_leaves.push_back(::std::move(result));
+	this->_leaves.push_back(::move(result));
 	// Выводим признак успешного внесения кадра
 	return true;
 }
@@ -294,10 +288,10 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result) const noexcept {
 				// Выводим признак неудачного сведения дерева
 				return this->fail("Merkle tree: the digest of a node is of a wrong length");
 			// Выполняем внесение свёртки узла в следующий ярус
-			next.push_back(::std::move(node));
+			next.push_back(::move(node));
 		}
 		// Выполняем переход к следующему ярусу дерева
-		tier = ::std::move(next);
+		tier = ::move(next);
 	}
 	// Выполняем выдачу корня сведённого дерева
 	result = tier.front();
@@ -609,3 +603,14 @@ bool awh::codec::abc::fingerprint(const crypto_t & crypto, const string & name, 
 	// Выводим признак успешно выработанного отпечатка
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Merkle::Merkle() noexcept : _crypto(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Sign::Sign() noexcept : kind(crypto_t::signature_t::NONE), hash(crypto_t::hash_t::NONE) {}

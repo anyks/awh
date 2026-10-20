@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации поточного чтения бинарного контейнера ABC
- *
- * \~english
- * @brief Implementation file of the streaming reading of the ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -102,7 +96,9 @@ namespace {
 	 *
 	 */
 	awh::codec::abc::type_t narrow(const uint64_t value) noexcept {
-		// Используем пространство имён бинарного контейнера
+		/**
+		 * Используем пространство имён бинарного контейнера
+		 */
 		using namespace awh::codec::abc;
 		// Если значение умещается в один октет
 		if(value <= static_cast <uint64_t> (numeric_limits <uint8_t>::max()))
@@ -127,7 +123,9 @@ namespace {
 	 *
 	 */
 	awh::codec::abc::type_t narrow(const int64_t value) noexcept {
-		// Используем пространство имён бинарного контейнера
+		/**
+		 * Используем пространство имён бинарного контейнера
+		 */
 		using namespace awh::codec::abc;
 		// Если значение умещается в один октет
 		if((value >= static_cast <int64_t> (numeric_limits <int8_t>::min())) &&
@@ -668,6 +666,7 @@ bool awh::codec::abc::Reader::unwind() noexcept {
 		record.event = (frame.mapping ? event_t::MAP_END : event_t::ARRAY_END);
 		// Выполняем усечение перечня имён полей до начал частей снимаемого звена
 		this->_spans.resize(this->_stack.back().base);
+		// Усекаем пул частей имён до метки снимаемого звена
 		this->_pool.resize(this->_stack.back().mark);
 		// Выполняем снятие звена со стека вместимых
 		this->_stack.pop_back();
@@ -996,7 +995,9 @@ bool awh::codec::abc::Reader::process() noexcept {
 					return true;
 				// Снимаемый размах вместимого
 				uint64_t width = 0;
-				// Выполняем перебор всех октетов записи размаха
+				/**
+				 * Выполняем перебор всех октетов записи размаха
+				 */
 				for(size_t i = 0; i < SPAN_LENGTH; i++)
 					// Выполняем снятие очередного октета размаха
 					width |= (static_cast <uint64_t> (this->_buffer.at(this->_offset + i)) << (i * 8));
@@ -1573,6 +1574,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				 * Выполняем установку начал частей перечня имён полей вместимого
 				 */
 				frame.base = this->_spans.size();
+				// Запоминаем метку пула частей имён заводимого звена
 				frame.mark = this->_pool.size();
 				// Выполняем добавление звена в стек вместимых
 				this->_stack.push_back(frame);
@@ -1756,6 +1758,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 * Выполняем установку начал частей перечня имён полей вместимого
 			 */
 			frame.base = this->_spans.size();
+			// Запоминаем метку пула частей имён заводимого звена
 			frame.mark = this->_pool.size();
 			// Выполняем добавление звена в стек вместимых
 			this->_stack.push_back(frame);
@@ -1858,6 +1861,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						this->_offset = offset;
 						// Выполняем усечение перечня имён полей до начал частей снимаемого звена
 						this->_spans.resize(this->_stack.back().base);
+						// Усекаем пул частей имён до метки снимаемого звена
 						this->_pool.resize(this->_stack.back().mark);
 						// Выполняем снятие звена со стека вместимых
 						this->_stack.pop_back();
@@ -1902,6 +1906,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					this->_offset = offset;
 					// Выполняем усечение перечня имён полей до начал частей снимаемого звена
 					this->_spans.resize(this->_stack.back().base);
+					// Усекаем пул частей имён до метки снимаемого звена
 					this->_pool.resize(this->_stack.back().mark);
 					// Выполняем снятие звена со стека вместимых
 					this->_stack.pop_back();
@@ -2099,6 +2104,7 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения разбора в поданной записи
 	this->_mark = location_t();
+	// Сбрасываем смещение разбора в начало записи
 	this->_location.offset = 0;
 	// Выполняем сброс глубины вложенности разбора
 	this->_location.depth = 0;
@@ -2632,7 +2638,41 @@ awh::codec::abc::Reader::Reader() noexcept :
  _negative(false), _document(false), _handler(nullptr), _context(nullptr)  {
 	// Выполняем установку начального положения разбора
 	this->_mark = location_t();
+	// Заводим смещение разбора в начале записи
 	this->_location.offset = 0;
 	// Выполняем установку начальной глубины вложенности разбора
 	this->_location.depth = 0;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Reader::Value::Value() noexcept :
+ type(type_t::UNDEFINED), count(0), number(0), integer(0), real(0.0),
+ exponent(0), boolean(false), negative(false), indefinite(false),
+ repaired(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Reader::Frame::Frame() noexcept :
+ beyond(0), mapping(false), indefinite(false), expectKey(false), remain(0),
+ segment(type_t::UNDEFINED), gathered(0), marked(false), base(0), mark(0), hashed(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Reader::Record::Record() noexcept :
+ event(event_t::NONE), type(type_t::UNDEFINED), count(0), number(0),
+ integer(0), real(0.0), exponent(0), boolean(false), negative(false),
+ indefinite(false), repaired(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param offset смещение записи имени поля
+ * @param length длина записи имени поля
+ * @param digest свёртка записи имени поля
+ *
+ */
+awh::codec::abc::Reader::Naming::Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept : offset(offset), length(length), digest(digest) {}

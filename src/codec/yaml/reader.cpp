@@ -1366,7 +1366,7 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	// Выполняем сброс признака сборки блочного значения
 	this->_blocking = false;
 	// Выполняем сброс собираемого содержимого блочного значения
-	this->_block_text.clear();
+	this->_blockText.clear();
 	// Выполняем сброс количества пустых строк блочного значения
 	this->_breaks = 0;
 	// Выполняем сброс наибольшего отступа пустых строк, содержимому предпосланных
@@ -4926,7 +4926,7 @@ bool awh::codec::yaml::Reader::opening(const string_view line, const size_t offs
 	// Запоминаем признак того, что отступ содержимого заголовком задан
 	this->_detected = (this->_marked != NO_INDENT);
 	// Выполняем сброс собираемого содержимого блочного значения
-	this->_block_text.clear();
+	this->_blockText.clear();
 	// Выполняем сброс количества пустых строк, содержимого не дождавшихся
 	this->_breaks = 0;
 	// Выполняем сброс наибольшего отступа пустых строк, содержимому предпосланных
@@ -5021,7 +5021,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 		 *       завершается, и она есть строка обыкновенная. Случай Y79Y набора
 		 *       yaml-test-suite, сверено с rapidyaml
 		 */
-		if((line[offset] == '\t') && (this->_inner == 0) && this->_block_text.empty())
+		if((line[offset] == '\t') && (this->_inner == 0) && this->_blockText.empty())
 			// Выводим отказ знака горизонтальной подачи в отступе
 			return this->fail(error_t::TAB_IN_INDENTATION, offset);
 		// Выводим признак успешного присоединения строки
@@ -5039,6 +5039,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 		 *       не заданным, ни строкою этой не подтверждённым: стандарт такое запрещает
 		 */
 		if(this->_padding > indent)
+			// Выводим ошибку недопустимого отступа содержимого
 			return this->fail(error_t::INVALID_INDENTATION, offset);
 		// Запоминаем отступ содержимого по первой непустой строке его
 		this->_inner = indent;
@@ -5065,6 +5066,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 		if(line[offset] == '#')
 			// Выводим признак успешного разбора без присоединения строки
 			return true;
+		// Выводим ошибку недопустимого отступа содержимого
 		return this->fail(error_t::INVALID_INDENTATION, offset);
 	}
 	/**
@@ -5087,7 +5089,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	/**
 	 * Если содержимое блочного значения уже собрано хотя бы одной строкой
 	 */
-	if(!this->_block_text.empty()){
+	if(!this->_blockText.empty()){
 		/**
 		 * Количество переводов строк, разделяющих присоединяемую строку с прежней
 		 *
@@ -5114,7 +5116,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 			 */
 			for(size_t i = 0; i < breaks; i++)
 				// Выполняем запись перевода строки в содержимое блочного значения
-				this->_block_text.push_back('\n');
+				this->_blockText.push_back('\n');
 		/**
 		 * Если переводов строк накоплено более одного
 		 */
@@ -5124,9 +5126,9 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 			 */
 			for(size_t i = 1; i < breaks; i++)
 				// Выполняем запись перевода строки в содержимое блочного значения
-				this->_block_text.push_back('\n');
+				this->_blockText.push_back('\n');
 		// Выполняем запись пробела свёртки в содержимое блочного значения
-		} else this->_block_text.push_back(' ');
+		} else this->_blockText.push_back(' ');
 	/**
 	 * Если содержимое ещё не собрано, а пустые строки уже накоплены
 	 *
@@ -5140,14 +5142,14 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 		 */
 		for(size_t i = 0; i < this->_breaks; i++)
 			// Выполняем запись перевода строки в содержимое блочного значения
-			this->_block_text.push_back('\n');
+			this->_blockText.push_back('\n');
 	}
 	// Выполняем сброс количества пустых строк
 	this->_breaks = 0;
 	// Запоминаем признак того, что присоединяемая строка стоит глубже отступа содержимого
 	this->_deepened = deepened;
 	// Выполняем запись содержимого строки без отступа блочного значения
-	this->_block_text.append(line.substr(this->_inner));
+	this->_blockText.append(line.substr(this->_inner));
 	// Запоминаем признак присоединения строки
 	attached = true;
 	// Выводим признак успешного присоединения строки
@@ -5170,7 +5172,7 @@ bool awh::codec::yaml::Reader::closing(const size_t column) noexcept {
 	// Выполняем сброс признака сборки блочного значения
 	this->_blocking = false;
 	// Собираемое содержимое блочного значения
-	string result(this->_block_text);
+	string result(this->_blockText);
 	/**
 	 * Определяем правило усечения переводов строк
 	 */
@@ -5211,7 +5213,7 @@ bool awh::codec::yaml::Reader::closing(const size_t column) noexcept {
 	// Выполняем сброс количества пустых строк
 	this->_breaks = 0;
 	// Выполняем сброс собираемого содержимого блочного значения
-	this->_block_text.clear();
+	this->_blockText.clear();
 	/**
 	 * Если поставить событие блочного значения не удалось
 	 */
@@ -7988,3 +7990,46 @@ bool awh::codec::yaml::Reader::next() noexcept {
 	// Выводим признак того, что событие получено
 	return true;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Content::Content() noexcept :
+ type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false), schema(schema_t::CORE),
+ versioned(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Reader::Settings::Settings() noexcept :
+ schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
+ emitComments(false), emitBlanks(false), maxDepth(0), maxScalar(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param kind вид открытого поточного построения
+ *
+ */
+awh::codec::yaml::Reader::Bracket::Bracket(const nesting_t kind) noexcept : kind(kind), filled(false), entered(false), asked(false), valued(false), paired(false), origin(0) {}
+/**
+ * @brief Конструктор
+ *
+ * @param kind    вид открытого уровня вложенности
+ * @param indent  отступ, на котором уровень открыт
+ * @param implied признак открытия уровня значением пары на отступе имени её
+ *
+ */
+awh::codec::yaml::Reader::Level::Level(const nesting_t kind, const uint32_t indent, const bool implied) noexcept : kind(kind), indent(indent), implied(implied) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Reader::Piece::Piece() noexcept : offset(0), length(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Reader::Item::Item() noexcept :
+ event(event_t::NONE), type(type_t::UNDEFINED), style(style_t::PLAIN),
+ offset(0), length(0), flow(false), schema(schema_t::CORE), versioned(false) {}

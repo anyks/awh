@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации сборки бинарного контейнера ABC целиком
- *
- * \~english
- * @brief Implementation file of the assembling of the whole ABC binary container
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -573,6 +567,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 	 *       буфера не отбирает, потому и стоит перед отведением
 	 */
 	result.clear();
+	// Отводим место под заголовок, тело, хвостовой заголовок и подпись
 	result.reserve(HEADER_LENGTH + this->_body.size() + tail.size() + signature.size());
 	// Выполняем укладку заголовка опознания собранного контейнера
 	this->_header.pack(result);

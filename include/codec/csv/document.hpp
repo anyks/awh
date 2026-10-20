@@ -160,21 +160,11 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct __AWH_SHARED_EXPORT__ Settings {
-						// Настройки разбора текста
-						reader_t::settings_t reader;
-						// Настройки записи текста
+					typedef struct Settings {
+						// Настройки записи текста разметки
 						writer_t::settings_t writer;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						explicit Settings() noexcept = default;
+						// Настройки разбора текста разметки
+						reader_t::settings_t reader;
 					} settings_t;
 				private:
 					/**
@@ -239,9 +229,12 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					encoding_t _encoding = encoding_t::NONE;
-					// Настройки контейнера
-					settings_t _settings;
+					encoding_t _encoding;
+				private:
+					// Объект потокового чтения записей
+					mutable reader_t _reader;
+					// Объект записи событий
+					mutable writer_t _writer;
 				private:
 					/**
 					 * \~russian
@@ -367,8 +360,6 @@ namespace awh {
 					 * @note Заслон по непустоте заголовка снимает и повторный перенос, и плату
 					 *       за перестроение соответствия: за весь проход они идут по разу
 					 *
-					 * @param reader чтение, заголовок которого переносится
-					 *
 					 * \~english
 					 * @brief Method of the transfer of the header from the reading into the container
 					 *
@@ -384,11 +375,9 @@ namespace awh {
 					 * @note The guard by the non-emptiness of the header removes both the repeated transfer, and the cost
 					 *       of the rebuilding of the correspondence: over the whole pass they go once
 					 *
-					 * @param reader reading whose header is being transferred
-					 *
 					 * \~
 					 */
-					void adopt(const reader_t & reader) noexcept;
+					void adopt() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сбора событий разбора в таблицу
@@ -406,11 +395,9 @@ namespace awh {
 					 *          the text has been fed in full or by chunks: by that single method both the parsing
 					 *          of a ready text and the reading of a file by chunks are served.
 					 *
-					 * @param reader reading which issues the parsing events
-					 *
 					 * \~
 					 */
-					void consume(reader_t & reader) noexcept;
+					void consume() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -428,24 +415,6 @@ namespace awh {
 					 * \~
 					 */
 					bool parse(const string_view text) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод разбора текста таблицы с заданными настройками
-					 *
-					 * @param text     разбираемый текст таблицы
-					 * @param settings настройки контейнера
-					 * @return         результат разбора
-					 *
-					 * \~english
-					 * @brief Method of parsing the text of a table with the given settings
-					 *
-					 * @param text     text of the table being parsed
-					 * @param settings settings of the container
-					 * @return         result of the parsing
-					 *
-					 * \~
-					 */
-					bool parse(const string_view text, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод чтения таблицы из файла
@@ -1369,20 +1338,6 @@ namespace awh {
 					void reset() noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод получения настроек контейнера
-					 *
-					 * @return настройки контейнера
-					 *
-					 * \~english
-					 * @brief Method of getting the settings of the container
-					 *
-					 * @return settings of the container
-					 *
-					 * \~
-					 */
-					const settings_t & settings() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек контейнера
 					 *
 					 * @param settings настройки контейнера
@@ -1409,6 +1364,49 @@ namespace awh {
 					 * \~
 					 */
 					operator string() const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy operator
+					 *
+					 * \~
+					 */
+					Document & operator = (const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем оператор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move operator
+					 *
+					 * \~
+					 */
+					Document & operator = (Document &&) noexcept = default;
+				public:
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор копирования
+					 *
+					 * \~english
+					 * @brief Enable the copy constructor
+					 *
+					 * \~
+					 */
+					Document(const Document &) = default;
+					/**
+					 * \~russian
+					 * @brief Разрешаем конструктор перемещения
+					 *
+					 * \~english
+					 * @brief Enable the move constructor
+					 *
+					 * \~
+					 */
+					Document(Document &&) noexcept = default;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор

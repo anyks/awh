@@ -67,6 +67,7 @@ namespace {
 	 *
 	 */
 	static constexpr bool make(const size_t index) noexcept {
+		// Разрешаем табуляцию и переводы строк, запрещаем прочие управляющие знаки
 		return (((index == 0x09) || (index == 0x0A) || (index == 0x0D)) ? true :
 		        ((index < 0x20) || (index == 0x7F)) ? false : true);
 	}
@@ -82,7 +83,9 @@ namespace {
 		 *
 		 */
 		constexpr Allowed() noexcept : data() {
-			// Выполняем перебор всех знаков области ASCII
+			/**
+			 * Выполняем перебор всех знаков области ASCII
+			 */
 			for(size_t i = 0; i < 128; i++)
 				// Запоминаем признак годности очередного знака
 				this->data[i] = make(i);
@@ -91,6 +94,9 @@ namespace {
 	// Таблица годности знаков области ASCII
 	static constexpr Allowed ALLOWED = Allowed();
 }
+/**
+ * Псевдоним таблицы годности знаков области ASCII
+ */
 #define ASCII_ALLOWED ALLOWED.data
 
 using namespace std;
@@ -517,6 +523,7 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
  * неразбираемым
  *
  * @tparam T тип записываемого значения
+ *
  * @param value записываемое значение
  *
  */
@@ -740,7 +747,9 @@ bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
 			vector <string> stored;
 			// Отводим место под все поля
 			stored.reserve(fields.size());
-			// Сохраняем поля до изменения буфера
+			/**
+			 * Сохраняем поля до изменения буфера
+			 */
 			for(const string_view item : fields)
 				// Копируем содержимое очередного поля
 				stored.emplace_back(item);
@@ -828,7 +837,9 @@ bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexce
 			vector <string> stored;
 			// Отводим место под все поля
 			stored.reserve(fields.size());
-			// Сохраняем поля до изменения буфера
+			/**
+			 * Сохраняем поля до изменения буфера
+			 */
 			for(const string_view item : fields)
 				// Копируем содержимое очередного поля
 				stored.emplace_back(item);
@@ -980,6 +991,9 @@ bool awh::codec::csv::Writer::rollback(const size_t size, const size_t origin, c
 	// Выполняем отказ записи с сообщением о нём в журнал
 	return this->refuse(error);
 }
+/**
+ * Оформление отказа записи с уведомлением журнала
+ */
 bool awh::codec::csv::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код отказа записи
 	this->_error = error;
@@ -1088,8 +1102,11 @@ const awh::codec::csv::Writer::settings_t & awh::codec::csv::Writer::settings() 
 void awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
 	// Признаки грамматики текста, действующие до его установки
 	const char separator = this->_settings.separator;
+	// Запоминаем знак кавычки, действующий до установки
 	const char quote = this->_settings.quote;
+	// Запоминаем знак примечания, действующий до установки
 	const char comment = this->_settings.comment;
+	// Запоминаем способ отмены знаков, действующий до установки
 	const escape_t escape = this->_settings.escape;
 	// Признак записи метки порядка байтов, действующий до установки настроек
 	const bool signature = this->_settings.signature;

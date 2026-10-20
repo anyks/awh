@@ -12,13 +12,7 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Файл реализации правки бинарного контейнера ABC на месте
- *
- * \~english
- * @brief Implementation file of the editing of the ABC binary container in place
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
@@ -350,7 +344,7 @@ bool awh::codec::abc::Editor::pack() noexcept {
 			mark.batch = this->_batches.size();
 	}
 	// Выполняем внесение уложенного кадра в череду ожидающих записи
-	this->_batches.push_back(::std::move(chunk));
+	this->_batches.push_back(::move(chunk));
 	// Выполняем увеличение порядкового номера следующего кадра
 	this->_number++;
 	// Выполняем очистку накопленных записей
@@ -369,8 +363,6 @@ bool awh::codec::abc::Editor::pack() noexcept {
  */
 bool awh::codec::abc::Editor::add(const void * buffer, const size_t size,
  const payload_t kind, const bool added, const uint64_t number) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	/**
@@ -431,8 +423,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size,
 	 *          прогона, а не мёртвый путь: укладка накопленного сама по себе хожена всякой
 	 *          сменою вида содержимого, соседним заслоном выше
 	 */
-	if(!this->_pending.empty() &&
-	 ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
+	if(!this->_pending.empty() && ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
 		/**
 		 * Если уложить накопленное кадром не вышло
 		 */
@@ -465,8 +456,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size,
 	// Выполняем внесение заведённой правки оглавления
 	this->_marks.push_back(mark);
 	// Выполняем накопление поданной записи
-	this->_pending.insert(this->_pending.end(),
-	 reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+	this->_pending.insert(this->_pending.end(), reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
 	// Выполняем объявление наличия незакреплённых правок
 	this->_dirty = true;
 	/**
@@ -559,8 +549,6 @@ void awh::codec::abc::Editor::crypto(const crypto_t * value) noexcept {
  */
 bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
  const crypto_t::hash_t hash) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	/**
@@ -637,8 +625,6 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
  *
  */
 bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t length) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс состояния правки контейнера
 	this->reset();
 	/**
@@ -650,12 +636,12 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
-	// Выполняем установку работы чтения октетов контейнера
-	this->_source = ::std::move(source);
-	// Выполняем установку работы записи октетов контейнера
-	this->_sink = ::std::move(sink);
 	// Выполняем установку полной длины контейнера на носителе
 	this->_length = length;
+	// Выполняем установку работы записи октетов контейнера
+	this->_sink = ::move(sink);
+	// Выполняем установку работы чтения октетов контейнера
+	this->_source = ::move(source);
 	// Буфер вычитанных октетов заголовка опознания контейнера
 	vector <uint8_t> buffer;
 	/**
@@ -686,7 +672,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 			 */
 			if(!probe(buffer.data(), buffer.size()))
 				// Выполняем перенесение хвостового заголовка головному
-				buffer = ::std::move(tail);
+				buffer = ::move(tail);
 		}
 	}
 	/**
@@ -926,8 +912,6 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
  *
  */
 bool awh::codec::abc::Editor::append(const void * buffer, const size_t size, const payload_t kind) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выводим результат накопления вносимой записи
 	return this->add(buffer, size, kind, true, 0);
 }
@@ -943,8 +927,6 @@ bool awh::codec::abc::Editor::append(const void * buffer, const size_t size, con
  */
 bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer,
  const size_t size, const payload_t kind) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	/**
@@ -962,6 +944,7 @@ bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer
 	 (number < this->records()) && !this->commit())
 		// Выводим признак неудачной правки записи
 		return false;
+	// Проверяем, открыт ли контейнер и входит ли номер в перечень записей
 	if(!this->_opened || (number >= static_cast <uint64_t> (this->_index.size()))){
 		// Выполняем установку кода отказа правки записи
 		this->fail(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
@@ -982,8 +965,6 @@ bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer
  *
  */
 bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	/**
@@ -1099,8 +1080,6 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
  *
  */
 bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & result) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	// Выполняем очистку буфера выбираемой записи
@@ -1296,8 +1275,6 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
  *
  */
 bool awh::codec::abc::Editor::commit() noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	/**
@@ -1458,7 +1435,6 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		// Выводим признак неудачи
 		return false;
 	}
-
 	/**
 	 * Выполняем увеличение количества октетов, обращённых в мусор
 	 *
@@ -1495,6 +1471,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	// Кадр прежней записи подписи, вносимый в дерево свёрток
 	vector <uint8_t> stale;
+	// Проверяем, задевает ли правка подпись прежней записи
 	if(this->_header.is(flag_t::SIGNED) && (this->_header.signature >= offset)){
 		// Буфер вычитанного заголовка кадра прежней записи подписи
 		vector <uint8_t> record;
@@ -1882,8 +1859,6 @@ bool awh::codec::abc::Editor::commit() noexcept {
  *
  */
 bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint64_t & length) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	// Выполняем сброс полной длины убранного контейнера
@@ -2290,8 +2265,6 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
  *
  */
 void awh::codec::abc::Editor::reset() noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	// Выполняем сброс признака открытого контейнера
@@ -2352,8 +2325,6 @@ void awh::codec::abc::Editor::reset() noexcept {
  *
  */
 uint64_t awh::codec::abc::Editor::records() const noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Количество внесённых, но ещё не закреплённых записей
 	uint64_t added = 0;
 	/**
@@ -2375,8 +2346,6 @@ uint64_t awh::codec::abc::Editor::records() const noexcept {
  *
  */
 uint64_t awh::codec::abc::Editor::garbage() const noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выводим количество октетов мусора на носителе
 	return this->_garbage;
 }
@@ -2387,8 +2356,6 @@ uint64_t awh::codec::abc::Editor::garbage() const noexcept {
  *
  */
 size_t awh::codec::abc::Editor::pending() const noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Собираемый размер накопленных правок
 	size_t result = this->_pending.size();
 	/**
@@ -2407,8 +2374,6 @@ size_t awh::codec::abc::Editor::pending() const noexcept {
  *
  */
 uint64_t awh::codec::abc::Editor::length() const noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выводим полную длину контейнера на носителе
 	return this->_length;
 }
@@ -2419,8 +2384,6 @@ uint64_t awh::codec::abc::Editor::length() const noexcept {
  *
  */
 const awh::codec::abc::header_t & awh::codec::abc::Editor::header() const noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выводим заголовок опознания правимого контейнера
 	return this->_header;
 }
@@ -2431,8 +2394,6 @@ const awh::codec::abc::header_t & awh::codec::abc::Editor::header() const noexce
  *
  */
 const awh::codec::abc::index_t & awh::codec::abc::Editor::index() const noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выводим оглавление правимого контейнера
 	return this->_index;
 }
@@ -2473,28 +2434,22 @@ const awh::codec::abc::Editor::settings_t & awh::codec::abc::Editor::settings() 
  *
  */
 void awh::codec::abc::Editor::settings(const settings_t & settings) noexcept {
-	{
-		// Выполняем захват замка состояния правки контейнера
-		lock_guard <recursive_mutex> lock(this->_mtx);
-		// Выполняем установку настроек правки контейнера
-		this->_settings = settings;
-		/**
-		 * Если порог накопления записей не установлен, ставим его наименьшим
-		 */
-		if(this->_settings.block == 0)
-			// Выполняем установку наименьшего порога накопления записей
-			this->_settings.block = 1;
-		/**
-		 * Если порог самочинной фиксации не установлен, ставим его наименьшим
-		 */
-		if(this->_settings.limit == 0)
-			// Выполняем установку наименьшего порога самочинной фиксации
-			this->_settings.limit = 1;
-	}
+	// Выполняем установку настроек правки контейнера
+	this->_settings = settings;
 	/**
-	 * Отбой срока правится вне замка намеренно: остановка его дожидается конца
-	 * своего потока, а поток тот идёт в фиксацию за тем же замком - держать замок
-	 * при остановке значило бы свести оба в затяжку
+	 * Если порог накопления записей не установлен, ставим его наименьшим
+	 */
+	if(this->_settings.block == 0)
+		// Выполняем установку наименьшего порога накопления записей
+		this->_settings.block = 1;
+	/**
+	 * Если порог самочинной фиксации не установлен, ставим его наименьшим
+	 */
+	if(this->_settings.limit == 0)
+		// Выполняем установку наименьшего порога самочинной фиксации
+		this->_settings.limit = 1;
+	/**
+	 * Налаживаем отбой срока по способу фиксации
 	 */
 	switch(static_cast <uint8_t> (settings.mode)){
 		// Если фиксация ведётся своим потоком
@@ -2548,3 +2503,8 @@ awh::codec::abc::Editor::~Editor() noexcept {
 	 */
 	this->_schedule.stop();
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Editor::Edit::Edit() noexcept : number(0), added(true), batch(0) {}

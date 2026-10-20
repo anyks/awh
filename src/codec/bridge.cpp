@@ -814,17 +814,17 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 	// Ограничиваем разбор также безусловным пределом самого контейнера
 	const uint32_t depth = ((this->_settings.depth < abc::MAX_DEPTH) ? this->_settings.depth : abc::MAX_DEPTH);
 	// Настройки разбора контейнера
-	abc::reader_t::settings_t settings;
+	abc::document_t::settings_t settings;
 	/**
 	 * Контейнер считает открытые вместилища, а мост — уровни от корня.
 	 * Дополнительное вместилище допускает пустой узел на последнем уровне.
 	 * Нуль мостового предела не должен снимать ограничение разборщика ABC
 	 */
-	settings.maxDepth = ((depth < abc::MAX_DEPTH) ? (depth + 1) : abc::MAX_DEPTH);
+	settings.reader.maxDepth = ((depth < abc::MAX_DEPTH) ? (depth + 1) : abc::MAX_DEPTH);
 	// Дерево разбираемого документа с доступным кодом отказа
-	abc::document_t document;
+	abc::document_t document(settings);
 	// Если разбор записи контейнера отвечен отказом
-	if(!document.parse(text.data(), text.size(), settings)){
+	if(!document.parse(text.data(), text.size())){
 		// Выполняем очистку собранного дерева значений
 		result.clear();
 		// Запоминаем код отказа перевода
@@ -1974,10 +1974,10 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
+	// Собираемое владеющее значение записи TOML
+	toml::value_t root;
 	// Создаём документ записи TOML
 	toml::document_t document;
-	// Собираемое владеющее значение записи TOML
-	toml::Value root;
 	// Выполняем подачу дерева значений владеющему значению
 	if(!this->feedTOML(value, root, 0)){
 		// Если код отказа перевода ещё не запомнен
@@ -2001,6 +2001,10 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 		return false;
 	}
 	/**
+	 * Создаём параметры настроек документа
+	 */
+	toml::document_t::settings_t settings = document.settings();
+	/**
 	 * Выполняем изъятие собранной записи TOML видом оформления, настройкою заданным
 	 *
 	 * @warning Своего счёта оформления у записи TOML нет, и плотность её выражается
@@ -2010,15 +2014,17 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	 *          `writing()`, а не пишутся здесь заново: написанные заново, они
 	 *          разошлись бы с кодеком молча
 	 */
-	toml::writer_t::settings_t writing = document.writing();
+	settings.writer = document.writing();
 	// Определяем признак нарядной записи
 	const bool pretty = (this->_settings.format == json::format_t::PRETTY);
 	// Устанавливаем отступ перед парами объявленной таблицы
-	writing.indent = pretty;
+	settings.writer.indent = pretty;
 	// Устанавливаем пустую строку перед объявлением таблицы
-	writing.separated = pretty;
+	settings.writer.separated = pretty;
+	// Устанавливаем настройки документа
+	document.settings(settings);
 	// Выполняем изъятие собранной записи TOML
-	result = document.dump(writing);
+	result = document.dump();
 	/**
 	 * Если собиратель записи отвечал отказом
 	 *
@@ -2753,8 +2759,12 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
+	// Создаём объект настроек
+	xml::document_t::settings_t settings;
+	// Устанавливаем вид оформления собираемой записи разметки
+	settings.writer.format = ((this->_settings.format == json::format_t::COMPACT) ? xml::format_t::COMPACT : xml::format_t::PRETTY);
 	// Создаём документ записи XML
-	xml::document_t document;
+	xml::document_t document(settings);
 	// Имя корневого узла собираемой записи
 	string name = this->_settings.root;
 	// Значение, содержимым корневого узла становящееся
@@ -2935,21 +2945,8 @@ bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) 
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
-	/**
-	 * Выполняем изъятие собранной записи XML видом оформления, настройкою заданным
-	 *
-	 * @warning Настройка оформления объявлена НАСТРОЙКОЮ МОСТА, а слушалась одною
-	 *          дорогой JSON: прочие четыре звали `dump()` умолчанием, и
-	 *          потребитель, затребовавший запись плотную, получал её нарядной без
-	 *          всякого ответа. У разметки счёт оформления тот же самый - `COMPACT`
-	 *          и `PRETTY`, - и перекладывается он знак в знак. Замерено 15.09.2026
-	 *          аудитом
-	 */
-	xml::writer_settings_t writing;
-	// Устанавливаем вид оформления собираемой записи разметки
-	writing.format = ((this->_settings.format == json::format_t::COMPACT) ? xml::format_t::COMPACT : xml::format_t::PRETTY);
 	// Выполняем изъятие собранной записи XML
-	result = document.dump(writing);
+	result = document.dump();
 	/**
 	 * Если собиратель записи отвечал отказом
 	 *
@@ -3435,6 +3432,10 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 		}
 	}
 	/**
+	 * Создаём параметры настроек документа
+	 */
+	ini::document_t::settings_t settings = document.settings();
+	/**
 	 * Выполняем изъятие собранной записи INI отменяющими записями
 	 *
 	 * @warning Настройки записи берутся с отменяющими записями НЕ ради красоты:
@@ -3447,9 +3448,9 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	 *          НИ ОДНА настройка, и перевод строки к тому разряду не принадлежит -
 	 *          стало быть, выбрать настройку обязан ЗОВУЩИЙ
 	 */
-	ini::writer_t::settings_t settings = document.writing();
+	settings.writer = document.writing();
 	// Устанавливаем признак укладки отменяющими записями
-	settings.escapes = true;
+	settings.writer.escapes = true;
 	/**
 	 * Если запись затребована плотною
 	 *
@@ -3463,12 +3464,14 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 		// Определяем признак нарядной записи
 		const bool pretty = (this->_settings.format == json::format_t::PRETTY);
 		// Устанавливаем отступ перед свойствами раздела
-		settings.indent = pretty;
+		settings.writer.indent = pretty;
 		// Устанавливаем пустую строку перед объявлением раздела
-		settings.separated = pretty;
+		settings.writer.separated = pretty;
 	}
+	// Устанавливаем настройки документа
+	document.settings(settings);
 	// Выполняем изъятие собранной записи INI
-	result = document.dump(settings);
+	result = document.dump();
 	/**
 	 * Если собиратель записи отвечал отказом
 	 *
