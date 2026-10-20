@@ -292,7 +292,7 @@
 	 */
 	#if defined(__OpenBSD__) && defined(__x86_64__)
 		/**
-		 * Выполняем поиск байта средствами модуля
+		 * Ищем байт средствами модуля
 		 */
 		#define AWH_REGEX_BYTE_SEARCH 1
 	/**
@@ -300,7 +300,7 @@
 	 */
 	#else
 		/**
-		 * Выполняем поиск байта средствами библиотеки
+		 * Ищем байт средствами библиотеки
 		 */
 		#define AWH_REGEX_BYTE_SEARCH 0
 	#endif
@@ -405,7 +405,7 @@ namespace awh {
 			 * \~
 			 */
 			AWH_REGEX_INLINE static const void * findByte(const void * text, const int value, const size_t size) noexcept {
-				// Выводим результат библиотечного поиска
+				// Библиотечный поиск байта: memchr быстрее любого цикла
 				return ::memchr(text, value, size);
 			}
 		#endif

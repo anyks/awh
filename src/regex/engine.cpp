@@ -106,7 +106,7 @@ uint32_t awh::regex::Engine::captures() const noexcept {
  *
  */
 void awh::regex::Engine::limit(const size_t limit) noexcept {
-	// Выполняем установку наибольшего допустимого объёма работы сопоставления
+	// Устанавливаем наибольшего допустимого объёма работы сопоставления
 	this->_backtrack.ceiling(limit);
 }
 /**
@@ -116,7 +116,7 @@ void awh::regex::Engine::limit(const size_t limit) noexcept {
  *
  */
 void awh::regex::Engine::nesting(const size_t nesting) noexcept {
-	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	// Устанавливаем наибольшей допустимой глубины рекурсивных вызовов
 	this->_backtrack.nesting(nesting);
 }
 /**
@@ -128,7 +128,7 @@ void awh::regex::Engine::nesting(const size_t nesting) noexcept {
  *
  */
 bool awh::regex::Engine::build(string_view pattern, const uint32_t flags) noexcept {
-	// Выводим результат сборки регулярного выражения движка
+	// Сборка регулярного выражения движка
 	return this->build(pattern, flags, this->_expression);
 }
 /**
@@ -141,17 +141,17 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags) noexce
  *
  */
 bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expression_t & expression) noexcept {
-	// Выполняем сброс флага готовности выражения
+	// Сбрасываем флаг готовности выражения
 	expression.ready = false;
-	// Выполняем сброс флага применимости поиска позиции начала
+	// Сбрасываем флаг применимости поиска позиции начала
 	expression.reversible = false;
-	// Выполняем сброс флага применимости детерминированного исполнения
+	// Сбрасываем флаг применимости детерминированного исполнения
 	expression.automatic = false;
-	// Выполняем сброс флага исполнения выражения с возвратом
+	// Сбрасываем флаг исполнения выражения с возвратом
 	expression.backtracking = false;
-	// Выполняем очистку соответствия имён именованных групп
+	// Очищаем соответствие имён именованных групп
 	expression.names.clear();
-	// Выполняем сброс кода ошибки последней операции
+	// Сбрасываем код ошибки последней операции
 	this->_error = error_t::NONE;
 	/**
 	 * @brief Порождение сопоставителя выражения в виде машинного кода
@@ -212,14 +212,14 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		 * Если порождение сопоставителя выражения не выполнено
 		 */
 		if(!expression.machine->compile(expression.forward))
-			// Выполняем сброс сопоставителя выражения
+			// Сбрасываем сопоставител выражения
 			expression.machine.reset();
 	};
 	/**
 	 * Если разбор регулярного выражения не выполнен
 	 */
 	if(!this->_parser.parse(pattern, flags)){
-		// Выполняем установку кода ошибки разбора выражения
+		// Устанавливаем код ошибки разбора выражения
 		this->_error = this->_parser.error();
 		/**
 		 * Если включён режим отладки
@@ -234,16 +234,16 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 			// Записываем ошибку в лог
 			log::print("Regular expression could not be parsed at offset %zu: %s", log::flag_t::CRITICAL, this->_parser.errorPos(), this->message().c_str());
 		#endif
-		// Выводим результат выполнения сборки
+		// Сборки: отказ
 		return false;
 	}
-	// Выполняем установку соответствия имён именованных групп их номерам
+	// Устанавливаем соответствие имён именованных групп их номерам
 	expression.names = this->_parser.groups();
 	/**
 	 * Если компиляция регулярного выражения не выполнена
 	 */
 	if(!this->_compiler.compile(this->_parser, expression.forward)){
-		// Выполняем установку кода ошибки компиляции выражения
+		// Устанавливаем код ошибки компиляции выражения
 		this->_error = this->_compiler.error();
 		/**
 		 * Если выражение регулярному подмножеству синтаксиса не принадлежит
@@ -259,31 +259,31 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 			 * Если компиляция регулярного выражения целиком не выполнена
 			 */
 			if(!this->_compiler.compileFull(this->_parser, expression.forward)){
-				// Выполняем установку кода ошибки компиляции выражения
+				// Устанавливаем код ошибки компиляции выражения
 				this->_error = this->_compiler.error();
-				// Выводим результат выполнения сборки
+				// Сборки: отказ
 				return false;
 			}
-			// Выполняем сброс кода ошибки последней операции
+			// Сбрасываем код ошибки последней операции
 			this->_error = error_t::NONE;
-			// Выполняем установку флага исполнения выражения с возвратом
+			// Устанавливаем флаг исполнения выражения с возвратом
 			expression.backtracking = true;
-			// Выполняем установку флага готовности движка
+			// Устанавливаем флаг готовности движка
 			expression.ready = true;
-			// Выполняем установку флага применимости детерминированного исполнения
+			// Устанавливаем флаг применимости детерминированного исполнения
 			expression.automatic = dfa_t::available(expression.forward);
-			// Выполняем порождение сопоставителя выражения машинным кодом
+			// Порождаем сопоставител выражения машинным кодом
 			generating();
-			// Выводим результат выполнения сборки
+			// Сборки: успех
 			return true;
 		}
-		// Выводим результат выполнения сборки
+		// Сборки: отказ
 		return false;
 	}
-	// Выполняем установку флага готовности движка
+	// Устанавливаем флаг готовности движка
 	expression.ready = true;
 	/**
-	 * Выполняем установку флага применимости детерминированного исполнения
+	 * Устанавливаем флаг применимости детерминированного исполнения
 	 *
 	 * @details Применимость есть чистая функция программы, и считается она
 	 *          однажды при сборке, а не на всяком сопоставлении: прежде обход
@@ -293,7 +293,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *
 	 */
 	expression.automatic = dfa_t::available(expression.forward);
-	// Выполняем порождение сопоставителя выражения машинным кодом
+	// Порождаем сопоставител выражения машинным кодом
 	generating();
 	/**
 	 * Если проход в обратном направлении выражению недостижим
@@ -312,7 +312,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *
 	 */
 	if(!expression.automatic || hasFlag(expression.forward.flags, flag_t::NOTEMPTY) || hasFlag(expression.forward.flags, flag_t::ATSTART))
-		// Выводим результат выполнения сборки
+		// Сборки: успех
 		return true;
 	/**
 	 * Если выражение привязано к позиции начала поиска
@@ -332,10 +332,10 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *
 	 */
 	if(expression.forward.anchored)
-		// Выводим результат выполнения сборки
+		// Сборки: успех
 		return true;
 	/**
-	 * Выполняем поиск привязок, зависящих от начала попытки сопоставления
+	 * Ищем привязок, зависящих от начала попытки сопоставления
 	 *
 	 * @details Привязка «\G» соответствует началу попытки сопоставления, тогда как
 	 *          проход в обратном направлении начинается с конца текста, поэтому
@@ -347,7 +347,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		 * Если инструкция проверяет привязку к началу попытки сопоставления
 		 */
 		if((instruction.type == opcode_t::ANCHOR) && (instruction.assertion.type == anchor_t::SEARCH_HEAD))
-			// Выводим результат выполнения сборки
+			// Сборки: успех
 			return true;
 	}
 	/**
@@ -377,15 +377,15 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 	 *
 	 */
 	if(!expression.forward.prefilter.leading.empty())
-		// Выводим результат выполнения сборки
+		// Сборки: успех
 		return true;
 	/**
 	 * Если компиляция развёрнутого регулярного выражения выполнена
 	 */
 	if(this->_compiler.compileReverse(this->_parser, expression.backward))
-		// Выполняем установку флага применимости поиска позиции начала
+		// Устанавливаем флаг применимости поиска позиции начала
 		expression.reversible = true;
-	// Выводим результат выполнения сборки
+	// Сборки: успех
 	return true;
 }
 /**
@@ -397,7 +397,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
  *
  */
 bool awh::regex::Engine::test(string_view text, const size_t start) noexcept {
-	// Выводим результат проверки наличия совпадения выражения движка
+	// Проверка наличия совпадения выражения движка
 	return this->test(this->_expression, text, start);
 }
 /**
@@ -443,9 +443,9 @@ bool awh::regex::Engine::test(string_view text, const size_t start) noexcept {
  *
  */
 bool awh::regex::Engine::probe(const expression_t & expression, string_view text, const size_t start, const size_t located, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept {
-	// Выполняем сброс признака исчерпания объёма работы
+	// Сбрасываем признак исчерпания объёма работы
 	exhausted = false;
-	// Выполняем сброс позиции прекращения пробы пределом
+	// Сбрасываем позицию прекращения пробы пределом
 	frontier = string_view::npos;
 	/**
 	 * Если выражение пробе не подлежит
@@ -457,7 +457,7 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	const size_t span = (text.size() - start);
 	// Получаем длину участка текста, объём работы пробы задающую
 	const size_t reach = ((span < MAX_DIRECT) ? span : MAX_DIRECT);
-	// Выполняем установку допустимого объёма работы исполнения с возвратом
+	// Устанавливаем допустимого объёма работы исполнения с возвратом
 	this->_backtrack.budget((reach + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
 	/**
 	 * Если текст порог длины превышает
@@ -468,16 +468,16 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	 *
 	 */
 	if(span > MAX_DIRECT)
-		// Выполняем установку предела числа попыток сопоставления
+		// Устанавливаем предел числа попыток сопоставления
 		this->_backtrack.horizon(MAX_PROBES);
-	// Выполняем передачу вхождения обязательного литерала, проверкой найденного
+	// Передаём вхождени обязательного литерала, проверкой найденного
 	this->_backtrack.located(located);
 	/**
 	 * Если сопоставление исполнением с возвратом выполнено
 	 */
 	if(this->_backtrack.exec(expression.forward, text, start, captures)){
 		/**
-		 * Выполняем учёт пробы, проход автомата снявшей
+		 * Учитываем пробы, проход автомата снявшей
 		 *
 		 * @details Учитывается проба УДАВШАЯСЯ, а не самое обращение к ней:
 		 *          проба, к отказу пришедшая, работы не снимает вовсе, и учёт
@@ -485,7 +485,7 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 		 *
 		 */
 		AWH_REGEX_TICK(path_t::PROBING);
-		// Выполняем установку исхода сопоставления
+		// Устанавливаем исход сопоставления
 		result = true;
 		// Выводим разрешение вопроса пробою
 		return true;
@@ -499,13 +499,13 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	 *
 	 */
 	if((this->_backtrack.error() != error_t::BUDGET_EXCEEDED) && !this->_backtrack.bounded()){
-		// Выполняем установку исхода сопоставления
+		// Устанавливаем исход сопоставления
 		result = false;
 		// Выводим разрешение вопроса пробою
 		return true;
 	}
 	/**
-	 * Выполняем учёт пробы, пределом оборванной
+	 * Учитываем пробы, пределом оборванной
 	 *
 	 * @details Проба эта работы не сняла, а внесла: вопрос уходит автомату,
 	 *          и попытки, пробою сделанные, пропадают. Счётчик удавшихся проб
@@ -514,7 +514,7 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	 */
 	AWH_REGEX_TICK(path_t::YIELDING);
 	/**
-	 * Выполняем установку признака исчерпания объёма работы
+	 * Устанавливаем признак исчерпания объёма работы
 	 *
 	 * @details Признак ставится лишь тогда, когда объём был ПОЛНЫМ, то есть весь
 	 *          текст уместился в голову: объём урезанный об исходе прохода
@@ -523,7 +523,7 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	 */
 	exhausted = ((this->_backtrack.error() == error_t::BUDGET_EXCEEDED) && (span <= MAX_DIRECT));
 	/**
-	 * Выполняем получение позиции, на которой проба прекращена пределом
+	 * Получаем позиции, на которой проба прекращена пределом
 	 *
 	 * @details Попытки левее неё окончательно отказали, и проход повторный,
 	 *          с той же позиции начала поиска идущий, повторять их не обязан.
@@ -547,7 +547,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 * Если движок к сопоставлению не готов
 	 */
 	if(!expression.ready)
-		// Выводим результат проверки наличия совпадения
+		// Проверка наличия совпадения: отказ
 		return false;
 	/**
 	 * Если выражение несёт сопоставитель в виде порождённого машинного кода
@@ -559,28 +559,28 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.machine){
-		// Выполняем учёт сопоставления порождённым машинным кодом
+		// Учитываем сопоставлени порождённым машинным кодом
 		AWH_REGEX_TICK(path_t::JITTED);
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
-		// Выполняем сопоставление порождённым машинным кодом
+		// Сопоставляем порождённым машинным кодом
 		const bool result = expression.machine->exec(text, start, this->_spare, refused);
 		/**
 		 * Если порождённый сопоставитель от сопоставления не отказался
 		 */
 		if(!refused)
-			// Выводим результат проверки наличия совпадения
+			// Проверка наличия совпадения
 			return result;
 	}
 	/**
 	 * Если выражение исполняется с возвратом
 	 */
 	if(expression.backtracking){
-		// Выполняем сопоставление регулярного выражения исполнением с возвратом
+		// Сопоставляем регулярного выражения исполнением с возвратом
 		const bool result = this->_backtrack.exec(expression.forward, text, start, this->_spare);
-		// Выполняем установку кода ошибки исполнения с возвратом
+		// Устанавливаем код ошибки исполнения с возвратом
 		this->_error = this->_backtrack.error();
-		// Выводим результат проверки наличия совпадения
+		// Проверка наличия совпадения
 		return result;
 	}
 	/**
@@ -592,9 +592,9 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.forward.plain){
-		// Выполняем учёт поиска последовательности выражения в тексте
+		// Учитываем поиск последовательности выражения в тексте
 		AWH_REGEX_TICK(path_t::PLAIN);
-		// Выводим результат поиска последовательности выражения в тексте
+		// Поиск последовательности выражения в тексте
 		return (seek(text, expression.forward.text, start) != string_view::npos);
 	}
 	/**
@@ -607,7 +607,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!expression.forward.anchored && !expression.forward.prefilter.possible(text, start))
-		// Выводим результат проверки наличия совпадения
+		// Проверка наличия совпадения: отказ
 		return false;
 	/**
 	 * Если пустое совпадение совпадением не считается
@@ -618,7 +618,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) || hasFlag(expression.forward.flags, flag_t::ATSTART))
-		// Выводим результат сопоставления исполнением без возврата
+		// Сопоставление исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, this->_spare);
 	/**
 	 * Если детерминированное исполнение применимо
@@ -633,7 +633,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.automatic)
-		// Выводим результат проверки наличия совпадения детерминированным исполнением
+		// Проверка наличия совпадения детерминированным исполнением
 		return this->_dfa.test(expression.forward, text, start);
 	/**
 	 * Выводим результат сопоставления исполнением без возврата
@@ -658,7 +658,7 @@ void awh::regex::Engine::reset() noexcept {
 	 * Если имя отметки совпадения последнего установлено
 	 */
 	if(!this->_marker.empty())
-		// Выполняем очистку имени отметки совпадения последнего
+		// Очищаем именю отметки совпадения последнего
 		this->_marker.clear();
 }
 /**
@@ -671,7 +671,7 @@ void awh::regex::Engine::reset() noexcept {
  *
  */
 bool awh::regex::Engine::exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept {
-	// Выводим результат сопоставления выражения движка с текстом
+	// Сопоставление выражения движка с текстом
 	return this->exec(this->_expression, text, start, captures);
 }
 /**
@@ -685,10 +685,10 @@ bool awh::regex::Engine::exec(string_view text, const size_t start, vector <pair
  *
  */
 bool awh::regex::Engine::exec(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) noexcept {
-	// Выполняем очистку набора границ совпадения
+	// Очищаем набор границ совпадения
 	captures.clear();
 	/**
-	 * Выполняем очистку имени отметки совпадения последнего
+	 * Очищаем именю отметки совпадения последнего
 	 *
 	 * @details Имя отвечает совпадению последнему и сопоставлением всяким
 	 *          очищается: имя, прежним совпадением оставленное, за отметку
@@ -699,13 +699,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!this->_marker.empty())
-		// Выполняем очистку имени отметки совпадения последнего
+		// Очищаем именю отметки совпадения последнего
 		this->_marker.clear();
 	/**
 	 * Если движок к сопоставлению не готов
 	 */
 	if(!expression.ready)
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	/**
 	 * Если выражение работы сопоставления не допускает вовсе
@@ -717,9 +717,9 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.forward.steps == 0){
-		// Выполняем установку ошибки превышения допустимого объёма работы
+		// Устанавливаем ошибкю превышения допустимого объёма работы
 		this->_error = error_t::BUDGET_EXCEEDED;
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	}
 	/**
@@ -758,9 +758,9 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *
 		 */
 		if(expression.forward.prefilter.active && ((start >= text.size()) || !expression.forward.prefilter.bytes[static_cast <uint8_t> (text[start])])){
-			// Выполняем учёт отказа по набору допустимых начальных байтов
+			// Учитываем отказ по набору допустимых начальных байтов
 			AWH_REGEX_TICK(path_t::BARRING);
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: отказ
 			return false;
 		}
 	}
@@ -772,11 +772,11 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.machine){
-		// Выполняем учёт сопоставления порождённым машинным кодом
+		// Учитываем сопоставлени порождённым машинным кодом
 		AWH_REGEX_TICK(path_t::JITTED);
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
-		// Выполняем сопоставление порождённым машинным кодом
+		// Сопоставляем порождённым машинным кодом
 		const bool result = expression.machine->exec(text, start, captures, refused);
 		/**
 		 * Если порождённый сопоставитель от сопоставления не отказался
@@ -788,16 +788,16 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *
 		 */
 		if(!refused)
-			// Выводим результат сопоставления порождённым машинным кодом
+			// Сопоставление порождённым машинным кодом
 			return result;
 	}
 	/**
 	 * Если выражение исполняется с возвратом
 	 */
 	if(expression.backtracking){
-		// Выполняем сопоставление регулярного выражения исполнением с возвратом
+		// Сопоставляем регулярного выражения исполнением с возвратом
 		const bool result = this->_backtrack.exec(expression.forward, text, start, captures);
-		// Выполняем установку кода ошибки исполнения с возвратом
+		// Устанавливаем код ошибки исполнения с возвратом
 		this->_error = this->_backtrack.error();
 		{
 			/**
@@ -821,12 +821,12 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 				 * Если имя отметки хранилищу имён принадлежит
 				 */
 				if((spot + static_cast <size_t> (instruction.control.length)) <= expression.forward.markers.size())
-					// Выполняем установку имени отметки совпадения последнего
+					// Устанавливаем именю отметки совпадения последнего
 					this->_marker.assign(reinterpret_cast <const char *> (expression.forward.markers.data() + spot),
 					 static_cast <size_t> (instruction.control.length));
 			}
 		}
-		// Выводим результат поиска совпадения
+		// Поиск совпадения
 		return result;
 	}
 	/**
@@ -838,19 +838,19 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.forward.plain){
-		// Выполняем учёт поиска последовательности выражения в тексте
+		// Учитываем поиск последовательности выражения в тексте
 		AWH_REGEX_TICK(path_t::PLAIN);
-		// Выполняем поиск последовательности выражения в тексте
+		// Ищем последовательностю выражения в тексте
 		const size_t position = seek(text, expression.forward.text, start);
 		/**
 		 * Если последовательность выражения в тексте не найдена
 		 */
 		if(position == string_view::npos)
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: отказ
 			return false;
-		// Выполняем размещение границ совпадения
+		// Размещаем границ совпадения
 		captures.emplace_back(position, (position + expression.forward.text.size()));
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: успех
 		return true;
 	}
 	/**
@@ -866,13 +866,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!expression.forward.prefilter.leading.empty()){
-		// Выполняем установку допустимого объёма работы исполнения с возвратом
+		// Устанавливаем допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((text.size() - start + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
 		/**
 		 * Если сопоставление исполнением с возвратом выполнено
 		 */
 		if(this->_backtrack.exec(expression.forward, text, start, captures))
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: успех
 			return true;
 		/**
 		 * Если допустимый объём работы сопоставления не исчерпан
@@ -883,7 +883,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 *
 		 */
 		if(this->_backtrack.error() != error_t::BUDGET_EXCEEDED)
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: отказ
 			return false;
 	}
 	/**
@@ -911,13 +911,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!expression.forward.anchored && !expression.forward.prefilter.literal.empty()){
-		// Выполняем поиск вхождения обязательного литерала в оставшемся тексте
+		// Ищем вхождени обязательного литерала в оставшемся тексте
 		located = expression.forward.prefilter.locate(text, start);
 		/**
 		 * Если обязательный литерал в оставшемся тексте отсутствует
 		 */
 		if(located == string_view::npos)
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: отказ
 			return false;
 	}
 	/**
@@ -932,13 +932,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) || hasFlag(expression.forward.flags, flag_t::ATSTART))
-		// Выводим результат сопоставления исполнением без возврата
+		// Сопоставление исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, captures);
 	/**
 	 * Если детерминированное исполнение неприменимо
 	 */
 	if(!expression.automatic)
-		// Выводим результат сопоставления исполнением без возврата
+		// Сопоставление исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, captures);
 	/**
 	 * Если выражение проходит текст единственной попыткой
@@ -953,23 +953,23 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.forward.sweeping){
-		// Выполняем учёт прохода текста единственной попыткой
+		// Учитываем проход текста единственной попыткой
 		AWH_REGEX_TICK(path_t::SWEEPING);
-		// Выполняем установку допустимого объёма работы исполнения с возвратом
+		// Устанавливаем допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((text.size() - start + 1) * BACKTRACK_RATIO);
-		// Выполняем передачу вхождения обязательного литерала, проверкой найденного
+		// Передаём вхождени обязательного литерала, проверкой найденного
 		this->_backtrack.located(located);
 		/**
 		 * Если сопоставление исполнением с возвратом выполнено
 		 */
 		if(this->_backtrack.exec(expression.forward, text, start, captures))
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: успех
 			return true;
 		/**
 		 * Если допустимый объём работы сопоставления не исчерпан
 		 */
 		if(this->_backtrack.error() != error_t::BUDGET_EXCEEDED)
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: отказ
 			return false;
 	}
 	/**
@@ -1005,7 +1005,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!this->_dfa.search(expression.forward, text, start, finish))
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	// Получаем длину участка текста, занятого поиском совпадения
 	const size_t span = (finish - start);
@@ -1037,10 +1037,10 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(!exhausted && ((span <= MAX_BACKTRACK) || !expression.forward.prefilter.leading.empty() || expression.forward.anchored)){
-		// Выполняем установку допустимого объёма работы исполнения с возвратом
+		// Устанавливаем допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((span + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
 		/**
-		 * Выполняем установку позиции первой попытки прохода повторного
+		 * Устанавливаем позицию первой попытки прохода повторного
 		 *
 		 * @details Проба, пределом прерванная, свои попытки уже сделала, и все они
 		 *          левее позиции прерывания окончательно отказали. Прежде проход
@@ -1053,7 +1053,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 */
 		this->_backtrack.onset(frontier);
 		/**
-		 * Выполняем передачу вхождения обязательного литерала, проверкой найденного
+		 * Передаём вхождени обязательного литерала, проверкой найденного
 		 *
 		 * @details Вхождение отвечает началу поиска, а не позиции первой попытки:
 		 *          лежащее левее неё исполнение с возвратом отбрасывает само
@@ -1065,7 +1065,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		 * Если сопоставление исполнением с возвратом выполнено
 		 */
 		if(this->_backtrack.exec(expression.forward, text, start, captures))
-			// Выводим результат поиска совпадения
+			// Поиск совпадения: успех
 			return true;
 	}
 	/**
@@ -1098,7 +1098,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 			 */
 			if(this->_reverse.reverse(expression.backward, text, text.size(), begin)){
 				/**
-				 * Выполняем установку допустимого объёма работы исполнения с возвратом
+				 * Устанавливаем допустимого объёма работы исполнения с возвратом
 				 *
 				 * @details Известная позиция начала совпадения избавляет исполнение
 				 *          с возвратом от повторения попытки в каждой позиции текста,
@@ -1112,13 +1112,13 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 				 * Если исполнение с возвратом с позиции начала совпадения выполнено
 				 */
 				if(this->_backtrack.exec(expression.forward, text, begin, captures, mode_t::ANCHORED))
-					// Выводим результат поиска совпадения
+					// Поиск совпадения: успех
 					return true;
 				/**
 				 * Если исполнение без возврата с позиции начала совпадения выполнено
 				 */
 				if(this->_pike.exec(expression.forward, text, begin, captures, mode_t::ANCHORED))
-					// Выводим результат поиска совпадения
+					// Поиск совпадения: успех
 					return true;
 			}
 		}

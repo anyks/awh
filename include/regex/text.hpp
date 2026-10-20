@@ -131,7 +131,7 @@ namespace awh {
 		 * \~
 		 */
 		AWH_REGEX_INLINE bool hasFlag(const uint32_t flags, const flag_t value) noexcept {
-			// Выполняем проверку установки режима компиляции
+			// Проверяем установку режима компиляции
 			return ((flags & static_cast <uint32_t> (value)) != 0);
 		}
 		/**
@@ -264,7 +264,7 @@ namespace awh {
 		 * \~
 		 */
 		AWH_REGEX_INLINE uint32_t letter(string_view text, const size_t pos, const uint32_t flags, size_t & width) noexcept {
-			// Выполняем установку длины символа в байтах
+			// Устанавливаем длину символа в байтах
 			width = 1;
 			/**
 			 * Если позиция символа находится за пределами текста

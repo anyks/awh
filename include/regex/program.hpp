@@ -903,11 +903,11 @@ namespace awh {
 				 */
 				case static_cast <uint8_t> (opcode_t::CHAR):
 				case static_cast <uint8_t> (opcode_t::CODEUNIT):
-					// Выводим результат сличения кодовых значений символов
+					// Один и тот же литерал: равенство по коду символа
 					return (first.letter.code == second.letter.code);
 				// Сопоставление символа из класса сличается номером класса
 				case static_cast <uint8_t> (opcode_t::CLASS):
-					// Выводим результат сличения номеров классов символов
+					// Номера совпадают — обе инструкции смотрят в один диапазон
 					return (first.charclass.index == second.charclass.index);
 				/**
 				 * \~russian

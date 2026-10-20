@@ -113,10 +113,10 @@ using namespace std;
 		 */
 		inline void emit(vector <uint8_t> & code, const uint32_t command) noexcept {
 			/**
-			* Выполняем размещение команды байтами от младшего
+			* Размещаем команду байтами от младшего
 			*/
 			for(uint8_t shift = 0; shift < 32; shift += 8)
-				// Выполняем размещение очередного байта команды
+				// Размещаем очередного байта команды
 				code.push_back(static_cast <uint8_t> ((command >> shift) & 0xFF));
 		}
 		/**
@@ -131,18 +131,18 @@ using namespace std;
 			// Собираемая размещённая команда процессора
 			uint32_t command = 0;
 			/**
-			 * Выполняем сборку размещённой команды байтами от младшего
+			 * Собираем размещённой команды байтами от младшего
 			 */
 			for(uint8_t shift = 0; shift < 32; shift += 8)
-				// Выполняем добавление очередного байта команды
+				// Добавляем очередного байта команды
 				command |= (static_cast <uint32_t> (code.at(position + (shift >> 3))) << shift);
-			// Выполняем вписывание значения полей команды
+			// Вписываем значение полей команды
 			command |= value;
 			/**
-			 * Выполняем размещение правленой команды байтами от младшего
+			 * Размещаем правленой команды байтами от младшего
 			 */
 			for(uint8_t shift = 0; shift < 32; shift += 8)
-				// Выполняем размещение очередного байта команды
+				// Размещаем очередного байта команды
 				code.at(position + (shift >> 3)) = static_cast <uint8_t> ((command >> shift) & 0xFF);
 		}
 		/**
@@ -422,25 +422,25 @@ bool awh::regex::Emitter::preserved(const reg_t reg) noexcept {
  *
  */
 void awh::regex::Emitter::clear() noexcept {
-	// Выполняем сброс количества мест кадра вызова
+	// Сбрасываем количество мест кадра вызова
 	this->_seats = 0;
-	// Выполняем сброс флага отказа порождения машинного кода
+	// Сбрасываем флаг отказа порождения машинного кода
 	this->_failed = false;
-	// Выполняем обрыв ряда записей в память
+	// Обрываем ряд записей в память
 	this->_stamp = SIZE_MAX;
-	// Выполняем очистку порождаемой последовательности команд
+	// Очищаем порождаемой последовательности команд
 	this->_code.clear();
-	// Выполняем очистку положений меток перехода
+	// Очищаем положений меток перехода
 	this->_labels.clear();
-	// Выполняем очистку набора отложенных переходов
+	// Очищаем набор отложенных переходов
 	this->_fixups.clear();
-	// Выполняем очистку ряда записей в память, подряд размещённых
+	// Очищаем ряд записей в память, подряд размещённых
 	this->_stored.clear();
 	/**
 	 * Если работа производится под процессор Эльбрус
 	 */
 	#if defined(__e2k__)
-		// Выполняем сброс широкой команды, к выдаче отложенной
+		// Сбрасываем широкой команды, к выдаче отложенной
 		this->_packed = packed_t();
 	#endif
 }
@@ -453,7 +453,7 @@ void awh::regex::Emitter::clear() noexcept {
 size_t awh::regex::Emitter::label() noexcept {
 	// Получаем номер заводимой метки перехода
 	const size_t result = this->_labels.size();
-	// Выполняем заведение метки, положения не имеющей
+	// Заводим метки, положения не имеющей
 	this->_labels.push_back(INVALID_LABEL);
 	// Выводим номер заведённой метки перехода
 	return result;
@@ -470,7 +470,7 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 	 */
 	#if defined(__e2k__)
 		/**
-		 * Выполняем выдачу широкой команды, к выдаче отложенной
+		 * Выдаём широкой команды, к выдаче отложенной
 		 *
 		 * @details Метка обозначает место, куда управление приходит со стороны,
 		 *          и стоять она обязана на границе широкой команды: иначе
@@ -484,7 +484,7 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 	 * Если метка перехода не заведена
 	 */
 	if(label >= this->_labels.size()){
-		// Выполняем установку флага отказа порождения машинного кода
+		// Устанавливаем флаг отказа порождения машинного кода
 		this->_failed = true;
 		/**
 		 * Если включён режим отладки
@@ -496,16 +496,16 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			// Выводим сообщени об изъяне порождения машинного кода
 			log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 		#endif
 		// Выходим из метода расстановки метки перехода
 		return;
 	}
-	// Выполняем установку положения метки перехода
+	// Устанавливаем положени метки перехода
 	this->_labels.at(label) = this->_code.size();
 	/**
-	 * Выполняем обрыв ряда записей в память
+	 * Обрываем ряд записей в память
 	 *
 	 * @details Через метку управление приходит со стороны, отчего содержимое
 	 *          регистров ряду более не известно и снятие чтения избыточного
@@ -541,7 +541,7 @@ size_t awh::regex::Emitter::length() const noexcept {
  *
  */
 bool awh::regex::Emitter::failed() const noexcept {
-	// Выводим результат проверки отказа порождения машинного кода
+	// Проверка отказа порождения машинного кода
 	return this->_failed;
 }
 /**
@@ -573,7 +573,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 */
 	void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		/**
-		 * Выполняем размещение метки цели перехода «bti c»
+		 * Размещаем меткю цели перехода «bti c»
 		 *
 		 * @details Расширение BTI набора команд ARM64 требует, чтобы переход
 		 *          по адресу из регистра приходил на метку цели, и переход
@@ -594,13 +594,13 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 *
 		 */
 		emit(this->_code, 0xD503245Fu);
-		// Выполняем установку количества мест кадра вызова, входом отведённых
+		// Устанавливаем количество мест кадра вызова, входом отведённых
 		this->_seats = (static_cast <size_t> (frame) / sizeof(size_t));
 		/**
 		 * Если кадр вызова порождаемому сопоставителю требуется
 		 */
 		if(frame > 0)
-			// Выполняем отведение кадра вызова порождаемого сопоставителя
+			// Отводим кадр вызова порождаемого сопоставителя
 			this->sub(reg_t::STACK, reg_t::STACK, frame);
 	}
 	/**
@@ -614,7 +614,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если кадр вызова порождаемому сопоставителю отводился
 		 */
 		if(frame > 0)
-			// Выполняем освобождение кадра вызова порождаемого сопоставителя
+			// Освобождаем кадр вызова порождаемого сопоставителя
 			this->add(reg_t::STACK, reg_t::STACK, frame);
 	}
 	/**
@@ -624,7 +624,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::enter(const uint32_t frame) noexcept {
-		// Выполняем переход к записи уровня вложенного
+		// Переходим к записи уровня вложенного
 		this->add(reg_t::RECORD, reg_t::RECORD, frame);
 	}
 	/**
@@ -634,7 +634,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::leave(const uint32_t frame) noexcept {
-		// Выполняем возврат к записи уровня вызывающего
+		// Возвращаем к записи уровня вызывающего
 		this->sub(reg_t::RECORD, reg_t::RECORD, frame);
 	}
 	/**
@@ -650,7 +650,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::aligned(const size_t label) noexcept {
-		// Выполняем расстановку метки перехода
+		// Расставляем меткю перехода
 		this->place(label);
 	}
 	/**
@@ -664,7 +664,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если метка перехода не заведена
 		 */
 		if(label >= this->_labels.size()){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			/**
 			 * Если включён режим отладки
@@ -676,21 +676,21 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выполняем вывод сообщения об изъяне порождения машинного кода
+				// Выводим сообщени об изъяне порождения машинного кода
 				log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 			#endif
 			// Выходим из метода размещения перехода к метке
 			return;
 		}
-		// Выполняем размещение отложенного перехода
+		// Размещаем отложенного перехода
 		this->_fixups.emplace_back();
-		// Выполняем установку положения команды перехода
+		// Устанавливаем положени команды перехода
 		this->_fixups.back().position = this->_code.size();
-		// Выполняем установку номера метки перехода
+		// Устанавливаем номер метки перехода
 		this->_fixups.back().label = label;
-		// Выполняем установку вида размещаемой команды
+		// Устанавливаем вид размещаемой команды
 		this->_fixups.back().kind = fixup_t::kind_t::JUMP;
-		// Выполняем размещение команды перехода, смещения ещё не несущей
+		// Размещаем команду перехода, смещения ещё не несущей
 		::emit(this->_code, 0x14000000u);
 	}
 	/**
@@ -705,7 +705,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если метка перехода не заведена
 		 */
 		if(label >= this->_labels.size()){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			/**
 			 * Если включён режим отладки
@@ -717,21 +717,21 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выполняем вывод сообщения об изъяне порождения машинного кода
+				// Выводим сообщени об изъяне порождения машинного кода
 				log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 			#endif
 			// Выходим из метода размещения перехода к метке
 			return;
 		}
-		// Выполняем размещение отложенного перехода
+		// Размещаем отложенного перехода
 		this->_fixups.emplace_back();
-		// Выполняем установку положения команды перехода
+		// Устанавливаем положени команды перехода
 		this->_fixups.back().position = this->_code.size();
-		// Выполняем установку номера метки перехода
+		// Устанавливаем номер метки перехода
 		this->_fixups.back().label = label;
-		// Выполняем установку вида размещаемой команды
+		// Устанавливаем вид размещаемой команды
 		this->_fixups.back().kind = fixup_t::kind_t::BRANCH;
-		// Выполняем размещение команды перехода, смещения ещё не несущей
+		// Размещаем команду перехода, смещения ещё не несущей
 		::emit(this->_code, 0x54000000u | static_cast <uint32_t> (cond));
 	}
 	/**
@@ -742,7 +742,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::compare(const reg_t first, const reg_t second) noexcept {
-		// Выполняем размещение команды сравнения значений регистров
+		// Размещаем команду сравнения значений регистров
 		::emit(this->_code, ::compare(static_cast <uint32_t> (first), static_cast <uint32_t> (second)));
 	}
 	/**
@@ -757,12 +757,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если сравниваемое число в поле команды не помещается
 		 */
 		if(value > MAX_IMMEDIATE){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения сравнения
 			return;
 		}
-		// Выполняем размещение команды сравнения значения регистра с числом
+		// Размещаем команду сравнения значения регистра с числом
 		::emit(this->_code, ::compare(static_cast <uint32_t> (reg), value, true));
 	}
 	/**
@@ -789,12 +789,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 *
 			 */
 			if(value > MAX_SHIFTED){
-				// Выполняем установку флага отказа порождения машинного кода
+				// Устанавливаем флаг отказа порождения машинного кода
 				this->_failed = true;
 				// Выходим из метода размещения сложения
 				return;
 			}
-			// Выполняем размещение команды сложения старших разрядов числа
+			// Размещаем команду сложения старших разрядов числа
 			::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
 			/**
 			 * Если младшие разряды числа пусты
@@ -802,12 +802,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			if((value & MAX_IMMEDIATE) == 0)
 				// Выходим из метода размещения сложения
 				return;
-			// Выполняем размещение команды сложения младших разрядов числа
+			// Размещаем команду сложения младших разрядов числа
 			::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
 			// Выходим из метода размещения сложения
 			return;
 		}
-		// Выполняем размещение команды сложения значения регистра с числом
+		// Размещаем команду сложения значения регистра с числом
 		::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
 	}
 	/**
@@ -827,12 +827,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 * Если число и разрядом сдвига не покрывается - см. метод сложения
 			 */
 			if(value > MAX_SHIFTED){
-				// Выполняем установку флага отказа порождения машинного кода
+				// Устанавливаем флаг отказа порождения машинного кода
 				this->_failed = true;
 				// Выходим из метода размещения вычитания
 				return;
 			}
-			// Выполняем размещение команды вычитания старших разрядов числа
+			// Размещаем команду вычитания старших разрядов числа
 			::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
 			/**
 			 * Если младшие разряды числа пусты
@@ -840,12 +840,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			if((value & MAX_IMMEDIATE) == 0)
 				// Выходим из метода размещения вычитания
 				return;
-			// Выполняем размещение команды вычитания младших разрядов числа
+			// Размещаем команду вычитания младших разрядов числа
 			::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
 			// Выходим из метода размещения вычитания
 			return;
 		}
-		// Выполняем размещение команды вычитания числа из значения регистра
+		// Размещаем команду вычитания числа из значения регистра
 		::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), value));
 	}
 	/**
@@ -856,7 +856,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::move(const reg_t target, const reg_t source) noexcept {
-		// Выполняем размещение команды переноса значения регистра
+		// Размещаем команду переноса значения регистра
 		::emit(this->_code, ::move(static_cast <uint32_t> (target), static_cast <uint32_t> (source)));
 	}
 	/**
@@ -876,7 +876,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		// Флаг размещения первой части записываемого числа
 		bool written = false;
 		/**
-		 * Выполняем обход шестнадцатиразрядных частей записываемого числа
+		 * Обходим шестнадцатиразрядных частей записываемого числа
 		 */
 		for(uint32_t shift = 0; shift < 4; shift++){
 			// Получаем очередную часть записываемого числа
@@ -904,9 +904,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 					// Переходим к следующей части записываемого числа
 					continue;
 			}
-			// Выполняем размещение команды записи части числа в регистр
+			// Размещаем команду записи части числа в регистр
 			::emit(this->_code, ::writing(reg, part, shift, written));
-			// Выполняем установку флага размещения первой части числа
+			// Устанавливаем флаг размещения первой части числа
 			written = true;
 		}
 	}
@@ -919,7 +919,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::load(const reg_t target, const reg_t base, const reg_t offset) noexcept {
-		// Выполняем размещение команды чтения байта по сумме регистров
+		// Размещаем команду чтения байта по сумме регистров
 		::emit(this->_code, ::load(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
@@ -934,12 +934,12 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если номер значения в поле команды не помещается
 		 */
 		if(index > MAX_INDEX){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения чтения
 			return;
 		}
-		// Выполняем размещение команды чтения значения обстановки исполнения
+		// Размещаем команду чтения значения обстановки исполнения
 		::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (reg_t::CONTEXT), index));
 	}
 	/**
@@ -955,7 +955,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если номер значения в поле команды не помещается
 		 */
 		if(index > MAX_INDEX){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения чтения
 			return;
@@ -968,7 +968,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 *
 		 */
 		if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения обращения к памяти
 			return;
@@ -986,7 +986,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 */
 		if(this->_stamp == this->_code.size()){
 			/**
-			 * Выполняем обход ряда записей в память с конца
+			 * Обходим ряд записей в память с конца
 			 */
 			for(auto i = this->_stored.rbegin(); i != this->_stored.rend(); ++i){
 				/**
@@ -999,14 +999,14 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 					if(i->source == target)
 						// Выходим из метода размещения чтения
 						return;
-					// Выполняем пересылку значения из регистра-источника
+					// Пересылаем значение из регистра-источника
 					this->move(target, i->source);
 					// Выходим из метода размещения чтения
 					return;
 				}
 			}
 		}
-		// Выполняем размещение команды чтения значения из памяти
+		// Размещаем команду чтения значения из памяти
 		::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
 	}
 	/**
@@ -1022,7 +1022,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если номер значения в поле команды не помещается
 		 */
 		if(index > MAX_INDEX){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения записи
 			return;
@@ -1035,7 +1035,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 *
 		 */
 		if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			// Выходим из метода размещения обращения к памяти
 			return;
@@ -1044,19 +1044,19 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если ряд записей в память прерван командой посторонней
 		 */
 		if(this->_stamp != this->_code.size())
-			// Выполняем очистку ряда записей в память
+			// Очищаем ряд записей в память
 			this->_stored.clear();
 		/**
 		 * Если ряд записей в память прерван командой посторонней
 		 */
 		if(this->_stamp != this->_code.size())
-			// Выполняем очистку ряда записей в память
+			// Очищаем ряд записей в память
 			this->_stored.clear();
-		// Выполняем размещение команды записи значения регистра в память
+		// Размещаем команду записи значения регистра в память
 		::emit(this->_code, ::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
-		// Выполняем добавление размещённой записи в ряд
+		// Добавляем размещённой записи в ряд
 		this->_stored.emplace_back(source, base, index);
-		// Выполняем установку длины кода на миг завершения ряда
+		// Устанавливаем длину кода на миг завершения ряда
 		this->_stamp = this->_code.size();
 	}
 	/**
@@ -1068,7 +1068,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
-		// Выполняем размещение команды чтения значения по адресу в регистре
+		// Размещаем команду чтения значения по адресу в регистре
 		::emit(this->_code, ::gather(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
@@ -1080,7 +1080,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
-		// Выполняем размещение команды записи значения по адресу в регистре
+		// Размещаем команду записи значения по адресу в регистре
 		::emit(this->_code, ::scatter(static_cast <uint32_t> (source), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 	}
 	/**
@@ -1090,7 +1090,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::call(const reg_t reg) noexcept {
-		// Выполняем размещение команды «blr xreg»
+		// Размещаем команду «blr xreg»
 		::emit(this->_code, 0xD63F0000u | (static_cast <uint32_t> (reg) << 5));
 	}
 	/**
@@ -1105,7 +1105,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если метка перехода не заведена
 		 */
 		if(label >= this->_labels.size()){
-			// Выполняем установку флага отказа порождения машинного кода
+			// Устанавливаем флаг отказа порождения машинного кода
 			this->_failed = true;
 			/**
 			 * Если включён режим отладки
@@ -1117,21 +1117,21 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выполняем вывод сообщения об изъяне порождения машинного кода
+				// Выводим сообщени об изъяне порождения машинного кода
 				log::print("Regex codegen: jump to the label %zu that has not been declared", log::flag_t::CRITICAL, label);
 			#endif
 			// Выходим из метода размещения вычисления адреса метки
 			return;
 		}
-		// Выполняем размещение отложенного вычисления адреса
+		// Размещаем отложенного вычисления адреса
 		this->_fixups.emplace_back();
-		// Выполняем установку положения команды вычисления адреса
+		// Устанавливаем положени команды вычисления адреса
 		this->_fixups.back().position = this->_code.size();
-		// Выполняем установку номера метки вычисляемого адреса
+		// Устанавливаем номер метки вычисляемого адреса
 		this->_fixups.back().label = label;
-		// Выполняем установку вида размещаемой команды
+		// Устанавливаем вид размещаемой команды
 		this->_fixups.back().kind = fixup_t::kind_t::ADDRESS;
-		// Выполняем размещение команды «adr xtarget, label», смещения ещё не несущей
+		// Размещаем команду «adr xtarget, label», смещения ещё не несущей
 		::emit(this->_code, 0x10000000u | static_cast <uint32_t> (target));
 	}
 	/**
@@ -1141,7 +1141,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
-		// Выполняем размещение команды «br xreg»
+		// Размещаем команду «br xreg»
 		::emit(this->_code, 0xD61F0000u | (static_cast <uint32_t> (reg) << 5));
 	}
 	/**
@@ -1160,9 +1160,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::landing() noexcept {
-		// Выполняем размещение метки цели перехода «bti j»
+		// Размещаем меткю цели перехода «bti j»
 		::emit(this->_code, 0xD503249Fu);
-		// Выполняем обрыв ряда записей в память
+		// Обрываем ряд записей в память
 		this->_stamp = SIZE_MAX;
 	}
 	/**
@@ -1170,7 +1170,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::ret() noexcept {
-		// Выполняем размещение команды «ret»
+		// Размещаем команду «ret»
 		::emit(this->_code, 0xD65F03C0u);
 	}
 	/**
@@ -1184,10 +1184,10 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 		 * Если порождение машинного кода отказано
 		 */
 		if(this->_failed)
-			// Выводим результат разрешения отложенных переходов
+			// Разрешение отложенных переходов: отказ
 			return false;
 		/**
-		 * Выполняем обход набора отложенных переходов
+		 * Обходим набор отложенных переходов
 		 */
 		for(auto & fixup : this->_fixups){
 			// Получаем положение метки, к какой выполняется переход
@@ -1196,9 +1196,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 * Если метка перехода положения не получила
 			 */
 			if(target == INVALID_LABEL){
-				// Выполняем установку флага отказа порождения машинного кода
+				// Устанавливаем флаг отказа порождения машинного кода
 				this->_failed = true;
-				// Выводим результат разрешения отложенных переходов
+				// Разрешение отложенных переходов: отказ
 				return false;
 			}
 			/**
@@ -1218,9 +1218,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 			 * Если смещение перехода за пределы поля команды выходит
 			 */
 			if((delta > limit) || (delta < -limit)){
-				// Выполняем установку флага отказа порождения машинного кода
+				// Устанавливаем флаг отказа порождения машинного кода
 				this->_failed = true;
-				// Выводим результат разрешения отложенных переходов
+				// Разрешение отложенных переходов: отказ
 				return false;
 			}
 			/**
@@ -1231,7 +1231,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				 * Если команда выполняет переход по условию
 				 */
 				case static_cast <uint8_t> (fixup_t::kind_t::BRANCH):
-					// Выполняем вписывание смещения в команду перехода по условию
+					// Вписываем смещение в команду перехода по условию
 					::patch(this->_code, fixup.position, ((static_cast <uint32_t> (delta) & 0x7FFFFu) << 5));
 				break;
 				/**
@@ -1245,7 +1245,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				case static_cast <uint8_t> (fixup_t::kind_t::ADDRESS): {
 					// Получаем смещение вычисления адреса метки в байтах
 					const uint32_t offset = static_cast <uint32_t> (delta * 4);
-					// Выполняем вписывание смещения в команду вычисления адреса
+					// Вписываем смещение в команду вычисления адреса
 					::patch(this->_code, fixup.position, (((offset & 0x3u) << 29) | (((offset >> 2) & 0x7FFFFu) << 5)));
 				} break;
 				/**
@@ -1254,9 +1254,9 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 				default: ::patch(this->_code, fixup.position, (static_cast <uint32_t> (delta) & 0x3FFFFFFu));
 			}
 		}
-		// Выполняем очистку набора разрешённых переходов
+		// Очищаем набор разрешённых переходов
 		this->_fixups.clear();
-		// Выводим результат разрешения отложенных переходов
+		// Разрешение отложенных переходов: успех
 		return true;
 	}
 /**
@@ -1326,7 +1326,7 @@ awh::regex::Emitter::Emitter() noexcept : _failed(false), _seats(0), _stamp(SIZE
 	 *
 	 */
 	void awh::regex::Emitter::aligned(const size_t label) noexcept {
-		// Выполняем расстановку метки перехода
+		// Расставляем меткю перехода
 		this->place(label);
 	}
 	/**

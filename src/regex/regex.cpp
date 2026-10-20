@@ -121,15 +121,15 @@ namespace {
 		 * Если режим разбора текста посимвольно не установлен
 		 */
 		if(!regex::hasFlag(exp->forward.flags, regex::flag_t::UTF))
-			// Выводим результат проверки правильности записи текста
+			// Проверка правильности записи текста: успех
 			return true;
 		/**
 		 * Если проверка правильности записи текста снята
 		 */
 		if(regex::hasFlag(exp->forward.flags, regex::flag_t::UNCHECKED))
-			// Выводим результат проверки правильности записи текста
+			// Проверка правильности записи текста: успех
 			return true;
-		// Выводим результат проверки правильности записи текста
+		// Проверка правильности записи текста
 		return utf8::valid(text);
 	}
 };
@@ -155,7 +155,7 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
  *
  */
 void awh::RegularExpression::clear() noexcept {
-	// Выполняем очистку кэша собранных выражений
+	// Очищаем кэш собранных выражений
 	this->_cache.clear();
 }
 /**
@@ -188,13 +188,13 @@ awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
 	 * Если код ошибки сопоставления с движка снят не был
 	 */
 	if(rep.defer){
-		// Выполняем снятие кода ошибки сопоставления с движка
+		// Снимаем код ошибки сопоставления с движка
 		rep.error = this->_engine.error();
 		/**
 		 * Если ошибки сопоставления случилось
 		 */
 		if(rep.error != error_t::NONE)
-			// Выполняем снятие текста ошибки сопоставления с движка
+			// Снимаем текст ошибки сопоставления с движка
 			rep.message = this->_engine.message();
 		// Снимаем признак отложенного снятия кода ошибки
 		rep.defer = false;
@@ -235,13 +235,13 @@ const string & awh::RegularExpression::message() const noexcept {
 	 * Если код ошибки сопоставления с движка снят не был
 	 */
 	if(rep.defer){
-		// Выполняем снятие кода ошибки сопоставления с движка
+		// Снимаем код ошибки сопоставления с движка
 		rep.error = this->_engine.error();
 		/**
 		 * Если ошибки сопоставления случилось
 		 */
 		if(rep.error != error_t::NONE)
-			// Выполняем снятие текста ошибки сопоставления с движка
+			// Снимаем текст ошибки сопоставления с движка
 			rep.message = this->_engine.message();
 		// Снимаем признак отложенного снятия кода ошибки
 		rep.defer = false;
@@ -256,7 +256,7 @@ const string & awh::RegularExpression::message() const noexcept {
  *
  */
 void awh::RegularExpression::limit(const size_t limit) noexcept {
-	// Выполняем установку наибольшего допустимого объёма работы сопоставления
+	// Устанавливаем наибольшего допустимого объёма работы сопоставления
 	this->_limit = limit;
 }
 /**
@@ -266,7 +266,7 @@ void awh::RegularExpression::limit(const size_t limit) noexcept {
  *
  */
 void awh::RegularExpression::nesting(const size_t nesting) noexcept {
-	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	// Устанавливаем наибольшей допустимой глубины рекурсивных вызовов
 	this->_nesting = nesting;
 }
 /**
@@ -282,7 +282,7 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	 * Если собранное регулярное выражение не установлено
 	 */
 	if(!exp)
-		// Выводим результат проверки наличия совпадения
+		// Проверка наличия совпадения: отказ
 		return false;
 	/**
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
@@ -292,11 +292,11 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Снимаем признак отложенного снятия кода ошибки
 		report().defer = false;
-		// Выводим результат проверки наличия совпадения
+		// Проверка наличия совпадения: отказ
 		return false;
 	}
 	/**
-	 * Выполняем установку наибольшего допустимого объёма работы сопоставления
+	 * Устанавливаем наибольшего допустимого объёма работы сопоставления
 	 *
 	 * @note Потолок ставится движку перед каждым сопоставлением, а не единожды:
 	 *       движок живёт полем объекта, и сопоставление, впервые обратившееся
@@ -307,23 +307,23 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	 *
 	 */
 	if(this->_limit != this->_limitSent){
-		// Выполняем установку наибольшего допустимого объёма работы сопоставления
+		// Устанавливаем наибольшего допустимого объёма работы сопоставления
 		this->_engine.limit(this->_limit);
-		// Выполняем запоминание значения, отправленного движку
+		// Запоминаем значения, отправленного движку
 		this->_limitSent = this->_limit;
 	}
 	// Если параметр «_nesting» изменился, передаём его движку
 	if(this->_nesting != this->_nestingSent){
-		// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+		// Устанавливаем наибольшей допустимой глубины рекурсивных вызовов
 		this->_engine.nesting(this->_nesting);
-		// Выполняем запоминание значения, отправленного движку
+		// Запоминаем значения, отправленного движку
 		this->_nestingSent = this->_nesting;
 	}
-	// Выполняем проверку наличия совпадения в тексте
+	// Проверяем наличие совпадения в тексте
 	const bool result = this->_engine.test(* exp, text, 0);
-	// Выполняем снятие кода ошибки сопоставления с движка
+	// Снимаем код ошибки сопоставления с движка
 	this->receive();
-	// Выводим результат проверки наличия совпадения в тексте
+	// Проверка наличия совпадения в тексте
 	return result;
 }
 /**
@@ -335,23 +335,23 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
  *
  */
 awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern, const uint32_t flags) const noexcept {
-	// Выполняем сброс кода ошибки последней операции сборки
+	// Сбрасываем код ошибки последней операции сборки
 	report().error = error_t::NONE;
-	// Выполняем сброс смещения ошибки в тексте выражения
+	// Сбрасываем смещение ошибки в тексте выражения
 	report().offset = 0;
-	// Выполняем очистку текста ошибки последней операции сборки
+	// Очищаем текст ошибки последней операции сборки
 	report().message.clear();
 	// Создаём ключ кэша собранных регулярных выражений
 	const key_t key = make_pair(flags, string(pattern));
 	/**
-	 * Выполняем поиск выражения в кэше собранных выражений
+	 * Ищем выражени в кэше собранных выражений
 	 *
 	 * @details Кэш удерживает слабую ссылку, поэтому выражение находится в кэше
 	 *          лишь до тех пор, пока его удерживает вызывающая сторона.
 	 *
 	 */
 	{
-		// Выполняем поиск ключа в кэше собранных выражений
+		// Ищем ключ в кэше собранных выражений
 		auto i = this->_cache.find(key);
 		/**
 		 * Если ключ в кэше собранных выражений найден
@@ -365,7 +365,7 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 			if(result)
 				// Выводим собранное ранее регулярное выражение
 				return result;
-			// Выполняем удаление освобождённого выражения из кэша
+			// Удаляем освобождённого выражения из кэша
 			this->_cache.erase(i);
 		}
 	}
@@ -375,11 +375,11 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	 * Если сборка регулярного выражения не выполнена
 	 */
 	if(!this->_engine.build(pattern, flags, * result)){
-		// Выполняем установку кода ошибки последней операции сборки
+		// Устанавливаем код ошибки последней операции сборки
 		report().error = this->_engine.error();
-		// Выполняем установку смещения ошибки в тексте выражения
+		// Устанавливаем смещение ошибки в тексте выражения
 		report().offset = this->_engine.offset();
-		// Выполняем установку текста ошибки последней операции сборки
+		// Устанавливаем текст ошибки последней операции сборки
 		report().message = this->_engine.message();
 		/**
 		 * Если включён режим отладки
@@ -399,7 +399,7 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	}
 	// Создаём собранное регулярное выражение
 	exp_t expression = result;
-	// Выполняем размещение собранного выражения в кэше
+	// Размещаем собранного выражения в кэше
 	this->_cache[key] = expression;
 	// Выводим собранное регулярное выражение
 	return expression;
@@ -416,12 +416,12 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	// Набор режимов сборки регулярного выражения
 	uint32_t options = 0;
 	/**
-	 * Выполняем перебор набора режимов сборки регулярного выражения
+	 * Перебираем набор режимов сборки регулярного выражения
 	 */
 	for(const auto & flag : flags)
-		// Выполняем установку режима сборки регулярного выражения
+		// Устанавливаем режим сборки регулярного выражения
 		options |= static_cast <uint32_t> (flag);
-	// Выводим результат сборки регулярного выражения
+	// Сборка регулярного выражения
 	return this->build(pattern, options);
 }
 /**
@@ -439,7 +439,7 @@ uint32_t awh::RegularExpression::group(const exp_t & exp, string_view name) cons
 	if(!exp)
 		// Выводим отсутствие именованной группы выражения
 		return 0;
-	// Выполняем поиск имени в соответствии имён групп наборам их номеров
+	// Ищем именю в соответствии имён групп наборам их номеров
 	auto i = exp->names.find(string(name));
 	/**
 	 * Если имя в соответствии имён групп не найдено
@@ -482,22 +482,22 @@ vector <string> awh::RegularExpression::exec(string_view text, const exp_t & exp
 	vector <string> result;
 	// Получаем набор границ совпадения и захваченных групп
 	const auto & bounds = this->match(text, exp);
-	// Выполняем размещение набора текста совпадения
+	// Размещаем набор текста совпадения
 	result.reserve(bounds.size());
 	/**
-	 * Выполняем перебор набора границ совпадения и захваченных групп
+	 * Перебираем набор границ совпадения и захваченных групп
 	 */
 	for(const auto & bound : bounds){
 		/**
 		 * Если захват группой не выполнен
 		 */
 		if((bound.first == string_view::npos) || (bound.second == string_view::npos) || (bound.second < bound.first)){
-			// Выполняем добавление пустого текста захвата
+			// Добавляем пустого текста захвата
 			result.emplace_back();
 			// Переходим к следующим границам захвата
 			continue;
 		}
-		// Выполняем добавление текста захвата группой
+		// Добавляем текст захвата группой
 		result.emplace_back(text.substr(bound.first, (bound.second - bound.first)));
 	}
 	// Выводим набор текста совпадения и захваченных групп
@@ -513,13 +513,13 @@ vector <string> awh::RegularExpression::exec(string_view text, const exp_t & exp
  *
  */
 bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered_map <string, string> & result) const noexcept {
-	// Выполняем очистку соответствия имён групп захваченному тексту
+	// Очищаем соответствие имён групп захваченному тексту
 	result.clear();
 	/**
 	 * Если собранное регулярное выражение не установлено
 	 */
 	if(!exp)
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	// Создаём набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
@@ -527,10 +527,10 @@ bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered
 	 * Если совпадение в тексте не обнаружено
 	 */
 	if(!this->match(text, exp, bounds))
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	/**
-	 * Выполняем перебор имён именованных групп выражения
+	 * Перебираем имён именованных групп выражения
 	 */
 	for(const auto & item : exp->names){
 		// Получаем текст, захваченный очередной именованной группой
@@ -546,10 +546,10 @@ bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered
 		if(value.data() == nullptr)
 			// Переходим к следующей именованной группе
 			continue;
-		// Выполняем размещение захваченного текста в соответствии имён групп
+		// Размещаем захваченного текста в соответствии имён групп
 		result.emplace(item.first, string(value));
 	}
-	// Выводим результат поиска совпадения
+	// Поиск совпадения: успех
 	return true;
 }
 /**
@@ -563,7 +563,7 @@ bool awh::RegularExpression::exec(string_view text, const exp_t & exp, unordered
 vector <pair <size_t, size_t>> awh::RegularExpression::match(string_view text, const exp_t & exp) const noexcept {
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> result;
-	// Выполняем извлечение границ совпадения и захваченных групп
+	// Извлекаем границ совпадения и захваченных групп
 	this->match(text, exp, result);
 	// Выводим набор границ совпадения и захваченных групп
 	return result;
@@ -578,13 +578,13 @@ vector <pair <size_t, size_t>> awh::RegularExpression::match(string_view text, c
  *
  */
 bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <pair <size_t, size_t>> & result) const noexcept {
-	// Выполняем очистку набора границ совпадения
+	// Очищаем набор границ совпадения
 	result.clear();
 	/**
 	 * Если собранное регулярное выражение не установлено
 	 */
 	if(!exp)
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	/**
 	 * Если запись текста сопоставления кодировке UTF-8 не отвечает
@@ -594,11 +594,11 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Снимаем признак отложенного снятия кода ошибки
 		report().defer = false;
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	}
 	/**
-	 * Выполняем установку наибольшего допустимого объёма работы и глубины рекурсии
+	 * Устанавливаем наибольшего допустимого объёма работы и глубины рекурсии
 	 *
 	 * @details Сопоставление через чистый JIT-путь потолка и глубины не считает,
 	 *          и сеттеры в нём лишние - несколько наносекунд на сопоставление,
@@ -616,16 +616,16 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	 *
 	 */
 	if(this->_limit != this->_limitSent){
-		// Выполняем установку наибольшего допустимого объёма работы сопоставления
+		// Устанавливаем наибольшего допустимого объёма работы сопоставления
 		this->_engine.limit(this->_limit);
-		// Выполняем запоминание значения, отправленного движку
+		// Запоминаем значения, отправленного движку
 		this->_limitSent = this->_limit;
 	}
 	// Если параметр «_nesting» изменился, передаём его движку
 	if(this->_nesting != this->_nestingSent){
-		// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+		// Устанавливаем наибольшей допустимой глубины рекурсивных вызовов
 		this->_engine.nesting(this->_nesting);
-		// Выполняем запоминание значения, отправленного движку
+		// Запоминаем значения, отправленного движку
 		this->_nestingSent = this->_nesting;
 	}
 	/**
@@ -634,38 +634,38 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	if((exp->machine != nullptr) && (exp->forward.steps != 0) &&
 	   (!exp->forward.anchored || !exp->forward.prefilter.active || ((text.size() > 0) &&
 	   exp->forward.prefilter.bytes[static_cast <uint8_t> (text.front())]))){
-		// Выполняем сброс отметки совпадения последнего
+		// Сбрасываем отметку совпадения последнего
 		this->_engine.reset();
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
-		// Выполняем сопоставление порождённым машинным кодом напрямую
+		// Сопоставляем порождённым машинным кодом напрямую
 		const bool done = exp->machine->exec(text, 0, result, refused);
 		/**
 		 * Если порождённый сопоставитель от сопоставления не отказался
 		 */
 		if(!refused){
-			// Выполняем снятие кода ошибки сопоставления с движка
+			// Снимаем код ошибки сопоставления с движка
 			this->receive();
 			// Если отсутствуют совпадения 
 			if(!done)
 				// Очищаем набор границ
 				result.clear();
-			// Выводим результат поиска совпадения
+			// Поиск совпадения
 			return done;
 		}
 	}
 	// Если совпадение в тексте не обнаружено
 	if(!this->_engine.exec(* exp, text, 0, result)){
-		// Выполняем очистку набора границ совпадения
+		// Очищаем набор границ совпадения
 		result.clear();
-		// Выполняем снятие кода ошибки сопоставления с движка
+		// Снимаем код ошибки сопоставления с движка
 		this->receive();
-		// Выводим результат поиска совпадения
+		// Поиск совпадения: отказ
 		return false;
 	}
-	// Выполняем снятие кода ошибки сопоставления с движка
+	// Снимаем код ошибки сопоставления с движка
 	this->receive();
-	// Выводим результат поиска совпадения
+	// Поиск совпадения: успех
 	return true;
 }
 /**
@@ -702,7 +702,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 	if(!exp)
 		// Выводим отсутствие захваченного текста
 		return string_view();
-	// Выполняем поиск имени в соответствии имён групп наборам их номеров
+	// Ищем именю в соответствии имён групп наборам их номеров
 	auto i = exp->names.find(string(name));
 	/**
 	 * Если имя в соответствии имён групп не найдено
@@ -711,7 +711,7 @@ string_view awh::RegularExpression::capture(string_view text, const vector <pair
 		// Выводим отсутствие захваченного текста
 		return string_view();
 	/**
-	 * Выполняем перебор номеров групп, объявленных этим именем
+	 * Перебираем номеров групп, объявленных этим именем
 	 *
 	 * @details Одно имя объявляется несколькими группами лишь в режиме «DUPNAMES»,
 	 *          и захват выполняет та из них, что участвовала в совпадении, поэтому

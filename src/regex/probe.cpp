@@ -35,6 +35,7 @@ using namespace std;
 
 /**
  * @brief Пространство имён вспомогательных функций
+ *
  */
 namespace {
 	/**
@@ -90,16 +91,16 @@ bool awh::regex::Probe::enabled() noexcept {
  */
 void awh::regex::Probe::reset() noexcept {
 	/**
-	 * Выполняем обход счётчиков путей исполнения сопоставления
+	 * Обходим счётчиков путей исполнения сопоставления
 	 */
 	for(size_t i = 0; i < static_cast <size_t> (path_t::COUNT); i++)
-		// Выполняем сброс очередного счётчика пути исполнения
+		// Сбрасываем очередного счётчика пути исполнения
 		COUNTERS[i].store(0, memory_order_relaxed);
 	/**
-	 * Выполняем обход всех счётчиков мер работы сопоставления
+	 * Обходим всех счётчиков мер работы сопоставления
 	 */
 	for(size_t i = 0; i < static_cast <size_t> (work_t::COUNT); i++)
-		// Выполняем сброс очередного счётчика меры работы
+		// Сбрасываем очередного счётчика меры работы
 		AMOUNTS[i].store(0, memory_order_relaxed);
 }
 /**
@@ -132,7 +133,7 @@ void awh::regex::Probe::tick(const path_t path) noexcept {
 	if(static_cast <size_t> (path) >= static_cast <size_t> (path_t::COUNT))
 		// Выходим из метода учёта прохождения пути исполнения
 		return;
-	// Выполняем учёт прохождения пути исполнения сопоставления
+	// Учитываем прохождени пути исполнения сопоставления
 	COUNTERS[static_cast <size_t> (path)].fetch_add(1, memory_order_relaxed);
 }
 /**
@@ -166,6 +167,6 @@ void awh::regex::Probe::spend(const work_t work, const uint64_t count) noexcept 
 	if(static_cast <size_t> (work) >= static_cast <size_t> (work_t::COUNT))
 		// Выходим из метода учёта выполненных операций
 		return;
-	// Выполняем учёт выполненных операций меры работы сопоставления
+	// Учитываем выполненных операций меры работы сопоставления
 	AMOUNTS[static_cast <size_t> (work)].fetch_add(count, memory_order_relaxed);
 }
