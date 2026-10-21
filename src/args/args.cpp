@@ -12,34 +12,32 @@
  * @email forman@anyks.com
  * @site https://anyks.com
  *
- * \~russian
  * @brief Исходный файл модуля параметров запуска приложения
- *
- * \~english
- * @brief Source file of the module of the parameters of the launch of an application
- *
- * \~
  *
  * @copyright Copyright © 2026
  *
  */
 
 /**
- * Подключаем заголовочные файлы модуля
- */
-#include <args/args.hpp>
-
-/**
- * Стандартные заголовочные файлы
+ * Стандартный заголовочный файл
  */
 #include <limits>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <args/args.hpp>
 
 /**
  * Подключаем заголовочный файл разбора записи числа
  */
 #include <num/lexical/lexical.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 
 /**
  * Если операционной системой является MS Windows
@@ -49,7 +47,8 @@
 	 * Подключаем заголовочный файл, объявляющий набор переменных окружения
 	 *
 	 * @details Объявлять его самому у MS Windows нельзя: `_environ` там не
-	 *          переменная, а макрос к внутренности библиотеки времени выполнения
+	 *          переменная, а макрос к внутренности библиотеки времени выполнения.
+	 *
 	 */
 	#include <stdlib.h>
 #endif
@@ -63,7 +62,8 @@
 	 *
 	 * @details Обращение к «environ» напрямую под macOS дозволено лишь исполняемому
 	 *          файлу: у библиотеки собиратель отвечает отказом связывания, и набор
-	 *          берётся ходом «_NSGetEnviron»
+	 *          берётся ходом «_NSGetEnviron».
+	 *
 	 */
 	#include <crt_externs.h>
 #endif
@@ -85,6 +85,7 @@ using namespace awh::args;
  *          оно стояло ЗА ним, и держалось лишь на том, что набор переменных
  *          окружения объявлен заголовками системы. У MS Windows объявления нет
  *          вовсе - `_environ` там разворачивается заголовком `stdlib.h`
+ *
  */
 #if !defined(__APPLE__) && !defined(_WIN32) && !defined(_WIN64)
 	/**
@@ -99,12 +100,12 @@ using namespace awh::args;
  */
 namespace {
 	/**
-	 * @brief Метод извлечения набора переменных окружения
+	 * @brief Функция извлечения набора переменных окружения
 	 *
 	 * @return набор переменных окружения либо nullptr при его отсутствии
 	 *
 	 */
-	char ** environment() noexcept {
+	static char ** environment() noexcept {
 		/**
 		 * Если операционной системой является macOS
 		 */
@@ -122,6 +123,7 @@ namespace {
 			 *          `_environ` есть макрос, разворачивающийся в вызов вида
 			 *          `(* __p__environ())`, и запись `::_environ` даёт
 			 *          `::(* __p__environ())` - отказ сборки. Замерено на стенде
+			 *
 			 */
 			return _environ;
 		/**
@@ -133,27 +135,29 @@ namespace {
 		#endif
 	}
 	/**
-	 * @brief Метод ограждения звена пути отменяющими записями
-	 *
-	 * @param name имя звена пути
-	 * @return     имя звена, у пути хранения безопасное
+	 * @brief Функция ограждения звена пути отменяющими записями
 	 *
 	 * @details Ось хранения ведёт пути по RFC 6901: тильда и косая черта имеют там
-	 * значение особое и записываются `~0` и `~1`. Имя же звена приходит ИСХОДНЫМ -
-	 * и от потребителя, и из файла настроек, - и знаки эти в нём законны
+	 *          значение особое и записываются `~0` и `~1`. Имя же звена приходит ИСХОДНЫМ -
+	 *          и от потребителя, и из файла настроек, - и знаки эти в нём законны.
 	 *
 	 * @warning Ход общий у ДВУХ мест: перевода имени параметра в путь и слияния
 	 *          дерева настроек. Обходил его прежде и тот, и другой, и порок у обоих
 	 *          выходил один: имя `a/b` давало лишний уровень, а имя `a~1b` ложилось
 	 *          полем `a/b`. Чинить надлежало в общем месте, а не у одного из двух
 	 *
+	 * @param name имя звена пути
+	 * @return     имя звена, у пути хранения безопасное
+	 *
 	 */
-	string escape(const string & name) noexcept {
+	static string escape(const string & name) noexcept {
 		// Собираемое имя звена пути
 		string result = "";
 		// Выполняем резервирование памяти под собираемое имя
 		result.reserve(name.length());
-		// Выполняем перебор всех знаков имени звена
+		/**
+		 * Выполняем перебор всех знаков имени звена
+		 */
 		for(size_t i = 0; i < name.length(); i++){
 			// Получаем очередной знак имени звена
 			const char letter = name.at(i);
@@ -171,7 +175,7 @@ namespace {
 		// Выводим имя звена, у пути хранения безопасное
 		return result;
 	}
-}
+};
 
 /**
  * @brief Метод перевода имени параметра в путь оси хранения
@@ -201,6 +205,7 @@ string awh::args::Args::route(const string_view key) const noexcept {
 	 * @note Ограждение идёт ЗВЕНЬЯМ, а не пути целиком: разделитель звеньев,
 	 *       настройками заданный, обращается в косую черту ПОСЛЕ ограждения -
 	 *       иначе он был бы огорожен сам и вложенности не давал бы вовсе
+	 *
 	 */
 	for(size_t i = 0; i < key.length(); i++){
 		// Получаем очередной знак имени параметра
@@ -219,7 +224,6 @@ string awh::args::Args::route(const string_view key) const noexcept {
 	// Выводим путь звеньями оси хранения
 	return result;
 }
-
 /**
  * @brief Метод выведения значения из его записи
  *
@@ -237,17 +241,17 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		// Выводим пустую последовательность знаков
 		return codec::abc::value_t(string(text));
 	// Если запись значения является истиной
-	if(awh::fmk::compare(text, "true") || awh::fmk::compare(text, "yes") || awh::fmk::compare(text, "on"))
+	if(fmk::compare(text, "true") || fmk::compare(text, "yes") || fmk::compare(text, "on"))
 		// Выводим логическое значение истиной
 		return codec::abc::value_t(true);
 	// Если запись значения является ложью
-	if(awh::fmk::compare(text, "false") || awh::fmk::compare(text, "no") || awh::fmk::compare(text, "off"))
+	if(fmk::compare(text, "false") || fmk::compare(text, "no") || fmk::compare(text, "off"))
 		// Выводим логическое значение ложью
 		return codec::abc::value_t(false);
 	// Если запись значения является пустым значением
-	if(awh::fmk::compare(text, "null") || awh::fmk::compare(text, "nil"))
+	if(fmk::compare(text, "null") || fmk::compare(text, "nil"))
 		// Выводим пустое значение
-		return codec::abc::value_t(codec::abc::kind_t::NUL);
+		return codec::abc::value_t(codec::abc::kind_t::NIL);
 	/**
 	 * Если запись числа начата нулём, а знаков в ней больше одного, числом она
 	 * НЕ БЕРЁТСЯ: записи вида «007» и «0755» встречаются номерами и правами
@@ -268,6 +272,7 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		 *          тогда как строка `port = +42` записи настроек давала число: одна
 		 *          и та же запись читалась по-разному в зависимости от источника.
 		 *          Замерено 16.09.2026 аудитом
+		 *
 		 */
 		const string_view record = (((text.front() == '+') && (text.length() > 1)) ? text.substr(1) : text);
 		// Получаем начало и конец записи значения
@@ -277,8 +282,8 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		/**
 		 * Определяем запись ЦЕЛОГО: ни точки, ни указателя степени в ней нет
 		 *
-		 * @warning Разбор идёт `num/lexical` НАПРЯМУЮ, а не ходами `awh::fmk::is` и
-		 *          `awh::fmk::atoi`, и оба хода тому виною порознь. Проверка `is`
+		 * @warning Разбор идёт `num/lexical` НАПРЯМУЮ, а не ходами `fmk::is` и
+		 *          `fmk::atoi`, и оба хода тому виною порознь. Проверка `is`
 		 *          признаёт `1e-9`, но отвергает `-2.5e3` и `1E5`, отчего одна и
 		 *          та же запись выходила то числом, то строкою. Приведение же
 		 *          `atoi` записи, разрядность превысившей, отвечает НУЛЁМ:
@@ -289,6 +294,7 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		 * @note Запись, в родной вид не вместимая, остаётся последовательностью
 		 *       знаков целиком - правило это то же, что и у моста, и два хода
 		 *       одного набора расходиться в толковании записи не должны
+		 *
 		 */
 		if(record.find_first_of(".eE") == string_view::npos){
 			// Если число записано со знаком
@@ -327,7 +333,6 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 	// Выводим запись значения последовательностью знаков как есть
 	return codec::abc::value_t(string(text));
 }
-
 /**
  * @brief Метод укладки значения в дерево настроек
  *
@@ -348,12 +353,24 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 *          проверивший, не узнавал о ней ничем. Код `EMPTY_PATH` для случая
 	 *          этого заведён и описан был с самого начала, а выдаваться не
 	 *          выдавался ни разу. Замерено 08.09.2026 аудитом
+	 *
 	 */
 	if(path.empty() || (path.front() == '/') || (path.back() == '/') || (path.find("//") != string::npos)){
 		// Выполняем запоминание отказа укладки значения
 		this->_errors.emplace_back(error_t::EMPTY_PATH, location_t());
-		// Выводим в лог сообщение о негодном пути укладки
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о негодном пути укладки
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {path, mapping}, log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о негодном пути укладки
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+		#endif
 		// Выходим из метода, укладывать значение некуда
 		return false;
 	}
@@ -372,11 +389,14 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 * @note Годным считается не только путь описанного параметра, но и всякий путь
 	 *       ПОД ним: описав имя `host`, потребитель вправе подать ему поддерево
 	 *       файлом настроек, и поля того поддерева описанию отдельно не объявляются
+	 *
 	 */
 	if(this->_settings.strict && !this->_schema.empty()){
 		// Признак того, что путь укладки описанию ведом
 		bool known = false;
-		// Выполняем перебор описаний всех ожидаемых параметров
+		/**
+		 * Выполняем перебор описаний всех ожидаемых параметров
+		 */
 		for(auto & param : this->_schema.params()){
 			// Получаем путь оси хранения описанного параметра
 			const string & record = this->route(param.name);
@@ -392,8 +412,19 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 		if(!known){
 			// Выполняем запоминание отказа укладки значения
 			this->_errors.emplace_back(error_t::UNKNOWN, location_t());
-			// Выводим в лог сообщение об имени, описанию неизвестном
-			awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::UNKNOWN), path.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог сообщение об имени, описанию неизвестном
+				log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {path, mapping}, log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим в лог сообщение об имени, описанию неизвестном
+				log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+			#endif
 			// Выходим из метода, укладка отвечена отказом
 			return false;
 		}
@@ -404,6 +435,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 * @note Скаляр родителя и значение потомка занимают пересекающиеся пути.
 	 *       Проверки только точного имени недостаточно: файл с полем `net`
 	 *       не вправе отменять `net.port`, поданный набором запуска, и наоборот
+	 *
 	 */
 	for(size_t offset = path.find('/'); offset != string::npos; offset = path.find('/', offset + 1)){
 		// Выполняем поиск источника родительского значения
@@ -420,6 +452,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 *
 	 * @note Граница звена обязательна: `net/port` лежит под `net`, а `network`
 	 *       является отдельным параметром. Имена здесь уже ограждены по RFC 6901
+	 *
 	 */
 	for(auto i = this->_origins.lower_bound(branch); (i != this->_origins.end()) && (i->first.compare(0, branch.length(), branch) == 0); ++i){
 		// Если потомок подан старшим источником
@@ -439,12 +472,12 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	const size_t limit = codec::abc::value_t::limit();
 	// Смещение разбора пути
 	size_t offset = 0;
-	// Разбираемое звено пути
-	string_view segment;
-	// Вместилище звена со снятыми отменяющими записями
-	string unescaped = "";
 	// Признак невозможности записи по пути
 	bool invalid = false;
+	// Вместилище звена со снятыми отменяющими записями
+	string unescaped = "";
+	// Разбираемое звено пути
+	string_view segment = "";
 	/**
 	 * Проверяем весь путь до освобождения родителей и изменения источников
 	 *
@@ -452,6 +485,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 *       ещё не созданное поддерево. При слиянии его вид известен из исходного
 	 *       дерева: родители являются отображениями. Числа внутри отображения
 	 *       остаются именами. Предел роста не запрещает менять существующий элемент
+	 *
 	 */
 	while(codec::abc::segment(path, offset, segment, unescaped, invalid)){
 		// Если скалярный родитель должен уступить место новому поддереву
@@ -467,12 +501,9 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 			// Если для записи требуется рост массива
 			if((current == nullptr) || (index >= current->size())){
 				// Если длина переполнится либо превысит установленный предел
-				if((index == numeric_limits <size_t>::max()) || ((limit > 0) && (index >= limit))){
-					// Отмечаем невозможность записи без изменения дерева
-					invalid = true;
+				if((invalid = ((index == numeric_limits <size_t>::max()) || ((limit > 0) && (index >= limit)))))
 					// Завершаем проверку пути
 					break;
-				}
 				// Оставшиеся звенья проверяем как ещё не созданные
 				current = nullptr;
 			// Если элемент массива уже существует
@@ -480,12 +511,9 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 		// Если звено задаёт имя поля существующего родителя
 		} else if(current != nullptr) {
 			// Если родитель является массивом, именованное поле создать нельзя
-			if(!current->is(codec::abc::type_t::MAP)){
-				// Отмечаем несовместимость пути с видом родителя
-				invalid = true;
+			if((invalid = !current->is(codec::abc::type_t::MAP)))
 				// Завершаем проверку пути
 				break;
-			}
 			// Переходим к полю отображения без изменения дерева
 			current = &(* current)[string(segment)];
 		}
@@ -494,8 +522,19 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	if(invalid){
 		// Запоминаем причину отказа записи
 		this->_errors.emplace_back(error_t::INVALID_PATH, location_t());
-		// Выводим в лог сообщение о невозможности записи
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::INVALID_PATH), path.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о невозможности записи
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {path, mapping}, log::flag_t::WARNING, args::message(error_t::INVALID_PATH), path.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о невозможности записи
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::INVALID_PATH), path.c_str());
+		#endif
 		// Выходим из метода, сохранив прежнее дерево и его источники
 		return false;
 	}
@@ -515,10 +554,23 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 		 * @note Отказа здесь нет намеренно: отказ `DUPLICATE` означает «повтор
 		 *       запрещён», а он дозволен - запрещён лишь сбор повторов массивом. Цена
 		 *       тому строка в журнале, а не отказ разбора
+		 *
 		 */
-		if((i->second == source) && !this->_settings.multiple)
-			// Выводим в лог сообщение о замене прежнего значения повторно поданным
-			awh::log::print("Args: the repeated value replaces the previous one at \"%s\": arrays are disabled by the settings", awh::log::flag_t::WARNING, path.c_str());
+		if((i->second == source) && !this->_settings.multiple){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог сообщение о замене прежнего значения повторно поданным
+				log::debug("Args: the repeated value replaces the previous one at \"%s\": arrays are disabled by the settings", __PRETTY_FUNCTION__, {path, mapping}, log::flag_t::WARNING, path.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим в лог сообщение о замене прежнего значения повторно поданным
+				log::print("Args: the repeated value replaces the previous one at \"%s\": arrays are disabled by the settings", log::flag_t::WARNING, path.c_str());
+			#endif
+		}
 		// Если значение подано повторно тем же самым источником
 		if((i->second == source) && this->_settings.multiple){
 			// Получаем ссылку на уже уложенное значение
@@ -540,6 +592,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 				 *
 				 * @note Повтор пустого отображения после добавления ему полей
 				 *       переносит эти поля вместе с отображением, а не удаляет их
+				 *
 				 */
 				for(auto j = this->_origins.lower_bound(branch); (j != this->_origins.end()) && (j->first.compare(0, branch.length(), branch) == 0);){
 					// Запоминаем источник по новому пути потомка
@@ -562,6 +615,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 *          и путь уже проверены, поэтому скаляр младшего источника можно снять.
 	 *          При слиянии создаваемый родитель является отображением даже тогда,
 	 *          когда все имена его полей записаны цифрами
+	 *
 	 */
 	for(size_t offset = path.find('/'); offset != string::npos; offset = path.find('/', offset + 1)){
 		// Получаем путь родительского значения
@@ -584,6 +638,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	 * Выполняем снятие источников потомков заменяемого значения
 	 *
 	 * @note После замены поддерева скаляром эти пути больше не существуют
+	 *
 	 */
 	for(auto j = this->_origins.lower_bound(branch); (j != this->_origins.end()) && (j->first.compare(0, branch.length(), branch) == 0);)
 		// Снимаем источник вытесненного потомка
@@ -595,7 +650,6 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 	// Сообщаем, что укладка значения выполнена
 	return true;
 }
-
 /**
  * @brief Метод слияния дерева значений с деревом настроек
  *
@@ -618,13 +672,16 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 		 * @note Обход полей пустого объекта не вызывает `lay()` ни разу: объект
 		 *       теряется, а его имя обходит строгую схему. Пустой корневой документ
 		 *       остаётся допустимым отсутствием новых настроек
+		 *
 		 */
 		if(value.empty() && !path.empty())
 			// Выводим результат проверки и укладки пустого отображения
 			return this->lay(path, codec::abc::value_t(value), source, true);
 		// Признак успешности слияния полей отображения
 		bool result = true;
-		// Выполняем перебор всех полей отображения
+		/**
+		 * Выполняем перебор всех полей отображения
+		 */
 		for(size_t i = 0; i < value.size(); i++){
 			// Извлекаемое имя поля отображения
 			string name = "";
@@ -636,8 +693,19 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			if(name.empty()){
 				// Запоминаем отказ до рекурсивного слияния полей объекта
 				this->_errors.emplace_back(error_t::EMPTY_PATH, location_t());
-				// Выводим в лог сообщение о пустом звене пути
-				awh::log::print("Args: %s \"%s/\"", awh::log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в лог сообщение о пустом звене пути
+					log::debug("Args: %s \"%s/\"", __PRETTY_FUNCTION__, {path, derive}, log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в лог сообщение о пустом звене пути
+					log::print("Args: %s \"%s/\"", log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+				#endif
 				// Отмечаем отказ слияния этого поля
 				result = false;
 				// Продолжаем слияние соседних полей без потери уровня вложенности
@@ -652,6 +720,7 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			 *          в дерево ДВУМЯ уровнями, а поле `a~1b` - полем `a/b`: имена
 			 *          файла рушились на пути внутрь, и обратная выдача уносила в
 			 *          файл имена, коих в нём не было. Замерено 15.09.2026 аудитом
+			 *
 			 */
 			const string link = ::escape(name);
 			/**
@@ -661,6 +730,7 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			 * @note Путь собирается строковыми операциями, сохраняющими нулевые байты.
 			 *       Форматирование через `%s` обрезало имя и позволяло чужому полю
 			 *       совпасть с коротким именем параметра строгой схемы
+			 *
 			 */
 			result = (this->merge(value[i], (path.empty() ? link : (path + '/' + link)), source, derive) && result);
 		}
@@ -686,6 +756,7 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 	 *       объявлен самой записью, и строка `"yes"`, в кавычки взятая, есть
 	 *       строка по воле писавшего - обращать её логическим значением значило бы
 	 *       спорить с записью
+	 *
 	 */
 	if(derive && value.is(codec::abc::type_t::STRING))
 		// Выполняем укладку записи, выведенной словарём модуля
@@ -693,7 +764,6 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 	// Выполняем укладку сливаемого значения целиком
 	return this->lay(path, codec::abc::value_t(value), source, true);
 }
-
 /**
  * @brief Метод укладки разобранной лексемы по описанию ожидаемых
  *
@@ -731,6 +801,9 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 			// Контейнер длинных имён, разобранных из склейки коротких
 			vector <string> names;
 			/**
+			 * Пробуем разобрать имя склейкой коротких имён: запись «-abc» есть три
+			 * признака лишь тогда, когда ВСЕ знаки её описанию известны
+			 *
 			 * @note Дороги склейки спрашиваются лишь у параметра, поданного ОДНИМ
 			 *       тире. Запись «-awh» при объявленных знаках `a`, `w` и `h` и
 			 *       объявленном же имени `awh` двусмысленна по существу, и разрешает
@@ -738,10 +811,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 			 *       прямо, тогда как склейка выведена перебором знаков. Потребителю
 			 *       же оставлены обе записи однозначные: «--awh» есть имя длинное
 			 *       непременно, а «-a -w -h» есть три признака непременно
-			 */
-			/**
-			 * Пробуем разобрать имя склейкой коротких имён: запись «-abc» есть три
-			 * признака лишь тогда, когда ВСЕ знаки её описанию известны
+			 *
 			 */
 			if(!lexeme.assigned && (lexeme.location.offset < 2) && this->_schema.cluster(lexeme.key, names)){
 				// Признак успешности укладки разобранных признаков
@@ -755,6 +825,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 				 *          «-v -v» отвечалась отказом DUPLICATE - одна и та же подача
 				 *          получала два разных ответа. Замерено 15.09.2026 аудитом,
 				 *          закреплено проверкой `Args.AClusterObeysTheDuplicateRule`
+				 *
 				 */
 				for(auto & name : names){
 					// Собираем лексему разобранного признака
@@ -786,13 +857,16 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 			 * @note Отказ называет ПРИЧИНУ - недостачу значения у знака, его
 			 *       требующего, - а не общую негодность склейки: потребителю чинить
 			 *       надо именно значение
+			 *
 			 */
 			if(!lexeme.assigned && (lexeme.location.offset < 2) && (lexeme.key.length() > 1)){
 				// Признак того, что все знаки записи известны короткими именами
 				bool lettered = true;
 				// Описание параметра, значения требующего
 				const schema_t::param_t * demanding = nullptr;
-				// Выполняем перебор всех знаков записи
+				/**
+				 * Выполняем перебор всех знаков записи
+				 */
 				for(size_t i = 0; lettered && (i < lexeme.key.length()); i++){
 					// Выполняем поиск описания по короткому имени
 					const schema_t::param_t * item = this->_schema.get(lexeme.key.at(i));
@@ -809,8 +883,19 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 				if(lettered && (demanding != nullptr)){
 					// Выполняем запоминание отказа разбора вместе с его положением
 					this->_errors.emplace_back(error_t::NO_VALUE, lexeme.location);
-					// Выводим в лог сообщение об отсутствии потребного значения
-					awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::NO_VALUE), demanding->name.c_str());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим в лог сообщение об отсутствии потребного значения
+						log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::NO_VALUE), demanding->name.c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим в лог сообщение об отсутствии потребного значения
+						log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::NO_VALUE), demanding->name.c_str());
+					#endif
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 				}
@@ -837,13 +922,16 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 				 *          склейкою не зовётся: `-name` есть законная запись длинного
 				 *          имени под одним тире, и звать её негодной склейкой значило
 				 *          бы гадать о намерении подавшего
+				 *
 				 */
 				if(!lexeme.assigned && (lexeme.location.offset < 2) && (lexeme.key.length() > 1)){
 					// Знак записи, описанию коротким именем неизвестный
 					char stranger = 0;
 					// Признак того, что хоть один знак записи описанию известен
 					bool lettered = false;
-					// Выполняем перебор всех знаков записи
+					/**
+					 * Выполняем перебор всех знаков записи
+					 */
 					for(size_t i = 0; i < lexeme.key.length(); i++){
 						// Если знак записи описанию коротким именем известен
 						if(this->_schema.get(lexeme.key.at(i)) != nullptr)
@@ -858,16 +946,38 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 					if(lettered && (stranger != 0)){
 						// Выполняем запоминание отказа разбора вместе с его положением
 						this->_errors.emplace_back(error_t::CLUSTER, lexeme.location);
-						// Выводим в лог сообщение о знаке склейки, описанию неизвестном
-						awh::log::print("Args: %s \"%c\"", awh::log::flag_t::WARNING, args::message(error_t::CLUSTER), stranger);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим в лог сообщение о знаке склейки, описанию неизвестном
+							log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::CLUSTER), stranger);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим в лог сообщение о знаке склейки, описанию неизвестном
+							log::print("Args: %s \"%c\"", log::flag_t::WARNING, args::message(error_t::CLUSTER), stranger);
+						#endif
 						// Выходим из метода, укладка отвечена отказом
 						return false;
 					}
 				}
 				// Выполняем запоминание отказа разбора вместе с его положением
 				this->_errors.emplace_back(error_t::UNKNOWN, lexeme.location);
-				// Выводим в лог сообщение об имени, описанию неизвестном
-				awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим в лог сообщение об имени, описанию неизвестном
+					log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим в лог сообщение об имени, описанию неизвестном
+					log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
+				#endif
 				// Выходим из метода, укладка отвечена отказом
 				return false;
 			}
@@ -883,8 +993,19 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 	if(lexeme.assigned && (param->value == schema_t::value_t::NONE)){
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error_t::ODD_VALUE, lexeme.location);
-		// Выводим в лог сообщение о значении, параметру не потребном
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о значении, параметру не потребном
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о значении, параметру не потребном
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
+		#endif
 		// Выходим из метода, укладка отвечена отказом
 		return false;
 	}
@@ -892,8 +1013,19 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 	if(!lexeme.assigned && (param->value == schema_t::value_t::REQUIRED)){
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error_t::NO_VALUE, lexeme.location);
-		// Выводим в лог сообщение об отсутствии потребного значения
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отсутствии потребного значения
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отсутствии потребного значения
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
+		#endif
 		// Выходим из метода, укладка отвечена отказом
 		return false;
 	}
@@ -903,8 +1035,19 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 	if(!param->multiple && (this->_origins.count(path) > 0) && (this->_origins.at(path) == source)){
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error_t::DUPLICATE, lexeme.location);
-		// Выводим в лог сообщение о повторной подаче параметра
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о повторной подаче параметра
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о повторной подаче параметра
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
+		#endif
 		// Выходим из метода, укладка отвечена отказом
 		return false;
 	}
@@ -915,7 +1058,6 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 	// Выполняем укладку выведенного значения параметра
 	return this->lay(path, this->derive(lexeme.value), source);
 }
-
 /**
  * @brief Метод очистки собранных параметров запуска
  *
@@ -930,7 +1072,6 @@ void awh::args::Args::clear() noexcept {
 	// Выполняем очистку отказов последнего разбора
 	this->_errors.clear();
 }
-
 /**
  * @brief Метод разбора набора доводов запуска
  *
@@ -961,7 +1102,6 @@ bool awh::args::Args::parse(const int32_t count, const char * items[]) noexcept 
 	// Выполняем разбор собранного набора доводов запуска
 	return this->parse(result);
 }
-
 /**
  * @brief Метод разбора набора доводов запуска широкими знаками
  *
@@ -987,12 +1127,11 @@ bool awh::args::Args::parse(const int32_t count, const wchar_t * items[]) noexce
 		// Если довод набора запуска подан
 		if(items[i] != nullptr)
 			// Добавляем довод, переведённый из широких знаков, в контейнер
-			result.emplace_back(awh::fmk::convert(items[i]));
+			result.emplace_back(fmk::convert(items[i]));
 	}
 	// Выполняем разбор собранного набора доводов запуска
 	return this->parse(result);
 }
-
 /**
  * @brief Метод разбора набора доводов запуска
  *
@@ -1001,7 +1140,11 @@ bool awh::args::Args::parse(const int32_t count, const wchar_t * items[]) noexce
  *
  */
 bool awh::args::Args::parse(const vector <string> & items) noexcept {
+	// Признак успешности укладки разобранного
+	bool result = true;
 	/**
+	 * Число отказов, накопленных ДО этого разбора
+	 *
 	 * @note Отказы здесь НЕ ОЧИЩАЮТСЯ, и это намеренно: настройки собираются из
 	 *       нескольких источников подряд - файл, набор запуска, окружение, - а
 	 *       проверяет их потребитель один раз, в конце сбора. Прежде очистка
@@ -1009,20 +1152,21 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
 	 *       отказ чтения файла настроек, случившийся ДО разбора набора запуска,
 	 *       разбором этим стирался молча. Замерено 14.09.2026 аудитом. Очистка
 	 *       отказов делается ходом `clear()` и только им
+	 *
 	 */
-	// Число отказов, накопленных ДО этого разбора
 	const size_t errors = this->_errors.size();
-	// Признак успешности укладки разобранного
-	bool result = true;
 	// Выполняем разбор набора доводов запуска
 	const bool parsed = this->_lexer.parse(items, [this, &result](const lexeme_t & lexeme) noexcept -> bool {
-		// Определяем вид разобранной лексемы
+		/**
+		 * Определяем вид разобранной лексемы
+		 */
 		switch(static_cast <uint8_t> (lexeme.type)){
 			/**
 			 * Если лексемой является именованный параметр
 			 *
 			 * @note Значение, не поданное вовсе, ложится ИСТИНОЙ: запись «--verbose»
 			 *       есть взведённый признак, а не пустая последовательность знаков
+			 *
 			 */
 			case static_cast <uint8_t> (token_t::PARAM):
 				// Выполняем укладку лексемы по описанию ожидаемых параметров
@@ -1039,8 +1183,19 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
 	}, [this](const error_t error, const location_t & location) noexcept -> bool {
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error, location);
-		// Выводим в лог сообщение об отказе разбора набора запуска
-		awh::log::print("Args: %s at argument %zu", awh::log::flag_t::WARNING, args::message(error), location.index);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отказе разбора набора запуска
+			log::debug("Args: %s at argument %zu", __PRETTY_FUNCTION__, {items.size()}, log::flag_t::WARNING, args::message(error), location.index);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отказе разбора набора запуска
+			log::print("Args: %s at argument %zu", log::flag_t::WARNING, args::message(error), location.index);
+		#endif
 		// Сообщаем, что разбор следует продолжить
 		return true;
 	});
@@ -1051,10 +1206,10 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
 	 *       при чтении файла настроек до разбора, разбор этот успешным быть не
 	 *       мешает - иначе снятие очистки отказов сделало бы всякий последующий
 	 *       разбор отказавшим навсегда
+	 *
 	 */
 	return (parsed && result && (this->_errors.size() == errors));
 }
-
 /**
  * @brief Метод разбора текстового потока
  *
@@ -1063,14 +1218,18 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
  *
  */
 bool awh::args::Args::text(const string_view text) noexcept {
-	// Отказы здесь НЕ ОЧИЩАЮТСЯ - смотри довод у разбора набора доводов запуска
-	// Число отказов, накопленных ДО этого разбора
+	/**
+	 * Отказы здесь НЕ ОЧИЩАЮТСЯ - смотри довод у разбора набора доводов запуска
+	 * Число отказов, накопленных ДО этого разбора
+	 */
 	const size_t errors = this->_errors.size();
 	// Признак успешности укладки разобранного
 	bool result = true;
 	// Выполняем разбор поданного текстового потока
 	const bool parsed = this->_lexer.parse(text, [this, &result](const lexeme_t & lexeme) noexcept -> bool {
-		// Определяем вид разобранной лексемы
+		/** 
+		 * Определяем вид разобранной лексемы
+		 */
 		switch(static_cast <uint8_t> (lexeme.type)){
 			// Если лексемой является именованный параметр
 			case static_cast <uint8_t> (token_t::PARAM):
@@ -1088,15 +1247,25 @@ bool awh::args::Args::text(const string_view text) noexcept {
 	}, [this](const error_t error, const location_t & location) noexcept -> bool {
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error, location);
-		// Выводим в лог сообщение об отказе разбора текстового потока
-		awh::log::print("Args: %s at word %zu", awh::log::flag_t::WARNING, args::message(error), location.index);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отказе разбора текстового потока
+			log::debug("Args: %s at word %zu", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, args::message(error), location.index);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отказе разбора текстового потока
+			log::print("Args: %s at word %zu", log::flag_t::WARNING, args::message(error), location.index);
+		#endif
 		// Сообщаем, что разбор следует продолжить
 		return true;
 	});
 	// Выводим результат разбора текстового потока: судятся отказы ЭТОГО разбора
 	return (parsed && result && (this->_errors.size() == errors));
 }
-
 /**
  * @brief Метод сбора переменных окружения
  *
@@ -1106,8 +1275,19 @@ bool awh::args::Args::text(const string_view text) noexcept {
 bool awh::args::Args::env() noexcept {
 	// Если начало имён переменных окружения не установлено
 	if(this->_prefix.empty()){
-		// Выводим в лог сообщение об отсутствии начала имён переменных
-		awh::log::print("Args: environment prefix is not set", awh::log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отсутствии начала имён переменных
+			log::debug("Args: environment prefix is not set", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отсутствии начала имён переменных
+			log::print("Args: environment prefix is not set", log::flag_t::WARNING);
+		#endif
 		// Выходим из метода, отбирать переменные не по чему
 		return false;
 	}
@@ -1132,13 +1312,16 @@ bool awh::args::Args::env() noexcept {
 	 *       постоянство через `const_cast` и правит ту же самую запись
 	 *       (`fmk.cpp:3110`). Замерено 13.09.2026 и доложено по принадлежности. Оттого
 	 *       уберечь поле приведением довода к постоянной ссылке НЕЛЬЗЯ
+	 *
 	 */
 	string prefix = this->_prefix;
 	// Выполняем перевод начала имён переменных окружения в верхний регистр
-	awh::fmk::transform(prefix, awh::fmk::transform_t::UPPER_CASE);
+	fmk::transform(prefix, fmk::transform_t::UPPER_CASE);
 	// Признак успешности укладки собранного
 	bool result = true;
-	// Выполняем перебор всего набора переменных окружения
+	/**
+	 * Выполняем перебор всего набора переменных окружения
+	 */
 	for(size_t i = 0; items[i] != nullptr; i++){
 		// Получаем запись очередной переменной окружения
 		const string_view record(items[i]);
@@ -1160,7 +1343,7 @@ bool awh::args::Args::env() noexcept {
 		// Получаем остаток имени переменной без начала и подчёркивания за ним
 		string suffix(name.substr(prefix.length() + 1));
 		// Выполняем перевод остатка имени переменной в нижний регистр
-		awh::fmk::transform(suffix, awh::fmk::transform_t::LOWER_CASE);
+		fmk::transform(suffix, fmk::transform_t::LOWER_CASE);
 		/**
 		 * Собираемый путь оси хранения
 		 *
@@ -1173,11 +1356,14 @@ bool awh::args::Args::env() noexcept {
 		 *          хранения негодна, и укладка отвергала её молча, тогда как сам
 		 *          сбор отвечал успехом. Замерено 16.09.2026 аудитом, закреплено
 		 *          проверкой `Args.EnvironmentNamesAreEscapedForTheStorageAxis`
+		 *
 		 */
 		string path = "";
 		// Выполняем резервирование памяти под собираемый путь
 		path.reserve(suffix.length());
-		// Выполняем перебор всех знаков остатка имени переменной
+		/**
+		 * Выполняем перебор всех знаков остатка имени переменной
+		 */
 		for(auto & letter : suffix){
 			// Если знаком является подчёркивание
 			if(letter == '_')
@@ -1196,7 +1382,6 @@ bool awh::args::Args::env() noexcept {
 	// Выводим результат сбора переменных окружения
 	return result;
 }
-
 /**
  * @brief Метод установки значения по умолчанию
  *
@@ -1209,7 +1394,6 @@ bool awh::args::Args::fallback(const string_view key, const string_view value) n
 	// Выполняем укладку значения по умолчанию
 	return this->lay(this->route(key), this->derive(value), source_t::DEFAULT);
 }
-
 /**
  * @brief Метод извлечения описания ожидаемых параметров запуска
  *
@@ -1220,7 +1404,6 @@ auto awh::args::Args::schema() noexcept -> schema_t & {
 	// Выводим описание ожидаемых параметров запуска
 	return this->_schema;
 }
-
 /**
  * @brief Метод сборки справки о применении
  *
@@ -1234,10 +1417,10 @@ string awh::args::Args::usage() const noexcept {
 	 * @note Признак дозволенности повтора передаётся справке настройками сбора:
 	 *       настройка эта описание параметра СТАРШЕ, и справка, её не знающая,
 	 *       обещала бы повтор там, где сбор повторов массивом не собирает
+	 *
 	 */
 	return this->_schema.usage(this->_settings.multiple);
 }
-
 /**
  * @brief Метод проверки собранного по описанию ожидаемых
  *
@@ -1251,7 +1434,9 @@ bool awh::args::Args::verify() noexcept {
 		return true;
 	// Признак успешности проверки собранного
 	bool result = true;
-	// Выполняем перебор всех описаний ожидаемых параметров
+	/**
+	 * Выполняем перебор всех описаний ожидаемых параметров
+	 */
 	for(auto & param : this->_schema.params()){
 		// Выполняем перевод длинного имени параметра в путь оси хранения
 		const string & path = this->route(param.name);
@@ -1270,8 +1455,19 @@ bool awh::args::Args::verify() noexcept {
 		if(param.required){
 			// Выполняем запоминание отказа проверки
 			this->_errors.emplace_back(error_t::REQUIRED, location_t());
-			// Выводим в лог сообщение об отсутствии обязательного параметра
-			awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::REQUIRED), param.name.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим в лог сообщение об отсутствии обязательного параметра
+				log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, args::message(error_t::REQUIRED), param.name.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим в лог сообщение об отсутствии обязательного параметра
+				log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::REQUIRED), param.name.c_str());
+			#endif
 			// Отмечаем, что проверка собранного отвечена отказом
 			result = false;
 		}
@@ -1279,7 +1475,6 @@ bool awh::args::Args::verify() noexcept {
 	// Выводим результат проверки собранного
 	return result;
 }
-
 /**
  * @brief Метод разбора записи настроек кодеком
  *
@@ -1301,8 +1496,8 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
 	 * Если записью настроек оказалась разметка
 	 *
 	 * @details У документа разметки ровно один корневой узел, и узел этот есть
-	 * ОБНОС записи, а не настройка: имя ему даётся снаружи и означает лишь то, что
-	 * безымянным корень быть не может. Прочие четыре вида обноса не требуют вовсе
+	 *          ОБНОС записи, а не настройка: имя ему даётся снаружи и означает лишь то, что
+	 *          безымянным корень быть не может. Прочие четыре вида обноса не требуют вовсе.
 	 *
 	 * @warning Без снятия обноса настройка `port` из записи разметки ложилась бы
 	 *          путём `config.port` и доводом запуска `--port` НЕ перекрывалась бы:
@@ -1312,6 +1507,7 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
 	 *
 	 * @note Обнос снимается лишь при ОДНОМ поле верхнего уровня: запись с двумя
 	 *       корнями разметке негодна вовсе, и снимать там нечего
+	 *
 	 */
 	if((format == codec::Bridge::format_t::XML) && value.is(codec::abc::type_t::MAP) && (value.size() == 1)){
 		// Извлекаемое имя единственного поля дерева
@@ -1333,6 +1529,7 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
 		 *       снятие тут неизбежно: запись `<config x="1"/>` есть и обнос над
 		 *       полем `x`, и поле `config` с полем `x` внутри. Двусмысленность эта
 		 *       принадлежит самой разметке
+		 *
 		 */
 		if(value.key(0).value(name) && (name == this->_bridge.settings().root) && value[name].is(codec::abc::type_t::MAP))
 			// Выполняем слияние содержимого корневого узла с деревом настроек
@@ -1344,12 +1541,12 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
 	 * @note Взводится лишь у видов записи, своей системы видов не имеющих: у INI и
 	 *       разметки всякое значение есть текст, и словарь модуля там обязан быть
 	 *       тем же, что и у довода запуска
+	 *
 	 */
 	const bool derive = ((format == codec::Bridge::format_t::INI) || (format == codec::Bridge::format_t::XML));
 	// Выполняем слияние разобранного дерева с деревом настроек
 	return this->merge(value, "", source_t::FILE, derive);
 }
-
 /**
  * @brief Метод чтения файла настроек
  *
@@ -1362,8 +1559,19 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
 	if(this->_fs.type(filename) != fs_t::type_t::FILE){
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-		// Выводим в лог сообщение об отсутствии файла настроек
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отсутствии файла настроек
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (format)}, log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отсутствии файла настроек
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		#endif
 		// Выходим из метода, читать нечего
 		return false;
 	}
@@ -1386,24 +1594,32 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
 	 *       запись отдаётся теперь кодеку, и отказ оглашает он сам кодом
 	 *       `CODEC` - тем же, каким оглашается всякая иная негодная запись.
 	 *       Замерено 14.09.2026 аудитом
+	 *
 	 */
 	if(text.empty() && (this->_fs.size(filename) > 0)){
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-		// Выводим в лог сообщение об отказе чтения файла настроек
-		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отказе чтения файла настроек
+			log::debug("Args: %s \"%s\"", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (format)}, log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отказе чтения файла настроек
+			log::print("Args: %s \"%s\"", log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		#endif
 		// Выходим из метода, читать нечего
 		return false;
 	}
 	// Выполняем разбор прочитанной записи настроек
 	return this->config(text, format);
 }
-
 /**
  * @brief Метод чтения файла настроек с выводом вида записи из его имени
- *
- * @param filename путь к файлу настроек
- * @return         результат чтения
  *
  * @warning Вид записи берётся РАСШИРЕНИЕМ имени, а не догадкою по содержимому:
  *          запись, годной двум видам разом, догадка выбирала бы молча, и
@@ -1417,6 +1633,9 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
  * @note Расширение `.conf` отдано наречию INI, а не TOML: у систем POSIX им
  *       зовутся именно файлы вида «ключ = значение» с разделами
  *
+ * @param filename путь к файлу настроек
+ * @return         результат чтения
+ *
  */
 bool awh::args::Args::filename(const string & filename) noexcept {
 	// Выполняем поиск расширения имени файла настроек
@@ -1425,15 +1644,26 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 	if((pos == string::npos) || ((pos + 1) >= filename.length())){
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-		// Выводим в лог сообщение об отсутствии расширения имени
-		awh::log::print("Args: format of the settings file \"%s\" is not derivable from its name", awh::log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отсутствии расширения имени
+			log::debug("Args: format of the settings file \"%s\" is not derivable from its name", __PRETTY_FUNCTION__, {filename}, log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отсутствии расширения имени
+			log::print("Args: format of the settings file \"%s\" is not derivable from its name", log::flag_t::WARNING, filename.c_str());
+		#endif
 		// Выходим из метода, читать нечего
 		return false;
 	}
 	// Извлекаемое расширение имени файла настроек
 	string extension = filename.substr(pos + 1);
 	// Выполняем перевод расширения в нижний регистр
-	awh::fmk::transform(extension, awh::fmk::transform_t::LOWER_CASE);
+	fmk::transform(extension, fmk::transform_t::LOWER_CASE);
 	/**
 	 * Если расширение означает запись контейнера ABC
 	 *
@@ -1442,6 +1672,7 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 	 *          отвечалось отказом «unknown format», тогда как всякий иной вид записи
 	 *          по имени читался. Потребителю оставалось звать чтение с указанием
 	 *          вида - о чём ему было знать неоткуда. Замерено 16.09.2026 аудитом
+	 *
 	 */
 	if(extension.compare("abc") == 0)
 		// Выполняем чтение файла настроек записью контейнера ABC
@@ -1468,12 +1699,22 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 		return this->filename(filename, codec::Bridge::format_t::XML);
 	// Выполняем запоминание отказа чтения файла настроек
 	this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-	// Выводим в лог сообщение о неведомом расширении имени
-	awh::log::print("Args: unknown format \"%s\" of the settings file \"%s\"", awh::log::flag_t::WARNING, extension.c_str(), filename.c_str());
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Выводим в лог сообщение об отсутствии расширения имени
+		log::debug("Args: unknown format \"%s\" of the settings file \"%s\"", __PRETTY_FUNCTION__, {filename}, log::flag_t::WARNING, extension.c_str(), filename.c_str());
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Выводим в лог сообщение о неведомом расширении имени
+		log::print("Args: unknown format \"%s\" of the settings file \"%s\"", log::flag_t::WARNING, extension.c_str(), filename.c_str());
+	#endif
 	// Выходим из метода, читать нечего
 	return false;
 }
-
 /**
  * @brief Метод выдачи дерева настроек записью кодека
  *
@@ -1492,7 +1733,6 @@ bool awh::args::Args::dump(string & result, const codec::Bridge::format_t format
 	// Сообщаем, что выдача записи настроек выполнена
 	return true;
 }
-
 /**
  * @brief Метод записи дерева настроек в файл
  *
@@ -1518,6 +1758,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 *          а не своим переименованием: ход этот у MS Windows зовёт `MoveFileExW`
 	 *          с заменою на месте, а у прочих систем `rename()`, и оба заменяют
 	 *          целевой файл ОДНИМ действием
+	 *
 	 */
 	const string temporary = (filename + ".awh-tmp");
 	/**
@@ -1535,6 +1776,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 * @note У систем POSIX усечение ход делает сам - поток открывается там без
 	 *       разбора смещения, - но снос обязан стоять и там: расхождение это есть
 	 *       свойство каркаса, а не наше, и опираться на него нельзя
+	 *
 	 */
 	static_cast <void> (this->_fs.unlink(temporary));
 	/**
@@ -1545,14 +1787,26 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 *       сохранение в заведомо негодный путь отвечало УСПЕХОМ - обход стоял
 	 *       поверкой вида и величины записанного. Ныне ход отвечает сам, и успехом
 	 *       считает запись ВСЕГО буфера, а частичную - отказом; обход снят
+	 *
 	 */
 	if(!this->_fs.write(temporary, text.data(), text.size())){
 		// Выполняем снос временного файла записи
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-		// Выводим в лог сообщение об отказе записи файла настроек
-		awh::log::print("Args: settings are not written to \"%s\"", awh::log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отказе записи файла настроек
+			log::debug("Args: settings are not written to \"%s\"", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (format)}, log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отказе записи файла настроек
+			log::print("Args: settings are not written to \"%s\"", log::flag_t::WARNING, filename.c_str());
+		#endif
 		// Выходим из метода, запись отвечена отказом
 		return false;
 	}
@@ -1569,14 +1823,26 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 	 * @note Отказ «носитель сброса не держит» отказом у каркаса не считается, и
 	 *       ложью такой ход не отвечает: у канала сбрасывать нечего, а запись мимо
 	 *       файла не ушла
+	 *
 	 */
 	if(!this->_fs.flush(temporary)){
 		// Выполняем снос временного файла записи
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-		// Выводим в лог сообщение об отказе сброса записи на носитель
-		awh::log::print("Args: settings are not flushed into \"%s\"", awh::log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отказе сброса записи на носитель
+			log::debug("Args: settings are not flushed into \"%s\"", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (format)}, log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отказе сброса записи на носитель
+			log::print("Args: settings are not flushed into \"%s\"", log::flag_t::WARNING, filename.c_str());
+		#endif
 		// Выходим из метода, запись отвечена отказом
 		return false;
 	}
@@ -1586,15 +1852,25 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
-		// Выводим в лог сообщение об отказе подмены файла настроек
-		awh::log::print("Args: settings are not moved into \"%s\"", awh::log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение об отказе подмены файла настроек
+			log::debug("Args: settings are not moved into \"%s\"", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (format)}, log::flag_t::WARNING, filename.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об отказе подмены файла настроек
+			log::print("Args: settings are not moved into \"%s\"", log::flag_t::WARNING, filename.c_str());
+		#endif
 		// Выходим из метода, запись отвечена отказом
 		return false;
 	}
 	// Сообщаем, что запись дерева настроек выполнена
 	return true;
 }
-
 /**
  * @brief Метод извлечения моста между контейнером ABC и текстовыми кодеками
  *
@@ -1605,7 +1881,6 @@ awh::codec::bridge_t & awh::args::Args::bridge() noexcept {
 	// Выводим мост между контейнером ABC и текстовыми кодеками
 	return this->_bridge;
 }
-
 /**
  * @brief Метод проверки наличия параметра
  *
@@ -1617,7 +1892,6 @@ bool awh::args::Args::has(const string_view key) const noexcept {
 	// Выводим признак наличия значения по пути оси хранения
 	return this->_root.at(this->route(key)).valid();
 }
-
 /**
  * @brief Метод извлечения источника значения параметра
  *
@@ -1635,7 +1909,6 @@ auto awh::args::Args::source(const string_view key) const noexcept -> source_t {
 	// Выводим неопределённый источник значения
 	return source_t::NONE;
 }
-
 /**
  * @brief Метод извлечения числа значений вместимого параметра
  *
@@ -1660,19 +1933,24 @@ size_t awh::args::Args::size(const string_view key) const noexcept {
 	 *       же значении давало одну запись: потребитель, перебирающий значения
 	 *       счётом от `size()`, одиночное значение пропускал целиком. Замерено
 	 *       14.09.2026 аудитом
+	 *
 	 */
 	return (value.valid() ? 1 : 0);
 }
-
 /**
  * @brief Шаблон метода извлечения значения параметра
  *
  * @tparam T тип извлекаемого значения
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения значения параметра
+ *
  * @param key имя параметра с разделителем звеньев
  * @return    извлечённое значение параметра
  *
  */
-template <typename T>
 T awh::args::Args::get(const string_view key) const noexcept {
 	// Получаем значение по пути оси хранения
 	const codec::abc::value_t & value = this->_root.at(this->route(key));
@@ -1697,6 +1975,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 		 * @note Пустое значение (`null`) записью НЕ выражается намеренно: оно значит
 		 *       «значения нет», и запись «null» здесь означала бы обратное - что
 		 *       значение есть и равно этому слову
+		 *
 		 */
 		bool flag = false;
 		// Если значение уложено логическим
@@ -1710,7 +1989,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 			// Выполняем извлечение числа дробного
 			if(value.value(real))
 				// Выводим запись числа дробного без указателя степени
-				return awh::fmk::noexp(real);
+				return fmk::noexp(real);
 		}
 		// Если значение уложено целым со знаком
 		if(value.is(codec::abc::type_t::INT8) || value.is(codec::abc::type_t::INT16) ||
@@ -1720,7 +1999,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 			// Выполняем извлечение целого со знаком
 			if(value.value(number))
 				// Выводим запись целого со знаком
-				return std::to_string(number);
+				return ::to_string(number);
 		}
 		// Если значение уложено целым без знака
 		if(value.is(codec::abc::type_t::UINT8) || value.is(codec::abc::type_t::UINT16) ||
@@ -1730,10 +2009,10 @@ T awh::args::Args::get(const string_view key) const noexcept {
 			// Выполняем извлечение целого без знака
 			if(value.value(number))
 				// Выводим запись целого без знака
-				return std::to_string(number);
+				return ::to_string(number);
 		}
 		// Выводим пустую последовательность знаков
-		return string("");
+		return "";
 	// Если извлекается логическое значение
 	} else if constexpr(is_same <T, bool>::value) {
 		// Извлекаемое логическое значение
@@ -1751,7 +2030,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 		// Выполняем извлечение последовательности знаков
 		if(value.value(text))
 			// Выводим признак совпадения записи с истиной
-			return (awh::fmk::compare(text, "true") || awh::fmk::compare(text, "yes") || awh::fmk::compare(text, "on") || awh::fmk::compare(text, "1"));
+			return (fmk::compare(text, "true") || fmk::compare(text, "yes") || fmk::compare(text, "on") || fmk::compare(text, "1"));
 		// Выводим логическое значение ложью
 		return false;
 	// Если извлекается число
@@ -1796,21 +2075,40 @@ T awh::args::Args::get(const string_view key) const noexcept {
 		 */
 		if(value.value(text))
 			// Выводим число, разобранное из последовательности знаков
-			return awh::fmk::atoi <T> (text);
+			return fmk::atoi <T> (text);
 		// Выводим число нулём
 		return static_cast <T> (0);
 	}
 }
-
+/**
+ * Выполняем объявление извлечений всех поддержанных видов
+ */
+template bool awh::args::Args::get <bool> (const string_view) const noexcept;
+template int8_t awh::args::Args::get <int8_t> (const string_view) const noexcept;
+template uint8_t awh::args::Args::get <uint8_t> (const string_view) const noexcept;
+template int16_t awh::args::Args::get <int16_t> (const string_view) const noexcept;
+template uint16_t awh::args::Args::get <uint16_t> (const string_view) const noexcept;
+template int32_t awh::args::Args::get <int32_t> (const string_view) const noexcept;
+template uint32_t awh::args::Args::get <uint32_t> (const string_view) const noexcept;
+template int64_t awh::args::Args::get <int64_t> (const string_view) const noexcept;
+template uint64_t awh::args::Args::get <uint64_t> (const string_view) const noexcept;
+template float awh::args::Args::get <float> (const string_view) const noexcept;
+template double awh::args::Args::get <double> (const string_view) const noexcept;
+template string awh::args::Args::get <string> (const string_view) const noexcept;
 /**
  * @brief Шаблон метода извлечения значений вместимого параметра
  *
  * @tparam T тип извлекаемых значений
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод извлечения значений вместимого параметра
+ *
  * @param key имя параметра с разделителем звеньев
  * @return    извлечённые значения вместимого
  *
  */
-template <typename T>
 vector <T> awh::args::Args::arr(const string_view key) const noexcept {
 	// Контейнер извлечённых значений вместимого
 	vector <T> result;
@@ -1833,147 +2131,15 @@ vector <T> awh::args::Args::arr(const string_view key) const noexcept {
 	}
 	// Выполняем резервирование памяти под извлекаемые значения
 	result.reserve(value.size());
-	// Выполняем перебор всех значений вместимого
+	/**
+	 * Выполняем перебор всех значений вместимого
+	 */
 	for(size_t i = 0; i < value.size(); i++)
 		// Добавляем извлечённое значение вместимого в контейнер
 		result.push_back(this->get <T> (string(key) + this->_settings.delimiter + to_string(i)));
 	// Выводим контейнер извлечённых значений вместимого
 	return result;
 }
-
-/**
- * @brief Метод извлечения позиционных доводов набора запуска
- *
- * @return позиционные доводы в порядке их встречи
- *
- */
-const vector <string> & awh::args::Args::operands() const noexcept {
-	// Выводим позиционные доводы набора запуска
-	return this->_operands;
-}
-
-/**
- * @brief Метод извлечения дерева собранных значений настроек
- *
- * @return дерево собранных значений настроек
- *
- */
-const awh::codec::abc::value_t & awh::args::Args::root() const noexcept {
-	// Выводим дерево собранных значений настроек
-	return this->_root;
-}
-
-/**
- * @brief Метод извлечения отказов последнего разбора
- *
- * @return отказы, случившиеся при последнем разборе
- *
- */
-auto awh::args::Args::errors() const noexcept -> const vector <pair <error_t, location_t>> & {
-	// Выводим отказы последнего разбора
-	return this->_errors;
-}
-
-/**
- * @brief Метод извлечения начала имён переменных окружения
- *
- * @return начало имён переменных окружения
- *
- */
-const string & awh::args::Args::prefix() const noexcept {
-	// Выводим начало имён переменных окружения
-	return this->_prefix;
-}
-
-/**
- * @brief Метод установки начала имён переменных окружения
- *
- * @param prefix начало имён переменных окружения
- *
- */
-void awh::args::Args::prefix(const string_view prefix) noexcept {
-	// Устанавливаем начало имён переменных окружения
-	this->_prefix.assign(prefix);
-}
-
-/**
- * @brief Метод извлечения настроек сбора параметров запуска
- *
- * @return настройки сбора параметров запуска
- *
- */
-auto awh::args::Args::settings() const noexcept -> const settings_t & {
-	// Выводим настройки сбора параметров запуска
-	return this->_settings;
-}
-
-/**
- * @brief Метод установки настроек сбора параметров запуска
- *
- * @param settings настройки сбора параметров запуска
- *
- */
-void awh::args::Args::settings(const settings_t & settings) noexcept {
-	// Устанавливаем настройки сбора параметров запуска
-	this->_settings = settings;
-}
-
-/**
- * @brief Метод извлечения настроек разбора параметров
- *
- * @return настройки разбора параметров
- *
- */
-auto awh::args::Args::lexing() const noexcept -> const lexer_t::settings_t & {
-	// Выводим настройки разбора параметров
-	return this->_lexer.settings();
-}
-
-/**
- * @brief Метод установки настроек разбора параметров
- *
- * @param settings настройки разбора параметров
- *
- */
-void awh::args::Args::lexing(const lexer_t::settings_t & settings) noexcept {
-	// Устанавливаем настройки разбора параметров
-	this->_lexer.settings(settings);
-}
-
-/**
- * @brief Конструктор
- *
- */
-awh::args::Args::Args() noexcept :
- _schema(), _prefix{""}, _lexer(), _bridge(), _fs(),
- _root(codec::abc::kind_t::MAP) {
-	/**
-	 * @note Дерево настроек заводится БЕЗ фреймворка и журнала, и это не недосмотр:
-	 *       значение ABC берёт их лишь на двух своих ходах - разборе и выдаче, - а
-	 *       модуль этот ни того ни другого у дерева не зовёт. Перевод в текст и
-	 *       обратно ведёт мост, у которого оба объекта свои. Понадобится дереву
-	 *       разбор либо выдача - оба объекта обязаны прийти КОНСТРУКТОРОМ значения,
-	 *       а не назначателем: назначатель метил бы один узел, тогда как дети и
-	 *       копии его не наследуют
-	 */
-}
-
-/**
- * Выполняем объявление извлечений всех поддержанных видов
- */
-template bool awh::args::Args::get <bool> (const string_view) const noexcept;
-template int8_t awh::args::Args::get <int8_t> (const string_view) const noexcept;
-template uint8_t awh::args::Args::get <uint8_t> (const string_view) const noexcept;
-template int16_t awh::args::Args::get <int16_t> (const string_view) const noexcept;
-template uint16_t awh::args::Args::get <uint16_t> (const string_view) const noexcept;
-template int32_t awh::args::Args::get <int32_t> (const string_view) const noexcept;
-template uint32_t awh::args::Args::get <uint32_t> (const string_view) const noexcept;
-template int64_t awh::args::Args::get <int64_t> (const string_view) const noexcept;
-template uint64_t awh::args::Args::get <uint64_t> (const string_view) const noexcept;
-template float awh::args::Args::get <float> (const string_view) const noexcept;
-template double awh::args::Args::get <double> (const string_view) const noexcept;
-template std::string awh::args::Args::get <std::string> (const string_view) const noexcept;
-
 /**
  * Выполняем объявление извлечений вместимого всех поддержанных видов
  */
@@ -1988,4 +2154,110 @@ template vector <int64_t> awh::args::Args::arr <int64_t> (const string_view) con
 template vector <uint64_t> awh::args::Args::arr <uint64_t> (const string_view) const noexcept;
 template vector <float> awh::args::Args::arr <float> (const string_view) const noexcept;
 template vector <double> awh::args::Args::arr <double> (const string_view) const noexcept;
-template vector <std::string> awh::args::Args::arr <std::string> (const string_view) const noexcept;
+template vector <string> awh::args::Args::arr <string> (const string_view) const noexcept;
+/**
+ * @brief Метод извлечения позиционных доводов набора запуска
+ *
+ * @return позиционные доводы в порядке их встречи
+ *
+ */
+const vector <string> & awh::args::Args::operands() const noexcept {
+	// Выводим позиционные доводы набора запуска
+	return this->_operands;
+}
+/**
+ * @brief Метод извлечения дерева собранных значений настроек
+ *
+ * @return дерево собранных значений настроек
+ *
+ */
+const awh::codec::abc::value_t & awh::args::Args::root() const noexcept {
+	// Выводим дерево собранных значений настроек
+	return this->_root;
+}
+/**
+ * @brief Метод извлечения отказов последнего разбора
+ *
+ * @return отказы, случившиеся при последнем разборе
+ *
+ */
+auto awh::args::Args::errors() const noexcept -> const vector <pair <error_t, location_t>> & {
+	// Выводим отказы последнего разбора
+	return this->_errors;
+}
+/**
+ * @brief Метод извлечения начала имён переменных окружения
+ *
+ * @return начало имён переменных окружения
+ *
+ */
+const string & awh::args::Args::prefix() const noexcept {
+	// Выводим начало имён переменных окружения
+	return this->_prefix;
+}
+/**
+ * @brief Метод установки начала имён переменных окружения
+ *
+ * @param prefix начало имён переменных окружения
+ *
+ */
+void awh::args::Args::prefix(const string_view prefix) noexcept {
+	// Устанавливаем начало имён переменных окружения
+	this->_prefix.assign(prefix);
+}
+/**
+ * @brief Метод извлечения настроек сбора параметров запуска
+ *
+ * @return настройки сбора параметров запуска
+ *
+ */
+auto awh::args::Args::settings() const noexcept -> const settings_t & {
+	// Выводим настройки сбора параметров запуска
+	return this->_settings;
+}
+/**
+ * @brief Метод установки настроек сбора параметров запуска
+ *
+ * @param settings настройки сбора параметров запуска
+ *
+ */
+void awh::args::Args::settings(const settings_t & settings) noexcept {
+	// Устанавливаем настройки сбора параметров запуска
+	this->_settings = settings;
+}
+/**
+ * @brief Метод извлечения настроек разбора параметров
+ *
+ * @return настройки разбора параметров
+ *
+ */
+auto awh::args::Args::lexing() const noexcept -> const lexer_t::settings_t & {
+	// Выводим настройки разбора параметров
+	return this->_lexer.settings();
+}
+/**
+ * @brief Метод установки настроек разбора параметров
+ *
+ * @param settings настройки разбора параметров
+ *
+ */
+void awh::args::Args::lexing(const lexer_t::settings_t & settings) noexcept {
+	// Устанавливаем настройки разбора параметров
+	this->_lexer.settings(settings);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::args::Args::Args() noexcept : _prefix{""}, _root(codec::abc::kind_t::MAP) {
+	/**
+	 * @note Дерево настроек заводится БЕЗ фреймворка и журнала, и это не недосмотр:
+	 *       значение ABC берёт их лишь на двух своих ходах - разборе и выдаче, - а
+	 *       модуль этот ни того ни другого у дерева не зовёт. Перевод в текст и
+	 *       обратно ведёт мост, у которого оба объекта свои. Понадобится дереву
+	 *       разбор либо выдача - оба объекта обязаны прийти КОНСТРУКТОРОМ значения,
+	 *       а не назначателем: назначатель метил бы один узел, тогда как дети и
+	 *       копии его не наследуют
+	 *
+	 */
+}
