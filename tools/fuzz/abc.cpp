@@ -1281,15 +1281,17 @@ namespace {
 		 */
 		for(uint8_t i = 0; i < 3; i++){
 			// Настройки разбора записи
-			abc::reader_t::settings_t settings;
+			abc::document_t::settings_t settings;
 			// Выполняем установку поверяемого правила выбора значения
-			settings.duplicates = rules[i];
+			settings.reader.duplicates = rules[i];
 			// Дерево документа
 			abc::document_t document;
+			// Устанавливаем настройки разбора документу
+			document.settings(settings);
 			/**
 			 * Если сборка дерева документа отвечена отказом
 			 */
-			if(!document.parse(buffer.data(), buffer.size(), settings)){
+			if(!document.parse(buffer.data(), buffer.size())){
 				// Выводим сообщение об отказе сборки дерева
 				::fprintf(stderr, "abc fuzz: duplicate rule %u refused the tree: %s\n",
 				 static_cast <unsigned> (i), abc::message(document.error()));
@@ -1337,10 +1339,12 @@ namespace {
 			}
 			// Дерево документа, собранное из пересобранной записи
 			abc::document_t repeated;
+			// Устанавливаем настройки разбора повторному дереву
+			repeated.settings(settings);
 			/**
 			 * Если пересобранная запись более не разбирается
 			 */
-			if(!repeated.parse(rebuild.record().data(), rebuild.record().size(), settings)){
+			if(!repeated.parse(rebuild.record().data(), rebuild.record().size())){
 				// Выводим сообщение об отказе разбора пересобранной записи
 				::fprintf(stderr, "abc fuzz: duplicate rule %u broke the reread: %s\n",
 				 static_cast <unsigned> (i), abc::message(repeated.error()));
@@ -1711,10 +1715,16 @@ namespace {
 	void tree(const vector <uint8_t> & buffer) noexcept {
 		// Дерево документа
 		abc::document_t document;
+		// Настройки разбора, документу назначенные
+		abc::document_t::settings_t parsing;
+		// Устанавливаем настройки разбора, поверке назначенные
+		parsing.reader = ::settings();
+		// Выполняем установку настроек разбора документу
+		document.settings(parsing);
 		/**
 		 * Если разобрать запись в дерево документа не вышло
 		 */
-		if(!document.parse(buffer.data(), buffer.size(), ::settings()))
+		if(!document.parse(buffer.data(), buffer.size()))
 			// Прекращаем сборку дерева документа
 			return;
 		// Выполняем увеличение количества собранных деревьев

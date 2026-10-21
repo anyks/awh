@@ -153,7 +153,7 @@ static void render(const codec::yaml::value_t & value, string & result) noexcept
 			/**
 			 * Если значение пустым является
 			 */
-			if(value.is(codec::yaml::type_t::NUL))
+			if(value.is(codec::yaml::type_t::NIL))
 				// Выполняем запись пустого значения
 				result.append("null");
 			/**

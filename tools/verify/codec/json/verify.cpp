@@ -100,8 +100,8 @@ namespace {
 	static bool digest(const string & text, const size_t chunk, string & output) noexcept {
 		// Объект документа
 		json::document_t doc;
-		// Получаем настройки документа
-		json::document_t::settings_t settings = doc.settings();
+		// Создаём настройки документа
+		json::document_t::settings_t settings;
 		/**
 		 * Дозволяем повторяющиеся имена полей объекта
 		 *

@@ -1612,10 +1612,16 @@ namespace {
 	bool tree(const string & text, const xml::reader_t::settings_t & options, mt19937 & engine) noexcept {
 		// Создаём дерево разметки
 		xml::document_t document;
+		// Настройки разбора разметки, документу назначенные
+		xml::document_t::settings_t dialect;
+		// Устанавливаем настройки разбора, поверке назначенные
+		dialect.reader = options;
+		// Выполняем установку настроек разбора документу
+		document.settings(dialect);
 		// Выполняем учёт собранного дерева разметки
 		totals.trees++;
 		// Если разбор текста разметки не удался, то проверку прекращаем
-		if(!document.parse(text, options))
+		if(!document.parse(text))
 			// Выводим результат проверки дерева разметки
 			return true;
 		// Выполняем обход всего собранного дерева разметки
@@ -1695,10 +1701,16 @@ namespace {
 			return true;
 		// Создаём дерево разметки для повторного разбора
 		xml::document_t repeat;
+		// Настройки разбора для повторного дерева
+		xml::document_t::settings_t reparse;
+		// Устанавливаем настройки разбора, поверке назначенные
+		reparse.reader = relaxed;
+		// Выполняем установку настроек разбора повторному дереву
+		repeat.settings(reparse);
 		/**
 		 * Если повторный разбор перезаписанного текста не удался
 		 */
-		if(!repeat.parse(first, relaxed)){
+		if(!repeat.parse(first)){
 			// Выводим сообщение об отказе повторного разбора перезаписанного текста
 			::fprintf(stderr, "xml fuzz: reparse failed, error=%u\n", static_cast <uint32_t> (repeat.error()));
 			// Выводим исходный текст разметки
@@ -1821,10 +1833,16 @@ namespace {
 			{
 				// Создаём дерево разметки для разбора записанного поддерева
 				xml::document_t subtree;
+				// Настройки разбора для дерева поддерева
+				xml::document_t::settings_t subparse;
+				// Устанавливаем настройки разбора, поверке назначенные
+				subparse.reader = relaxed;
+				// Выполняем установку настроек разбора дереву поддерева
+				subtree.settings(subparse);
 				/**
 				 * Если разбор записанного поддерева не удался
 				 */
-				if(!subtree.parse(writer.text(), relaxed)){
+				if(!subtree.parse(writer.text())){
 					// Выводим сообщение об отказе разбора записанного поддерева
 					::fprintf(stderr, "xml fuzz: subtree reparse failed, error=%u\n", static_cast <uint32_t> (subtree.error()));
 					// Выводим исходный текст разметки
@@ -1939,10 +1957,16 @@ namespace {
 				{
 					// Дерево разметки, принимающее прививку
 					xml::document_t host;
+					// Настройки разбора для принимающего дерева
+					xml::document_t::settings_t hostparse;
+					// Устанавливаем настройки разбора, поверке назначенные
+					hostparse.reader = relaxed;
+					// Выполняем установку настроек разбора принимающему дереву
+					host.settings(hostparse);
 					/**
 					 * Если заведение принимающего прививку дерева удалось
 					 */
-					if(host.parse("<host><graft/></host>", relaxed)){
+					if(host.parse("<host><graft/></host>")){
 						/**
 						 * Если прививка значения в дерево разметки не удалась
 						 */
@@ -1990,6 +2014,12 @@ namespace {
 								const string built = scratch.dump();
 								// Дерево разметки для обратного разбора построенного текста
 								xml::document_t back;
+								// Настройки разбора для обратного дерева
+								xml::document_t::settings_t backparse;
+								// Устанавливаем настройки разбора, поверке назначенные
+								backparse.reader = relaxed;
+								// Выполняем установку настроек разбора обратному дереву
+								back.settings(backparse);
 								/**
 								 * Если построенный текст разметки разбору не подлежит
 								 *
@@ -1997,7 +2027,7 @@ namespace {
 								 *       могло бы записываться текстом негодным, а изъян такой
 								 *       виден лишь обратным разбором
 								 */
-								if(!back.parse(built, relaxed) || (back.dump() != built)){
+								if(!back.parse(built) || (back.dump() != built)){
 									// Выводим сообщение о расхождении круга построения
 									::fprintf(stderr, "xml fuzz: scratch round trip diverged\n  построено [%s]\n  повтор [%s]\n", built.c_str(), back.dump().c_str());
 									// Выводим исходный текст разметки
@@ -2124,10 +2154,16 @@ namespace {
 				if(!record.empty() && !::adjacent(value)){
 					// Создаём дерево разметки для разбора записанного значения
 					xml::document_t reparsed;
+					// Настройки разбора для дерева значения
+					xml::document_t::settings_t valueparse;
+					// Устанавливаем настройки разбора, поверке назначенные
+					valueparse.reader = relaxed;
+					// Выполняем установку настроек разбора дереву значения
+					reparsed.settings(valueparse);
 					/**
 					 * Если разбор записанного значения не удался
 					 */
-					if(!reparsed.parse(record, relaxed)){
+					if(!reparsed.parse(record)){
 						// Выводим сообщение об отказе разбора записанного значения
 						::fprintf(stderr, "xml fuzz: value reparse failed, error=%u\n", static_cast <uint32_t> (reparsed.error()));
 						// Выводим исходный текст разметки

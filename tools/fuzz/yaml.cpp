@@ -1599,7 +1599,7 @@ namespace {
 		 */
 		if(recycle){
 			// Выполняем сброс состояния прежней подачи
-			reused.clear();
+			reused.reset();
 			// Выполняем установку настроек разбора очередной подачи
 			(void) reused.settings(settings);
 		}
@@ -2367,13 +2367,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			// Настройки разбора дерева документа
 			yaml::document_t::settings_t tree;
 			// Устанавливаем схему разрешения видов скалярных значений
-			tree.schema = settings.schema;
+			tree.reader.schema = settings.schema;
 			// Устанавливаем правило обращения с повторяющимся именем пары
-			tree.duplicates = settings.duplicates;
+			tree.reader.duplicates = settings.duplicates;
 			// Устанавливаем наибольшую допустимую глубину вложенности
-			tree.maxDepth = settings.maxDepth;
+			tree.reader.maxDepth = settings.maxDepth;
 			// Устанавливаем наибольшую допустимую длину скалярного значения
-			tree.maxScalar = settings.maxScalar;
+			tree.reader.maxScalar = settings.maxScalar;
 			// Устанавливаем наибольшее допустимое количество узлов раскрытия ссылок
 			tree.maxExpansion = 4096;
 			// Объект дерева документа
@@ -2607,9 +2607,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 							 */
 							yaml::document_t::settings_t unbound = tree;
 							// Выполняем снятие предела глубины вложенности
-							unbound.maxDepth = 0;
+							unbound.reader.maxDepth = 0;
 							// Выполняем снятие предела длины скалярного значения
-							unbound.maxScalar = 0;
+							unbound.reader.maxScalar = 0;
 							// Собираемое дерево документа перезаписи снятого значения
 							yaml::document_t rebuilt(unbound);
 							/**
@@ -2674,9 +2674,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					 *       перезапись раскрытого дерева законно глубже исходного текста.
 					 *       Отказ по пределу означал бы вину ворошителя, а не записи
 					 */
-					unbound.maxDepth = 0;
+					unbound.reader.maxDepth = 0;
 					// Выполняем снятие предела длины скалярного значения
-					unbound.maxScalar = 0;
+					unbound.reader.maxScalar = 0;
 					if(!circled.parse(taken.dump(), unbound) || !(circled == taken)){
 						// Выводим сообщение о нарушении кругового хода
 						::fprintf(stderr, "yaml fuzz: taken value round trip broken, settings %s\n",
@@ -2760,18 +2760,18 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 						 *       `0777` наречием 1.1 есть число восьмеричное, а ядровою схемой -
 						 *       десятичное, и расхождение то законно
 						 */
-						yaml::document_t::settings_t carried = document.settings();
+						yaml::document_t::settings_t carried;
 						// Выполняем снятие предела глубины вложенности
-						carried.maxDepth = 0;
+						carried.reader.maxDepth = 0;
 						// Выполняем снятие предела длины скалярного значения
-						carried.maxScalar = 0;
+						carried.reader.maxScalar = 0;
 						/**
 						 * Выполняем назначение схемы, деревом действительно применяемой
 						 *
 						 * @note Указание `%YAML 1.1` в тексте пересиливает заданную схему, а
 						 *       настройки держат заданную: схему действующую выдаёт сам узел
 						 */
-						carried.schema = document.root().schema();
+						carried.reader.schema = document.root().schema();
 						// Выполняем назначение дереву переноса настроек исходного дерева
 						target.settings(carried);
 						/**
@@ -2845,9 +2845,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 */
 				yaml::document_t::settings_t limitless = tree;
 				// Выполняем снятие предела глубины вложенности
-				limitless.maxDepth = 0;
+				limitless.reader.maxDepth = 0;
 				// Выполняем снятие предела длины скалярного значения
-				limitless.maxScalar = 0;
+				limitless.reader.maxScalar = 0;
 				// Объект дерева перезаписанного документа
 				yaml::document_t rewritten(limitless);
 				/**
@@ -2929,7 +2929,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					// Настройки записи текста, наудачу выбранные
 					yaml::writer_t::settings_t writing;
 					// Устанавливаем схему записи схемою разбора
-					writing.schema = tree.schema;
+					writing.schema = tree.reader.schema;
 					/**
 					 * Если действует схема защитная, пустоты не знающая
 					 *
@@ -3046,9 +3046,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Устанавливаем удержание исходного текста
 				held.retain = true;
 				// Снимаем предел глубины вложенности, ссылками раскрываемый
-				held.maxDepth = 0;
+				held.reader.maxDepth = 0;
 				// Снимаем предел длины скалярного значения
-				held.maxScalar = 0;
+				held.reader.maxScalar = 0;
 				// Объект дерева документа, правке подлежащего
 				yaml::document_t edited(held);
 				/**
@@ -3312,7 +3312,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 *       расходиться: сличается здесь дословность переноса, а не правило
 				 *       обхождения с повторами, и снос пары сличению этому не подлежит
 				 */
-				held.duplicates = yaml::duplicate_t::KEEP;
+				held.reader.duplicates = yaml::duplicate_t::KEEP;
 				// Объект дерева документа, текст удерживающего
 				yaml::document_t kept(held);
 				/**
@@ -3506,8 +3506,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			writing.explicitEnd = ((engine() % 2) == 0);
 			// Объект записи, живущий от прохода к проходу
 			static yaml::writer_t reused;
-			// Выполняем очистку объекта записи от прежней подачи
-			reused.clear();
+			// Выполняем сброс состояния объекта записи от прежней подачи
+			reused.reset();
 			// Устанавливаем настройки записи объекту, прежней подачей занятому
 			reused.settings(writing);
 			// Создаём свежий объект записи для той же самой череды вызовов

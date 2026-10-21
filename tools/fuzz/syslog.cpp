@@ -565,7 +565,11 @@ namespace {
 	 * @return         признак успешности поверки
 	 *
 	 */
-	bool tree(const string & text, const syslog::reader_t::settings_t & settings) noexcept {
+	bool tree(const string & text, const syslog::reader_t::settings_t & given) noexcept {
+		// Настройки разбора записей, документу назначенные
+		syslog::document_t::settings_t settings;
+		// Устанавливаем настройки разбора, поверке назначенные
+		settings.reader = given;
 		// Объект события, удерживаемого целиком
 		syslog::document_t doc;
 		// Если установка настроек разбора записей отказом завершилась

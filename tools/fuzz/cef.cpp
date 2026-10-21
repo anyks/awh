@@ -387,7 +387,9 @@ namespace {
 	 */
 	bool tree(const string & text, const cef::reader_t::settings_t & given) noexcept {
 		// Настройки разбора записей, обороту назначенные
-		cef::reader_t::settings_t settings = given;
+		cef::document_t::settings_t settings;
+		// Устанавливаем настройки разбора, поверке назначенные
+		settings.reader = given;
 		/**
 		 * Устанавливаем обращение пустого значения последовательностью знаков
 		 *
@@ -397,7 +399,7 @@ namespace {
 		 *          Потеря эта заявлена в самом кодеке решением, и сличать деревья при
 		 *          ней значило бы поверять не кодек, а собственную невнимательность
 		 */
-		settings.empty = cef::empty_t::STRING;
+		settings.reader.empty = cef::empty_t::STRING;
 		/**
 		 * Включаем снятие отмены знаков со значений
 		 *
@@ -407,7 +409,7 @@ namespace {
 		 *          отмены значение «"a b=c"» выдаётся без ограды и, записанное обратно
 		 *          как есть, разбирается двумя парами вместо одной
 		 */
-		settings.unescape = true;
+		settings.reader.unescape = true;
 		// Объект события CEF
 		cef::document_t doc;
 		// Устанавливаем настройки разбора записей

@@ -779,7 +779,7 @@ namespace {
 		 */
 		if(recycle){
 			// Выполняем сброс состояния прежней подачи
-			reused.clear();
+			reused.reset();
 			// Выполняем установку настроек разбора очередной подачи
 			(void) reused.settings(settings);
 		}
@@ -1522,10 +1522,11 @@ namespace {
 	 *
 	 * @param document проверяемое дерево настроек
 	 * @param text     исходный текст настроек
+	 * @param settings настройки разбора дерева настроек
 	 * @return         результат проверки кругового переноса
 	 *
 	 */
-	bool transplant(const toml::document_t & document, const string & text) noexcept;
+	bool transplant(const toml::document_t & document, const string & text, const toml::document_t::settings_t & settings) noexcept;
 
 	bool tree(const string & text, const toml::reader_t::settings_t & reading, mt19937 & engine) noexcept {
 		// Собираемые настройки дерева настроек
@@ -1534,8 +1535,10 @@ namespace {
 		settings.reader = reading;
 		// Создаём объект дерева настроек
 		toml::document_t document;
+		// Выполняем установку настроек разбора
+		document.settings(settings);
 		// Признак успешности разбора текста настроек
-		const bool parsed = document.parse(text, settings);
+		const bool parsed = document.parse(text);
 		/**
 		 * Выполняем проверку независимости исхода разбора от хвостового перевода строки
 		 *
@@ -1565,8 +1568,10 @@ namespace {
 			 (text + "\n"));
 			// Дерево настроек, написание иное разбирающее
 			toml::document_t tailed;
+			// Выполняем установку настроек разбора
+			tailed.settings(settings);
 			// Выполняем разбор написания иного
-			const bool taken = tailed.parse(written, settings);
+			const bool taken = tailed.parse(written);
 			/**
 			 * Если исход разбора написания иного с исходом исходного разошёлся
 			 */
@@ -1631,8 +1636,10 @@ namespace {
 		{
 			// Дерево настроек, от прохода к проходу живущее
 			static toml::document_t recycled;
+			// Выполняем установку настроек разбора
+			recycled.settings(settings);
 			// Выполняем разбор того же текста деревом, прежним разбором занятым
-			const bool again = recycled.parse(text, settings);
+			const bool again = recycled.parse(text);
 			/**
 			 * Если исход разбора с исходом свежего дерева разошёлся
 			 */
@@ -1694,13 +1701,15 @@ namespace {
 		totals.rewrites++;
 		// Создаём объект дерева настроек для разбора перезаписи
 		toml::document_t reread;
+		// Выполняем установку настроек разбора
+		reread.settings(settings);
 		/**
 		 * Если разбор перезаписи дерева настроек не удался
 		 *
 		 * @details Договор о читаемости записанного: текст, собранный записью, обязан
 		 * разбираться тем же чтением - иначе перезапись выдаёт негодный файл
 		 */
-		if(!reread.parse(first, settings)){
+		if(!reread.parse(first)){
 			// Выводим сообщение о неразбираемости перезаписи дерева
 			::fprintf(stderr, "toml fuzz: rewrite is not readable back: error=%u at %u:%u\n",
 				static_cast <uint32_t> (reread.error()), reread.errorLocation().line, reread.errorLocation().column);
@@ -1784,8 +1793,18 @@ namespace {
 			writing.separated = ((engine() % 2) == 0);
 			// Устанавливаем вид знака конца строки наудачу
 			writing.newline = (((engine() % 2) == 0) ? toml::newline_t::LF : toml::newline_t::CRLF);
+			// Настройки записи копии дерева настроек
+			toml::document_t::settings_t dialect;
+			// Устанавливаем настройки разбора копии дерева
+			dialect.reader = reading;
+			// Устанавливаем настройки записи копии дерева
+			dialect.writer = writing;
+			// Создаём копию дерева настроек для перезаписи иным оформлением
+			toml::document_t restyledDoc = document;
+			// Выполняем установку настроек записи копии дерева
+			restyledDoc.settings(dialect);
 			// Выполняем перезапись дерева настроек выбранным оформлением
-			const string restyled = document.dump(writing);
+			const string restyled = restyledDoc.dump();
 			/**
 			 * Если перезапись отвергнута названною причиною
 			 *
@@ -1818,10 +1837,12 @@ namespace {
 				unbound.reader.maxKey = limits.maxKey;
 				// Создаём объект дерева настроек для разбора перезаписи
 				toml::document_t reshaped;
+				// Выполняем установку настроек разбора
+				reshaped.settings(unbound);
 				/**
 				 * Если разобрать перезапись иного оформления не удалось
 				 */
-				if(!reshaped.parse(restyled, unbound)){
+				if(!reshaped.parse(restyled)){
 					// Выводим сообщение об отказе чтения перезаписи иного оформления
 					::fprintf(stderr, "toml fuzz: restyled rewrite is not readable back: error=%u at %u:%u,"
 					 " promote=%d spaces=%d indent=%d separated=%d newline=%d\n",
@@ -1948,10 +1969,12 @@ namespace {
 			return true;
 		// Создаём объект дерева настроек для разбора перезаписи правленого дерева
 		toml::document_t after;
+		// Выполняем установку настроек разбора
+		after.settings(settings);
 		/**
 		 * Если разбор перезаписи правленого дерева не удался
 		 */
-		if(!after.parse(edited, settings)){
+		if(!after.parse(edited)){
 			// Выводим сообщение о неразбираемости перезаписи правленого дерева
 			::fprintf(stderr, "toml fuzz: edited rewrite is not readable back: error=%u at %u:%u\n",
 				static_cast <uint32_t> (after.error()), after.errorLocation().line, after.errorLocation().column);
@@ -1997,7 +2020,7 @@ namespace {
 			return false;
 		}
 		// Выводим результат проверки кругового переноса владеющего значения
-		return transplant(document, text);
+		return transplant(document, text, settings);
 	}
 	/**
 	 * @brief Метод проверки кругового переноса владеющего значения
@@ -2168,7 +2191,7 @@ namespace {
 		// Выводим признак согласия снятия с деревом
 		return true;
 	}
-	bool transplant(const toml::document_t & document, const string & text) noexcept {
+	bool transplant(const toml::document_t & document, const string & text, const toml::document_t::settings_t & settings) noexcept {
 		// Выполняем снятие владеющего значения с дерева настроек
 		const toml::value_t lifted(document);
 		/**
@@ -2192,7 +2215,7 @@ namespace {
 			 *          дочернее имя у дерева, а снятие берёт последнее значение - и судить
 			 *          тут нечего
 			 */
-			if(document.settings().reader.duplicates && !consistent(document, lifted, path, names, diverged)){
+			if(settings.reader.duplicates && !consistent(document, lifted, path, names, diverged)){
 				// Выводим сообщение о расхождении снятия с деревом
 				::fprintf(stderr, "toml fuzz: taken value disagrees with the tree: %s\n", diverged.c_str());
 				// Выводим исходный текст настроек
@@ -2229,7 +2252,7 @@ namespace {
 			 */
 			if(!taken.empty()){
 				// Собираемое дерево настроек перезаписи снятого значения
-				toml::document_t rebuilt(document.settings());
+				toml::document_t rebuilt(settings);
 				/**
 				 * Если перезапись снятого значения разобрана
 				 */
@@ -2908,8 +2931,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			writing.maxParts = (((engine() % 8) == 0) ? (1 + (engine() % 8)) : 0);
 			// Объект записи, живущий от прохода к проходу
 			static toml::writer_t reused;
-			// Выполняем очистку объекта записи от прежней подачи
-			reused.clear();
+			// Выполняем сброс состояния объекта записи от прежней подачи
+			reused.reset();
 			// Устанавливаем настройки записи объекту, прежней подачей занятому
 			reused.settings(writing);
 			// Создаём свежий объект записи для той же самой череды вызовов

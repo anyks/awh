@@ -961,7 +961,7 @@ namespace {
 		 */
 		switch(static_cast <uint8_t> (value.kind())){
 			// Если значение является пустым
-			case static_cast <uint8_t> (json::kind_t::NUL):
+			case static_cast <uint8_t> (json::kind_t::NIL):
 				// Записываем пустое значение
 				result.append("N;");
 			break;
@@ -1034,7 +1034,7 @@ namespace {
 		// Объект дерева перезаписанного документа
 		json::document_t rewritten;
 		// Получаем настройки разбора перезаписанного документа
-		json::document_t::settings_t rules = rewritten.settings();
+		json::document_t::settings_t rules;
 		/**
 		 * Устанавливаем разрешение записей нечисла и бесконечности
 		 *
@@ -1234,7 +1234,7 @@ namespace {
 				return builder.close();
 			}
 			// Если значение является пустым
-			case static_cast <uint8_t> (json::kind_t::NUL):
+			case static_cast <uint8_t> (json::kind_t::NIL):
 				// Выводим итог подачи пустого значения
 				return builder.null();
 			// Если значение является логическим
@@ -1406,7 +1406,7 @@ namespace {
 			/**
 			 * Если сброшенное значение пустым не стало либо место его исчезло
 			 */
-			if(!host.has("/graft") || !host.at("/graft").is(json::type_t::NUL) || (host.root().size() != 1)){
+			if(!host.has("/graft") || !host.at("/graft").is(json::type_t::NIL) || (host.root().size() != 1)){
 				// Выводим сообщение о расхождении сброшенного значения с пустым
 				::fprintf(stderr, "РАСХОЖДЕНИЕ СБРОСА: «%s»\n", host.dump().c_str());
 				// Выводим признак нарушения кругового хода
@@ -1456,7 +1456,7 @@ namespace {
 		// Объект дерева документа, записанного значением
 		json::document_t written;
 		// Получаем настройки разбора записанного значением документа
-		json::document_t::settings_t rules = written.settings();
+		json::document_t::settings_t rules;
 		// Устанавливаем разрешение записей нечисла и бесконечности
 		rules.reader.allowInfinityAndNan = settings.reader.allowInfinityAndNan;
 		// Устанавливаем удержание повторяющихся имён полей объекта

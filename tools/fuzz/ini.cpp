@@ -1688,8 +1688,8 @@ namespace {
 			writing.newline = (((engine() % 2) == 0) ? ini::newline_t::LF : ini::newline_t::CRLF);
 			// Объект записи, живущий от подачи к подаче
 			static ini::writer_t reused;
-			// Выполняем очистку объекта записи от прежней подачи
-			reused.clear();
+			// Выполняем сброс состояния объекта записи от прежней подачи
+			reused.reset();
 			// Устанавливаем настройки записи объекту, прежней подачей занятому
 			reused.settings(writing);
 			// Создаём свежий объект записи для той же самой подачи
@@ -1841,10 +1841,12 @@ namespace {
 		{
 			// Дерево настроек, от прохода к проходу живущее
 			static ini::document_t recycled;
+			// Выполняем установку настроек разбора
+			recycled.settings(settings);
 			/**
 			 * Если дерево, прежним разбором занятое, текст отвергло
 			 */
-			if(!recycled.parse(text, settings)){
+			if(!recycled.parse(text)){
 				// Выводим сообщение об отказе дерева, прежним разбором занятого
 				::fprintf(stderr, "ini fuzz: reused tree refused what a fresh one accepted, error=%u\n",
 				 static_cast <uint32_t> (recycled.error()));
@@ -2072,8 +2074,14 @@ namespace {
 			writing.separated = ((engine() % 2) == 0);
 			// Устанавливаем вид знака конца строки наудачу
 			writing.newline = (((engine() % 2) == 0) ? ini::newline_t::LF : ini::newline_t::CRLF);
+			// Устанавливаем настройки записи копии дерева настроек
+			reading.writer = writing;
+			// Создаём копию дерева настроек для перезаписи иным оформлением
+			ini::document_t restyled = document;
+			// Выполняем установку настроек записи копии дерева
+			restyled.settings(reading);
 			// Выполняем перевод дерева настроек в выбранное наречие
-			const string translated = document.dump(writing);
+			const string translated = restyled.dump();
 			/**
 			 * Если перевод дерева настроек удался
 			 *

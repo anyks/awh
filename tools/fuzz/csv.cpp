@@ -640,7 +640,7 @@ namespace {
 		/**
 		 * Выполняем перебор всех записей собранной таблицы
 		 */
-		if(document.settings().writer.quoting == csv::quoting_t::NONE){
+		if(settings.writer.quoting == csv::quoting_t::NONE){
 			/**
 			 * Выполняем перебор всех записей собранной таблицы
 			 */
@@ -674,12 +674,12 @@ namespace {
 			/**
 			 * Если отказ пришёл при настройках, поле представить способных
 			 */
-			if((document.settings().writer.quoting != csv::quoting_t::NONE) ||
-			   (document.settings().writer.escape == csv::escape_t::BACKSLASH)){
+			if((settings.writer.quoting != csv::quoting_t::NONE) ||
+			   (settings.writer.escape == csv::escape_t::BACKSLASH)){
 				// Выводим сообщение о неоправданном отказе перезаписи
 				::fprintf(stderr, "csv fuzz: rewrite refused without cause: quoting=%u escape=%u\n",
-					static_cast <uint32_t> (document.settings().writer.quoting),
-					static_cast <uint32_t> (document.settings().writer.escape));
+					static_cast <uint32_t> (settings.writer.quoting),
+					static_cast <uint32_t> (settings.writer.escape));
 				// Выводим результат проверки кругового хода
 				return false;
 			}
