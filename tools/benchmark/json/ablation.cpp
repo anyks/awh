@@ -97,7 +97,7 @@ static void walk(const awh::codec::json::document_t::value_t & value) noexcept {
 	 */
 	switch(static_cast <uint8_t> (value.kind())){
 		// Если значение является пустым
-		case static_cast <uint8_t> (awh::codec::json::kind_t::NUL):
+		case static_cast <uint8_t> (awh::codec::json::kind_t::NIL):
 			// Выполняем учёт прочитанного пустого значения
 			rival::nothing();
 		break;

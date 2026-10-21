@@ -19,7 +19,7 @@ readonly RELEASE="${2:-$ROOT/build-release}"
 #
 # Уровень оптимизации совпадает с уровнем сборки библиотеки в режиме Release:
 # сравнивать реализации, собранные с разной оптимизацией, бессмысленно
-readonly FLAGS="-O3 -DNDEBUG -std=c++17 -Wall -Wextra"
+readonly FLAGS="-O3 -DNDEBUG -std=c++17 -Wall -Wextra ${AWH_BENCH_NO_COUNT:+-DAWH_BENCH_NO_COUNT}"
 
 # Системные библиотеки, каких требует ядро библиотеки
 #

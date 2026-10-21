@@ -349,7 +349,7 @@ span'а в общем хранилище, добавление в `vector`.
     зовущий тот же сброс состояния. TOML пропущен: имя занято внутренним `reset()` обхода
     узлов. 2629/2629 проверок кодека зелёные на чистом `git archive HEAD`.
   - **Общий вид значения `awh::codec::kind_t`** (10.10.2026) вынесен в
-    `include/codec/value.hpp`, одиннадцатью значениями (NONE/NUL/BOOL/NUMBER/STRING/BLOB/
+    `include/codec/value.hpp`, одиннадцатью значениями (NONE/NIL/BOOL/NUMBER/STRING/BLOB/
     TIME/UUID/ARRAY/MAP/CUSTOM), теми же что у `abc::kind_t`. Метод `kind()` в `cef::Document`
     и `toml::Document` возвращает `codec::kind_t` через явный `switch` маппинга `type_t` →
     `kind_t`, тем же контрактом «вид значения».

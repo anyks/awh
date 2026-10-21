@@ -105,11 +105,11 @@ static const ablation_t ABLATIONS[] = {
 	{"исходное чтение", [](awh::codec::yaml::document_t::settings_t &) noexcept {}},
 	{"без поверки повторяющихся имён", [](awh::codec::yaml::document_t::settings_t & settings) noexcept {
 		// Переставляем правило обращения с повторяющимся именем на удержание всех
-		settings.duplicates = awh::codec::yaml::duplicate_t::KEEP;
+		settings.reader.duplicates = awh::codec::yaml::duplicate_t::KEEP;
 	}},
 	{"без определения кодировки", [](awh::codec::yaml::document_t::settings_t & settings) noexcept {
 		// Навязываем кодировку, вместо её определения по метке порядка байтов
-		settings.encoding = awh::codec::yaml::encoding_t::UTF8;
+		settings.reader.encoding = awh::codec::yaml::encoding_t::UTF8;
 	}}
 };
 

@@ -32,9 +32,12 @@ static void proof(){
 	anyks::cef_t old;
 	old.mode(anyks::cef_t::mode_t::STRONG);
 	old.parse(RECORD);
-	awh::codec::cef::document_t doc;
 	awh::codec::cef::reader_t::settings_t st; st.mode = awh::codec::cef::mode_t::STRONG;
-	doc.settings(st);
+	// Настройки документа
+	awh::codec::cef::document_t::settings_t settings;
+	// Передаём настройки разбора событий
+	settings.reader = st;
+	awh::codec::cef::document_t doc(settings);
 	const bool ok = doc.parse(RECORD);
 	printf("== поверка равенства работы ==\n");
 	printf("разбор AWH: %s, пар расширения: %zu\n", (ok ? "годен" : "ОТКАЗ"), doc.size());
@@ -98,9 +101,12 @@ int main(int argc, char * argv[]){
 		printf("AWH codec::cef (дерево):   %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / rounds);
 	}
 	{
-		awh::codec::cef::document_t doc;
 		awh::codec::cef::reader_t::settings_t st; st.mode = awh::codec::cef::mode_t::STRONG;
-		doc.settings(st);
+		// Настройки документа
+		awh::codec::cef::document_t::settings_t settings;
+		// Передаём настройки разбора событий
+		settings.reader = st;
+		awh::codec::cef::document_t doc(settings);
 		const double seconds = measure(rounds, [&]{ doc.parse(RECORD); });
 		printf("AWH codec::cef (STRONG):   %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / rounds);
 	}

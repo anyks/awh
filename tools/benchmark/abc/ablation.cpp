@@ -446,12 +446,16 @@ static void walk(const awh::codec::abc::document_t::value_t & value) noexcept {
 static bool reading(const rival::scene_t scene, const std::string & record) noexcept {
 	// Разновидность сценария стенда работе разбора безразлична
 	(void) scene;
+	// Настройки разбора дерева документа
+	awh::codec::abc::document_t::settings_t settings;
+	// Передаём настройки разбора текущей ступени
+	settings.reader = CURRENT;
 	// Дерево документа
-	awh::codec::abc::document_t document;
+	awh::codec::abc::document_t document(settings);
 	/**
 	 * Если разобрать запись не удалось
 	 */
-	if(!document.parse(record.data(), record.size(), CURRENT))
+	if(!document.parse(record.data(), record.size()))
 		// Выводим признак неудачного разбора
 		return false;
 	// Выполняем обход собранного дерева документа

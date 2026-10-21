@@ -316,7 +316,7 @@ namespace {
 		// Объект события CEF
 		awh::codec::cef::document_t doc;
 		// Настройки разбора записей
-		awh::codec::cef::reader_t::settings_t settings;
+		awh::codec::cef::document_t::settings_t settings;
 		// Получаем эталонную запись обнаружения вторжений
 		const std::string & text = awh::benchmark::event::detection();
 		// Выполняем замер разбора без сличения со словарём
@@ -325,7 +325,7 @@ namespace {
 			return ::digest(doc, text);
 		});
 		// Устанавливаем сличение имён ключей и простых видов значений
-		settings.mode = awh::codec::cef::mode_t::MEDIUM;
+		settings.reader.mode = awh::codec::cef::mode_t::MEDIUM;
 		// Устанавливаем настройки разбора записей
 		doc.settings(settings);
 		// Выполняем замер разбора со сличением со словарём

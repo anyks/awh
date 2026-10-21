@@ -698,6 +698,14 @@ namespace rival {
 	}
 };
 
+/**
+ * Операторы счёта памяти уступают место распределителю библиотеки
+ *
+ * @note При включённом распределителе AWH свои `operator new`/`delete` уже
+ *       определены в `libawh.a`, и второе определение даёт duplicate symbols.
+ *       Счёт при этом недействителен: его ведёт сборка без распределителя
+ */
+#if !defined(AWH_BENCH_NO_COUNT)
 void * operator new (std::size_t size){
 	// Выполняем выделение памяти с учётом расхода
 	void * result = rival::capture(size);
@@ -783,3 +791,4 @@ void operator delete [] (void * address, std::size_t size) noexcept {
 	// Выполняем освобождение памяти
 	::free(address);
 }
+#endif

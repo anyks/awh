@@ -187,10 +187,12 @@ namespace {
 	static uint64_t build(const string & text, const awh::codec::ini::document_t::settings_t & settings) noexcept {
 		// Дерево настроек
 		awh::codec::ini::document_t document;
+		// Выполняем установку настроек разбора
+		document.settings(settings);
 		/**
 		 * Если разбор текста настроек выполнить не удалось
 		 */
-		if(!document.parse(text, settings))
+		if(!document.parse(text))
 			// Выводим нулевое количество объявленных разделов
 			return 0;
 		// Выводим количество объявленных разделов
