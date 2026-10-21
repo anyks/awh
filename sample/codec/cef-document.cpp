@@ -68,6 +68,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	fmk::initialize();
 	// Блокируем неиспользуемую переменную
@@ -77,7 +78,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Создаём объект события CEF
 	codec::cef::document_t document;
 	// Настройки укладки записей в дерево
-	codec::cef::reader_t::settings_t settings;
+	codec::cef::document_t::settings_t settings;
 	/**
 	 * Устанавливаем сличение имён ключей и всех видов значений со словарём
 	 *
@@ -86,7 +87,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *       Сличение стоит около процента времени разбора и включается настройкой
 	 *
 	 */
-	settings.mode = codec::cef::mode_t::STRONG;
+	settings.reader.mode = codec::cef::mode_t::STRONG;
 	// Устанавливаем настройки укладки записей в дерево
 	document.settings(settings);
 	/**
@@ -104,9 +105,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Заголовок лежит отдельным вместилищем «/header» и полей несёт ровно семь:
 	 *       version, vendor, product, release, signature, name, severity
+	 *
 	 */
 	cout << "поставщик: " << document.at("/header/vendor").text() << endl;
+	// Выводим изделие события
 	cout << "изделие:   " << document.at("/header/product").text() << endl;
+	// Выводим название события
 	cout << "событие:   " << document.at("/header/name").text() << endl;
 	/**
 	 * Выводим важность события числом
@@ -114,6 +118,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Важность в дереве лежит числом, а не знаками: описание ArcSight назначает
 	 *       ей значения от нуля до десяти, и разбор её ведётся всегда, сличения не
 	 *       дожидаясь
+	 *
 	 */
 	int64_t severity = 0;
 	// Если извлечение важности события удалось
@@ -128,6 +133,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Ход field() ищет пару расширения человеческим именем словаря, а не ключом
 	 *       записи: «sourceAddress» отдаёт значение ключа «src». Живые устройства пишут
 	 *       ключи сокращениями, а разбирающему их запоминать незачем
+	 *
 	 */
 	cout << "источник:  " << document.field("sourceAddress").text() << endl;
 	// Выводим обозначение перебора пар расширения
@@ -138,6 +144,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Обход выдаёт СЫРЫЕ имена ключей, как они в записи и стоят: сведённое имя
 	 *       берётся отдельным ходом, ибо словарь не всякий ключ знает, а живые
 	 *       устройства пишут и свои
+	 *
 	 */
 	for(auto & key : document.keys("/extension")){
 		// Сведённое словарём имя ключа расширения
@@ -152,6 +159,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 * @note При строгом сличении значения лежат в дереве видами, словарём заданными,
 		 *       а не знаками: спрос text() у числа отдаёт пустоту, и читать его надлежит
 		 *       ходом извлечения того вида, каким оно и уложено
+		 *
 		 */
 		if(value.type() == codec::abc::type_t::STRING)
 			// Выводим значение пары расширения знаками
@@ -181,16 +189,21 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Вид берётся из словаря, а не угадывается по самому значению: «cat=1» есть
 	 *       строка описанием, хотя на вид и число
+	 *
 	 */
 	cout << "  src:  вид " << static_cast <uint16_t> (document.type("src")) << endl;
+	// Выводим вид поля источника
 	cout << "  spt:  вид " << static_cast <uint16_t> (document.type("spt")) << endl;
+	// Выводим вид поля порта источника
 	cout << "  dmac: вид " << static_cast <uint16_t> (document.type("dmac")) << endl;
+	// Выводим вид поля времени события
 	cout << "  rt:   вид " << static_cast <uint16_t> (document.type("rt")) << endl;
 	/**
 	 * Выводим метку времени, записью переданную
 	 *
 	 * @note Запись метки берётся по самой метке: живые устройства пишут её и с долей
 	 *       секунды, и без неё, а одна запись обоих видов не покрывает
+	 *
 	 */
 	cout << "  rt:   " << document.timestamp("rt") << endl;
 	// Выполняем заведение отсутствующей пары расширения
@@ -206,6 +219,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Сборка отказом отвечает на дереве, записи CEF не поддающемся: имя ключа с
 	 *       пробелом внутри записать нельзя, ибо пробел пары и разделяет
+	 *
 	 */
 	if(record.empty()){
 		// Выводим сведения об обнаруженной ошибке сборки

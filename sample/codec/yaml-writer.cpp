@@ -68,6 +68,7 @@ static void build(const string & title, const codec::yaml::writer_t::settings_t 
 	 *
 	 * @note Метка ставится перед построением, а не после: она принадлежит значению
 	 *       целиком, а не первой записи его
+	 *
 	 */
 	writer.anchor("основной");
 	// Выполняем открытие вложенного отображения
@@ -91,6 +92,7 @@ static void build(const string & title, const codec::yaml::writer_t::settings_t 
 	 *
 	 * @note Построение задаётся на месте: перечень коротких значений в строку читается
 	 *       легче, нежели столбцом
+	 *
 	 */
 	writer.sequence(codec::yaml::layout_t::FLOW);
 	// Выполняем запись первого значения перечня
@@ -106,6 +108,7 @@ static void build(const string & title, const codec::yaml::writer_t::settings_t 
 	 *
 	 * @note Правило усечения `KEEP` переводы строк в конце содержимого сохраняет, а
 	 *       правила `CLIP` и `STRIP` их теряют
+	 *
 	 */
 	writer.block("первая строка\nвторая строка\n", codec::yaml::style_t::LITERAL, codec::yaml::chomp_t::CLIP);
 	// Выполняем закрытие вложенного отображения
@@ -122,6 +125,7 @@ static void build(const string & title, const codec::yaml::writer_t::settings_t 
 	 * @note Запись отказы выдаёт возвратом самих способов, а не кодом: отказать она
 	 *       вправе лишь построению неверному - имени без вместилища, закрытию
 	 *       незакрытого, - и потребителю о том знать надобно сразу, на месте
+	 *
 	 */
 	const bool done = writer.finish();
 	// Выводим название разобранного случая
@@ -152,6 +156,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	fmk::initialize();
 	// Блокируем неиспользуемую переменную

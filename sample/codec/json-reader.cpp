@@ -70,7 +70,7 @@ static const char * naming(const json::event_t event) noexcept {
 		// Если событие является логическим значением
 		case static_cast <uint8_t> (json::event_t::BOOL): return "логическое";
 		// Если событие является пустым значением
-		case static_cast <uint8_t> (json::event_t::NUL): return "пусто";
+		case static_cast <uint8_t> (json::event_t::NIL): return "пусто";
 		// Если событие является примечанием
 		case static_cast <uint8_t> (json::event_t::COMMENT): return "примечание";
 		// Если событие является окончанием документа
@@ -96,10 +96,12 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	awh::fmk::initialize();
 	// Не используем параметры приложения
 	(void) argc;
+	// Не используем сам массив параметров приложения
 	(void) argv;
 	// Разбираемый текст документа
 	const string text = R"({"имя": "заказ", "число": 42, "метки": ["новый", "срочный"], "оплачен": false})";
@@ -115,6 +117,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Именно этот договор позволяет читать документ из сети, отдавая разбору то,
 	 *       что пришло, не дожидаясь конца
+	 *
 	 */
 	const size_t chunk = 7;
 	/**
@@ -131,6 +134,7 @@ int main(int argc, char * argv[]) noexcept {
 		 * @note Место отказа снимается сразу по возвращении подачи: метод `location()`
 		 *       отдаёт место ТЕКУЩЕГО события, и снятое после выдачи оставшихся событий
 		 *       указывало бы уже на них
+		 *
 		 */
 		if(!ok){
 			// Выводим причину отказа разбора вместе с местом её
@@ -172,8 +176,8 @@ int main(int argc, char * argv[]) noexcept {
 	const string stream = "{\"номер\": 1}\n{\"номер\": 2}\n{\"номер\": 3}";
 	// Объект дерева документа
 	json::document_t document;
-	// Получаем настройки разбора документа
-	json::document_t::settings_t settings = document.settings();
+	// Настройки разбора документа
+	json::document_t::settings_t settings;
 	// Разрешаем разбор потока документов
 	settings.reader.stream = true;
 	// Выполняем установку настроек разбора документа
@@ -183,6 +187,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Обработчик получает всякий документ готовым деревом, а память под него
 	 *       переиспользуется: поток любой длины разбирается в постоянной памяти
+	 *
 	 */
 	const bool ok = document.parse(stream, [](const json::document_t::value_t & value) noexcept -> bool {
 		// Извлекаемый номер документа
@@ -196,6 +201,7 @@ int main(int argc, char * argv[]) noexcept {
 		 *
 		 * @note Ответ ложью прекращает разбор немедля: потребителю довольно прочесть
 		 *       начало потока и остановиться
+		 *
 		 */
 		return true;
 	});

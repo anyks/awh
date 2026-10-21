@@ -67,7 +67,7 @@ static void walk(const json::document_t::value_t & value, const size_t depth = 0
 	 */
 	switch(static_cast <uint8_t> (value.kind())){
 		// Если значение является пустым
-		case static_cast <uint8_t> (json::kind_t::NUL):
+		case static_cast <uint8_t> (json::kind_t::NIL):
 			// Выводим пустое значение
 			cout << "пусто" << endl;
 		break;
@@ -91,6 +91,7 @@ static void walk(const json::document_t::value_t & value, const size_t depth = 0
 		 *
 		 * @note Целое извлекается целым и не теряет точности за пределом 2^53, где живут
 		 *       опознаватели записей, - вид `UINT64` разбор определяет сам
+		 *
 		 */
 		case static_cast <uint8_t> (json::kind_t::NUMBER): {
 			/**
@@ -123,6 +124,7 @@ static void walk(const json::document_t::value_t & value, const size_t depth = 0
 		 *
 		 * @note Содержимое строки отдаётся отрезком без копии: экранирование с него уже
 		 *       снято разбором, и знаки лежат готовыми в хранилище документа
+		 *
 		 */
 		case static_cast <uint8_t> (json::kind_t::STRING):
 			// Выводим содержимое строки
@@ -160,10 +162,12 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	awh::fmk::initialize();
 	// Не используем параметры приложения
 	(void) argc;
+	// Не используем сам массив параметров приложения
 	(void) argv;
 	// Разбираемый текст документа
 	const string text = R"({
@@ -185,6 +189,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Отказ несёт не только причину, но и место её в исходном тексте: строку,
 	 *       положение в строке и смещение от начала
+	 *
 	 */
 	if(!document.parse(text)){
 		// Выводим причину отказа разбора вместе с местом её
@@ -209,12 +214,14 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Обращение по номеру идёт за одно действие: дети лежат сплошным перечнем
 	 *       сразу за родителем, и указаний на них узел не хранит вовсе
+	 *
 	 */
 	cout << "Второй узел: " << document["узлы"][static_cast <size_t> (1)]["имя"].text() << endl;
 	/**
 	 * Выполняем обращение указателем JSON Pointer
 	 *
 	 * @note Указатель отвечает договору RFC 6901 вместе с отменой знаков «~» и «/»
+	 *
 	 */
 	cout << "Порт третьего узла: " << document.at("/узлы/2/порт").raw() << endl;
 	/**
@@ -222,6 +229,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Вид определяется разбором и хранится узлом: повторного разбора записи при
 	 *       извлечении не бывает вовсе, а потребитель вправе выбрать по нему хранилище
+	 *
 	 */
 	cout << "Вид опознавателя: " << json::name(document["опознаватель"].type()) << endl;
 	/**
@@ -229,6 +237,7 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Обращение к отсутствующему полю отказом не является: оно отдаёт
 	 *       недействительную ссылку, и проверять её надлежит вызовом `valid()`
+	 *
 	 */
 	if(!document["отсутствует"].valid())
 		// Выводим сообщение об отсутствии поля
@@ -244,8 +253,16 @@ int main(int argc, char * argv[]) noexcept {
 	 *
 	 * @note Вид записи выбирается настройкой: сжатая запись идёт без единого лишнего
 	 *       знака, а человекочитаемая - с отступами и переводами строк
+	 *
 	 */
-	cout << document.dump(json::format_t::PRETTY) << endl;
+	// Настройки записи текста документа
+	json::document_t::settings_t writing;
+	// Устанавливаем человекочитаемый вид записи дерева
+	writing.writer.format = json::format_t::PRETTY;
+	// Выполняем установку настроек записи документа
+	document.settings(writing);
+	// Выводим запись дерева документа
+	cout << document.dump() << endl;
 	// Выходим из приложения
 	return EXIT_SUCCESS;
 }

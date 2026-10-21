@@ -1,5 +1,5 @@
 /**
- * @file document.cpp
+ * @file xml-document.cpp
  * @date 2026-08-02
  *
  * @license{LicenseRef-AWH-1.0}
@@ -92,6 +92,7 @@ static void walk(const codec::xml::node_t & node, const uint32_t depth) noexcept
 		 *
 		 * @note Дерево хранит и содержимое узлов, и примечания, и разделы дословного
 		 *       текста: для обхода строения документа нужны только узлы разметки
+		 *
 		 */
 		if(child.kind() != codec::xml::kind_t::ELEMENT)
 			// Выполняем переход к следующему вложенному узлу
@@ -128,6 +129,7 @@ int32_t main(){
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	fmk::initialize();
 	// Описание устройства, каким его отдаёт устройство по договору UPnP
@@ -182,6 +184,7 @@ int32_t main(){
 	 *
 	 * @note Поиск вглубь обходит всё поддерево и выдаёт первое совпадение: путь до
 	 *       узла знать не требуется
+	 *
 	 */
 	cout << "Название устройства: "
 		 << document.element().find("friendlyName", DEVICE_NAMESPACE).text() << endl << flush;
@@ -193,6 +196,7 @@ int32_t main(){
 	 *
 	 * @note Поиск среди непосредственно вложенных узлов вглубь не спускается: так
 	 *       узел ищется там, где он и обязан быть по договору
+	 *
 	 */
 	const codec::xml::node_t list = document.element()
 		.child("device", DEVICE_NAMESPACE)
@@ -220,6 +224,7 @@ int32_t main(){
 	 * @note Обход от непригодного узла снова даёт непригодный узел, а его содержимое
 	 *       и атрибуты пусты: цепочку обращений можно записывать без проверки на
 	 *       каждом шаге, проверив лишь итог
+	 *
 	 */
 	const codec::xml::node_t missing = document.element()
 		.find("presentationURL", DEVICE_NAMESPACE)
@@ -234,6 +239,7 @@ int32_t main(){
 	 *
 	 * @note Пространство имён является частью имени: тот же узел без обозначения
 	 *       пространства имён не находится
+	 *
 	 */
 	cout << "Поиск без пространства имён: "
 		 << (document.element().find("friendlyName").valid() ? "найден" : "не найден") << endl << flush;

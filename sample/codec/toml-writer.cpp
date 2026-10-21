@@ -75,6 +75,7 @@ static void build(const string & title, const codec::toml::writer_t::settings_t 
 	 * Выполняем запись целого числа шестнадцатеричной системой счисления
 	 *
 	 * @note Система счисления сохраняется записью: выбрана она человеком
+	 *
 	 */
 	writer.integer(255, codec::toml::radix_t::HEX);
 	// Выполняем запись имени ключа пары
@@ -84,6 +85,7 @@ static void build(const string & title, const codec::toml::writer_t::settings_t 
 	 *
 	 * @note Ограда эта управляющих последовательностей не признаёт, и обратная
 	 *       косая черта записывается собою
+	 *
 	 */
 	writer.text("C:\\путь\\без\\ограды", codec::toml::string_t::LITERAL);
 	// Выполняем запись имени ключа пары
@@ -143,6 +145,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
+	 *
 	 */
 	fmk::initialize();
 	// Блокируем неиспользуемую переменную
@@ -168,12 +171,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Описание отводит знак числа лишь десятичной записи, и сменить систему
 	 *       счисления молча запись не вправе
+	 *
 	 */
 	if(!writer.integer(-1, codec::toml::radix_t::HEX))
 		// Выводим сведения об обнаруженной ошибке записи
 		cout << "число отвергнуто: " << codec::toml::message(writer.error()) << endl;
 	// Выполняем сброс записи в исходное состояние
-	writer.clear();
+	writer.reset();
 	// Задаём запрет смены ограды имени и значения
 	settings = codec::toml::writer_t::settings_t();
 	// Запрещаем смену ограды имени и значения
@@ -187,6 +191,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *
 	 * @note Дословная ограда одинарной кавычки не несёт: при дозволенной смене
 	 *       ограды запись взяла бы основную, а при запрещённой отвечает отказом
+	 *
 	 */
 	if(!writer.text("it's", codec::toml::string_t::LITERAL))
 		// Выводим сведения об обнаруженной ошибке записи
