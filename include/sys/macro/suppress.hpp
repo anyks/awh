@@ -154,6 +154,33 @@
 #pragma push_macro("SHARED")
 #pragma push_macro("SUSPENDED")
 
+/**
+ * \~russian
+ * Имена, какие системные заголовки MS Windows заводят макросами
+ *
+ * @details Снимаем их сразу за сохранением, каков бы ни был состав: снятие временное
+ *          и ничего не стоит. Перечень шире того, что столкнулось бы сегодня, - довод
+ *          этот записан выше, при перечне сохраняемого.
+ *
+ * @note Имена из прочих источников вынесены отдельными рядами ниже: указатели сегментов
+ *       приходят из sys/regset.h, размеры знака последовательной связи - из termios.h,
+ *       признаки отображения - из sys/mman.h, и у каждого ряда своя запись о причине
+ *       снятия
+ *
+ * \~english
+ * Names the MS Windows system headers introduce as macros
+ *
+ * @details We remove them right after the saving, whatever the composition is: the removal is temporary
+ *          and costs nothing. The list is wider than what would collide today — that argument
+ *          is written down above, by the list of what is kept.
+ *
+ * @note The names from the other sources are set apart as the rows below: the segment pointers
+ *       come from sys/regset.h, the character sizes of the serial link — from termios.h,
+ *       the mapping flags — from sys/mman.h, and every row has its own record of the reason
+ *       for the removal
+ *
+ * \~
+ */
 #undef TEXT
 #undef CALLBACK
 #undef ERROR

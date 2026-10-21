@@ -16,9 +16,30 @@
  * @brief Заголовочный файл единой точки подключения системных заголовков MS Windows —
  *        закрепляет обязательный порядок подключения и урезает состав заголовков
  *
+ * @note Снятия макросов MS Windows здесь нет намеренно, хотя оно напрашивается: системные
+ *       заголовки заводят макросами обычные английские слова — DELETE, ERROR, STRICT,
+ *       NO_ERROR, TEXT и прочие, — и те сталкиваются с именами членов перечислений AWH.
+ *       Снимать их здесь и не нужно, и вредно: заголовок этот подключается лишь из файлов
+ *       реализации, а заголовки AWH защищают свои объявления сами — парой
+ *       sys/macro/suppress.hpp и sys/macro/restore.hpp; файлы же реализации макросами
+ *       этими пользуются по делу: модуль procre сличает итог вызовов MS Windows с NO_ERROR.
+ *       Проверено опытом: сборка с постоянным снятием отвечала отказом
+ *       «'NO_ERROR' was not declared in this scope» в четырёх местах src/sys/procre.cpp
+ *
  * \~english
  * @brief Header file of the single point of inclusion of the MS Windows system headers —
  *        it fixes the mandatory order of inclusion and trims the composition of the headers
+ *
+ * @note There is no removal of the MS Windows macros here deliberately, although it suggests itself:
+ *       the system headers introduce ordinary English words as macros — DELETE, ERROR, STRICT,
+ *       NO_ERROR, TEXT and others — and those collide with the names of the members of the AWH
+ *       enumerations. Removing them here is both unnecessary and harmful: this header is included
+ *       only from the implementation files, while the AWH headers protect their declarations
+ *       themselves by the pair sys/macro/suppress.hpp and sys/macro/restore.hpp; the implementation
+ *       files, on the other hand, use those macros for a reason — the procre module compares the
+ *       outcome of the MS Windows calls against NO_ERROR. Checked by experience: a build with a
+ *       permanent removal answered with the failure «'NO_ERROR' was not declared in this scope»
+ *       in four places of src/sys/procre.cpp
  *
  * \~
  *
@@ -38,64 +59,91 @@
 
 	/**
 	 * \~russian
-	 * @brief Наименьшая поддерживаемая версия операционной системы — Windows 10
-	 *
-	 * @details Версия задаётся до подключения системных заголовков: от неё зависит состав
-	 *          объявлений. Windows 10 выбрана затем, что кластеру нужны объекты задания
-	 *          с завершением по закрытию, ожидание объектов из системного пула потоков и
-	 *          именованные каналы с отказом удалённым клиентам.
+	 * Задание версии, только если её не задала сама сборка
 	 *
 	 * \~english
-	 * @brief Lowest supported version of the operating system — Windows 10
-	 *
-	 * @details The version is set before the inclusion of the system headers: the composition of the
-	 *          declarations depends on it. Windows 10 is chosen because the cluster needs job objects
-	 *          with termination on close, the waiting for objects from the system thread pool and
-	 *          named pipes with a refusal to remote clients.
+	 * Setting of the version, only if the build has not set its own
 	 *
 	 * \~
 	 */
 	#if !defined(_WIN32_WINNT)
+		/**
+		 * \~russian
+		 * @brief Наименьшая поддерживаемая версия операционной системы — Windows 10
+		 *
+		 * @details Версия задаётся до подключения системных заголовков: от неё зависит состав
+		 *          объявлений. Windows 10 выбрана затем, что кластеру нужны объекты задания
+		 *          с завершением по закрытию, ожидание объектов из системного пула потоков и
+		 *          именованные каналы с отказом удалённым клиентам.
+		 *
+		 * \~english
+		 * @brief Lowest supported version of the operating system — Windows 10
+		 *
+		 * @details The version is set before the inclusion of the system headers: the composition of the
+		 *          declarations depends on it. Windows 10 is chosen because the cluster needs job objects
+		 *          with termination on close, the waiting for objects from the system thread pool and
+		 *          named pipes with a refusal to remote clients.
+		 *
+		 * \~
+		 */
 		#define _WIN32_WINNT 0x0A00
 	#endif
 
 	/**
 	 * \~russian
-	 * @brief Урезание состава заголовка windows.h
-	 *
-	 * @details Снимает подключение подсистем, каких библиотеке не требуется — графики,
-	 *          звука, буфера обмена, оболочки. Заодно убирает часть засорения
-	 *          пространства имён макросами.
+	 * Урезание состава, только если его не урезала сама сборка
 	 *
 	 * \~english
-	 * @brief Trimming of the composition of the windows.h header
-	 *
-	 * @details It removes the inclusion of the subsystems the library does not need — graphics,
-	 *          sound, clipboard, shell. At the same time it removes part of the pollution
-	 *          of the namespace by macros.
+	 * Trimming of the composition, only if the build has not trimmed it on its own
 	 *
 	 * \~
 	 */
 	#if !defined(WIN32_LEAN_AND_MEAN)
+		/**
+		 * \~russian
+		 * @brief Урезание состава заголовка windows.h
+		 *
+		 * @details Снимает подключение подсистем, каких библиотеке не требуется — графики,
+		 *          звука, буфера обмена, оболочки. Заодно убирает часть засорения
+		 *          пространства имён макросами.
+		 *
+		 * \~english
+		 * @brief Trimming of the composition of the windows.h header
+		 *
+		 * @details It removes the inclusion of the subsystems the library does not need — graphics,
+		 *          sound, clipboard, shell. At the same time it removes part of the pollution
+		 *          of the namespace by macros.
+		 *
+		 * \~
+		 */
 		#define WIN32_LEAN_AND_MEAN
 	#endif
 
 	/**
 	 * \~russian
-	 * @brief Запрет макросов min и max
-	 *
-	 * @details Без него заголовки MS Windows заводят min и max макросами, и обращения
-	 *          вида std::min<T>(a, b) перестают разбираться.
+	 * Запрет минимума и максимума макросами, только если его не запретила сама сборка
 	 *
 	 * \~english
-	 * @brief Prohibition of the min and max macros
-	 *
-	 * @details Without it the MS Windows headers introduce min and max as macros, and references
-	 *          of the std::min<T>(a, b) form stop being parsed.
+	 * Prohibition of the minimum and the maximum as macros, only if the build has not forbidden it
 	 *
 	 * \~
 	 */
 	#if !defined(NOMINMAX)
+		/**
+		 * \~russian
+		 * @brief Запрет макросов min и max
+		 *
+		 * @details Без него заголовки MS Windows заводят min и max макросами, и обращения
+		 *          вида std::min<T>(a, b) перестают разбираться.
+		 *
+		 * \~english
+		 * @brief Prohibition of the min and max macros
+		 *
+		 * @details Without it the MS Windows headers introduce min and max as macros, and references
+		 *          of the std::min<T>(a, b) form stop being parsed.
+		 *
+		 * \~
+		 */
 		#define NOMINMAX
 	#endif
 
@@ -165,51 +213,5 @@
 	#include <ws2def.h>
 	#include <mswsock.h>
 	#include <windows.h>
-
-	/**
-	 * \~russian
-	 * @brief О снятии макросов MS Windows
-	 *
-	 * @details Снятия здесь нет намеренно, хотя напрашивается: системные заголовки
-	 *          заводят макросами обычные английские слова - DELETE, ERROR, STRICT,
-	 *          NO_ERROR, TEXT и прочие, - и те сталкиваются с именами членов
-	 *          перечислений AWH.
-	 *
-	 *          Снимать их здесь и не нужно, и вредно. Не нужно потому, что заголовок
-	 *          этот подключается лишь из файлов реализации, а заголовки AWH защищают
-	 *          свои объявления сами - парой sys/macro/suppress.hpp и sys/macro/restore.hpp,
-	 *          снимающей имена на время объявлений и возвращающей их следом.
-	 *
-	 *          Вредно потому, что файлы реализации макросами этими пользуются по делу:
-	 *          модуль procre сличает итог вызовов MS Windows с NO_ERROR. Снятие
-	 *          отняло бы у них имена, какими они вправе пользоваться - ровно то, в чём
-	 *          упрекаем сами заголовки MS Windows.
-	 *
-	 * @note Проверено опытом: сборка с постоянным снятием отвечала отказом
-	 *       "'NO_ERROR' was not declared in this scope" в четырёх местах src/sys/procre.cpp
-	 *
-	 * \~english
-	 * @brief On the removal of the MS Windows macros
-	 *
-	 * @details There is no removal here deliberately, although it suggests itself: the system headers
-	 *          introduce ordinary English words as macros — DELETE, ERROR, STRICT,
-	 *          NO_ERROR, TEXT and others — and those collide with the names of the members
-	 *          of the AWH enumerations.
-	 *
-	 *          Removing them here is both unnecessary and harmful. Unnecessary because this header
-	 *          is included only from the implementation files, while the AWH headers protect
-	 *          their declarations themselves — by the pair sys/macro/suppress.hpp and sys/macro/restore.hpp,
-	 *          which removes the names for the duration of the declarations and brings them back afterwards.
-	 *
-	 *          Harmful because the implementation files use those macros for a reason:
-	 *          the procre module compares the outcome of the MS Windows calls against NO_ERROR. A removal
-	 *          would take away from them the names they are entitled to use — exactly what we
-	 *          reproach the MS Windows headers themselves for.
-	 *
-	 * @note Checked by experience: a build with a permanent removal answered with the failure
-	 *       "'NO_ERROR' was not declared in this scope" in four places of src/sys/procre.cpp
-	 *
-	 * \~
-	 */
 
 #endif
