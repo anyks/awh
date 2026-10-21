@@ -29,6 +29,11 @@
 #include <regex/prefilter.hpp>
 
 /**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;

@@ -115,27 +115,6 @@ namespace awh {
 	namespace regex {
 		/**
 		 * \~russian
-		 * @brief Функция проверки установки режима компиляции
-		 *
-		 * @param flags набор режимов компиляции регулярного выражения
-		 * @param value проверяемый режим компиляции регулярного выражения
-		 * @return      результат проверки установки режима компиляции
-		 *
-		 * \~english
-		 * @brief Function of checking whether a compilation mode is set
-		 *
-		 * @param flags set of compilation modes of the regular expression
-		 * @param value compilation mode of the regular expression to check
-		 * @return      result of checking whether the compilation mode is set
-		 *
-		 * \~
-		 */
-		AWH_REGEX_INLINE bool hasFlag(const uint32_t flags, const flag_t value) noexcept {
-			// Проверяем установку режима компиляции
-			return ((flags & static_cast <uint32_t> (value)) != 0);
-		}
-		/**
-		 * \~russian
 		 * @brief Функция приведения кодового значения символа к нижнему регистру
 		 *
 		 * @details Приведение выполняется для символов набора ASCII. Приведение символов
@@ -228,73 +207,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint32_t decode(string_view text, const size_t pos, const uint32_t flags, size_t & width) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция извлечения кодового значения символа набора ASCII
-		 *
-		 * @details Функция разбирает символ набора ASCII на месте, а разбор
-		 *          последовательности UTF-8 передаёт функции разбора символа.
-		 *          Посредник заведён затем, что разбор символа выполняется при
-		 *          сопоставлении каждого символа текста, а подавляющее их
-		 *          большинство принадлежит набору ASCII и разбирается чтением
-		 *          одного байта: вызов ради него обходился дороже самого чтения.
-		 *
-		 * @param text  текст для сопоставления
-		 * @param pos   позиция символа в тексте
-		 * @param flags набор режимов компиляции инструкции
-		 * @param width длина символа в байтах
-		 * @return      кодовое значение символа в позиции текста
-		 *
-		 * \~english
-		 * @brief Function of getting the code point value of a character of the ASCII set
-		 *
-		 * @details The function parses a character of the ASCII set in place, and passes parsing of
-		 *          a UTF-8 sequence to the character parsing function.
-		 *          The intermediary is introduced because character parsing is performed when
-		 *          matching every character of the text, while the overwhelming
-		 *          majority of them belong to the ASCII set and is parsed by reading
-		 *          one byte: a call for its sake cost more than the reading itself.
-		 *
-		 * @param text  text to match
-		 * @param pos   position of the character in the text
-		 * @param flags set of compilation modes of the instruction
-		 * @param width length of the character in bytes
-		 * @return      code point value of the character at the position in the text
-		 *
-		 * \~
-		 */
-		AWH_REGEX_INLINE uint32_t letter(string_view text, const size_t pos, const uint32_t flags, size_t & width) noexcept {
-			// Устанавливаем длину символа в байтах
-			width = 1;
-			/**
-			 * Если позиция символа находится за пределами текста
-			 */
-			if(pos >= text.size())
-				// Выводим отсутствие кодового значения символа
-				return 0;
-			// Получаем первый байт последовательности
-			const uint8_t first = static_cast <uint8_t> (text[pos]);
-			/**
-			 * \~russian
-			 * Если байт принадлежит набору ASCII
-			 *
-			 * @details Символ набора ASCII занимает один байт в любом режиме разбора,
-			 *          поэтому кодовое значение его совпадает со значением байта.
-			 *
-			 * \~english
-			 * If the byte belongs to the ASCII set
-			 *
-			 * @details A character of the ASCII set occupies one byte in any parsing mode,
-			 *          therefore its code point value matches the value of the byte.
-			 *
-			 * \~
-			 */
-			if(first < 0x80)
-				// Выводим кодовое значение одиночного байта
-				return static_cast <uint32_t> (first);
-			// Выводим кодовое значение символа, разобранного целиком
-			return decode(text, pos, flags, width);
-		}
 		/**
 		 * \~russian
 		 * @brief Функция извлечения длины символа, предшествующего позиции текста

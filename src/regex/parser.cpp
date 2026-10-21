@@ -35,6 +35,11 @@
 #include <encoding/ascii.hpp>
 
 /**
+ * Подключаем внутренние помощники модуля
+ */
+#include "internal/helpers.inc"
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;

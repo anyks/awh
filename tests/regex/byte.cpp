@@ -46,6 +46,11 @@
 #include "../../include/regex/prefilter.hpp"
 
 /**
+ * Подключаем внутренние помощники модуля
+ */
+#include "../../src/regex/internal/helpers.inc"
+
+/**
  * Используем стандартное пространство имён и пространство имён проекта
  */
 using namespace std;
