@@ -811,7 +811,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Если соглашение о переводе строки набором не заведено
 	 */
-	if(convention > static_cast <uint8_t> (newline_t::NUL)){
+	if(convention > static_cast <uint8_t> (newline_t::NIL)){
 		// Устанавливаем ошибку неверного устройства записи
 		this->_error = storage_error_t::BAD_CONTENT;
 		// Восстановление программы: отказ

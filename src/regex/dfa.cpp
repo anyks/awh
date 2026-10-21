@@ -29,8 +29,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <regex/probe.hpp>
 #include <regex/dfa.hpp>
+#include <regex/probe.hpp>
 
 /**
  * Подключаем внутренние помощники модуля
@@ -119,119 +119,15 @@ namespace {
 	 *
 	 */
 	constexpr uint32_t UNKNOWN = static_cast <uint32_t> (~0u);
-
-	/**
-	 * @brief Функция проверки установки режима компиляции
-	 *
-	 * @param flags набор режимов компиляции регулярного выражения
-	 * @param value проверяемый режим компиляции регулярного выражения
-	 * @return      результат проверки установки режима компиляции
-	 *
-	 */
-	inline bool hasFlag(const uint32_t flags, const regex::flag_t value) noexcept {
-		// Проверяем установку режима компиляции
-		return ((flags & static_cast <uint32_t> (value)) != 0);
-	}
-	/**
-	 * @brief Функция проверки принадлежности байта символам слова
-	 *
-	 * @param letter значение проверяемого байта
-	 * @return       результат проверки принадлежности байта символам слова
-	 *
-	 */
-	inline bool isWord(const uint32_t letter) noexcept {
-		/**
-		 * Если байт является десятичной цифрой либо буквой набора ASCII
-		 */
-		if(((letter >= 0x30) && (letter <= 0x39)) || ((letter >= 0x41) && (letter <= 0x5A)) || ((letter >= 0x61) && (letter <= 0x7A)))
-			// Проверка принадлежности байта символам слова: успех
-			return true;
-		// Проверка принадлежности знаку подчёркивания
-		return (letter == 0x5F);
-	}
-	/**
-	 * @brief Функция приведения значения байта к нижнему регистру
-	 *
-	 * @param letter значение приводимого байта
-	 * @return       приведённое значение байта
-	 *
-	 */
-	inline uint32_t fold(const uint32_t letter) noexcept {
-		/**
-		 * Если байт является прописной буквой набора ASCII
-		 */
-		if((letter >= 0x41) && (letter <= 0x5A))
-			// Выводим приведённое значение байта
-			return (letter + 0x20);
-		// Выводим значение байта без изменений
-		return letter;
-	}
-	/**
-	 * @brief Функция проверки сопоставления байта классом символов
-	 *
-	 * @param value    класс символов регулярного выражения
-	 * @param letter   значение сопоставляемого байта
-	 * @param caseless флаг сопоставления без учёта регистра
-	 * @return         результат проверки сопоставления байта классом символов
-	 *
-	 */
-	inline bool belongs(const regex::classview_t & value, const uint32_t letter, const bool caseless) noexcept {
-		// Создаём набор проверяемых значений байта
-		uint32_t codes[2] = {letter, letter};
-		/**
-		 * Если установлен режим сопоставления без учёта регистра
-		 */
-		if(caseless){
-			/**
-			 * Если байт является строчной буквой набора ASCII
-			 */
-			if((letter >= 0x61) && (letter <= 0x7A))
-				// Устанавливаем значение прописной буквы
-				codes[1] = (letter - 0x20);
-			/**
-			 * Если байт является прописной буквой набора ASCII
-			 */
-			else if((letter >= 0x41) && (letter <= 0x5A))
-				// Устанавливаем значение строчной буквы
-				codes[1] = (letter + 0x20);
-		}
-		// Флаг принадлежности байта набору диапазонов класса
-		bool result = false;
-		/**
-		 * Ищем проверяемых значений в диапазонах класса
-		 */
-		for(auto & code : codes){
-			/**
-			 * Ищем значение байта в наборе диапазонов класса
-			 */
-			for(auto & range : value.ranges){
-				/**
-				 * Если значение байта принадлежит очередному диапазону класса
-				 */
-				if((code >= range.begin) && (code <= range.end)){
-					// Устанавливаем флаг принадлежности байта
-					result = true;
-					// Выходим из цикла поиска значения байта
-					break;
-				}
-			}
-			/**
-			 * Если принадлежность байта набору диапазонов подтверждена
-			 */
-			if(result)
-				// Выходим из цикла поиска проверяемых значений
-				break;
-		}
-		// Проверка сопоставления байта классом символов
-		return (result != value.negative);
-	}
 };
 
 /**
  * @brief Конструктор
  *
  */
-awh::regex::Dfa::Dfa() noexcept : _backward(false), _count(1), _stride(2), _start(0), _identity(0), _program(nullptr) {
+awh::regex::Dfa::Dfa() noexcept :
+ _backward(false), _count(1), _stride(2),
+ _start(0), _identity(0), _program(nullptr) {
 	// Сбрасываем соответствие значений байтов классам эквивалентности
 	::memset(this->_classes, 0, sizeof(this->_classes));
 	// Сбрасываем соответствие признаков положения исходным состояниям
@@ -296,12 +192,12 @@ void awh::regex::Dfa::refine(const bool * members) noexcept {
  *
  */
 void awh::regex::Dfa::alphabet() noexcept {
-	// Сбрасываем соответствие значений байтов классам эквивалентности
-	::memset(this->_classes, 0, sizeof(this->_classes));
 	// Устанавливаем исходного количества классов эквивалентности
 	this->_count = 1;
 	// Устанавливаем длину участка таблицы переходов состояния
 	this->_stride = 2;
+	// Сбрасываем соответствие значений байтов классам эквивалентности
+	::memset(this->_classes, 0, sizeof(this->_classes));
 	/**
 	 * Если исполняемая программа регулярного выражения не установлена
 	 */
@@ -453,16 +349,16 @@ bool awh::regex::Dfa::available(const program_t & program) noexcept {
 bool awh::regex::Dfa::assertion(const anchor_t type, const uint32_t flags, const uint32_t context, const uint32_t letter, const bool last) const noexcept {
 	// Определяем достижение края текста, противоположного началу прохода
 	const bool opposite = (letter == FINISH);
+	// Определяем принадлежность сопоставляемого байта символам слова
+	const bool coming = (!opposite && isWord(letter));
+	// Определяем соответствие сопоставляемого байта переводу строки
+	const bool arriving = (!opposite && (letter == 0x0A));
 	// Определяем достижение края текста, с которого начат проход
 	const bool origin = ((context & static_cast <uint32_t> (context_t::EDGE)) != 0);
 	// Определяем принадлежность пройденного байта символам слова
 	const bool passed = ((context & static_cast <uint32_t> (context_t::WORD)) != 0);
-	// Определяем принадлежность сопоставляемого байта символам слова
-	const bool coming = (!opposite && isWord(letter));
 	// Определяем соответствие пройденного байта переводу строки
 	const bool crossed = ((context & static_cast <uint32_t> (context_t::NEWLINE)) != 0);
-	// Определяем соответствие сопоставляемого байта переводу строки
-	const bool arriving = (!opposite && (letter == 0x0A));
 	/**
 	 * Определяем расположение байтов относительно проверяемого положения
 	 *
@@ -475,14 +371,14 @@ bool awh::regex::Dfa::assertion(const anchor_t type, const uint32_t flags, const
 	const bool before = (this->_backward ? coming : passed);
 	// Принадлежность байта справа от положения символам слова
 	const bool after = (this->_backward ? passed : coming);
-	// Соответствие байта слева от положения переводу строки
-	const bool previous = (this->_backward ? arriving : crossed);
-	// Соответствие байта справа от положения переводу строки
-	const bool following = (this->_backward ? crossed : arriving);
 	// Определяем нахождение положения в начале текста
 	const bool begin = (this->_backward ? opposite : origin);
 	// Определяем нахождение положения в конце текста
 	const bool finish = (this->_backward ? origin : opposite);
+	// Соответствие байта слева от положения переводу строки
+	const bool previous = (this->_backward ? arriving : crossed);
+	// Соответствие байта справа от положения переводу строки
+	const bool following = (this->_backward ? crossed : arriving);
 	/**
 	 * Определяем нахождение байта справа от положения в конце текста
 	 *
@@ -609,7 +505,7 @@ uint32_t awh::regex::Dfa::state(const vector <address_t> & list, const uint32_t 
 	// Размещаем участок таблицы переходов создаваемого состояния
 	this->_table.resize(this->_table.size() + this->_stride, UNKNOWN);
 	// Сохраняем состояние в кэше состояний автомата
-	this->_cache.emplace(std::move(key), result);
+	this->_cache.emplace(::move(key), result);
 	// Выводим индекс созданного состояния автомата
 	return result;
 }
@@ -885,7 +781,7 @@ uint32_t awh::regex::Dfa::initial(string_view text, const size_t from) const noe
  */
 uintptr_t awh::regex::Dfa::entry() noexcept {
 	// Получаем указание на метод прохода по тексту
-	bool (Dfa::* const method)(string_view, const size_t, size_t &) noexcept = &Dfa::scan;
+	bool (dfa_t::* const method)(string_view, const size_t, size_t &) noexcept = &dfa_t::scan;
 	// Адрес начала метода прохода по тексту
 	uintptr_t result = 0;
 	/**
@@ -1326,12 +1222,12 @@ bool awh::regex::Dfa::search(const program_t & program, string_view text, const 
 	 *
 	 */
 	if((this->_program != &program) || (this->_identity != program.id) || this->_backward){
+		// Устанавливаем проход в прямом направлении
+		this->_backward = false;
 		// Устанавливаем исполняемой программы регулярного выражения
 		this->_program = &program;
 		// Устанавливаем опознани исполняемой программы
 		this->_identity = program.id;
-		// Устанавливаем проход в прямом направлении
-		this->_backward = false;
 		// Сбрасываем кэш состояний автомата
 		this->reset();
 		// Строим классов эквивалентности байтов
@@ -1367,12 +1263,12 @@ bool awh::regex::Dfa::reverse(const program_t & program, string_view text, const
 	 * Если исполняется программа либо направление, отличные от исполненных ранее
 	 */
 	if((this->_program != &program) || (this->_identity != program.id) || !this->_backward){
+		// Устанавливаем проход в обратном направлении
+		this->_backward = true;
 		// Устанавливаем исполняемой программы регулярного выражения
 		this->_program = &program;
 		// Устанавливаем опознани исполняемой программы
 		this->_identity = program.id;
-		// Устанавливаем проход в обратном направлении
-		this->_backward = true;
 		// Сбрасываем кэш состояний автомата
 		this->reset();
 		// Строим классов эквивалентности байтов
