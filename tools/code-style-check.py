@@ -949,10 +949,13 @@ def check_file(path, lines, members, report, fixes=None):
             if re.search(r"#\s*define\s+$", code[:m.start()]):
                 continue
             report(path, n, "WARN", "§6.2", f"возможно голое обращение к системной '{m.group(1)}(' (без ::)")
+        # Имена в директивах препроцессора объявлениями не являются: аргумент #pragma
+        # push_macro("ERROR") зовёт сохранение макроса, а не переменную push_macro (§4.2, §4.3)
+        pragma_line = code.lstrip().startswith("#pragma")
         # snake_case в именах функций/методов (§4.2), кроме внутренней статики __awh_{name}__ (§4.10)
         fm = re.match(r"^\s*(?:static\s+|inline\s+|constexpr\s+|virtual\s+|explicit\s+)*"
                       r"[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+((?:\w+::)*~?\w+)\s*\(", code)
-        if fm and "class" not in code and "struct" not in code.split("(")[0]:
+        if fm and not pragma_line and "class" not in code and "struct" not in code.split("(")[0]:
             fname = fm.group(1).split("::")[-1]
             head = code[:fm.start(1)]
             call_kw = bool(re.search(r"\b(return|throw|co_return|co_await|new|delete|offsetof|sizeof|static_cast|awh_cast)\b[^;]*$", head))
@@ -963,6 +966,8 @@ def check_file(path, lines, members, report, fixes=None):
         # snake_case в объявлениях переменных и параметров (§4.3)
         for vm in re.finditer(r"(?:const\s+)?[A-Za-z_][\w:<>]*(?:\s*[*&]\s*)?\s+([a-z]\w*)\s*(?==[^=]|;|,|\)|\()", code):
             name = vm.group(1)
+            if pragma_line:
+                continue
             kw = {"if", "for", "while", "switch", "return", "case", "sizeof", "noexcept", "const", "static", "auto", "int", "void", "bool", "value_type", "size_type", "difference_type", "pointer", "const_pointer", "reference", "const_reference", "rebind", "other"} | STD_CALLS
             if name in kw or not is_snake_name(name):
                 continue
