@@ -44,6 +44,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../value.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -815,6 +816,27 @@ namespace awh {
 				SPACE         = 0x09, // Пробельное содержимое, не значимое для строения
 				FINISH        = 0x0A  // Текст разобран до конца
 			};
+
+			/**
+			 * \~russian
+			 * @brief Структура отрезка общего хранилища знаков
+			 *
+			 * @details Хранилища знаков дописываются по мере разбора и при росте
+			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
+			 *          отрезка вместо ссылки на него - единственный способ пережить такое
+			 *          перемещение.
+			 *
+			 * \~english
+			 * @brief Structure of a segment of the shared character storage
+			 *
+			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
+			 *          are moved, invalidating the references to their content. To keep the position of a
+			 *          segment instead of a reference to it is the only way to survive such a
+			 *          move.
+			 *
+			 * \~
+			 */
+			using span_t = codec::span_t;
 			/**
 			 * \~russian
 			 * @brief Кодировки исходного текста разметки
@@ -823,6 +845,9 @@ namespace awh {
 			 *          разметки в начале текста; при их отсутствии договор предписывает считать
 			 *          текст записанным в UTF-8.
 			 *
+			 * @note Однобайтовые кодировки берутся таблицею у `awh::charset` и приходят
+			 *       видом `SINGLE`; вид `CP1252` разметкой не поддержан и отвергается
+			 *
 			 * \~english
 			 * @brief Encodings of the source markup text
 			 *
@@ -830,46 +855,37 @@ namespace awh {
 			 *          of the markup at the beginning of the text; in their absence the protocol prescribes considering
 			 *          the text written in UTF-8.
 			 *
+			 * @note The single-byte encodings are taken as a table from `awh::charset` and come
+			 *       by the `SINGLE` kind; the `CP1252` kind is not supported by the markup and is refused
+			 *
 			 * \~
 			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				/**
-				 * \~russian
-				 * Однобайтовая кодировка, взятая таблицею у `awh::charset`
-				 *
-				 * @details Виды выше разбираются своими ветвями, ибо разбор их своеобразен:
-				 *          у UTF-8 знак занимает от одного до четырёх байтов, у UTF-16 - два либо
-				 *          четыре. Всякая же ОДНОБАЙТОВАЯ кодировка разбирается одинаково - байт в
-				 *          кодовое значение по таблице, - и заводить каждой свой вид незачем: их
-				 *          десятки, и все они уже лежат в `awh::charset`.
-				 *
-				 * @note Вид этот сам по себе кодировки НЕ называет: какая именно взята,
-				 *       хранится таблицею у разбора. Оттого `name()` выдаёт для него не имя
-				 *       кодировки, а обозначение вида
-				 *
-				 * \~english
-				 * Single-byte encoding taken as a table from `awh::charset`
-				 *
-				 * @details The kinds above are parsed by their own branches, for their parsing is own: at
-				 *          UTF-8 a character takes from one to four bytes, at UTF-16 - two or four. Any
-				 *          SINGLE-BYTE encoding, on the contrary, is parsed in the same way - a byte into a
-				 *          code value by a table, - and there is no sense in making an own kind for each:
-				 *          there are dozens of them, and all of them already lie in `awh::charset`.
-				 *
-				 * @note This kind by itself does NOT name an encoding: which exact one has been taken is
-				 *       kept by a table at the parsing. Therefore `name()` issues for it not a name of an
-				 *       encoding, but a designation of the kind
-				 *
-				 * \~
-				 */
-				SINGLE = 0x06
-			};
+			using encoding_t = codec::encoding_t;
+			/**
+			 * \~russian
+			 * @brief Структура положения в исходном тексте разметки
+			 *
+			 * @details Вид этот общий у всех кодеков рамки: он несёт номер строки,
+			 *          положение в строке и смещение от начала текста. Служит для указания
+			 *          места ошибки и для привязки узлов дерева к исходному тексту.
+			 *
+			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
+			 *       смещение - в байтах текста, приведённого к UTF-8
+			 *
+			 * \~english
+			 * @brief Structure of the position within the source markup text
+			 *
+			 * @details This kind is common to all the codecs of the framework: it carries the line number,
+			 *          the position in the line and the offset from the beginning of the text. Serves for
+			 *          indicating the place of an error and for binding the nodes of the tree to the
+			 *          source text.
+			 *
+			 * @note The line number and the position in the line are counted in Unicode characters, while
+			 *       the offset — in the bytes of the text converted to UTF-8
+			 *
+			 * \~
+			 */
+			using location_t = codec::location_t;
 
 			/**
 			 * \~russian
@@ -942,119 +958,6 @@ namespace awh {
 				 */
 				explicit Binding() noexcept = default;
 			} binding_t;
-			/**
-			 * \~russian
-			 * @brief Структура отрезка общего хранилища знаков
-			 *
-			 * @details Хранилища знаков дописываются по мере разбора и при росте
-			 *          перемещаются, обесценивая ссылки на своё содержимое. Хранить положение
-			 *          отрезка вместо ссылки на него - единственный способ пережить такое
-			 *          перемещение.
-			 *
-			 * \~english
-			 * @brief Structure of a segment of the shared character storage
-			 *
-			 * @details The storages of the characters are appended to as the parsing goes on and at a growth they
-			 *          are moved, invalidating the references to their content. To keep the position of a
-			 *          segment instead of a reference to it is the only way to survive such a
-			 *          move.
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище знаков
-				uint32_t offset;
-				// Длина отрезка в байтах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Span() noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище знаков
-				 * @param length длина отрезка в байтах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the characters
-				 * @param length length of the segment in bytes
-				 *
-				 * \~
-				 */
-				explicit Span(const uint32_t offset, const uint32_t length) noexcept;
-			} span_t;
-			/**
-			 * \~russian
-			 * @brief Структура положения в исходном тексте разметки
-			 *
-			 * @details Служит для указания места ошибки и для привязки узлов дерева к
-			 *          исходному тексту.
-			 *
-			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 *       смещение - в байтах исходного текста до перекодирования
-			 *
-			 * \~english
-			 * @brief Structure of the position within the source markup text
-			 *
-			 * @details Serves for indicating the place of an error and for binding the nodes of the tree to the
-			 *          source text.
-			 *
-			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 *       the offset — in the bytes of the source text before the transcoding
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Номер строки, считая с единицы
-				uint32_t line;
-				/**
-				 * \~russian
-				 * @brief Смещение от начала текста в байтах
-				 *
-				 * @warning Смещение считается по тексту, ПРИВЕДЁННОМУ к UTF-8, а не по
-				 *          исходным байтам. Метка порядка байтов снята, а текст в иной
-				 *          кодировке уже переведён, и длины расходятся: документ Latin-1
-				 *          в 52 байта даёт смещение конца 54, а метка порядка байтов
-				 *          сдвигает все смещения на свою длину. Для указания места в
-				 *          ИСХОДНОМ файле смещение это негодно, если текст подан не в
-				 *          UTF-8 без метки
-				 *
-				 * \~english
-				 * @brief The offset from the beginning of the text in bytes
-				 *
-				 * @warning The offset is counted over the text CONVERTED to UTF-8 rather than over
-				 *          the source bytes. The byte order mark is stripped and a text in another
-				 *          encoding is already converted, so the lengths diverge: a Latin-1 document
-				 *          of 52 bytes gives the ending offset 54, and a byte order mark shifts every
-				 *          offset by its length. For pointing at a place in the SOURCE file this
-				 *          offset is unfit unless the text is supplied as UTF-8 without a mark
-				 *
-				 * \~
-				 */
-				uint64_t offset;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Location() noexcept;
-			} location_t;
 			/**
 			 * \~russian
 			 * @brief Структура имени узла или атрибута с учётом пространства имён

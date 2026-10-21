@@ -190,12 +190,12 @@ namespace awh {
 			 *     при записи в выдачу не идёт
 			 *
 			 *  @code{.cpp}
-			 *          document_t document();
+			 *  document_t document;
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
 			 *    document.set("port", "9090", "server");
-			 *    const string result = document.text();
+			 *    const string result = document.dump();
 			 *  }
 			 *
 			 *  @endcode
@@ -271,12 +271,12 @@ namespace awh {
 			 *     does not go into the output at the writing
 			 *
 			 *  @code{.cpp}
-			 *          document_t document();
+			 *  document_t document;
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
 			 *    document.set("port", "9090", "server");
-			 *    const string result = document.text();
+			 *    const string result = document.dump();
 			 *  }
 			 *
 			 *  @endcode
@@ -1120,32 +1120,20 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод получения текущих настроек дерева
-					 *
-					 * @return текущие настройки дерева настроек
-					 *
-					 * \~english
-					 * @brief Method of getting the current settings of the tree
-					 *
-					 * @return current settings of the settings tree
-					 *
-					 * \~
-					 */
-					const settings_t & settings() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек дерева
 					 *
 					 * @param settings настройки дерева настроек
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the tree
 					 *
 					 * @param settings settings of the settings tree
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1177,24 +1165,6 @@ namespace awh {
 					 * \~
 					 */
 					bool parse(const string_view text) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод разбора текста настроек с заданными настройками
-					 *
-					 * @param text     разбираемый текст настроек
-					 * @param settings настройки дерева настроек
-					 * @return         результат выполнения операции
-					 *
-					 * \~english
-					 * @brief Method of parsing a settings text with the given settings
-					 *
-					 * @param text     settings text being parsed
-					 * @param settings settings of the settings tree
-					 * @return         result of performing the operation
-					 *
-					 * \~
-					 */
-					bool parse(const string_view text, const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2168,16 +2138,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-					/**
-					 * \~russian
-					 * @brief Псевдоним сброса состояния документа (см. clear())
-					 *
-					 * \~english
-					 * @brief Alias of the reset of the state of a document (see clear())
-					 *
-					 * \~
-					 */
-					void reset() noexcept;
 				public:
 					/**
 					 * \~russian

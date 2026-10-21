@@ -42,6 +42,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../value.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -436,6 +437,8 @@ namespace awh {
 			 *          other four 121, by a sum over the codecs 123 against 109. The argument stood on a
 			 *          number without a sign of the counting and was a lie for that reason; the findings did
 			 *          NOT stand on it — they stand on the absence of the two names called above
+			 *
+			 * \~
 			 */
 
 			/**
@@ -538,21 +541,6 @@ namespace awh {
 			};
 			/**
 			 * \~russian
-			 * @brief Состояния разбора текста настроек
-			 *
-			 * \~english
-			 * @brief States of the parsing of a settings text
-			 *
-			 * \~
-			 */
-			enum class state_t : uint8_t {
-				READY    = 0x00, // Разбор готов принимать текст
-				HUNGRY   = 0x01, // Разбору требуется продолжение текста
-				FINISHED = 0x02, // Текст разобран до конца
-				FAILED   = 0x03  // Разбор прекращён ошибкой
-			};
-			/**
-			 * \~russian
 			 * @brief Системы счисления записи целого числа
 			 *
 			 * @note Признак сохраняется деревом настроек: число, записанное человеком
@@ -596,46 +584,6 @@ namespace awh {
 				LITERAL           = 0x01, // Дословная строка в одинарных кавычках
 				MULTILINE_BASIC   = 0x02, // Многострочная основная строка в тройных двойных кавычках
 				MULTILINE_LITERAL = 0x03  // Многострочная дословная строка в тройных одинарных кавычках
-			};
-			/**
-			 * \~russian
-			 * @brief Кодировки исходного текста настроек
-			 *
-			 * @details Описание отводит тексту TOML единственную кодировку - UTF-8, - и
-			 *          умолчанием берётся она. Прочие кодировки принимаются лишь навязанные извне
-			 *          либо опознанные меткой порядка байтов: файл, полученный от чужой оснастки,
-			 *          бывает записан иначе, и отвергать его целиком значило бы оставлять
-			 *          потребителя без всякого способа его прочесть.
-			 *
-			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
-			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
-			 *       только навязанными извне
-			 *
-			 * \~english
-			 * @brief Encodings of the source settings text
-			 *
-			 * @details The specification allots a single encoding to a TOML text — UTF-8 — and
-			 *          it is taken by default. The other encodings are accepted only when imposed from the outside
-			 *          or recognized by the byte order mark: a file received from a foreign toolchain
-			 *          happens to be written otherwise, and to reject it entirely would mean to leave
-			 *          the consumer without any means of reading it.
-			 *
-			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — have no
-			 *       byte order mark at all and cannot be recognized: they are accepted only when
-			 *       imposed from the outside
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06, // Кодировка Windows-1252
-				UTF32LE = 0x07, // Кодировка UTF-32 с обратным порядком байтов
-				UTF32BE = 0x08  // Кодировка UTF-32 с прямым порядком байтов
 			};
 			/**
 			 * \~russian
@@ -858,9 +806,62 @@ namespace awh {
 				 *          go looking for a spoil where there is none. Measured 2026-09-15 by a comparison with the
 				 *          codecs of the frame: JSON, YAML and XML GIVE OUT the spelling of a simple value, INI
 				 *          refuses and names the reason rightly
+				 *
+				 * \~
 				 */
 				UNREPRESENTABLE_VALUE = 0x29
 			};
+
+			/**
+			 * \~russian
+			 * @brief Структура положения в исходном тексте настроек
+			 *
+			 * @details Вид этот общий у всех кодеков рамки: он несёт номер строки,
+			 *          положение в строке и смещение от начала текста. Строка и знак
+			 *          считаются с единицы и меряются знаками приведённого текста, а
+			 *          смещение - в байтах текста, к UTF-8 приведённого.
+			 *
+			 * \~english
+			 * @brief Structure of the setting's position in the source configuration text
+			 *
+			 * @details This kind is common to all the codecs of the framework: it carries the line number,
+			 *          the position in the line and the offset from the beginning of the text. The line and
+			 *          the character are counted from one and are measured in the characters of the converted
+			 *          text, while the offset — in the bytes of the text converted to UTF-8.
+			 *
+			 * \~
+			 */
+			using location_t = codec::location_t;
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста настроек
+			 *
+			 * @details Описание отводит тексту TOML единственную кодировку - UTF-8, - и
+			 *          умолчанием берётся она. Прочие кодировки принимаются лишь навязанные извне
+			 *          либо опознанные меткой порядка байтов: файл, полученный от чужой оснастки,
+			 *          бывает записан иначе, и отвергать его целиком значило бы оставлять
+			 *          потребителя без всякого способа его прочесть.
+			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
+			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 *       только навязанными извне
+			 *
+			 * \~english
+			 * @brief Encodings of the source settings text
+			 *
+			 * @details The specification allots a single encoding to a TOML text — UTF-8 — and
+			 *          it is taken by default. The other encodings are accepted only when imposed from the outside
+			 *          or recognized by the byte order mark: a file received from a foreign toolchain
+			 *          happens to be written otherwise, and to reject it entirely would mean to leave
+			 *          the consumer without any means of reading it.
+			 *
+			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — have no
+			 *       byte order mark at all and cannot be recognized: they are accepted only when
+			 *       imposed from the outside
+			 *
+			 * \~
+			 */
+			using encoding_t = codec::encoding_t;
 
 			/**
 			 * \~russian
@@ -995,39 +996,6 @@ namespace awh {
 				 */
 				explicit Time() noexcept;
 			} time_t;
-			/**
-			 * \~russian
-			 * @brief Структура положения в исходном тексте настроек
-			 *
-			 * @details Строка и знак считаются с единицы и меряются знаками приведённого
-			 *          текста, а смещение - в байтах исходного текста до приведения.
-			 *
-			 * \~english
-			 * @brief Structure of the setting's position in the source configuration text
-			 *
-			 * @details The line and the character are counted from one and are measured in the characters of the converted
-			 *          text, while the offset — in the bytes of the source text before the conversion.
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Номер строки, считая с единицы
-				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				// Смещение от начала текста в байтах
-				uint64_t offset;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Location() noexcept;
-			} location_t;
 			/**
 			 * \~russian
 			 * @brief Структура отметки времени

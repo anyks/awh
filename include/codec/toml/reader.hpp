@@ -84,6 +84,22 @@ namespace awh {
 		namespace toml {
 			/**
 			 * \~russian
+			 * @brief Состояния разбора текста настроек
+			 *
+			 * \~english
+			 * @brief States of the parsing of a settings text
+			 *
+			 * \~
+			 */
+			enum class state_t : uint8_t {
+				READY    = 0x00, // Разбор готов принимать текст
+				HUNGRY   = 0x01, // Разбору требуется продолжение текста
+				FINISHED = 0x02, // Текст разобран до конца
+				FAILED   = 0x03  // Разбор прекращён ошибкой
+			};
+
+			/**
+			 * \~russian
 			 * @brief Класс потокового чтения текста настроек TOML
 			 *
 			 * @details Текст принимается кусками произвольного размера, а выдача ведётся
@@ -101,7 +117,7 @@ namespace awh {
 			 *       достаётся потребителю потоком, а не собранным заранее деревом
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader();
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -163,7 +179,7 @@ namespace awh {
 			 *       goes to the consumer as a stream rather than as a tree assembled beforehand
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader();
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -413,22 +429,8 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct __AWH_SHARED_EXPORT__ Span {
-						// Длина последовательности знаков
-						uint32_t length;
-						// Смещение начала последовательности в хранилище
-						uint32_t offset;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						explicit Span() noexcept;
-					} span_t;
+					using span_t = codec::span_t;
+				private:
 					/**
 					 * \~russian
 					 * @brief Структура составной части имени ключа, собранная для выдачи
@@ -1536,7 +1538,27 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size, const bool end) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод передачи исходного текста целиком
+					 *
+					 * @details Разбирает переданный текст как единственный и последний кусок.
+					 *
+					 * @param text исходный текст настроек целиком
+					 * @return     результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of passing the source text in full
+					 *
+					 * @details Parses the passed text as the single and last chunk.
+					 *
+					 * @param text source text of the settings in full
+					 * @return     result of performing the operation
+					 *
+					 * \~
+					 */
+					bool feed(const string_view text) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перехода к следующему событию разбора
@@ -1725,7 +1747,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian

@@ -88,6 +88,29 @@ namespace awh {
 		namespace abc {
 			/**
 			 * \~russian
+			 * @brief Состояние потокового чтения записи
+			 *
+			 * @details Договор общий у кодеков рамки, и члены его значат ровно то же:
+			 *          разниться толкованиям нельзя, иначе цикл, написанный по образцу
+			 *          одного кодека, окажется верным по виду и неверным по условию выхода
+			 *
+			 * \~english
+			 * @brief State of the streaming reading of a record
+			 *
+			 * @details The contract is common to the codecs of the framework, and its members mean
+			 *          exactly the same: the interpretations must not differ, otherwise a loop written by
+			 *          the pattern of one codec will turn out right in shape and wrong in its exit condition
+			 *
+			 * \~
+			 */
+			enum class state_t : uint8_t {
+				READY    = 0x00, // Событие получено и доступно для чтения
+				HUNGRY   = 0x01, // Для продолжения разбора требуется следующий кусок записи
+				FINISHED = 0x02, // Запись разобрана до конца
+				FAILED   = 0x03  // Разбор прекращён ошибкой либо требованием потребителя
+			};
+			/**
+			 * \~russian
 			 * @brief Класс поточного чтения бинарной записи
 			 *
 			 * @details Чтение выдаёт события по мере разбора записи, не удерживая её целиком.
@@ -563,7 +586,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					enum class state_t : uint8_t {
+					enum class phase_t : uint8_t {
 						ITEM,             // Ожидается ведущий октет очередной единицы
 						SEGMENT,          // Ожидаются октеты строки либо двоичных данных
 						SINGLE,           // Ожидаются октеты одиночного значения
@@ -989,7 +1012,7 @@ namespace awh {
 					int64_t _exponent;
 				private:
 					// Состояние разбора записи
-					state_t _state;
+					phase_t _state;
 					// Код отказа разбора
 					error_t _error;
 					// Вид значения, чьи октеты ожидаются
@@ -1018,6 +1041,8 @@ namespace awh {
 					record_t _current;
 					// Обработчик прямой выдачи событий разбора
 					handler_t _handler;
+					// Положение обнаруженного отказа, хранимое отдельно от текущего события
+					location_t _failure;
 					// Настройки разбора записи
 					settings_t _settings;
 					// Положение разбора в поданной записи
@@ -1188,7 +1213,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool fail(const error_t error) noexcept;
+					bool fail(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перестроения указателя имён полей вместимого
@@ -1256,7 +1281,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
+					bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи собранного события разбора
@@ -1292,7 +1317,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool settle(record_t & record) noexcept;
+					bool settle(record_t & record) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод учёта завершённого значения вместившим его
@@ -1308,7 +1333,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool finalize(record_t & record) noexcept;
+					bool finalize(record_t & record) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия исчерпанных вместимых
@@ -1322,7 +1347,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool unwind() noexcept;
+					bool unwind() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора накопленных октетов записи
@@ -1336,7 +1361,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool process() noexcept;
+					bool process() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора очередной единицы проволочной записи
@@ -1352,7 +1377,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool item(bool & done) noexcept;
+					bool item(bool & done) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод усечения разобранной части буфера
@@ -1378,7 +1403,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool digest(const bool last) noexcept;
+					bool digest(const bool last) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1424,6 +1449,11 @@ namespace awh {
 					 *          на всякой подаче, а причина его будет прежняя - та, что была до
 					 *          прекращения, - и оттого укажет не туда
 					 *
+					 * @note Ход этот нужен читателям с прямым обработчиком событий: вернуть
+					 *       отказ из обработчика нечем, а подача обязана прекратиться немедля.
+					 *       У читателей без обработчика его нет: потребитель просто перестаёт
+					 *       звать `next()`
+					 *
 					 * \~english
 					 * @brief Method of the termination of the parsing
 					 *
@@ -1436,6 +1466,10 @@ namespace awh {
 					 *          called `abort` hoping to continue will get a refusal at every feeding, and its cause will be
 					 *          the former one - that which was before the termination, - and therefore it will point in the
 					 *          wrong direction
+					 *
+					 * @note This step is needed by readers with a direct handler of events: there is nothing
+					 *       to return a refusal by from the handler, and the feeding must stop immediately.
+					 *       Readers without a handler have it not: the consumer simply stops calling `next()`
 					 *
 					 * \~
 					 */
@@ -1504,7 +1538,27 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool feed(const void * buffer, const size_t size, const bool last = false) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool last = false) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод передачи записи целиком
+					 *
+					 * @details Разбирает переданную запись как единственный и последний кусок.
+					 *
+					 * @param text запись целиком
+					 * @return     признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of passing the record in full
+					 *
+					 * @details Parses the passed record as the single and last chunk.
+					 *
+					 * @param text record in full
+					 * @return     sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool feed(const string_view text) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи места под приём октетов записи
@@ -1532,7 +1586,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] void * reserve(const size_t size) noexcept;
+					void * reserve(const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подачи октетов, принятых в выданное место
@@ -1550,7 +1604,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool commit(const size_t size, const bool last = false) noexcept;
+					bool commit(const size_t size, const bool last = false) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1565,7 +1619,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool next() noexcept;
+					bool next() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод пропуска открытого вместимого целиком
@@ -1610,7 +1664,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool skip() noexcept;
+					bool skip() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида текущего события
@@ -1625,6 +1679,34 @@ namespace awh {
 					 * \~
 					 */
 					event_t event() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения текущего состояния чтения
+					 *
+					 * @details Состояние вычисляется по очереди событий и фазе разбора, а не
+					 *          хранится полем: очередь опорожняется выдачей, и хранимое состояние
+					 *          расходилось бы с нею при всяком событии.
+					 *
+					 * @note Отказ обратного давления (`OVERFLOW_LIMIT`) отказом разбора не
+					 *       считается: разбор цел, и продолжение ждёт снятия событий
+					 *
+					 * @return текущее состояние чтения записи
+					 *
+					 * \~english
+					 * @brief Method of extracting the current state of the reading
+					 *
+					 * @details The state is computed from the queue of events and the phase of the parsing rather
+					 *          than stored by a field: the queue is emptied by the issuance, and a stored state would
+					 *          drift from it at every event.
+					 *
+					 * @note A back-pressure refusal (`OVERFLOW_LIMIT`) is not counted as a refusal of the parsing:
+					 *       the parsing is intact, and the continuation waits for the events to be taken
+					 *
+					 * @return current state of the reading of a record
+					 *
+					 * \~
+					 */
+					state_t state() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения текущего события
@@ -1712,6 +1794,28 @@ namespace awh {
 					const location_t & location() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения места обнаружения отказа
+					 *
+					 * @details Место это стоит НЕ на месте текущего события: события, собранные
+					 *          до отказа, снимаются уже после него, и место текущего события ими
+					 *          переписывается, а место отказа остаётся.
+					 *
+					 * @return положение обнаруженного отказа в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of getting the place of the detection of an error
+					 *
+					 * @details This place stands NOT at the place of the current event: the events assembled
+					 *          before the error are taken already after it, and the place of the current event is
+					 *          overwritten by them, while the place of the error remains.
+					 *
+					 * @return position of the detected error in the source text
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод извлечения глубины вложенности разбора
 					 *
 					 * @return глубина вложенности разбора
@@ -1744,15 +1848,17 @@ namespace awh {
 					 * @brief Метод установки настроек разбора записи
 					 *
 					 * @param settings устанавливаемые настройки разбора записи
+					 * @return         признак принятия настроек разбора
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the parsing of a record
 					 *
 					 * @param settings settings of the parsing of a record being set
+					 * @return         sign of the acceptance of the settings of the parsing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1764,6 +1870,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Reader() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the parsing of a text
+					 *
+					 * \~
+					 */
+					explicit Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1784,4 +1904,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"

@@ -1139,7 +1139,9 @@ namespace awh {
 					location_t _origin;
 					// Положение начала простого значения, внутри скобок собираемого
 					location_t _flowned;
-					// Положение отказа разбора в исходном тексте
+					// Положение обнаруженного отказа, хранимое отдельно от текущего события
+					location_t _failure;
+					// Положение разбора в исходном тексте
 					location_t _location;
 					// Настройки разбора текста
 					settings_t _settings;
@@ -1937,7 +1939,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size, const bool end) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подачи исходного текста целиком
@@ -2038,18 +2040,40 @@ namespace awh {
 					error_t error() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод получения положения отказа в исходном тексте
+					 * @brief Метод извлечения положения разбора в исходном тексте
 					 *
-					 * @return положение отказа разбора в исходном тексте
+					 * @return положение разбора в исходном тексте
 					 *
 					 * \~english
-					 * @brief Method of the obtaining of the position of a refusal in the source text
+					 * @brief Method of the extraction of the position of the parsing in the source text
 					 *
-					 * @return position of the refusal of the parsing in the source text
+					 * @return position of the parsing in the source text
 					 *
 					 * \~
 					 */
 					const location_t & location() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения места обнаружения отказа
+					 *
+					 * @details Место это стоит НЕ на месте текущего события: события, собранные
+					 *          до отказа, снимаются уже после него, и место текущего события ими
+					 *          переписывается, а место отказа остаётся.
+					 *
+					 * @return положение обнаруженного отказа в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of getting the place of the detection of an error
+					 *
+					 * @details This place stands NOT at the place of the current event: the events assembled
+					 *          before the error are taken already after it, and the place of the current event is
+					 *          overwritten by them, while the place of the error remains.
+					 *
+					 * @return position of the detected error in the source text
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения опознанной кодировки исходного текста
@@ -2083,6 +2107,7 @@ namespace awh {
 					 *
 					 * \~
 					 * @return схема, над разбором действующая
+					 *
 					 */
 					schema_t dialect() const noexcept;
 					/**
@@ -2108,7 +2133,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian

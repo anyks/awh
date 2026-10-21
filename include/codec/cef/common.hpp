@@ -40,6 +40,11 @@
 #include <string_view>
 
 /**
+ * Подключаем заголовочный файл модуля
+ */
+#include "../value.hpp"
+
+/**
  * Подключаем заголовочный файл проекта
  */
 #include "../../sys/macro/global.hpp"
@@ -579,7 +584,7 @@ namespace awh {
 			enum class empty_t : uint8_t {
 				STRING  = 0x00, // Пустая последовательность знаков
 				BOOLEAN = 0x01, // Логическая истина: ключ признаком присутствия
-				NUL     = 0x02, // Значение, означающее пустоту
+				NIL     = 0x02, // Значение, означающее пустоту
 				SKIP    = 0x03  // Пара в дерево не заносится вовсе
 			};
 			/**
@@ -793,6 +798,9 @@ namespace awh {
 			 *          строки со столбцом: смещение годится для отсылки к куску текста, а строка
 			 *          со столбцом - для сообщения человеку.
 			 *
+			 * @note Поля строки, столбца и смещения наследуются от общего вида положения.
+			 *       Умолчание CEF считает строку и столбец с единицы, а смещение - с нуля
+			 *
 			 * \~english
 			 * @brief Position in the source text
 			 *
@@ -801,15 +809,13 @@ namespace awh {
 			 *          for referencing a segment of text, while the line and column are
 			 *          for communicating with a human.
 			 *
+			 * @note The fields of the line, of the column and of the offset are inherited from the common
+			 *       kind of a position. The CEF default counts the line and the column from one, and the
+			 *       offset — from zero
+			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Position {
-				// Номер строки, считая от единицы
-				uint64_t line;
-				// Номер столбца в байтах, считая от единицы
-				uint64_t column;
-				// Смещение в байтах от начала текста
-				uint64_t offset;
+			typedef struct __AWH_SHARED_EXPORT__ Position : codec::location_t {
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -821,6 +827,23 @@ namespace awh {
 				 */
 				explicit Position() noexcept;
 			} pos_t;
+
+			/**
+			 * \~russian
+			 * @brief Положение в исходном тексте
+			 *
+			 * @details Имя это общее у кодеков рамки; у CEF положение записи зовётся
+			 *          `pos_t`, и прежнее имя сохранено псевдонимом ради потребителей.
+			 *
+			 * \~english
+			 * @brief Position in the source text
+			 *
+			 * @details This name is common to the codecs of the framework; at CEF the position of a record is
+			 *          called `pos_t`, and the former name is kept as an alias for the sake of the consumers.
+			 *
+			 * \~
+			 */
+			using location_t = pos_t;
 
 			/**
 			 * \~russian

@@ -707,7 +707,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool fail(const error_t error) noexcept;
+					bool fail(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки места, куда укладывается значение
@@ -723,7 +723,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool prepare(const bool container) noexcept;
+					bool prepare(const bool container) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перестроения указателя имён полей вместимого
@@ -763,7 +763,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
+					bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод учёта уложенного значения
@@ -779,7 +779,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool account(const size_t start) noexcept;
+					bool account(const size_t start) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала вместимого
@@ -799,7 +799,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool open(const bool mapping, const uint64_t count, const bool indefinite) noexcept;
+					bool open(const bool mapping, const uint64_t count, const bool indefinite) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки конца вместимого
@@ -815,7 +815,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool close(const bool mapping) noexcept;
+					bool close(const bool mapping) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод начала значения, собираемого кусками
@@ -831,7 +831,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool segment(const bool string) noexcept;
+					bool segment(const bool string) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод конца значения, собираемого кусками
@@ -847,7 +847,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool segmentEnd(const bool string) noexcept;
+					bool segmentEnd(const bool string) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод вклейки содержимого, уложенного ссылкой
@@ -904,7 +904,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool nil() noexcept;
+					bool nil() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки логического значения
@@ -920,7 +920,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool boolean(const bool value) noexcept;
+					bool boolean(const bool value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки целого числа со знаком
@@ -936,7 +936,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool number(const int64_t value) noexcept;
+					bool number(const int64_t value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки целого числа без знака
@@ -952,7 +952,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool number(const uint64_t value) noexcept;
+					bool number(const uint64_t value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки дробного числа двойной точности
@@ -968,7 +968,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool number(const double value) noexcept;
+					bool number(const double value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки дробного числа одинарной точности
@@ -984,7 +984,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool number(const float value) noexcept;
+					bool number(const float value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки строки
@@ -1000,7 +1000,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool text(const string_view value) noexcept;
+					bool text(const string_view value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки двоичных данных
@@ -1018,7 +1018,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool blob(const void * buffer, const size_t size) noexcept;
+					bool blob(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки отметки времени
@@ -1034,7 +1034,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool timestamp(const int64_t value) noexcept;
+					bool timestamp(const int64_t value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки опознавателя
@@ -1052,7 +1052,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool uuid(const void * buffer, const size_t size) noexcept;
+					bool uuid(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки целого числа неограниченной ширины
@@ -1080,7 +1080,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool bignum(const void * buffer, const size_t size, const bool negative) noexcept;
+					bool bignum(const void * buffer, const size_t size, const bool negative) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки десятичного числа
@@ -1118,7 +1118,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool decimal(const void * buffer, const size_t size, const bool negative, const int64_t exponent) noexcept;
+					bool decimal(const void * buffer, const size_t size, const bool negative, const int64_t exponent) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки открытого расширения
@@ -1154,7 +1154,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool custom(const uint64_t subtype, const void * buffer, const size_t size) noexcept;
+					bool custom(const uint64_t subtype, const void * buffer, const size_t size) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1191,7 +1191,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool textBegin() noexcept;
+					bool textBegin() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод конца строки, собираемой кусками
@@ -1205,7 +1205,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool textEnd() noexcept;
+					bool textEnd() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод начала двоичных данных, собираемых кусками
@@ -1219,7 +1219,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool blobBegin() noexcept;
+					bool blobBegin() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод конца двоичных данных, собираемых кусками
@@ -1233,7 +1233,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool blobEnd() noexcept;
+					bool blobEnd() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала массива объявленной длины
@@ -1249,7 +1249,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool arrayBegin(const uint64_t count) noexcept;
+					bool arrayBegin(const uint64_t count) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала массива неопределённой длины
@@ -1263,7 +1263,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool arrayBegin() noexcept;
+					bool arrayBegin() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки конца массива
@@ -1277,7 +1277,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool arrayEnd() noexcept;
+					bool arrayEnd() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала отображения объявленной длины
@@ -1293,7 +1293,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool mapBegin(const uint64_t count) noexcept;
+					bool mapBegin(const uint64_t count) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала отображения неопределённой длины
@@ -1307,7 +1307,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool mapBegin() noexcept;
+					bool mapBegin() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки конца отображения
@@ -1321,7 +1321,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool mapEnd() noexcept;
+					bool mapEnd() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1369,7 +1369,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool complete() const noexcept;
+					bool complete() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения собранной записи
@@ -1411,7 +1411,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] vector <piece_t> pieces() const noexcept;
+					vector <piece_t> pieces() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения длины собранной записи
@@ -1480,15 +1480,17 @@ namespace awh {
 					 * @brief Метод установки настроек сборки записи
 					 *
 					 * @param settings устанавливаемые настройки сборки записи
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the assembling of a record
 					 *
 					 * @param settings settings of the assembling of a record being set
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1500,6 +1502,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Writer() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки записи текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the writing of a text
+					 *
+					 * \~
+					 */
+					explicit Writer(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

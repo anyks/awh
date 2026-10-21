@@ -40,6 +40,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../value.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -519,46 +520,12 @@ namespace awh {
 			 */
 			enum class kind_t : uint8_t {
 				NONE   = 0x00, // Узел не определён либо ссылка недействительна
-				NUL    = 0x01, // Пустое значение null
+				NIL    = 0x01, // Пустое значение null
 				BOOL   = 0x02, // Логическое значение true либо false
 				NUMBER = 0x03, // Число
 				STRING = 0x04, // Строка
 				ARRAY  = 0x05, // Массив
 				OBJECT = 0x06  // Объект
-			};
-			/**
-			 * \~russian
-			 * @brief Кодировки исходного текста
-			 *
-			 * @details Стандарт предписывает **UTF-8** для обмена между разными системами и
-			 *          метку порядка байтов запрещает. Прочие кодировки распознаются потому, что в
-			 *          обиходе они встречаются, и текст в них лучше принять с пометкой, чем
-			 *          отвергнуть молчанием.
-			 *
-			 * @note Кодировок UTF-32 среди распознаваемых нет: стандарт их для обмена не
-			 *       велит, а в обиходе они не встречаются вовсе
-			 *
-			 * \~english
-			 * @brief Encodings of the source text
-			 *
-			 * @details The standard prescribes UTF-8 and forbids the byte order mark. The other
-			 *          encodings are recognised because they are encountered in the practice, and a text in them
-			 *          is better accepted with a note than rejected by a silence.
-			 *
-			 * @note UTF-32 encodings are not among the recognised ones: the standard does not
-			 *       prescribe them for the exchange, and in the practice they are not
-			 *       encountered at all
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена, определяется по метке порядка байтов
-				UTF8    = 0x01, // Кодировка UTF-8, предписанная стандартом
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06  // Кодировка Windows-1252
 			};
 			/**
 			 * \~russian
@@ -594,7 +561,7 @@ namespace awh {
 			enum class event_t : uint8_t {
 				NONE         = 0x00, // Событие не определено
 				KEY          = 0x01, // Имя поля объекта
-				NUL          = 0x02, // Значение null
+				NIL          = 0x02, // Значение null
 				BOOL         = 0x03, // Значение true либо false
 				NUMBER       = 0x04, // Число, выдаётся записью без преобразования
 				STRING       = 0x05, // Строка со снятым экранированием
@@ -663,7 +630,7 @@ namespace awh {
 			 */
 			enum class type_t : uint16_t {
 				UNDEFINED = 0x0000, // Значения нет вовсе: ссылка недействительна
-				NUL       = 0x0001, // Пустое значение null
+				NIL       = 0x0001, // Пустое значение null
 				BOOL      = 0x0002, // Логическое значение true либо false
 				STRING    = 0x0004, // Строка
 				ARRAY     = 0x0008, // Массив
@@ -974,38 +941,33 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище знаков
-				uint32_t offset;
-				// Длина отрезка в байтах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Span() noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище знаков
-				 * @param length длина отрезка в байтах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the characters
-				 * @param length length of the segment in bytes
-				 *
-				 * \~
-				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept;
-			} span_t;
+			using span_t = codec::span_t;
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста
+			 *
+			 * @details Стандарт предписывает **UTF-8** для обмена между разными системами и
+			 *          метку порядка байтов запрещает. Прочие кодировки распознаются потому, что в
+			 *          обиходе они встречаются, и текст в них лучше принять с пометкой, чем
+			 *          отвергнуть молчанием.
+			 *
+			 * @note Кодировок UTF-32 среди распознаваемых нет: стандарт их для обмена не
+			 *       велит, а в обиходе они не встречаются вовсе
+			 *
+			 * \~english
+			 * @brief Encodings of the source text
+			 *
+			 * @details The standard prescribes UTF-8 and forbids the byte order mark. The other
+			 *          encodings are recognised because they are encountered in the practice, and a text in them
+			 *          is better accepted with a note than rejected by a silence.
+			 *
+			 * @note UTF-32 encodings are not among the recognised ones: the standard does not
+			 *       prescribe them for the exchange, and in the practice they are not
+			 *       encountered at all
+			 *
+			 * \~
+			 */
+			using encoding_t = codec::encoding_t;
 
 			/**
 			 * \~russian
@@ -1014,7 +976,7 @@ namespace awh {
 			 * @details Служит для указания места отказа и для привязки значений к исходному тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 *       смещение - в байтах исходного текста до перекодирования
+			 *       смещение - в байтах текста, приведённого к UTF-8
 			 *
 			 * \~english
 			 * @brief Position in the source text
@@ -1022,42 +984,13 @@ namespace awh {
 			 * @details Serves for indicating the place of a refusal and for binding the values to the source text.
 			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 *       the offset — in the bytes of the source text before the transcoding
+			 *       the offset — in the bytes of the text converted to UTF-8
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Номер строки, считая с единицы
-				uint32_t line;
+			typedef struct __AWH_SHARED_EXPORT__ Location : codec::location_t {
 				// Глубина вложенности, считая с нуля
 				uint32_t depth;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				/**
-				 * \~russian
-				 * @brief Смещение от начала текста в байтах
-				 *
-				 * @warning Смещение считается по тексту, ПРИВЕДЁННОМУ к UTF-8, а не по
-				 *          исходным байтам. Метка порядка байтов снята, а текст в иной
-				 *          кодировке уже переведён, и длины расходятся: документ Latin-1
-				 *          в 52 байта даёт смещение конца 54, а метка порядка байтов
-				 *          сдвигает все смещения на свою длину. Для указания места в
-				 *          ИСХОДНОМ файле смещение это негодно, если текст подан не в
-				 *          UTF-8 без метки
-				 *
-				 * \~english
-				 * @brief The offset from the beginning of the text in bytes
-				 *
-				 * @warning The offset is counted over the text CONVERTED to UTF-8 rather than over
-				 *          the source bytes. The byte order mark is stripped and a text in another
-				 *          encoding is already converted, so the lengths diverge: a Latin-1 document
-				 *          of 52 bytes gives the ending offset 54, and a byte order mark shifts every
-				 *          offset by its length. For pointing at a place in the SOURCE file this
-				 *          offset is unfit unless the text is supplied as UTF-8 without a mark
-				 *
-				 * \~
-				 */
-				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор

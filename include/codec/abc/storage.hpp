@@ -419,7 +419,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool open(const string & filename) noexcept;
+					bool open(const string & filename) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод заведения нового файла контейнера
@@ -441,7 +441,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool create(const string & filename) noexcept;
+					bool create(const string & filename) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия файла контейнера
@@ -466,7 +466,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool flush() noexcept;
+					bool flush() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -512,7 +512,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] sync_t sync() const noexcept;
+					sync_t sync() const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -563,7 +563,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool bind(editor_t & editor) noexcept;
+					bool bind(editor_t & editor) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия контейнера файла выборкой записей
@@ -598,7 +598,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool bind(fetcher_t & fetcher) noexcept;
+					bool bind(fetcher_t & fetcher) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -625,7 +625,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool store(const string & filename, const void * buffer, const size_t size) noexcept;
+					bool store(const string & filename, const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод чтения октетов файла целиком
@@ -683,7 +683,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool fetch(const string & filename, vector <uint8_t> & result, const uint64_t limit = 0x4000000) noexcept;
+					bool fetch(const string & filename, vector <uint8_t> & result, const uint64_t limit = 0x4000000) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подачи файла контейнера снимателю
@@ -707,7 +707,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool load(loader_t & loader, const size_t block = 65536) noexcept;
+					bool load(loader_t & loader, const size_t block = 65536) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -722,7 +722,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool opened() const noexcept;
+					bool opened() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения полной длины контейнера на носителе

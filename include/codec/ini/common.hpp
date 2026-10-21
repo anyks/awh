@@ -42,6 +42,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
+#include "../value.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -335,8 +336,7 @@ namespace awh {
 			 *       перечень отказов есть договор, потребителю отданный
 			 *
 			 * @note Число называю вместе с признаком счёта: считаны имена перечня, а выдачей
-			 *       признаётся всякое упоминание вне таблицы сообщений. Пересчитывается тем же
-			 *       розыском
+			 *       признаётся всякое упоминание вне таблицы сообщений. Пересчитывается тем же розыском
 			 *
 			 * @warning ОТСУТСТВУЮТ два кода СКВОЗНЫХ, какие объявлены у JSON, XML и CSV всеми
 			 *          тремя, а у моих трёх - ни одним: `FILE_NOT_READ` (файл прочитать не
@@ -653,42 +653,6 @@ namespace awh {
 			};
 			/**
 			 * \~russian
-			 * @brief Кодировки исходного текста настроек
-			 *
-			 * @details Текст настроек кодировку не объявляет, и определяется она по метке
-			 *          порядка байтов в начале текста; при её отсутствии текст считается записанным
-			 *          в UTF-8.
-			 *
-			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
-			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
-			 *       только навязанными извне
-			 *
-			 * \~english
-			 * @brief Encodings of the source settings text
-			 *
-			 * @details A settings text does not announce its encoding, and it is determined by the byte
-			 *          order mark at the beginning of the text; in its absence the text is considered written
-			 *          in UTF-8.
-			 *
-			 * @note The single-byte encodings - ISO-8859-1, US-ASCII and Windows-1252 - have no byte
-			 *       order mark at all and cannot be recognized: they are accepted only when imposed
-			 *       from outside
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06, // Кодировка Windows-1252
-				UTF32LE = 0x07, // Кодировка UTF-32 с обратным порядком байтов
-				UTF32BE = 0x08  // Кодировка UTF-32 с прямым порядком байтов
-			};
-			/**
-			 * \~russian
 			 * @brief Коды ошибок разбора текста настроек
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
@@ -784,45 +748,6 @@ namespace awh {
 
 			/**
 			 * \~russian
-			 * @brief Структура положения в исходном тексте настроек
-			 *
-			 * @details Служит для указания места ошибки и для привязки записей к исходному
-			 *          тексту.
-			 *
-			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 *       смещение - в байтах исходного текста до перекодирования
-			 *
-			 * \~english
-			 * @brief Structure of the setting's position in the source configuration text
-			 *
-			 * @details Serves for indicating the place of an error and for binding the records to the source
-			 *          text.
-			 *
-			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 *       the offset — in the bytes of the source text before the transcoding
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Номер строки, считая с единицы
-				uint32_t line;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				// Смещение от начала текста в байтах
-				uint64_t offset;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Location() noexcept;
-			} location_t;
-			/**
-			 * \~russian
 			 * @brief Структура отрезка общего хранилища знаков
 			 *
 			 * @details Хранилища знаков дописываются по мере разбора и при росте
@@ -840,38 +765,59 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище знаков
-				uint32_t offset;
-				// Длина отрезка в байтах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Span() noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище знаков
-				 * @param length длина отрезка в байтах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the characters
-				 * @param length length of the segment in bytes
-				 *
-				 * \~
-				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept;
-			} span_t;
+			using span_t = codec::span_t;
+			/**
+			 * \~russian
+			 * @brief Структура положения в исходном тексте настроек
+			 *
+			 * @details Вид этот общий у всех кодеков рамки: он несёт номер строки,
+			 *          положение в строке и смещение от начала текста. Служит для указания
+			 *          места ошибки и для привязки записей к исходному тексту.
+			 *
+			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
+			 *       смещение - в байтах текста, приведённого к UTF-8
+			 *
+			 * \~english
+			 * @brief Structure of the setting's position in the source configuration text
+			 *
+			 * @details This kind is common to all the codecs of the framework: it carries the line number,
+			 *          the position in the line and the offset from the beginning of the text. Serves for
+			 *          indicating the place of an error and for binding the records to the source
+			 *          text.
+			 *
+			 * @note The line number and the position in the line are counted in Unicode characters, while
+			 *       the offset — in the bytes of the text converted to UTF-8
+			 *
+			 * \~
+			 */
+			using location_t = codec::location_t;
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста настроек
+			 *
+			 * @details Текст настроек кодировку не объявляет, и определяется она по метке
+			 *          порядка байтов в начале текста; при её отсутствии текст считается записанным
+			 *          в UTF-8.
+			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
+			 *       порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 *       только навязанными извне
+			 *
+			 * \~english
+			 * @brief Encodings of the source settings text
+			 *
+			 * @details A settings text does not announce its encoding, and it is determined by the byte
+			 *          order mark at the beginning of the text; in its absence the text is considered written
+			 *          in UTF-8.
+			 *
+			 * @note The single-byte encodings - ISO-8859-1, US-ASCII and Windows-1252 - have no byte
+			 *       order mark at all and cannot be recognized: they are accepted only when imposed
+			 *       from outside
+			 *
+			 * \~
+			 */
+			using encoding_t = codec::encoding_t;
+
 			/**
 			 * \~russian
 			 * @brief Класс имени раздела текста настроек

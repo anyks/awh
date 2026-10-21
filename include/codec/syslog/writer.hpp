@@ -492,15 +492,17 @@ namespace awh {
 					 * @brief Метод установки настроек записи событий
 					 *
 					 * @param settings настройки записи событий
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing of the events
 					 *
 					 * @param settings settings of the writing of the events
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -577,6 +579,20 @@ namespace awh {
 					explicit Writer() noexcept;
 					/**
 					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки записи текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the writing of a text
+					 *
+					 * \~
+					 */
+					explicit Writer(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
 					 * \~english
@@ -594,4 +610,4 @@ namespace awh {
  * Возвращаем имена, системными макросами занятые
  */
 #include "../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"

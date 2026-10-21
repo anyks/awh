@@ -139,7 +139,7 @@ namespace awh {
 			 *       через него, не оседая в памяти
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader();
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -172,7 +172,7 @@ namespace awh {
 			 *       through it without settling in the memory
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader();
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -1468,6 +1468,7 @@ namespace awh {
 					 *          просьбу отвечает ОТКАЗОМ подачи - переносить поведение отсюда нельзя
 					 *
 					 * @param settings настройки разбора текста
+					 * @return         признак принятия настроек разбора
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing of a text
@@ -1488,10 +1489,11 @@ namespace awh {
 					 *          request with a REFUSAL of the feeding — the behaviour cannot be carried over from here
 					 *
 					 * @param settings settings of the parsing of a text
+					 * @return         sign of the acceptance of the settings of the parsing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian

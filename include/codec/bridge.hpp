@@ -819,7 +819,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feed(const abc::value_t & value, json::writer_t & writer, const uint32_t depth) noexcept;
+				bool feed(const abc::value_t & value, json::writer_t & writer, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки значения JSON в значение ABC
@@ -839,7 +839,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorb(const json::document_t::value_t & value, abc::value_t & result, const uint32_t depth) noexcept;
+				bool absorb(const json::document_t::value_t & value, abc::value_t & result, const uint32_t depth) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -870,7 +870,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool native(const abc::value_t & value) const noexcept;
+				bool native(const abc::value_t & value) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись самого контейнера ABC
@@ -900,7 +900,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encodeABC(const abc::value_t & value, string & result) noexcept;
+				bool encodeABC(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи контейнера ABC в дерево ABC
@@ -918,7 +918,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decodeABC(const string_view text, abc::value_t & result) noexcept;
+				bool decodeABC(const string_view text, abc::value_t & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись JSON
@@ -936,7 +936,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encodeJSON(const abc::value_t & value, string & result) noexcept;
+				bool encodeJSON(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи JSON в дерево ABC
@@ -954,7 +954,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decodeJSON(const string_view text, abc::value_t & result) noexcept;
+				bool decodeJSON(const string_view text, abc::value_t & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод снятия отменяющей записи со звена пути
@@ -978,7 +978,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] string unescape(const string & link) const noexcept;
+				string unescape(const string & link) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод наложения отменяющей записи на имя потомка
@@ -1002,7 +1002,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] string escape(const string & name) const noexcept;
+				string escape(const string & name) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод выдачи записи простого значения ABC
@@ -1024,7 +1024,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] string record(const abc::value_t & value) const noexcept;
+				string record(const abc::value_t & value) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод вывода значения ABC из его записи
@@ -1048,7 +1048,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] abc::value_t infer(const string & text) const noexcept;
+				abc::value_t infer(const string & text) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод подачи значения ABC документу YAML
@@ -1068,7 +1068,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedYAML(const abc::value_t & value, yaml::value_t & result, const uint32_t depth) noexcept;
+				bool feedYAML(const abc::value_t & value, yaml::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись YAML
@@ -1086,7 +1086,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encodeYAML(const abc::value_t & value, string & result) noexcept;
+				bool encodeYAML(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод подачи значения ABC значению TOML
@@ -1106,7 +1106,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedTOML(const abc::value_t & value, toml::value_t & result, const uint32_t depth) noexcept;
+				bool feedTOML(const abc::value_t & value, toml::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись TOML
@@ -1124,7 +1124,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encodeTOML(const abc::value_t & value, string & result) noexcept;
+				bool encodeTOML(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод подачи значения ABC значению XML
@@ -1144,7 +1144,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedXML(const abc::value_t & value, xml::value_t & result, const uint32_t depth) noexcept;
+				bool feedXML(const abc::value_t & value, xml::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись XML
@@ -1162,7 +1162,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encodeXML(const abc::value_t & value, string & result) noexcept;
+				bool encodeXML(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод записи значения свойством раздела INI
@@ -1184,7 +1184,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedINI(const abc::value_t & value, ini::document_t & document, const string & name, const string & section, const uint32_t depth) noexcept;
+				bool feedINI(const abc::value_t & value, ini::document_t & document, const string & name, const string & section, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись INI
@@ -1202,7 +1202,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encodeINI(const abc::value_t & value, string & result) noexcept;
+				bool encodeINI(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки значения YAML в значение ABC
@@ -1224,7 +1224,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorbYAML(const yaml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				bool absorbYAML(const yaml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи YAML в дерево ABC
@@ -1242,7 +1242,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decodeYAML(const string_view text, abc::value_t & result) noexcept;
+				bool decodeYAML(const string_view text, abc::value_t & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки значения XML в значение ABC
@@ -1276,7 +1276,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth, const bool slot = false) noexcept;
+				bool absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth, const bool slot = false) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи XML в дерево ABC
@@ -1294,7 +1294,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decodeXML(const string_view text, abc::value_t & result) noexcept;
+				bool decodeXML(const string_view text, abc::value_t & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки значения TOML в значение ABC
@@ -1316,7 +1316,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorbTOML(const toml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				bool absorbTOML(const toml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи TOML в дерево ABC
@@ -1334,7 +1334,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decodeTOML(const string_view text, abc::value_t & result) noexcept;
+				bool decodeTOML(const string_view text, abc::value_t & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки значения INI в значение ABC
@@ -1356,7 +1356,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorbINI(const ini::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				bool absorbINI(const ini::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи INI в дерево ABC
@@ -1402,7 +1402,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decodeINI(const string_view text, abc::value_t & result) noexcept;
+				bool decodeINI(const string_view text, abc::value_t & result) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1423,7 +1423,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encode(const abc::value_t & value, string & result, const format_t format) noexcept;
+				bool encode(const abc::value_t & value, string & result, const format_t format) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи в указанном формате в дерево ABC
@@ -1443,7 +1443,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decode(const string_view text, abc::value_t & result, const format_t format) noexcept;
+				bool decode(const string_view text, abc::value_t & result, const format_t format) noexcept;
 			public:
 				/**
 				 * \~russian

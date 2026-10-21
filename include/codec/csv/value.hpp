@@ -225,6 +225,20 @@ namespace awh {
 					bool valid() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Оператор приведения к логическому типу
+					 *
+					 * @return признак действительности значения
+					 *
+					 * \~english
+					 * @brief Conversion operator to the logical type
+					 *
+					 * @return sign of the validity of the value
+					 *
+					 * \~
+					 */
+					explicit operator bool () const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения кода отказа последней работы над значением
 					 *
 					 * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор
@@ -699,6 +713,7 @@ namespace awh {
 					 *
 					 * \~
 					 * @see Договор этот закреплён проверкою CodecContract.Narrowing
+					 *
 					 */
 					bool value(int8_t & result) const noexcept;
 					/**
@@ -883,7 +898,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool absorb(const Document & document) noexcept;
+					bool absorb(const document_t & document) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод прививки значения к таблице
@@ -907,7 +922,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool graft(Document & document) const noexcept;
+					bool graft(document_t & document) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста таблицы
@@ -926,6 +941,24 @@ namespace awh {
 					bool parse(const string & text) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора текста таблицы с заданными настройками
+					 *
+					 * @param text     исходный текст таблицы
+					 * @param settings настройки таблицы
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a text of a table with the given settings
+					 *
+					 * @param text     source text of the table
+					 * @param settings settings of the table
+					 * @return         sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const string & text, const document_t::settings_t & settings) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод чтения таблицы из файла
 					 *
 					 * @param filename адрес файла таблицы
@@ -940,6 +973,24 @@ namespace awh {
 					 * \~
 					 */
 					bool load(const string & filename) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод чтения таблицы из файла с заданными настройками
+					 *
+					 * @param filename адрес файла таблицы
+					 * @param settings настройки таблицы
+					 * @return         признак успешности чтения
+					 *
+					 * \~english
+					 * @brief Method of the reading of a table from a file with the given settings
+					 *
+					 * @param filename address of the file of the table
+					 * @param settings settings of the table
+					 * @return         sign of the success of the reading
+					 *
+					 * \~
+					 */
+					bool load(const string & filename, const document_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сохранения таблицы в файл
@@ -994,6 +1045,22 @@ namespace awh {
 					 * \~
 					 */
 					string dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод выдачи текста таблицы с заданными настройками записи
+					 *
+					 * @param settings настройки записи текста таблицы
+					 * @return         собранный текст таблицы
+					 *
+					 * \~english
+					 * @brief Method of the issuing of a text of the table with the given settings of the writing
+					 *
+					 * @param settings settings of the writing of the table text
+					 * @return         assembled text of the table
+					 *
+					 * \~
+					 */
+					string dump(const writer_t::settings_t & settings) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Оператор сличения значений
@@ -1077,7 +1144,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Value(const Document & document) noexcept;
+					explicit Value(const document_t & document) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

@@ -376,8 +376,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ uint64_t digest(const void * buffer, const size_t size) noexcept;
-
+			__AWH_SHARED_EXPORT__ uint64_t digest(const void * buffer, const size_t size) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция обёртки уложенной записи кадром
@@ -420,7 +419,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
+			__AWH_SHARED_EXPORT__ bool envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
 
 			/**
 			 * \~russian
@@ -724,7 +723,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool pack(const void * buffer, const size_t size, const payload_t kind, const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept;
+					bool pack(const void * buffer, const size_t size, const payload_t kind, const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод снятия кадра
@@ -754,7 +753,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool unpack(const void * buffer, const size_t size, size_t & offset, vector <uint8_t> & result, chunk_t & chunk) noexcept;
+					bool unpack(const void * buffer, const size_t size, size_t & offset, vector <uint8_t> & result, chunk_t & chunk) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -829,4 +828,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"

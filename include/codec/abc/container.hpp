@@ -530,7 +530,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool append(const value_t & value, const payload_t kind = payload_t::MIXED) noexcept;
+					bool append(const value_t & value, const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод внесения готовой записи контейнера
@@ -556,7 +556,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
+					bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -571,7 +571,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool flush() noexcept;
+					bool flush() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод завершения сборки контейнера
@@ -587,7 +587,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool complete(vector <uint8_t> & result) noexcept;
+					bool complete(vector <uint8_t> & result) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния сборки контейнера
@@ -869,7 +869,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool feed(const void * buffer, const size_t size) noexcept;
+					bool feed(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи содержимого очередного кадра
@@ -903,7 +903,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool next(vector <uint8_t> & result, chunk_t & chunk) noexcept;
+					bool next(vector <uint8_t> & result, chunk_t & chunk) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния снятия контейнера
@@ -929,7 +929,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool ready() const noexcept;
+					bool ready() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки исчерпанности тела контейнера
@@ -959,7 +959,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool complete() const noexcept;
+					bool complete() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения снятого заголовка опознания контейнера
@@ -1111,7 +1111,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name, const void * buffer, const size_t size, error_t & error) noexcept;
+			__AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name, const void * buffer, const size_t size, error_t & error) noexcept;
 		};
 	};
 };

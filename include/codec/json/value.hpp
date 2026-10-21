@@ -259,6 +259,8 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error;
+					// Место отказа последней работы над значением
+					mutable location_t _errorLocation;
 				private:
 					/**
 					 * \~russian
@@ -465,7 +467,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void absorb(const Document::value_t & value) noexcept;
+					void absorb(const document_t::value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения неопределённого
@@ -588,6 +590,20 @@ namespace awh {
 					bool valid() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Оператор приведения к логическому типу
+					 *
+					 * @return признак действительности значения
+					 *
+					 * \~english
+					 * @brief Conversion operator to the logical type
+					 *
+					 * @return sign of the validity of the value
+					 *
+					 * \~
+					 */
+					explicit operator bool () const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения кода отказа последней работы над значением
 					 *
 					 * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор
@@ -616,6 +632,28 @@ namespace awh {
 					 * \~
 					 */
 					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения места отказа последней работы над значением
+					 *
+					 * @details Место называет строку и столбец текста, на которых разбор
+					 *          споткнулся. У работ, места не имеющих - запись в файл, выдача
+					 *          текста, - оно остаётся пустым.
+					 *
+					 * @return место отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the location of the refusal of the last operation over the value
+					 *
+					 * @details The location names the line and the column of the text at which the parsing has
+					 *          stumbled. Among the operations having no location - the writing into a file, the
+					 *          issuing of a text - it stays empty.
+					 *
+					 * @return location of the refusal of the last operation
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида узла значения
@@ -1434,6 +1472,22 @@ namespace awh {
 					bool value(string & result) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора текста настроек
+					 *
+					 * @param text разбираемый текст настроек
+					 * @return     признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a settings text
+					 *
+					 * @param text settings text being parsed
+					 * @return     sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const string & text) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод разбора текста JSON во владеющее значение
 					 *
 					 * @details Разбор ведётся тем же документом, каким он ведётся всегда:
@@ -1467,7 +1521,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const string & text, const document_t::settings_t & settings = document_t::settings_t()) noexcept;
+					bool parse(const string & text, const document_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста JSON из файла

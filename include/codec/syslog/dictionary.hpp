@@ -104,12 +104,21 @@ namespace awh {
 				// Человеческое название
 				string_view title;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param code  числовой код
 				 * @param name  краткое имя
 				 * @param title заголовок
 				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * @param code  numeric code
+				 * @param name  short name
+				 * @param title title
+				 *
+				 * \~
 				 */
 				constexpr Entry(const uint8_t code, string_view name, string_view title) noexcept :
 				 code(code), name(name), title(title) {}

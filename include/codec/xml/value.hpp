@@ -323,6 +323,8 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error;
+					// Место отказа последней работы над значением
+					mutable location_t _errorLocation;
 				private:
 					// Обозначение пространства имён узла разметки
 					string _uri;
@@ -907,6 +909,20 @@ namespace awh {
 					bool valid() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Оператор приведения к логическому типу
+					 *
+					 * @return признак действительности значения
+					 *
+					 * \~english
+					 * @brief Conversion operator to the logical type
+					 *
+					 * @return sign of the validity of the value
+					 *
+					 * \~
+					 */
+					explicit operator bool () const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения кода отказа последней работы над значением
 					 *
 					 * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор
@@ -939,12 +955,44 @@ namespace awh {
 					error_t error() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения места отказа последней работы над значением
+					 *
+					 * @details Место называет строку и столбец текста, на которых разбор
+					 *          споткнулся. У работ, места не имеющих - запись в файл, выдача
+					 *          текста, - оно остаётся пустым.
+					 *
+					 * @return место отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the location of the refusal of the last operation over the value
+					 *
+					 * @details The location names the line and the column of the text at which the parsing has
+					 *          stumbled. Among the operations having no location - the writing into a file, the
+					 *          issuing of a text - it stays empty.
+					 *
+					 * @return location of the refusal of the last operation
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод извлечения вида узла
+					 *
+					 * @note Вид этот — вид УЗЛА разметки, а не общий вид значения: у прочих
+					 *       кодеков `kind()` отвечает на вопрос о значении, здесь — о
+					 *       строении дерева. Подводить его под `codec::kind_t` значило бы
+					 *       смешать два разных вопроса
 					 *
 					 * @return вид хранимого узла
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the kind of the node
+					 *
+					 * @note This kind is the kind of a MARKUP NODE, not the common kind of a value:
+					 *       at the other codecs `kind()` answers the question about a value, while here -
+					 *       about the arrangement of the tree. To bring it under `codec::kind_t` would mean
+					 *       mixing two different questions
 					 *
 					 * @return kind of the stored node
 					 *
@@ -1094,6 +1142,9 @@ namespace awh {
 					 *          У узла разметки - содержимое всех вложенных в него текстовых узлов
 					 *          подряд, ровно как это делает узел дерева.
 					 *
+					 * @note Возврат идёт значением, а не ссылкой: у узла разметки содержимое
+					 *       собирается из вложенных узлов, и ссылке было бы не на что указывать
+					 *
 					 * @return содержимое узла
 					 *
 					 * \~english
@@ -1103,6 +1154,9 @@ namespace awh {
 					 *          instruction and a description of the type of the document their own content is issued.
 					 *          For a markup node — the content of all the text nodes nested into it
 					 *          in a row, exactly as a node of the tree does it.
+					 *
+					 * @note The content is returned by value rather than by reference: at a markup node
+					 *       it is gathered from the nested nodes, and a reference would have nothing to point at
 					 *
 					 * @return content of the node
 					 *
@@ -1879,6 +1933,22 @@ namespace awh {
 					bool value(string & result) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора текста настроек
+					 *
+					 * @param text разбираемый текст настроек
+					 * @return     признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a settings text
+					 *
+					 * @param text settings text being parsed
+					 * @return     sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const string & text) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод разбора текста разметки во владеющее значение
 					 *
 					 * @details Разбор ведётся тем же деревом, каким он ведётся всегда: обёртка
@@ -1910,7 +1980,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const string & text, const reader_t::settings_t & settings = reader_t::settings_t()) noexcept;
+					bool parse(const string & text, const reader_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста разметки из файла

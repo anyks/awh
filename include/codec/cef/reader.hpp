@@ -657,7 +657,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size, const bool end) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод передачи исходного текста целиком
@@ -796,6 +796,26 @@ namespace awh {
 					 * \~
 					 */
 					const pos_t & position() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения положения начала текущего события
+					 *
+					 * @details Имя это общее у кодеков рамки; ход равносилен `position()`
+					 *          и заведён ради единого обращения.
+					 *
+					 * @return положение начала текущего события в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of getting the position of the beginning of the current event
+					 *
+					 * @details This name is common to the codecs of the framework; the step is equivalent to
+					 *          `position()` and is instituted for the sake of a uniform addressing.
+					 *
+					 * @return position of the beginning of the current event in the source text
+					 *
+					 * \~
+					 */
+					const location_t & location() const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -923,6 +943,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Reader() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the parsing of a text
+					 *
+					 * \~
+					 */
+					explicit Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

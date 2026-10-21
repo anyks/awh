@@ -43,6 +43,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../value.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -670,6 +671,7 @@ namespace awh {
 			 *       removed TOGETHER with the institution, and not after it. At CSV, XML and CEF it is still
 			 *       absent — those codecs are foreign, and the divergence is carried out to those codecs
 			 *
+			 * \~
 			 */
 			enum class malformed_t : uint8_t {
 				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
@@ -785,7 +787,7 @@ namespace awh {
 			 */
 			enum class kind_t : uint8_t {
 				NONE     = 0x00, // Узел не определён либо ссылка недействительна
-				NUL      = 0x01, // Пустое значение null
+				NIL      = 0x01, // Пустое значение null
 				BOOL     = 0x02, // Логическое значение
 				NUMBER   = 0x03, // Число любого вида
 				STRING   = 0x04, // Строка
@@ -793,46 +795,6 @@ namespace awh {
 				STAMP    = 0x06, // Отметка времени, признаваемая лишь наречием 1.1
 				SEQUENCE = 0x07, // Перечень значений
 				MAPPING  = 0x08  // Отображение пар
-			};
-			/**
-			 * \~russian
-			 * @brief Кодировки исходного текста
-			 *
-			 * @details Описание предписывает **UTF-8**, **UTF-16** и **UTF-32** и дозволяет
-			 *          метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
-			 *          отсутствии - по расположению нулевых байтов в первых четырёх октетах.
-			 *
-			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - описанием
-			 *       не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
-			 *       записан иначе, и отвергать его целиком значило бы оставлять потребителя без
-			 *       всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
-			 *       опознанию не поддаются: принимаются только навязанными извне
-			 *
-			 * \~english
-			 * @brief Encodings of the source text
-			 *
-			 * @details The specification prescribes **UTF-8**, **UTF-16** and **UTF-32** and permits
-			 *          a byte order mark at the beginning of a stream. The encoding is recognised by the mark, while at its
-			 *          absence — by the arrangement of the zero bytes in the first four octets.
-			 *
-			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — are not prescribed
-			 *       by the specification and are made beyond it: a file received from a foreign tooling is
-			 *       sometimes written otherwise, and to refuse it wholly would mean to leave the consumer
-			 *       without any means to read it. They have no byte order marks at all and are not amenable
-			 *       to recognition: they are accepted only as imposed from outside
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена, определяется по метке порядка байтов
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				UTF32LE = 0x04, // Кодировка UTF-32 с обратным порядком байтов
-				UTF32BE = 0x05, // Кодировка UTF-32 с прямым порядком байтов
-				LATIN1  = 0x06, // Кодировка ISO-8859-1
-				ASCII   = 0x07, // Кодировка US-ASCII
-				CP1252  = 0x08  // Кодировка Windows-1252
 			};
 			/**
 			 * \~russian
@@ -916,7 +878,7 @@ namespace awh {
 			 */
 			enum class type_t : uint32_t {
 				UNDEFINED = 0x00000000, // Значения нет вовсе: ссылка недействительна
-				NUL       = 0x00000001, // Пустое значение null
+				NIL       = 0x00000001, // Пустое значение null
 				BOOL      = 0x00000002, // Логическое значение
 				STRING    = 0x00000004, // Строка
 				SEQUENCE  = 0x00000008, // Перечень значений
@@ -959,46 +921,6 @@ namespace awh {
 			 *          in the source text where the refusal has occurred serves as the sign of a refusal.
 			 *
 			 * \~
-			 * @note Перечень этот общ у кодеков INI, TOML и YAML ИМЕНАМИ, а не числами, и
-			 *       равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
-			 *       трёх одинаково, и потребитель учит одно имя, а не три
-			 *
-			 * @warning ЧИСЛА при общих именах РАЗЛИЧНЫ, и прежняя запись - «потребитель,
-			 *          разбирающий отказы по КОДУ, иначе учил бы для каждого кодека свой
-			 *          перечень» - обещала обратное. Замерено 09.09.2026 сличением перечней
-			 *          почленно: имён у всех трёх - 19, из них с РАЗНЫМИ числами - 13
-			 *          (среди прочих TEXT_ALREADY_ENDED: ini 37, toml 38, yaml 51).
-			 *          Числа и не могут совпасть: перечни разной длины - 40, 41 и 54 члена, -
-			 *          а коды у каждого наречия свои сверх общих
-			 *
-			 * @note Разбирать отказы надлежит ПО ИМЕНИ своего кодека, а не по числу: типы
-			 *       `ini::error_t`, `toml::error_t` и `yaml::error_t` разные, и сличение
-			 *       чисел между ними смысла не имеет вовсе
-			 *
-			 * @note Оттого часть кодов кодеком YAML не выдаётся:
-			 *
-			 * @note - `STORAGE_EXHAUSTED` выдаётся ДВУМЯ местами, и пробел, здесь прежде
-			 *       описанный, ЗАКРЫТ. Дерево YAML держит смещения в хранилище знаков четырьмя
-			 *       октетами наравне с INI, TOML, XML, CSV и JSON - сверено 09.09.2026 по члену
-			 *       `span_t` всех шести, у каждого `uint32_t offset` и `uint32_t length`, - и
-			 *       ширина эта ныне поверяется:
-			 *       при переносе записи (`deposit`) - дабы уберечь само вычисление смещения, - и
-			 *       заставою при входе разбора, где отказ выходит наружу
-			 *
-			 * @warning Запись гласила «мест выдачи не имеет вовсе… вынесено за пределы кодека
-			 *          отдельным докладом» и стояла так уже ПОСЛЕ того, как поверка была
-			 *          заведена. Замерено 09.09.2026 счётом мест выдачи: у YAML их два,
-			 *          тогда как у `UNEXPECTED_EOF` и `OVERFLOW_LIMIT` кодека INI и у
-			 *          `OVERFLOW_LIMIT` кодека TOML - и вправду ноль
-			 *
-			 * @warning Отсюда тот же вывод, что и при подаче после конца текста: запись,
-			 *          объявляющая пробел, обязана сноситься правкою, какая пробел
-			 *          закрывает. Иначе вынесенное уходит второй раз по работе,
-			 *          уже сделанной
-			 *
-			 * @warning Молчание кода означает НЕПРОВЕРЕННОСТЬ пути, а не исправность его:
-			 *          снасть молчащих кодов перебирает места выдачи по трём прогонам, и код, ни
-			 *          разу не выданный, есть либо застава с доводом, либо путь, проверкою не взятый
 			 */
 			enum class error_t : uint8_t {
 				NONE                     = 0x00, // Ошибок не обнаружено
@@ -1059,6 +981,146 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @note Перечень этот общ у кодеков INI, TOML и YAML ИМЕНАМИ, а не числами, и
+			 *       равным держатся именно имена: понятие, у трёх наречий общее, зовётся у всех
+			 *       трёх одинаково, и потребитель учит одно имя, а не три
+			 *
+			 * @warning ЧИСЛА при общих именах РАЗЛИЧНЫ, и прежняя запись - «потребитель,
+			 *          разбирающий отказы по КОДУ, иначе учил бы для каждого кодека свой
+			 *          перечень» - обещала обратное. Замерено 09.09.2026 сличением перечней
+			 *          почленно: имён у всех трёх - 19, из них с РАЗНЫМИ числами - 13
+			 *          (среди прочих TEXT_ALREADY_ENDED: ini 37, toml 38, yaml 51).
+			 *          Числа и не могут совпасть: перечни разной длины - 40, 41 и 54 члена, -
+			 *          а коды у каждого наречия свои сверх общих
+			 *
+			 * @note Разбирать отказы надлежит ПО ИМЕНИ своего кодека, а не по числу: типы
+			 *       `ini::error_t`, `toml::error_t` и `yaml::error_t` разные, и сличение
+			 *       чисел между ними смысла не имеет вовсе
+			 *
+			 * @note Оттого часть кодов кодеком YAML не выдаётся:
+			 *
+			 * @note - `STORAGE_EXHAUSTED` выдаётся ДВУМЯ местами, и пробел, здесь прежде
+			 *       описанный, ЗАКРЫТ. Дерево YAML держит смещения в хранилище знаков четырьмя
+			 *       октетами наравне с INI, TOML, XML, CSV и JSON - сверено 09.09.2026 по члену
+			 *       `span_t` всех шести, у каждого `uint32_t offset` и `uint32_t length`, - и
+			 *       ширина эта ныне поверяется:
+			 *       при переносе записи (`deposit`) - дабы уберечь само вычисление смещения, - и
+			 *       заставою при входе разбора, где отказ выходит наружу
+			 *
+			 * @warning Запись гласила «мест выдачи не имеет вовсе… вынесено за пределы кодека
+			 *          отдельным докладом» и стояла так уже ПОСЛЕ того, как поверка была
+			 *          заведена. Замерено 09.09.2026 счётом мест выдачи: у YAML их два,
+			 *          тогда как у `UNEXPECTED_EOF` и `OVERFLOW_LIMIT` кодека INI и у
+			 *          `OVERFLOW_LIMIT` кодека TOML - и вправду ноль
+			 *
+			 * @warning Отсюда тот же вывод, что и при подаче после конца текста: запись,
+			 *          объявляющая пробел, обязана сноситься правкою, какая пробел
+			 *          закрывает. Иначе вынесенное уходит второй раз по работе,
+			 *          уже сделанной
+			 *
+			 * @warning Молчание кода означает НЕПРОВЕРЕННОСТЬ пути, а не исправность его:
+			 *          снасть молчащих кодов перебирает места выдачи по трём прогонам, и код, ни
+			 *          разу не выданный, есть либо застава с доводом, либо путь, проверкою не взятый
+			 *
+			 * \~english
+			 * @note The INI, TOML, and YAML codecs share this set of identifiers—using names
+			 *       rather than numbers. These names remain consistent across all three formats:
+			 *       a given concept, common to all three, is referred to by the same name in each,
+			 *       meaning the user only needs to learn one name instead of three
+			 *
+			 * @warning The numerical values ​​associated with shared names DIFFER, even though
+			 *          the previous note—"a consumer that processes failures by CODE,
+			 *          rather than having to learn a separate list for each format"—implied
+			 *          the opposite. A comparison of the lists, item by item, was conducted
+			 *          on September 9, 2026: there are 19 names common to all three,
+			 *          13 of which have DIFFERENT numerical values ​​(including, for instance,
+			 *          `TEXT_ALREADY_ENDED`: 37 for `ini`, 38 for `toml`, and 51 for `yaml`).
+			 *          In fact, these values ​​could not possibly match, as the lists are
+			 *          of different lengths—containing 40, 41, and 54 entries, respectively—and
+			 *          each format includes its own unique codes in addition to the shared ones
+			 *
+			 * @note Failures should be handled based on the name of the codec, not by a numerical code:
+			 *       the types `ini::error_t`, `toml::error_t`, and `yaml::error_t` are distinct,
+			 *       and comparing their numerical values ​​makes no sense whatsoever
+			 *
+			 * @note That is why some codes are not produced by the YAML codec:
+			 *
+			 * @note - `STORAGE_EXHAUSTED` is triggered from two locations, and the gap previously
+			 *         mentioned here has been closed. The YAML tree stores offsets into the character
+			 *         storage using four-byte values—consistent with INI, TOML, XML, CSV, and JSON
+			 *         (verified on 2026-09-09 via the `span_t` structure used in all six formats,
+			 *         each containing a `uint32_t offset` and a `uint32_t length`). This width
+			 *         is now strictly enforced: both during the relocation of an entry (`deposit`)—to
+			 *         safeguard the offset calculation itself—and as a gatekeeper at the start
+			 *         of the parsing process, where any overflow results in an error
+			 *
+			 * @warning The note read, "has no output locations at all… moved outside the codec into
+			 *          a separate report," and it was already there *after* the audit had been initiated.
+			 *          On September 9, 2026, the output locations were counted: YAML has two, whereas the
+			 *          `UNEXPECTED_EOF` and `OVERFLOW_LIMIT` errors for the INI codec, as well as the
+			 *          `OVERFLOW_LIMIT` error for the TOML codec, have—in fact—zero
+			 *
+			 * @warning This leads to the same conclusion as in the case of an entry made after the end of the text:
+			 *          an entry that declares a gap must be removed by the correction that closes that gap.
+			 *          Otherwise, the information already processed would be handled a second time
+			 *
+			 * @warning The silence of code signifies that a path is UNVERIFIED, not that it is sound:
+			 *          the mechanism for tracking silent code examines all points of execution across three separate runs,
+			 *          and any code that has never been triggered is either a conditional guard clause or a path that has
+			 *          not been covered by testing
+			 *
+			 * \~
+			 */
+
+			/**
+			 * \~russian
+			 * @brief Структура отрезка в хранилище знаков
+			 *
+			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт
+			 *          дописыванием и вправе переехать в памяти, и указатель после переезда стал бы недействителен.
+			 *
+			 * \~english
+			 * @brief Structure of a segment in a character store
+			 *
+			 * @details A segment holds an offset and a length rather than a pointer: the storage grows
+			 *          by an appending and may move in the memory, and a pointer after the move would become invalid.
+			 *
+			 * \~
+			 */
+			using span_t = codec::span_t;
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста
+			 *
+			 * @details Описание предписывает **UTF-8**, **UTF-16** и **UTF-32** и дозволяет
+			 *          метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
+			 *          отсутствии - по расположению нулевых байтов в первых четырёх октетах.
+			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - описанием
+			 *       не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
+			 *       записан иначе, и отвергать его целиком значило бы оставлять потребителя без
+			 *       всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
+			 *       опознанию не поддаются: принимаются только навязанными извне
+			 *
+			 * \~english
+			 * @brief Encodings of the source text
+			 *
+			 * @details The specification prescribes **UTF-8**, **UTF-16** and **UTF-32** and permits
+			 *          a byte order mark at the beginning of a stream. The encoding is recognised by the mark, while at its
+			 *          absence — by the arrangement of the zero bytes in the first four octets.
+			 *
+			 * @note The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 — are not prescribed
+			 *       by the specification and are made beyond it: a file received from a foreign tooling is
+			 *       sometimes written otherwise, and to refuse it wholly would mean to leave the consumer
+			 *       without any means to read it. They have no byte order marks at all and are not amenable
+			 *       to recognition: they are accepted only as imposed from outside
+			 *
+			 * \~
+			 */
+			using encoding_t = codec::encoding_t;
+
+			/**
+			 * \~russian
 			 * @brief Структура числа, разобранное из записи своей
 			 *
 			 * @details Разобранное кладётся во все три поля разом, а какое из них взято -
@@ -1094,53 +1156,6 @@ namespace awh {
 			} numeric_t;
 			/**
 			 * \~russian
-			 * @brief Структура отрезка в хранилище знаков
-			 *
-			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт
-			 *          дописыванием и вправе переехать в памяти, и указатель после переезда стал бы недействителен.
-			 *
-			 * \~english
-			 * @brief Structure of a segment in a character store
-			 *
-			 * @details A segment holds an offset and a length rather than a pointer: the storage grows
-			 *          by an appending and may move in the memory, and a pointer after the move would become invalid.
-			 *
-			 * \~
-			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище знаков
-				uint32_t offset;
-				// Длина отрезка в байтах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Span() noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище знаков
-				 * @param length длина отрезка в байтах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the characters
-				 * @param length length of the segment in bytes
-				 *
-				 * \~
-				 */
-				explicit Span(const uint32_t offset, const uint32_t length) noexcept;
-			} span_t;
-			/**
-			 * \~russian
 			 * @brief Структура положения в исходном тексте
 			 *
 			 * @details Служит для указания места отказа и для привязки значений к исходному тексту.
@@ -1164,15 +1179,9 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Номер строки, считая с единицы
-				uint32_t line;
+			typedef struct __AWH_SHARED_EXPORT__ Location : codec::location_t {
 				// Глубина вложенности, считая с нуля
 				uint32_t depth;
-				// Положение в строке, считая с единицы
-				uint32_t column;
-				// Смещение от начала текста в байтах
-				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор

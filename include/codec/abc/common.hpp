@@ -760,38 +760,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище октетов
-				uint32_t offset;
-				// Длина отрезка в октетах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Span() noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище октетов
-				 * @param length длина отрезка в октетах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the octets
-				 * @param length length of the segment in octets
-				 *
-				 * \~
-				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept;
-			} span_t;
+			using span_t = codec::span_t;
 
 			/**
 			 * \~russian
@@ -852,23 +821,23 @@ namespace awh {
 			 * @brief Положение в поданной записи
 			 *
 			 * @details Служит для указания места отказа и для привязки значений к поданной
-			 *          записи. Строк и столбцов у двоичной записи нет, оттого положение и задаётся
-			 *          одним смещением.
+			 *          записи. Строк и столбцов у двоичной записи нет: общие поля строки и
+			 *          столбца смысла не несут и остаются нулевыми, а положение задаётся
+			 *          смещением и глубиной.
 			 *
 			 * \~english
 			 * @brief Position in the submitted record
 			 *
 			 * @details Serves for the indication of the place of a refusal and for the binding of the values to the submitted
-			 *          record. A binary record has no lines and columns, whereby the position is set
-			 *          by one offset.
+			 *          record. A binary record has no lines and columns: the common fields of a line and
+			 *          of a column carry no meaning and remain zero, while the position is set
+			 *          by the offset and the depth.
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
+			typedef struct __AWH_SHARED_EXPORT__ Location : codec::location_t {
 				// Глубина вложенности, считая с нуля
 				uint32_t depth;
-				// Смещение от начала записи в октетах
-				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -1040,7 +1009,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool width(const uint8_t detail, uint8_t & result) noexcept;
+			__AWH_SHARED_EXPORT__ bool width(const uint8_t detail, uint8_t & result) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения наименьшей подробности, вмещающей значение
@@ -1123,7 +1092,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result, string & buffer, bool & invalid) noexcept;
+			__AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result, string & buffer, bool & invalid) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция разбора звена пути номером значения
@@ -1161,7 +1130,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool indexed(const string_view segment, size_t & result) noexcept;
+			__AWH_SHARED_EXPORT__ bool indexed(const string_view segment, size_t & result) noexcept;
 		};
 	};
 };

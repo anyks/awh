@@ -94,7 +94,7 @@ namespace awh {
 			 *
 			 * @details Значение владеет своим поддеревом и складывается: его кладут в
 			 *          вместилища, передают наружу из работ и собирают из ничего. Дерево документа
-			 *          тем и отличается: `Document::Value` есть взгляд - указатель на документ вместе
+			 *          тем и отличается: `document_t::Value` есть взгляд - указатель на документ вместе
 			 *          с номером узла, - и документ он не переживает.
 			 *
 			 * @details **Отличия от владеющего значения текстовых кодеков.** Имя поля
@@ -125,7 +125,7 @@ namespace awh {
 			 *
 			 * @details A value owns its own subtree and is composable: it is put into the containers,
 			 *          passed outward from the works and assembled from nothing. The tree of a document differs in that:
-			 *          `Document::Value` is a view — a pointer to the document together with the number of the node, —
+			 *          `document_t::Value` is a view — a pointer to the document together with the number of the node, —
 			 *          and it does not outlive the document.
 			 *
 			 * @details **Differences from the owning value of the textual codecs.** The name of a field
@@ -172,6 +172,51 @@ namespace awh {
 						// Целое без знака
 						uint64_t natural;
 					} numeric_t;
+				private:
+					/**
+					 * \~russian
+					 * @brief Отказ последней работы над значением
+					 *
+					 * @details Код и место отказа хранятся вместе и заводятся лишь при отказе:
+					 *          узел, разбор и сборка которого прошли, не платит за них памятью.
+					 *          Место весит двадцать четыре байта - столько же, сколько строка
+					 *          либо вместилище, - а отказ в дереве на десятки тысяч узлов
+					 *          приходится на считанные единицы.
+					 *
+					 * \~english
+					 * @brief Failure of the last operation over a value
+					 *
+					 * @details The code and the location of a refusal are stored together and are created only
+					 *          at a refusal: a node whose parsing and assembling have passed does not pay for
+					 *          them by memory. The location weighs twenty-four bytes - as much as a string
+					 *          or a container - while a refusal in a tree of tens of thousands of nodes falls
+					 *          on a countable few.
+					 *
+					 * \~
+					 */
+					typedef struct Failure {
+						// Код отказа последней работы над значением
+						error_t error;
+						// Место отказа последней работы над значением
+						location_t location;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param error    код отказа
+						 * @param location место отказа
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * @param error    failure code
+						 * @param location point of failure
+						 *
+						 * \~
+						 */
+						constexpr Failure(const error_t error, const location_t & location) noexcept :
+						 error(error), location(location) {}
+					} failure_t;
 				private:
 					// Признак того, что величина числа меньше нуля
 					bool _negative;
@@ -260,6 +305,28 @@ namespace awh {
 					 * \~
 					 */
 					mutable unique_ptr <unordered_map <string, size_t>> _index;
+					/**
+					 * \~russian
+					 * @brief Отказ последней работы над значением
+					 *
+					 * @details Указатель пуст, покуда работы проходят: пара "код и место"
+					 *          заводится лишь при отказе и снимается при очистке и при
+					 *          начале следующей работы. Место весит двадцать четыре байта -
+					 *          столько же, сколько строка, - и держать его пустым у каждого
+					 *          узла дерева значило бы платить за считанные отказы.
+					 *
+					 * \~english
+					 * @brief Failure of the last operation over the value
+					 *
+					 * @details The pointer stays empty while the operations pass: the pair of a code and a location
+					 *          is created only at a refusal and is removed at the clearing and at the
+					 *          beginning of the next operation. The location weighs twenty-four bytes -
+					 *          as much as a string - and to keep it empty at every node of a tree
+					 *          would mean to pay for a countable few refusals.
+					 *
+					 * \~
+					 */
+					mutable unique_ptr <failure_t> _failure;
 				private:
 					/**
 					 * \~russian
@@ -302,7 +369,7 @@ namespace awh {
 					 */
 					void unindex() noexcept;
 				private:
-										/**
+					/**
 					 * \~russian
 					 * @brief Метод поверки родственности имён полей отображения
 					 *
@@ -350,7 +417,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] static bool akin(const Value & first, const Value & second) noexcept;
+					static bool akin(const Value & first, const Value & second) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -471,7 +538,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool valid() const noexcept;
+					bool valid() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор приведения к логическому типу
+					 *
+					 * @return признак действительности значения
+					 *
+					 * \~english
+					 * @brief Conversion operator to the logical type
+					 *
+					 * @return sign of the validity of the value
+					 *
+					 * \~
+					 */
+					explicit operator bool () const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида узла значения
@@ -515,7 +596,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool is(const type_t type) const noexcept;
+					bool is(const type_t type) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества значений вместимого
@@ -543,7 +624,42 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool empty() const noexcept;
+					bool empty() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кода отказа последней работы над значением
+					 *
+					 * @return код отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the code of the refusal of the last operation over the value
+					 *
+					 * @return code of the refusal of the last operation
+					 *
+					 * \~
+					 */
+					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения места отказа последней работы над значением
+					 *
+					 * @details Место называет смещение в поданной записи, на котором разбор
+					 *          споткнулся. У работ, места не имеющих - сборка записи, - оно
+					 *          остаётся пустым.
+					 *
+					 * @return место отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the location of the refusal of the last operation over the value
+					 *
+					 * @details The location names the offset in the submitted record at which the parsing has
+					 *          stumbled. Among the operations having no location - the assembling of a record - it stays empty.
+					 *
+					 * @return location of the refusal of the last operation
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод очистки значения
@@ -571,7 +687,7 @@ namespace awh {
 					 * @details Отличается от `clear()` тем, что не освобождает capacity
 					 *          векторов `_items` и `_keys` (следующий push_back переиспользует
 					 *          буфер) и устанавливает вид значения заданным. Применяется в
-					 *          `Document::parse` вместо `clear()` + `_root = value_t(MAP)`, чтобы
+					 *          `document_t::parse` вместо `clear()` + `_root = value_t(MAP)`, чтобы
 					 *          избежать лишнего разрушения и пересоздания корня дерева.
 					 *
 					 * @param kind устанавливаемый вид значения после сброса
@@ -581,7 +697,7 @@ namespace awh {
 					 *
 					 * @details It differs from `clear()` in that it does not free the capacity of the vectors `_items`
 					 *          and `_keys` (the next push_back reuses the buffer) and sets the kind of the value to the
-					 *          given one. It is used in `Document::parse` instead of `clear()` + `_root = value_t(MAP)` to
+					 *          given one. It is used in `document_t::parse` instead of `clear()` + `_root = value_t(MAP)` to
 					 *          avoid the extra destruction and the re-creation of the root of the tree.
 					 *
 					 * @param kind kind of the value being set after the reset
@@ -593,7 +709,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод отвода capacity у векторов `_items` и `_keys`
 					 *
-					 * @details Используется в `Document::parse` перед добавлением известного
+					 * @details Используется в `document_t::parse` перед добавлением известного
 					 *          числа детей, чтобы ссылки на добавляемые элементы оставались
 					 *          валидны до конца разбора. Без вызова `reserve` каждое
 					 *          `push_back` при росте может перераспределить буфер и
@@ -604,7 +720,7 @@ namespace awh {
 					 * \~english
 					 * @brief Method of reserving capacity of children vectors
 					 *
-					 * @details It is used in `Document::parse` before adding a known number of
+					 * @details It is used in `document_t::parse` before adding a known number of
 					 *          children so that references to the added elements remain valid
 					 *          until parsing is complete. Without calling `reserve`, each `push_back`
 					 *          that triggers a growth in capacity could reallocate the buffer
@@ -657,7 +773,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool negative() const noexcept;
+					bool negative() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения цифр числа неограниченной ширины
@@ -710,7 +826,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool digits(vector <uint8_t> & result) const noexcept;
+					bool digits(vector <uint8_t> & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки числа неограниченной ширины
@@ -773,7 +889,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool decimal(const void * buffer, const size_t size, const bool negative = false, const int64_t exponent = 0) noexcept;
+					bool decimal(const void * buffer, const size_t size, const bool negative = false, const int64_t exponent = 0) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения имени поля отображения по его номеру
@@ -806,7 +922,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool contains(const string & name) const noexcept;
+					bool contains(const string & name) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения по пути
@@ -934,7 +1050,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool push(const Value & value) noexcept;
+					bool push(const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления поля в отображение
@@ -958,7 +1074,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool insert(const string & name, const Value & value) noexcept;
+					bool insert(const string & name, const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления поля в отображение с именем любого вида
@@ -995,7 +1111,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool insert(const Value & name, const Value & value) noexcept;
+					bool insert(const Value & name, const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления поля в отображение с выдачей номера поля
@@ -1024,7 +1140,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool insert(const Value & name, const Value & value, size_t & index) noexcept;
+					bool insert(const Value & name, const Value & value, size_t & index) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления поля в отображение с именем строковым литералом
@@ -1050,7 +1166,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool insert(const char * name, const Value & value) noexcept;
+					bool insert(const char * name, const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления поля отображения по имени
@@ -1066,7 +1182,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool erase(const string & name) noexcept;
+					bool erase(const string & name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления значения вместимого по номеру
@@ -1082,7 +1198,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool erase(const size_t index) noexcept;
+					bool erase(const size_t index) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1099,7 +1215,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool value(bool & result) const noexcept;
+					bool value(bool & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числа видом целого со знаком
@@ -1174,7 +1290,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool value(int64_t & result) const noexcept;
+					bool value(int64_t & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числа видом целого без знака
@@ -1249,7 +1365,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool value(uint64_t & result) const noexcept;
+					bool value(uint64_t & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числа видом дробного
@@ -1324,7 +1440,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool value(double & result) const noexcept;
+					bool value(double & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения содержимого значения строкой
@@ -1340,7 +1456,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool value(string & result) const noexcept;
+					bool value(string & result) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1361,7 +1477,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void absorb(const Document::value_t & value) noexcept;
+					void absorb(const document_t::value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки значения в собираемую запись
@@ -1377,7 +1493,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool compose(writer_t & writer) const noexcept;
+					bool compose(writer_t & writer) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора записи во владеющее значение
@@ -1395,7 +1511,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool parse(const void * buffer, const size_t size) noexcept;
+					bool parse(const void * buffer, const size_t size) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1424,7 +1540,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
+					bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из владеющего значения
@@ -1479,7 +1595,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool dump(vector <uint8_t> & result, error_t & error) const noexcept;
+					bool dump(vector <uint8_t> & result, error_t & error) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из владеющего значения затребованными настройками
@@ -1519,7 +1635,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool dump(vector <uint8_t> & result, error_t & error,
+					bool dump(vector <uint8_t> & result, error_t & error,
 					 const writer_t::settings_t & settings) const noexcept;
 					/**
 					 * \~russian
@@ -1555,7 +1671,7 @@ namespace awh {
 					 *          `CodecAbcValue.GraftUsesDefaultSettings`
 					 *
 					 * @note Дорога настраиваемая складывается из тех же двух половин, взятых порознь:
-					 *       `dump(result, error, settings)` со своими настройками сборки и `Document::parse(...,
+					 *       `dump(result, error, settings)` со своими настройками сборки и `document_t::parse(...,
 					 *       settings)` со своими настройками разбора. Ею и переносят то, что умолчаниям не
 					 *       отвечает
 					 *
@@ -1591,13 +1707,13 @@ namespace awh {
 					 *          `CodecAbcValue.GraftUsesDefaultSettings`
 					 *
 					 * @note The adjustable road is composed of the same two halves taken apart:
-					 *       `dump(result, error, settings)` with one's own settings of the assembly and `Document::parse(...,
+					 *       `dump(result, error, settings)` with one's own settings of the assembly and `document_t::parse(...,
 					 *       settings)` with one's own settings of the parsing. By it they transfer exactly what does not
 					 *       answer the defaults
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool graft(Document & document) const noexcept;
+					bool graft(document_t & document) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1812,7 +1928,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Value(const Document::value_t & value) noexcept;
+					explicit Value(const document_t::value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор копирования
@@ -1994,7 +2110,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool deposit(Value && value, size_t & index) noexcept;
+					bool deposit(Value && value, size_t & index) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища затребованного вида

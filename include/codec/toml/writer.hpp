@@ -123,7 +123,7 @@ namespace awh {
 			 *          запись не вправе
 			 *
 			 *  @code{.cpp}
-			 *          writer_t writer();
+			 *  writer_t writer();
 			 *
 			 *  writer.comment("собрано автоматически");
 			 *  writer.table("server");
@@ -178,7 +178,7 @@ namespace awh {
 			 *          truncate the content
 			 *
 			 *  @code{.cpp}
-			 *          writer_t writer();
+			 *  writer_t writer();
 			 *
 			 *  writer.comment("built automatically");
 			 *  writer.table("server");
@@ -955,15 +955,17 @@ namespace awh {
 					 * @brief Метод установки настроек записи
 					 *
 					 * @param settings настройки записи текста настроек
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing
 					 *
 					 * @param settings settings of the writing of a settings text
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1512,7 +1514,7 @@ namespace awh {
 					 *       методы записи открытого договора - метод, сторожа не получивший, выпал бы
 					 *       из договора молча
 					 *
-					 * @note Сброс clear() код отказа отпускает: переживший его, он указывал бы на
+					 * @note Сброс `reset()` код отказа отпускает: переживший его, он указывал бы на
 					 *       причину, которой более нет
 					 *
 					 * @return код ошибки последней операции записи
@@ -1530,7 +1532,7 @@ namespace awh {
 					 *       runs over ALL the writing methods of the open contract - a method left without a
 					 *       guard would have dropped out of the contract silently
 					 *
-					 * @note The clear() reset releases the failure code: having outlived it, the code would
+					 * @note The `reset()` call releases the failure code: having outlived it, the code would
 					 *       point to a cause which no longer exists
 					 *
 					 * @return error code of the last operation of the writing
@@ -1576,7 +1578,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian

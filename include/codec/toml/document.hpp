@@ -220,12 +220,12 @@ namespace awh {
 			 *     но неограниченным не бывает: узнают его вызовом @c footprint()
 			 *
 			 *  @code{.cpp}
-			 *          document_t document();
+			 *  document_t document;
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.text({"server", "host"});
 			 *    document.set({"server", "port"}, static_cast <int64_t> (9090));
-			 *    const string result = document.text();
+			 *    const string result = document.dump();
 			 *  }
 			 *
 			 *  @endcode
@@ -330,12 +330,12 @@ namespace awh {
 			 *     but is never unlimited: it is learnt by a call to @c footprint()
 			 *
 			 *  @code{.cpp}
-			 *          document_t document();
+			 *  document_t document;
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.text({"server", "host"});
 			 *    document.set({"server", "port"}, static_cast <int64_t> (9090));
-			 *    const string result = document.text();
+			 *    const string result = document.dump();
 			 *  }
 			 *
 			 *  @endcode
@@ -399,22 +399,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct __AWH_SHARED_EXPORT__ Span {
-						// Смещение начала отрезка в хранилище знаков
-						uint32_t offset;
-						// Длина отрезка в байтах
-						uint32_t length;
-						/**
-						 * \~russian
-						 * @brief Конструктор
-						 *
-						 * \~english
-						 * @brief Constructor
-						 *
-						 * \~
-						 */
-						explicit Span() noexcept;
-					} span_t;
+										using span_t = codec::span_t;
 					/**
 					 * \~russian
 					 * @brief Структура составной части имени ключа
@@ -1500,32 +1485,20 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод получения текущих настроек дерева
-					 *
-					 * @return текущие настройки дерева настроек
-					 *
-					 * \~english
-					 * @brief Method of getting the current settings of the tree
-					 *
-					 * @return current settings of the settings tree
-					 *
-					 * \~
-					 */
-					const settings_t & settings() const noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек дерева
 					 *
 					 * @param settings настройки дерева настроек
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the tree
 					 *
 					 * @param settings settings of the settings tree
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1557,24 +1530,6 @@ namespace awh {
 					 * \~
 					 */
 					bool parse(const string_view text) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод разбора текста настроек с заданными настройками
-					 *
-					 * @param text     разбираемый текст настроек
-					 * @param settings настройки дерева настроек
-					 * @return         результат выполнения операции
-					 *
-					 * \~english
-					 * @brief Method of parsing a settings text with the given settings
-					 *
-					 * @param text     settings text being parsed
-					 * @param settings settings of the settings tree
-					 * @return         result of performing the operation
-					 *
-					 * \~
-					 */
-					bool parse(const string_view text, const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian

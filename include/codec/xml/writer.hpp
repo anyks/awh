@@ -111,8 +111,8 @@ namespace awh {
 			 *       в момент вызова; хранить их после изменения выходного буфера нельзя
 			 *
 			 * @note Отказ записи разметки ТЕРМИНАЛЕН: после отказа `text()` и `take()`
-			 *       возвращают пустоту, а последующие указания отвергаются до очистки
-			 *       через `clear()`. Это отличает разметку от JSON и CSV, где отказ местен
+			 *       возвращают пустоту, а последующие указания отвергаются до сброса
+			 *       через `reset()`. Это отличает разметку от JSON и CSV, где отказ местен
 			 *       и объект остаётся годным продолжать
 			 *
 			 * @par Порядок работы
@@ -121,7 +121,7 @@ namespace awh {
 			 *       применяются намеренно: они лишь сужают круг тех, кто сможет текст прочесть
 			 *
 			 *  @code{.cpp}
-			 *          writer_t writer;
+			 *  writer_t writer;
 			 *
 			 *  writer.declaration();
 			 *  writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
@@ -148,7 +148,7 @@ namespace awh {
 			 *
 			 * @note The refusal of the writing of a markup is TERMINAL: once a refusal occurs,
 			 *       `text()` and `take()` return emptiness, and subsequent directives are rejected
-			 *       until `clear()` is called. This differs from JSON and CSV, where the refusal is local
+			 *       until `reset()` is called. This differs from JSON and CSV, where the refusal is local
 			 *       and the object remains usable
 			 *
 			 * @par Order of the work
@@ -157,7 +157,7 @@ namespace awh {
 			 *       deliberately: they only narrow the circle of those who will be able to read the text
 			 *
 			 *  @code{.cpp}
-			 *          writer_t writer;
+			 *  writer_t writer;
 			 *
 			 *  writer.declaration();
 			 *  writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
@@ -673,15 +673,17 @@ namespace awh {
 					 * @brief Метод установки настроек записи
 					 *
 					 * @param settings настройки записи текста разметки
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing
 					 *
 					 * @param settings settings of the writing of a markup text
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -690,7 +692,7 @@ namespace awh {
 					 * @details Записывается первым указанием, до всякого содержимого.
 					 *
 					 * @note Изъятие текста через `take()` не разрешает повторное объявление.
-					 *       Новый документ начинается только после `clear()`
+					 *       Новый документ начинается только после `reset()`
 					 *
 					 * @param standalone признак самодостаточности текста разметки
 					 * @return           результат выполнения операции
@@ -701,7 +703,7 @@ namespace awh {
 					 * @details Written as the first directive, before any content.
 					 *
 					 * @note An extraction of the text by `take()` does not allow a repeated declaration.
-					 *       A new document begins only after a `clear()`
+					 *       A new document begins only after `reset()`
 					 *
 					 * @param standalone flag of the standaloneness of the markup text
 					 * @return           result of performing the operation
@@ -1135,7 +1137,7 @@ namespace awh {
 					 * @param size ожидаемый размер собираемого текста разметки в байтах
 					 *
 					 *  @code{.cpp}
-					 *          writer_t writer;
+					 *  writer_t writer;
 					 *
 					 *  writer.reserve(source.size() + (source.size() / 5));
 					 *  writer.declaration();
@@ -1158,7 +1160,7 @@ namespace awh {
 					 * @param size expected size of the markup text being assembled in bytes
 					 *
 					 *  @code{.cpp}
-					 *          writer_t writer;
+					 *  writer_t writer;
 					 *
 					 *  writer.reserve(source.size() + (source.size() / 5));
 					 *  writer.declaration();
@@ -1170,14 +1172,14 @@ namespace awh {
 					void reserve(const size_t size) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод очистки собранного текста разметки
+					 * @brief Метод сброса записи в исходное состояние
 					 *
 					 * \~english
-					 * @brief Method of clearing the assembled markup text
+					 * @brief Method of resetting the writing into the initial state
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian

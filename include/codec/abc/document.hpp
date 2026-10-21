@@ -539,39 +539,32 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Структура настроек дерева разметки
+					 * @brief Структура настроек двоичного контейнера
 					 *
-					 * @details Настройки разбора и записи держатся раздельно: прочитать разметку
-					 *          с одними пределами и записать её иным видом - обыкновенное дело, и
+					 * @details Настройки разбора и записи держатся раздельно: прочитать контейнер
+					 *          с одними пределами и записать его иным видом - обыкновенное дело, и
 					 *          связывать их незачем.
 					 *
-					 * @note Построение это заведено ради согласия кодеков рамки: у всех у них
-					 *       настройки дерева спрашиваются и ставятся одинаково, а вид их свой
-					 *       у каждого кодека
-					 *
-					 * @warning Настройки разбора, поданные ходу `parse()` доводом, действуют
-					 *          лишь на этот заход и хранимых настроек НЕ меняют
+					 * @note Построение это заведено ради согласия кодеков рамки: настройки дерева
+					 *       ставятся одним ходом `settings()`, а вид их свой у каждого кодека
 					 *
 					 * \~english
-					 * @brief Markup tree settings structure
+					 * @brief Binary container settings structure
 					 *
 					 * @details The settings of the parsing and of the writing are kept separately: to read
-					 *          the markup with one limits and to write it in another form is an ordinary
+					 *          the container with one limits and to write it in another form is an ordinary
 					 *          affair, and there is no sense in binding them.
 					 *
 					 * @note This construction is made for the sake of the consent of the codecs of the framework:
-					 *       at all of them the settings of a tree are asked and set in the same way, while their
+					 *       the settings of a tree are set by the single `settings()` step, while their
 					 *       form is own to each codec
-					 *
-					 * @warning The settings of the parsing fed to the `parse()` step as an argument act only on
-					 *          this going and do NOT change the stored settings
 					 *
 					 * \~
 					 */
 					typedef struct Settings {
-						// Настройки записи текста разметки
+						// Настройки записи контейнера
 						writer_t::settings_t writer;
-						// Настройки разбора текста разметки
+						// Настройки разбора контейнера
 						reader_t::settings_t reader;
 					} settings_t;
 					/**
@@ -631,7 +624,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool valid() const noexcept;
+							bool valid() const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения вида значения
@@ -675,7 +668,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool is(const type_t type) const noexcept;
+							bool is(const type_t type) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения количества значений вместимого
@@ -790,7 +783,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool keyed() const noexcept;
+							bool keyed() const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод проверки того, что две ссылки ведут к ОДНОМУ узлу дерева
@@ -836,7 +829,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool same(const Value & value) const noexcept;
+							bool same(const Value & value) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения значения поля отображения по имени
@@ -893,7 +886,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool contains(const string_view name) const noexcept;
+							bool contains(const string_view name) const noexcept;
 						public:
 							/**
 							 * \~russian
@@ -910,7 +903,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool value(bool & result) const noexcept;
+							bool value(bool & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа видом целого без знака
@@ -926,7 +919,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool value(uint64_t & result) const noexcept;
+							bool value(uint64_t & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа видом целого со знаком
@@ -942,7 +935,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool value(int64_t & result) const noexcept;
+							bool value(int64_t & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа видом дробного
@@ -958,7 +951,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool value(double & result) const noexcept;
+							bool value(double & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения содержимого значения
@@ -1024,7 +1017,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							[[nodiscard]] bool negative() const noexcept;
+							bool negative() const noexcept;
 						public:
 							/**
 							 * \~russian
@@ -1153,7 +1146,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool identical(const uint32_t left, const uint32_t right) const noexcept;
+					bool identical(const uint32_t left, const uint32_t right) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод применения правила повтора имени к закрытому отображению
@@ -1299,7 +1292,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] static bool digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept;
+					static bool digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1348,7 +1341,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool parse(const void * buffer, const size_t size) noexcept;
+					bool parse(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из дерева документа
@@ -1382,7 +1375,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool build(writer_t & writer) const noexcept;
+					bool build(writer_t & writer) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из дерева документа
@@ -1416,15 +1409,31 @@ namespace awh {
 					 * @brief Метод установки настроек разбора записи
 					 *
 					 * @param settings устанавливаемые настройки разбора записи
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the parsing of a record
 					 *
 					 * @param settings settings of the parsing of a record being set
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+					 *
+					 * @return настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of obtaining the settings of the writing corresponding to the parsing that has taken place
+					 *
+					 * @return settings of the writing of a text
+					 *
+					 * \~
+					 */
+					writer_t::settings_t writing() const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1545,7 +1554,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool has(const string & path) const noexcept;
+					bool has(const string & path) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки дерева документа на пустоту
@@ -1559,7 +1568,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool empty() const noexcept;
+					bool empty() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества узлов дерева документа
@@ -1612,10 +1621,11 @@ namespace awh {
 					 *          текстовых кодеков рамки место отказа зовётся тем же именем, и потребитель,
 					 *          читающий несколько кодеков, обходится одним кодом.
 					 *
-					 * @note Вид `abc::location_t` несёт смещение и глубину, но НЕ несёт номера
-					 *       строки и положения в ней: у двоичной записи строк нет вовсе, и поля эти
-					 *       означали бы у неё пустое место. Различие это идёт от существа записи, а
-					 *       не от разнобоя имён
+					 * @note Вид `abc::location_t` наследует общие поля строки, столбца и
+					 *       смещения, но осмысленны у него только смещение и глубина: у
+					 *       двоичной записи строк нет вовсе, и общие поля строки и столбца
+					 *       остаются нулевыми. Различие это идёт от существа записи, а не от
+					 *       разнобоя имён
 					 *
 					 * @return место, где отказ разбора произошёл
 					 *
@@ -1626,9 +1636,10 @@ namespace awh {
 					 *          text codecs of the frame the location of a failure is called by the same name, and a consumer
 					 *          reading several codecs makes do with one code.
 					 *
-					 * @note The kind `abc::location_t` carries the offset and the depth but NOT the number of a line and
-					 *       the position in it: a binary record has no lines at all, and these fields would mean an empty
-					 *       place in it. The difference goes from the substance of the record, not from a mismatch of names
+					 * @note The kind `abc::location_t` inherits the common fields of a line, of a column and
+					 *       of an offset, but only the offset and the depth carry meaning in it: a binary record
+					 *       has no lines at all, and the common fields of a line and of a column remain zero.
+					 *       The difference goes from the substance of the record, not from a mismatch of names
 					 *
 					 * @return location where the failure of the parsing has occurred
 					 *

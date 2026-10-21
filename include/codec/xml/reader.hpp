@@ -100,10 +100,10 @@ namespace awh {
 			 * \~
 			 */
 			enum class state_t : uint8_t {
-				READY     = 0x00, // Событие получено и доступно для чтения
-				HUNGRY    = 0x01, // Для продолжения разбора требуется следующий кусок текста
-				FINISHED  = 0x02, // Текст разобран до конца
-				FAILED    = 0x03  // Разбор прекращён ошибкой
+				READY    = 0x00, // Событие получено и доступно для чтения
+				HUNGRY   = 0x01, // Для продолжения разбора требуется следующий кусок текста
+				FINISHED = 0x02, // Текст разобран до конца
+				FAILED   = 0x03  // Разбор прекращён ошибкой
 			};
 
 			/**
@@ -130,7 +130,7 @@ namespace awh {
 			 *       важнее расхода памяти
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader;
+			 *  reader_t reader;
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -173,7 +173,7 @@ namespace awh {
 			 *       is more important than the expenditure of the memory
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader;
+			 *  reader_t reader;
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -2170,6 +2170,7 @@ namespace awh {
 					 *          текста не допускают: устанавливать их следует до первого куска
 					 *
 					 * @param settings настройки разбора текста разметки
+					 * @return         признак принятия настроек разбора
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing
@@ -2178,10 +2179,11 @@ namespace awh {
 					 *          a text: they should be set before the first chunk
 					 *
 					 * @param settings settings of the parsing of a markup text
+					 * @return         sign of the acceptance of the settings of the parsing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2849,4 +2851,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"

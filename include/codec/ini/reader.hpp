@@ -132,7 +132,7 @@ namespace awh {
 			 *       собран целиком
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader(reader_t::settings_t::git());
+			 *  reader_t reader(reader_t::settings_t::git());
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -206,7 +206,7 @@ namespace awh {
 			 *       is assembled in full
 			 *
 			 *  @code{.cpp}
-			 *          reader_t reader(reader_t::settings_t::git());
+			 *  reader_t reader(reader_t::settings_t::git());
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -1400,7 +1400,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size, const bool end) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод передачи исходного текста целиком

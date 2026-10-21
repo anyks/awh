@@ -283,7 +283,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool negative(const uint64_t value, int64_t & result) noexcept;
+			__AWH_SHARED_EXPORT__ bool negative(const uint64_t value, int64_t & result) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция укладки дробного числа одинарной точности
@@ -369,7 +369,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool take(const uint8_t * buffer, const size_t size, size_t & offset, item_t & item, error_t & error) noexcept;
+			__AWH_SHARED_EXPORT__ bool take(const uint8_t * buffer, const size_t size, size_t & offset, item_t & item, error_t & error) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция снятия целого числа установленной ширины
@@ -415,7 +415,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool utf8(const uint8_t * buffer, const size_t size, size_t & position) noexcept;
+			__AWH_SHARED_EXPORT__ bool utf8(const uint8_t * buffer, const size_t size, size_t & position) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция исправления строки, не отвечающей кодировке UTF-8

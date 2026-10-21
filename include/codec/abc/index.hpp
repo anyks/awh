@@ -203,7 +203,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool is(const mark_t mark) const noexcept;
+				bool is(const mark_t mark) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -349,7 +349,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool replace(const uint64_t number, const entry_t & entry) noexcept;
+					bool replace(const uint64_t number, const entry_t & entry) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества строк оглавления
@@ -436,7 +436,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool unpack(const void * buffer, const size_t size, error_t & error) noexcept;
+					bool unpack(const void * buffer, const size_t size, error_t & error) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -652,7 +652,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool open(source_t source, const uint64_t length = 0) noexcept;
+					bool open(source_t source, const uint64_t length = 0) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выборки записи контейнера по номеру
@@ -670,7 +670,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool record(const uint64_t number, vector <uint8_t> & result) noexcept;
+					bool record(const uint64_t number, vector <uint8_t> & result) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния выборки записей

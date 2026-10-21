@@ -42,6 +42,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
+#include "../value.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -599,42 +600,6 @@ namespace awh {
 			};
 			/**
 			 * \~russian
-			 * @brief Кодировки исходного текста
-			 *
-			 * @details Текст кодировку не объявляет, и определяется она по метке порядка
-			 *          байтов в начале текста; при её отсутствии текст считается записанным в UTF-8.
-			 *
-			 * @note Кодировка UTF-32 не поддерживается, но опознаётся: метка её
-			 *       начинается теми же байтами, что и метка UTF-16 с обратным порядком, и без
-			 *       такого опознания текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками
-			 *       между настоящими. Опознав её, разбор отвечает отказом, а не молчаливой
-			 *       бессмыслицей
-			 *
-			 * \~english
-			 * @brief Encodings of the source text
-			 *
-			 * @details A text does not announce its encoding, and it is determined by the byte order
-			 *          mark at the beginning of the text; in its absence the text is considered written in UTF-8.
-			 *
-			 * @note The UTF-32 encoding is not supported but is recognized: its mark
-			 *       begins with the same bytes as the mark of UTF-16 with the reverse order, and without
-			 *       such a recognition a text in UTF-32 would be parsed as UTF-16 with empty characters
-			 *       between the real ones. Having recognized it, the parsing answers with a refusal rather than with a silent
-			 *       nonsense
-			 *
-			 * \~
-			 */
-			enum class encoding_t : uint8_t {
-				NONE    = 0x00, // Кодировка не определена
-				UTF8    = 0x01, // Кодировка UTF-8
-				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
-				LATIN1  = 0x04, // Кодировка ISO-8859-1
-				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06  // Кодировка Windows-1252
-			};
-			/**
-			 * \~russian
 			 * @brief Коды ошибок разбора текста
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
@@ -808,38 +773,36 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Span {
-				// Смещение начала отрезка в хранилище знаков
-				uint32_t offset;
-				// Длина отрезка в байтах
-				uint32_t length;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * \~
-				 */
-				explicit Span() noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param offset смещение начала отрезка в хранилище знаков
-				 * @param length длина отрезка в байтах
-				 *
-				 * \~english
-				 * @brief Constructor
-				 *
-				 * @param offset offset of the beginning of the segment in the storage of the characters
-				 * @param length length of the segment in bytes
-				 *
-				 * \~
-				 */
-				Span(const uint32_t offset, const uint32_t length) noexcept;
-			} span_t;
+			using span_t = codec::span_t;
+			/**
+			 * \~russian
+			 * @brief Кодировки исходного текста
+			 *
+			 * @details Текст кодировку не объявляет, и определяется она по метке порядка
+			 *          байтов в начале текста; при её отсутствии текст считается записанным в UTF-8.
+			 *
+			 * @note Кодировка UTF-32 не поддерживается, но опознаётся: метка её
+			 *       начинается теми же байтами, что и метка UTF-16 с обратным порядком, и без
+			 *       такого опознания текст в UTF-32 разбирался бы как UTF-16 с пустыми знаками
+			 *       между настоящими. Опознав её, разбор отвечает отказом, а не молчаливой
+			 *       бессмыслицей
+			 *
+			 * \~english
+			 * @brief Encodings of the source text
+			 *
+			 * @details A text does not announce its encoding, and it is determined by the byte order
+			 *          mark at the beginning of the text; in its absence the text is considered written in UTF-8.
+			 *
+			 * @note The UTF-32 encoding is not supported but is recognized: its mark
+			 *       begins with the same bytes as the mark of UTF-16 with the reverse order, and without
+			 *       such a recognition a text in UTF-32 would be parsed as UTF-16 with empty characters
+			 *       between the real ones. Having recognized it, the parsing answers with a refusal rather than with a silent
+			 *       nonsense
+			 *
+			 * \~
+			 */
+			using encoding_t = codec::encoding_t;
+
 			/**
 			 * \~russian
 			 * @brief Структура положения в исходном тексте
@@ -847,7 +810,7 @@ namespace awh {
 			 * @details Служит для указания места ошибки и для привязки полей к исходному тексту.
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а
-			 *       смещение - в байтах исходного текста до перекодирования. Строки при этом
+			 *       смещение - в байтах текста, приведённого к UTF-8. Строки при этом
 			 *       считаются настоящие, а не записи: поле в кавычках вправе занимать несколько
 			 *       строк, и номер строки внутри такого поля растёт
 			 *
@@ -857,46 +820,17 @@ namespace awh {
 			 * @details Serves for indicating the place of an error and for binding the fields to the source text.
 			 *
 			 * @note The line number and the position in the line are counted in Unicode characters, while
-			 *       the offset — in the bytes of the source text before the transcoding. The lines are counted
+			 *       the offset — in the bytes of the text converted to UTF-8. The lines are counted
 			 *       as the real ones rather than as the records: a field in quotes has the right to occupy several
 			 *       lines, and the line number inside such a field grows
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Номер строки, считая с единицы
-				uint32_t line;
+			typedef struct __AWH_SHARED_EXPORT__ Location : codec::location_t {
 				// Номер поля в записи, считая с нуля
 				uint32_t field;
-				// Положение в строке, считая с единицы
-				uint32_t column;
 				// Номер записи, считая с единицы, заголовок номера не занимает
 				uint32_t record;
-				/**
-				 * \~russian
-				 * @brief Смещение от начала текста в байтах
-				 *
-				 * @warning Смещение считается по тексту, ПРИВЕДЁННОМУ к UTF-8, а не по
-				 *          исходным байтам. Метка порядка байтов снята, а текст в иной
-				 *          кодировке уже переведён, и длины расходятся: документ Latin-1
-				 *          в 52 байта даёт смещение конца 54, а метка порядка байтов
-				 *          сдвигает все смещения на свою длину. Для указания места в
-				 *          ИСХОДНОМ файле смещение это негодно, если текст подан не в
-				 *          UTF-8 без метки
-				 *
-				 * \~english
-				 * @brief The offset from the beginning of the text in bytes
-				 *
-				 * @warning The offset is counted over the text CONVERTED to UTF-8 rather than over
-				 *          the source bytes. The byte order mark is stripped and a text in another
-				 *          encoding is already converted, so the lengths diverge: a Latin-1 document
-				 *          of 52 bytes gives the ending offset 54, and a byte order mark shifts every
-				 *          offset by its length. For pointing at a place in the SOURCE file this
-				 *          offset is unfit unless the text is supplied as UTF-8 without a mark
-				 *
-				 * \~
-				 */
-				uint64_t offset;
 				/**
 				 * \~russian
 				 * @brief Конструктор

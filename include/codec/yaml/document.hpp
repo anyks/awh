@@ -171,10 +171,10 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Структура настроек разбора документа
+					 * @brief Структура настроек документа
 					 *
 					 * \~english
-					 * @brief Document parsing settings structure
+					 * @brief Document settings structure
 					 *
 					 * \~
 					 */
@@ -223,10 +223,6 @@ namespace awh {
 						 * \~
 						 */
 						bool retain;
-						// Наибольшая допустимая глубина вложенности, ноль - предел по умолчанию
-						uint32_t maxDepth;
-						// Наибольшая допустимая длина скалярного значения, ноль - предел по умолчанию
-						uint32_t maxScalar;
 						/**
 						 * \~russian
 						 * Наибольшее допустимое количество узлов раскрытия ссылок, ноль - предел
@@ -251,14 +247,10 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxExpansion;
-						// Схема разрешения видов скалярных значений
-						schema_t schema;
-						// Кодировка, навязанная извне вопреки метке порядка байтов
-						encoding_t encoding;
-						// Правило обращения с повторяющимся именем пары отображения
-						duplicate_t duplicates;
 						// Настройки объекта записи текста документа
 						writer_t::settings_t writer;
+						// Настройки объекта разбора текста документа
+						reader_t::settings_t reader;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -1519,15 +1511,15 @@ namespace awh {
 					 * Удержанный исходный текст, настройкою затребованный
 					 *
 					 * @note Держится он в кодировке подачи своей: смещения событий чтение
-					 *       считает по тексту исходному, до приведения к UTF-8, и дословная
-					 *       перезапись обязана вырезать из него же
+					 *       считает по тексту, приведённому к UTF-8, и дословная
+					 *       перезапись вырезает из него с поправкой на метку порядка байтов, а текст в иной кодировке оттого не удерживается
 					 *
 					 * \~english
 					 * The retained source text, demanded by the setting
 					 *
 					 * @note It is held in the encoding of its own feeding: the reading counts the offsets of
-					 *       the events over the source text, before the bringing to UTF-8, and the verbatim
-					 *       rewriting has to cut out of that same text
+					 *       the events over the text converted to UTF-8, and the verbatim
+					 *       rewriting cuts out of it with a correction for the byte order mark, while a text in another encoding is not retained
 					 *
 					 * \~
 					 */
@@ -2998,6 +2990,7 @@ namespace awh {
 					 * \~
 					 *
 					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`
+					 *
 					 */
 					vector <string> keys(const string & path) const noexcept;
 					/**
@@ -3127,31 +3120,7 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-					/**
-					 * \~russian
-					 * @brief Псевдоним сброса состояния документа (см. clear())
-					 *
-					 * \~english
-					 * @brief Alias of the reset of the state of a document (see clear())
-					 *
-					 * \~
-					 */
-					void reset() noexcept;
 				public:
-					/**
-					 * \~russian
-					 * @brief Метод получения настроек разбора документа
-					 *
-					 * @return настройки разбора документа
-					 *
-					 * \~english
-					 * @brief Method of the obtaining of the settings of the parsing of a document
-					 *
-					 * @return settings of the parsing of a document
-					 *
-					 * \~
-					 */
-					const settings_t & settings() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
@@ -3188,18 +3157,20 @@ namespace awh {
 					writer_t::settings_t writing() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод установки настроек разбора документа
+					 * @brief Метод установки настроек документа
 					 *
-					 * @param settings устанавливаемые настройки разбора
+					 * @param settings устанавливаемые настройки документа
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
-					 * @brief Method of the setting of the settings of the parsing of a document
+					 * @brief Method of setting the settings of a document
 					 *
-					 * @param settings settings of the parsing being set
+					 * @param settings settings of a document being set
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian

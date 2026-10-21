@@ -103,14 +103,13 @@ namespace awh {
 			 *       их заголовками и выделениями памяти
 			 *
 			 *  @code{.cpp}
-			 *          document_t document();
-			 *
+			 *  document_t document;
 			 *  document.parse(text);
 			 *
 			 *  for(size_t i = 0; i < document.rows(); i++)
 			 *      const string_view value = document.get(i, "имя");
 			 *
-			 *  const string result = document.text();
+			 *  const string result = document.dump();
 			 *
 			 *  @endcode
 			 *
@@ -128,14 +127,13 @@ namespace awh {
 			 *       their headers and memory allocations
 			 *
 			 *  @code{.cpp}
-			 *          document_t document();
-			 *
+			 *  document_t document;
 			 *  document.parse(text);
 			 *
 			 *  for(size_t i = 0; i < document.rows(); i++)
 			 *      const string_view value = document.get(i, "name");
 			 *
-			 *  const string result = document.text();
+			 *  const string result = document.dump();
 			 *
 			 *  @endcode
 			 *
@@ -386,8 +384,6 @@ namespace awh {
 					 *          текст целиком или кусками: тем одним методом обслуживаются и разбор
 					 *          готового текста, и чтение файла по кускам.
 					 *
-					 * @param reader чтение, выдающее события разбора
-					 *
 					 * \~english
 					 * @brief Method of assembling the parsing events into the table
 					 *
@@ -455,7 +451,7 @@ namespace awh {
 					 * @warning Поля живут лишь на время вызова обработчика: буфер записи
 					 *          переиспользуется, и сохранять ссылки на поля дольше вызова нельзя -
 					 *          содержимое, нужное дольше, следует копировать
-					  *
+					 *
 					 * @note Имя оставлено отличным от `load()` нарочно: `load()` вбирает
 					 *       таблицу в контейнер, а чтение это лишь пропускает записи мимо,
 					 *       ничего не удерживая. Прочие кодеки зовут вбирающую пару
@@ -1328,28 +1324,34 @@ namespace awh {
 					void clear() noexcept;
 					/**
 					 * \~russian
-					 * @brief Псевдоним сброса состояния документа (см. clear())
-					 *
-					 * \~english
-					 * @brief Alias of the reset of the state of a document (see clear())
-					 *
-					 * \~
-					 */
-					void reset() noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод установки настроек контейнера
 					 *
 					 * @param settings настройки контейнера
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the container
 					 *
 					 * @param settings settings of the container
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+					 *
+					 * @return настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of obtaining the settings of the writing corresponding to the parsing that has taken place
+					 *
+					 * @return settings of the writing of a text
+					 *
+					 * \~
+					 */
+					writer_t::settings_t writing() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Оператор вывода таблицы последовательностью знаков

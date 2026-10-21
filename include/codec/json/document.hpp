@@ -904,7 +904,7 @@ namespace awh {
 							 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
 							 *
 							 * @param name разыскиваемое имя из одного знака
-							 * @return      снятое значение
+							 * @return     снятое значение
 							 *
 							 * \~english
 							 * @brief Method of the access by a writing of a character
@@ -2004,16 +2004,6 @@ namespace awh {
 					void clear() noexcept;
 					/**
 					 * \~russian
-					 * @brief Псевдоним сброса состояния документа (см. clear())
-					 *
-					 * \~english
-					 * @brief Alias of the reset of the state of a document (see clear())
-					 *
-					 * \~
-					 */
-					void reset() noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод разбора текста документа
 					 *
 					 * @param text разбираемый текст документа
@@ -2056,7 +2046,9 @@ namespace awh {
 					 *
 					 * @note The handler is entitled to answer with FALSE, and the parsing is then terminated.
 					 *       Such a termination is NOT a refusal: the consumer has got as much as it wanted,
-					 *       and the parsing answers with SUCCESS at the code `NONE`
+					 *       and the parsing answers with SUCCESS at the code `NONE`. Formerly it answered
+					 *       with false to that, and there was no way to tell one's own "enough" from a refusal
+					 *       of an unknown cause. The CSV table holds to the same contract and described it directly
 					 *
 					 * @param text     text of the document being parsed
 					 * @param callback handler of the streaming issuance of the values, false terminates the parsing
@@ -2662,15 +2654,31 @@ namespace awh {
 					 * @brief Метод установки настроек документа
 					 *
 					 * @param settings устанавливаемые настройки документа
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the document
 					 *
 					 * @param settings settings of the document being set
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+					 *
+					 * @return настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of obtaining the settings of the writing corresponding to the parsing that has taken place
+					 *
+					 * @return settings of the writing of a text
+					 *
+					 * \~
+					 */
+					writer_t::settings_t writing() const noexcept;
 				public:
 					/**
 					 * \~russian

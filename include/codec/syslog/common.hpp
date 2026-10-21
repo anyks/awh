@@ -41,6 +41,11 @@
 #include <string_view>
 
 /**
+ * Подключаем заголовочный файл модуля
+ */
+#include "../value.hpp"
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include "../../sys/macro/global.hpp"
@@ -615,6 +620,8 @@ namespace awh {
 				 *       `EMPTY_HEADER_FIELD`, which turned out to be an unfulfilled promise and was raised by a
 				 *       verification. This one is a cancelled promise, and the note stands here so that the next
 				 *       audit does not "fix" it again
+				 *
+				 * \~
 				 */
 				MISSING_PRIORITY      = 0x01, // Запись не открывается приставкой приоритета
 				INVALID_PRIORITY      = 0x02, // Приоритет построен ошибочно либо выходит за предел
@@ -714,21 +721,22 @@ namespace awh {
 			 * @details Положение несёт и смещение в октетах от начала текста, и номер
 			 *          строки со столбцом.
 			 *
+			 * @note Поля строки, столбца и смещения наследуются от общего вида положения.
+			 *       Умолчание syslog считает строку и столбец с единицы, а смещение - с нуля
+			 *
 			 * \~english
 			 * @brief Structure of the proposition in the text under analysis
 			 *
 			 * @details A position carries both an offset in octets from the beginning of a text and the
 			 *          numbers of a line and of a column.
 			 *
+			 * @note The fields of the line, of the column and of the offset are inherited from the common
+			 *       kind of a position. The syslog default counts the line and the column from one, and the
+			 *       offset — from zero
+			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Position {
-				// Номер строки, считая от единицы
-				uint64_t line;
-				// Номер столбца в байтах, считая от единицы
-				uint64_t column;
-				// Смещение в байтах от начала текста
-				uint64_t offset;
+			typedef struct __AWH_SHARED_EXPORT__ Position : codec::location_t {
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -740,6 +748,23 @@ namespace awh {
 				 */
 				explicit Position() noexcept;
 			} pos_t;
+
+			/**
+			 * \~russian
+			 * @brief Положение в исходном тексте
+			 *
+			 * @details Имя это общее у кодеков рамки; у syslog положение сообщения зовётся
+			 *          `pos_t`, и прежнее имя сохранено псевдонимом ради потребителей.
+			 *
+			 * \~english
+			 * @brief Position in the source text
+			 *
+			 * @details This name is common to the codecs of the framework; at syslog the position of a message is
+			 *          called `pos_t`, and the former name is kept as an alias for the sake of the consumers.
+			 *
+			 * \~
+			 */
+			using location_t = pos_t;
 		};
 	};
 };

@@ -108,7 +108,7 @@ namespace awh {
 				READY    = 0x00, // Событие получено и доступно для чтения
 				HUNGRY   = 0x01, // Для продолжения разбора требуется следующий кусок текста
 				FINISHED = 0x02, // Текст разобран до конца
-				FAILED   = 0x03  // Разбор прекращён ошибкой
+				FAILED   = 0x03  // Разбор прекращён ошибкой либо требованием потребителя
 			};
 
 			/**
@@ -1056,6 +1056,11 @@ namespace awh {
 					 * @note Кода отказа не устанавливает: причина прекращения известна тому,
 					 *       кто его затребовал, и своей причины у разбора здесь нет
 					 *
+					 * @note Ход этот нужен читателям с прямым обработчиком событий: вернуть
+					 *       отказ из обработчика нечем, а подача обязана прекратиться немедля.
+					 *       У читателей без обработчика его нет: потребитель просто перестаёт
+					 *       звать `next()`
+					 *
 					 * \~english
 					 * @brief Method of the termination of the parsing at the demand of the consumer
 					 *
@@ -1065,6 +1070,10 @@ namespace awh {
 					 *
 					 * @note It sets no error code: the reason of the termination is known to the one
 					 *       who demanded it, and the parsing has no reason of its own here
+					 *
+					 * @note This step is needed by readers with a direct handler of events: there is nothing
+					 *       to return a refusal by from the handler, and the feeding must stop immediately.
+					 *       Readers without a handler have it not: the consumer simply stops calling `next()`
 					 *
 					 * \~
 					 */
@@ -1361,6 +1370,7 @@ namespace awh {
 					 *       из самих настроек и разбор продолжают
 					 *
 					 * @param settings устанавливаемые настройки разбора текста
+					 * @return         признак принятия настроек разбора
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the parsing of a text
@@ -1378,10 +1388,11 @@ namespace awh {
 					 *       from the settings themselves and continue the parsing
 					 *
 					 * @param settings settings of the parsing of a text being set
+					 * @return         sign of the acceptance of the settings of the parsing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1393,6 +1404,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Reader() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the parsing of a text
+					 *
+					 * \~
+					 */
+					explicit Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1413,4 +1438,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"

@@ -95,28 +95,6 @@ namespace awh {
 		namespace xml {
 			/**
 			 * \~russian
-			 * @brief Индекс узла дерева разметки в арене
-			 *
-			 * \~english
-			 * @brief Index of a node of a markup tree in the arena
-			 *
-			 * \~
-			 */
-			using node_id_t = uint32_t;
-
-			/**
-			 * \~russian
-			 * @brief Значение индекса отсутствующего узла дерева разметки
-			 *
-			 * \~english
-			 * @brief Value of the index of an absent node of a markup tree
-			 *
-			 * \~
-			 */
-			constexpr node_id_t INVALID_NODE = static_cast <node_id_t> (~0u);
-
-			/**
-			 * \~russian
 			 * @brief Виды узлов дерева разметки
 			 *
 			 * @details Вид SPACE появляется в дереве лишь при включённой настройке
@@ -151,6 +129,28 @@ namespace awh {
 				DOCTYPE    = 0x07, // Описание типа документа
 				SPACE      = 0x08  // Пробельное содержимое, не значимое для строения
 			};
+
+			/**
+			 * \~russian
+			 * @brief Индекс узла дерева разметки в арене
+			 *
+			 * \~english
+			 * @brief Index of a node of a markup tree in the arena
+			 *
+			 * \~
+			 */
+			using node_id_t = uint32_t;
+
+			/**
+			 * \~russian
+			 * @brief Значение индекса отсутствующего узла дерева разметки
+			 *
+			 * \~english
+			 * @brief Value of the index of an absent node of a markup tree
+			 *
+			 * \~
+			 */
+			constexpr node_id_t INVALID_NODE = static_cast <node_id_t> (~0u);
 
 			/**
 			 * \~russian
@@ -1173,12 +1173,8 @@ namespace awh {
 					 *          с одними пределами и записать её иным видом - обыкновенное дело, и
 					 *          связывать их незачем.
 					 *
-					 * @note Построение это заведено ради согласия кодеков рамки: у всех у них
-					 *       настройки дерева спрашиваются и ставятся одинаково, а вид их свой
-					 *       у каждого кодека
-					 *
-					 * @warning Настройки разбора, поданные ходу `parse()` доводом, действуют
-					 *          лишь на этот заход и хранимых настроек НЕ меняют
+					 * @note Построение это заведено ради согласия кодеков рамки: настройки дерева
+					 *       ставятся одним ходом `settings()`, а вид их свой у каждого кодека
 					 *
 					 * \~english
 					 * @brief Markup tree settings structure
@@ -1188,11 +1184,8 @@ namespace awh {
 					 *          affair, and there is no sense in binding them.
 					 *
 					 * @note This construction is made for the sake of the consent of the codecs of the framework:
-					 *       at all of them the settings of a tree are asked and set in the same way, while their
+					 *       the settings of a tree are set by the single `settings()` step, while their
 					 *       form is own to each codec
-					 *
-					 * @warning The settings of the parsing fed to the `parse()` step as an argument act only on
-					 *          this going and do NOT change the stored settings
 					 *
 					 * \~
 					 */
@@ -1676,6 +1669,7 @@ namespace awh {
 					 *
 					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
 					 *      распознавание метки порядка байтов да невхождение её в содержимое
+					 *
 					 */
 					encoding_t encoding() const noexcept;
 					/**
@@ -1774,6 +1768,7 @@ namespace awh {
 					 *       доводом действуют лишь на свой заход
 					 *
 					 * @param settings устанавливаемые настройки дерева разметки
+					 * @return         признак принятия настроек документа
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the markup tree
@@ -1783,10 +1778,25 @@ namespace awh {
 					 *       argument act only on their own going
 					 *
 					 * @param settings settings of the markup tree being set
+					 * @return         sign of the acceptance of the settings of a document
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+					 *
+					 * @return настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of obtaining the settings of the writing corresponding to the parsing that has taken place
+					 *
+					 * @return settings of the writing of a text
+					 *
+					 * \~
+					 */
+					writer_t::settings_t writing() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи дерева разметки в файл
@@ -1814,6 +1824,7 @@ namespace awh {
 					 *
 					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
 					 *      неделимость записи: отказ оставляет прежний файл нетронутым
+					 *
 					 */
 					bool save(const string & filename) const noexcept;
 					/**
@@ -2165,6 +2176,7 @@ namespace awh {
 					 *
 					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`:
 					 *      замкнутость обхода да три случая, где счёт звеньев лжёт о виде узла
+					 *
 					 */
 					vector <string> keys(const string & path) const noexcept;
 					/**
@@ -2262,6 +2274,7 @@ namespace awh {
 					 *
 					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
 					 *      развод счёта детей корня со счётом узлов арены
+					 *
 					 */
 					size_t nodes() const noexcept;
 					/**
@@ -2288,16 +2301,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-					/**
-					 * \~russian
-					 * @brief Псевдоним сброса состояния документа (см. clear())
-					 *
-					 * \~english
-					 * @brief Alias of the reset of the state of a document (see clear())
-					 *
-					 * \~
-					 */
-					void reset() noexcept;
 				public:
 					/**
 					 * \~russian

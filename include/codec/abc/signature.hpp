@@ -362,7 +362,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool add(const void * buffer, const size_t size) noexcept;
+					bool add(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сведения дерева к корню
@@ -378,7 +378,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool root(vector <uint8_t> & result) const noexcept;
+					bool root(vector <uint8_t> & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сведения дерева к корню с приданной свёрткой
@@ -408,7 +408,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool root(vector <uint8_t> & result, const void * buffer, const size_t size) const noexcept;
+					bool root(vector <uint8_t> & result, const void * buffer, const size_t size) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества внесённых кадров
@@ -519,8 +519,8 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция укладки записи подписи контейнера
 			 *
-			 * @warning Отказ укладки объявляется ВЫДАЧЕЙ, и поверять его зовущий обязан, оттого
-			 *          выдача помечена `[[nodiscard]]`: половину эту набором не постеречь - понадобилась бы
+			 * @warning Отказ укладки объявляется ВЫДАЧЕЙ, и поверять его зовущий обязан:
+			 *          половину эту набором не постеречь - понадобилась бы
 			 *          схема подписи шире 64 КиБ, каких сегодня нет вовсе, - и сторожем её ставится
 			 *          собиратель. Пропуск выдачи мимо был бы: запись,
 			 *          не уложенная, остаётся пустой, а обёртка кадром пустое содержимое принимает
@@ -536,7 +536,7 @@ namespace awh {
 			 * @brief Function of the laying of the record of the signature of a container
 			 *
 			 * @warning The refusal of the laying is declared by the ISSUE, and the caller is obliged to
-			 *          verify it, that is why the issue is marked `[[nodiscard]]`: this half is not guarded by a
+			 *          verify it: this half is not guarded by a
 			 *          fixture - a scheme of the signature wider than 64 KiB would be needed, and today there
 			 *          are none at all, - and a guard for it is set by the gatherer. The passing of the issue
 			 *          unnoticed would be this: a record which was not laid stays empty, while the wrapping by a
@@ -551,7 +551,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool pack(const sign_t & sign, vector <uint8_t> & result) noexcept;
+			__AWH_SHARED_EXPORT__ bool pack(const sign_t & sign, vector <uint8_t> & result) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция снятия записи подписи контейнера
@@ -573,7 +573,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool unpack(const void * buffer, const size_t size, sign_t & sign, error_t & error) noexcept;
+			__AWH_SHARED_EXPORT__ bool unpack(const void * buffer, const size_t size, sign_t & sign, error_t & error) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция выработки отпечатка открытого ключа владельца
@@ -609,7 +609,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool fingerprint(const crypto_t & crypto, const string & name, vector <uint8_t> & result) noexcept;
+			__AWH_SHARED_EXPORT__ bool fingerprint(const crypto_t & crypto, const string & name, vector <uint8_t> & result) noexcept;
 		};
 	};
 };

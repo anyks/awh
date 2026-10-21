@@ -759,7 +759,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool fetch(const uint64_t origin) noexcept;
+					bool fetch(const uint64_t origin) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сбора свёрток по кадрам тела контейнера
@@ -783,7 +783,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool harvest() noexcept;
+					bool harvest() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки накопленных записей кадром в память
@@ -797,7 +797,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool pack() noexcept;
+					bool pack() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод накопления записи правкой контейнера
@@ -821,7 +821,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool add(const void * buffer, const size_t size, const payload_t kind, const bool added, const uint64_t number) noexcept;
+					bool add(const void * buffer, const size_t size, const payload_t kind, const bool added, const uint64_t number) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -884,7 +884,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool sign(const crypto_t * crypto, const string & name, const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
+					bool sign(const crypto_t * crypto, const string & name, const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -913,7 +913,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool open(source_t source, sink_t sink, const uint64_t length) noexcept;
+					bool open(source_t source, sink_t sink, const uint64_t length) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -934,7 +934,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
+					bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод правки записи контейнера по номеру
@@ -956,7 +956,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool replace(const uint64_t number, const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
+					bool replace(const uint64_t number, const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сноса записи контейнера по номеру
@@ -980,7 +980,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool erase(const uint64_t number) noexcept;
+					bool erase(const uint64_t number) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выборки записи контейнера по номеру
@@ -998,7 +998,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool record(const uint64_t number, vector <uint8_t> & result) noexcept;
+					bool record(const uint64_t number, vector <uint8_t> & result) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1013,7 +1013,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool commit() noexcept;
+					bool commit() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод уборки мусора перестройкой контейнера
@@ -1076,7 +1076,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool compact(sink_t target, const payload_t kind, uint64_t & length) noexcept;
+					bool compact(sink_t target, const payload_t kind, uint64_t & length) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния правки контейнера

@@ -108,7 +108,7 @@ namespace awh {
 			 *       Отказ записи массива полей либо таблицы отменяет всю эту операцию
 			 *
 			 *  @code{.cpp}
-			 *          writer_t writer();
+			 *  writer_t writer();
 			 *
 			 *  writer.field("имя");
 			 *  writer.field("значение");
@@ -119,8 +119,8 @@ namespace awh {
 			 *  @endcode
 			 *
 			 *  @code{.cpp}
-			 *          while(!done){
-			 *          writer.record(fields);
+			 *  while(!done){
+			 *      writer.record(fields);
 			 *
 			 *      if(writer.size() >= 0x10000)
 			 *          send(writer.take());
@@ -158,7 +158,7 @@ namespace awh {
 			 *       operation rolls back the entire operation
 			 *
 			 *  @code{.cpp}
-			 *          writer_t writer();
+			 *  writer_t writer();
 			 *
 			 *  writer.field("name");
 			 *  writer.field("value");
@@ -169,8 +169,8 @@ namespace awh {
 			 *  @endcode
 			 *
 			 *  @code{.cpp}
-			 *          while(!done){
-			 *          writer.record(fields);
+			 *  while(!done){
+			 *      writer.record(fields);
 			 *
 			 *      if(writer.size() >= 0x10000)
 			 *          send(writer.take());
@@ -617,14 +617,14 @@ namespace awh {
 					string take() noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод очистки собранного текста
+					 * @brief Метод сброса записи в исходное состояние
 					 *
 					 * \~english
-					 * @brief Method of clearing the assembled text
+					 * @brief Method of resetting the writing into the initial state
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -667,6 +667,7 @@ namespace awh {
 					 *       вперемешку переводом строки и парой знаков
 					 *
 					 * @param settings настройки записи текста
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing of a text
@@ -691,10 +692,11 @@ namespace awh {
 					 *       of characters intermixed
 					 *
 					 * @param settings settings of the writing of a text
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian

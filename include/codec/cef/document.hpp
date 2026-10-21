@@ -329,39 +329,32 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Структура настроек дерева разметки
+					 * @brief Структура настроек записи событий
 					 *
-					 * @details Настройки разбора и записи держатся раздельно: прочитать разметку
+					 * @details Настройки разбора и записи держатся раздельно: прочитать запись события
 					 *          с одними пределами и записать её иным видом - обыкновенное дело, и
 					 *          связывать их незачем.
 					 *
-					 * @note Построение это заведено ради согласия кодеков рамки: у всех у них
-					 *       настройки дерева спрашиваются и ставятся одинаково, а вид их свой
-					 *       у каждого кодека
-					 *
-					 * @warning Настройки разбора, поданные ходу `parse()` доводом, действуют
-					 *          лишь на этот заход и хранимых настроек НЕ меняют
+					 * @note Построение это заведено ради согласия кодеков рамки: настройки дерева
+					 *       ставятся одним ходом `settings()`, а вид их свой у каждого кодека
 					 *
 					 * \~english
-					 * @brief Markup tree settings structure
+					 * @brief Event record settings structure
 					 *
 					 * @details The settings of the parsing and of the writing are kept separately: to read
-					 *          the markup with one limits and to write it in another form is an ordinary
+					 *          an event record with one limits and to write it in another form is an ordinary
 					 *          affair, and there is no sense in binding them.
 					 *
 					 * @note This construction is made for the sake of the consent of the codecs of the framework:
-					 *       at all of them the settings of a tree are asked and set in the same way, while their
+					 *       the settings of a tree are set by the single `settings()` step, while their
 					 *       form is own to each codec
-					 *
-					 * @warning The settings of the parsing fed to the `parse()` step as an argument act only on
-					 *          this going and do NOT change the stored settings
 					 *
 					 * \~
 					 */
 					typedef struct Settings {
-						// Настройки записи текста разметки
+						// Настройки записи событий
 						writer_t::settings_t writer;
-						// Настройки разбора текста разметки
+						// Настройки разбора событий
 						reader_t::settings_t reader;
 					} settings_t;
 				private:
@@ -734,16 +727,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-					/**
-					 * \~russian
-					 * @brief Псевдоним сброса состояния документа (см. clear())
-					 *
-					 * \~english
-					 * @brief Alias of the reset of the state of a document (see clear())
-					 *
-					 * \~
-					 */
-					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -887,6 +870,20 @@ namespace awh {
 					 * \~
 					 */
 					const abc::value_t & root() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки дерева документа на пустоту
+					 *
+					 * @return признак отсутствия узлов в дереве документа
+					 *
+					 * \~english
+					 * @brief Method of the checking of the tree of a document for emptiness
+					 *
+					 * @return sign of the absence of the nodes in the tree of the document
+					 *
+					 * \~
+					 */
+					bool empty() const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -933,6 +930,20 @@ namespace awh {
 					 * \~
 					 */
 					bool settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+					 *
+					 * @return настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of obtaining the settings of the writing corresponding to the parsing that has taken place
+					 *
+					 * @return settings of the writing of a text
+					 *
+					 * \~
+					 */
+					writer_t::settings_t writing() const noexcept;
 				public:
 					/**
 					 * \~russian

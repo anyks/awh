@@ -394,7 +394,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool is(const flag_t flag) const noexcept;
+				bool is(const flag_t flag) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод объявления свойства контейнера
@@ -470,7 +470,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool unpack(const void * buffer, const size_t size, error_t & error) noexcept;
+				bool unpack(const void * buffer, const size_t size, error_t & error) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -550,7 +550,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool probe(const void * buffer, const size_t size) noexcept;
+			__AWH_SHARED_EXPORT__ bool probe(const void * buffer, const size_t size) noexcept;
 		};
 	};
 };

@@ -390,28 +390,28 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод очистки собранного текста документа
+					 * @brief Метод сброса записи в исходное состояние
 					 *
-					 * @details Очистка возвращает сборщик к пустому тексту, а выделенную память
+					 * @details Сброс возвращает сборщик к пустому тексту, а выделенную память
 					 *          удерживает.
 					 *
-					 * @note Имя общее с записью разметки и таблицы намеренно: возвращение к
-					 *       пустому тексту у всех трёх кодеков зовётся `clear()`, а `reset()`
-					 *       у них оставлено чтению
+					 * @note Имя общее с чтением намеренно: возвращение к началу у всех кодеков
+					 *       зовётся `reset()`, а `clear()` оставлено документу и значению,
+					 *       сносящим своё содержимое
 					 *
 					 * \~english
-					 * @brief Method of the clearing of the assembled text of a document
+					 * @brief Method of resetting the writing into the initial state
 					 *
-					 * @details The clearing returns the assembler to an empty text while holding
+					 * @details The reset returns the assembler to an empty text while holding
 					 *          the allocated memory.
 					 *
-					 * @note The name is common with the writing of a markup and of a table deliberately:
-					 *       the returning to an empty text is called `clear()` in all the three codecs, while
-					 *       `reset()` is left to the reading in them
+					 * @note The name is common with the reading deliberately: the returning
+					 *       to the beginning is called `reset()` in all the codecs, while `clear()` is left
+					 *       to the document and the value that wipe their content
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -901,15 +901,17 @@ namespace awh {
 					 * @brief Метод установки настроек записи текста
 					 *
 					 * @param settings устанавливаемые настройки записи текста
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the writing of a text
 					 *
 					 * @param settings settings of the writing of a text being set
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -921,6 +923,20 @@ namespace awh {
 					 * \~
 					 */
 					explicit Writer() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки записи текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param settings settings of the writing of a text
+					 *
+					 * \~
+					 */
+					explicit Writer(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -941,4 +957,4 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-#include <sys/macro/global.hpp>
+#include "../../sys/macro/global.hpp"

@@ -260,6 +260,8 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error;
+					// Место отказа последней работы над значением
+					mutable location_t _errorLocation;
 				private:
 					// Метка значения, пустая - метки нет
 					string _tag;
@@ -474,7 +476,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool implant(Document & document, const string & path) const noexcept;
+					bool implant(document_t & document, const string & path) const noexcept;
 				private:
 					/**
 					 * \~russian
@@ -489,7 +491,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void absorb(const Document::value_t & value) noexcept;
+					void absorb(const document_t::value_t & value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -505,6 +507,20 @@ namespace awh {
 					 * \~
 					 */
 					bool valid() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор приведения к логическому типу
+					 *
+					 * @return признак действительности значения
+					 *
+					 * \~english
+					 * @brief Conversion operator to the logical type
+					 *
+					 * @return sign of the validity of the value
+					 *
+					 * \~
+					 */
+					explicit operator bool () const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения кода отказа последней работы
@@ -529,6 +545,28 @@ namespace awh {
 					 * \~
 					 */
 					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения места отказа последней работы над значением
+					 *
+					 * @details Место называет строку и столбец текста, на которых разбор
+					 *          споткнулся. У работ, места не имеющих - запись в файл, выдача
+					 *          текста, - оно остаётся пустым.
+					 *
+					 * @return место отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the location of the refusal of the last operation over the value
+					 *
+					 * @details The location names the line and the column of the text at which the parsing has
+					 *          stumbled. Among the operations having no location - the writing into a file, the
+					 *          issuing of a text - it stays empty.
+					 *
+					 * @return location of the refusal of the last operation
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида значения
@@ -1502,7 +1540,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const string & text, const Document::settings_t & settings) noexcept;
+					bool parse(const string & text, const document_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста YAML из файла
@@ -1536,7 +1574,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool load(const string & filename, const Document::settings_t & settings) noexcept;
+					bool load(const string & filename, const document_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перезаписи значения в текст YAML
@@ -1674,7 +1712,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool graft(Document & document, const string & path = "") const noexcept;
+					bool graft(document_t & document, const string & path = "") const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1963,7 +2001,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Value(const Document::value_t & value) noexcept;
+					explicit Value(const document_t::value_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор копирования

@@ -1316,7 +1316,7 @@ namespace awh {
 					 *       методы записи открытого договора - метод, сторожа не получивший, выпал бы
 					 *       из договора молча
 					 *
-					 * @note Сброс clear() код отказа отпускает: переживший его, он указывал бы на
+					 * @note Сброс `reset()` код отказа отпускает: переживший его, он указывал бы на
 					 *       причину, которой более нет
 					 *
 					 * @warning ОТСТУПЛЕНИЕ отказом не является и кода не ставит: verbatim() и
@@ -1342,7 +1342,7 @@ namespace awh {
 					 *       methods of the open contract — a method left without a guard would drop out of the
 					 *       contract silently
 					 *
-					 * @note A reset clear() releases the refusal code: having outlived it, the code would point at
+					 * @note The `reset()` call releases the refusal code: having outlived it, the code would point at
 					 *       a reason which is no more
 					 *
 					 * @warning A RETREAT is not a refusal and sets no code: verbatim() and block() answer with
@@ -1500,7 +1500,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1521,15 +1521,17 @@ namespace awh {
 					 * @brief Метод установки настроек записи текста
 					 *
 					 * @param settings устанавливаемые настройки записи
+					 * @return         признак принятия настроек записи
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the writing of a text
 					 *
 					 * @param settings settings of the writing being set
+					 * @return         sign of the acceptance of the settings of the writing
 					 *
 					 * \~
 					 */
-					void settings(const settings_t & settings) noexcept;
+					bool settings(const settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
