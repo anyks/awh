@@ -327,7 +327,7 @@ def collect_members(files):
     pat = re.compile(r"^\s*(?:const\s+)?[\w:<>]+(?:\s*[*&]\s*|\s+)(_\w+)\s*(?:=[^;]+)?;")
     names = set()
     for f in files:
-        if f.endswith((".hpp", ".cpp", ".h")):
+        if f.endswith((".hpp", ".cpp", ".h", ".inc")):
             try:
                 for line in open(f, errors="ignore"):
                     m = pat.match(line)
@@ -932,7 +932,7 @@ def check_file(path, lines, members, report, fixes=None):
             if not head or DECL_LEAD_KW.match(head):
                 return False
             return bool(re.fullmatch(r"(?:[A-Za-z_]\w*|::|<[^<>]*>|\*|&|\s)+", head)
-                and re.search(r"[A-Za-z_]\w*\s*$", head)
+                and re.search(r"[A-Za-z_]\w*\s*[*&]*\s*$", head)
                 and re.search(re.escape(name) + r"\s*\($", code[:pos + len(name) + 1]))
         for m in re.finditer(r"(?<![\w:>.=-])" + DEF_LIST_ERR + r"\s*\(", code):
             if m.group(1) in static_names or is_declaration(m.group(1), m.start()) or re.search(r"(::|[,:(])\s*$", code[:m.start()].rstrip()):
@@ -1129,7 +1129,7 @@ def main():
     for a in args:
         if os.path.isdir(a):
             for root, _, fs in os.walk(a):
-                files += [os.path.join(root, f) for f in fs if f.endswith((".cpp", ".hpp", ".h"))]
+                files += [os.path.join(root, f) for f in fs if f.endswith((".cpp", ".hpp", ".h", ".inc"))]
         else:
             files.append(a)
     if not files:
