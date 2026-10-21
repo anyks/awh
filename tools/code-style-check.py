@@ -246,11 +246,12 @@ def check_doc_parity(path, lines, report, fixes=None):
 						for gi in range(1, len(gg)):
 							tag, blank, ln = gg[gi][0], gg[gi][1], gg[gi][2]
 							prev_tag = gg[gi-1][0]
-							packed = (tag in ("param", "return") and prev_tag in ("param", "return", "par")) or tag == "endcode" or (tag == "par" and prev_tag in ("param", "return", "par")) or (tag == prev_tag and tag in ("note", "details", "warning", "tparam"))
+							# плотный блок параметров §7.3.1: @param/@tparam/@retval/@arg/@return
+							dense = ("param", "tparam", "retval", "arg", "return")
+							packed = (tag in dense and prev_tag in dense + ("par",)) or tag == "endcode" or (tag == "par" and prev_tag in dense + ("par",)) or (tag == prev_tag and tag in ("note", "details", "warning"))
 							if named and not packed and not blank:
 								report(path, start + ln - 1, "ERROR", "§7.3", f"в секции {lang}: перед @{tag} нет пустой строки ' *' (группы тегов разделяются)")
-							tight = (tag in ("param", "tparam", "retval", "arg", "return")
-							and prev_tag in ("param", "tparam", "retval", "arg", "return"))
+							tight = (tag in dense and prev_tag in dense)
 							if tight and blank:
 								report(path, start + ln - 1, "ERROR", "§7.3", f"лишняя пустая строка перед @{tag} внутри блока @param/@return — блок ведёт плотно (§7.3)")
 								if fixes is not None:
