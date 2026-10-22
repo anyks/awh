@@ -49,10 +49,18 @@
 #include <sys/fmk.hpp>
 
 /**
+ * Счётчик выдач распределителя нужен стенду при включённом счёте
+ */
+#if !defined(AWH_ALLOC_DISABLED) && defined(AWH_ALLOC_COUNTING)
+	#include <alloc/alloc.hpp>
+#endif
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
 
+#if defined(AWH_ALLOC_DISABLED) || !defined(AWH_ALLOC_COUNTING)
 namespace {
 	// Количество выполненных выделений памяти
 	static size_t gCount = 0;
@@ -61,6 +69,7 @@ namespace {
 	// Флаг активности учёта выделений памяти
 	static bool gEnabled = false;
 };
+#endif
 
 /**
  * @brief Учёт выдач памяти перегрузкой операторов языка
@@ -189,15 +198,20 @@ namespace {
  *
  */
 void awh::benchmark::counting(const bool mode) noexcept {
-	// Если учёт выделений памяти включается
-	if(mode){
-		// Обнуляем количество выполненных выделений памяти
-		gCount = 0;
-		// Обнуляем суммарный объём выделенной памяти
-		gBytes = 0;
-	}
-	// Устанавливаем режим учёта выделений памяти
-	gEnabled = mode;
+	#if !defined(AWH_ALLOC_DISABLED) && defined(AWH_ALLOC_COUNTING)
+		// Передаём управление счётчику распределителя
+		awh::alloc::Allocator::counting(mode);
+	#else
+		// Если учёт выделений памяти включается
+		if(mode){
+			// Обнуляем количество выполненных выделений памяти
+			gCount = 0;
+			// Обнуляем суммарный объём выделенной памяти
+			gBytes = 0;
+		}
+		// Устанавливаем режим учёта выделений памяти
+		gEnabled = mode;
+	#endif
 }
 /**
  * @brief Функция получения статистики выделений памяти
@@ -207,10 +221,15 @@ void awh::benchmark::counting(const bool mode) noexcept {
  *
  */
 void awh::benchmark::allocations(size_t & count, size_t & bytes) noexcept {
-	// Устанавливаем количество выполненных выделений памяти
-	count = gCount;
-	// Устанавливаем суммарный объём выделенной памяти
-	bytes = gBytes;
+	#if !defined(AWH_ALLOC_DISABLED) && defined(AWH_ALLOC_COUNTING)
+		// Опрашиваем счётчик распределителя
+		awh::alloc::Allocator::allocations(count, bytes);
+	#else
+		// Устанавливаем количество выполненных выделений памяти
+		count = gCount;
+		// Устанавливаем суммарный объём выделенной памяти
+		bytes = gBytes;
+	#endif
 }
 /**
  * @brief Внутреннее состояние учёта системных вызовов

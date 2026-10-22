@@ -75,7 +75,7 @@ COMPILER="${CXX:-c++}"
 #          `-O2` без `NDEBUG` расходится с ними втрое-впятеро на ТОЙ ЖЕ машине (замер
 #          05.09.2026 на OpenBSD), и ложь эта приходит настоящими числами
 #
-OPTIONS="-O3 -DNDEBUG -std=c++17 -I$ROOT/submodules/zlib -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
+OPTIONS="-O3 -DNDEBUG -DAWH_ALLOC_COUNTING -std=c++17 -I$ROOT/submodules/zlib -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
 
 # Собиратель языка C и ключи его: zlib подмодуля пишется на C
 #

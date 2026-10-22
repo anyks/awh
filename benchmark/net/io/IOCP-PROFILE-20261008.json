@@ -139440,5 +139440,2838 @@
       "CPU snapshots can miss short-lived processes"
     ],
     "next_proposal": "One separately approved reversed block order stream control; not started"
+  },
+  "iocp_s1_stream_reverse_20261021": {
+    "status": "COMPLETE_VERIFIED",
+    "approval": "User continued after explicit proposal of one reversed-block-order control; no other protocol changes",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-21/iocp-s1-stream-reverse-comparison-20261021.txt",
+    "archive": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-21/awh-iocp-s1-stream-reverse-20261021.tar.gz",
+    "archive_sha256": "e1b5aeeaccc3c7503f24a9b8b6439771e9774e03f70dbfb4dfb830a80a51f176",
+    "manifest_files": 331,
+    "verification": {
+      "status": "VERIFIED_COMPLETE",
+      "records": 227,
+      "batches": 31,
+      "accepted_blocks": 6,
+      "accepted_measured_processes": 144,
+      "accepted_measured_gib": 72,
+      "all_process_gib": 113.5,
+      "maxima_idle_non_system_total": [
+        0.6503284081462255,
+        0.9851070559077288,
+        1.0507808596349106
+      ],
+      "rejections": [
+        {
+          "attempt": {
+            "block": 2,
+            "attempt": 0,
+            "label": "block2-attempt0",
+            "warmup": false,
+            "engines": [
+              "libevent",
+              "awh",
+              "libuv"
+            ],
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 8
+          },
+          "idle": 0.06499953042259238,
+          "idle_top": [
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.06499953042259238
+            }
+          ],
+          "active": [
+            {
+              "batch": "block2-attempt0-0-libevent",
+              "total": 1.2820054612037826,
+              "non_system": 1.2820054612037826,
+              "top": [
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.7692032767222695
+                },
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.44870191142132393
+                },
+                {
+                  "pid": 5140,
+                  "name": "svchost",
+                  "percent": 0.06410027306018913
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "attempt": {
+            "block": 2,
+            "attempt": 1,
+            "label": "block2-attempt1",
+            "warmup": false,
+            "engines": [
+              "libevent",
+              "awh",
+              "libuv"
+            ],
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 24
+          },
+          "idle": 0.13004313953318433,
+          "idle_top": [
+            {
+              "pid": 7164,
+              "name": "powershell",
+              "percent": 0.06502156976659217
+            },
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.06502156976659217
+            }
+          ],
+          "active": [
+            {
+              "batch": "block2-attempt1-0-libevent",
+              "total": 0.5814064253056654,
+              "non_system": 0.5814064253056654,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.5168057113828137
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.06460071392285172
+                }
+              ]
+            },
+            {
+              "batch": "block2-attempt1-1-awh",
+              "total": 0.7522181615470395,
+              "non_system": 0.7522181615470395,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.37610908077351973
+                },
+                {
+                  "pid": 1744,
+                  "name": "svchost",
+                  "percent": 0.26864934340965696
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.05372986868193139
+                },
+                {
+                  "pid": 1668,
+                  "name": "svchost",
+                  "percent": 0.05372986868193139
+                }
+              ]
+            },
+            {
+              "batch": "block2-attempt1-2-libuv",
+              "total": 1.037208330379364,
+              "non_system": 1.037208330379364,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.7130807271358127
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.259302082594841
+                },
+                {
+                  "pid": 892,
+                  "name": "lsass",
+                  "percent": 0.06482552064871025
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "attempt": {
+            "block": 3,
+            "attempt": 0,
+            "label": "block3-attempt0",
+            "warmup": false,
+            "engines": [
+              "libuv",
+              "libevent",
+              "awh"
+            ],
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 24
+          },
+          "idle": 0.19490264572306384,
+          "idle_top": [
+            {
+              "pid": 4,
+              "name": "System",
+              "percent": 0.12993509714870924
+            },
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.06496754857435462
+            }
+          ],
+          "active": [
+            {
+              "batch": "block3-attempt0-0-libuv",
+              "total": 0.7825074372845539,
+              "non_system": 0.7825074372845539,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.5868805779634153
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.19562685932113846
+                }
+              ]
+            },
+            {
+              "batch": "block3-attempt0-1-libevent",
+              "total": 0.6510375000266666,
+              "non_system": 0.6510375000266666,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.5859337500239999
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.06510375000266666
+                }
+              ]
+            },
+            {
+              "batch": "block3-attempt0-2-awh",
+              "total": 1.4675169054190662,
+              "non_system": 1.2327142005520157,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.5870067621676265
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.2348027048670506
+                },
+                {
+                  "pid": 4,
+                  "name": "System",
+                  "percent": 0.2348027048670506
+                },
+                {
+                  "pid": 1744,
+                  "name": "svchost",
+                  "percent": 0.1174013524335253
+                },
+                {
+                  "pid": 5068,
+                  "name": "NisSrv",
+                  "percent": 0.05870067621676265
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "attempt": {
+            "block": 4,
+            "attempt": 0,
+            "label": "block4-attempt0",
+            "warmup": false,
+            "engines": [
+              "libuv",
+              "awh",
+              "libevent"
+            ],
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 16
+          },
+          "idle": 0.3900548568157924,
+          "idle_top": [
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.3900548568157924
+            }
+          ],
+          "active": [
+            {
+              "batch": "block4-attempt0-0-libuv",
+              "total": 0.9080502693308232,
+              "non_system": 0.9080502693308232,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.6486073352363023
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.12972146704726045
+                },
+                {
+                  "pid": 668,
+                  "name": "csrss",
+                  "percent": 0.06486073352363023
+                },
+                {
+                  "pid": 892,
+                  "name": "lsass",
+                  "percent": 0.06486073352363023
+                }
+              ]
+            },
+            {
+              "batch": "block4-attempt0-1-awh",
+              "total": 1.1279025172682777,
+              "non_system": 1.1279025172682777,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.5639512586341389
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.31330625479674384
+                },
+                {
+                  "pid": 1744,
+                  "name": "svchost",
+                  "percent": 0.2506450038373951
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "attempt": {
+            "block": 6,
+            "attempt": 0,
+            "label": "block6-attempt0",
+            "warmup": false,
+            "engines": [
+              "awh",
+              "libuv",
+              "libevent"
+            ],
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 8
+          },
+          "idle": 0.5201805933854002,
+          "idle_top": [
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.5201805933854002
+            }
+          ],
+          "active": [
+            {
+              "batch": "block6-attempt0-0-awh",
+              "total": 1.063326979164852,
+              "non_system": 1.0007783333316254,
+              "top": [
+                {
+                  "pid": 3500,
+                  "name": "MsMpEng",
+                  "percent": 0.5629378124990393
+                },
+                {
+                  "pid": 1744,
+                  "name": "svchost",
+                  "percent": 0.18764593749967975
+                },
+                {
+                  "pid": 7164,
+                  "name": "powershell",
+                  "percent": 0.12509729166645317
+                },
+                {
+                  "pid": 1668,
+                  "name": "svchost",
+                  "percent": 0.06254864583322658
+                },
+                {
+                  "pid": 892,
+                  "name": "lsass",
+                  "percent": 0.06254864583322658
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "independent_comparisons": {
+        "libuv": {
+          "paired_median_percent": -8.161807365715534,
+          "deltas": [
+            -17.692816788478318,
+            -14.168743262040772,
+            -8.811708512606863,
+            -7.511906218824205,
+            -4.473985233304512,
+            -5.366135735964461
+          ]
+        },
+        "libevent": {
+          "paired_median_percent": -6.080236786095517,
+          "deltas": [
+            -13.86689598803975,
+            -11.31875691083497,
+            -6.3036808490397505,
+            -5.856792723151283,
+            -0.6130371000255264,
+            -3.3786280076991915
+          ]
+        }
+      },
+      "performance_claim": true,
+      "restored": true
+    },
+    "rates": {
+      "awh": {
+        "median": 1377.4040012206256,
+        "minimum": 1230.6751256588298,
+        "maximum": 1418.2670218068333,
+        "rates": [
+          1230.6751256588298,
+          1296.4601816441939,
+          1363.9359214982767,
+          1390.8720809429744,
+          1418.2670218068333,
+          1409.9623201782538
+        ]
+      },
+      "libuv": {
+        "median": 1495.478909101486,
+        "minimum": 1484.6919190240342,
+        "maximum": 1510.4755900315615,
+        "rates": [
+          1495.2220178597424,
+          1510.4755900315615,
+          1495.7358003432294,
+          1503.8390608781908,
+          1484.6919190240342,
+          1489.9130783081562
+        ]
+      },
+      "libevent": {
+        "median": 1457.481990899218,
+        "minimum": 1427.0151541246037,
+        "maximum": 1477.400357577377,
+        "rates": [
+          1428.8061945241645,
+          1461.9328016643394,
+          1455.6985096722428,
+          1477.400357577377,
+          1427.0151541246037,
+          1459.2654721261933
+        ]
+      }
+    },
+    "paired_comparisons": {
+      "libuv": {
+        "median_percent": -8.161807365715534,
+        "minimum_percent": -17.692816788478318,
+        "maximum_percent": -4.473985233304523,
+        "awh_faster": 0,
+        "blocks": 6,
+        "deltas": [
+          -17.692816788478318,
+          -14.168743262040785,
+          -8.811708512606863,
+          -7.511906218824205,
+          -4.473985233304523,
+          -5.366135735964484
+        ]
+      },
+      "libevent": {
+        "median_percent": -6.080236786095505,
+        "minimum_percent": -13.86689598803975,
+        "maximum_percent": -0.6130371000255264,
+        "awh_faster": 0,
+        "blocks": 6,
+        "deltas": [
+          -13.86689598803975,
+          -11.31875691083496,
+          -6.3036808490397505,
+          -5.85679272315126,
+          -0.6130371000255264,
+          -3.3786280076992026
+        ]
+      }
+    },
+    "cross_series_review": {
+      "series_kept_separate": true,
+      "first_comparisons": {
+        "libuv": {
+          "median_percent": -11.640925690270004,
+          "minimum_percent": -20.864743948320054,
+          "maximum_percent": -7.507477762071268,
+          "awh_faster": 0,
+          "blocks": 6,
+          "deltas": [
+            -20.864743948320054,
+            -16.08799164740252,
+            -12.205231069208278,
+            -11.07662031133173,
+            -7.6234567073382165,
+            -7.507477762071268
+          ]
+        },
+        "libevent": {
+          "median_percent": -7.664423083463312,
+          "minimum_percent": -18.370170295930432,
+          "maximum_percent": -3.2925883106979303,
+          "awh_faster": 0,
+          "blocks": 6,
+          "deltas": [
+            -18.370170295930432,
+            -13.361647709325597,
+            -8.492919898512296,
+            -6.835926268414328,
+            -3.3390015865817912,
+            -3.2925883106979303
+          ]
+        }
+      },
+      "reverse_comparisons": {
+        "libuv": {
+          "median_percent": -8.161807365715534,
+          "minimum_percent": -17.692816788478318,
+          "maximum_percent": -4.473985233304523,
+          "awh_faster": 0,
+          "blocks": 6,
+          "deltas": [
+            -17.692816788478318,
+            -14.168743262040785,
+            -8.811708512606863,
+            -7.511906218824205,
+            -4.473985233304523,
+            -5.366135735964484
+          ]
+        },
+        "libevent": {
+          "median_percent": -6.080236786095505,
+          "minimum_percent": -13.86689598803975,
+          "maximum_percent": -0.6130371000255264,
+          "awh_faster": 0,
+          "blocks": 6,
+          "deltas": [
+            -13.86689598803975,
+            -11.31875691083496,
+            -6.3036808490397505,
+            -5.85679272315126,
+            -0.6130371000255264,
+            -3.3786280076992026
+          ]
+        }
+      },
+      "matched_orders": [
+        {
+          "order": [
+            "awh",
+            "libuv",
+            "libevent"
+          ],
+          "first_block": 1,
+          "reverse_block": 6,
+          "first_rates": {
+            "awh": 1226.052752100379,
+            "libuv": 1549.3129273502254,
+            "libevent": 1501.9665685266712
+          },
+          "reverse_rates": {
+            "awh": 1409.9623201782538,
+            "libuv": 1489.9130783081562,
+            "libevent": 1459.2654721261933
+          },
+          "reverse_relative_to_first_percent": {
+            "awh": 15.00013500747135,
+            "libuv": -3.8339478096048873,
+            "libevent": -2.8430124408404644
+          }
+        },
+        {
+          "order": [
+            "awh",
+            "libevent",
+            "libuv"
+          ],
+          "first_block": 2,
+          "reverse_block": 5,
+          "first_rates": {
+            "awh": 1267.6436299359975,
+            "libevent": 1463.1437422574857,
+            "libuv": 1510.682028499867
+          },
+          "reverse_rates": {
+            "awh": 1418.2670218068333,
+            "libevent": 1427.0151541246037,
+            "libuv": 1484.6919190240342
+          },
+          "reverse_relative_to_first_percent": {
+            "awh": 11.882155860984422,
+            "libevent": -2.46924393615211,
+            "libuv": -1.7204222321782425
+          }
+        },
+        {
+          "order": [
+            "libuv",
+            "awh",
+            "libevent"
+          ],
+          "first_block": 3,
+          "reverse_block": 4,
+          "first_rates": {
+            "libuv": 1534.5038047155201,
+            "awh": 1347.2140695841983,
+            "libevent": 1472.2511832855387
+          },
+          "reverse_rates": {
+            "libuv": 1503.8390608781908,
+            "awh": 1390.8720809429744,
+            "libevent": 1477.400357577377
+          },
+          "reverse_relative_to_first_percent": {
+            "libuv": -1.9983491564567468,
+            "awh": 3.2406142679500594,
+            "libevent": 0.3497483547846292
+          }
+        },
+        {
+          "order": [
+            "libuv",
+            "libevent",
+            "awh"
+          ],
+          "first_block": 4,
+          "reverse_block": 3,
+          "first_rates": {
+            "libuv": 1523.7398805343814,
+            "libevent": 1454.381442506493,
+            "awh": 1354.9609994352484
+          },
+          "reverse_rates": {
+            "libuv": 1495.7358003432294,
+            "libevent": 1455.6985096722428,
+            "awh": 1363.9359214982767
+          },
+          "reverse_relative_to_first_percent": {
+            "libuv": -1.8378517586171594,
+            "libevent": 0.09055857887461105,
+            "awh": 0.6623749367523635
+          }
+        },
+        {
+          "order": [
+            "libevent",
+            "awh",
+            "libuv"
+          ],
+          "first_block": 5,
+          "reverse_block": 2,
+          "first_rates": {
+            "libevent": 1493.8271683520513,
+            "awh": 1443.9482554999865,
+            "libuv": 1563.1113744160755
+          },
+          "reverse_rates": {
+            "libevent": 1461.9328016643394,
+            "awh": 1296.4601816441939,
+            "libuv": 1510.4755900315615
+          },
+          "reverse_relative_to_first_percent": {
+            "libevent": -2.1350774281938434,
+            "awh": -10.214221548037605,
+            "libuv": -3.367372616310005
+          }
+        },
+        {
+          "order": [
+            "libevent",
+            "libuv",
+            "awh"
+          ],
+          "first_block": 6,
+          "reverse_block": 1,
+          "first_rates": {
+            "libevent": 1467.6665528993167,
+            "libuv": 1534.5482004344085,
+            "awh": 1419.3423355385305
+          },
+          "reverse_rates": {
+            "libevent": 1428.8061945241645,
+            "libuv": 1495.2220178597424,
+            "awh": 1230.6751256588298
+          },
+          "reverse_relative_to_first_percent": {
+            "libevent": -2.6477648004163523,
+            "libuv": -2.5627205820927257,
+            "awh": -13.29257960928194
+          }
+        }
+      ],
+      "awh_by_position": {
+        "first": {
+          "0": [
+            1226.052752100379,
+            1267.6436299359975
+          ],
+          "1": [
+            1347.2140695841983,
+            1443.9482554999865
+          ],
+          "2": [
+            1354.9609994352484,
+            1419.3423355385305
+          ]
+        },
+        "reverse": {
+          "0": [
+            1418.2670218068333,
+            1409.9623201782538
+          ],
+          "1": [
+            1296.4601816441939,
+            1390.8720809429744
+          ],
+          "2": [
+            1230.6751256588298,
+            1363.9359214982767
+          ]
+        }
+      },
+      "awh_chronological_rates": {
+        "first": [
+          1226.052752100379,
+          1267.6436299359975,
+          1347.2140695841983,
+          1354.9609994352484,
+          1443.9482554999865,
+          1419.3423355385305
+        ],
+        "reverse": [
+          1230.6751256588298,
+          1296.4601816441939,
+          1363.9359214982767,
+          1390.8720809429744,
+          1418.2670218068333,
+          1409.9623201782538
+        ]
+      }
+    },
+    "negative_controls": [
+      {
+        "case": "unchanged",
+        "expected": "pass",
+        "exit": 0,
+        "diagnostic": ""
+      },
+      {
+        "case": "volume",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "stdout'])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "allocator",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "sha",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": " 21, in <module>\n    assert x['sha_before']==x['sha_after']==p['executables'][x['engine']]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "timer",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "=10000\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "order",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "armup']==(block==0)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "count",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "                                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "active_non_system",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "s7zp55152np48rqjmlglw0000gn/T/iocp-stream-audit-dp4k99ux/audit.py\", line 40, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "system_total",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "s7zp55152np48rqjmlglw0000gn/T/iocp-stream-audit-3kofjjjx/audit.py\", line 40, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "idle",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "s7zp55152np48rqjmlglw0000gn/T/iocp-stream-audit-wnfs_ivl/audit.py\", line 40, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      }
+    ],
+    "source_sha256": "33ebef7724b4660fcfc7aa9412f641535f2b61f80ccc2d0da72b767e4f8768e6",
+    "cpp_changed": false,
+    "standalone_closed": false,
+    "stand_restored": true,
+    "automation": "PAUSED",
+    "next_step": "Read-only review of warmup/startup and saved logs, then propose a bounded control; not started",
+    "limitations": [
+      "Order reversal does not establish the cause of the repeated chronological rate increase",
+      "Five rejected attempts add unequal preconditioning",
+      "No baseline/S1 causal comparison",
+      "CPU snapshots can miss short-lived processes",
+      "Different engine functionality"
+    ]
+  },
+  "iocp_stream_warmup_review_20261021": {
+    "status": "READ_ONLY_REVIEW_COMPLETE_AWH_ONLY_CONTROL_PROPOSED",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-21/iocp-stream-warmup-review-20261021.txt",
+    "plan": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-21/iocp-stream-awh-only-proposed-20261021.txt",
+    "archive": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-21/awh-iocp-stream-warmup-review-20261021.tar.gz",
+    "archive_sha256": "d90e19f39ecd656ff291713a6c3f14bcd76c0f98d9fce75bdadc5e9c5896288e",
+    "audit": {
+      "method": "Offline only, no new stand activity. Transfer seconds derived from rounded MiB/s; CPU covers whole process, not only transfer. Rejected batches diagnostic only. No pooling of performance samples.",
+      "sources": {
+        "stream.cpp": "7de3c81fc912f87baff61449ccf59a1e269aa1fa4f415d793bfc97a88ba03bbd",
+        "libuv.cpp": "6b3199d8bbbec42ed25a7fb4f610048a2aa5daf5cc8365a62f4451a1cd90f158",
+        "libevent.cpp": "ab11238f1b3f304516e600d4908ff46e82881522a2314ce14c473a53ce15df4a"
+      },
+      "summaries": {
+        "forward": {
+          "libevent": {
+            "warmup_rate": 1461.87,
+            "first": {
+              "series": "forward",
+              "batch": "block1-attempt0-2-libevent",
+              "engine": "libevent",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 2,
+              "ordinal_end": 9,
+              "elapsed_since_first_process_s": 11.561989,
+              "rate_mib_s": 1501.9665685266712,
+              "individual_rates": [
+                1485.86,
+                1509.02,
+                1491.83,
+                1517.72,
+                1484.34,
+                1507.56,
+                1506.18,
+                1514.0
+              ],
+              "mean_transfer_s_derived": 0.34088641566918354,
+              "mean_process_cpu_s": 0.35546875,
+              "mean_process_wall_s": 0.36026532499999997,
+              "mean_outside_transfer_s_derived": 0.01937890933081647
+            },
+            "last": {
+              "series": "forward",
+              "batch": "block6-attempt0-0-libevent",
+              "engine": "libevent",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 42,
+              "ordinal_end": 49,
+              "elapsed_since_first_process_s": 67.984996,
+              "rate_mib_s": 1467.6665528993167,
+              "individual_rates": [
+                1454.22,
+                1443.65,
+                1482.7,
+                1457.3,
+                1483.88,
+                1467.14,
+                1482.76,
+                1470.77
+              ],
+              "mean_transfer_s_derived": 0.348853081777032,
+              "mean_process_cpu_s": 0.36328125,
+              "mean_process_wall_s": 0.36805751249999996,
+              "mean_outside_transfer_s_derived": 0.01920443072296797
+            },
+            "rate_last_vs_first_percent": -2.2836737079308334,
+            "cpu_last_vs_first_percent": 2.19780219780219
+          },
+          "libuv": {
+            "warmup_rate": 1269.54,
+            "first": {
+              "series": "forward",
+              "batch": "block1-attempt0-1-libuv",
+              "engine": "libuv",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 2,
+              "ordinal_end": 9,
+              "elapsed_since_first_process_s": 8.568006,
+              "rate_mib_s": 1549.3129273502254,
+              "individual_rates": [
+                1529.45,
+                1544.98,
+                1547.52,
+                1551.3,
+                1527.2,
+                1567.49,
+                1543.14,
+                1585.06
+              ],
+              "mean_transfer_s_derived": 0.33046906855393543,
+              "mean_process_cpu_s": 0.357421875,
+              "mean_process_wall_s": 0.36071997499999997,
+              "mean_outside_transfer_s_derived": 0.030250906446064568
+            },
+            "last": {
+              "series": "forward",
+              "batch": "block6-attempt0-1-libuv",
+              "engine": "libuv",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 42,
+              "ordinal_end": 49,
+              "elapsed_since_first_process_s": 70.981004,
+              "rate_mib_s": 1534.5482004344085,
+              "individual_rates": [
+                1500.84,
+                1538.92,
+                1541.46,
+                1541.18,
+                1534.31,
+                1564.16,
+                1566.87,
+                1491.92
+              ],
+              "mean_transfer_s_derived": 0.3336486920743579,
+              "mean_process_cpu_s": 0.361328125,
+              "mean_process_wall_s": 0.363394375,
+              "mean_outside_transfer_s_derived": 0.029745682925642093
+            },
+            "rate_last_vs_first_percent": -0.9529854592428166,
+            "cpu_last_vs_first_percent": 1.0928961748633892
+          },
+          "awh": {
+            "warmup_rate": 1040.07,
+            "first": {
+              "series": "forward",
+              "batch": "block1-attempt0-0-awh",
+              "engine": "awh",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 2,
+              "ordinal_end": 9,
+              "elapsed_since_first_process_s": 4.852034,
+              "rate_mib_s": 1226.052752100379,
+              "individual_rates": [
+                1220.09,
+                1200.38,
+                1196.02,
+                1217.76,
+                1201.66,
+                1233.02,
+                1268.94,
+                1275.87
+              ],
+              "mean_transfer_s_derived": 0.4176003023710694,
+              "mean_process_cpu_s": 0.44140625,
+              "mean_process_wall_s": 0.4485153,
+              "mean_outside_transfer_s_derived": 0.030914997628930636
+            },
+            "last": {
+              "series": "forward",
+              "batch": "block6-attempt0-2-awh",
+              "engine": "awh",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 42,
+              "ordinal_end": 49,
+              "elapsed_since_first_process_s": 74.019,
+              "rate_mib_s": 1419.3423355385305,
+              "individual_rates": [
+                1411.58,
+                1385.16,
+                1418.48,
+                1397.08,
+                1387.89,
+                1434.37,
+                1456.86,
+                1468.01
+              ],
+              "mean_transfer_s_derived": 0.3607304504207124,
+              "mean_process_cpu_s": 0.384765625,
+              "mean_process_wall_s": 0.390876375,
+              "mean_outside_transfer_s_derived": 0.030145924579287615
+            },
+            "rate_last_vs_first_percent": 15.765193064248084,
+            "cpu_last_vs_first_percent": -12.831858407079643
+          }
+        },
+        "reverse": {
+          "libevent": {
+            "warmup_rate": 1450.81,
+            "first": {
+              "series": "reverse",
+              "batch": "block1-attempt0-0-libevent",
+              "engine": "libevent",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 2,
+              "ordinal_end": 9,
+              "elapsed_since_first_process_s": 4.786013,
+              "rate_mib_s": 1428.8061945241645,
+              "individual_rates": [
+                1475.52,
+                1419.82,
+                1377.24,
+                1402.85,
+                1429.48,
+                1459.14,
+                1443.6,
+                1427.53
+              ],
+              "mean_transfer_s_derived": 0.3583411115952723,
+              "mean_process_cpu_s": 0.37890625,
+              "mean_process_wall_s": 0.37751477499999997,
+              "mean_outside_transfer_s_derived": 0.019173663404727655
+            },
+            "last": {
+              "series": "reverse",
+              "batch": "block6-attempt1-2-libevent",
+              "engine": "libevent",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 66,
+              "ordinal_end": 73,
+              "elapsed_since_first_process_s": 147.336007,
+              "rate_mib_s": 1459.2654721261933,
+              "individual_rates": [
+                1465.93,
+                1477.24,
+                1480.04,
+                1491.96,
+                1372.8,
+                1505.22,
+                1380.7,
+                1514.85
+              ],
+              "mean_transfer_s_derived": 0.3508614503528277,
+              "mean_process_cpu_s": 0.369140625,
+              "mean_process_wall_s": 0.3692885875,
+              "mean_outside_transfer_s_derived": 0.018427137147172326
+            },
+            "rate_last_vs_first_percent": 2.1317991004492054,
+            "cpu_last_vs_first_percent": -2.577319587628868
+          },
+          "libuv": {
+            "warmup_rate": 1299.57,
+            "first": {
+              "series": "reverse",
+              "batch": "block1-attempt0-1-libuv",
+              "engine": "libuv",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 2,
+              "ordinal_end": 9,
+              "elapsed_since_first_process_s": 7.863007,
+              "rate_mib_s": 1495.2220178597424,
+              "individual_rates": [
+                1483.31,
+                1485.91,
+                1505.58,
+                1496.45,
+                1480.88,
+                1481.77,
+                1507.74,
+                1521.17
+              ],
+              "mean_transfer_s_derived": 0.3424240640415901,
+              "mean_process_cpu_s": 0.37109375,
+              "mean_process_wall_s": 0.37335051249999995,
+              "mean_outside_transfer_s_derived": 0.03092644845840989
+            },
+            "last": {
+              "series": "reverse",
+              "batch": "block6-attempt1-1-libuv",
+              "engine": "libuv",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 66,
+              "ordinal_end": 73,
+              "elapsed_since_first_process_s": 144.261006,
+              "rate_mib_s": 1489.9130783081562,
+              "individual_rates": [
+                1473.87,
+                1466.37,
+                1499.82,
+                1489.48,
+                1489.28,
+                1494.63,
+                1491.78,
+                1515.13
+              ],
+              "mean_transfer_s_derived": 0.34364420814494245,
+              "mean_process_cpu_s": 0.373046875,
+              "mean_process_wall_s": 0.37368067499999996,
+              "mean_outside_transfer_s_derived": 0.030036466855057502
+            },
+            "rate_last_vs_first_percent": -0.3550602845713513,
+            "cpu_last_vs_first_percent": 0.5263157894736858
+          },
+          "awh": {
+            "warmup_rate": 1042.2,
+            "first": {
+              "series": "reverse",
+              "batch": "block1-attempt0-2-awh",
+              "engine": "awh",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 2,
+              "ordinal_end": 9,
+              "elapsed_since_first_process_s": 11.015005,
+              "rate_mib_s": 1230.6751256588298,
+              "individual_rates": [
+                1161.49,
+                1195.86,
+                1179.56,
+                1202.44,
+                1267.21,
+                1280.71,
+                1281.96,
+                1292.17
+              ],
+              "mean_transfer_s_derived": 0.41603180995951783,
+              "mean_process_cpu_s": 0.439453125,
+              "mean_process_wall_s": 0.44588521249999996,
+              "mean_outside_transfer_s_derived": 0.02985340254048212
+            },
+            "last": {
+              "series": "reverse",
+              "batch": "block6-attempt1-0-awh",
+              "engine": "awh",
+              "warmup": false,
+              "accepted": true,
+              "ordinal_start": 74,
+              "ordinal_end": 81,
+              "elapsed_since_first_process_s": 141.020006,
+              "rate_mib_s": 1409.9623201782538,
+              "individual_rates": [
+                1395.77,
+                1404.48,
+                1397.22,
+                1419.12,
+                1420.91,
+                1417.7,
+                1409.26,
+                1415.73
+              ],
+              "mean_transfer_s_derived": 0.3631302714070193,
+              "mean_process_cpu_s": 0.38671875,
+              "mean_process_wall_s": 0.39326578749999996,
+              "mean_outside_transfer_s_derived": 0.030135516092980673
+            },
+            "rate_last_vs_first_percent": 14.568198445015646,
+            "cpu_last_vs_first_percent": -12.0
+          }
+        }
+      },
+      "all_batches": [
+        {
+          "series": "forward",
+          "batch": "block0-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": true,
+          "accepted": true,
+          "ordinal_start": 1,
+          "ordinal_end": 1,
+          "elapsed_since_first_process_s": 0.0,
+          "rate_mib_s": 1040.07,
+          "individual_rates": [
+            1040.07
+          ],
+          "mean_transfer_s_derived": 0.49227455844318174,
+          "mean_process_cpu_s": 0.515625,
+          "mean_process_wall_s": 0.559805,
+          "mean_outside_transfer_s_derived": 0.06753044155681825
+        },
+        {
+          "series": "forward",
+          "batch": "block0-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": true,
+          "accepted": true,
+          "ordinal_start": 1,
+          "ordinal_end": 1,
+          "elapsed_since_first_process_s": 0.747999,
+          "rate_mib_s": 1269.54,
+          "individual_rates": [
+            1269.54
+          ],
+          "mean_transfer_s_derived": 0.4032956819005309,
+          "mean_process_cpu_s": 0.4375,
+          "mean_process_wall_s": 0.44193319999999997,
+          "mean_outside_transfer_s_derived": 0.03863751809946908
+        },
+        {
+          "series": "forward",
+          "batch": "block0-attempt0-2-libevent",
+          "engine": "libevent",
+          "warmup": true,
+          "accepted": true,
+          "ordinal_start": 1,
+          "ordinal_end": 1,
+          "elapsed_since_first_process_s": 1.272001,
+          "rate_mib_s": 1461.87,
+          "individual_rates": [
+            1461.87
+          ],
+          "mean_transfer_s_derived": 0.35023634112472385,
+          "mean_process_cpu_s": 0.359375,
+          "mean_process_wall_s": 0.3774284,
+          "mean_outside_transfer_s_derived": 0.02719205887527615
+        },
+        {
+          "series": "forward",
+          "batch": "block1-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 2,
+          "ordinal_end": 9,
+          "elapsed_since_first_process_s": 4.852034,
+          "rate_mib_s": 1226.052752100379,
+          "individual_rates": [
+            1220.09,
+            1200.38,
+            1196.02,
+            1217.76,
+            1201.66,
+            1233.02,
+            1268.94,
+            1275.87
+          ],
+          "mean_transfer_s_derived": 0.4176003023710694,
+          "mean_process_cpu_s": 0.44140625,
+          "mean_process_wall_s": 0.4485153,
+          "mean_outside_transfer_s_derived": 0.030914997628930636
+        },
+        {
+          "series": "forward",
+          "batch": "block1-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 2,
+          "ordinal_end": 9,
+          "elapsed_since_first_process_s": 8.568006,
+          "rate_mib_s": 1549.3129273502254,
+          "individual_rates": [
+            1529.45,
+            1544.98,
+            1547.52,
+            1551.3,
+            1527.2,
+            1567.49,
+            1543.14,
+            1585.06
+          ],
+          "mean_transfer_s_derived": 0.33046906855393543,
+          "mean_process_cpu_s": 0.357421875,
+          "mean_process_wall_s": 0.36071997499999997,
+          "mean_outside_transfer_s_derived": 0.030250906446064568
+        },
+        {
+          "series": "forward",
+          "batch": "block1-attempt0-2-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 2,
+          "ordinal_end": 9,
+          "elapsed_since_first_process_s": 11.561989,
+          "rate_mib_s": 1501.9665685266712,
+          "individual_rates": [
+            1485.86,
+            1509.02,
+            1491.83,
+            1517.72,
+            1484.34,
+            1507.56,
+            1506.18,
+            1514.0
+          ],
+          "mean_transfer_s_derived": 0.34088641566918354,
+          "mean_process_cpu_s": 0.35546875,
+          "mean_process_wall_s": 0.36026532499999997,
+          "mean_outside_transfer_s_derived": 0.01937890933081647
+        },
+        {
+          "series": "forward",
+          "batch": "block2-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 10,
+          "ordinal_end": 17,
+          "elapsed_since_first_process_s": 17.654992,
+          "rate_mib_s": 1267.6436299359975,
+          "individual_rates": [
+            1238.89,
+            1241.02,
+            1232.94,
+            1294.04,
+            1286.01,
+            1283.85,
+            1268.94,
+            1299.46
+          ],
+          "mean_transfer_s_derived": 0.4038990043486043,
+          "mean_process_cpu_s": 0.4296875,
+          "mean_process_wall_s": 0.44205632499999997,
+          "mean_outside_transfer_s_derived": 0.03815732065139565
+        },
+        {
+          "series": "forward",
+          "batch": "block2-attempt0-1-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 10,
+          "ordinal_end": 17,
+          "elapsed_since_first_process_s": 21.393996,
+          "rate_mib_s": 1463.1437422574857,
+          "individual_rates": [
+            1459.05,
+            1444.06,
+            1498.99,
+            1391.06,
+            1477.06,
+            1472.37,
+            1489.78,
+            1478.46
+          ],
+          "mean_transfer_s_derived": 0.34993144228607015,
+          "mean_process_cpu_s": 0.36328125,
+          "mean_process_wall_s": 0.3709913875,
+          "mean_outside_transfer_s_derived": 0.02105994521392983
+        },
+        {
+          "series": "forward",
+          "batch": "block2-attempt0-2-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 10,
+          "ordinal_end": 17,
+          "elapsed_since_first_process_s": 24.414014,
+          "rate_mib_s": 1510.682028499867,
+          "individual_rates": [
+            1515.81,
+            1536.88,
+            1484.44,
+            1544.68,
+            1541.87,
+            1518.18,
+            1490.19,
+            1457.94
+          ],
+          "mean_transfer_s_derived": 0.3389197662650589,
+          "mean_process_cpu_s": 0.3671875,
+          "mean_process_wall_s": 0.369380675,
+          "mean_outside_transfer_s_derived": 0.030460908734941082
+        },
+        {
+          "series": "forward",
+          "batch": "block3-attempt0-0-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 18,
+          "ordinal_end": 25,
+          "elapsed_since_first_process_s": 30.66299,
+          "rate_mib_s": 1534.5038047155201,
+          "individual_rates": [
+            1569.97,
+            1545.78,
+            1553.63,
+            1561.05,
+            1530.95,
+            1429.34,
+            1526.21,
+            1569.23
+          ],
+          "mean_transfer_s_derived": 0.3336583450797759,
+          "mean_process_cpu_s": 0.359375,
+          "mean_process_wall_s": 0.36435695,
+          "mean_outside_transfer_s_derived": 0.03069860492022413
+        },
+        {
+          "series": "forward",
+          "batch": "block3-attempt0-1-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 18,
+          "ordinal_end": 25,
+          "elapsed_since_first_process_s": 33.710034,
+          "rate_mib_s": 1347.2140695841983,
+          "individual_rates": [
+            1330.23,
+            1370.56,
+            1370.09,
+            1387.12,
+            1381.23,
+            1358.86,
+            1266.23,
+            1322.13
+          ],
+          "mean_transfer_s_derived": 0.38004353692507287,
+          "mean_process_cpu_s": 0.408203125,
+          "mean_process_wall_s": 0.40983967499999996,
+          "mean_outside_transfer_s_derived": 0.029796138074927092
+        },
+        {
+          "series": "forward",
+          "batch": "block3-attempt0-2-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 18,
+          "ordinal_end": 25,
+          "elapsed_since_first_process_s": 37.095,
+          "rate_mib_s": 1472.2511832855387,
+          "individual_rates": [
+            1432.15,
+            1449.44,
+            1456.03,
+            1507.18,
+            1476.19,
+            1478.59,
+            1475.79,
+            1505.91
+          ],
+          "mean_transfer_s_derived": 0.3477667437545534,
+          "mean_process_cpu_s": 0.36328125,
+          "mean_process_wall_s": 0.36666547499999996,
+          "mean_outside_transfer_s_derived": 0.01889873124544654
+        },
+        {
+          "series": "forward",
+          "batch": "block4-attempt0-0-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 26,
+          "ordinal_end": 33,
+          "elapsed_since_first_process_s": 43.20699,
+          "rate_mib_s": 1523.7398805343814,
+          "individual_rates": [
+            1541.9,
+            1514.79,
+            1553.48,
+            1501.64,
+            1549.82,
+            1543.51,
+            1560.73,
+            1432.58
+          ],
+          "mean_transfer_s_derived": 0.336015357044038,
+          "mean_process_cpu_s": 0.365234375,
+          "mean_process_wall_s": 0.3661277125,
+          "mean_outside_transfer_s_derived": 0.030112355455961942
+        },
+        {
+          "series": "forward",
+          "batch": "block4-attempt0-1-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 26,
+          "ordinal_end": 33,
+          "elapsed_since_first_process_s": 46.224002,
+          "rate_mib_s": 1454.381442506493,
+          "individual_rates": [
+            1448.41,
+            1462.06,
+            1456.1,
+            1458.27,
+            1459.31,
+            1472.11,
+            1455.55,
+            1424.19
+          ],
+          "mean_transfer_s_derived": 0.3520396953894124,
+          "mean_process_cpu_s": 0.3671875,
+          "mean_process_wall_s": 0.37186142499999997,
+          "mean_outside_transfer_s_derived": 0.019821729610587577
+        },
+        {
+          "series": "forward",
+          "batch": "block4-attempt0-2-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 26,
+          "ordinal_end": 33,
+          "elapsed_since_first_process_s": 49.292995,
+          "rate_mib_s": 1354.9609994352484,
+          "individual_rates": [
+            1347.18,
+            1257.16,
+            1338.78,
+            1350.33,
+            1350.29,
+            1393.43,
+            1403.42,
+            1412.02
+          ],
+          "mean_transfer_s_derived": 0.37787065473722353,
+          "mean_process_cpu_s": 0.3984375,
+          "mean_process_wall_s": 0.408599225,
+          "mean_outside_transfer_s_derived": 0.030728570262776478
+        },
+        {
+          "series": "forward",
+          "batch": "block5-attempt0-0-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 34,
+          "ordinal_end": 41,
+          "elapsed_since_first_process_s": 55.767991,
+          "rate_mib_s": 1493.8271683520513,
+          "individual_rates": [
+            1486.3,
+            1419.43,
+            1522.61,
+            1507.13,
+            1518.78,
+            1505.9,
+            1491.36,
+            1504.29
+          ],
+          "mean_transfer_s_derived": 0.3427437998499011,
+          "mean_process_cpu_s": 0.361328125,
+          "mean_process_wall_s": 0.36250347499999996,
+          "mean_outside_transfer_s_derived": 0.019759675150098875
+        },
+        {
+          "series": "forward",
+          "batch": "block5-attempt0-1-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 34,
+          "ordinal_end": 41,
+          "elapsed_since_first_process_s": 58.75899,
+          "rate_mib_s": 1443.9482554999865,
+          "individual_rates": [
+            1455.85,
+            1450.2,
+            1439.88,
+            1439.96,
+            1431.09,
+            1442.33,
+            1462.87,
+            1430.05
+          ],
+          "mean_transfer_s_derived": 0.3545833433087345,
+          "mean_process_cpu_s": 0.37890625,
+          "mean_process_wall_s": 0.383588275,
+          "mean_outside_transfer_s_derived": 0.029004931691265515
+        },
+        {
+          "series": "forward",
+          "batch": "block5-attempt0-2-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 34,
+          "ordinal_end": 41,
+          "elapsed_since_first_process_s": 61.922999,
+          "rate_mib_s": 1563.1113744160755,
+          "individual_rates": [
+            1549.74,
+            1545.59,
+            1556.55,
+            1567.27,
+            1567.82,
+            1550.75,
+            1592.94,
+            1575.35
+          ],
+          "mean_transfer_s_derived": 0.32755183564016066,
+          "mean_process_cpu_s": 0.35546875,
+          "mean_process_wall_s": 0.3572966625,
+          "mean_outside_transfer_s_derived": 0.02974482685983934
+        },
+        {
+          "series": "forward",
+          "batch": "block6-attempt0-0-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 42,
+          "ordinal_end": 49,
+          "elapsed_since_first_process_s": 67.984996,
+          "rate_mib_s": 1467.6665528993167,
+          "individual_rates": [
+            1454.22,
+            1443.65,
+            1482.7,
+            1457.3,
+            1483.88,
+            1467.14,
+            1482.76,
+            1470.77
+          ],
+          "mean_transfer_s_derived": 0.348853081777032,
+          "mean_process_cpu_s": 0.36328125,
+          "mean_process_wall_s": 0.36805751249999996,
+          "mean_outside_transfer_s_derived": 0.01920443072296797
+        },
+        {
+          "series": "forward",
+          "batch": "block6-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 42,
+          "ordinal_end": 49,
+          "elapsed_since_first_process_s": 70.981004,
+          "rate_mib_s": 1534.5482004344085,
+          "individual_rates": [
+            1500.84,
+            1538.92,
+            1541.46,
+            1541.18,
+            1534.31,
+            1564.16,
+            1566.87,
+            1491.92
+          ],
+          "mean_transfer_s_derived": 0.3336486920743579,
+          "mean_process_cpu_s": 0.361328125,
+          "mean_process_wall_s": 0.363394375,
+          "mean_outside_transfer_s_derived": 0.029745682925642093
+        },
+        {
+          "series": "forward",
+          "batch": "block6-attempt0-2-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 42,
+          "ordinal_end": 49,
+          "elapsed_since_first_process_s": 74.019,
+          "rate_mib_s": 1419.3423355385305,
+          "individual_rates": [
+            1411.58,
+            1385.16,
+            1418.48,
+            1397.08,
+            1387.89,
+            1434.37,
+            1456.86,
+            1468.01
+          ],
+          "mean_transfer_s_derived": 0.3607304504207124,
+          "mean_process_cpu_s": 0.384765625,
+          "mean_process_wall_s": 0.390876375,
+          "mean_outside_transfer_s_derived": 0.030145924579287615
+        },
+        {
+          "series": "reverse",
+          "batch": "block0-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": true,
+          "accepted": true,
+          "ordinal_start": 1,
+          "ordinal_end": 1,
+          "elapsed_since_first_process_s": 0.0,
+          "rate_mib_s": 1042.2,
+          "individual_rates": [
+            1042.2
+          ],
+          "mean_transfer_s_derived": 0.4912684705430819,
+          "mean_process_cpu_s": 0.53125,
+          "mean_process_wall_s": 0.5599345,
+          "mean_outside_transfer_s_derived": 0.06866602945691808
+        },
+        {
+          "series": "reverse",
+          "batch": "block0-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": true,
+          "accepted": true,
+          "ordinal_start": 1,
+          "ordinal_end": 1,
+          "elapsed_since_first_process_s": 0.748008,
+          "rate_mib_s": 1299.57,
+          "individual_rates": [
+            1299.57
+          ],
+          "mean_transfer_s_derived": 0.3939764691397924,
+          "mean_process_cpu_s": 0.4375,
+          "mean_process_wall_s": 0.43717809999999996,
+          "mean_outside_transfer_s_derived": 0.04320163086020756
+        },
+        {
+          "series": "reverse",
+          "batch": "block0-attempt0-2-libevent",
+          "engine": "libevent",
+          "warmup": true,
+          "accepted": true,
+          "ordinal_start": 1,
+          "ordinal_end": 1,
+          "elapsed_since_first_process_s": 1.251999,
+          "rate_mib_s": 1450.81,
+          "individual_rates": [
+            1450.81
+          ],
+          "mean_transfer_s_derived": 0.3529063075109766,
+          "mean_process_cpu_s": 0.359375,
+          "mean_process_wall_s": 0.3800695,
+          "mean_outside_transfer_s_derived": 0.02716319248902338
+        },
+        {
+          "series": "reverse",
+          "batch": "block1-attempt0-0-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 2,
+          "ordinal_end": 9,
+          "elapsed_since_first_process_s": 4.786013,
+          "rate_mib_s": 1428.8061945241645,
+          "individual_rates": [
+            1475.52,
+            1419.82,
+            1377.24,
+            1402.85,
+            1429.48,
+            1459.14,
+            1443.6,
+            1427.53
+          ],
+          "mean_transfer_s_derived": 0.3583411115952723,
+          "mean_process_cpu_s": 0.37890625,
+          "mean_process_wall_s": 0.37751477499999997,
+          "mean_outside_transfer_s_derived": 0.019173663404727655
+        },
+        {
+          "series": "reverse",
+          "batch": "block1-attempt0-1-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 2,
+          "ordinal_end": 9,
+          "elapsed_since_first_process_s": 7.863007,
+          "rate_mib_s": 1495.2220178597424,
+          "individual_rates": [
+            1483.31,
+            1485.91,
+            1505.58,
+            1496.45,
+            1480.88,
+            1481.77,
+            1507.74,
+            1521.17
+          ],
+          "mean_transfer_s_derived": 0.3424240640415901,
+          "mean_process_cpu_s": 0.37109375,
+          "mean_process_wall_s": 0.37335051249999995,
+          "mean_outside_transfer_s_derived": 0.03092644845840989
+        },
+        {
+          "series": "reverse",
+          "batch": "block1-attempt0-2-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 2,
+          "ordinal_end": 9,
+          "elapsed_since_first_process_s": 11.015005,
+          "rate_mib_s": 1230.6751256588298,
+          "individual_rates": [
+            1161.49,
+            1195.86,
+            1179.56,
+            1202.44,
+            1267.21,
+            1280.71,
+            1281.96,
+            1292.17
+          ],
+          "mean_transfer_s_derived": 0.41603180995951783,
+          "mean_process_cpu_s": 0.439453125,
+          "mean_process_wall_s": 0.44588521249999996,
+          "mean_outside_transfer_s_derived": 0.02985340254048212
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt0-0-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 10,
+          "ordinal_end": 17,
+          "elapsed_since_first_process_s": 17.808007,
+          "rate_mib_s": 1470.5898858351923,
+          "individual_rates": [
+            1499.87,
+            1520.23,
+            1495.04,
+            1496.52,
+            1466.85,
+            1469.49,
+            1383.94,
+            1441.83
+          ],
+          "mean_transfer_s_derived": 0.34815960923681977,
+          "mean_process_cpu_s": 0.359375,
+          "mean_process_wall_s": 0.3755225,
+          "mean_outside_transfer_s_derived": 0.0273628907631802
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt1-0-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 18,
+          "ordinal_end": 25,
+          "elapsed_since_first_process_s": 29.004005,
+          "rate_mib_s": 1433.566341023883,
+          "individual_rates": [
+            1434.62,
+            1353.09,
+            1433.77,
+            1441.89,
+            1434.16,
+            1441.22,
+            1462.45,
+            1473.88
+          ],
+          "mean_transfer_s_derived": 0.3571512425677621,
+          "mean_process_cpu_s": 0.375,
+          "mean_process_wall_s": 0.3766238875,
+          "mean_outside_transfer_s_derived": 0.019472644932237874
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt1-1-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 10,
+          "ordinal_end": 17,
+          "elapsed_since_first_process_s": 32.108007,
+          "rate_mib_s": 1217.3880675721566,
+          "individual_rates": [
+            1186.1,
+            1187.11,
+            1176.91,
+            1209.82,
+            1241.05,
+            1263.63,
+            1237.55,
+            1242.97
+          ],
+          "mean_transfer_s_derived": 0.4205725467813105,
+          "mean_process_cpu_s": 0.439453125,
+          "mean_process_wall_s": 0.4521962625,
+          "mean_outside_transfer_s_derived": 0.031623715718689466
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt1-2-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 10,
+          "ordinal_end": 17,
+          "elapsed_since_first_process_s": 35.860008,
+          "rate_mib_s": 1490.6021539528138,
+          "individual_rates": [
+            1473.85,
+            1526.44,
+            1477.19,
+            1461.44,
+            1498.76,
+            1499.32,
+            1488.27,
+            1501.46
+          ],
+          "mean_transfer_s_derived": 0.343485348281744,
+          "mean_process_cpu_s": 0.37109375,
+          "mean_process_wall_s": 0.374716275,
+          "mean_outside_transfer_s_derived": 0.031230926718255975
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt2-0-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 26,
+          "ordinal_end": 33,
+          "elapsed_since_first_process_s": 47.235002,
+          "rate_mib_s": 1461.9328016643394,
+          "individual_rates": [
+            1427.64,
+            1417.52,
+            1494.8,
+            1492.64,
+            1447.01,
+            1476.02,
+            1464.08,
+            1479.83
+          ],
+          "mean_transfer_s_derived": 0.3502212956827515,
+          "mean_process_cpu_s": 0.365234375,
+          "mean_process_wall_s": 0.370462425,
+          "mean_outside_transfer_s_derived": 0.020241129317248453
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt2-1-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 18,
+          "ordinal_end": 25,
+          "elapsed_since_first_process_s": 50.306002,
+          "rate_mib_s": 1296.4601816441939,
+          "individual_rates": [
+            1249.14,
+            1260.26,
+            1276.2,
+            1320.52,
+            1334.73,
+            1316.66,
+            1328.26,
+            1291.69
+          ],
+          "mean_transfer_s_derived": 0.3949215002890968,
+          "mean_process_cpu_s": 0.416015625,
+          "mean_process_wall_s": 0.42484076249999997,
+          "mean_outside_transfer_s_derived": 0.0299192622109032
+        },
+        {
+          "series": "reverse",
+          "batch": "block2-attempt2-2-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 18,
+          "ordinal_end": 25,
+          "elapsed_since_first_process_s": 53.835007,
+          "rate_mib_s": 1510.4755900315615,
+          "individual_rates": [
+            1411.62,
+            1553.77,
+            1524.96,
+            1528.55,
+            1439.43,
+            1561.04,
+            1551.44,
+            1527.9
+          ],
+          "mean_transfer_s_derived": 0.33896608682653506,
+          "mean_process_cpu_s": 0.365234375,
+          "mean_process_wall_s": 0.36949438749999997,
+          "mean_outside_transfer_s_derived": 0.030528300673464945
+        },
+        {
+          "series": "reverse",
+          "batch": "block3-attempt0-0-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 26,
+          "ordinal_end": 33,
+          "elapsed_since_first_process_s": 59.996005,
+          "rate_mib_s": 1498.9767724198828,
+          "individual_rates": [
+            1508.65,
+            1482.81,
+            1506.54,
+            1522.02,
+            1519.46,
+            1401.16,
+            1526.09,
+            1534.1
+          ],
+          "mean_transfer_s_derived": 0.34156633339517967,
+          "mean_process_cpu_s": 0.373046875,
+          "mean_process_wall_s": 0.373093575,
+          "mean_outside_transfer_s_derived": 0.03152724160482032
+        },
+        {
+          "series": "reverse",
+          "batch": "block3-attempt0-1-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 34,
+          "ordinal_end": 41,
+          "elapsed_since_first_process_s": 63.067007,
+          "rate_mib_s": 1442.972120394163,
+          "individual_rates": [
+            1456.49,
+            1415.92,
+            1440.48,
+            1446.07,
+            1449.89,
+            1448.78,
+            1448.34,
+            1438.55
+          ],
+          "mean_transfer_s_derived": 0.3548232102087612,
+          "mean_process_cpu_s": 0.375,
+          "mean_process_wall_s": 0.37371829999999995,
+          "mean_outside_transfer_s_derived": 0.01889508979123878
+        },
+        {
+          "series": "reverse",
+          "batch": "block3-attempt0-2-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 26,
+          "ordinal_end": 33,
+          "elapsed_since_first_process_s": 66.149007,
+          "rate_mib_s": 1333.094548099034,
+          "individual_rates": [
+            1301.57,
+            1341.99,
+            1350.83,
+            1294.51,
+            1337.99,
+            1370.93,
+            1322.31,
+            1348.15
+          ],
+          "mean_transfer_s_derived": 0.3840687824656561,
+          "mean_process_cpu_s": 0.404296875,
+          "mean_process_wall_s": 0.4145852625,
+          "mean_outside_transfer_s_derived": 0.030516480034343887
+        },
+        {
+          "series": "reverse",
+          "batch": "block3-attempt1-0-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 34,
+          "ordinal_end": 41,
+          "elapsed_since_first_process_s": 77.678007,
+          "rate_mib_s": 1495.7358003432294,
+          "individual_rates": [
+            1459.31,
+            1492.37,
+            1491.41,
+            1473.89,
+            1509.74,
+            1444.68,
+            1525.73,
+            1576.69
+          ],
+          "mean_transfer_s_derived": 0.34230644200834826,
+          "mean_process_cpu_s": 0.375,
+          "mean_process_wall_s": 0.37469205,
+          "mean_outside_transfer_s_derived": 0.03238560799165172
+        },
+        {
+          "series": "reverse",
+          "batch": "block3-attempt1-1-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 42,
+          "ordinal_end": 49,
+          "elapsed_since_first_process_s": 80.760007,
+          "rate_mib_s": 1455.6985096722428,
+          "individual_rates": [
+            1447.76,
+            1454.34,
+            1453.41,
+            1467.82,
+            1463.21,
+            1464.03,
+            1437.38,
+            1458.11
+          ],
+          "mean_transfer_s_derived": 0.3517211816856769,
+          "mean_process_cpu_s": 0.365234375,
+          "mean_process_wall_s": 0.37133345,
+          "mean_outside_transfer_s_derived": 0.019612268314323084
+        },
+        {
+          "series": "reverse",
+          "batch": "block3-attempt1-2-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 34,
+          "ordinal_end": 41,
+          "elapsed_since_first_process_s": 83.856007,
+          "rate_mib_s": 1363.9359214982767,
+          "individual_rates": [
+            1358.08,
+            1357.77,
+            1341.43,
+            1367.52,
+            1358.85,
+            1358.47,
+            1374.32,
+            1396.36
+          ],
+          "mean_transfer_s_derived": 0.3753842038543648,
+          "mean_process_cpu_s": 0.404296875,
+          "mean_process_wall_s": 0.40528442499999995,
+          "mean_outside_transfer_s_derived": 0.029900221145635182
+        },
+        {
+          "series": "reverse",
+          "batch": "block4-attempt0-0-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 42,
+          "ordinal_end": 49,
+          "elapsed_since_first_process_s": 90.285007,
+          "rate_mib_s": 1485.3507586604198,
+          "individual_rates": [
+            1365.18,
+            1495.28,
+            1513.1,
+            1513.63,
+            1492.15,
+            1499.22,
+            1480.4,
+            1537.47
+          ],
+          "mean_transfer_s_derived": 0.34469972632036955,
+          "mean_process_cpu_s": 0.369140625,
+          "mean_process_wall_s": 0.37515917499999996,
+          "mean_outside_transfer_s_derived": 0.03045944867963042
+        },
+        {
+          "series": "reverse",
+          "batch": "block4-attempt0-1-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 42,
+          "ordinal_end": 49,
+          "elapsed_since_first_process_s": 93.415005,
+          "rate_mib_s": 1430.7141805628341,
+          "individual_rates": [
+            1390.24,
+            1449.5,
+            1462.13,
+            1422.27,
+            1420.46,
+            1436.82,
+            1433.87,
+            1432.68
+          ],
+          "mean_transfer_s_derived": 0.35786323149364635,
+          "mean_process_cpu_s": 0.37890625,
+          "mean_process_wall_s": 0.38829566249999997,
+          "mean_outside_transfer_s_derived": 0.03043243100635365
+        },
+        {
+          "series": "reverse",
+          "batch": "block4-attempt1-0-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 50,
+          "ordinal_end": 57,
+          "elapsed_since_first_process_s": 104.677007,
+          "rate_mib_s": 1503.8390608781908,
+          "individual_rates": [
+            1464.92,
+            1515.33,
+            1486.76,
+            1513.07,
+            1506.39,
+            1517.16,
+            1530.49,
+            1498.57
+          ],
+          "mean_transfer_s_derived": 0.34046196386268185,
+          "mean_process_cpu_s": 0.365234375,
+          "mean_process_wall_s": 0.37124203749999996,
+          "mean_outside_transfer_s_derived": 0.030780073637318148
+        },
+        {
+          "series": "reverse",
+          "batch": "block4-attempt1-1-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 50,
+          "ordinal_end": 57,
+          "elapsed_since_first_process_s": 107.779015,
+          "rate_mib_s": 1390.8720809429744,
+          "individual_rates": [
+            1375.71,
+            1391.71,
+            1387.28,
+            1362.16,
+            1391.09,
+            1388.33,
+            1409.14,
+            1423.32
+          ],
+          "mean_transfer_s_derived": 0.36811437012444564,
+          "mean_process_cpu_s": 0.390625,
+          "mean_process_wall_s": 0.3976574625,
+          "mean_outside_transfer_s_derived": 0.029543092375554338
+        },
+        {
+          "series": "reverse",
+          "batch": "block4-attempt1-2-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 50,
+          "ordinal_end": 57,
+          "elapsed_since_first_process_s": 111.055007,
+          "rate_mib_s": 1477.400357577377,
+          "individual_rates": [
+            1474.32,
+            1489.13,
+            1473.6,
+            1486.32,
+            1482.07,
+            1484.63,
+            1459.55,
+            1470.05
+          ],
+          "mean_transfer_s_derived": 0.34655467448212296,
+          "mean_process_cpu_s": 0.36328125,
+          "mean_process_wall_s": 0.36514211249999995,
+          "mean_outside_transfer_s_derived": 0.01858743801787701
+        },
+        {
+          "series": "reverse",
+          "batch": "block5-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 58,
+          "ordinal_end": 65,
+          "elapsed_since_first_process_s": 117.189007,
+          "rate_mib_s": 1418.2670218068333,
+          "individual_rates": [
+            1360.53,
+            1430.26,
+            1428.05,
+            1383.24,
+            1390.21,
+            1451.62,
+            1447.96,
+            1460.96
+          ],
+          "mean_transfer_s_derived": 0.3610039520962181,
+          "mean_process_cpu_s": 0.38671875,
+          "mean_process_wall_s": 0.3913791625,
+          "mean_outside_transfer_s_derived": 0.030375210403781862
+        },
+        {
+          "series": "reverse",
+          "batch": "block5-attempt0-1-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 58,
+          "ordinal_end": 65,
+          "elapsed_since_first_process_s": 120.43201,
+          "rate_mib_s": 1427.0151541246037,
+          "individual_rates": [
+            1445.48,
+            1450.99,
+            1439.01,
+            1358.52,
+            1441.12,
+            1436.88,
+            1431.7,
+            1416.9
+          ],
+          "mean_transfer_s_derived": 0.3587908639373099,
+          "mean_process_cpu_s": 0.37109375,
+          "mean_process_wall_s": 0.37788228749999997,
+          "mean_outside_transfer_s_derived": 0.019091423562690057
+        },
+        {
+          "series": "reverse",
+          "batch": "block5-attempt0-2-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 58,
+          "ordinal_end": 65,
+          "elapsed_since_first_process_s": 123.505003,
+          "rate_mib_s": 1484.6919190240342,
+          "individual_rates": [
+            1478.61,
+            1484.54,
+            1476.59,
+            1519.28,
+            1453.09,
+            1458.87,
+            1495.51,
+            1513.68
+          ],
+          "mean_transfer_s_derived": 0.3448526885877876,
+          "mean_process_cpu_s": 0.3671875,
+          "mean_process_wall_s": 0.3757392125,
+          "mean_outside_transfer_s_derived": 0.03088652391221241
+        },
+        {
+          "series": "reverse",
+          "batch": "block6-attempt0-0-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": false,
+          "ordinal_start": 66,
+          "ordinal_end": 73,
+          "elapsed_since_first_process_s": 129.717007,
+          "rate_mib_s": 1426.98542945331,
+          "individual_rates": [
+            1439.12,
+            1439.89,
+            1427.77,
+            1425.28,
+            1412.48,
+            1450.97,
+            1419.51,
+            1402.11
+          ],
+          "mean_transfer_s_derived": 0.3587983376930145,
+          "mean_process_cpu_s": 0.376953125,
+          "mean_process_wall_s": 0.3890725,
+          "mean_outside_transfer_s_derived": 0.030274162306985486
+        },
+        {
+          "series": "reverse",
+          "batch": "block6-attempt1-0-awh",
+          "engine": "awh",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 74,
+          "ordinal_end": 81,
+          "elapsed_since_first_process_s": 141.020006,
+          "rate_mib_s": 1409.9623201782538,
+          "individual_rates": [
+            1395.77,
+            1404.48,
+            1397.22,
+            1419.12,
+            1420.91,
+            1417.7,
+            1409.26,
+            1415.73
+          ],
+          "mean_transfer_s_derived": 0.3631302714070193,
+          "mean_process_cpu_s": 0.38671875,
+          "mean_process_wall_s": 0.39326578749999996,
+          "mean_outside_transfer_s_derived": 0.030135516092980673
+        },
+        {
+          "series": "reverse",
+          "batch": "block6-attempt1-1-libuv",
+          "engine": "libuv",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 66,
+          "ordinal_end": 73,
+          "elapsed_since_first_process_s": 144.261006,
+          "rate_mib_s": 1489.9130783081562,
+          "individual_rates": [
+            1473.87,
+            1466.37,
+            1499.82,
+            1489.48,
+            1489.28,
+            1494.63,
+            1491.78,
+            1515.13
+          ],
+          "mean_transfer_s_derived": 0.34364420814494245,
+          "mean_process_cpu_s": 0.373046875,
+          "mean_process_wall_s": 0.37368067499999996,
+          "mean_outside_transfer_s_derived": 0.030036466855057502
+        },
+        {
+          "series": "reverse",
+          "batch": "block6-attempt1-2-libevent",
+          "engine": "libevent",
+          "warmup": false,
+          "accepted": true,
+          "ordinal_start": 66,
+          "ordinal_end": 73,
+          "elapsed_since_first_process_s": 147.336007,
+          "rate_mib_s": 1459.2654721261933,
+          "individual_rates": [
+            1465.93,
+            1477.24,
+            1480.04,
+            1491.96,
+            1372.8,
+            1505.22,
+            1380.7,
+            1514.85
+          ],
+          "mean_transfer_s_derived": 0.3508614503528277,
+          "mean_process_cpu_s": 0.369140625,
+          "mean_process_wall_s": 0.3692885875,
+          "mean_outside_transfer_s_derived": 0.018427137147172326
+        }
+      ]
+    },
+    "cpp_changed": false,
+    "remote_activity": false,
+    "standalone_closed": false,
+    "confirmed_engine_bug": false,
+    "next_experiment_approved": true
+  },
+  "iocp_stream_awh_only_20261021": {
+    "status": "INCOMPLETE_VERIFIED_BACKGROUND_BUDGET_EXHAUSTED",
+    "report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-22/iocp-stream-awh-only-result-20261022.txt",
+    "local_root": "/private/tmp/iocp-stream-awh-only-20261021",
+    "remote_root_planned": "C:/tmp/awh-iocp-20261008/stream-awh-only-20261021",
+    "approval": "User explicitly approved one AWH-only control: one warmup and six batches of eight fresh processes, same EXE and strict gates",
+    "quiet_check": {
+      "utc": "2026-10-21T20:50:52.2594345Z",
+      "busy": [],
+      "wpr": "\r\nMicrosoft Windows Performance Recorder Version 10.0.26100 (CoreSystem)\r\nCopyright (c) 2024 Microsoft Corporation. All rights reserved.\r\n\r\nWPR is not recording\r\n",
+      "samples": [
+        {
+          "seconds": 3.0642286,
+          "percent": 4.652985909732714,
+          "rows": [
+            {
+              "pid": 2472,
+              "name": "powershell",
+              "cpu": 0.0625
+            },
+            {
+              "pid": 5808,
+              "name": "svchost",
+              "cpu": 1.078125
+            }
+          ]
+        },
+        {
+          "seconds": 3.0040047999999997,
+          "percent": 0,
+          "rows": []
+        }
+      ],
+      "quiet": false
+    },
+    "analyzer_preflight": {
+      "kind": "Synthetic one-engine projection of prior forward series; not new performance evidence",
+      "positive_records": 49,
+      "positive_measured_records": 48,
+      "reproduced_prior_awh_rates": true,
+      "negative_controls": [
+        {
+          "case": "unchanged",
+          "expected": "pass",
+          "exit": 0,
+          "diagnostic": ""
+        },
+        {
+          "case": "volume",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "stdout'])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "allocator",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "sha",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": " 22, in <module>\n    assert x['sha_before']==x['sha_after']==p['executables'][x['engine']]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "timer",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "=10000\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "order",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "armup']==(block==0)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "count",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "                                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "active_non_system",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "s7zp55152np48rqjmlglw0000gn/T/iocp-stream-audit-uwpl3qqu/audit.py\", line 41, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "system_total",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "s7zp55152np48rqjmlglw0000gn/T/iocp-stream-audit-mzolp_yh/audit.py\", line 41, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        },
+        {
+          "case": "idle",
+          "expected": "reject",
+          "exit": 1,
+          "diagnostic": "s7zp55152np48rqjmlglw0000gn/T/iocp-stream-audit-2lecqdny/audit.py\", line 41, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+        }
+      ],
+      "incomplete_idle_exhaustion_verified": true
+    },
+    "cpp_changed": false,
+    "windows_deployed": true,
+    "workload_started": true,
+    "standalone_closed": false,
+    "next_step": "No automatic retry; a new series or extra background diagnosis requires a separate decision",
+    "prepared_sha256": {
+      "runner.ps1": "bf4678fff4949eb63b75b1a938f79f796ff7a63b2bf1dd92fe59663472136f66",
+      "quiet.ps1": "91ce8d7381133b614ec84977143c99601ca17e4a7cdcc0dafb5ad4354d3eda65",
+      "plan.json": "a204fc86e17a7c348a33cfd151f0e0a761bd1ae03e72693865a9949eeeb90737",
+      "analyze.py": "6920c7ff38b5c3bf0bde3518edb9307d3a5782b0cc66c4245ae0ec27df651dd6",
+      "audit.py": "d0b8ef56671545d6e8f86c6fa67743004b84199b1d6e339cfdabf3059ed4b9ab",
+      "negative-controls.py": "9eee2ee463366db646f4ec32c2005ebbd3e65de9c9c68c51edd3269b700fcaba"
+    },
+    "preparation_status": "APPROVED_PREPARED_NOT_STARTED_IDLE_GATE_FAILED",
+    "preparation_report": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-21/iocp-stream-awh-only-prepared-20261021.txt",
+    "archive": "/Users/forman/Work/AI/protocols/awh/iocp/2026-10-22/awh-iocp-stream-awh-only-20261022.tar.gz",
+    "archive_sha256": "810523eed9f3bcdaa61b3aea717055a15fded351c2fea95b91612f26f5ab5502",
+    "manifest_files": 61,
+    "verification": {
+      "status": "VERIFIED_INCOMPLETE_BACKGROUND_EXHAUSTED",
+      "records": 1,
+      "batches": 1,
+      "accepted_blocks": 0,
+      "accepted_measured_processes": 0,
+      "accepted_measured_gib": 0,
+      "all_process_gib": 0.5,
+      "maxima_idle_non_system_total": null,
+      "rejections": [
+        {
+          "attempt": {
+            "block": 1,
+            "attempt": 0,
+            "label": "block1-attempt0",
+            "warmup": false,
+            "engines": "awh",
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 0
+          },
+          "idle": 5.317780343169554,
+          "idle_top": [
+            {
+              "pid": 8624,
+              "name": "sppsvc",
+              "percent": 1.686125474663517
+            },
+            {
+              "pid": 5604,
+              "name": "svchost",
+              "percent": 1.2321686161002625
+            },
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.4539568585632546
+            },
+            {
+              "pid": 5024,
+              "name": "svchost",
+              "percent": 0.4539568585632546
+            },
+            {
+              "pid": 3064,
+              "name": "svchost",
+              "percent": 0.25940391917900263
+            }
+          ],
+          "active": []
+        },
+        {
+          "attempt": {
+            "block": 1,
+            "attempt": 1,
+            "label": "block1-attempt1",
+            "warmup": false,
+            "engines": "awh",
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 0
+          },
+          "idle": 12.284577646392856,
+          "idle_top": [
+            {
+              "pid": 3140,
+              "name": "svchost",
+              "percent": 8.70970055352721
+            },
+            {
+              "pid": 5604,
+              "name": "svchost",
+              "percent": 2.6649083783180267
+            },
+            {
+              "pid": 5024,
+              "name": "svchost",
+              "percent": 0.32498882662414963
+            },
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.19499329597448978
+            },
+            {
+              "pid": 884,
+              "name": "services",
+              "percent": 0.12999553064965985
+            }
+          ],
+          "active": []
+        },
+        {
+          "attempt": {
+            "block": 1,
+            "attempt": 2,
+            "label": "block1-attempt2",
+            "warmup": false,
+            "engines": "awh",
+            "accepted": false,
+            "reason": "Background limit",
+            "record_count": 0
+          },
+          "idle": 12.61183457193996,
+          "idle_top": [
+            {
+              "pid": 3140,
+              "name": "svchost",
+              "percent": 9.686409026902341
+            },
+            {
+              "pid": 5604,
+              "name": "svchost",
+              "percent": 1.6252364139097888
+            },
+            {
+              "pid": 5024,
+              "name": "svchost",
+              "percent": 0.585085109007524
+            },
+            {
+              "pid": 936,
+              "name": "svchost",
+              "percent": 0.32504728278195777
+            },
+            {
+              "pid": 3500,
+              "name": "MsMpEng",
+              "percent": 0.1300189131127831
+            }
+          ],
+          "active": []
+        }
+      ],
+      "independent_comparisons": {},
+      "performance_claim": false,
+      "restored": true
+    },
+    "negative_controls": [
+      {
+        "case": "unchanged",
+        "expected": "pass",
+        "exit": 0,
+        "diagnostic": ""
+      },
+      {
+        "case": "volume",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "stdout'])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "allocator",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "sha",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": " 22, in <module>\n    assert x['sha_before']==x['sha_after']==p['executables'][x['engine']]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "timer",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "=10000\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "order",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "armup']==(block==0)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "count",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "                                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "idle_fake_accept",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "52np48rqjmlglw0000gn/T/iocp-awh-only-incomplete-355i835w/audit.py\", line 41, in <module>\n    assert at['accepted']==(not fail)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "cpu_underreport",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "sert abs(t-d['cpu_percent'])<1e-8\n                                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "retry_budget",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "-incomplete-lkugnbm5/audit.py\", line 49, in <module>\n    else:assert len(ats)==3 and not ats[-1]['accepted']\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "status_complete",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "x['block'] for x in s['attempts']) or complete:assert ats[-1]['accepted']\n                                                                       ~~~~~~~^^^^^^^^^^^^\nAssertionError\n"
+      },
+      {
+        "case": "restoration",
+        "expected": "reject",
+        "exit": 1,
+        "diagnostic": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+      }
+    ],
+    "workload_complete": false,
+    "performance_claim": false,
+    "final_stand": {
+      "utc": "2026-10-21T21:39:18.4206183Z",
+      "busy": [],
+      "services": [
+        {
+          "Name": "DPS",
+          "Status": 4
+        },
+        {
+          "Name": "SysMain",
+          "Status": 4
+        },
+        {
+          "Name": "WSearch",
+          "Status": 4
+        }
+      ],
+      "timer_100ns": 156250,
+      "timer_status": 0,
+      "wpr": "\r\nMicrosoft Windows Performance Recorder Version 10.0.26100 (CoreSystem)\r\nCopyright (c) 2024 Microsoft Corporation. All rights reserved.\r\n\r\nWPR is not recording\r\n"
+    },
+    "automatic_repeat": false,
+    "latest_preflight": {
+      "utc": "2026-10-21T21:38:19.5875675Z",
+      "busy": [],
+      "wpr": "\r\nMicrosoft Windows Performance Recorder Version 10.0.26100 (CoreSystem)\r\nCopyright (c) 2024 Microsoft Corporation. All rights reserved.\r\n\r\nWPR is not recording\r\n",
+      "samples": [
+        {
+          "seconds": 3.0659966,
+          "percent": 0.25481111101036447,
+          "rows": [
+            {
+              "pid": 10160,
+              "name": "powershell",
+              "cpu": 0.0625
+            }
+          ]
+        },
+        {
+          "seconds": 2.9995197,
+          "percent": 0,
+          "rows": []
+        }
+      ],
+      "quiet": true
+    }
   }
 }

@@ -73,7 +73,7 @@ COMPILER="${CXX:-c++}"
 #          памятью, а обход собранной таблицы и доступ по имени столбца остались теми же:
 #          общее замедление машины село бы на все сценарии разом
 #
-OPTIONS="-O3 -DNDEBUG -std=c++17 -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
+OPTIONS="-O3 -DNDEBUG -DAWH_ALLOC_COUNTING -std=c++17 -I$ROOT/include -I$ROOT/tools/benchmark/syscount $FLAGS"
 
 #
 # Выполняем прописывание пути к библиотеке стандартных средств собирателя
