@@ -844,17 +844,19 @@ namespace awh {
 					 * @brief Метод разбора приведённого куска текста
 					 *
 					 * @param text разбираемый приведённый кусок текста
+					 * @param size размер куска текста в байтах
 					 * @return     признак продолжения разбора
 					 *
 					 * \~english
 					 * @brief Method of parsing a converted chunk of a text
 					 *
 					 * @param text converted chunk of the text being parsed
+					 * @param size size of the chunk of the text in bytes
 					 * @return     flag of the continuation of the parsing
 					 *
 					 * \~
 					 */
-					bool process(const string & text) noexcept;
+					bool process(const char * text, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора очередного знака текста
