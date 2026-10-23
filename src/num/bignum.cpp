@@ -1861,7 +1861,7 @@ void awh::bignum::sqrt(uint8_t * value, const size_t size) noexcept {
 	 *          а не по одной на каждый разряд как при побитовом поиске.
 	 *
 	 */
-	while(true){
+	for(;;){
 		// Выполняем копирование исходного числа в делимое
 		::memcpy(quotient.get(), source.get(), size);
 		// Выполняем деление исходного числа на текущее приближение

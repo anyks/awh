@@ -417,6 +417,48 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ uint32_t identifier() noexcept;
 		/**
 		 * \~russian
+		 * @brief Функция получения дешёвого штампа времени в миллисекундах (для таймеров)
+		 *
+		 * @details Помимо точных монотонных часов существуют и дешёвые: они не
+		 *          опрашивают счётчик тактов, а отдают значение, обновляемое ядром раз
+		 *          в такт системного таймера.
+		 *
+		 *          Платой служит зернистость: дешёвые часы меняют значение раз в такт,
+		 *          то есть при частоте в тысячу тактов - раз в миллисекунду. Здесь это
+		 *          не плата вовсе, потому что функция и без того отдаёт миллисекунды и
+		 *          отбрасывает всё, что мельче. Но при пониженной частоте системного
+		 *          таймера шаг вырастает до десятков миллисекунд и обесценил бы таймеры
+		 *          целиком, поэтому частота проверяется, а не предполагается.
+		 *
+		 * @warning Дешёвые часы поддерживаются не во всех операционных системах,
+		 *          поддержка заявлена в macOS, Solaris, OpenIndiana, Linux, Windows (ARM64), FreeBSD и NetBSD (ARM64)
+		 *
+		 * @return сгенерированный штамп времени в миллисекундах
+		 *
+		 * \~english
+		 * @brief A function for obtaining a low-overhead timestamp in milliseconds (for timers)
+		 *
+		 * @details In addition to precise monotonic clocks, there are also "low-cost" ones: instead of
+		 *          querying a cycle counter, they return a value updated by the kernel once per system timer tick.
+		 *
+		 *          The trade-off is granularity—these clocks only update their value once per tick; for instance,
+		 *          at a frequency of one thousand ticks per second, the value changes once every millisecond.
+		 *          In this specific case, however, that trade-off is inconsequential, as the function already
+		 *          returns values ​​in milliseconds and discards anything more granular. Nevertheless,
+		 *          if the system timer frequency were lower, the step size could increase to tens of
+		 *          milliseconds—rendering the timers effectively useless—which is why the frequency is
+		 *          explicitly verified rather than simply assumed.
+		 *
+		 * @warning Low-cost watches are not supported on all operating systems; support is stated for
+		 *          macOS, Solaris, OpenIndiana, Linux, Windows (ARM64), FreeBSD, and NetBSD (ARM64)
+		 *
+		 * @return generated timestamp in milliseconds
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uint64_t milliseconds() noexcept;
+		/**
+		 * \~russian
 		 * @brief Шаблон функции получения штампа времени в указанных единицах измерения
 		 *
 		 * @tparam T тип данных в котором извлекаются данные
@@ -484,6 +526,7 @@ namespace awh {
 		 * fmk::timestamp <string> (awh::fmk::chrono_t::SECONDS);
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ T timestamp(const chrono_t type) noexcept;
 		/**
@@ -537,6 +580,7 @@ namespace awh {
 		 * const string text = fmk::convert(wide);
 		 * @endcode
 		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ wstring convert(string_view str) noexcept;
 		/**
