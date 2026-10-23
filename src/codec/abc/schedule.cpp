@@ -547,7 +547,7 @@ void awh::codec::abc::Schedule::run(const uint64_t round) noexcept {
 		// Выполняем получение работы, зовомой по наступлении срока
 		function <void (void)> callback = this->_callback;
 		// Выполняем установку штампа времени наступившего срока
-		this->_stamp = timestamp();
+		this->_stamp = ::timestamp();
 		// Выполняем освобождение замка состояния отбоя срока
 		lock.unlock();
 		/**
@@ -598,7 +598,7 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 	// Выполняем установку признака работы отбоя срока
 	this->_working = true;
 	// Выполняем установку штампа времени начала отсчёта срока
-	this->_stamp = timestamp();
+	this->_stamp = ::timestamp();
 	/**
 	 * Выполняем переход на новый круг отбоя срока
 	 *
@@ -772,7 +772,7 @@ bool awh::codec::abc::Schedule::touch() noexcept {
 		// Выводим признак того, что срок не наступил
 		return false;
 	// Выполняем получение нынешнего штампа времени
-	const uint64_t current = timestamp();
+	const uint64_t current = ::timestamp();
 	/**
 	 * Если срок ещё не вышел
 	 */
