@@ -347,18 +347,20 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод отказа приведения с сообщением о нём в журнал
 					 *
-					 * @param error код ошибки приведения
-					 * @return      всегда ложь, ради возврата им из места отказа
+					 * @param method имя метода, объявившего отказ
+					 * @param error  код ошибки приведения
+					 * @return       всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the conversion with a report of it to the log
 					 *
-					 * @param error the code of the conversion error
-					 * @return      always false, for the returning by it from the place of the refusal
+					 * @param method name of the method that declared the refusal
+					 * @param error  the code of the conversion error
+					 * @return       always false, for the returning by it from the place of the refusal
 					 *
 					 * \~
 					 */
-					bool refuse(const error_t error) noexcept;
+					bool refuse(const char * method, const error_t error) noexcept;
 				public:
 					/**
 					 * \~russian

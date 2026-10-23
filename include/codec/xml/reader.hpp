@@ -798,13 +798,13 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					typedef struct Title {
+					typedef struct __AWH_SHARED_EXPORT__ Title {
 						// Обозначение связанного пространства имён
 						span_t uri;
-						// Местное имя без префикса
-						span_t local;
-						// Префикс пространства имён
-						span_t prefix;
+						// Длина местного имени без префикса
+						size_t local;
+						// Длина префикса пространства имён
+						size_t prefix;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -814,7 +814,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						explicit Title() noexcept = default;
+						explicit Title() noexcept;
 					} title_t;
 					/**
 					 * \~russian
@@ -826,12 +826,18 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Element {
-						// Имя узла в хранилище знаков разбора
+						// Признак размещения имени в хранилище сохранённых имён
+						bool rescued;
+						// Смещение имени в исходном буфере либо в хранилище сохранённых имён
+						size_t offset;
+						// Длина полной записи имени
+						size_t length;
+						// Имя узла с учётом пространства имён
 						title_t name;
-						// Имя узла в записи, принятой в исходном тексте
-						span_t qname;
 						// Обращение с пробельным содержимым внутри узла
 						space_t space;
+						// Объём хранилища знаков на заведении узла
+						uint32_t trunc;
 						// Количество связываний префиксов, объявленных узлом
 						uint32_t bindings;
 						/**
@@ -1088,12 +1094,18 @@ namespace awh {
 					 */
 					bool _incomplete;
 				private:
-					// Текущий номер строки в исходном тексте
-					uint32_t _line;
+					// Номер строки на положении, до которого место досчитано
+					mutable uint32_t _line;
 					// Глубина вложенности узла текущего события
-					uint32_t _depth;
-					// Текущее положение в строке исходного текста
-					uint32_t _column;
+					mutable uint32_t _depth;
+					// Положение в строке на положении, до которого место досчитано
+					mutable uint32_t _column;
+					// Положение в буфере, до которого место досчитано
+					mutable size_t _measured;
+					// Номер строки на начале буфера разбираемого текста
+					mutable uint32_t _originLine;
+					// Положение в строке на начале буфера разбираемого текста
+					mutable uint32_t _originColumn;
 				private:
 					// Положение разбора в приведённом исходном тексте
 					size_t _offset;
@@ -1214,12 +1226,14 @@ namespace awh {
 					 */
 					location_t _opening;
 					// Положение начала текущего события в исходном тексте
-					location_t _location;
+					mutable location_t _location;
 					// Положение обнаруженной ошибки в исходном тексте
-					location_t _errorLocation;
+					mutable location_t _errorLocation;
 				private:
-					// Хранилище знаков имён узлов и обозначений пространств имён
+					// Хранилище знаков обозначений пространств имён
 					string _names;
+					// Хранилище спасённых при изъятии текста имён открытых узлов
+					string _rescue;
 					// Приведённый к кодировке UTF-8 исходный текст
 					string _buffer;
 					// Хранилище приведённых значений атрибутов и содержимого узлов
@@ -1262,8 +1276,6 @@ namespace awh {
 					// Содержимое текущего события
 					string_view _text;
 				private:
-					// Ключи имён атрибутов текущего узла для поиска повторов
-					vector <uint64_t> _keys;
 					// Отрезки значений атрибутов текущего узла в хранилище приведённых значений
 					vector <span_t> _values;
 					// Действующие связывания префиксов с пространствами имён
@@ -1274,12 +1286,12 @@ namespace awh {
 					vector <splice_t> _splices;
 					// Раскладка имён атрибутов текущего узла по свёртке для поиска повторов
 					vector <digest_t> _digests;
-					// Объявления пространств имён текущего узла до разрешения
-					vector <record_t> _declares;
 					// Перечень объявлений пространств имён текущего узла
 					vector <binding_t> _bindings;
+					// Объявления пространств имён текущего узла до разрешения
+					mutable vector <record_t> _declares;
 					// Перечень атрибутов текущего узла
-					vector <attribute_t> _attributes;
+					mutable vector <attribute_t> _attributes;
 				private:
 					// Объявленные сущности внутреннего подмножества описания типа
 					unordered_map <string, entity_t> _entities;
@@ -1290,6 +1302,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод прекращения разбора ошибкой
 					 *
+					 * @param method имя метода, объявившего отказ
 					 * @param error  код ошибки разбора
 					 * @param offset положение ошибки в приведённом исходном тексте
 					 * @return       итог шага разбора, всегда отрицательный
@@ -1297,13 +1310,14 @@ namespace awh {
 					 * \~english
 					 * @brief Method of terminating the parsing with an error
 					 *
+					 * @param method name of the method that declared the refusal
 					 * @param error  error code of the parsing
 					 * @param offset position of the error in the converted source text
 					 * @return       result of the step of the parsing, always a negative one
 					 *
 					 * \~
 					 */
-					step_t fail(const error_t error, const size_t offset) noexcept;
+					step_t fail(const char * method, const error_t error, const size_t offset) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод отказа разбора с сообщением о нём в журнал
@@ -1336,18 +1350,20 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод сообщения об отказе разбора в журнал
 					 *
+					 * @param method   имя метода, объявившего отказ
 					 * @param error    код ошибки разбора
 					 * @param location место обнаруженной ошибки в исходном тексте
 					 *
 					 * \~english
 					 * @brief Method of the reporting of a parsing refusal to the log
 					 *
+					 * @param method   name of the method that declared the refusal
 					 * @param error    the code of the parsing error
 					 * @param location the place of the found error in the source text
 					 *
 					 * \~
 					 */
-					void report(const error_t error, const location_t & location) const noexcept;
+					void report(const char * method, const error_t error, const location_t & location) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод прекращения разбора ошибкой с заданным местом
@@ -1358,6 +1374,7 @@ namespace awh {
 					 *          место передаётся снятым при входе в построение - иначе оно зависело бы
 					 *          от того, где легла граница куска.
 					 *
+					 * @param method   имя метода, объявившего отказ
 					 * @param error    код ошибки разбора
 					 * @param location место обнаруженной ошибки в исходном тексте
 					 * @return         итог шага разбора, всегда отрицательный
@@ -1371,13 +1388,14 @@ namespace awh {
 					 *          the place taken at the entry into the construct is passed — otherwise it would depend
 					 *          on where the boundary of a chunk has fallen.
 					 *
+					 * @param method   name of the method that declared the refusal
 					 * @param error    error code of the parsing
 					 * @param location place of the detected error in the source text
 					 * @return         result of the step of the parsing, always a negative one
 					 *
 					 * \~
 					 */
-					step_t fail(const error_t error, const location_t & location) noexcept;
+					step_t fail(const char * method, const error_t error, const location_t & location) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения положения в исходном тексте
@@ -1396,32 +1414,58 @@ namespace awh {
 					location_t locate(const size_t offset) const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод досчёта положения в исходном тексте от ранее полученного
+					 * @brief Метод досчёта строки и столбца положения по его смещению
 					 *
-					 * @details Получение места с начала разбора обходится проходом по всему
-					 *          пройденному тексту, и для каждого атрибута метки такой проход
-					 *          повторялся бы заново. Досчёт ведёт место от предыдущего полученного,
-					 *          проходя по тексту метки единожды.
+					 * @details Место разбирается лениво: разбор запоминает у положений одно
+					 *          смещение, а строка и столбец досчитываются по запросу, когда
+					 *          место читается. Досчёт идёт от ранее досчитанного положения
+					 *          вперёд, по тексту единожды; положения позади него досчитываются
+					 *          от начала удержанного буфера.
+					 *
+					 * @note Уже досчитанное положение не трогается: нулевая строка служит
+					 *       признаком недосчитанного места
 					 *
 					 * @param location досчитываемое положение в исходном тексте
-					 * @param from     положение, до которого место уже досчитано
-					 * @param offset   положение, до которого место требуется досчитать
 					 *
 					 * \~english
-					 * @brief Method of counting the position in the source text up from a previously obtained one
+					 * @brief Method of counting up the line and column of a position from its offset
 					 *
-					 * @details The getting of a place from the beginning of the parsing costs a pass over the whole
-					 *          text that has been passed, and for every attribute of a tag such a pass
-					 *          would be repeated anew. The counting-up leads the place from the previously obtained one,
-					 *          passing over the text of the tag once.
+					 * @details The place is parsed lazily: the parsing remembers one offset for
+					 *          the positions, while the line and the column are counted up on request,
+					 *          when the place is read. The counting-up goes forward from the previously
+					 *          counted position, over the text once; the positions behind it are counted
+					 *          up from the beginning of the retained buffer.
+					 *
+					 * @note An already counted position is left intact: a zero line serves
+					 *       as the sign of a place not counted up
 					 *
 					 * @param location position in the source text being counted up
-					 * @param from     position up to which the place has already been counted
-					 * @param offset   position up to which the place is required to be counted
 					 *
 					 * \~
 					 */
-					void relocate(location_t & location, size_t & from, const size_t offset) const noexcept;
+					void resolve(location_t & location) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод досчёта мест текущего события разбора
+					 *
+					 * @details Место события, места его атрибутов и объявлений пространств имён
+					 *          досчитываются одним порядком, от ранее досчитанного положения
+					 *          вперёд: всякое место события стоит не позади прочих его мест
+					 *
+					 * @return ничего не возвращает
+					 *
+					 * \~english
+					 * @brief Method of counting up the places of the current event of the parsing
+					 *
+					 * @details The place of the event, the places of its attributes and of the namespace
+					 *          declarations are counted up in one order, forward from the previously
+					 *          counted position: every place of an event stands not behind its other places
+					 *
+					 * @return returns nothing
+					 *
+					 * \~
+					 */
+					void resolveCurrent() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перемещения разбора к указанному положению
@@ -1442,6 +1486,20 @@ namespace awh {
 					 * \~
 					 */
 					void advance(const size_t offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод переноса живых имён открытых узлов в устойчивое хранилище
+					 *
+					 * @details Перед изменением исходного буфера имена открытых узлов сохраняются отдельно, а виды перенаправляются на новое хранилище.
+					 *
+					 * \~english
+					 * @brief Method of transferring the live names of the open nodes into the durable storage
+					 *
+					 * @details Before the source buffer changes, open node names are saved separately and their views are redirected to the new storage.
+					 *
+					 * \~
+					 */
+					void rescue() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод изъятия разобранного начала приведённого текста
@@ -1530,6 +1588,22 @@ namespace awh {
 					 * \~
 					 */
 					string_view view(const span_t & span) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения полной записи имени открытого узла
+					 *
+					 * @param element открытый узел
+					 * @return        вид имени в хранилище текущего читателя
+					 *
+					 * \~english
+					 * @brief Get the qualified name of an open element
+					 *
+					 * @param element open element
+					 * @return        name view in the current reader storage
+					 *
+					 * \~
+					 */
+					string_view view(const element_t & element) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод размещения последовательности знаков в хранилище разбора

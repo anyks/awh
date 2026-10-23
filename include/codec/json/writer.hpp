@@ -309,8 +309,9 @@ namespace awh {
 					 *          отказа через него не идёт: о беде сообщено там, где она случилась, и
 					 *          второе сообщение лишь запутало бы читающего журнал.
 					 *
-					 * @param error код отказа записи
-					 * @return      всегда ложь, ради возврата им из места отказа
+					 * @param method имя метода, объявившего отказ
+					 * @param error  код отказа записи
+					 * @return       всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the writing with a report of its reason to the log
@@ -319,12 +320,13 @@ namespace awh {
 					 *          refusal does not go through it: the trouble is reported where it has happened, and
 					 *          a second report would only confuse the one reading the log.
 					 *
-					 * @param error the code of the refusal of the writing
-					 * @return      always false, for the returning by it from the place of the refusal
+					 * @param method name of the method that declared the refusal
+					 * @param error  the code of the refusal of the writing
+					 * @return       always false, for the returning by it from the place of the refusal
 					 *
 					 * \~
 					 */
-					bool refuse(const error_t error) noexcept;
+					bool refuse(const char * method, const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian

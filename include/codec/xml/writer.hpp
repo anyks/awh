@@ -458,8 +458,9 @@ namespace awh {
 					 *          всяком присваивании кода отказа: иначе места записи разошлись бы с
 					 *          местами отказа, и часть бед уходила бы молча.
 					 *
-					 * @param error код ошибки записи
-					 * @return      всегда ложь, ради возврата им из места отказа
+					 * @param method имя метода, объявившего отказ
+					 * @param error  код ошибки записи
+					 * @return       всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the writing with a report of it to the log
@@ -470,12 +471,13 @@ namespace awh {
 					 *          would part from the places of the refusals, and part of the troubles would go off
 					 *          silently.
 					 *
-					 * @param error the code of the writing error
-					 * @return      always false, for the returning by it from the place of the refusal
+					 * @param method name of the method that declared the refusal
+					 * @param error  the code of the writing error
+					 * @return       always false, for the returning by it from the place of the refusal
 					 *
 					 * \~
 					 */
-					bool refuse(const error_t error) noexcept;
+					bool refuse(const char * method, const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian

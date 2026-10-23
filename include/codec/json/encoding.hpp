@@ -377,8 +377,9 @@ namespace awh {
 					 * @details Способ этот стоит ГОРЛОМ: всякий отказ приведения обязан идти
 					 *          через него, и запись в журнал ведётся в одном месте на всё приведение.
 					 *
-					 * @param error код ошибки приведения
-					 * @return      всегда ложь, ради возврата им из места отказа
+					 * @param method имя метода, объявившего отказ
+					 * @param error  код ошибки приведения
+					 * @return       всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the conversion with a report of it to the log
@@ -386,12 +387,13 @@ namespace awh {
 					 * @details This way costs DEAR: every refusal of the conversion is bound to go through it,
 					 *          and the record into the log is kept in one place for the whole conversion.
 					 *
-					 * @param error the code of the conversion error
-					 * @return      always false, for the returning by it from the place of the refusal
+					 * @param method name of the method that declared the refusal
+					 * @param error  the code of the conversion error
+					 * @return       always false, for the returning by it from the place of the refusal
 					 *
 					 * \~
 					 */
-					bool refuse(const error_t error) noexcept;
+					bool refuse(const char * method, const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian
