@@ -76,11 +76,12 @@ awh::codec::abc::Editor::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа правки контейнера
  *
- * @param error объявляемый код отказа
- * @return      признак успешности, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  объявляемый код отказа
+ * @return       признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Editor::fail(const error_t error) noexcept {
+bool awh::codec::abc::Editor::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
 	/**
@@ -104,7 +105,7 @@ bool awh::codec::abc::Editor::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -160,7 +161,7 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 */
 	if(origin >= this->_header.length){
 		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(error_t::INVALID_CHUNK);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -171,7 +172,7 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 */
 	if(!this->_source(HEADER_LENGTH + origin, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -194,7 +195,7 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	 */
 	if((this->_header.length - origin) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
 		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(error_t::INVALID_CHUNK);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -206,7 +207,7 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 	if(!this->_source(HEADER_LENGTH + origin, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 	 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
@@ -250,7 +251,7 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 */
 		if(!this->_source(HEADER_LENGTH + offset, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -267,7 +268,7 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 */
 		if((this->_header.length - offset) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
 			// Выполняем установку кода отказа повреждённого кадра
-			this->fail(error_t::INVALID_CHUNK);
+			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -279,7 +280,7 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		if(!this->_source(HEADER_LENGTH + offset, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 		  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -300,7 +301,7 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 */
 		if(!this->_merkle.add(buffer.data(), buffer.size())){
 			// Выполняем установку кода отказа выработки свёртки
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачного сбора свёрток
 			return false;
 		}
@@ -375,7 +376,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа накопления записи
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачного накопления записи
 		return false;
 	}
@@ -384,7 +385,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 */
 	if((buffer == nullptr) || (size == 0)){
 		// Выполняем установку кода отказа накопления записи
-		this->fail(error_t::EMPTY_RECORD);
+		this->fail(__PRETTY_FUNCTION__, error_t::EMPTY_RECORD);
 		// Выводим признак неудачного накопления записи
 		return false;
 	}
@@ -403,7 +404,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size, const 
 	 */
 	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Выполняем установку кода отказа накопления записи
-		this->fail(error_t::INVALID_LENGTH);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 		// Выводим признак неудачного накопления записи
 		return false;
 	}
@@ -568,7 +569,7 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
 	 */
 	if((crypto != nullptr) && !this->_opened){
 		// Выполняем установку кода отказа объявления подписи
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачно объявленной подписи
 		return false;
 	}
@@ -643,7 +644,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if((source == nullptr) || (sink == nullptr)){
 		// Выполняем установку кода отказа открытия контейнера
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -660,7 +661,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if(!this->_source(0, HEADER_LENGTH, buffer) || (buffer.size() < HEADER_LENGTH)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -697,7 +698,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 		 */
 		if(!this->_header.unpack(buffer.data(), buffer.size(), error))
 			// Выводим признак неудачного открытия контейнера
-			return this->fail(error);
+			return this->fail(__PRETTY_FUNCTION__, error);
 	}
 	/**
 	 * Если оглавление контейнера заголовком не объявлено, правка невозможна:
@@ -705,7 +706,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if(this->_header.index == 0){
 		// Выполняем установку кода отказа отсутствия оглавления
-		this->fail(error_t::MISSING_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_INDEX);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -716,7 +717,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -731,7 +732,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
 		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(error_t::INVALID_CHUNK);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 		// Выводим признак неудачи
 		return false;
 	}
@@ -774,7 +775,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	if((this->_header.index > this->_length) ||
 	  ((this->_length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
 		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(error_t::INVALID_CHUNK);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -786,7 +787,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), buffer) ||
 	  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -824,7 +825,7 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 		 */
 		if(!this->_index.unpack(payload.data(), payload.size(), error))
 			// Выводим признак неудачного открытия контейнера
-			return this->fail(error);
+			return this->fail(__PRETTY_FUNCTION__, error);
 	}
 	/**
 	 * Выполняем счёт мусора, УЖЕ лежащего на носителе
@@ -962,7 +963,7 @@ bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer
 	// Проверяем, открыт ли контейнер и входит ли номер в перечень записей
 	if(!this->_opened || (number >= static_cast <uint64_t> (this->_index.size()))){
 		// Выполняем установку кода отказа правки записи
-		this->fail(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
 		// Выводим признак неудачной правки записи
 		return false;
 	}
@@ -999,7 +1000,7 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 */
 	if(!this->_opened || (number >= static_cast <uint64_t> (this->_index.size()))){
 		// Выполняем установку кода отказа сноса записи
-		this->fail(this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, this->_opened ? error_t::INVALID_INDEX : error_t::INTERNAL);
 		// Выводим признак неудачного сноса записи
 		return false;
 	}
@@ -1059,7 +1060,7 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 */
 	if(!this->_index.replace(number, entry)){
 		// Выполняем установку кода отказа правки строки оглавления
-		this->fail(error_t::INVALID_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 		// Выводим признак неудачного сноса записи
 		return false;
 	}
@@ -1106,7 +1107,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа выборки записи
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1195,7 +1196,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 			 */
 			if((static_cast <uint64_t> (mark.entry.offset) + mark.entry.length) > static_cast <uint64_t> (payload.size())){
 				// Выполняем установку кода отказа выборки записи
-				this->fail(error_t::INVALID_INDEX);
+				this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 				// Выводим признак неудачной выборки записи
 				return false;
 			}
@@ -1232,7 +1233,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 */
 	if(number >= static_cast <uint64_t> (this->_index.size())){
 		// Выполняем установку кода отказа выборки записи
-		this->fail(error_t::INVALID_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1243,7 +1244,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 */
 	if(entry.is(mark_t::ERASED)){
 		// Выполняем установку кода отказа выборки снесённой записи
-		this->fail(error_t::MISSING_RECORD);
+		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_RECORD);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1266,7 +1267,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	 */
 	if((static_cast <uint64_t> (entry.offset) + entry.length) > static_cast <uint64_t> (this->_chunk.size())){
 		// Выполняем установку кода отказа выборки записи
-		this->fail(error_t::INVALID_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -1300,7 +1301,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа фиксации правок
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
@@ -1416,7 +1417,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
@@ -1438,7 +1439,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(!this->_sink(this->_header.index + CHUNK_FLAGS, &marked, 1)){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной фиксации правок
 		return false;
 	}
@@ -1453,7 +1454,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
 		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(error_t::INVALID_CHUNK);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 		// Выводим признак неудачи
 		return false;
 	}
@@ -1485,7 +1486,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_source(this->_header.signature, CHUNK_HEADER, record) || (record.size() < CHUNK_HEADER)){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1498,7 +1499,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_source(this->_header.signature, static_cast <size_t> (CHUNK_HEADER + width), stale) || (stale.size() < static_cast <size_t> (CHUNK_HEADER + width))){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1535,7 +1536,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), waste) ||
 		  (waste.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1547,7 +1548,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_merkle.add(waste.data(), waste.size())){
 			// Выполняем установку кода отказа выработки свёртки
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1562,7 +1563,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!stale.empty() && !this->_merkle.add(stale.data(), stale.size())){
 			// Выполняем установку кода отказа выработки свёртки
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1578,7 +1579,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_sink(offset, this->_batches.at(i).data(), this->_batches.at(i).size())){
 			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(error_t::UNWRITABLE_SINK);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1593,7 +1594,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 			 */
 			if(!this->_merkle.add(this->_batches.at(i).data(), this->_batches.at(i).size())){
 				// Выполняем установку кода отказа выработки свёртки
-				this->fail(error_t::SIGNING_FAILED);
+				this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 				// Выполняем откат состояния, правимого фиксацией
 				rollback();
 				// Выводим признак неудачной фиксации правок
@@ -1639,7 +1640,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 				 */
 				if(!this->_index.replace(mark.number, mark.entry)){
 					// Выполняем установку кода отказа правки строки оглавления
-					this->fail(error_t::INVALID_INDEX);
+					this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 					// Выполняем откат состояния, правимого фиксацией
 					rollback();
 					// Выводим признак неудачной фиксации правок
@@ -1677,7 +1678,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(!this->_sink(offset, tail.data(), tail.size())){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выполняем откат состояния, правимого фиксацией
 		rollback();
 		// Выводим признак неудачной фиксации правок
@@ -1703,7 +1704,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_merkle.root(sign.root, tail.data(), tail.size())){
 			// Выполняем установку кода отказа выработки свёртки
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1715,7 +1716,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
 		   sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа выработки подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1732,7 +1733,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!abc::pack(sign, signature)){
 			// Выполняем установку кода отказа выработки подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1746,7 +1747,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation + 1))){
 			// Выполняем установку кода отказа подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1757,7 +1758,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 */
 		if(!this->_sink(offset + static_cast <uint64_t> (tail.size()), signature.data(), signature.size())){
 			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(error_t::UNWRITABLE_SINK);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 			// Выполняем откат состояния, правимого фиксацией
 			rollback();
 			// Выводим признак неудачной фиксации правок
@@ -1815,7 +1816,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(!this->_sink(offset + static_cast <uint64_t> (tail.size() + signature.size()), head.data(), head.size())){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выполняем откат состояния, правимого фиксацией
 		rollback();
 		// Выводим признак неудачной фиксации правок
@@ -1826,7 +1827,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 */
 	if(!this->_sink(0, head.data(), head.size())){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		/**
 		 * Выполняем возврат прежних октетов заголовка записи подписи
 		 *
@@ -1892,7 +1893,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 */
 	if(!this->_opened || (target == nullptr)){
 		// Выполняем установку кода отказа уборки контейнера
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}
@@ -1975,7 +1976,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if(!target(offset, chunk.data(), chunk.size())){
 			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(error_t::UNWRITABLE_SINK);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 			// Выводим признак неудачной укладки накопленных записей
 			return false;
 		}
@@ -1984,7 +1985,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if((this->_signer != nullptr) && !merkle.add(chunk.data(), chunk.size())){
 			// Выполняем установку кода отказа подписания контейнера
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной укладки накопленных записей
 			return false;
 		}
@@ -2008,7 +2009,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 			 */
 			if(!index.replace(mark, entry)){
 				// Выполняем установку кода отказа правки строки оглавления
-				this->fail(error_t::INVALID_INDEX);
+				this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 				// Выводим признак неудачной укладки накопленных записей
 				return false;
 			}
@@ -2133,7 +2134,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 */
 	if(!target(offset, tail.data(), tail.size())){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}
@@ -2156,7 +2157,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if(!merkle.root(sign.root, tail.data(), tail.size())){
 			// Выполняем установку кода отказа подписания контейнера
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2166,7 +2167,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
 		   sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа подписания контейнера
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2181,7 +2182,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if(!abc::pack(sign, signature)){
 			// Выполняем установку кода отказа выработки подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2190,7 +2191,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if(!abc::envelope(signature, number, 0)){
 			// Выполняем установку кода отказа подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2199,7 +2200,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 */
 		if(!target(offset + static_cast <uint64_t> (tail.size()), signature.data(), signature.size())){
 			// Выполняем установку кода отказа записи октетов контейнера
-			this->fail(error_t::UNWRITABLE_SINK);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 			// Выводим признак неудачной уборки контейнера
 			return false;
 		}
@@ -2264,7 +2265,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 */
 	if(!target(offset + static_cast <uint64_t> (tail.size() + signature.size()), head.data(), head.size())){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}
@@ -2273,7 +2274,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 */
 	if(!target(0, head.data(), head.size())){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачной уборки контейнера
 		return false;
 	}

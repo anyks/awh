@@ -483,11 +483,12 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
 /**
  * @brief Метод объявления отказа разбора документа
  *
- * @param error объявляемый код отказа
- * @return      признак успешности, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  объявляемый код отказа
+ * @return       признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Document::fail(const error_t error) noexcept {
+bool awh::codec::abc::Document::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	/**
 	 * Выполняем установку кода отказа
 	 *
@@ -518,7 +519,7 @@ bool awh::codec::abc::Document::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -611,7 +612,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		// Если кусок значения в хранилище октетов не умещается
 		if(!::room(self->_storage.size(), chunk.data.size())){
 			// Выполняем установку кода отказа недопустимой длины
-			self->fail(error_t::INVALID_LENGTH);
+			self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 			// Сообщаем, что сборка дерева отвечена отказом
 			return false;
 		}
@@ -631,7 +632,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		// Если закрывать нечего
 		if(state->stack.empty()){
 			// Выполняем установку кода внутреннего отказа
-			self->fail(error_t::INTERNAL);
+			self->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 			// Сообщаем, что разбор отвечен отказом
 			return false;
 		}
@@ -662,7 +663,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		// Если хранилище октетов исчерпано, смещение содержимого узлу негодно
 		if(!::room(self->_storage.size(), 0)){
 			// Выполняем установку кода отказа недопустимой длины
-			self->fail(error_t::INVALID_LENGTH);
+			self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 			// Сообщаем, что сборка дерева отвечена отказом
 			return false;
 		}
@@ -709,7 +710,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 			// Если содержимое значения в хранилище октетов не умещается
 			if(!::room(self->_storage.size(), value.data.size())){
 				// Выполняем установку кода отказа недопустимой длины
-				self->fail(error_t::INVALID_LENGTH);
+				self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				// Сообщаем, что сборка дерева отвечена отказом
 				return false;
 			}
@@ -728,7 +729,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 			// Если величина вместе с порядком в хранилище октетов не умещается
 			if(!::room(self->_storage.size(), value.data.size() + 8)){
 				// Выполняем установку кода отказа недопустимой длины
-				self->fail(error_t::INVALID_LENGTH);
+				self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				// Сообщаем, что сборка дерева отвечена отказом
 				return false;
 			}
@@ -759,7 +760,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 			// Если расширение вместе с номером подвида в хранилище не умещается
 			if(!::room(self->_storage.size(), value.data.size() + 8)){
 				// Выполняем установку кода отказа недопустимой длины
-				self->fail(error_t::INVALID_LENGTH);
+				self->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				// Сообщаем, что сборка дерева отвечена отказом
 				return false;
 			}
@@ -918,7 +919,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) no
 		// Выполняем перенос места, где отказ произошёл
 		this->_location = this->_reader.location();
 		// Выполняем установку кода внутреннего отказа
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
@@ -940,7 +941,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) no
 		// Выполняем перенос места, где отказ произошёл
 		this->_location = this->_reader.location();
 		// Выполняем установку кода отказа пустой записи
-		this->fail(error_t::EMPTY_RECORD);
+		this->fail(__PRETTY_FUNCTION__, error_t::EMPTY_RECORD);
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}

@@ -284,11 +284,12 @@ bool awh::codec::abc::Index::unpack(const void * buffer, const size_t size, erro
 /**
  * @brief Метод объявления отказа выборки записи
  *
- * @param error объявляемый код отказа
- * @return      признак успешности, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  объявляемый код отказа
+ * @return       признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
+bool awh::codec::abc::Fetcher::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
 	/**
@@ -310,7 +311,7 @@ bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -357,7 +358,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 */
 	if(source == nullptr){
 		// Выполняем установку кода отказа открытия контейнера
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -370,7 +371,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 */
 	if(!this->_source(0, HEADER_LENGTH, buffer) || (buffer.size() < HEADER_LENGTH)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -393,7 +394,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 */
 		if(!this->_header.unpack(buffer.data(), buffer.size(), error))
 			// Выводим признак неудачного открытия контейнера
-			return this->fail(error);
+			return this->fail(__PRETTY_FUNCTION__, error);
 	}
 	/**
 	 * Если оглавление контейнера заголовком не объявлено, выборка по номеру
@@ -401,7 +402,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 */
 	if(this->_header.index == 0){
 		// Выполняем установку кода отказа отсутствия оглавления
-		this->fail(error_t::MISSING_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_INDEX);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -412,7 +413,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -438,7 +439,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 */
 	if(packed != static_cast <uint64_t> (this->_header.extent)){
 		// Выполняем установку кода отказа повреждённого кадра
-		this->fail(error_t::INVALID_CHUNK);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -467,7 +468,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 */
 		if((this->_header.index > length) || ((length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
 			// Выполняем установку кода отказа повреждённого кадра
-			this->fail(error_t::INVALID_CHUNK);
+			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 			// Выводим признак неудачного открытия контейнера
 			return false;
 		}
@@ -480,7 +481,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), buffer) ||
 	  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -526,7 +527,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		 */
 		if(!this->_index.unpack(payload.data(), payload.size(), error))
 			// Выводим признак неудачного открытия контейнера
-			return this->fail(error);
+			return this->fail(__PRETTY_FUNCTION__, error);
 	}
 	// Выполняем установку признака открытого контейнера
 	this->_opened = true;
@@ -551,7 +552,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа выборки записи
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -560,7 +561,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if(number >= static_cast <uint64_t> (this->_index.size())){
 		// Выполняем установку кода отказа выборки записи
-		this->fail(error_t::INVALID_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -571,7 +572,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if(entry.is(mark_t::ERASED)){
 		// Выполняем установку кода отказа выборки снесённой записи
-		this->fail(error_t::MISSING_RECORD);
+		this->fail(__PRETTY_FUNCTION__, error_t::MISSING_RECORD);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -595,7 +596,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 */
 		if(entry.chunk >= this->_header.length){
 			// Выполняем установку кода отказа повреждённой записи оглавления
-			this->fail(error_t::INVALID_CHUNK);
+			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -606,7 +607,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 */
 		if(!this->_source(HEADER_LENGTH + entry.chunk, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -632,7 +633,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 */
 		if((this->_header.length - entry.chunk) < (static_cast <uint64_t> (CHUNK_HEADER) + length)){
 			// Выполняем установку кода отказа повреждённой записи оглавления
-			this->fail(error_t::INVALID_CHUNK);
+			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -644,7 +645,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		if(!this->_source(HEADER_LENGTH + entry.chunk, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 		  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->fail(error_t::UNREADABLE_SOURCE);
+			this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -679,7 +680,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if((static_cast <uint64_t> (entry.offset) + entry.length) > static_cast <uint64_t> (this->_chunk.size())){
 		// Выполняем установку кода отказа выборки записи
-		this->fail(error_t::INVALID_INDEX);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}

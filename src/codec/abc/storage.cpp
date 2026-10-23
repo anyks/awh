@@ -48,11 +48,12 @@ using namespace awh::codec;
 /**
  * @brief Метод объявления отказа работы с носителем
  *
- * @param error объявляемый код отказа
- * @return      признак успешности, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  объявляемый код отказа
+ * @return       признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Storage::fail(const error_t error) noexcept {
+bool awh::codec::abc::Storage::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
 	/**
@@ -69,7 +70,7 @@ bool awh::codec::abc::Storage::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -105,7 +106,7 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 	 */
 	if(this->_fs.type(filename) != fs_t::type_t::FILE){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачно открытого файла
 		return false;
 	}
@@ -151,7 +152,7 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 	 */
 	if(!this->_fs.truncate(filename)){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачно заведённого файла
 		return false;
 	}
@@ -232,7 +233,7 @@ bool awh::codec::abc::Storage::flush() noexcept {
 	 */
 	if(!this->_fs.flush(this->_filename, (this->_sync == sync_t::FULL), this->_writer)){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачного сброса
 		return false;
 	}
@@ -436,7 +437,7 @@ bool awh::codec::abc::Storage::bind(editor_t & editor) noexcept {
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачно открытого контейнера
 		return false;
 	}
@@ -450,7 +451,7 @@ bool awh::codec::abc::Storage::bind(editor_t & editor) noexcept {
 	 */
 	if(!editor.open(this->source(), this->sink(), this->_length))
 		// Выполняем установку кода отказа, объявленного правкой
-		return this->fail(editor.error());
+		return this->fail(__PRETTY_FUNCTION__, editor.error());
 	// Выводим признак успешно открытого контейнера
 	return true;
 }
@@ -467,7 +468,7 @@ bool awh::codec::abc::Storage::bind(fetcher_t & fetcher) noexcept {
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачно открытого контейнера
 		return false;
 	}
@@ -480,7 +481,7 @@ bool awh::codec::abc::Storage::bind(fetcher_t & fetcher) noexcept {
 	 */
 	if(!fetcher.open(this->source(), this->_length))
 		// Выполняем установку кода отказа, объявленного выборкой
-		return this->fail(fetcher.error());
+		return this->fail(__PRETTY_FUNCTION__, fetcher.error());
 	// Выводим признак успешно открытого контейнера
 	return true;
 }
@@ -497,7 +498,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	// Если буфер октетов собранного контейнера не существует
 	if((buffer == nullptr) && (size > 0)){
 		// Выполняем установку кода внутреннего отказа
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -531,7 +532,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	 */
 	if((size > 0) && !this->_fs.write(temporary, buffer, size, fs_t::seek_t::BEGIN, 0, this->_writer)){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выполняем закрытие временного файла контейнера
 		this->close();
 		// Выполняем снос временного файла контейнера
@@ -577,7 +578,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	 */
 	if(!this->_fs.replaceAddress(temporary, filename)){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->fail(error_t::UNWRITABLE_SINK);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNWRITABLE_SINK);
 		// Выполняем снос временного файла контейнера
 		(void) this->_fs.unlink(temporary);
 		// Выводим признак неудачной записи
@@ -636,7 +637,7 @@ bool awh::codec::abc::Storage::fetch(const string & filename, vector <uint8_t> &
 		// Выполняем закрытие читаемого файла
 		this->close();
 		// Выполняем установку кода отказа чтения октетов
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -688,7 +689,7 @@ bool awh::codec::abc::Storage::fetch(const string & filename, vector <uint8_t> &
 		// Выполняем закрытие читаемого файла
 		this->close();
 		// Выполняем установку кода отказа чтения октетов
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -711,14 +712,14 @@ bool awh::codec::abc::Storage::load(loader_t & loader, const size_t block) noexc
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачной подачи
 		return false;
 	}
 	// Если размер подаваемого куска не задан
 	if(block == 0){
 		// Выполняем установку кода внутреннего отказа
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной подачи
 		return false;
 	}
@@ -778,7 +779,7 @@ bool awh::codec::abc::Storage::load(loader_t & loader, const size_t block) noexc
 	 */
 	if(delivered != this->_length){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->fail(error_t::UNREADABLE_SOURCE);
+		this->fail(__PRETTY_FUNCTION__, error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачной подачи
 		return false;
 	}

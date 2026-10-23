@@ -169,11 +169,12 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа разбора
  *
- * @param error код отказа разбора
- * @return      признак успешности разбора, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  код отказа разбора
+ * @return       признак успешности разбора, всегда ложь
  *
  */
-bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
+bool awh::codec::abc::Reader::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	// Выполняем установку кода отказа разбора
 	this->_error = error;
 	// Выполняем перевод разбора в состояние отказа
@@ -203,7 +204,7 @@ bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error), this->_location.offset, this->_location.depth}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error), this->_location.offset, this->_location.depth}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -439,13 +440,13 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 	 */
 	if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED))
 		// Выполняем объявление отказа разбора
-		return this->fail(error_t::INVALID_SEGMENT);
+		return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
 	// Выполняем получение предела количества узлов документа
 	const uint32_t limit = ((this->_settings.maxNodes > 0) ? this->_settings.maxNodes : MAX_NODES);
 	// Если количество узлов документа превышает допустимое
 	if(++this->_nodes > limit)
 		// Выполняем объявление отказа разбора
-		return this->fail(error_t::TOO_MANY_NODES);
+		return this->fail(__PRETTY_FUNCTION__, error_t::TOO_MANY_NODES);
 	// Если стек вместимых не пуст
 	if(!this->_stack.empty()){
 		// Выполняем получение верхнего звена стека вместимых
@@ -493,7 +494,7 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 					// Если имена полей отображения идут не по возрастанию
 					if(compare >= 0)
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::UNORDERED_KEY);
+						return this->fail(__PRETTY_FUNCTION__, error_t::UNORDERED_KEY);
 				}
 				// Выполняем запоминание записи имени поля отображения
 				frame.key.swap(key);
@@ -554,7 +555,7 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 					// Выполняем возврат вместилища октетов к прежнему виду
 					this->_pool.resize(offset);
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_LENGTH);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				}
 				// Длина записи имени поля отображения
 				const size_t length = (this->_pool.size() - offset);
@@ -578,7 +579,7 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 					// Выполняем возврат вместилища октетов к прежнему виду
 					this->_pool.resize(offset);
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::DUPLICATE_KEY);
+					return this->fail(__PRETTY_FUNCTION__, error_t::DUPLICATE_KEY);
 				}
 				// Выполняем запоминание отрезка записи уложенного имени поля
 				this->_spans.emplace_back(static_cast <uint32_t> (offset), static_cast <uint32_t> (length), digest);
@@ -683,7 +684,7 @@ bool awh::codec::abc::Reader::unwind() noexcept {
 		 */
 		if((frame.beyond > 0) && (frame.beyond != (this->_origin + static_cast <uint64_t> (this->_offset))))
 			// Выполняем объявление отказа разбора
-			return this->fail(error_t::INVALID_LENGTH);
+			return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 		// Собираемое событие конца вместимого
 		record_t record;
 		// Выполняем установку вида события конца вместимого
@@ -792,7 +793,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 							// Выполняем сдвиг смещения разбора к негодной последовательности
 							this->_offset += position;
 							// Выполняем объявление отказа разбора
-							return this->fail(error_t::INVALID_ENCODING);
+							return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_ENCODING);
 						}
 						// Исправленное содержимое строки
 						vector <uint8_t> patched;
@@ -989,14 +990,14 @@ bool awh::codec::abc::Reader::process() noexcept {
 						// Сообщаем, что разбор успешен
 						return true;
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_DECIMAL);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
 				}
 				// Если десятичный порядок является целым без знака
 				if(unit.group == group_t::UNSIGNED){
 					// Если порядок видом целого со знаком не представим
 					if(unit.value > static_cast <uint64_t> (numeric_limits <int64_t>::max()))
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::INVALID_DECIMAL);
+						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
 					// Выполняем установку десятичного порядка величины
 					this->_exponent = static_cast <int64_t> (unit.value);
 				// Если десятичный порядок является целым со знаком
@@ -1004,9 +1005,9 @@ bool awh::codec::abc::Reader::process() noexcept {
 					// Если обратить запись дополнения до −1 не удалось
 					if(!abc::negative(unit.value, this->_exponent))
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::INVALID_DECIMAL);
+						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
 				// Если на месте десятичного порядка стоит иное
-				} else return this->fail(error_t::INVALID_DECIMAL);
+				} else return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_DECIMAL);
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем перевод разбора в ожидание длины октетов величины
@@ -1047,7 +1048,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				if(width > (numeric_limits <uint64_t>::max() - place))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_LENGTH);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				// Выполняем установку размаха вместимого, стоящего следом
 				this->_span = width;
 				/**
@@ -1083,7 +1084,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 						// Сообщаем, что разбор успешен
 						return true;
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_BIGNUM);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
 				}
 				/**
 				 * Если на месте длины октетов величины стоит иное
@@ -1096,7 +1097,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				if(unit.group != group_t::UNSIGNED)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_BIGNUM);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
 				/**
 				 * Если длина октетов величины превышает допустимую
 				 *
@@ -1107,7 +1108,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::BLOB_TOO_LONG);
+					return this->fail(__PRETTY_FUNCTION__, error_t::BLOB_TOO_LONG);
 				/**
 				 * Если объявленная длина октетов величины шире отрезка события
 				 *
@@ -1120,7 +1121,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_LENGTH);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку количества недостающих октетов
@@ -1141,11 +1142,11 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Если знак величины не опознан
 				if(sign > 1)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_BIGNUM);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
 				// Если величина объявлена отрицательным нулём
 				if((sign == 1) && (this->_pending == 0))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_BIGNUM);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
 				// Выполняем установку признака отрицательности величины
 				this->_negative = (sign == 1);
 				// Выполняем сдвиг смещения разбора
@@ -1172,7 +1173,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Если старший октет величины нулевой
 				if((this->_pending > 0) && (this->_buffer.at(this->_offset + static_cast <size_t> (this->_pending) - 1) == 0))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_BIGNUM);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_BIGNUM);
 				// Собираемое событие разбора
 				record_t record;
 				// Выполняем установку вида события числа
@@ -1231,12 +1232,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 						// Сообщаем, что разбор успешен
 						return true;
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_EXTENSION);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
 				}
 				// Если на месте номера подвида расширения стоит иное
 				if(unit.group != group_t::UNSIGNED)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_EXTENSION);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку номера подвида расширения
@@ -1267,16 +1268,16 @@ bool awh::codec::abc::Reader::process() noexcept {
 						// Сообщаем, что разбор успешен
 						return true;
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_EXTENSION);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
 				}
 				// Если на месте длины октетов расширения стоит иное
 				if(unit.group != group_t::UNSIGNED)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_EXTENSION);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_EXTENSION);
 				// Если длина октетов расширения превышает допустимую
 				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::BLOB_TOO_LONG);
+					return this->fail(__PRETTY_FUNCTION__, error_t::BLOB_TOO_LONG);
 				/**
 				 * Если объявленная длина октетов величины шире отрезка события
 				 *
@@ -1289,7 +1290,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_LENGTH);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку количества недостающих октетов
@@ -1351,7 +1352,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Если разбор потока документов не затребован
 				if(!this->_settings.stream)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::TRAILING_OCTETS);
+					return this->fail(__PRETTY_FUNCTION__, error_t::TRAILING_OCTETS);
 				/**
 				 * Выполняем сброс счёта узлов документа
 				 *
@@ -1402,7 +1403,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			return true;
 		}
 		// Выполняем объявление отказа разбора
-		return this->fail(error);
+		return this->fail(__PRETTY_FUNCTION__, error);
 	}
 	/**
 	 * Если вид записи строгий, снятая единица поверяется на единственность записи
@@ -1421,11 +1422,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		// Если единица объявлена неопределённой длины
 		if(unit.indefinite)
 			// Выполняем объявление отказа разбора
-			return this->fail(error_t::INDEFINITE_REFUSED);
+			return this->fail(__PRETTY_FUNCTION__, error_t::INDEFINITE_REFUSED);
 		// Если подробность метки шире наименьшей, вмещающей значение
 		if((unit.group != group_t::SINGLE) && (unit.group != group_t::EXTEND) && (unit.detail != abc::fit(unit.value)))
 			// Выполняем объявление отказа разбора
-			return this->fail(error_t::NON_MINIMAL_TAG);
+			return this->fail(__PRETTY_FUNCTION__, error_t::NON_MINIMAL_TAG);
 	}
 	/**
 	 * Если ведущие октеты единицы понадобятся сличению имён полей
@@ -1522,7 +1523,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Если запись дополнения до −1 видом целого со знаком не представима
 			if(!abc::negative(unit.value, value))
 				// Выполняем объявление отказа разбора
-				return this->fail(error_t::NUMBER_OUT_OF_RANGE);
+				return this->fail(__PRETTY_FUNCTION__, error_t::NUMBER_OUT_OF_RANGE);
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку вида события числа
@@ -1561,7 +1562,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					 */
 					if(frame.segment != type_t::UNDEFINED)
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::INVALID_SEGMENT);
+						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
 					/**
 					 * Если значение, собираемое кусками, стоит именем поля отображения:
 					 * имя обязано быть цельным, иначе строгий вид записи невозможен
@@ -1587,7 +1588,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					 */
 					if(frame.mapping && frame.expectKey)
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::INVALID_KEY);
+						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_KEY);
 				}
 				// Выполняем получение предела глубины вложенности
 				const uint32_t depth = (
@@ -1598,7 +1599,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				// Если глубина вложенности превышает допустимую
 				if(static_cast <uint32_t> (this->_stack.size() + 1) > depth)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::DEPTH_EXCEEDED);
+					return this->fail(__PRETTY_FUNCTION__, error_t::DEPTH_EXCEEDED);
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку вида события начала значения
@@ -1631,7 +1632,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 */
 			if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED) && (this->_stack.back().segment != segment))
 				// Выполняем объявление отказа разбора
-				return this->fail(error_t::INVALID_SEGMENT);
+				return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
 			// Выполняем получение предела длины значения
 			const uint64_t limit = (text ? this->_settings.maxString : this->_settings.maxBlob);
 			/**
@@ -1651,7 +1652,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Если длина значения превышает допустимую
 			if((limit > 0) && (length > limit))
 				// Выполняем объявление отказа разбора
-				return this->fail(text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG);
+				return this->fail(__PRETTY_FUNCTION__, text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG);
 			/**
 			 * Если объявленная длина значения шире отрезка события
 			 *
@@ -1673,7 +1674,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 */
 			if(unit.value > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
 				// Выполняем объявление отказа разбора
-				return this->fail(error_t::INVALID_LENGTH);
+				return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 			/**
 			 * Если кусок принадлежит значению неопределённой длины, выполняем учёт длины его
 			 */
@@ -1708,11 +1709,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				 */
 				if(frame.segment != type_t::UNDEFINED)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_SEGMENT);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_SEGMENT);
 				// Если вместимое стоит именем поля отображения
 				if(frame.mapping && frame.expectKey)
 					// Выполняем объявление отказа разбора
-					return this->fail(error_t::INVALID_KEY);
+					return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_KEY);
 			}
 			// Выполняем получение предела глубины вложенности
 			const uint32_t limit = (
@@ -1723,7 +1724,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Если глубина вложенности превышает допустимую
 			if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
 				// Выполняем объявление отказа разбора
-				return this->fail(error_t::DEPTH_EXCEEDED);
+				return this->fail(__PRETTY_FUNCTION__, error_t::DEPTH_EXCEEDED);
 			// Выполняем получение предела количества узлов документа
 			const uint32_t nodes = ((this->_settings.maxNodes > 0) ? this->_settings.maxNodes : MAX_NODES);
 			/**
@@ -1738,7 +1739,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 */
 			if(++this->_nodes > nodes)
 				// Выполняем объявление отказа разбора
-				return this->fail(error_t::TOO_MANY_NODES);
+				return this->fail(__PRETTY_FUNCTION__, error_t::TOO_MANY_NODES);
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку вида события начала вместимого
@@ -1899,7 +1900,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					// Если стек вместимых пуст
 					if(this->_stack.empty())
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::UNBALANCED_BREAK);
+						return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_BREAK);
 					// Выполняем получение верхнего звена стека вместимых
 					const frame_t & frame = this->_stack.back();
 					/**
@@ -1929,11 +1930,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					// Если длина вместимого объявлена
 					if(!frame.indefinite)
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::UNBALANCED_BREAK);
+						return this->fail(__PRETTY_FUNCTION__, error_t::UNBALANCED_BREAK);
 					// Если отображение оборвалось на имени поля
 					if(frame.mapping && !frame.expectKey)
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::MISSING_VALUE);
+						return this->fail(__PRETTY_FUNCTION__, error_t::MISSING_VALUE);
 					/**
 					 * Если объявленный размах с настоящим концом вместимого не сошёлся
 					 *
@@ -1951,7 +1952,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					 */
 					if((frame.beyond > 0) && (frame.beyond != (this->_origin + static_cast <uint64_t> (offset))))
 						// Выполняем объявление отказа разбора
-						return this->fail(error_t::INVALID_LENGTH);
+						return this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 					// Признак того, что закрываемое вместимое является отображением
 					const bool mapping = frame.mapping;
 					// Выполняем сдвиг смещения разбора
@@ -2017,7 +2018,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 *       снятия единицы, а не здесь
 			 *
 			 */
-			return this->fail(error_t::RESERVED_TAG);
+			return this->fail(__PRETTY_FUNCTION__, error_t::RESERVED_TAG);
 		}
 		/**
 		 * Если значение является расширением
@@ -2072,7 +2073,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 	 *       того же захода оказались достижимы и закреплены
 	 *
 	 */
-	return this->fail(error_t::UNKNOWN_TAG);
+	return this->fail(__PRETTY_FUNCTION__, error_t::UNKNOWN_TAG);
 }
 /**
  * @brief Метод усечения разобранной части буфера
@@ -2137,7 +2138,7 @@ bool awh::codec::abc::Reader::digest(const bool last) noexcept {
 		// Если разбор оборвался посреди значения
 		if(this->_state != phase_t::FINISHED)
 			// Выполняем объявление отказа разбора
-			return this->fail((this->_buffer.empty() && !this->_document) ?
+			return this->fail(__PRETTY_FUNCTION__, (this->_buffer.empty() && !this->_document) ?
 			 error_t::EMPTY_RECORD : error_t::UNEXPECTED_EOF);
 		// Собираемое событие окончания записи
 		record_t record;
@@ -2270,7 +2271,7 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 	 */
 	if((buffer == nullptr) && (size > 0))
 		// Выполняем объявление отказа разбора
-		return this->fail(error_t::INTERNAL);
+		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 	/**
 	 * Если неснятых событий накопилось свыше предела
 	 *
@@ -2471,7 +2472,7 @@ bool awh::codec::abc::Reader::commit(const size_t size, const bool last) noexcep
 	// Если принятых октетов больше, чем места было выдано
 	if(size > this->_reserved)
 		// Выполняем объявление отказа разбора
-		return this->fail(error_t::INTERNAL);
+		return this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 	/**
 	 * Выполняем возврат невостребованной части выданного места. Принято бывает меньше
 	 * запрошенного, и хвост выданного места содержимым записи не является вовсе

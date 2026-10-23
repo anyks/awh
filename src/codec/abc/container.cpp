@@ -56,12 +56,13 @@ namespace {
 	 *          доводом наружу. Воронка эта сводит выдачу кода и донесение о нём в одно
 	 *          место, как то сделано у работающих классов кодека
 	 *
-	 * @param error объявляемый код отказа
-	 * @param out   довод, куда следует уложить код отказа
-	 * @return      признак успешности, всегда ложь
+	 * @param method имя метода, объявившего отказ
+	 * @param error  объявляемый код отказа
+	 * @param out    довод, куда следует уложить код отказа
+	 * @return       признак успешности, всегда ложь
 	 *
 	 */
-	bool refuse(const codec::abc::error_t error, codec::abc::error_t & out) noexcept {
+	bool refuse([[maybe_unused]] const char * method, const codec::abc::error_t error, codec::abc::error_t & out) noexcept {
 		// Выполняем установку кода отказа поверки
 		out = error;
 		/**
@@ -71,7 +72,7 @@ namespace {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, codec::abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, codec::abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -94,11 +95,12 @@ awh::codec::abc::Assembler::Settings::Settings() noexcept :
 /**
  * @brief Метод объявления отказа сборки контейнера
  *
- * @param error объявляемый код отказа
- * @return      признак успешности, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  объявляемый код отказа
+ * @return       признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Assembler::fail(const error_t error) noexcept {
+bool awh::codec::abc::Assembler::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
 	/**
@@ -115,7 +117,7 @@ bool awh::codec::abc::Assembler::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -250,7 +252,7 @@ bool awh::codec::abc::Assembler::append(const void * buffer, const size_t size, 
 	 */
 	if((buffer == nullptr) || (size == 0)){
 		// Выполняем установку кода отказа внесения записи
-		this->fail(error_t::EMPTY_RECORD);
+		this->fail(__PRETTY_FUNCTION__, error_t::EMPTY_RECORD);
 		// Выводим признак неудачного внесения записи
 		return false;
 	}
@@ -267,7 +269,7 @@ bool awh::codec::abc::Assembler::append(const void * buffer, const size_t size, 
 	 */
 	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Выполняем установку кода отказа длины записи
-		this->fail(error_t::INVALID_LENGTH);
+		this->fail(__PRETTY_FUNCTION__, error_t::INVALID_LENGTH);
 		// Выводим признак неудачного внесения записи
 		return false;
 	}
@@ -414,7 +416,7 @@ bool awh::codec::abc::Assembler::flush() noexcept {
 		 */
 		if(!this->_merkle.add(chunk.data(), chunk.size())){
 			// Выполняем установку кода отказа выработки свёртки
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной укладки
 			return false;
 		}
@@ -526,7 +528,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 */
 		if(!(tail.empty() ? this->_merkle.root(sign.root) : this->_merkle.root(sign.root, tail.data(), tail.size()))){
 			// Выполняем установку кода отказа выработки свёртки
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной сборки контейнера
 			return false;
 		}
@@ -548,7 +550,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
 		   sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа выработки подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной сборки контейнера
 			return false;
 		}
@@ -563,7 +565,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 */
 		if(!abc::pack(sign, signature)){
 			// Выполняем установку кода отказа выработки подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Выводим признак неудачной сборки контейнера
 			return false;
 		}
@@ -574,7 +576,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 */
 		if(!abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation))){
 			// Выполняем установку кода отказа подписи
-			this->fail(error_t::SIGNING_FAILED);
+			this->fail(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED);
 			// Сообщаем, что завершение сборки отвечено отказом
 			return false;
 		}
@@ -749,11 +751,12 @@ awh::codec::abc::Assembler::Assembler() noexcept :
 /**
  * @brief Метод объявления отказа снятия контейнера
  *
- * @param error объявляемый код отказа
- * @return      признак успешности, всегда ложь
+ * @param method имя метода, объявившего отказ
+ * @param error  объявляемый код отказа
+ * @return       признак успешности, всегда ложь
  *
  */
-bool awh::codec::abc::Loader::fail(const error_t error) noexcept {
+bool awh::codec::abc::Loader::fail([[maybe_unused]] const char * method, const error_t error) noexcept {
 	// Выполняем установку кода отказа
 	this->_error = error;
 	/**
@@ -770,7 +773,7 @@ bool awh::codec::abc::Loader::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", method, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -827,7 +830,7 @@ bool awh::codec::abc::Loader::feed(const void * buffer, const size_t size) noexc
 	 */
 	if((buffer == nullptr) && (size > 0)){
 		// Выполняем установку кода отказа подачи октетов
-		this->fail(error_t::INTERNAL);
+		this->fail(__PRETTY_FUNCTION__, error_t::INTERNAL);
 		// Выводим признак неудачной подачи октетов
 		return false;
 	}
@@ -860,7 +863,7 @@ bool awh::codec::abc::Loader::next(vector <uint8_t> & result, chunk_t & chunk) n
 		 */
 		if((this->_buffer.size() - this->_offset) < HEADER_LENGTH){
 			// Выполняем установку кода отказа снятия заголовка
-			this->fail(error_t::TRUNCATED_HEADER);
+			this->fail(__PRETTY_FUNCTION__, error_t::TRUNCATED_HEADER);
 			// Выводим признак того, что кадр не выдан
 			return false;
 		}
@@ -875,7 +878,7 @@ bool awh::codec::abc::Loader::next(vector <uint8_t> & result, chunk_t & chunk) n
 			 */
 			if(!this->_header.unpack(this->_buffer.data() + this->_offset, HEADER_LENGTH, error))
 				// Выводим признак того, что кадр не выдан
-				return this->fail(error);
+				return this->fail(__PRETTY_FUNCTION__, error);
 		}
 		// Выполняем сдвиг смещения разбора на длину заголовка опознания
 		this->_offset += HEADER_LENGTH;
@@ -913,7 +916,7 @@ bool awh::codec::abc::Loader::next(vector <uint8_t> & result, chunk_t & chunk) n
 		 */
 		if((this->_origin + static_cast <uint64_t> (offset)) > (HEADER_LENGTH + this->_header.length)){
 			// Выполняем установку кода отказа опознания кадра
-			this->fail(error_t::INVALID_CHUNK);
+			this->fail(__PRETTY_FUNCTION__, error_t::INVALID_CHUNK);
 			// Выполняем очистку содержимого снятого кадра
 			result.clear();
 			// Выводим признак того, что кадр не выдан
@@ -1054,7 +1057,7 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 	 */
 	if((buffer == nullptr) || (size == 0))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::INTERNAL, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::INTERNAL, error);
 	// Заголовок опознания поверяемого контейнера
 	header_t header;
 	// Выполняем получение указателя на поданные октеты контейнера
@@ -1064,19 +1067,19 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 	 */
 	if(!header.unpack(octets, size, error))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error, error);
+		return ::refuse(__PRETTY_FUNCTION__, error, error);
 	/**
 	 * Если подпись владельца контейнером не объявлена
 	 */
 	if(!header.is(flag_t::SIGNED) || (header.signature == 0))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::UNSIGNED_CONTAINER, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::UNSIGNED_CONTAINER, error);
 	/**
 	 * Если объявленное смещение подписи лежит за поданными октетами
 	 */
 	if(header.signature >= static_cast <uint64_t> (size))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::TRUNCATED_SIGNATURE, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::TRUNCATED_SIGNATURE, error);
 	// Дерево свёрток по кадрам поверяемого контейнера
 	merkle_t merkle;
 	// Выполняем установку модуля шифрования дереву свёрток
@@ -1093,7 +1096,7 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 		 */
 		if((offset + CHUNK_HEADER) > header.signature)
 			// Выводим признак несошедшейся подписи
-			return ::refuse(error_t::TRUNCATED_CHUNK, error);
+			return ::refuse(__PRETTY_FUNCTION__, error_t::TRUNCATED_CHUNK, error);
 		// Собираемая длина уложенного содержимого кадра
 		uint64_t length = 0;
 		/**
@@ -1107,13 +1110,13 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 		 */
 		if((offset + CHUNK_HEADER + length) > header.signature)
 			// Выводим признак несошедшейся подписи
-			return ::refuse(error_t::TRUNCATED_CHUNK, error);
+			return ::refuse(__PRETTY_FUNCTION__, error_t::TRUNCATED_CHUNK, error);
 		/**
 		 * Если внести кадр свёрткой в дерево не вышло
 		 */
 		if(!merkle.add(octets + offset, static_cast <size_t> (CHUNK_HEADER + length)))
 			// Выводим признак несошедшейся подписи
-			return ::refuse(error_t::SIGNING_FAILED, error);
+			return ::refuse(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED, error);
 		// Выполняем сдвиг смещения разбора на длину кадра
 		offset += (CHUNK_HEADER + length);
 	}
@@ -1126,14 +1129,14 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 	 */
 	if((header.signature + CHUNK_HEADER) > static_cast <uint64_t> (size))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::TRUNCATED_SIGNATURE, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::TRUNCATED_SIGNATURE, error);
 	/**
 	 * Выполняем снятие записи подписи из кадра-обёртки: смещение подписи указывает на
 	 * заголовок кадра, а сама запись лежит за ним
 	 */
 	if(!abc::unpack(octets + header.signature + CHUNK_HEADER, size - static_cast <size_t> (header.signature + CHUNK_HEADER), sign, error))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error, error);
+		return ::refuse(__PRETTY_FUNCTION__, error, error);
 	// Корень дерева свёрток поверяемого контейнера
 	vector <uint8_t> root;
 	/**
@@ -1141,19 +1144,19 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name, const
 	 */
 	if(!merkle.root(root))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::SIGNING_FAILED, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::SIGNING_FAILED, error);
 	/**
 	 * Если корень дерева разошёлся с подписанным, содержимое контейнера правлено
 	 */
 	if(root != sign.root)
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::REFUSED_SIGNATURE, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::REFUSED_SIGNATURE, error);
 	/**
 	 * Если подпись корня дерева не сошлась, корень подписан не тем ключом
 	 */
 	if(!crypto.verify(name, sign.root.data(), sign.root.size(), sign.signature, sign.hash))
 		// Выводим признак несошедшейся подписи
-		return ::refuse(error_t::REFUSED_SIGNATURE, error);
+		return ::refuse(__PRETTY_FUNCTION__, error_t::REFUSED_SIGNATURE, error);
 	// Выводим признак сошедшейся подписи владельца контейнера
 	return true;
 }
