@@ -4677,7 +4677,7 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим сообщение о пустой записи при непустом дереве
-			log::debug("The tree of meanings does not carry anything, records of expressible", __PRETTY_FUNCTION__, {result, static_cast <uint16_t> (format)}, log::flag_t::WARNING);
+			log::debug("The tree of meanings does not carry anything, records of expressible", __PRETTY_FUNCTION__, {ok}, log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4797,7 +4797,7 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим сообщение о неведомом виде записи
-				log::debug("Codec like %u is not yet translated by the bridge", __PRETTY_FUNCTION__, {result, static_cast <uint16_t> (format)}, log::flag_t::WARNING, static_cast <uint16_t> (format));
+				log::debug("Codec like %u is not yet translated by the bridge", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (format)}, log::flag_t::WARNING, static_cast <uint16_t> (format));
 			/**
 			 * Если режим отладки не включён
 			 */
