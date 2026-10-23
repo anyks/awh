@@ -1188,7 +1188,7 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим в лог сообщение об отказе разбора набора запуска
-			log::debug("Args: %s at argument %zu", __PRETTY_FUNCTION__, {items.size()}, log::flag_t::WARNING, args::message(error), location.index);
+			log::debug("Args: %s at argument %zu", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error), location.index}, log::flag_t::WARNING, args::message(error), location.index);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1252,7 +1252,7 @@ bool awh::args::Args::text(const string_view text) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим в лог сообщение об отказе разбора текстового потока
-			log::debug("Args: %s at word %zu", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING, args::message(error), location.index);
+			log::debug("Args: %s at word %zu", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error), location.index}, log::flag_t::WARNING, args::message(error), location.index);
 		/**
 		 * Если режим отладки не включён
 		 */
