@@ -754,9 +754,11 @@ bool awh::codec::Bridge::native(const abc::value_t & value) const noexcept {
 	 *
 	 */
 	return (
+		value.is(abc::type_t::INT) ||
+		value.is(abc::type_t::REAL) ||
 		value.is(abc::type_t::BOOL) ||
-		value.is(abc::type_t::STRING) || value.is(abc::type_t::TIME) ||
-		value.is(abc::type_t::INT) || value.is(abc::type_t::REAL) ||
+		value.is(abc::type_t::TIME) ||
+		value.is(abc::type_t::STRING) ||
 		value.is(abc::type_t::CONTAINER)
 	);
 }
@@ -792,8 +794,19 @@ bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) 
 	if(!value.dump(buffer, error)){
 		// Запоминаем код отказа перевода
 		this->_error = ((error == abc::error_t::DEPTH_EXCEEDED) ? error_t::DEEP_TREE : error_t::WRITING);
-		// Выводим сообщение об отказе сборки записи контейнера
-		log::print("Запись контейнера ABC собрать не удалось: код отказа %u", log::flag_t::WARNING, static_cast <uint16_t> (error));
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об отказе сборки записи контейнера
+			log::debug("ABC container record could not be collected: failure code %u", __PRETTY_FUNCTION__, {result}, log::flag_t::WARNING, static_cast <uint16_t> (error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об отказе сборки записи контейнера
+			log::print("ABC container record could not be collected: failure code %u", log::flag_t::WARNING, static_cast <uint16_t> (error));
+		#endif
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -815,8 +828,19 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 	if(text.empty()){
 		// Запоминаем код отказа перевода
 		this->_error = error_t::PARSING;
-		// Выводим сообщение о пустой записи контейнера
-		log::print("Запись контейнера ABC подана пустою", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение о пустой записи контейнера
+			log::debug("ABC container record served empty", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение о пустой записи контейнера
+			log::print("ABC container record served empty", log::flag_t::WARNING);
+		#endif
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -838,8 +862,19 @@ bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result
 		result.clear();
 		// Запоминаем код отказа перевода
 		this->_error = ((document.error() == abc::error_t::DEPTH_EXCEEDED) ? error_t::DEEP_TREE : error_t::PARSING);
-		// Выводим сообщение об отказе разбора записи контейнера
-		log::print("Запись контейнера ABC разобрать не удалось", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение об отказе разбора записи контейнера
+			log::debug("ABC container record could not be parsed", __PRETTY_FUNCTION__, {text}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об отказе разбора записи контейнера
+			log::print("ABC container record could not be parsed", log::flag_t::WARNING);
+		#endif
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -1635,7 +1670,7 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 	 *   * мост кладёт поля ПО ИМЕНИ, а `set()` берёт ПУТЬ. Имя ложится дословно
 	 *     ходом `insert()`, тогда как у пути косая черта и тильда суть знаки
 	 *     разделяющие: поле, названное `а/б`, ушло бы путём в два уровня. Довод
-	 *     этот тот же, что стоит у самой укладки имени полем отображения
+	 *     этот тот же, что стоит у самой укладки имени полем отображения;
 	 *
 	 * @warning Прежде здесь стоял довод иной: будто договор `set()` требует части
 	 *          пути, кроме последней, налицо, и вместилищ по пути не заводит.
@@ -2008,8 +2043,19 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	if(!value.is(abc::type_t::MAP)){
 		// Запоминаем код отказа перевода
 		this->_error = error_t::STRUCTURE;
-		// Выводим сообщение о негодном строении дерева
-		log::print("Запись TOML требует отображения корнем дерева", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение о негодном строении дерева
+			log::debug("TOML entry requires tree root mapping", __PRETTY_FUNCTION__, {result}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение о негодном строении дерева
+			log::print("TOML entry requires tree root mapping", log::flag_t::WARNING);
+		#endif
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -2043,7 +2089,7 @@ bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result)
 	/**
 	 * Создаём параметры настроек документа
 	 */
-	toml::document_t::settings_t settings = document.settings();
+	toml::document_t::settings_t settings;
 	/**
 	 * Выполняем изъятие собранной записи TOML видом оформления, настройкою заданным
 	 *
@@ -3098,8 +3144,19 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
 		if(this->_settings.narrow == narrow_t::STRICT){
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
-			// Выводим сообщение о виде, записи XML неведомом
-			log::print("Вид значения записью XML не выражается", log::flag_t::WARNING);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение о виде, записи XML неведомом
+				log::debug("The type of value is not expressed by the XML record", __PRETTY_FUNCTION__, {result}, log::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение о виде, записи XML неведомом
+				log::print("The type of value is not expressed by the XML record", log::flag_t::WARNING);
+			#endif
 			// Выходим из метода, сборка отвечена отказом
 			return false;
 		}
@@ -3132,8 +3189,19 @@ bool awh::codec::Bridge::carryable(const abc::value_t & value, string & result) 
 		}
 		// Запоминаем код отказа перевода
 		this->_error = error_t::UNSUPPORTED;
-		// Выводим сообщение о значении, разметке невыразимом
-		log::print("Значение записью XML не выражается: знак разметке негоден", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение о значении, разметке невыразимом
+			log::debug("The value is not expressed by the XML record: the markup sign is invalid", __PRETTY_FUNCTION__, {result}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение о значении, разметке невыразимом
+			log::print("The value is not expressed by the XML record: the markup sign is invalid", log::flag_t::WARNING);
+		#endif
 		// Выводим результат сборки, запись невозможна
 		return false;
 	}
@@ -3172,8 +3240,19 @@ bool awh::codec::Bridge::narrowed(const string & name) noexcept {
 	}
 	// Запоминаем код отказа перевода
 	this->_error = error_t::UNSUPPORTED;
-	// Выводим сообщение о значении, записи INI невыразимом
-	log::print("Имя «%s» записью INI не выражается", log::flag_t::WARNING, name.c_str());
+	/**
+	 * Если включён режим отладки
+	 */
+	#if defined(DEBUG_MODE)
+		// Выводим сообщение о значении, записи INI невыразимом
+		log::debug("The name «%s» is not represented by an INI entry", __PRETTY_FUNCTION__, {name}, log::flag_t::WARNING, name.c_str());
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Выводим сообщение о значении, записи INI невыразимом
+		log::print("The name «%s» is not represented by an INI entry", log::flag_t::WARNING, name.c_str());
+	#endif
 	// Выводим результат разбора, запись невозможна
 	return false;
 }
@@ -3309,8 +3388,19 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 				if(this->_settings.narrow == narrow_t::STRICT){
 					// Запоминаем код отказа перевода
 					this->_error = error_t::UNSUPPORTED;
-					// Выводим сообщение о виде, записи INI неведомом
-					log::print("Вид звена перечня «%s» записью INI не выражается", log::flag_t::WARNING, name.c_str());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о виде, записи INI неведомом
+						log::debug("The type of list item «%s» is not expressed by the INI entry", __PRETTY_FUNCTION__, {name, section, depth}, log::flag_t::WARNING, name.c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение о виде, записи INI неведомом
+						log::print("The type of list item «%s» is not expressed by the INI entry", log::flag_t::WARNING, name.c_str());
+					#endif
 					// Выходим из метода, перевод отвечен отказом
 					return false;
 				}
@@ -3353,8 +3443,19 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 		if(this->_settings.narrow == narrow_t::STRICT){
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
-			// Выводим сообщение о виде, записи INI неведомом
-			log::print("Вид значения «%s» записью INI не выражается", log::flag_t::WARNING, name.c_str());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение о виде, записи INI неведомом
+				log::debug("The type of value «%s» is not expressed by the INI entry", __PRETTY_FUNCTION__, {name, section, depth}, log::flag_t::WARNING, name.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение о виде, записи INI неведомом
+				log::print("The type of value «%s» is not expressed by the INI entry", log::flag_t::WARNING, name.c_str());
+			#endif
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
@@ -3386,8 +3487,19 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	if(!value.is(abc::type_t::MAP)){
 		// Запоминаем код отказа перевода
 		this->_error = error_t::STRUCTURE;
-		// Выводим сообщение о негодном строении дерева
-		log::print("Запись INI требует отображения корнем дерева", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение о негодном строении дерева
+			log::debug("The INI entry requires mapping to the root of the tree", __PRETTY_FUNCTION__, {result}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение о негодном строении дерева
+			log::print("The INI entry requires mapping to the root of the tree", log::flag_t::WARNING);
+		#endif
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -3514,7 +3626,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 	/**
 	 * Создаём параметры настроек документа
 	 */
-	ini::document_t::settings_t settings = document.settings();
+	ini::document_t::settings_t settings;
 	/**
 	 * Выполняем изъятие собранной записи INI отменяющими записями
 	 *
@@ -4469,8 +4581,10 @@ bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result
 	ini::document_t::settings_t settings;
 	// Устанавливаем признак разбора отменяющих записей
 	settings.reader.escapes = true;
+	// Выполняем установку настроек дерева настроек
+	document.settings(settings);
 	// Выполняем разбор поданной записи INI
-	if(!document.parse(string(text), settings)){
+	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
 		this->_error = error_t::PARSING;
 		// Выходим из метода, перевод отвечен отказом
@@ -4558,8 +4672,19 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		 *
 		 */
 		this->_error = error_t::UNSUPPORTED;
-		// Выводим сообщение о пустой записи при непустом дереве
-		log::print("Дерево значений не несёт ничего, записи выразимого", log::flag_t::WARNING);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим сообщение о пустой записи при непустом дереве
+			log::debug("The tree of meanings does not carry anything, records of expressible", __PRETTY_FUNCTION__, {result, static_cast <uint16_t> (format)}, log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение о пустой записи при непустом дереве
+			log::print("The tree of meanings does not carry anything, records of expressible", log::flag_t::WARNING);
+		#endif
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	};
@@ -4595,8 +4720,19 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		default: {
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
-			// Выводим сообщение о неведомом виде записи
-			log::print("Кодек вида %u мостом ещё не переводится", log::flag_t::WARNING, static_cast <uint16_t> (format));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение о неведомом виде записи
+				log::debug("Codec like %u is not yet translated by the bridge", __PRETTY_FUNCTION__, {result, static_cast <uint16_t> (format)}, log::flag_t::WARNING, static_cast <uint16_t> (format));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение о неведомом виде записи
+				log::print("Codec like %u is not yet translated by the bridge", log::flag_t::WARNING, static_cast <uint16_t> (format));
+			#endif
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
@@ -4656,8 +4792,19 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 		default: {
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
-			// Выводим сообщение о неведомом виде записи
-			log::print("Кодек вида %u мостом ещё не переводится", log::flag_t::WARNING, static_cast <uint16_t> (format));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение о неведомом виде записи
+				log::debug("Codec like %u is not yet translated by the bridge", __PRETTY_FUNCTION__, {result, static_cast <uint16_t> (format)}, log::flag_t::WARNING, static_cast <uint16_t> (format));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение о неведомом виде записи
+				log::print("Codec like %u is not yet translated by the bridge", log::flag_t::WARNING, static_cast <uint16_t> (format));
+			#endif
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
