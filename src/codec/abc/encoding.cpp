@@ -691,8 +691,11 @@ void awh::codec::abc::repair(const uint8_t * buffer, const size_t size, vector <
 		offset += (taken + 1);
 	}
 }
+
 /**
  * @brief Конструктор
  *
  */
-awh::codec::abc::Item::Item() noexcept : group(group_t::UNSIGNED), detail(0), value(0), indefinite(false) {}
+awh::codec::abc::Item::Item() noexcept :
+ group(group_t::UNSIGNED), detail(0),
+ value(0), indefinite(false) {}

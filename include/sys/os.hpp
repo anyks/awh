@@ -716,8 +716,9 @@ namespace awh {
 				NETBSD  = 0x06, // Операционная система NetBSD
 				OPENBSD = 0x07, // Операционная система OpenBSD
 				FREEBSD = 0x08, // Операционная система FreeBSD
-				SOLARIS = 0x09, // Операционная система Sun Solaris
-				ILLUMOS = 0x0A  // Операционная система (OpenIndiana, SmartOS, OmniOS)
+				DFLYBSD = 0x09, // Операционная система DragonFly BSD
+				SOLARIS = 0x0A, // Операционная система Sun Solaris
+				ILLUMOS = 0x0B  // Операционная система (OpenIndiana, SmartOS, OmniOS)
 			};
 		public:
 			/**

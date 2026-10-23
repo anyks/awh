@@ -566,7 +566,6 @@ uint8_t awh::codec::abc::fit(const uint64_t value) noexcept {
 	// Выводим подробность записи шириною в восемь октетов
 	return static_cast <uint8_t> (INLINE_LIMIT + 4);
 }
-
 /**
  * @brief Функция выдачи очередного звена пути
  *
@@ -718,7 +717,6 @@ bool awh::codec::abc::segment(const string_view path, size_t & offset, string_vi
 	// Сообщаем, что звено пути выдано
 	return true;
 }
-
 /**
  * @brief Метод разбора звена пути на номер значения
  *
@@ -781,20 +779,6 @@ bool awh::codec::abc::indexed(const string_view segment, size_t & result) noexce
 	// Сообщаем, что звено является номером
 	return true;
 }
-/**
- * @brief Конструктор
- *
- */
-awh::codec::abc::Span::Span() noexcept : offset(0), length(0) {}
-
-/**
- * @brief Конструктор
- *
- * @param offset смещение начала отрезка в хранилище октетов
- * @param length длина отрезка в октетах
- *
- */
-awh::codec::abc::Span::Span(const uint32_t offset, const uint32_t length) noexcept : offset(offset), length(length) {}
 
 /**
  * @brief Конструктор
@@ -815,4 +799,4 @@ awh::codec::abc::Piece::Piece(const void * buffer, const size_t size) noexcept :
  * @brief Конструктор
  *
  */
-awh::codec::abc::Location::Location() noexcept : depth(0), offset(NO_OFFSET) {}
+awh::codec::abc::Location::Location() noexcept : depth(0) {}

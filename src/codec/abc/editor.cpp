@@ -210,10 +210,10 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
-	// Смещение снятия кадра
-	size_t offset = 0;
 	// Сведения о снятом кадре
 	chunk_t chunk;
+	// Смещение снятия кадра
+	size_t offset = 0;
 	/**
 	 * Если снять кадр не вышло
 	 */
@@ -223,10 +223,10 @@ bool awh::codec::abc::Editor::fetch(const uint64_t origin) noexcept {
 		// Выводим признак неудачного снятия кадра
 		return false;
 	}
-	// Выполняем установку смещения удерживаемого кадра
-	this->_origin = origin;
 	// Выполняем установку признака удержания снятого кадра
 	this->_cached = true;
+	// Выполняем установку смещения удерживаемого кадра
+	this->_origin = origin;
 	// Выводим признак успешно снятого кадра
 	return true;
 }
@@ -329,7 +329,7 @@ bool awh::codec::abc::Editor::pack() noexcept {
 	 * Если уложить накопленные записи кадром не вышло
 	 */
 	if(!this->_packer.pack(this->_pending.data(), this->_pending.size(), this->_kind,
-	   this->_number, static_cast <uint32_t> (this->_header.generation + 1), chunk)){
+	    this->_number, static_cast <uint32_t> (this->_header.generation + 1), chunk)){
 		// Выполняем установку кода отказа укладки кадра
 		this->_error = this->_packer.error();
 		/**
@@ -572,12 +572,12 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
 		// Выводим признак неудачно объявленной подписи
 		return false;
 	}
-	// Выполняем установку модуля шифрования для подписи контейнера
-	this->_signer = crypto;
 	// Выполняем установку имени ключа владельца контейнера
 	this->_name = name;
 	// Выполняем установку желаемого вида хэш-суммы подписи
 	this->_hash = hash;
+	// Выполняем установку модуля шифрования для подписи контейнера
+	this->_signer = crypto;
 	// Выполняем установку модуля шифрования дереву свёрток
 	this->_merkle.crypto(crypto);
 	/**
@@ -612,14 +612,14 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
 	 *
 	 */
 	if(!this->harvest()){
-		// Выполняем снятие модуля шифрования для подписи контейнера
-		this->_signer = nullptr;
 		// Выполняем очистку имени ключа владельца контейнера
 		this->_name.clear();
-		// Выполняем снятие модуля шифрования у дерева свёрток
-		this->_merkle.crypto(nullptr);
 		// Выполняем очистку дерева свёрток
 		this->_merkle.clear();
+		// Выполняем снятие модуля шифрования для подписи контейнера
+		this->_signer = nullptr;
+		// Выполняем снятие модуля шифрования у дерева свёрток
+		this->_merkle.crypto(nullptr);
 		// Выводим признак неудачно объявленной подписи
 		return false;
 	}
@@ -861,10 +861,10 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 				// Выполняем учёт октетов снесённой записи
 				this->_garbage += static_cast <uint64_t> (entry.length);
 		}
-		// Предел тела контейнера
-		const uint64_t bound = (static_cast <uint64_t> (HEADER_LENGTH) + this->_header.length);
 		// Смещение очередного кадра тела контейнера
 		uint64_t place = static_cast <uint64_t> (HEADER_LENGTH);
+		// Предел тела контейнера
+		const uint64_t bound = (static_cast <uint64_t> (HEADER_LENGTH) + this->_header.length);
 		/**
 		 * Выполняем обход заголовков кадров тела контейнера
 		 */
@@ -908,13 +908,13 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 			place += whole;
 		}
 	}
+	// Выполняем установку признака открытого контейнера
+	this->_opened = true;
 	/**
 	 * Выполняем установку порядкового номера следующего кадра счётом записей:
 	 * номер этот лишь бы рос, а сквозным счётом кадров он не ведётся
 	 */
 	this->_number = this->_header.records;
-	// Выполняем установку признака открытого контейнера
-	this->_opened = true;
 	// Выводим признак успешно открытого контейнера
 	return true;
 }
@@ -941,8 +941,7 @@ bool awh::codec::abc::Editor::append(const void * buffer, const size_t size, con
  * @return       признак успешности правки
  *
  */
-bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer,
- const size_t size, const payload_t kind) noexcept {
+bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer, const size_t size, const payload_t kind) noexcept {
 	// Выполняем сброс кода отказа правки контейнера
 	this->_error = error_t::NONE;
 	/**
@@ -957,7 +956,7 @@ bool awh::codec::abc::Editor::replace(const uint64_t number, const void * buffer
 	 *
 	 */
 	if(this->_opened && (number >= static_cast <uint64_t> (this->_index.size())) &&
-	 (number < this->records()) && !this->commit())
+	  (number < this->records()) && !this->commit())
 		// Выводим признак неудачной правки записи
 		return false;
 	// Проверяем, открыт ли контейнер и входит ли номер в перечень записей
@@ -992,8 +991,7 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 *          накопленное сперва ложится кадром, а сносится уже обычным путём
 	 *
 	 */
-	if(this->_opened && (number >= static_cast <uint64_t> (this->_index.size())) &&
-	 (number < this->records()) && !this->commit())
+	if(this->_opened && (number >= static_cast <uint64_t> (this->_index.size())) && (number < this->records()) && !this->commit())
 		// Выводим признак неудачного сноса записи
 		return false;
 	/**
@@ -1012,7 +1010,7 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 *          выдача записи ищет накопленное ПЕРВЫМ. Оттого накопленная правка побеждала снос
 	 *          независимо от порядка: «правка, а следом снос» отдавала правленую запись и до
 	 *          фиксации, и после неё. Ныне снос снимает накопленное той же записи, и побеждает
-	 *          действие ПОСЛЕДНЕЕ - как и в обратном порядке, где правка воскрешает снесённое
+	 *          действие ПОСЛЕДНЕЕ - как и в обратном порядке, где правка воскрешает снесённое.
 	 *
 	 * @note Снятие звена номеров не сдвигает: номер сдвигают лишь правки ВНОСЯЩИЕ, а
 	 *       вносимую запись ни снести, ни править нельзя - обе работы отвергают номер сверх
@@ -1065,6 +1063,8 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 		// Выводим признак неудачного сноса записи
 		return false;
 	}
+	// Выполняем объявление наличия незакреплённых правок
+	this->_dirty = true;
 	/**
 	 * Выполняем увеличение количества октетов, обращённых в мусор
 	 *
@@ -1072,8 +1072,7 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 *          фиксацией. Договор работы `garbage()` гласит «мусора НА НОСИТЕЛЕ», а снос
 	 *          копится в памяти и носителя до фиксации не трогает: сосчитанный сразу, он
 	 *          обещал бы уборке мусор, какого на носителе ещё нет. Замер 02.09.2026 до
-	 *          правки: после `erase` и ДО фиксации счёт показывал 13 при нетронутом
-	 *          носителе
+	 *          правки: после `erase` и ДО фиксации счёт показывал 13 при нетронутом носителе.
 	 *
 	 * @note Учёт стоит ПОСЛЕ правки строки оглавления, а не до неё: отказ правки оставлял
 	 *       бы мусор сосчитанным, а запись НЕ снесённой. Отказ через открытый API
@@ -1086,8 +1085,6 @@ bool awh::codec::abc::Editor::erase(const uint64_t number) noexcept {
 	 *
 	 */
 	this->_erasing += static_cast <uint64_t> (entry.length);
-	// Выполняем объявление наличия незакреплённых правок
-	this->_dirty = true;
 	// Выводим признак успешного сноса записи
 	return true;
 }
@@ -1167,7 +1164,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 			 * @details Кадр этот УЛОЖЕН нами же, и порче взяться неоткуда - зато оснастка
 			 *          правщику не принадлежит: сжатие и шифрование отдаёт зовущий, и отдать
 			 *          он волен когда угодно, в том числе ПОСЛЕ укладки. Тогда кадр, уложенный
-			 *          сжимающим правщиком, снимает правщик, сжатия уже не знающий
+			 *          сжимающим правщиком, снимает правщик, сжатия уже не знающий.
 			 *
 			 * @note Причина здесь не заводится своя, а ПЕРЕНОСИТСЯ от укладчика: слою выше
 			 *       знать нечего о разжимателе. Закреплено проверкою
@@ -1203,8 +1200,7 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 				return false;
 			}
 			// Выполняем выборку записи из содержимого снятого кадра
-			result.assign(payload.begin() + static_cast <ptrdiff_t> (mark.entry.offset),
-			 payload.begin() + static_cast <ptrdiff_t> (mark.entry.offset + mark.entry.length));
+			result.assign(payload.begin() + static_cast <ptrdiff_t> (mark.entry.offset), payload.begin() + static_cast <ptrdiff_t> (mark.entry.offset + mark.entry.length));
 			// Выводим признак успешно выбранной записи
 			return true;
 		}
@@ -1461,6 +1457,8 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		// Выводим признак неудачи
 		return false;
 	}
+	// Кадр прежней записи подписи, вносимый в дерево свёрток
+	vector <uint8_t> stale;
 	/**
 	 * Выполняем увеличение количества октетов, обращённых в мусор
 	 *
@@ -1478,8 +1476,6 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	 * наново, а прежнее оглавление остаётся мусором внутри тела
 	 */
 	offset = (this->_header.index + CHUNK_HEADER + packed);
-	// Кадр прежней записи подписи, вносимый в дерево свёрток
-	vector <uint8_t> stale;
 	// Проверяем, задевает ли правка подпись прежней записи
 	if(this->_header.is(flag_t::SIGNED) && (this->_header.signature >= offset)){
 		// Буфер вычитанного заголовка кадра прежней записи подписи
@@ -1487,8 +1483,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		/**
 		 * Если вычитать заголовок кадра прежней записи подписи не вышло
 		 */
-		if(!this->_source(this->_header.signature, CHUNK_HEADER, record) ||
-		 (record.size() < CHUNK_HEADER)){
+		if(!this->_source(this->_header.signature, CHUNK_HEADER, record) || (record.size() < CHUNK_HEADER)){
 			// Выполняем установку кода отказа чтения октетов контейнера
 			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
@@ -1501,8 +1496,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		/**
 		 * Если вычитать кадр прежней записи подписи целиком не вышло
 		 */
-		if(!this->_source(this->_header.signature, static_cast <size_t> (CHUNK_HEADER + width), stale) ||
-		   (stale.size() < static_cast <size_t> (CHUNK_HEADER + width))){
+		if(!this->_source(this->_header.signature, static_cast <size_t> (CHUNK_HEADER + width), stale) || (stale.size() < static_cast <size_t> (CHUNK_HEADER + width))){
 			// Выполняем установку кода отказа чтения октетов контейнера
 			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
@@ -1539,7 +1533,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если вычитать кадр прежнего оглавления целиком не вышло
 		 */
 		if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), waste) ||
-		   (waste.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
+		  (waste.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
 			// Выполняем установку кода отказа чтения октетов контейнера
 			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выполняем откат состояния, правимого фиксацией
@@ -1656,12 +1650,12 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		// Выполняем сдвиг смещения записи на длину записанного кадра
 		offset += static_cast <uint64_t> (this->_batches.at(i).size());
 	}
+	// Буфер уложенного кадра оглавления контейнера
+	vector <uint8_t> tail;
 	// Буфер уложенного оглавления контейнера
 	vector <uint8_t> entries;
 	// Выполняем укладку оглавления контейнера в октеты
 	this->_index.pack(entries);
-	// Буфер уложенного кадра оглавления контейнера
-	vector <uint8_t> tail;
 	/**
 	 * Если уложить оглавление кадром не вышло
 	 *
@@ -1719,7 +1713,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если выработать подпись корня дерева не вышло
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
-		 sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
+		   sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа выработки подписи
 			this->fail(error_t::SIGNING_FAILED);
 			// Выполняем откат состояния, правимого фиксацией
@@ -1769,19 +1763,18 @@ bool awh::codec::abc::Editor::commit() noexcept {
 			// Выводим признак неудачной фиксации правок
 			return false;
 		}
+		// Буфер усечённого отпечатка открытого ключа владельца
+		vector <uint8_t> print;
 		// Выполняем установку смещения подписи от начала контейнера
 		this->_header.signature = (offset + static_cast <uint64_t> (tail.size()));
 		// Выполняем объявление подписанности контейнера
 		this->_header.set(flag_t::SIGNED, true);
-		// Буфер усечённого отпечатка открытого ключа владельца
-		vector <uint8_t> print;
 		/**
 		 * Если отпечаток открытого ключа владельца выработан
 		 */
 		if(abc::fingerprint(* this->_signer, this->_name, print))
 			// Выполняем установку отпечатка открытого ключа владельца
-			::memcpy(this->_header.fingerprint, print.data(),
-			 (print.size() < FINGERPRINT_LENGTH ? print.size() : FINGERPRINT_LENGTH));
+			::memcpy(this->_header.fingerprint, print.data(), (print.size() < FINGERPRINT_LENGTH ? print.size() : FINGERPRINT_LENGTH));
 	/**
 	 * Если подписанта нет, а контейнер подпись объявлял, выполняем снятие объявления
 	 *
@@ -1852,14 +1845,14 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	this->_length = (offset + static_cast <uint64_t> (tail.size() + signature.size()) + HEADER_LENGTH);
 	// Выполняем установку признака наличия хвостового заголовка
 	this->_tailed = true;
-	// Выполняем очистку уложенных кадров, ожидавших записи
-	this->_batches.clear();
-	// Выполняем очистку накопленных правок оглавления
-	this->_marks.clear();
 	// Выполняем снятие признака наличия незакреплённых правок
 	this->_dirty = false;
 	// Выполняем сброс признака удержания снятого кадра
 	this->_cached = false;
+	// Выполняем очистку накопленных правок оглавления
+	this->_marks.clear();
+	// Выполняем очистку уложенных кадров, ожидавших записи
+	this->_batches.clear();
 	/**
 	 * Выполняем перелив счёта накопленного сноса в счёт мусора на носителе
 	 *
@@ -1912,8 +1905,22 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		return false;
 	// Оглавление убранного контейнера
 	index_t index;
+	// Дерево свёрток по кадрам убранного контейнера
+	merkle_t merkle;
+	// Буфер уложенного кадра убранного контейнера
+	vector <uint8_t> chunk;
 	// Накопленные записи убранного контейнера
 	vector <uint8_t> pending;
+	/**
+	 * Номера строк накопленных записей в оглавлении убранного контейнера.
+	 *
+	 * Строка заводится сразу же, а смещением кадра дополняется по укладке его:
+	 * заводить её лишь при укладке значило бы ставить строки снесённых записей
+	 * впереди живых и тем перемешать номера
+	 */
+	vector <uint64_t> marks;
+	// Порядковый номер следующего кадра убранного контейнера
+	uint64_t number = 0;
 	/**
 	 * Смещение записи убранного контейнера
 	 *
@@ -1934,20 +1941,6 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 *
 	 */
 	uint64_t offset = HEADER_LENGTH;
-	/**
-	 * Номера строк накопленных записей в оглавлении убранного контейнера.
-	 *
-	 * Строка заводится сразу же, а смещением кадра дополняется по укладке его:
-	 * заводить её лишь при укладке значило бы ставить строки снесённых записей
-	 * впереди живых и тем перемешать номера
-	 */
-	vector <uint64_t> marks;
-	// Порядковый номер следующего кадра убранного контейнера
-	uint64_t number = 0;
-	// Буфер уложенного кадра убранного контейнера
-	vector <uint8_t> chunk;
-	// Дерево свёрток по кадрам убранного контейнера
-	merkle_t merkle;
 	// Выполняем установку модуля шифрования дереву свёрток уборки
 	merkle.crypto(this->_signer);
 	/**
@@ -1956,7 +1949,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	 * @details Работа эта зовётся ДВУМЯ дорогами: набором кадра до объявленного размера и
 	 *          переполнением поля смещения. Заведена она посредником оттого, что дороги
 	 *          эти делают одно и то же, а расхождение их означало бы кадр, записанный без
-	 *          внесения в дерево свёрток либо без правки строк оглавления
+	 *          внесения в дерево свёрток либо без правки строк оглавления.
 	 *
 	 * @return признак успешной укладки накопленных записей кадром
 	 *

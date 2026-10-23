@@ -286,8 +286,7 @@ bool awh::codec::abc::Writer::duplicated(frame_t & frame, const size_t offset, c
 					// Переходим к следующему отрезку записи имени поля
 					continue;
 				// Если записи имён совпали октет в октет
-				if((length == 0) || (::memcmp(this->_record.data() + static_cast <size_t> (key.offset),
-				 this->_record.data() + offset, length) == 0))
+				if((length == 0) || (::memcmp(this->_record.data() + static_cast <size_t> (key.offset), this->_record.data() + offset, length) == 0))
 					// Сообщаем, что имя поля в этом вместимом уже было
 					return true;
 			}
@@ -608,10 +607,10 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	if(!frame.indefinite && (frame.remain > 0))
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::UNBALANCED_CONTAINER);
-	// Признак неопределённой длины закрываемого вместимого
-	const bool indefinite = frame.indefinite;
 	// Смещение отведённого места записи размаха закрываемого вместимого
 	const size_t spanned = frame.spanned;
+	// Признак неопределённой длины закрываемого вместимого
+	const bool indefinite = frame.indefinite;
 	/**
 	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
 	 *
@@ -724,6 +723,8 @@ bool awh::codec::abc::Writer::segment(const bool string) noexcept {
  */
 bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 	/**
+	 * Если сборка уже отвечена отказом
+	 *
 	 * @note Закреплено `CodecAbcWriter.TheFailedBuildingDoesNotCloseASegment` ОТДЕЛЬНОЮ
 	 *       проверкою, и отделена она не порядка ради: у общей проверки отказа стек звена
 	 *       куска НЕ несёт, и конец куска отвергается СОСЕДНИМ заслоном - о несведённом
@@ -731,7 +732,6 @@ bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 	 *       это и показал: чтобы стеречь, отказ надобно навести ПОСРЕДИ сборки кусками
 	 *
 	 */
-	// Если сборка уже отвечена отказом
 	if(this->_failed)
 		// Сообщаем, что сборка отвечена отказом
 		return false;
@@ -1263,8 +1263,7 @@ bool awh::codec::abc::Writer::decimal(const void * buffer, const size_t size, co
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки расширения
-	abc::mark(this->_record, group_t::EXTEND,
-	 static_cast <uint8_t> (fraction ? extend_t::DECIMAL : extend_t::BIGNUM));
+	abc::mark(this->_record, group_t::EXTEND, static_cast <uint8_t> (fraction ? extend_t::DECIMAL : extend_t::BIGNUM));
 	// Если число является десятичным
 	if(fraction)
 		// Выполняем укладку десятичного порядка величины
@@ -1474,10 +1473,10 @@ const vector <uint8_t> & awh::codec::abc::Writer::record() const noexcept {
 vector <awh::codec::abc::piece_t> awh::codec::abc::Writer::pieces() const noexcept {
 	// Результат работы функции
 	vector <piece_t> result;
-	// Выполняем резервирование памяти под куски выдачи
-	result.reserve((this->_cuts.size() * 2) + 1);
 	// Смещение выданной части буфера собираемой записи
 	size_t offset = 0;
+	// Выполняем резервирование памяти под куски выдачи
+	result.reserve((this->_cuts.size() * 2) + 1);
 	/**
 	 * Выполняем перебор врезок чужого содержимого
 	 */
@@ -1552,9 +1551,11 @@ const awh::codec::abc::Writer::settings_t & awh::codec::abc::Writer::settings() 
  * @param settings устанавливаемые настройки сборки записи
  *
  */
-void awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {
 	// Выполняем установку настроек сборки записи
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Конструктор
@@ -1562,6 +1563,17 @@ void awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {
  */
 awh::codec::abc::Writer::Writer() noexcept :
  _failed(false), _documents(0), _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста
+ *
+ */
+awh::codec::abc::Writer::Writer(const settings_t & settings) noexcept : Writer() {
+	// Выполняем установку настроек записи текста
+	this->settings(settings);
+}
+
 /**
  * @brief Конструктор
  *

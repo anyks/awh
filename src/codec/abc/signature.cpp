@@ -21,8 +21,8 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <limits>
+#include <cstring>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -219,7 +219,7 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffe
 		// Выводим признак неудачного сведения дерева
 		return this->fail("Merkle tree: the module of the encryption or the appended chunk is not given");
 	// Дерево свёрток с приданным кадром
-	Merkle merkle;
+	merkle_t merkle;
 	// Выполняем установку модуля шифрования дереву свёрток
 	merkle.crypto(this->_crypto);
 	// Выполняем перенесение свёрток нынешнего дерева
@@ -286,8 +286,7 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result) const noexcept {
 			// Выполняем внесение свёртки правой ветви узла
 			payload.insert(payload.end(), tier.at(i + 1).begin(), tier.at(i + 1).end());
 			// Выполняем выработку свёртки узла дерева
-			vector <uint8_t> node = this->_crypto->hash <vector <uint8_t>, vector <uint8_t>> (
-			 payload, __awh_digest__, crypto_t::format_t::RAW);
+			vector <uint8_t> node = this->_crypto->hash <vector <uint8_t>, vector <uint8_t>> (payload, __awh_digest__, crypto_t::format_t::RAW);
 			/**
 			 * Если свёртка узла выработана не той длины
 			 */
@@ -331,8 +330,7 @@ void awh::codec::abc::Merkle::clear() noexcept {
  * @return     вид хэш-суммы, годный виду подписи
  *
  */
-awh::crypto_t::hash_t awh::codec::abc::digest(const crypto_t::signature_t kind,
- const crypto_t::hash_t hash) noexcept {
+awh::crypto_t::hash_t awh::codec::abc::digest(const crypto_t::signature_t kind, const crypto_t::hash_t hash) noexcept {
 	/**
 	 * Определяем вид подписи владельца контейнера
 	 */
@@ -495,7 +493,6 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	 *          Закреплено `SignatureFixture.TheRefusedSignatureRecordIsLeftIntact`
 	 *
 	 */
-	// Выполняем снятие вида подписи владельца контейнера
 	const crypto_t::signature_t kind = static_cast <crypto_t::signature_t> (octets[0]);
 	// Выполняем снятие вида хэш-суммы, какой подпись выработана
 	const crypto_t::hash_t hash = static_cast <crypto_t::hash_t> (octets[1]);
@@ -606,8 +603,7 @@ bool awh::codec::abc::fingerprint(const crypto_t & crypto, const string & name, 
 	 * Выполняем усечение отпечатка от начала до длины, отведённой заголовком:
 	 * усечение именно от начала, ибо сличать его станут с чужим полным
 	 */
-	result.assign(full.begin(), full.begin() + static_cast <ptrdiff_t> (
-	 (full.size() < FINGERPRINT_LENGTH) ? full.size() : FINGERPRINT_LENGTH));
+	result.assign(full.begin(), full.begin() + static_cast <ptrdiff_t> ((full.size() < FINGERPRINT_LENGTH) ? full.size() : FINGERPRINT_LENGTH));
 	// Выводим признак успешно выработанного отпечатка
 	return true;
 }

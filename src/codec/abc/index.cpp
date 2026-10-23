@@ -21,8 +21,8 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <limits>
+#include <cstring>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -310,14 +310,13 @@ bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
-			 awh::log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
+			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -466,8 +465,7 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 		/**
 		 * Если кадр оглавления в контейнер не умещается
 		 */
-		if((this->_header.index > length) ||
-		 ((length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
+		if((this->_header.index > length) || ((length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
 			// Выполняем установку кода отказа повреждённого кадра
 			this->fail(error_t::INVALID_CHUNK);
 			// Выводим признак неудачного открытия контейнера
@@ -480,18 +478,18 @@ bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noex
 	 * Если вычитать кадр оглавления целиком не вышло
 	 */
 	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), buffer) ||
-	 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
+	  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
 		// Выполняем установку кода отказа чтения октетов контейнера
 		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
+	// Сведения о снятом кадре оглавления
+	chunk_t chunk;
 	// Смещение снятия кадра оглавления
 	size_t offset = 0;
 	// Содержимое снятого кадра оглавления
 	vector <uint8_t> payload;
-	// Сведения о снятом кадре оглавления
-	chunk_t chunk;
 	/**
 	 * Если снять кадр оглавления не вышло
 	 *
@@ -644,16 +642,16 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 * Если вычитать кадр целиком не вышло
 		 */
 		if(!this->_source(HEADER_LENGTH + entry.chunk, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
-		 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
+		  (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
 			// Выполняем установку кода отказа чтения октетов контейнера
 			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
-		// Смещение снятия кадра
-		size_t offset = 0;
 		// Сведения о снятом кадре
 		chunk_t chunk;
+		// Смещение снятия кадра
+		size_t offset = 0;
 		/**
 		 * Если снять кадр не вышло
 		 *
@@ -686,8 +684,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		return false;
 	}
 	// Выполняем выборку записи из содержимого снятого кадра
-	result.assign(this->_chunk.begin() + static_cast <ptrdiff_t> (entry.offset),
-	 this->_chunk.begin() + static_cast <ptrdiff_t> (entry.offset + entry.length));
+	result.assign(this->_chunk.begin() + static_cast <ptrdiff_t> (entry.offset), this->_chunk.begin() + static_cast <ptrdiff_t> (entry.offset + entry.length));
 	// Выводим признак успешно выбранной записи
 	return true;
 }

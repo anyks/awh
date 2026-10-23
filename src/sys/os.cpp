@@ -1029,7 +1029,13 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 		// Возвращаем флаг операционной системы
 		return family_t::OPENBSD;
 	/**
-	 * Реализация под Sun Solaris
+	 * Операционной системой является DragonFly BSD
+	 */
+	#elif defined(__DragonFly__)
+		// Возвращаем флаг операционной системы
+		return family_t::DFLYBSD;
+	/**
+	 * Реализация под Solaris или OpenIndiana
 	 */
 	#elif defined(__sun__)
 		/**

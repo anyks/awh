@@ -51,6 +51,11 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Разряд объявления зашифрованного содержимого кадра
 	 *
 	 */
@@ -71,7 +76,7 @@ namespace {
 	 *          обязала бы шифровать содержимое наново, ничего в нём не меняя
 	 *
 	 */
-	constexpr uint8_t __awh_waste__ = awh::codec::abc::CHUNK_WASTE;
+	constexpr uint8_t __awh_waste__ = codec::abc::CHUNK_WASTE;
 };
 
 /**
@@ -114,14 +119,13 @@ bool awh::codec::abc::Packer::fail(const error_t error) noexcept {
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
-			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
-			 awh::log::flag_t::WARNING, abc::message(error));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)}, log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
+			log::print("ABC: %s", log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -274,8 +278,7 @@ bool awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number,
  * @return           признак успешности укладки
  *
  */
-bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const payload_t kind,
- const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept {
+bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const payload_t kind, const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept {
 	// Выполняем сброс кода отказа укладки
 	this->_error = error_t::NONE;
 	// Если буфер укладываемого содержимого не существует, а октеты объявлены
@@ -340,10 +343,10 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		 * повторил бы его при перезаписи кадра, а повтор вектора при том же ключе -
 		 * это взлом, и по работе программы он не виден вовсе
 		 */
-		vector <uint8_t> secured = this->_crypto->encrypt <vector <uint8_t>> (payload,
-		 this->_settings.hash, this->_settings.cipher);
-		// Если шифрование содержимого отвечено отказом
+		vector <uint8_t> secured = this->_crypto->encrypt <vector <uint8_t>> (payload, this->_settings.hash, this->_settings.cipher);
 		/**
+		 * Если шифрование содержимого отвечено отказом
+		 *
 		 * @note Отказ здесь НЕ есть отказ самой подсистемы шифрования, каким место числилось
 		 *       прежде: ключ выводится из соли и ПАРОЛЯ, а настройка модуля - забота
 		 *       зовущего, и забыть её он волен. Закреплено проверкою
@@ -383,7 +386,6 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	}
 	// Выполняем получение смещения начала укладываемого кадра
 	const size_t start = result.size();
-	// Выполняем заведение места под заголовок кадра
 	/**
 	 * Выполняем отведение места под заголовок укладываемого кадра
 	 *
@@ -419,8 +421,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	 * Выполняем укладку контрольной суммы кадра последней, по кадру готовому:
 	 * сумма кроет заголовок вместе с содержимым, и вырабатывать её раньше нечем
 	 */
-	abc::fixed(result.data() + start + CHUNK_DIGEST,
-	 abc::digest(result.data() + start, result.size() - start), 8);
+	abc::fixed(result.data() + start + CHUNK_DIGEST, abc::digest(result.data() + start, result.size() - start), 8);
 	// Сообщаем, что укладка успешна
 	return true;
 }
@@ -435,8 +436,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
  * @return       признак успешно снятого кадра
  *
  */
-bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, size_t & offset,
- vector <uint8_t> & result, chunk_t & chunk) noexcept {
+bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, size_t & offset, vector <uint8_t> & result, chunk_t & chunk) noexcept {
 	// Выполняем сброс кода отказа снятия
 	this->_error = error_t::NONE;
 	// Выполняем очистку буфера содержимого кадра
@@ -462,7 +462,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	// Выполняем снятие разрядов кадра
 	const uint8_t flags = head[1];
 	// Если разряды кадра несут неведомое
-	if((flags & static_cast <uint8_t> (~( __awh_encrypted__ | __awh_waste__))) != 0){
+	if((flags & static_cast <uint8_t> (~(__awh_encrypted__ | __awh_waste__))) != 0){
 		// Выполняем установку кода отказа опознания кадра
 		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
@@ -499,8 +499,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 *          дала 24 молчаливо неверных чтения из 530 при порче кадра оглавления
 	 *
 	 */
-	if(abc::gather(head + CHUNK_DIGEST, 8) !=
-	 abc::digest(head, static_cast <size_t> (CHUNK_HEADER + length))){
+	if(abc::gather(head + CHUNK_DIGEST, 8) != abc::digest(head, static_cast <size_t> (CHUNK_HEADER + length))){
 		// Выполняем установку кода отказа несошедшейся суммы
 		this->fail(error_t::INVALID_CHECKSUM);
 		// Сообщаем, что кадр не снят
@@ -549,10 +548,10 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 			return false;
 		}
 		// Выполняем расшифровку содержимого кадра
-		vector <uint8_t> opened = this->_crypto->decrypt <vector <uint8_t>> (content,
-		 this->_settings.hash, this->_settings.cipher);
-		// Если расшифровка содержимого отвечена отказом
+		vector <uint8_t> opened = this->_crypto->decrypt <vector <uint8_t>> (content, this->_settings.hash, this->_settings.cipher);
 		/**
+		 * Если расшифровка содержимого отвечена отказом
+		 *
 		 * @note Достижимо РАСХОЖДЕНИЕМ КЛЮЧЕЙ: уложено паролем владельца, снимается паролем
 		 *       постороннего, - и расшифровка вернёт пустое, а не чужое содержимое.
 		 *       Закреплено `ChunkFixture.DecryptionWithAForeignKeyIsRefused` (05.09.2026)
@@ -624,8 +623,9 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		 *
 		 */
 		this->_compressor->decompress(content.data(), content.size(), chunk.method, opened, static_cast <size_t> (chunk.origin));
-		// Если разжатие содержимого отвечено отказом
 		/**
+		 * Если разжатие содержимого отвечено отказом
+		 *
 		 * @note Достижимо ПОРЧЕЙ сжатых октетов при пересчитанной сумме кадра: разжимателю
 		 *       они негодны, и тот вернёт пустое при непустом исходном. Длина исходного
 		 *       объявлена кадром, оттого пустое и опознаётся отказом. Закреплено

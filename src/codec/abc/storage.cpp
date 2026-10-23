@@ -155,6 +155,12 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 		// Выводим признак неудачно заведённого файла
 		return false;
 	}
+	// Выполняем сброс полной длины контейнера
+	this->_length = 0;
+	// Отмечаем хранилище привязанным к файлу контейнера
+	this->_opened = true;
+	// Выполняем запоминание названия файла контейнера
+	this->_filename = filename;
 	/**
 	 * Выполняем заведение объектов файла контейнера
 	 *
@@ -165,12 +171,6 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 	this->_reader = this->_fs.handleFile();
 	// Выполняем заведение объекта файла контейнера на запись
 	this->_writer = this->_fs.handleFile();
-	// Выполняем запоминание названия файла контейнера
-	this->_filename = filename;
-	// Выполняем сброс полной длины контейнера
-	this->_length = 0;
-	// Отмечаем хранилище привязанным к файлу контейнера
-	this->_opened = true;
 	// Выводим признак успешно заведённого файла
 	return true;
 }
@@ -722,6 +722,8 @@ bool awh::codec::abc::Storage::load(loader_t & loader, const size_t block) noexc
 		// Выводим признак неудачной подачи
 		return false;
 	}
+	// Признак отказа, объявленного самим снимателем
+	bool refused = false;
 	/**
 	 * @brief Число октетов, поданных снимателю
 	 *
@@ -734,8 +736,6 @@ bool awh::codec::abc::Storage::load(loader_t & loader, const size_t block) noexc
 	 *
 	 */
 	uint64_t delivered = 0;
-	// Признак отказа, объявленного самим снимателем
-	bool refused = false;
 	/**
 	 * Выполняем подачу файла контейнера кусками
 	 *

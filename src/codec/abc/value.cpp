@@ -44,6 +44,11 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Предел роста вместимого обращением по номеру
 	 *
 	 * @details Предел ставится единожды при заведении приложения, а читается всяким
@@ -81,7 +86,7 @@ namespace {
 	 */
 	static T convert(const double value) noexcept {
 		// Выполняем приведение числа общим для кодеков способом
-		return awh::codec::convert <T> (value);
+		return codec::convert <T> (value);
 	}
 };
 
@@ -335,6 +340,16 @@ bool awh::codec::abc::Value::valid() const noexcept {
 	return (this->_type != type_t::UNDEFINED);
 }
 /**
+ * @brief Оператор приведения к логическому типу
+ *
+ * @return признак действительности значения
+ *
+ */
+awh::codec::abc::Value::operator bool () const noexcept {
+	// Выводим признак действительности значения
+	return this->valid();
+}
+/**
  * @brief Метод извлечения вида узла значения
  *
  * @return вид узла значения
@@ -392,6 +407,37 @@ bool awh::codec::abc::Value::empty() const noexcept {
 		return this->_text.empty();
 	// Выводим признак недействительности значения
 	return !this->valid();
+}
+/**
+ * @brief Метод получения кода отказа последней работы над значением
+ *
+ * @return код отказа последней работы
+ *
+ */
+awh::codec::abc::error_t awh::codec::abc::Value::error() const noexcept {
+	// Если отказ последней работы не записан
+	if(this->_failure == nullptr)
+		// Выводим код отсутствия отказа
+		return error_t::NONE;
+	// Выводим код отказа последней работы над значением
+	return this->_failure->error;
+}
+/**
+ * @brief Метод получения места отказа последней работы над значением
+ *
+ * @return место отказа последней работы
+ *
+ */
+const awh::codec::abc::location_t & awh::codec::abc::Value::errorLocation() const noexcept {
+	// Если отказ последней работы не записан
+	if(this->_failure == nullptr){
+		// Положение отказа по умолчанию, выдаваемое при отсутствии отказа
+		static const location_t empty;
+		// Выводим положение отказа по умолчанию
+		return empty;
+	}
+	// Выводим место отказа последней работы над значением
+	return this->_failure->location;
 }
 /**
  * @brief Метод очистки значения
@@ -464,6 +510,8 @@ void awh::codec::abc::Value::clear() noexcept {
 	this->_kind = kind_t::NONE;
 	// Выполняем сброс вида значения
 	this->_type = type_t::UNDEFINED;
+	// Выполняем сброс отказа последней работы
+	this->_failure.reset();
 }
 /**
  * @brief Метод сброса значения в указанный вид с сохранением capacity
@@ -1784,9 +1832,18 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size, const
 	// Дерево разбираемого документа
 	document_t document(documentSettings);
 	// Если разбор записи в дерево документа отвечен отказом
-	if(!document.parse(buffer, size))
+	if(!document.parse(buffer, size)){
+		// Код отказа разбора записи
+		error_t error = document.error();
+		// Если дерево кода не назвало, отказ считается внутренним
+		if(error == error_t::NONE)
+			// Запоминаем внутренний код отказа
+			error = error_t::INTERNAL;
+		// Запоминаем отказ разбора записи вместе с его местом
+		this->_failure.reset(new failure_t{error, document.errorLocation()});
 		// Сообщаем, что разбор отвечен отказом
 		return false;
+	}
 	// Выполняем перенесение корня дерева документа
 	this->absorb(document.root());
 	// Сообщаем, что разбор успешен
@@ -1806,6 +1863,8 @@ bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error, co
 	result.clear();
 	// Выполняем сброс кода отказа сборки записи
 	error = error_t::NONE;
+	// Выполняем сброс отказа прежней работы
+	this->_failure.reset();
 	// Сборщик бинарной записи
 	writer_t writer;
 	// Выполняем установку затребованных настроек сборки записи
@@ -1816,6 +1875,8 @@ bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error, co
 	if(!this->compose(writer)){
 		// Выполняем перенос повода отказа от сборки записи
 		error = writer.error();
+		// Запоминаем отказ сборки записи
+		this->_failure.reset(new failure_t{error, location_t()});
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	}
@@ -1835,6 +1896,8 @@ bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error) co
 	result.clear();
 	// Выполняем сброс кода отказа сборки записи
 	error = error_t::NONE;
+	// Выполняем сброс отказа прежней работы
+	this->_failure.reset();
 	// Сборщик бинарной записи
 	writer_t writer;
 	/**
@@ -1843,6 +1906,8 @@ bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error) co
 	if(!this->compose(writer)){
 		// Выполняем перенос повода отказа от сборки записи
 		error = writer.error();
+		// Запоминаем отказ сборки записи
+		this->_failure.reset(new failure_t{error, location_t()});
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	}
@@ -1858,12 +1923,17 @@ bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error) co
  *
  */
 vector <uint8_t> awh::codec::abc::Value::dump() const noexcept {
+	// Выполняем сброс отказа прежней работы
+	this->_failure.reset();
 	// Сборщик бинарной записи
 	writer_t writer;
 	// Если укладка значения в собираемую запись отвечена отказом
-	if(!this->compose(writer))
+	if(!this->compose(writer)){
+		// Запоминаем отказ сборки записи
+		this->_failure.reset(new failure_t{writer.error(), location_t()});
 		// Выводим пустую запись
 		return vector <uint8_t> ();
+	}
 	// Выводим собранную запись
 	return writer.record();
 }
@@ -1942,9 +2012,9 @@ bool awh::codec::abc::Value::operator == (const value_t & value) const noexcept 
 		// Если сличаются числа, из которых хотя бы одно является дробным
 		if((first.is(type_t::INT) || first.is(type_t::REAL)) && (second.is(type_t::INT) || second.is(type_t::REAL))){
 			// Извлекаемое первое дробное значение
-			double left = 0.0;
+			double left = .0;
 			// Извлекаемое второе дробное значение
-			double right = 0.0;
+			double right = .0;
 			// Если извлечение сличаемых значений отвечено отказом
 			if(!first.value(left) || !second.value(right))
 				// Сообщаем, что значения неравны
@@ -1979,8 +2049,11 @@ bool awh::codec::abc::Value::operator == (const value_t & value) const noexcept 
 		if(((first._type == type_t::EXTENDED) || (first._type == type_t::DECIMAL)) &&
 		   ((second._type == type_t::EXTENDED) || (second._type == type_t::DECIMAL)))
 			// Выводим признак равенства величин вместе со знаком и порядком
-			return ((first._negative == second._negative) && (first._exponent == second._exponent) &&
-			        (first._text.compare(second._text) == 0));
+			return (
+				(first._negative == second._negative) &&
+				(first._exponent == second._exponent) &&
+			    (first._text.compare(second._text) == 0)
+			);
 		// Если виды сличаемых значений расходятся
 		if(first._type != second._type)
 			// Сообщаем, что значения неравны

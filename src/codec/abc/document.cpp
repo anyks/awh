@@ -466,8 +466,7 @@ void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t 
 			// Переходим к следующей паре отображения
 			continue;
 		// Выполняем перенос узлов уцелевшей пары
-		kept.insert(kept.end(), this->_nodes.begin() + pairs.at(i).first,
-		 this->_nodes.begin() + pairs.at(i).first + pairs.at(i).second);
+		kept.insert(kept.end(), this->_nodes.begin() + pairs.at(i).first, this->_nodes.begin() + pairs.at(i).first + pairs.at(i).second);
 		/**
 		 * Выполняем учёт детей уцелевшей пары. Пара несёт ДВУХ детей отображения -
 		 * имя да значение, - сколько бы узлов ни лежало в поддереве значения её
@@ -619,8 +618,7 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		// Выполняем перенос содержимого куска в хранилище
 		self->_storage.append(chunk.data);
 		// Выполняем наращивание длины содержимого собираемого значения
-		self->_nodes.at(state->segment).length(self->_nodes.at(state->segment).length() +
-		 static_cast <uint32_t> (chunk.data.size()));
+		self->_nodes.at(state->segment).length(self->_nodes.at(state->segment).length() + static_cast <uint32_t> (chunk.data.size()));
 		// Сообщаем, что событие принято
 		return true;
 	}
@@ -725,8 +723,8 @@ bool awh::codec::abc::Document::digest(void * context, document_t * self, const 
 		/**
 		 * Если значение является целым неограниченной ширины либо десятичным
 		 */
-		case static_cast <uint32_t> (type_t::EXTENDED):
-		case static_cast <uint32_t> (type_t::DECIMAL): {
+		case static_cast <uint32_t> (type_t::DECIMAL):
+		case static_cast <uint32_t> (type_t::EXTENDED): {
 			// Если величина вместе с порядком в хранилище октетов не умещается
 			if(!::room(self->_storage.size(), value.data.size() + 8)){
 				// Выполняем установку кода отказа недопустимой длины
@@ -1253,13 +1251,25 @@ vector <uint8_t> awh::codec::abc::Document::dump() const noexcept {
  * @param settings устанавливаемые настройки разбора записи
  *
  */
-void awh::codec::abc::Document::settings(const settings_t & settings) noexcept {
+bool awh::codec::abc::Document::settings(const settings_t & settings) noexcept {
 	// Устанавливаем значение правило обращения с повторяющимся именем поля отображения
 	this->_duplicates = settings.reader.duplicates;
 	// Выполняем установку настроек разбора записи
 	this->_writer.settings(settings.writer);
 	// Выполняем установку настроек разбора чтения
 	this->_reader.settings(settings.reader);
+	// Выводим признак принятия настроек
+	return true;
+}
+/**
+ * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+ *
+ * @return настройки записи текста
+ *
+ */
+awh::codec::abc::writer_t::settings_t awh::codec::abc::Document::writing() const noexcept {
+	// Выводим настройки записи, писателем действующие
+	return this->_writer.settings();
 }
 /**
  * @brief Метод извлечения корня дерева документа
@@ -1363,9 +1373,9 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::at(const string & 
 	 * Если путь оказался недействительным, значения он не даёт
 	 *
 	 * @warning Различение это обязательно: посредник разбора пути отвечает ложью и на
-	 * ИСЧЕРПАНИЕ пути, и на НЕДЕЙСТВИТЕЛЬНОСТЬ его, - а исходы у них противоположные.
-	 * Без признака путь `/t~x`, знак отмены за каким не несёт ни нуля, ни единицы,
-	 * отдавал бы ПОСЛЕДНЕЕ дошедшее значение, то есть корень дерева
+	 *          ИСЧЕРПАНИЕ пути, и на НЕДЕЙСТВИТЕЛЬНОСТЬ его, - а исходы у них противоположные.
+	 *          Без признака путь `/t~x`, знак отмены за каким не несёт ни нуля, ни единицы,
+	 *          отдавал бы ПОСЛЕДНЕЕ дошедшее значение, то есть корень дерева
 	 *
 	 */
 	if(invalid)
@@ -1742,14 +1752,13 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::get(const s
 		// Выводим недействительную ссылку на значение
 		return value_t();
 	// Выполняем получение указателя имён полей отображения
-	const unordered_map <string_view, uint32_t> & naming = this->_doc->naming(this->_index);
+	const auto & naming = this->_doc->naming(this->_index);
 	// Выполняем поиск затребованного имени поля отображения
 	auto i = naming.find(name);
 	// Если затребованное имя поля отображения найдено
 	if(i != naming.end())
 		// Выводим ссылку на значение затребованного поля
-		return value_t(this->_doc, i->second,
-		 (this->_index + this->_doc->_nodes.at(this->_index).extent()));
+		return value_t(this->_doc, i->second, (this->_index + this->_doc->_nodes.at(this->_index).extent()));
 	// Выводим недействительную ссылку на значение
 	return value_t();
 }
@@ -1801,17 +1810,17 @@ bool awh::codec::abc::Document::Value::value(uint64_t & result) const noexcept {
 	 * Если значение является отметкой времени
 	 *
 	 * @details Отметка времени есть целое, и извлекаться она обязана ОБОИМИ целыми
-	 * видами. Прежде дерево разбора отдавало её видом со знаком и отвечало ОТКАЗОМ виду
-	 * без знака, тогда как владеющее значение отдавало обоими: одна и та же запись,
-	 * прочтённая двумя видами одного кодека, давала разные ответы
+	 *          видами. Прежде дерево разбора отдавало её видом со знаком и отвечало ОТКАЗОМ виду
+	 *          без знака, тогда как владеющее значение отдавало обоими: одна и та же запись,
+	 *          прочтённая двумя видами одного кодека, давала разные ответы.
 	 *
 	 * @note Замер 03.09.2026 на отметке 1756800000: `Document` отвечал `int64=да`,
-	 * `uint64=ОТКАЗ`, а `Value` - `int64=да`, `uint64=да`. Закреплено проверкой
-	 * `CodecAbcDocument.TimestampExtractsByBothIntegerKinds`
+	 *       `uint64=ОТКАЗ`, а `Value` - `int64=да`, `uint64=да`. Закреплено проверкой
+	 *       `CodecAbcDocument.TimestampExtractsByBothIntegerKinds`
 	 *
 	 * @note Дробным видом отметка не извлекается НИ У ОДНОГО из двух видов, и это не
-	 * расхождение, а согласие: за пределом 2^53 дробное число отметку не представляет
-	 * точно, и молчаливая потеря разрядов хуже отказа
+	 *       расхождение, а согласие: за пределом 2^53 дробное число отметку не представляет
+	 *       точно, и молчаливая потеря разрядов хуже отказа
 	 *
 	 */
 	if(type == type_t::TIME){

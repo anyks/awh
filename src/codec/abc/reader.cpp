@@ -165,6 +165,7 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
  stream(false), canonical(false), maxEvents(0),
  maxBlob(0), maxDepth(0), maxNodes(0), maxString(0),
  malformed(malformed_t::REFUSE), duplicates(duplicate_t::REFUSE) {}
+
 /**
  * @brief Метод объявления отказа разбора
  *
@@ -176,11 +177,13 @@ bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
 	// Выполняем установку кода отказа разбора
 	this->_error = error;
 	// Выполняем перевод разбора в состояние отказа
-	this->_state = state_t::FAILED;
+	this->_state = phase_t::FAILED;
 	// Выполняем установку положения, где отказ произошёл
 	this->_location.offset = (this->_origin + static_cast <uint64_t> (this->_offset));
 	// Выполняем установку глубины вложенности, где отказ произошёл
 	this->_location.depth = static_cast <uint32_t> (this->_stack.size());
+	// Запоминаем положение обнаруженного отказа
+	this->_failure = this->_location;
 	/**
 	 * Если объект логирования отдан, доносим об отказе разбора.
 	 *
@@ -517,9 +520,11 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 				// Если содержимое имени поля отображения объявлено
 				if(record.span.length > 0)
 					// Выполняем перенос октетов имени поля в общее вместилище
-					this->_pool.insert(this->_pool.end(),
-					 this->_buffer.data() + static_cast <size_t> (record.span.offset),
-					 this->_buffer.data() + static_cast <size_t> (record.span.offset) + static_cast <size_t> (record.span.length));
+					this->_pool.insert(
+						this->_pool.end(),
+						this->_buffer.data() + static_cast <size_t> (record.span.offset),
+						this->_buffer.data() + static_cast <size_t> (record.span.offset) + static_cast <size_t> (record.span.length)
+					);
 				/**
 				 * Если вместилище октетов имён шире поля отрезка, разбор отвергается
 				 *
@@ -612,7 +617,7 @@ bool awh::codec::abc::Reader::finalize(record_t & record) noexcept {
 		// Выполняем установку признака завершённости документа
 		this->_document = true;
 		// Выполняем перевод разбора в завершённое состояние
-		this->_state = state_t::FINISHED;
+		this->_state = phase_t::FINISHED;
 		// Сообщаем, что разбор успешен
 		return true;
 	}
@@ -702,7 +707,7 @@ bool awh::codec::abc::Reader::unwind() noexcept {
 			// Выполняем установку признака завершённости документа
 			this->_document = true;
 			// Выполняем перевод разбора в завершённое состояние
-			this->_state = state_t::FINISHED;
+			this->_state = phase_t::FINISHED;
 			// Сообщаем, что разбор успешен
 			return true;
 		}
@@ -738,7 +743,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 			/**
 			 * Если ожидается ведущий октет очередной единицы
 			 */
-			case static_cast <uint8_t> (state_t::ITEM): {
+			case static_cast <uint8_t> (phase_t::ITEM): {
 				// Выполняем установку смещения начала разбираемой единицы
 				this->_mark.offset = (this->_origin + static_cast <uint64_t> (this->_offset));
 				// Выполняем установку глубины вложенности разбираемой единицы
@@ -763,7 +768,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 			/**
 			 * Если ожидаются октеты строки либо двоичных данных
 			 */
-			case static_cast <uint8_t> (state_t::SEGMENT): {
+			case static_cast <uint8_t> (phase_t::SEGMENT): {
 				// Если октетов значения недостаёт
 				if((this->_buffer.size() - this->_offset) < this->_pending)
 					// Сообщаем, что разбор успешен
@@ -831,7 +836,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем сброс количества недостающих октетов
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
-				this->_state = state_t::ITEM;
+				this->_state = phase_t::ITEM;
 				/**
 				 * Если значение собирается кусками, кусок выдаётся сам по себе.
 				 *
@@ -863,7 +868,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 			/**
 			 * Если ожидаются октеты одиночного значения
 			 */
-			case static_cast <uint8_t> (state_t::SINGLE): {
+			case static_cast <uint8_t> (phase_t::SINGLE): {
 				// Если октетов значения недостаёт
 				if((this->_buffer.size() - this->_offset) < this->_pending)
 					// Сообщаем, что разбор успешен
@@ -934,7 +939,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем сброс количества недостающих октетов
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
-				this->_state = state_t::ITEM;
+				this->_state = phase_t::ITEM;
 				/**
 				 * Одиночное значение куском собираемого стоять НЕ вправе, и выдача его отдана
 				 * общему пути: кусками собираются лишь строка да двоичные данные, а
@@ -961,7 +966,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 			/**
 			 * Если ожидается десятичный порядок величины
 			 */
-			case static_cast <uint8_t> (state_t::EXTEND_EXPONENT): {
+			case static_cast <uint8_t> (phase_t::EXTEND_EXPONENT): {
 				// Снятая единица проволочной записи
 				item_t unit;
 				// Код отказа снятия единицы
@@ -1005,12 +1010,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем перевод разбора в ожидание длины октетов величины
-				this->_state = state_t::EXTEND_LENGTH;
+				this->_state = phase_t::EXTEND_LENGTH;
 			} break;
 			/**
 			 * Если ожидаются октеты объявленного размаха вместимого
 			 */
-			case static_cast <uint8_t> (state_t::SPANNED_WIDTH): {
+			case static_cast <uint8_t> (phase_t::SPANNED_WIDTH): {
 				// Если октетов размаха вместимого недостаёт
 				if((this->_offset + SPAN_LENGTH) > this->_buffer.size())
 					// Сообщаем, что разбор успешен
@@ -1053,12 +1058,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				this->_beyond = (place + width);
 				// Выполняем перевод разбора в ожидание очередной единицы
-				this->_state = state_t::ITEM;
+				this->_state = phase_t::ITEM;
 			} break;
 			/**
 			 * Если ожидается длина октетов величины
 			 */
-			case static_cast <uint8_t> (state_t::EXTEND_LENGTH): {
+			case static_cast <uint8_t> (phase_t::EXTEND_LENGTH): {
 				// Снятая единица проволочной записи
 				item_t unit;
 				// Код отказа снятия единицы
@@ -1121,12 +1126,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем установку количества недостающих октетов
 				this->_pending = unit.value;
 				// Выполняем перевод разбора в ожидание знака величины
-				this->_state = state_t::EXTEND_SIGN;
+				this->_state = phase_t::EXTEND_SIGN;
 			} break;
 			/**
 			 * Если ожидается знак величины
 			 */
-			case static_cast <uint8_t> (state_t::EXTEND_SIGN): {
+			case static_cast <uint8_t> (phase_t::EXTEND_SIGN): {
 				// Если октета знака величины недостаёт
 				if(this->_offset >= this->_buffer.size())
 					// Сообщаем, что разбор успешен
@@ -1146,12 +1151,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем сдвиг смещения разбора
 				this->_offset++;
 				// Выполняем перевод разбора в ожидание октетов величины
-				this->_state = state_t::EXTEND_DATA;
+				this->_state = phase_t::EXTEND_DATA;
 			} break;
 			/**
 			 * Если ожидаются октеты величины
 			 */
-			case static_cast <uint8_t> (state_t::EXTEND_DATA): {
+			case static_cast <uint8_t> (phase_t::EXTEND_DATA): {
 				/**
 				 * Если октетов величины недостаёт
 				 *
@@ -1185,7 +1190,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем сброс количества недостающих октетов
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
-				this->_state = state_t::ITEM;
+				this->_state = phase_t::ITEM;
 				/**
 				 * Если выдача события завершённого значения отвечена отказом.
 				 *
@@ -1206,7 +1211,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 			/**
 			 * Если ожидается номер подвида открытого расширения
 			 */
-			case static_cast <uint8_t> (state_t::CUSTOM_SUBTYPE): {
+			case static_cast <uint8_t> (phase_t::CUSTOM_SUBTYPE): {
 				// Снятая единица проволочной записи
 				item_t unit;
 				// Код отказа снятия единицы
@@ -1237,12 +1242,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем установку номера подвида расширения
 				this->_subtype = unit.value;
 				// Выполняем перевод разбора в ожидание длины октетов расширения
-				this->_state = state_t::CUSTOM_LENGTH;
+				this->_state = phase_t::CUSTOM_LENGTH;
 			} break;
 			/**
 			 * Если ожидается длина октетов открытого расширения
 			 */
-			case static_cast <uint8_t> (state_t::CUSTOM_LENGTH): {
+			case static_cast <uint8_t> (phase_t::CUSTOM_LENGTH): {
 				// Снятая единица проволочной записи
 				item_t unit;
 				// Код отказа снятия единицы
@@ -1290,12 +1295,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем установку количества недостающих октетов
 				this->_pending = unit.value;
 				// Выполняем перевод разбора в ожидание октетов расширения
-				this->_state = state_t::CUSTOM_DATA;
+				this->_state = phase_t::CUSTOM_DATA;
 			} break;
 			/**
 			 * Если ожидаются октеты открытого расширения
 			 */
-			case static_cast <uint8_t> (state_t::CUSTOM_DATA): {
+			case static_cast <uint8_t> (phase_t::CUSTOM_DATA): {
 				/**
 				 * Если октетов величины недостаёт
 				 *
@@ -1323,7 +1328,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем сброс количества недостающих октетов
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
-				this->_state = state_t::ITEM;
+				this->_state = phase_t::ITEM;
 				/**
 				 * Если выдача события завершённого значения отвечена отказом
 				 *
@@ -1338,7 +1343,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 			/**
 			 * Если разбор завершён
 			 */
-			case static_cast <uint8_t> (state_t::FINISHED): {
+			case static_cast <uint8_t> (phase_t::FINISHED): {
 				// Если октетов за окончанием документа нет
 				if(this->_offset >= this->_buffer.size())
 					// Сообщаем, что разбор успешен
@@ -1360,12 +1365,12 @@ bool awh::codec::abc::Reader::process() noexcept {
 				 */
 				this->_nodes = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
-				this->_state = state_t::ITEM;
+				this->_state = phase_t::ITEM;
 			} break;
 			/**
 			 * Если разбор отвечен отказом
 			 */
-			case static_cast <uint8_t> (state_t::FAILED):
+			case static_cast <uint8_t> (phase_t::FAILED):
 				// Сообщаем, что разбор отвечен отказом
 				return false;
 		}
@@ -1536,8 +1541,8 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		/**
 		 * Если значение является строкой либо двоичными данными
 		 */
-		case static_cast <uint8_t> (group_t::STRING):
-		case static_cast <uint8_t> (group_t::BLOB): {
+		case static_cast <uint8_t> (group_t::BLOB):
+		case static_cast <uint8_t> (group_t::STRING): {
 			// Признак того, что значение является строкой
 			const bool text = (unit.group == group_t::STRING);
 			// Вид значения, собираемого кусками
@@ -1585,8 +1590,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						return this->fail(error_t::INVALID_KEY);
 				}
 				// Выполняем получение предела глубины вложенности
-				const uint32_t depth = ((this->_settings.maxDepth > 0) ?
-				 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+				const uint32_t depth = (
+					(this->_settings.maxDepth > 0) ?
+					((this->_settings.maxDepth < MAX_DEPTH) ?
+					this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH
+				);
 				// Если глубина вложенности превышает допустимую
 				if(static_cast <uint32_t> (this->_stack.size() + 1) > depth)
 					// Выполняем объявление отказа разбора
@@ -1679,7 +1687,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Выполняем установку вида ожидаемого значения
 			this->_awaited = (text ? type_t::STRING : type_t::BLOB);
 			// Выполняем перевод разбора в ожидание октетов значения
-			this->_state = state_t::SEGMENT;
+			this->_state = phase_t::SEGMENT;
 			// Сообщаем, что разбор успешен
 			return true;
 		}
@@ -1707,8 +1715,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					return this->fail(error_t::INVALID_KEY);
 			}
 			// Выполняем получение предела глубины вложенности
-			const uint32_t limit = ((this->_settings.maxDepth > 0) ?
-			 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+			const uint32_t limit = (
+				(this->_settings.maxDepth > 0) ?
+				((this->_settings.maxDepth < MAX_DEPTH) ?
+				this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH
+			);
 			// Если глубина вложенности превышает допустимую
 			if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
 				// Выполняем объявление отказа разбора
@@ -1845,10 +1856,10 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				/**
 				 * Если значение ведёт за собой запись установленной ширины
 				 */
-				case static_cast <uint8_t> (single_t::FLOAT):
-				case static_cast <uint8_t> (single_t::DOUBLE):
 				case static_cast <uint8_t> (single_t::TIME):
-				case static_cast <uint8_t> (single_t::UUID): {
+				case static_cast <uint8_t> (single_t::UUID):
+				case static_cast <uint8_t> (single_t::FLOAT):
+				case static_cast <uint8_t> (single_t::DOUBLE): {
 					// Выполняем сдвиг смещения разбора
 					this->_offset = offset;
 					// Если значение является дробным одинарной точности
@@ -1877,7 +1888,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						this->_awaited = type_t::UUID;
 					}
 					// Выполняем перевод разбора в ожидание октетов значения
-					this->_state = state_t::SINGLE;
+					this->_state = phase_t::SINGLE;
 					// Сообщаем, что разбор успешен
 					return true;
 				}
@@ -1966,7 +1977,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						// Выполняем установку признака завершённости документа
 						this->_document = true;
 						// Выполняем перевод разбора в завершённое состояние
-						this->_state = state_t::FINISHED;
+						this->_state = phase_t::FINISHED;
 						// Сообщаем, что разбор успешен
 						return true;
 					}
@@ -2021,11 +2032,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			// Если расширение является десятичным числом
 			if(this->_extend == extend_t::DECIMAL)
 				// Выполняем перевод разбора в ожидание десятичного порядка
-				this->_state = state_t::EXTEND_EXPONENT;
+				this->_state = phase_t::EXTEND_EXPONENT;
 			// Иначе, если расширение заведено потребителем
 			else if(this->_extend == extend_t::CUSTOM)
 				// Выполняем перевод разбора в ожидание номера подвида расширения
-				this->_state = state_t::CUSTOM_SUBTYPE;
+				this->_state = phase_t::CUSTOM_SUBTYPE;
 			/**
 			 * Иначе, если расширением объявлен размах вместимого
 			 *
@@ -2036,9 +2047,9 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			 */
 			else if(this->_extend == extend_t::SPANNED)
 				// Выполняем перевод разбора в ожидание октетов размаха
-				this->_state = state_t::SPANNED_WIDTH;
+				this->_state = phase_t::SPANNED_WIDTH;
 			// Если расширение является целым любой ширины
-			else this->_state = state_t::EXTEND_LENGTH;
+			else this->_state = phase_t::EXTEND_LENGTH;
 			// Сообщаем, что разбор успешен
 			return true;
 		}
@@ -2124,7 +2135,7 @@ bool awh::codec::abc::Reader::digest(const bool last) noexcept {
 	// Если поданный кусок записи последний
 	if(last){
 		// Если разбор оборвался посреди значения
-		if(this->_state != state_t::FINISHED)
+		if(this->_state != phase_t::FINISHED)
 			// Выполняем объявление отказа разбора
 			return this->fail((this->_buffer.empty() && !this->_document) ?
 			 error_t::EMPTY_RECORD : error_t::UNEXPECTED_EOF);
@@ -2167,6 +2178,8 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_location.depth = 0;
 	// Сбрасываем смещение разбора в начало записи
 	this->_location.offset = 0;
+	// Выполняем сброс положения обнаруженного отказа
+	this->_failure = location_t();
 	// Выполняем очистку ведущих октетов разбираемой единицы
 	this->_lead.clear();
 	// Выполняем очистку октетов записей имён полей вместимых
@@ -2192,7 +2205,7 @@ void awh::codec::abc::Reader::reset() noexcept {
 	// Выполняем сброс события, выданного последним переходом
 	this->_current = record_t();
 	// Выполняем установку начального состояния разбора
-	this->_state = state_t::ITEM;
+	this->_state = phase_t::ITEM;
 	// Выполняем сброс кода отказа разбора
 	this->_error = error_t::NONE;
 	// Выполняем сброс разновидности ожидаемого расширения
@@ -2206,11 +2219,24 @@ void awh::codec::abc::Reader::reset() noexcept {
  */
 void awh::codec::abc::Reader::abort() noexcept {
 	// Выполняем перевод разбора в состояние отказа
-	this->_state = state_t::FAILED;
+	this->_state = phase_t::FAILED;
 	// Выполняем очистку очереди собранных событий
 	this->_events.clear();
 	// Выполняем сброс смещения первого невыданного события
 	this->_head = 0;
+}
+/**
+ * @brief Метод передачи записи целиком
+ *
+ * @details Разбирает переданную запись как единственный и последний кусок.
+ *
+ * @param text запись целиком
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::abc::Reader::feed(const string_view text) noexcept {
+	// Выполняем передачу записи единственным и последним куском
+	return this->feed(text.data(), text.size(), true);
 }
 /**
  * @brief Метод подачи куска разбираемой записи
@@ -2222,14 +2248,15 @@ void awh::codec::abc::Reader::abort() noexcept {
  *
  */
 bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const bool last) noexcept {
-	// Если разбор отвечен отказом
 	/**
+	 * Если разбор отвечен отказом
+	 *
 	 * @note Заслон ЗАТЕНЁН разбором наравне с собратом у пропуска значения - измерено
 	 *       щупом 09.09.2026. Довод тот же: подача, заслон миновавшая, доходит до разбора,
 	 *       а тот отвергает её заново прежней причиною
 	 *
 	 */
-	if(this->_state == state_t::FAILED)
+	if(this->_state == phase_t::FAILED)
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	/**
@@ -2336,7 +2363,7 @@ void * awh::codec::abc::Reader::reserve(const size_t size) noexcept {
 	 *       разбор какого уже сломан
 	 *
 	 */
-	if(this->_state == state_t::FAILED)
+	if(this->_state == phase_t::FAILED)
 		// Сообщаем, что места под приём октетов нет
 		return nullptr;
 	/**
@@ -2438,7 +2465,7 @@ bool awh::codec::abc::Reader::commit(const size_t size, const bool last) noexcep
 	 *       подачи октетов
 	 *
 	 */
-	if(this->_state == state_t::FAILED)
+	if(this->_state == phase_t::FAILED)
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	// Если принятых октетов больше, чем места было выдано
@@ -2509,7 +2536,7 @@ bool awh::codec::abc::Reader::skip() noexcept {
 	 *       разбора. Собрат его у отведения места затенён НЕ был и закреплён порознь
 	 *
 	 */
-	if(this->_state == state_t::FAILED)
+	if(this->_state == phase_t::FAILED)
 		// Выводим признак неудачного пропуска
 		return false;
 	/**
@@ -2578,6 +2605,38 @@ awh::codec::abc::event_t awh::codec::abc::Reader::event() const noexcept {
 	return this->_current.event;
 }
 /**
+ * @brief Метод извлечения текущего состояния чтения
+ *
+ * @return текущее состояние чтения записи
+ *
+ */
+awh::codec::abc::state_t awh::codec::abc::Reader::state() const noexcept {
+	/**
+	 * Если разбор прекращён отказом
+	 *
+	 * @note Отказ старше прочего: очередь может нести события, собранные ДО отказа,
+	 *       и наличие их состоянием `READY` заслонило бы отказ от потребителя
+	 *
+	 */
+	if(this->_state == phase_t::FAILED)
+		// Выводим состояние прекращённого отказом разбора
+		return state_t::FAILED;
+	/**
+	 * Если очередь собранных событий не исчерпана
+	 */
+	if(this->_head < this->_events.size())
+		// Выводим состояние доступного к чтению события
+		return state_t::READY;
+	/**
+	 * Если запись разобрана до конца
+	 */
+	if(this->_state == phase_t::FINISHED)
+		// Выводим состояние разобранной до конца записи
+		return state_t::FINISHED;
+	// Выводим состояние ожидания следующего куска записи
+	return state_t::HUNGRY;
+}
+/**
  * @brief Метод извлечения значения текущего события
  *
  * @return значение текущего события разбора
@@ -2586,6 +2645,8 @@ awh::codec::abc::event_t awh::codec::abc::Reader::event() const noexcept {
 awh::codec::abc::Reader::value_t awh::codec::abc::Reader::value() const noexcept {
 	// Выдаваемое значение текущего события
 	value_t result;
+	// Выполняем установку дробного числа
+	result.real = this->_current.real;
 	// Выполняем установку вида значения
 	result.type = this->_current.type;
 	// Выполняем установку количества значений вместимого
@@ -2594,18 +2655,16 @@ awh::codec::abc::Reader::value_t awh::codec::abc::Reader::value() const noexcept
 	result.number = this->_current.number;
 	// Выполняем установку целого со знаком
 	result.integer = this->_current.integer;
-	// Выполняем установку дробного числа
-	result.real = this->_current.real;
-	// Выполняем установку десятичного порядка величины
-	result.exponent = this->_current.exponent;
 	// Выполняем установку логического значения
 	result.boolean = this->_current.boolean;
+	// Выполняем установку признака исправления содержимого строки
+	result.repaired = this->_current.repaired;
+	// Выполняем установку десятичного порядка величины
+	result.exponent = this->_current.exponent;
 	// Выполняем установку признака отрицательности величины
 	result.negative = this->_current.negative;
 	// Выполняем установку признака неопределённой длины вместимого
 	result.indefinite = this->_current.indefinite;
-	// Выполняем установку признака исправления содержимого строки
-	result.repaired = this->_current.repaired;
 	/**
 	 * Если содержимое строки было исправлено, берётся оно из своего хранилища
 	 *
@@ -2616,13 +2675,11 @@ awh::codec::abc::Reader::value_t awh::codec::abc::Reader::value() const noexcept
 	 */
 	if(this->_current.repaired)
 		// Выполняем установку содержимого значения видом на хранилище исправленных строк
-		result.data = string_view(reinterpret_cast <const char *> (this->_repair.data() + this->_current.patch.offset),
-		 static_cast <size_t> (this->_current.patch.length));
+		result.data = string_view(reinterpret_cast <const char *> (this->_repair.data() + this->_current.patch.offset), static_cast <size_t> (this->_current.patch.length));
 	// Если содержимое значения не пусто
 	else if(this->_current.span.length > 0)
 		// Выполняем установку содержимого значения видом на буфер разбора
-		result.data = string_view(reinterpret_cast <const char *> (this->_buffer.data() + this->_current.span.offset),
-		 static_cast <size_t> (this->_current.span.length));
+		result.data = string_view(reinterpret_cast <const char *> (this->_buffer.data() + this->_current.span.offset), static_cast <size_t> (this->_current.span.length));
 	// Выводим значение текущего события
 	return result;
 }
@@ -2660,6 +2717,16 @@ const awh::codec::abc::location_t & awh::codec::abc::Reader::location() const no
 	return this->_location;
 }
 /**
+ * @brief Метод получения места обнаружения отказа
+ *
+ * @return положение обнаруженного отказа в исходном тексте
+ *
+ */
+const awh::codec::abc::location_t & awh::codec::abc::Reader::errorLocation() const noexcept {
+	// Выводим положение обнаруженного отказа в исходном тексте
+	return this->_failure;
+}
+/**
  * @brief Метод извлечения глубины вложенности разбора
  *
  * @return глубина вложенности разбора
@@ -2685,9 +2752,11 @@ const awh::codec::abc::Reader::settings_t & awh::codec::abc::Reader::settings() 
  * @param settings устанавливаемые настройки разбора записи
  *
  */
-void awh::codec::abc::Reader::settings(const settings_t & settings) noexcept {
+bool awh::codec::abc::Reader::settings(const settings_t & settings) noexcept {
 	// Выполняем установку настроек разбора записи
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
 /**
  * @brief Конструктор
@@ -2697,7 +2766,7 @@ awh::codec::abc::Reader::Reader() noexcept :
  _skipping(false), _negative(false), _document(false),
  _nodes(0), _head(0), _offset(0), _reserved(0), _span(0),
  _origin(0), _beyond(0), _subtype(0), _pending(0),
- _exponent(0), _state(state_t::ITEM), _error(error_t::NONE),
+ _exponent(0), _state(phase_t::ITEM), _error(error_t::NONE),
  _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM),
  _handler(nullptr), _context(nullptr)  {
 	// Выполняем установку начального положения разбора
@@ -2707,6 +2776,17 @@ awh::codec::abc::Reader::Reader() noexcept :
 	// Выполняем установку начальной глубины вложенности разбора
 	this->_location.depth = 0;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора текста
+ *
+ */
+awh::codec::abc::Reader::Reader(const settings_t & settings) noexcept : Reader() {
+	// Выполняем установку настроек разбора текста
+	this->settings(settings);
+}
+
 /**
  * @brief Конструктор
  *
