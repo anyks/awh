@@ -260,7 +260,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		 */
 		#if defined(DEBUG_MODE)
 			// Записываем отказ в журнал работы
-			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, kind, number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
+			log::debug("ABC: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (kind), number, generation}, log::flag_t::WARNING, codec::abc::message(error_t::INTERNAL));
 		/**
 		 * Если режим отладки не включён
 		 */
