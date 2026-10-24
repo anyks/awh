@@ -43,13 +43,14 @@ using namespace std;
  * \~
  */
 awh::codec::cef::Position::Position() noexcept :
- line(1), column(1), offset(0) {}
+ codec::location_t(1, 1, 0) {}
 
 /**
  * @brief Функция получения текста сообщения об ошибке разбора
  *
  * @param error код ошибки разбора
  * @return      текст сообщения об ошибке разбора
+ *
  */
 const char * awh::codec::cef::message(const error_t error) noexcept {
 	/**

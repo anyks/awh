@@ -25,7 +25,7 @@
 #include <array>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл модуля
  */
 #include <codec/cef/dictionary.hpp>
 
@@ -55,6 +55,7 @@ namespace {
 	 * @details Упорядоченность обязательна: розыск ведётся двоичным поиском, и нарушение
 	 *          порядка обратило бы его в молчаливую выдачу отсутствия. Порядок закреплён
 	 *          проверочным испытанием, а не оставлен на усмотрение правящего таблицу.
+	 *
 	 */
 	constexpr entry_t ENTRIES[] = {
 		{type_t::STRING, 63, "act", "deviceAction"},
@@ -326,6 +327,7 @@ namespace {
  * @brief Функция получения количества ключей расширения в словаре
  *
  * @return количество ключей расширения в словаре
+ *
  */
 size_t awh::codec::cef::dictionary::size() noexcept {
 	// Выводим количество ключей расширения в словаре
@@ -336,6 +338,7 @@ size_t awh::codec::cef::dictionary::size() noexcept {
  *
  * @param index порядковый номер записи словаря
  * @return      запись словаря либо ничто, если номер за таблицу выходит
+ *
  */
 const awh::codec::cef::entry_t * awh::codec::cef::dictionary::at(const size_t index) noexcept {
 	// Выводим запись словаря по её порядковому номеру
@@ -346,6 +349,7 @@ const awh::codec::cef::entry_t * awh::codec::cef::dictionary::at(const size_t in
  *
  * @param key ключ расширения, в записи стоящий
  * @return    запись словаря либо ничто, если ключ словарю неизвестен
+ *
  */
 const awh::codec::cef::entry_t * awh::codec::cef::dictionary::find(const string_view key) noexcept {
 	// Начало отрезка розыска в таблице
@@ -379,6 +383,7 @@ const awh::codec::cef::entry_t * awh::codec::cef::dictionary::find(const string_
  *
  * @param name полное имя ключа расширения
  * @return     запись словаря либо ничто, если имя словарю неизвестно
+ *
  */
 const awh::codec::cef::entry_t * awh::codec::cef::dictionary::search(const string_view name) noexcept {
 	// Начало отрезка розыска в указателе

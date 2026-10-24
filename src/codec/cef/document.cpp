@@ -26,13 +26,6 @@
 #include <vector>
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <codec/cef/document.hpp>
-
-/**
  * Подключаем заголовочный файл работы с файловой системой
  *
  * @details Работа с файлами ведётся средством рамки, а НЕ потоками языка напрямую:
@@ -46,8 +39,15 @@
  *
  * @note Переведено 09.09.2026: работа кодеков с файловой системой
  *       ведётся через `sys/fs`, прямые ходы к потокам и `stat` отсюда сняты
+ *
  */
 #include <sys/fs.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочный файл модуля разбора чисел
@@ -55,8 +55,14 @@
  * @note Разбор записи числа ведётся им, а не средствами рамки языка: те судят запись по
  *       локали, и десятичный знак берут у неё, тогда как запись протокола локали машины
  *       не подвластна вовсе
+ *
  */
 #include <num/lexical/lexical.hpp>
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/cef/document.hpp>
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
@@ -94,6 +100,7 @@ namespace {
 	 *
 	 * @note Ворошитель нашёл это разомкнутостью обхода: `keys` выдавал звено с
 	 *       отменяющей записью, а `at` по нему не находил потомка
+	 *
 	 */
 	constexpr const char * EXTENSION = "extension";
 
@@ -101,6 +108,7 @@ namespace {
 	 * @brief Имена полей заголовка записи в дереве контейнера ABC
 	 *
 	 * @details Порядок отвечает порядку полей в записи и порядку членов перечня полей
+	 *
 	 */
 	constexpr string_view FIELDS[] = {
 		"version", "vendor", "product", "release", "signature", "name", "severity"
@@ -111,6 +119,7 @@ namespace {
 	 *
 	 * @param name имя, звеном пути ставимое
 	 * @return     звено пути с поставленной отменяющей записью
+	 *
 	 */
 	string encode(const string_view name) noexcept {
 		// Результирующее звено пути
@@ -154,6 +163,7 @@ namespace {
 	 *
 	 * @param link звено пути с отменяющей записью
 	 * @return     имя, звеном пути обозначенное
+	 *
 	 */
 	string decode(const string_view link) noexcept {
 		// Результирующее имя, звеном обозначенное
@@ -213,6 +223,7 @@ namespace {
 	 * @param link   звено пути
 	 * @param result номер значения перечня, звеном обозначенный
 	 * @return       признак числового вида звена пути
+	 *
 	 */
 	bool indexOf(const string & link, size_t & result) noexcept {
 		// Сбрасываем номер значения перечня
@@ -243,6 +254,7 @@ namespace {
 	 * @brief Прототип функции разбора записи числа целиком, без остатка
 	 *
 	 * @tparam T значение объекта результата
+	 *
 	 */
 	template <typename T>
 	/**
@@ -260,6 +272,7 @@ namespace {
 	 * @param value  разбираемая запись числа
 	 * @param result разобранное число
 	 * @return       признак разбора записи целиком
+	 *
 	 */
 	bool numberOf(const string & value, T & result) noexcept {
 		// Выполняем разбор записи числа модулем разбора чисел
@@ -284,6 +297,7 @@ namespace {
 	 *
 	 * @param path разбираемый путь
 	 * @return     звенья пути со снятой отменяющей записью
+	 *
 	 */
 	vector <string> split(const string & path) noexcept {
 		// Результирующие звенья пути
@@ -314,6 +328,33 @@ namespace {
 		// Выводим результирующие звенья пути
 		return result;
 	}
+	/**
+	 * @brief Функция проверки того, что адрес указывает на каталог
+	 *
+	 * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
+	 *          ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
+	 *          их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу.
+	 *
+	 * @warning Распознавание стоит ДО открытия потока намеренно: у MS Windows каталог не
+	 *          открывается вовсе, и проверка, поставленная после открытия, была бы там
+	 *          мертва - договор разошёлся бы по системам
+	 *
+	 * @param fs       объект работы с файловой системой
+	 * @param filename проверяемый адрес
+	 * @return         признак того, что адрес указывает на каталог
+	 *
+	 */
+	static bool directory(const fs_t & fs, const string & filename) noexcept {
+		/**
+		 * Выводим результат проверки того, что адрес указывает на каталог
+		 *
+		 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на
+		 *          каталог есть тот же каталог для того, кто его открывает, и различать их
+		 *          здесь значило бы принять ссылку за годный файл
+		 *
+		 */
+		return (fs.type(filename, false) == fs_t::type_t::DIR);
+	}
 };
 
 /**
@@ -322,6 +363,7 @@ namespace {
  * @param key   имя ключа пары расширения
  * @param value значение пары расширения
  * @return      признак успешности укладки пары
+ *
  */
 bool awh::codec::cef::Document::inject(const string & key, const string & value) noexcept {
 	// Выполняем розыск записи словаря по ключу расширения
@@ -330,8 +372,28 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 	if((entry == nullptr) && (this->_reader.settings().mode == mode_t::STRONG)){
 		// Устанавливаем код ошибки неизвестного ключа расширения
 		this->_error = error_t::UNKNOWN_KEY;
-		// Выводим в лог сообщение о неизвестном ключе расширения
-		log::print("CEF extension key \"%s\" is unknown to the dictionary", log::flag_t::CRITICAL, key.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о неизвестном ключе расширения
+			log::debug(
+				"CEF extension key \"%s\" is unknown to the dictionary", __PRETTY_FUNCTION__,
+				{key, value},
+				log::flag_t::CRITICAL,
+				key.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о неизвестном ключе расширения
+			log::print(
+				"CEF extension key \"%s\" is unknown to the dictionary",
+				log::flag_t::CRITICAL,
+				key.c_str()
+			);
+		#endif
 		// Выводим отрицательный признак укладки пары
 		return false;
 	}
@@ -348,16 +410,38 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 	 *          заполненным для всякой записи, а НЕ ЧИТАЛ ЕГО НИКТО - сведения были, а
 	 *          поверки не было. Тот же разряд, что и у кода INVALID_HOSTNAME кодека
 	 *          syslog, объявленного и не наводимого ни одним путём
+	 *
 	 */
 	if((entry != nullptr) && (entry->limit > 0) && (this->_reader.settings().mode == mode_t::STRONG) &&
 	   (value.size() > static_cast <size_t> (entry->limit))){
 		// Устанавливаем код ошибки превышения предела длины значения
 		this->_error = error_t::VALUE_TOO_LONG;
-		// Выводим в лог сообщение о превышении предела длины значения
-		log::print(
-			"CEF extension key \"%s\" holds a value of %zu characters while the dictionary allows %u",
-			log::flag_t::CRITICAL, key.c_str(), value.size(), entry->limit
-		);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о неизвестном ключе расширения
+			log::debug(
+				"CEF extension key \"%s\" holds a value of %zu characters while the dictionary allows %u", __PRETTY_FUNCTION__,
+				{key, value},
+				log::flag_t::CRITICAL,
+				key.c_str(),
+				value.size(),
+				entry->limit
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о неизвестном ключе расширения
+			log::print(
+				"CEF extension key \"%s\" holds a value of %zu characters while the dictionary allows %u",
+				log::flag_t::CRITICAL,
+				key.c_str(),
+				value.size(),
+				entry->limit
+			);
+		#endif
 		// Выводим отрицательный признак укладки пары
 		return false;
 	}
@@ -365,11 +449,30 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 	abc::value_t current;
 	// Если обращение значения расширения отказом завершилось
 	if(!this->convert(entry, value, current, this->_reader.settings().mode)){
-		// Выводим в лог сообщение о несоответствии значения виду
-		log::print(
-			"CEF extension key \"%s\" holds a value of another kind: %s",
-			log::flag_t::CRITICAL, key.c_str(), awh::codec::cef::message(this->_error)
-		);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим в лог сообщение о неизвестном ключе расширения
+			log::debug(
+				"CEF extension key \"%s\" holds a value of another kind: %s", __PRETTY_FUNCTION__,
+				{key, value},
+				log::flag_t::CRITICAL,
+				key.c_str(),
+				codec::cef::message(this->_error)
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение о неизвестном ключе расширения
+			log::print(
+				"CEF extension key \"%s\" holds a value of another kind: %s",
+				log::flag_t::CRITICAL,
+				key.c_str(),
+				codec::cef::message(this->_error)
+			);
+		#endif
 		// Выводим отрицательный признак укладки пары
 		return false;
 	}
@@ -423,6 +526,7 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
  * @param value  значение пары расширения знаками
  * @param result значение дерева контейнера ABC
  * @return       признак успешности обращения значения
+ *
  */
 bool awh::codec::cef::Document::convert(const entry_t * entry, const string & value, abc::value_t & result, const mode_t mode) noexcept {
 	// Если значение пары расширения пусто
@@ -439,7 +543,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 				return true;
 			}
 			// Если пустое значение обращается в пустоту
-			case static_cast <uint8_t> (empty_t::NUL): {
+			case static_cast <uint8_t> (empty_t::NIL): {
 				// Устанавливаем пустоту значением дерева
 				result = abc::value_t(nullptr);
 				// Выводим положительный признак обращения значения
@@ -486,6 +590,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *          локали не подвластны вовсе - запись эта пришла от отправителя, а
 			 *          не от машины, на какой кодек исполняется. Заодно уходят
 			 *          исключения: у модуля их нет
+			 *
 			 */
 			if(!::numberOf(value, integer)){
 				// Устанавливаем код ошибки несоответствия значения виду
@@ -514,6 +619,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 * @note Расхождение это принадлежит рамке и вынесено к ней. Здесь же
 			 *       довод снят не в обход ему, а за ненадобностью: строгий разбор
 			 *       поверяет запись лучше и без второго мнения
+			 *
 			 */
 			double number = 0.;
 			/**
@@ -523,6 +629,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *          локали и под немецкой читает «1.5» единицею, обрывая разбор на
 			 *          точке. Запись пришла от отправителя, и локаль машины к ней
 			 *          отношения не имеет
+			 *
 			 */
 			if(!::numberOf(value, number)){
 				// Устанавливаем код ошибки несоответствия значения виду
@@ -537,6 +644,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *          записи CEF неведомы вовсе: описание ArcSight знает лишь конечные
 			 *          числа. Принимать их значило бы заводить в дереве значение, какое
 			 *          запись обратно выразить не может
+			 *
 			 */
 			if(!::isfinite(number)){
 				// Устанавливаем код ошибки несоответствия значения виду
@@ -589,6 +697,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 				 * @warning Разбор ведётся `lexical_t`, а НЕ `std::stoull`: тот судит
 				 *          запись по локали и бросает исключения, каких договор кодека
 				 *          не знает
+				 *
 				 */
 				if(!::numberOf(value, stamp)){
 					// Устанавливаем код ошибки несоответствия значения виду
@@ -608,6 +717,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *
 			 * @details Доля секунды опознаётся точкой, цифрами с обеих сторон окружённой:
 			 *          запись «23:30:15.734» её несёт, а «2.4.3-371989» - нет.
+			 *
 			 */
 			for(size_t i = 1; (i + 1) < value.size(); i++){
 				// Если знак точкой является, а соседи его цифрами
@@ -620,10 +730,10 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 					break;
 				}
 			}
-			// Получаем запись даты, метке времени отвечающую
-			const string & pattern = (fractional ? this->_reader.settings().fraction : this->_reader.settings().timestamp);
 			// Признак пригодности записи метки времени
 			bool valid = false;
+			// Получаем запись даты, метке времени отвечающую
+			const string & pattern = (fractional ? this->_reader.settings().fraction : this->_reader.settings().timestamp);
 			/**
 			 * Выполняем разбор записи метки времени модулем работы с датой и временем
 			 *
@@ -633,6 +743,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *
 			 * @note Признак этот заведён в модуле `chrono_t` 04.09.2026 по
 			 *       обращению отсюда; прежде кодек мог считать отказом лишь нулевой штамп
+			 *
 			 */
 			uint64_t stamp = this->_chrono.parse(value, pattern, valid, chrono_t::storage_t::GLOBAL);
 			/**
@@ -643,6 +754,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *          догадку эту признак пригодности позволяет проверить и поправить. Замерено:
 			 *          метка без доли секунды, разобранная записью с долей, даёт и признак
 			 *          опущенный, и момент, на величину зоны смещённый.
+			 *
 			 */
 			if(!valid){
 				// Получаем запись даты, первой попыткой не взятую
@@ -669,6 +781,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 			 *          непоставленный пояс поясом самого устройства, и так же поступает
 			 *          кодек системного журнала с датами RFC 3164. Разбор всемирным
 			 *          сместил бы момент на величину пояса - молча и правдоподобно
+			 *
 			 */
 			if(!valid)
 				// Выполняем разбор записи метки времени видом без пояса времени
@@ -753,6 +866,7 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
  *
  * @param text текст записи CEF
  * @return     результат выполнения операции
+ *
  */
 bool awh::codec::cef::Document::parse(const string_view text) noexcept {
 	// Выполняем очистку дерева события
@@ -826,6 +940,7 @@ bool awh::codec::cef::Document::parse(const string_view text) noexcept {
 				 *       самого поля она бессмысленна: потребитель, спросивший label(),
 				 *       получит имя того, чего в записи нет. Отказ этот словарный, а не
 				 *       разбора, оттого и живёт при укладке в дерево, а не в читателе
+				 *
 				 */
 				if(this->_reader.settings().mode != mode_t::NONE){
 					/**
@@ -874,36 +989,11 @@ bool awh::codec::cef::Document::parse(const string_view text) noexcept {
 	return true;
 }
 /**
- * @brief Функция проверки того, что адрес указывает на каталог
- *
- * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
- *          ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
- *          их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу.
- *
- * @warning Распознавание стоит ДО открытия потока намеренно: у MS Windows каталог не
- *          открывается вовсе, и проверка, поставленная после открытия, была бы там
- *          мертва - договор разошёлся бы по системам
- *
- * @param fs       объект работы с файловой системой
- * @param filename проверяемый адрес
- * @return         признак того, что адрес указывает на каталог
- *
- */
-static bool directory(const fs_t & fs, const string & filename) noexcept {
-	/**
-	 * Выводим результат проверки того, что адрес указывает на каталог
-	 *
-	 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на
-	 *          каталог есть тот же каталог для того, кто его открывает, и различать их
-	 *          здесь значило бы принять ссылку за годный файл
-	 */
-	return (fs.type(filename, false) == fs_t::type_t::DIR);
-}
-/**
  * @brief Метод чтения записи CEF из файла
  *
  * @param filename адрес файла записи CEF
  * @return         результат выполнения операции
+ *
  */
 bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	/**
@@ -915,6 +1005,7 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	/**
@@ -923,6 +1014,7 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 * @note Отказ выдаётся ДО открытия потока: каталог открывается успешно и читается
 	 *       пусто, отчего подача его отвечала бы ИСТИНОЙ с пустым деревом - ложный успех
 	 *       вместо отказа, отличить какой потребителю нечем
+	 *
 	 */
 	if(::directory(this->_fs, filename)){
 		/**
@@ -937,10 +1029,31 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 		 * @note Код заведён 08.09.2026: шесть кодеков из восьми
 		 *       держали `FILE_NOT_READ` уже, а у этих двух его не было вовсе, и
 		 *       подача каталога отвечалась кодом открытия
+		 *
 		 */
 		this->_error = error_t::FILE_NOT_READ;
-		// Выводим в лог сообщение о подаче каталога вместо файла
-		log::print("CEF file \"%s\" is a directory", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" is a directory", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" is a directory",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -959,15 +1072,38 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *       ссылку ОТЛИЧАЕТ от файла, отвечая `LINK`, и первая моя редакция заслона
 	 *       отвергала всякую ссылку кодом `FILE_NOT_OPENED`. Прочесть её при этом `fs_t`
 	 *       давал без единой жалобы - то есть отказ был выдуман мною, а не системой
+	 *
 	 */
 	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим в лог сообщение об ошибке открытия файла
-		log::print("CEF file \"%s\" could not be opened", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" could not be opened", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" could not be opened",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	// Содержимое файла записи CEF
+	string content = "";
 	/**
 	 * Величина файла, снятая ДО чтения
 	 *
@@ -978,10 +1114,9 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *
 	 * @note Устройство это заведено 09.09.2026: прежнее сличение ловило лишь
 	 *       чтение, не давшее НИЧЕГО, а частичное принимало за успех
+	 *
 	 */
 	const uintmax_t expected = this->_fs.size(filename);
-	// Содержимое файла записи CEF
-	string content = "";
 	// Выполняем чтение содержимого файла записи CEF
 	this->_fs.read(filename, content);
 	/**
@@ -990,8 +1125,28 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	if(static_cast <uintmax_t> (content.size()) != expected){
 		// Запоминаем код ошибки чтения файла
 		this->_error = error_t::FILE_NOT_READ;
-		// Выводим в лог сообщение об ошибке чтения файла
-		log::print("CEF file \"%s\" could not be read", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" could not be read", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" could not be read",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1010,6 +1165,7 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 * @note Счёт ведётся своим же чтением и прекращается на ВТОРОЙ записи: узнать надо не
 	 *       сколько их, а больше ли одной. Поток же записей читается `reader_t` - он для
 	 *       того и заведён, - и путь этот отказом не закрывается
+	 *
 	 */
 	{
 		// Объект чтения записей для счёта их в содержимом файла
@@ -1043,11 +1199,28 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 			if(records > 1){
 				// Устанавливаем код ошибки многозаписного файла
 				this->_error = error_t::MULTIPLE_RECORDS;
-				// Выводим в лог сообщение о многозаписном файле
-				log::print(
-					"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream",
-					log::flag_t::CRITICAL, "CEF", filename.c_str()
-				);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug(
+						"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream", __PRETTY_FUNCTION__,
+						{filename},
+						log::flag_t::CRITICAL,
+						"CEF", filename.c_str()
+					);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print(
+						"%s file \"%s\" holds more than one record: a document holds one, use the reader for a stream",
+						log::flag_t::CRITICAL,
+						"CEF", filename.c_str()
+					);
+				#endif
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -1061,6 +1234,7 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
  *
  * @param filename адрес файла записи CEF
  * @return         результат выполнения операции
+ *
  */
 bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	/**
@@ -1068,6 +1242,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *
 	 * @note Ход этот константен, а поле кода изменяемо: отказ обязан называть причину.
 	 *       Прежде сохранение отвечало ложью БЕЗ кода вовсе, и `error()` нёс что угодно
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Выполняем сбор записи CEF из дерева события
@@ -1097,6 +1272,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *
 	 * @note Разрешение ведётся `fullpath(addr, true)`, и при отказе его берётся путь как
 	 *       подан: отсутствующая цель - случай обычный, и сохранение обязано её завести
+	 *
 	 */
 	const string & resolved = this->_fs.fullpath(filename, true);
 	// Адрес цели сохранения: разрешённый путь либо поданный, буде разрешить не удалось
@@ -1110,6 +1286,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *       восемь работ `write` и `append` отвечают признаком, а не одним лишь журналом.
 	 *       Прежде признак приходилось добывать поверкою величины записанного - обход
 	 *       этот снят, ибо настоящий ответ теперь есть
+	 *
 	 */
 	if((file == nullptr) || !this->_fs.write(temporary, content.data(), content.size(), fs_t::seek_t::BEGIN, 0, file)){
 		/**
@@ -1117,14 +1294,35 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 		 *
 		 * @note Цель при этом НЕ ТРОНУТА вовсе: прежний журнал остаётся на месте
 		 *       целиком, и отказ сохранения данных больше не стоит
+		 *
 		 */
 		file.reset();
 		// Если временный файл был создан
 		if(!temporary.empty())
 			// Удаляем только файл этого сохранения
 			static_cast <void> (this->_fs.unlink(temporary));
-		// Выводим в лог сообщение об ошибке записи файла
-		log::print("CEF file \"%s\" could not be written", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" could not be written", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" could not be written",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим отрицательный результат выполнения операции
@@ -1142,10 +1340,32 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	 *
 	 * @note Отказ сброса записи не отменяет - записанное на месте и читается, - оттого
 	 *       итог его уходит в журнал, а не в отказ сохранения
+	 *
 	 */
-	if(!this->_fs.flush(temporary, true, file))
-		// Выводим в лог сообщение о том, что записанное на носитель не сброшено
-		log::print("CEF file \"%s\" was written but not flushed onto the medium", log::flag_t::WARNING, filename.c_str());
+	if(!this->_fs.flush(temporary, true, file)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" was written but not flushed onto the medium", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::WARNING,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" was written but not flushed onto the medium",
+				log::flag_t::WARNING,
+				filename.c_str()
+			);
+		#endif
+	}
 	// Закрываем объект перед подменой целевого файла
 	file.reset();
 	// Если подмена целевого файла не выполнена
@@ -1154,8 +1374,28 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Запоминаем код ошибки невозможности записи файла
 		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим в лог сообщение об ошибке подмены файла
-		log::print("CEF file \"%s\" could not be replaced by the temporary one", log::flag_t::CRITICAL, filename.c_str());
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug(
+				"CEF file \"%s\" could not be replaced by the temporary one", __PRETTY_FUNCTION__,
+				{filename},
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print(
+				"CEF file \"%s\" could not be replaced by the temporary one",
+				log::flag_t::CRITICAL,
+				filename.c_str()
+			);
+		#endif
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1166,6 +1406,7 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
  * @brief Метод сбора записи CEF из дерева события
  *
  * @return собранная запись CEF
+ *
  */
 string awh::codec::cef::Document::dump() const noexcept {
 	// Собранная запись CEF
@@ -1189,6 +1430,7 @@ string awh::codec::cef::Document::dump() const noexcept {
 	 *       писателе значило бы держать один договор в двух местах. Ход `convert`
 	 *       зовётся ЛИШЬ для значений знаковых - у прочих довольно сличить вид дерева с
 	 *       видом словаря, и разбора не требуется вовсе
+	 *
 	 */
 	if(this->_root.contains(EXTENSION)){
 		// Получаем пары расширения записи из дерева
@@ -1238,6 +1480,7 @@ string awh::codec::cef::Document::dump() const noexcept {
 				 * @note Поверяются оттого лишь значения НЕЗНАКОВЫЕ: число в поле адреса,
 				 *       логическое в поле дробного - такие в дерево кладёт потребитель, а
 				 *       разбор их не рождает никогда
+				 *
 				 */
 				if(item.type() != abc::type_t::STRING){
 					/**
@@ -1254,6 +1497,7 @@ string awh::codec::cef::Document::dump() const noexcept {
 							 *
 							 * @note Адрес сети знаками записывается ВСЕГДА: число адресом
 							 *       быть не может, ибо запись его словарём не назначена
+							 *
 							 */
 							fits = false;
 						break;
@@ -1267,27 +1511,48 @@ string awh::codec::cef::Document::dump() const noexcept {
 						case static_cast <uint8_t> (type_t::UNSIGNED):
 						case static_cast <uint8_t> (type_t::TIMESTAMP):
 							// Целому виду отвечает лишь целое значение
-							fits = ((static_cast <uint32_t> (item.type()) &
-							        (static_cast <uint32_t> (abc::type_t::SIGNED) | static_cast <uint32_t> (abc::type_t::UNSIGNED))) > 0);
+							fits = (
+								(static_cast <uint32_t> (item.type()) &
+							    (static_cast <uint32_t> (abc::type_t::SIGNED) | static_cast <uint32_t> (abc::type_t::UNSIGNED))) > 0
+							);
 						break;
 						// Если словарь назначает полю дробное число
 						case static_cast <uint8_t> (type_t::DOUBLE):
 							// Дробному виду отвечает и целое, и дробное значение
-							fits = ((static_cast <uint32_t> (item.type()) &
-							        (static_cast <uint32_t> (abc::type_t::SIGNED) | static_cast <uint32_t> (abc::type_t::UNSIGNED) |
-							         static_cast <uint32_t> (abc::type_t::FLOAT) | static_cast <uint32_t> (abc::type_t::DOUBLE))) > 0);
+							fits = (
+								(static_cast <uint32_t> (item.type()) &
+							    (static_cast <uint32_t> (abc::type_t::SIGNED) | static_cast <uint32_t> (abc::type_t::UNSIGNED) |
+							    static_cast <uint32_t> (abc::type_t::FLOAT) | static_cast <uint32_t> (abc::type_t::DOUBLE))) > 0
+							);
 						break;
 					}
 				}
 				// Если значение виду, словарём назначенному, не отвечает
 				if(!fits){
 					// Устанавливаем код ошибки непредставимого значения
-					const_cast <Document *> (this)->_error = error_t::UNREPRESENTABLE_VALUE;
-					// Выводим в лог сообщение о значении, виду словаря чуждом
-					log::print(
-						"CEF extension key \"%s\" holds a value alien to the kind given by the dictionary",
-						log::flag_t::CRITICAL, key.c_str()
-					);
+					const_cast <document_t *> (this)->_error = error_t::UNREPRESENTABLE_VALUE;
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug(
+							"CEF extension key \"%s\" holds a value alien to the kind given by the dictionary", __PRETTY_FUNCTION__,
+							{},
+							log::flag_t::CRITICAL,
+							key.c_str()
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print(
+							"CEF extension key \"%s\" holds a value alien to the kind given by the dictionary",
+							log::flag_t::CRITICAL,
+							key.c_str()
+						);
+					#endif
 					// Выводим пустую запись CEF
 					return "";
 				}
@@ -1304,6 +1569,7 @@ string awh::codec::cef::Document::dump() const noexcept {
 	 *
 	 * @note Найдено ворошителем 04.09.2026: запись с непредставимым ключом выдавалась
 	 *       одним заголовком, а расширение пропадало без всякого знака о том
+	 *
 	 */
 	if(!const_cast <writer_t &> (this->_writer).write(this->_root, result)){
 		// Запоминаем код ошибки сборки записи
@@ -1319,6 +1585,7 @@ string awh::codec::cef::Document::dump() const noexcept {
  *
  * @param path путь к значению
  * @return     ссылка на значение либо ссылка на отсутствующее значение
+ *
  */
 const awh::codec::abc::value_t & awh::codec::cef::Document::at(const string & path) const noexcept {
 	// Получаем звенья разбираемого пути
@@ -1358,6 +1625,7 @@ const awh::codec::abc::value_t & awh::codec::cef::Document::at(const string & pa
 					 * @warning Стережётся переполнение ДО умножения: беззнаковое
 					 *          заворачивается по кругу молча, и звено «2^64» обращалось
 					 *          бы нулём, отвечая ПЕРВЫМ значением перечня вместо отказа
+					 *
 					 */
 					else if(index > ((SIZE_MAX - static_cast <size_t> (link[i] - '0')) / 10))
 						// Запоминаем неприменимость звена номером значения
@@ -1385,6 +1653,7 @@ const awh::codec::abc::value_t & awh::codec::cef::Document::at(const string & pa
  * @param path  путь к значению
  * @param value значение, по пути ставимое
  * @return      признак успешности постановки значения
+ *
  */
 bool awh::codec::cef::Document::set(const string & path, const abc::value_t & value) noexcept {
 	/**
@@ -1396,6 +1665,7 @@ bool awh::codec::cef::Document::set(const string & path, const abc::value_t & va
 	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Получаем звенья разбираемого пути
@@ -1424,6 +1694,7 @@ bool awh::codec::cef::Document::set(const string & path, const abc::value_t & va
 		 * @note Номер за пределами перечня отвергается, а не дописывается в конец:
 		 *       дописывание сквозь путь заводило бы значения молча, и потребитель,
 		 *       ошибшийся номером, получал бы успех вместо отказа
+		 *
 		 */
 		if(current->type() == abc::type_t::ARRAY){
 			// Номер значения перечня, звеном обозначенный
@@ -1457,6 +1728,7 @@ bool awh::codec::cef::Document::set(const string & path, const abc::value_t & va
 		 *          причиной, а дерево остаётся нетронутым. Хуже того, внутри ЭТОГО ЖЕ
 		 *          файла ход сноса `erase` уже отвечал на такой путь отказом
 		 *          `UNKNOWN_FIELD` - один договор о двух лицах в одном файле
+		 *
 		 */
 		if((current->type() != abc::type_t::MAP) && current->valid()){
 			// Запоминаем код ошибки отсутствия поля
@@ -1476,6 +1748,7 @@ bool awh::codec::cef::Document::set(const string & path, const abc::value_t & va
 	 *
 	 * @note Условие то же, что и внутри обхода: значение перечня ставится по номеру,
 	 *       а номер за пределами перечня отвергается
+	 *
 	 */
 	if(current->type() == abc::type_t::ARRAY){
 		// Номер значения перечня, звеном обозначенный
@@ -1497,6 +1770,7 @@ bool awh::codec::cef::Document::set(const string & path, const abc::value_t & va
 	 *
 	 * @note Условие то же, что и внутри обхода: занятое звено отвергается, отсутствующее
 	 *       заводится
+	 *
 	 */
 	if((current->type() != abc::type_t::MAP) && current->valid()){
 		// Запоминаем код ошибки отсутствия поля
@@ -1518,6 +1792,7 @@ bool awh::codec::cef::Document::set(const string & path, const abc::value_t & va
  *
  * @param path путь к сбрасываемому значению
  * @return     признак успешности сброса значения
+ *
  */
 bool awh::codec::cef::Document::reset(const string & path) noexcept {
 	/**
@@ -1529,6 +1804,7 @@ bool awh::codec::cef::Document::reset(const string & path) noexcept {
 	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	/**
@@ -1541,6 +1817,7 @@ bool awh::codec::cef::Document::reset(const string & path) noexcept {
 	 *
 	 * @note Расхождение найдено аудитом 15.09.2026 сличением шести кодеков щупом;
 	 *       закреплено `CodecContract.EmptyPathIsUnderstoodAlikeByEveryEditingCall`
+	 *
 	 */
 	if(path.empty() || (path == "/")){
 		// Выполняем очистку дерева события
@@ -1563,6 +1840,7 @@ bool awh::codec::cef::Document::reset(const string & path) noexcept {
  *
  * @param path путь к сносимому значению
  * @return     признак успешности сноса значения
+ *
  */
 bool awh::codec::cef::Document::erase(const string & path) noexcept {
 	/**
@@ -1574,6 +1852,7 @@ bool awh::codec::cef::Document::erase(const string & path) noexcept {
 	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи.
 	 *
 	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 *
 	 */
 	this->_error = error_t::NONE;
 	// Получаем звенья разбираемого пути
@@ -1621,6 +1900,7 @@ bool awh::codec::cef::Document::erase(const string & path) noexcept {
 			 * @warning Стережётся переполнение ДО умножения: беззнаковое заворачивается
 			 *          по кругу молча, и звено «2^64» обращалось бы нулём, отвечая
 			 *          ПЕРВЫМ значением перечня вместо отказа
+			 *
 			 */
 			else if(index > ((SIZE_MAX - static_cast <size_t> (links.back()[i] - '0')) / 10))
 				// Запоминаем неприменимость звена номером значения
@@ -1646,6 +1926,7 @@ bool awh::codec::cef::Document::erase(const string & path) noexcept {
  *
  * @param path путь к значению
  * @return     звенья пути, у значения объявленные
+ *
  */
 vector <string> awh::codec::cef::Document::keys(const string & path) const noexcept {
 	// Результирующий перечень звеньев пути
@@ -1687,6 +1968,7 @@ vector <string> awh::codec::cef::Document::keys(const string & path) const noexc
  *
  * @param path путь к значению
  * @return     признак наличия значения по пути
+ *
  */
 bool awh::codec::cef::Document::has(const string & path) const noexcept {
 	// Выводим признак наличия значения дерева события по пути
@@ -1698,6 +1980,7 @@ bool awh::codec::cef::Document::has(const string & path) const noexcept {
  * @param path путь к значению
  * @param name имя вложенного значения
  * @return     признак наличия вложенного значения
+ *
  */
 bool awh::codec::cef::Document::contains(const string & path, const string & name) const noexcept {
 	// Выводим признак наличия вложенного значения по имени
@@ -1707,6 +1990,7 @@ bool awh::codec::cef::Document::contains(const string & path, const string & nam
  * @brief Метод получения количества пар расширения события
  *
  * @return количество пар расширения события
+ *
  */
 size_t awh::codec::cef::Document::size() const noexcept {
 	// Получаем вместилище пар расширения дерева события
@@ -1727,6 +2011,7 @@ size_t awh::codec::cef::Document::size() const noexcept {
 	 *
 	 * @note Количество КЛЮЧЕЙ берётся обходом - `keys("/extension").size()`, - и ход
 	 *       этот остаётся при своём
+	 *
 	 */
 	for(size_t i = 0; i < extension.size(); i++){
 		// Получаем значение очередного ключа расширения
@@ -1752,6 +2037,7 @@ void awh::codec::cef::Document::clear() noexcept {
  *
  * @param name полное имя ключа расширения
  * @return     ссылка на значение либо ссылка на отсутствующее значение
+ *
  */
 const awh::codec::abc::value_t & awh::codec::cef::Document::field(const string & name) const noexcept {
 	// Выполняем розыск записи словаря по полному имени ключа
@@ -1770,6 +2056,7 @@ const awh::codec::abc::value_t & awh::codec::cef::Document::field(const string &
  *
  * @param key имя ключа расширения, в записи стоящее
  * @return    человеческое имя ключа расширения
+ *
  */
 string awh::codec::cef::Document::label(const string & key) const noexcept {
 	// Получаем имя ключа, метку имени несущего
@@ -1791,6 +2078,7 @@ string awh::codec::cef::Document::label(const string & key) const noexcept {
  * @param key    имя ключа расширения, метку времени несущего
  * @param format запись даты, выдаваемой метке назначаемая
  * @return       метка времени записью заданного вида
+ *
  */
 string awh::codec::cef::Document::timestamp(const string & key, const string & format) const noexcept {
 	// Получаем значение пары расширения, метку времени несущей
@@ -1863,6 +2151,7 @@ awh::codec::kind_t awh::codec::cef::Document::kind(const string & key) const noe
  *
  * @param key имя ключа расширения, в записи стоящее
  * @return    вид значения, словарём заданный
+ *
  */
 awh::codec::cef::type_t awh::codec::cef::Document::type(const string & key) const noexcept {
 	// Выполняем розыск записи словаря по ключу расширения
@@ -1874,15 +2163,27 @@ awh::codec::cef::type_t awh::codec::cef::Document::type(const string & key) cons
  * @brief Метод получения дерева события целиком
  *
  * @return дерево разобранного события контейнером ABC
+ *
  */
 const awh::codec::abc::value_t & awh::codec::cef::Document::root() const noexcept {
 	// Выводим дерево разобранного события
 	return this->_root;
 }
 /**
+ * @brief Метод проверки дерева документа на пустоту
+ *
+ * @return признак отсутствия узлов в дереве документа
+ *
+ */
+bool awh::codec::cef::Document::empty() const noexcept {
+	// Выводим признак отсутствия узлов в дереве документа
+	return this->_root.empty();
+}
+/**
  * @brief Метод получения кода ошибки последней операции
  *
  * @return код ошибки последней операции
+ *
  */
 awh::codec::cef::error_t awh::codec::cef::Document::error() const noexcept {
 	// Выводим код ошибки последней операции
@@ -1892,20 +2193,12 @@ awh::codec::cef::error_t awh::codec::cef::Document::error() const noexcept {
  * @brief Метод получения места обнаружения ошибки разбора
  *
  * @return положение обнаруженной ошибки в исходном тексте
+ *
  */
 const awh::codec::cef::pos_t & awh::codec::cef::Document::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки в исходном тексте
 	return this->_reader.errorLocation();
-}
-/**
- * @brief Псевдоним сброса состояния документа (см. clear())
- *
- */
-void awh::codec::cef::Document::reset() noexcept {
-	// Сносим содержимое документа, возвращая его к пустому состоянию
-	this->clear();
-}
-/**
+}/**
  * @brief Метод установки настроек разбора записей
  *
  * @param settings настройки разбора записей
@@ -1934,6 +2227,16 @@ bool awh::codec::cef::Document::settings(const settings_t & settings) noexcept {
 	this->_writer.settings(writing);
 	// Выводим результат установки настроек разбора записей
 	return this->_reader.settings(settings.reader);
+}
+/**
+ * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+ *
+ * @return настройки записи текста
+ *
+ */
+awh::codec::cef::writer_t::settings_t awh::codec::cef::Document::writing() const noexcept {
+	// Выводим настройки записи, писателем действующие
+	return this->_writer.settings();
 }
 /**
  * @brief Конструктор

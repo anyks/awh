@@ -20,27 +20,35 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Стандартные заголовочные файлы
  */
 #include <cmath>
-#include <codec/cef/writer.hpp>
-#include <codec/cef/dictionary.hpp>
+#include <limits>
+
+/**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже
+ */
+#include <sys/macro/suppress.hpp>
+
+/**
+ * Подключаем заголовочный файл проекта
+ */
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочный файл модуля разбора чисел
  *
  * @note Запись дробного числа ведётся им, а не оснасткой: та формирует число по локали
  *       намеренно, тогда как запись протокола локали не подвластна вовсе
+ *
  */
 #include <num/lexical/lexical.hpp>
-#include <limits>
-
 
 /**
- * Подавляем системные макросы, занявшие имена членов перечислений ниже
+ * Подключаем заголовочные файлы модуля
  */
-#include <sys/macro/suppress.hpp>
-#include <sys/log.hpp>
+#include <codec/cef/writer.hpp>
+#include <codec/cef/dictionary.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -67,13 +75,14 @@ namespace {
 	 * @details Порядок отвечает порядку полей в записи и порядку членов перечня полей:
 	 *          поле разыскивается по счёту, а не по имени, ибо имён у полей заголовка
 	 *          сама запись CEF не несёт вовсе
+	 *
 	 */
 	constexpr string_view FIELDS[] = {
 		"version", "vendor", "product", "release", "signature", "name", "severity"
 	};
 
 	/**
-	 * @brief Метод проверки представимости значения областью записи вне расширения
+	 * @brief Функция проверки представимости значения областью записи вне расширения
 	 *
 	 * @details Запись CEF оканчивается переводом строки, и он же ей границею служит:
 	 *          значение, перевод строки несущее, разрывает запись надвое. Отменяющей
@@ -93,12 +102,13 @@ namespace {
 	 *
 	 * @param text проверяемое значение
 	 * @return     признак представимости значения
+	 *
 	 */
-	bool representable(const string_view text) noexcept {
+	static bool representable(const string_view text) noexcept {
 		// Выводим признак отсутствия перевода строки, запись разрывающего
 		return (text.find('\n') == string_view::npos);
 	}
-}
+};
 
 /**
  * @brief Метод прекращения записи ошибкой
@@ -106,27 +116,21 @@ namespace {
  * @param error код ошибки записи
  * @param name  имя поля, на котором запись прекращена
  * @return      признак успешности записи
+ *
  */
-bool awh::codec::cef::Writer::fail(const error_t error, const string_view name) noexcept {
+bool awh::codec::cef::Writer::fail(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	// Выводим в лог сообщение об ошибке записи
-	awh::log::print(
-		"CEF writing failed: %s at the field \"%s\"",
-		awh::log::flag_t::CRITICAL,
-		awh::codec::cef::message(error),
-		string(name).c_str()
-	);
 	// Выводим отрицательный признак успешности записи
 	return false;
 }
-
 /**
  * @brief Метод постановки отмены знаков в значении
  *
  * @param text   значение, отмены знаков требующее
  * @param area   область записи, в которую значение ставится
  * @param result значение с поставленной отменой знаков
+ *
  */
 void awh::codec::cef::Writer::escape(const string_view text, const area_t area, string & result) const noexcept {
 	// Выделяем память под результирующее значение
@@ -135,9 +139,10 @@ void awh::codec::cef::Writer::escape(const string_view text, const area_t area, 
 	 * Если постановка отмены знаков выключена
 	 *
 	 * @details Настройка эта живёт в паре с настройкой снятия отмены у чтения:
-	 * значения, отмену знаков несущие, ставятся в запись как есть. Порознь их
-	 * задавать нельзя - постановка отмены поверх неснятой наращивает косые при
-	 * всяком обороте, - оттого пару эту сводит документ, а не потребитель
+	 *          значения, отмену знаков несущие, ставятся в запись как есть. Порознь их
+	 *          задавать нельзя - постановка отмены поверх неснятой наращивает косые при
+	 *          всяком обороте, - оттого пару эту сводит документ, а не потребитель.
+	 *
 	 */
 	if(!this->_settings.escape){
 		// Добавляем значение в результирующую запись как есть
@@ -196,13 +201,13 @@ void awh::codec::cef::Writer::escape(const string_view text, const area_t area, 
 		}
 	}
 }
-
 /**
  * @brief Метод обращения значения дерева в последовательность знаков
  *
  * @param value  значение дерева контейнера ABC
  * @param result значение последовательностью знаков
  * @return       признак успешности обращения значения
+ *
  */
 bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & result) noexcept {
 	// Выполняем очистку результирующего значения
@@ -225,12 +230,16 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 					return false;
 				// Если вложенное значение обращается в знаки
 				case static_cast <uint8_t> (nested_t::TEXT): {
+					// Знаки очередного вложенного значения
+					string item = "";
+					// Признак того, что значение отображением является
+					const bool mapped = (value.type() == abc::type_t::MAP);
 					/**
 					 * Выполняем обращение вложенного значения в читаемые знаки
 					 *
 					 * @details Перечень выдаётся значениями через запятую, отображение -
-					 * парами «имя=значение» через запятую; обход ведётся самим этим ходом
-					 * и потому одинаков на всякой глубине
+					 *          парами «имя=значение» через запятую; обход ведётся самим этим ходом
+					 *          и потому одинаков на всякой глубине.
 					 *
 					 * @warning Прежде здесь стоял `value.dump()` - ДВОИЧНАЯ запись
 					 *          контейнера ABC, - и её знаки клались в поле записи как
@@ -241,15 +250,11 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 					 *          щупом вложенности 15.09.2026 по признаку, взятому
 					 *          у кодеков JSON: то же значение при иной настройке
 					 *          записывается - значит дело в настройке, а не в значении
-					 */
-					// Признак того, что значение отображением является
-					const bool mapped = (value.type() == abc::type_t::MAP);
-					/**
-					 * Выполняем перебор всех вложенных значений
+					 *
 					 */
 					for(size_t i = 0; i < value.size(); i++){
-						// Знаки очередного вложенного значения
-						string item = "";
+						// Очищаем знаки очередного вложенного значения
+						item.clear();
 						// Если обращение очередного вложенного значения отказом завершилось
 						if(!this->stringify((mapped ? value[value.key(i).text()] : value[i]), item))
 							// Выводим отрицательный признак обращения значения
@@ -271,9 +276,11 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 					// Выводим положительный признак обращения значения
 					return true;
 				}
-				// Если вложенное значение пропускается вовсе: отказ обращения
-				// разбирается зовущим по настройке, ибо пропуск пары есть дело
-				// сборки записи, а не обращения значения
+				/**
+				 * Если вложенное значение пропускается вовсе: отказ обращения
+				 * разбирается зовущим по настройке, ибо пропуск пары есть дело
+				 * сборки записи, а не обращения значения
+				 */
 				default: return false;
 			}
 		}
@@ -285,10 +292,9 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 			return true;
 		}
 		// Если значение является пустым
-		case static_cast <uint32_t> (abc::type_t::NUL): {
+		case static_cast <uint32_t> (abc::type_t::NIL):
 			// Выводим положительный признак обращения значения
 			return true;
-		}
 		// Если значение является логическим
 		case static_cast <uint32_t> (abc::type_t::BOOL): {
 			// Логическое значение, из дерева извлекаемое
@@ -343,16 +349,17 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		 * @details Записи «inf», «-inf» и «nan» записи CEF неведомы вовсе: описание
 		 *          ArcSight знает лишь конечные числа. Прежде писатель их выводил, а
 		 *          собственный разбор отвергал - кодек рождал запись, какую сам прочесть
-		 *          не мог. Проверено щупом 14.09.2026
+		 *          не мог. Проверено щупом 14.09.2026.
 		 *
 		 * @note Отказ честнее записи: пара с «nan» ушла бы к принимающему и была бы им
 		 *       отвергнута там, где поправить её уже некому
+		 *
 		 */
 		if(!::isfinite(current))
 			// Выводим отрицательный признак обращения значения
 			return false;
 		// Хранилище записи дробного числа
-		char buffer[awh::lexical::maxRecordLength <double> ()];
+		char buffer[lexical::maxRecordLength <double> ()];
 		/**
 		 * Выполняем запись дробного числа кратчайшим обратимым представлением
 		 *
@@ -366,8 +373,9 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		 *       где десятичным знаком служит «٫» (U+066B, два байта в UTF-8), `noexp`
 		 *       выдавал «0.10000000000000001» вместо «0.1». Виною тому не оснастка -
 		 *       она делала ровно то, ради чего заведена, - а обращение к ней отсюда
+		 *
 		 */
-		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, (buffer + sizeof(buffer)), current);
+		const lexical::output_t <char> output = lexical_t::toChars(buffer, (buffer + sizeof(buffer)), current);
 		/**
 		 * Если запись дробного числа выполнить не удалось
 		 *
@@ -377,6 +385,7 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 		 *       бесконечности и NaN, - и самая длинная запись вышла 24 октета при
 		 *       запасе 346, отказов ноль. Метка недостижимости, замером не поверенная,
 		 *       живёт ровно до первого переезда кода
+		 *
 		 */
 		if(!static_cast <bool> (output))
 			// Выводим отрицательный признак обращения значения
@@ -397,43 +406,45 @@ bool awh::codec::cef::Writer::stringify(const abc::value_t & value, string & res
 	// Выводим положительный признак обращения значения
 	return true;
 }
-
 /**
  * @brief Метод получения настроек записи событий
  *
  * @return настройки записи событий
+ *
  */
 const awh::codec::cef::Writer::settings_t & awh::codec::cef::Writer::settings() const noexcept {
 	// Выводим настройки записи событий
 	return this->_settings;
 }
-
 /**
  * @brief Метод установки настроек записи событий
  *
  * @param settings настройки записи событий
+ *
  */
-void awh::codec::cef::Writer::settings(const settings_t & settings) noexcept {
+bool awh::codec::cef::Writer::settings(const settings_t & settings) noexcept {
 	// Устанавливаем настройки записи событий
 	this->_settings = settings;
+	// Выводим признак принятия настроек
+	return true;
 }
-
 /**
  * @brief Метод получения кода ошибки записи
  *
  * @return код ошибки последней операции записи
+ *
  */
 awh::codec::cef::error_t awh::codec::cef::Writer::error() const noexcept {
 	// Выводим код ошибки последней операции записи
 	return this->_error;
 }
-
 /**
  * @brief Метод сборки записи CEF из дерева контейнера ABC
  *
  * @param value  дерево контейнера ABC
  * @param result собранная запись CEF
  * @return       признак успешности сборки записи
+ *
  */
 bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result) noexcept {
 	// Выполняем очистку результирующей записи
@@ -441,17 +452,45 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 	// Сбрасываем код ошибки последней операции записи
 	this->_error = error_t::NONE;
 	// Если дерево отображением не является
-	if(value.type() != abc::type_t::MAP)
-		// Выводим отказ записи неверным устройством дерева
-		return this->fail(error_t::UNREPRESENTABLE_VALUE, "/");
+	if(value.type() != abc::type_t::MAP){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("/").c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("/").c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::UNREPRESENTABLE_VALUE);
+	}
 	// Значение поля дерева последовательностью знаков
 	string text = "";
 	// Если запись приставки syslog включена и приставка деревом объявлена
 	if(this->_settings.syslog && value.contains("syslog")){
 		// Если обращение приставки в знаки отказом завершилось
-		if(!this->stringify(value.at("syslog"), text))
-			// Выводим отказ записи неверным значением приставки
-			return this->fail(error_t::UNREPRESENTABLE_VALUE, "syslog");
+		if(!this->stringify(value.at("syslog"), text)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("syslog").c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("syslog").c_str());
+			#endif
+			// Объявляем отказ записи
+			return this->fail(error_t::UNREPRESENTABLE_VALUE);
+		}
 		// Если приставка syslog не пуста
 		if(!text.empty()){
 			/**
@@ -460,26 +499,56 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			 * @note Приставка ставится в запись как есть, отмены знаков не зная вовсе:
 			 *       вид её задаёт описание syslog, а не CEF. Перевод строки в ней
 			 *       разрывал запись надвое так же, как и в поле заголовка
+			 *
 			 */
-			if(!::representable(text))
-				// Выводим отказ записи непредставимым значением приставки
-				return this->fail(error_t::UNREPRESENTABLE_VALUE, "syslog");
+			if(!::representable(text)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("syslog").c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("syslog").c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::UNREPRESENTABLE_VALUE);
+			}
 			/**
 			 * Если приставка несёт слово, заголовок записи открывающее
 			 *
 			 * @details Заголовок отыскивается в записи ПЕРВЫМ словом «CEF:», и отмены
-			 * приставка не знает: приставка, слово это несущая, записанной быть не
-			 * может - повторный разбор взял бы за начало заголовка её середину, а за
-			 * приставку - огрызок перед нею
+			 *          приставка не знает: приставка, слово это несущая, записанной быть не
+			 *          может - повторный разбор взял бы за начало заголовка её середину, а за
+			 *          приставку - огрызок перед нею.
 			 *
 			 * @note Найдено щупом 16.09.2026: приставка «prefix with CEF: inside»
 			 *       уходила в запись беспрепятственно, а своё же чтение отвечало ей
 			 *       отказом «number of the version of the record is built erroneously»
 			 *       - разбор брал за номер редакции слово «inside»
+			 *
 			 */
-			if(text.find(SIGNATURE) != string::npos)
-				// Выводим отказ записи непредставимым значением приставки
-				return this->fail(error_t::UNREPRESENTABLE_VALUE, "syslog");
+			if(text.find(SIGNATURE) != string::npos){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("syslog").c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string("syslog").c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::UNREPRESENTABLE_VALUE);
+			}
 			// Добавляем приставку syslog в результирующую запись
 			result.append(text);
 			// Отделяем приставку syslog от заголовка записи пробелом
@@ -491,9 +560,23 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 	// Получаем поля заголовка записи из дерева
 	const abc::value_t & header = value.at("header");
 	// Если поля заголовка деревом не объявлены
-	if(header.type() != abc::type_t::MAP)
-		// Выводим отказ записи отсутствием заголовка
-		return this->fail(error_t::INCOMPLETE_HEADER, "header");
+	if(header.type() != abc::type_t::MAP){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::INCOMPLETE_HEADER), string("header").c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::INCOMPLETE_HEADER), string("header").c_str());
+		#endif
+		// Объявляем отказ записи
+		return this->fail(error_t::INCOMPLETE_HEADER);
+	}
 	/**
 	 * Выполняем перебор всех полей заголовка записи
 	 */
@@ -506,15 +589,29 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			if(!this->stringify(header.at(name), text)){
 				// Если вложенное поле заголовка пропускается вовсе
 				if((this->_settings.nested == nested_t::SKIP) &&
-				   ((header.at(name).type() == abc::type_t::MAP) || (header.at(name).type() == abc::type_t::ARRAY)))
+				   ((header.at(name).type() == abc::type_t::MAP) || (header.at(name).type() == abc::type_t::ARRAY))){
 					// Оставляем поле заголовка пустым
 					text.clear();
-				// Если вложенное поле заголовка пропуску не подлежит
-				else return this->fail(
-					(header.at(name).type() == abc::type_t::MAP) || (header.at(name).type() == abc::type_t::ARRAY) ?
-					error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE,
-					name
-				);
+				/**
+				 * Если вложенное поле заголовка пропуску не подлежит
+				 */
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message((header.at(name).type() == abc::type_t::MAP) || (header.at(name).type() == abc::type_t::ARRAY) ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message((header.at(name).type() == abc::type_t::MAP) || (header.at(name).type() == abc::type_t::ARRAY) ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail((header.at(name).type() == abc::type_t::MAP) || (header.at(name).type() == abc::type_t::ARRAY) ? error_t::NESTED_VALUE : error_t::UNREPRESENTABLE_VALUE);
+				}
 			}
 		// Если поле заголовка деревом не объявлено
 		} else text.clear();
@@ -528,16 +625,17 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			 * Выполняем поверку номера редакции записи
 			 *
 			 * @details Номер редакции ставится в запись КАК ЕСТЬ, отмены знаков не зная,
-			 * и ветвь эта прочих поверок заголовка не проходит вовсе: ни длины, ни
-			 * представимости. Оттого поверка ему нужна своя - иначе дерево с редакцией
-			 * «7» либо с текстом вместо числа уходило в запись, а свой же читатель отвечал
-			 * ей отказом UNSUPPORTED_VERSION либо INVALID_VERSION
+			 *          и ветвь эта прочих поверок заголовка не проходит вовсе: ни длины, ни
+			 *          представимости. Оттого поверка ему нужна своя - иначе дерево с редакцией
+			 *          «7» либо с текстом вместо числа уходило в запись, а свой же читатель отвечал
+			 *          ей отказом UNSUPPORTED_VERSION либо INVALID_VERSION.
 			 *
 			 * @note Найдено кругом аудита 17.09.2026: щуп подал редакции 20000 знаков, и
 			 *       единственным из семи полей заголовка она прошла в запись
 			 *
 			 * @note Набор ведётся со сторожем, а не ходом библиотеки: `stoull` бросает
 			 *       исключение переполнением, а ход этот `noexcept`
+			 *
 			 */
 			{
 				// Номер редакции записи, знаками набираемый
@@ -547,9 +645,23 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 				 */
 				for(auto & letter : text){
 					// Если знак номера редакции цифрой не является
-					if((letter < '0') || (letter > '9'))
-						// Выводим отказ записи ошибочным номером редакции
-						return this->fail(error_t::INVALID_VERSION, name);
+					if((letter < '0') || (letter > '9')){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::INVALID_VERSION), string(name).c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::INVALID_VERSION), string(name).c_str());
+						#endif
+						// Объявляем отказ записи
+						return this->fail(error_t::INVALID_VERSION);
+					}
 					// Если номер редакции предел уже превзошёл, набор прекращаем
 					if(version > MAX_VERSION)
 						// Выходим из цикла набора: редакция негодна и без прочих цифр
@@ -558,24 +670,52 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 					version = ((version * 10) + static_cast <uint32_t> (letter - '0'));
 				}
 				// Если номер редакции записи предел превосходит
-				if(version > MAX_VERSION)
-					// Выводим отказ записи неподдерживаемой редакцией
-					return this->fail(error_t::UNSUPPORTED_VERSION, name);
+				if(version > MAX_VERSION){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNSUPPORTED_VERSION), string(name).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNSUPPORTED_VERSION), string(name).c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail(error_t::UNSUPPORTED_VERSION);
+				}
 			}
 			// Добавляем номер редакции записи как есть: отмены знаков он не требует
 			result.append(text);
 		// Если полем заголовка является поле, отмены знаков требующее
 		} else {
 			// Если значение поля заголовка запись выразить не может
-			if(!::representable(text))
-				// Выводим отказ записи непредставимым значением поля заголовка
-				return this->fail(error_t::UNREPRESENTABLE_VALUE, name);
+			if(!::representable(text)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(name).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::UNREPRESENTABLE_VALUE);
+			}
 			/**
 			 * Если длина поля заголовка допустимую превышает
 			 *
 			 * @details Поверка эта замыкает ОБОРОТ: читатель длину полей заголовка блюдёт
-			 * пределом MAX_HEADER_FIELD, писатель же выдавал поле любой длины, и своя
-			 * собственная запись своим же читателем отвергалась кодом FIELD_TOO_LONG
+			 *          пределом MAX_HEADER_FIELD, писатель же выдавал поле любой длины, и своя
+			 *          собственная запись своим же читателем отвергалась кодом FIELD_TOO_LONG.
 			 *
 			 * @note Найдено кругом аудита 17.09.2026 щупом: пять полей заголовка из пяти
 			 *       выдавались писателем и отвергались обратным разбором
@@ -583,23 +723,39 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			 * @warning Сличается длина ДО постановки отмены знаков: отмена длину
 			 *          наращивает, и сличение после неё отвергало бы поле, пределу
 			 *          отвечающее, - читатель же меряет снятое, а не записанное
+			 *
 			 */
-			if(text.size() > static_cast <size_t> (MAX_HEADER_FIELD))
-				// Выводим отказ записи слишком длинным полем заголовка
-				return this->fail(error_t::FIELD_TOO_LONG, name);
+			if(text.size() > static_cast <size_t> (MAX_HEADER_FIELD)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::FIELD_TOO_LONG), string(name).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::FIELD_TOO_LONG), string(name).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::FIELD_TOO_LONG);
+			}
 			/**
 			 * Если полем заголовка является важность события
 			 *
 			 * @details Описание CEF держит важность в пределе от нуля до десяти либо
-			 * словом, и важность числом, предел превзошедшая, записью невыразима:
-			 * читатель её СБРАСЫВАЕТ в нуль, а при строгом сличении отвечает отказом -
-			 * потребитель получал бы запись, которая разбирается, но значит иное
+			 *          словом, и важность числом, предел превзошедшая, записью невыразима:
+			 *          читатель её СБРАСЫВАЕТ в нуль, а при строгом сличении отвечает отказом -
+			 *          потребитель получал бы запись, которая разбирается, но значит иное.
 			 *
 			 * @note Найдено тем же кругом: важность 99 уходила в запись беспрепятственно,
 			 *       а обратный разбор возвращал из неё нуль - молча
 			 *
 			 * @warning Поверке подлежит лишь важность, ЦИФРАМИ записанная: описание
 			 *          дозволяет её и словом («Low», «High»), и слово пределом не мерится
+			 *
 			 */
 			if((i == static_cast <uint32_t> (field_t::SEVERITY)) && !text.empty()){
 				// Признак того, что важность события записана одними цифрами
@@ -613,6 +769,7 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 				 *          библиотеки: `stoull` бросает исключение переполнением, а ход
 				 *          этот `noexcept` - бросок убил бы программу потребителя. Читатель
 				 *          набирает важность тем же способом и по той же причине
+				 *
 				 */
 				for(auto & letter : text){
 					// Если знак важности события цифрой не является
@@ -630,9 +787,23 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 					severity = ((severity * 10) + static_cast <uint32_t> (letter - '0'));
 				}
 				// Если важность события цифрами записана и предел превосходит
-				if(digits && (severity > static_cast <uint32_t> (MAX_SEVERITY)))
-					// Выводим отказ записи ошибочной важностью события
-					return this->fail(error_t::INVALID_SEVERITY, name);
+				if(digits && (severity > static_cast <uint32_t> (MAX_SEVERITY))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::INVALID_SEVERITY), string(name).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::INVALID_SEVERITY), string(name).c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail(error_t::INVALID_SEVERITY);
+				}
 			}
 			// Выполняем постановку отмены знаков в значении поля заголовка
 			this->escape(text, area_t::HEADER, result);
@@ -656,11 +827,11 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			 * Если имя ключа записи CEF непредставимо
 			 *
 			 * @details Пары расширения разделяются пробелом, а имя ключа отделяется
-			 * от значения знаком равенства, и ОТМЕНЫ НИ ТОГО, НИ ДРУГОГО имя ключа не
-			 * знает: ключ, знак такой несущий, записанным быть не может - повторный
-			 * разбор такой записи разделил бы его на две пары либо взял бы за имя
-			 * огрызок. Молчаливая же запись его оставляла бы потребителя с записью,
-			 * которая разбирается, но означает иное
+			 *          от значения знаком равенства, и ОТМЕНЫ НИ ТОГО, НИ ДРУГОГО имя ключа не
+			 *          знает: ключ, знак такой несущий, записанным быть не может - повторный
+			 *          разбор такой записи разделил бы его на две пары либо взял бы за имя
+			 *          огрызок. Молчаливая же запись его оставляла бы потребителя с записью,
+			 *          которая разбирается, но означает иное.
 			 *
 			 * @note Пробел найден ворошителем 04.09.2026 расхождением деревьев после
 			 *       оборота. Знак равенства найден щупом 16.09.2026 и был хуже: писатель
@@ -670,14 +841,28 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			 *
 			 * @note Отмена знаков имени ниже остаётся: косая черта в имени отменяется и
 			 *       оборот проходит дословно - щупом проверено
+			 *
 			 */
 			if(key.find_first_of(" \t\n\r=") != string::npos){
 				// Если непредставимое значение пропускается вовсе
 				if(this->_settings.nested == nested_t::SKIP)
 					// Переходим к следующей паре расширения
 					continue;
-				// Выводим отказ записи непредставимым именем ключа
-				return this->fail(error_t::UNREPRESENTABLE_VALUE, key);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(key).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(key).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::UNREPRESENTABLE_VALUE);
 			}
 			// Если имя ключа расширения пусто
 			if(key.empty()){
@@ -685,16 +870,29 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 				if(this->_settings.nested == nested_t::SKIP)
 					// Переходим к следующей паре расширения
 					continue;
-				// Выводим отказ записи пустым именем ключа
-				return this->fail(error_t::EMPTY_KEY, key);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::EMPTY_KEY), string(key).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::EMPTY_KEY), string(key).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::EMPTY_KEY);
 			}
 			/**
 			 * Если длина имени ключа расширения допустимую превышает
 			 *
 			 * @details Поверка эта замыкает ОБОРОТ: читатель длину имени блюдёт пределом
-			 * MAX_NAME безусловно, при всяком сличении, писатель же выдавал имя любой
-			 * длины, и своя собственная запись своим же читателем отвергалась кодом
-			 * NAME_TOO_LONG
+			 *          MAX_NAME безусловно, при всяком сличении, писатель же выдавал имя любой
+			 *          длины, и своя собственная запись своим же читателем отвергалась кодом
+			 *          NAME_TOO_LONG.
 			 *
 			 * @note Найдено кругом аудита 17.09.2026. Щуп при этом соврал дважды: сперва
 			 *       подал ветвь «/extensions» вместо «/extension», и ключ в запись не
@@ -704,10 +902,25 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 			 * @note Пропуск непредставимого настройкою `nested_t::SKIP` длины не касается:
 			 *       ключ, предел превзошедший, есть ошибка потребителя, а не значение
 			 *       вида, записи неведомого
+			 *
 			 */
-			if(key.size() > static_cast <size_t> (MAX_NAME))
-				// Выводим отказ записи слишком длинным именем ключа
-				return this->fail(error_t::NAME_TOO_LONG, key);
+			if(key.size() > static_cast <size_t> (MAX_NAME)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::NAME_TOO_LONG), string(key).c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::NAME_TOO_LONG), string(key).c_str());
+				#endif
+				// Объявляем отказ записи
+				return this->fail(error_t::NAME_TOO_LONG);
+			}
 			// Получаем значение очередной пары расширения
 			const abc::value_t & current = extension.at(key);
 			// Количество значений, ключом объявленных
@@ -726,20 +939,46 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 						if(this->_settings.nested == nested_t::SKIP)
 							// Переходим к следующему значению
 							continue;
-						// Выводим отказ записи вложенным значением
-						return this->fail(error_t::NESTED_VALUE, key);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Записываем отказ в журнал работы
+							log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::NESTED_VALUE), string(key).c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем отказ в журнал работы
+							log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::NESTED_VALUE), string(key).c_str());
+						#endif
+						// Объявляем отказ записи
+						return this->fail(error_t::NESTED_VALUE);
 					}
-					// Выводим отказ записи неверным значением расширения
-					return this->fail(error_t::UNREPRESENTABLE_VALUE, key);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(key).c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(key).c_str());
+					#endif
+					// Объявляем отказ записи
+					return this->fail(error_t::UNREPRESENTABLE_VALUE);
 				}
 				/**
 				 * Если значение выйти за предел вида, словарём назначенного
 				 *
 				 * @details Словарь назначает полю вид, и разбор читает значение именно
-				 * им: поле вида INTEGER читается знаковым целым. Значение же
-				 * беззнаковое, за предел знакового вышедшее, записывается знаками
-				 * исправно, а обратно НЕ ЧИТАЕТСЯ - кодек родил бы запись, какую сам
-				 * прочесть не может
+				 *          им: поле вида INTEGER читается знаковым целым. Значение же
+				 *          беззнаковое, за предел знакового вышедшее, записывается знаками
+				 *          исправно, а обратно НЕ ЧИТАЕТСЯ - кодек родил бы запись, какую сам
+				 *          прочесть не может.
 				 *
 				 * @warning Найдено щупом краевых значений 15.09.2026: «cn1» с
 				 *          18446744073709551615 писалось, а строгое чтение отвечало
@@ -749,6 +988,7 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 				 *
 				 * @note Отказ честнее записи: запись ушла бы принимающему и была бы им
 				 *       отвергнута либо, того хуже, прочтена иначе
+				 *
 				 */
 				{
 					// Выполняем розыск записи словаря по ключу расширения
@@ -759,9 +999,23 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 						uint64_t number = 0;
 						// Если значение беззнаковым является и предел знакового превосходит
 						if(((static_cast <uint32_t> (item.type()) & static_cast <uint32_t> (abc::type_t::UNSIGNED)) > 0) &&
-						   item.value(number) && (number > static_cast <uint64_t> (std::numeric_limits <int64_t>::max())))
-							// Выводим отказ записи значением, вид словаря выразить не может
-							return this->fail(error_t::UNREPRESENTABLE_VALUE, key);
+						   item.value(number) && (number > static_cast <uint64_t> (std::numeric_limits <int64_t>::max()))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Записываем отказ в журнал работы
+								log::debug("CEF writing failed: %s at the field \"%s\"", __PRETTY_FUNCTION__, {result}, log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(key).c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем отказ в журнал работы
+								log::print("CEF writing failed: %s at the field \"%s\"", log::flag_t::CRITICAL, codec::cef::message(error_t::UNREPRESENTABLE_VALUE), string(key).c_str());
+							#endif
+							// Объявляем отказ записи
+							return this->fail(error_t::UNREPRESENTABLE_VALUE);
+						}
 					}
 				}
 				// Если пара расширения уже записана
@@ -786,20 +1040,32 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 	// Выводим положительный признак успешности сборки записи
 	return true;
 }
-
 /**
  * @brief Конструктор
  *
  */
 awh::codec::cef::Writer::Writer() noexcept :
  _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки записи текста
+ *
+ */
+awh::codec::cef::Writer::Writer(const settings_t & settings) noexcept : Writer() {
+	// Выполняем установку настроек записи текста
+	this->settings(settings);
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::cef::Writer::Settings::Settings() noexcept :
+ syslog(true), escape(true), terminate(true),
+ nested(nested_t::STRICT), version(0) {}
 
 /**
  * Возвращаем имена, системными макросами занятые
  */
 #include <sys/macro/restore.hpp>
-/**
- * @brief Конструктор
- *
- */
-awh::codec::cef::Writer::Settings::Settings() noexcept : nested(nested_t::STRICT), syslog(true), terminate(true), escape(true), version(0) {}

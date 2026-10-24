@@ -26,9 +26,13 @@
 #include <sys/macro/suppress.hpp>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файлй проекта
  */
 #include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочный файлй модуля
+ */
 #include <codec/cef/reader.hpp>
 
 /**
@@ -55,6 +59,7 @@ namespace {
 	 *
 	 * @details Разобранное начало хранилища освобождается не при всякой записи, а лишь по
 	 * накоплении: перемещение остатка при каждой записи обошлось бы дороже самого разбора
+	 *
 	 */
 	constexpr size_t COMPACT_THRESHOLD = 0x10000;
 
@@ -67,8 +72,9 @@ namespace {
 	 * @param text   текст, знак содержащий
 	 * @param offset смещение проверяемого знака в тексте
 	 * @return       признак отменённости знака
+	 *
 	 */
-	bool escaped(const string_view text, const size_t offset) noexcept {
+	static bool escaped(const string_view text, const size_t offset) noexcept {
 		// Количество обратных косых, знаку предшествующих
 		size_t count = 0;
 		/**
@@ -85,7 +91,7 @@ namespace {
 		// Выводим признак отменённости знака
 		return ((count % 2) == 1);
 	}
-}
+};
 
 /**
  * @brief Метод прекращения разбора ошибкой
@@ -93,41 +99,34 @@ namespace {
  * @param error  код ошибки разбора
  * @param offset смещение места ошибки в хранилище разбора
  * @return       признак наличия очередного события разбора
+ *
  */
 bool awh::codec::cef::Reader::fail(const error_t error, const size_t offset) noexcept {
 	// Запоминаем код ошибки разбора
 	this->_error = error;
-	// Устанавливаем состояние прекращения разбора ошибкой
-	this->_state = state_t::FAILED;
 	// Сбрасываем вид текущего события разбора
 	this->_event = event_t::NONE;
+	// Устанавливаем состояние прекращения разбора ошибкой
+	this->_state = state_t::FAILED;
 	// Выполняем определение положения места ошибки в исходном тексте
 	this->place(offset, this->_errorLocation);
-	// Выводим в лог сообщение об ошибке разбора
-	awh::log::print(
-		"CEF parsing failed: %s at line %llu column %llu",
-		awh::log::flag_t::CRITICAL,
-		awh::codec::cef::message(error),
-		static_cast <unsigned long long> (this->_errorLocation.line),
-		static_cast <unsigned long long> (this->_errorLocation.column)
-	);
 	// Выводим отсутствие очередного события разбора
 	return false;
 }
-
 /**
  * @brief Метод определения положения смещения в исходном тексте
  *
  * @param offset смещение в хранилище разбора
  * @param result положение, вычисляемое по смещению
+ *
  */
 void awh::codec::cef::Reader::place(const size_t offset, pos_t & result) const noexcept {
-	// Устанавливаем смещение в байтах от начала текста
-	result.offset = (this->_origin.offset + static_cast <uint64_t> (offset));
 	// Учитываем строки, удалённые при уплотнении хранилища
 	result.line = this->_origin.line;
 	// Устанавливаем номер столбца начала хранилища
 	result.column = this->_origin.column;
+	// Устанавливаем смещение в байтах от начала текста
+	result.offset = (this->_origin.offset + static_cast <uint64_t> (offset));
 	/**
 	 * Выполняем перебор знаков хранилища до искомого смещения
 	 */
@@ -142,13 +141,13 @@ void awh::codec::cef::Reader::place(const size_t offset, pos_t & result) const n
 		} else result.column++;
 	}
 }
-
 /**
  * @brief Метод отыскания конца текущей записи
  *
  * @param length длина найденной записи без знака конца строки
  * @param next   смещение начала следующей записи
  * @return       признак того, что запись найдена целиком
+ *
  */
 bool awh::codec::cef::Reader::measure(size_t & length, size_t & next) const noexcept {
 	// Выполняем поиск перевода строки, запись завершающего
@@ -178,36 +177,68 @@ bool awh::codec::cef::Reader::measure(size_t & length, size_t & next) const noex
 	// Выводим признак того, что запись целиком не найдена
 	return false;
 }
-
 /**
  * @brief Метод разбора очередной записи целиком
  *
  * @param record текст записи целиком
  * @return       признак успешности разбора записи
+ *
  */
 bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
-	// Выполняем очистку полей заголовка текущей записи
-	this->_fields.clear();
-	// Выполняем очистку пар расширения текущей записи
-	this->_pairs.clear();
-	// Выполняем очистку приставки syslog текущей записи
-	this->_value.clear();
 	// Сбрасываем указатель выдачи полей и пар
 	this->_index = 0;
 	// Сбрасываем важность события записи
 	this->_severity = 0;
+	// Выполняем очистку пар расширения текущей записи
+	this->_pairs.clear();
+	// Выполняем очистку приставки syslog текущей записи
+	this->_value.clear();
+	// Выполняем очистку полей заголовка текущей записи
+	this->_fields.clear();
 	// Смещение слова «CEF:» от начала записи
 	size_t begin = 0;
 	// Если слово «CEF:» в записи не найдено
-	if(!this->signature(record, begin))
-		// Выводим отказ разбора отсутствием слова «CEF:»
+	if(!this->signature(record, begin)){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_offset, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::MISSING_SIGNATURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::MISSING_SIGNATURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
+	}
 	// Если приставка syslog записи предшествует
 	if(begin > 0){
 		// Если признание приставки syslog выключено
-		if(!this->_settings.syslog)
-			// Выводим отказ разбора содержимым перед словом «CEF:»
+		if(!this->_settings.syslog){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::MISSING_SIGNATURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::MISSING_SIGNATURE), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
+		}
 		// Запоминаем приставку syslog значением события
 		this->_value.assign(record.begin(), record.begin() + begin);
 		/**
@@ -220,22 +251,23 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		 * Если приставка syslog одними пробельными знаками была
 		 *
 		 * @details Приставка, от пробелов очищенная и пустой оказавшаяся, событием НЕ
-		 * выдаётся вовсе: пустая приставка и отсутствие приставки в записи CEF
-		 * неразличимы, и выдача события заводила бы узел, какому в собранной записи
-		 * места нет - оборот терял бы его молча
+		 *          выдаётся вовсе: пустая приставка и отсутствие приставки в записи CEF
+		 *          неразличимы, и выдача события заводила бы узел, какому в собранной записи
+		 *          места нет - оборот терял бы его молча.
 		 *
 		 * @note Найдено ворошителем 04.09.2026 расхождением деревьев после оборота
+		 *
 		 */
 		if(this->_value.empty())
 			// Сбрасываем смещение начала приставки: приставки в записи нет
 			begin = 0;
 	}
-	// Получаем текст записи, приставкой не занятый
-	const string_view body(record.data() + begin, record.size() - begin);
-	// Смещение разбора полей заголовка от начала тела записи
-	size_t offset = SIGNATURE.size();
 	// Длина очередного поля заголовка до разделяющей черты
 	size_t size = 0;
+	// Смещение разбора полей заголовка от начала тела записи
+	size_t offset = SIGNATURE.size();
+	// Получаем текст записи, приставкой не занятый
+	const string_view body(record.data() + begin, record.size() - begin);
 	/**
 	 * Выполняем перебор всех полей заголовка записи
 	 */
@@ -243,13 +275,45 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		// Получаем неразобранный остаток тела записи
 		const string_view rest(body.data() + offset, body.size() - offset);
 		// Если разделяющая черта за полем заголовка не найдена
-		if(!this->bounds(rest, size))
-			// Выводим отказ разбора неполнотой заголовка
+		if(!this->bounds(rest, size)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset + begin + offset, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::INCOMPLETE_HEADER), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::INCOMPLETE_HEADER), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INCOMPLETE_HEADER, this->_offset + begin + offset);
+		}
 		// Если длина поля заголовка превышает допустимую
-		if(size > MAX_HEADER_FIELD)
-			// Выводим отказ разбора превышением длины поля
+		if(size > MAX_HEADER_FIELD){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset + begin + offset, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::FIELD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::FIELD_TOO_LONG, this->_offset + begin + offset);
+		}
 		// Создаём поле заголовка записи
 		this->_fields.emplace_back();
 		// Если снятие отмены знаков со значений включено
@@ -264,9 +328,25 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 	// Получаем текст номера редакции записи
 	const string & version = this->_fields.front();
 	// Если номер редакции записи пуст
-	if(version.empty())
-		// Выводим отказ разбора ошибочным номером редакции
+	if(version.empty()){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_offset + begin, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_VERSION, this->_offset + begin);
+	}
 	// Сбрасываем номер редакции записи
 	this->_version = 0;
 	/**
@@ -274,9 +354,25 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 	 */
 	for(size_t i = 0; i < version.size(); i++){
 		// Если знак номера редакции цифрой не является
-		if((version[i] < '0') || (version[i] > '9'))
-			// Выводим отказ разбора ошибочным номером редакции
+		if((version[i] < '0') || (version[i] > '9')){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset + begin + SIGNATURE.size() + i, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::INVALID_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_VERSION, this->_offset + begin + SIGNATURE.size() + i);
+		}
 		// Наращиваем номер редакции записи очередной цифрой
 		this->_version = ((this->_version * 10) + static_cast <uint32_t> (version[i] - '0'));
 		/**
@@ -285,11 +381,12 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		 * @details Поле заголовка длиною до MAX_HEADER_FIELD знаков, и набор без сторожа
 		 *          обращался по кругу: «4294967297» есть 2^32 + 1, и в uint32_t он
 		 *          ложился единицей - запись с заведомо негодною редакцией принималась
-		 *          как редакция 1, молча и без отказа. Проверено щупом 14.09.2026
+		 *          как редакция 1, молча и без отказа. Проверено щупом 14.09.2026.
 		 *
 		 * @note Прекращение набора, а не отказ: путь отказа внутри prepare() замерен в
 		 *       43 % пропускной способности (см. поверку редакции в next()). Значение,
 		 *       предел превзошедшее, там и опознаётся - сторожу довольно его сберечь
+		 *
 		 */
 		if(this->_version > MAX_VERSION)
 			// Выходим из цикла набора: редакция негодна и опознается поверкой ниже
@@ -301,6 +398,7 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 	 * @note Описание назначает все семь полей заголовка обязательными, но живые
 	 *       устройства пустое поле пишут, и при выключенном сличении запись такая
 	 *       принимается: настройка эта и назначена тому, чтобы брать журнал как есть
+	 *
 	 */
 	if(this->_settings.mode != mode_t::NONE){
 		/**
@@ -308,12 +406,29 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		 *
 		 * @note Важность проверяется ниже своим ходом: она бывает записана и словом,
 		 *       и пустой её случай к INVALID_SEVERITY относится, а не сюда
+		 *
 		 */
 		for(size_t i = 1; (i + 1) < this->_fields.size(); i++){
 			// Если очередное поле заголовка пусто
-			if(this->_fields.at(i).empty())
-				// Выводим отказ разбора пустым полем заголовка
+			if(this->_fields.at(i).empty()){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_offset + begin, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::EMPTY_HEADER_FIELD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::EMPTY_HEADER_FIELD), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::EMPTY_HEADER_FIELD, this->_offset + begin);
+			}
 		}
 	}
 	// Получаем текст важности события записи
@@ -322,10 +437,10 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 	 * Если сличение ведётся и важность события пуста
 	 *
 	 * @details Важность есть поле заголовка обязательное наравне с прочими шестью, и
-	 * пустой ей быть не дано. Перебор пустых полей выше её намеренно обходит - она
-	 * бывает записана и словом, и разбирается своим ходом, - а ход этот пустоты не
-	 * замечал вовсе: набор цифр по пустой строке не идёт ни разу, важность остаётся
-	 * нулём, и нуль предела не превосходит
+	 *          пустой ей быть не дано. Перебор пустых полей выше её намеренно обходит - она
+	 *          бывает записана и словом, и разбирается своим ходом, - а ход этот пустоты не
+	 *          замечал вовсе: набор цифр по пустой строке не идёт ни разу, важность остаётся
+	 *          нулём, и нуль предела не превосходит.
 	 *
 	 * @note Найдено щупом 16.09.2026: запись «CEF:0|V|P|1|100|N||» принималась СТРОГИМ
 	 *       сличением, и узел важности в дереве молча менял вид с числа на пустой текст.
@@ -336,10 +451,27 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 	 * @note Отказ ведётся при всяком сличении, а не при строгом одном: пустое поле
 	 *       заголовка отвергается перебором выше тем же условием, и важности надлежит
 	 *       отвечать наравне с шестью прочими
+	 *
 	 */
-	if((this->_settings.mode != mode_t::NONE) && severity.empty())
-		// Выводим отказ разбора пустой важностью события
+	if((this->_settings.mode != mode_t::NONE) && severity.empty()){
+		// Выполняем определение положения места ошибки в исходном тексте
+		this->place(this->_offset + begin, this->_errorLocation);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Записываем отказ в журнал работы
+			log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::INVALID_SEVERITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем отказ в журнал работы
+			log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::INVALID_SEVERITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+		#endif
+		// Объявляем отказ разбора
 		return this->fail(error_t::INVALID_SEVERITY, this->_offset + begin);
+	}
 	/**
 	 * Выполняем перебор знаков важности события записи
 	 */
@@ -362,6 +494,7 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		 *
 		 * @note Значение, предел превзошедшее, разбирается сразу ниже своим ходом: там
 		 *       оно сбрасывается, а при строгом сличении отвечается отказом
+		 *
 		 */
 		if(this->_severity > MAX_SEVERITY)
 			// Выходим из цикла набора: важность негодна и опознается поверкой ниже
@@ -372,9 +505,25 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		// Сбрасываем важность события записи
 		this->_severity = 0;
 		// Если сличение со словарём ведётся строго
-		if(this->_settings.mode == mode_t::STRONG)
-			// Выводим отказ разбора ошибочной важностью события
+		if(this->_settings.mode == mode_t::STRONG){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset + begin, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::INVALID_SEVERITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::INVALID_SEVERITY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::INVALID_SEVERITY, this->_offset + begin);
+		}
 	}
 	// Получаем текст расширения записи
 	const string_view extension(body.data() + offset, body.size() - offset);
@@ -383,21 +532,69 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		// Выполняем разбор пар расширения записи
 		this->extensions(extension);
 		// Если количество пар расширения предел превысило
-		if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
-			// Выводим отказ разбора превышением количества пар
+		if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset + begin + offset, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::OVERFLOW_LIMIT), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::OVERFLOW_LIMIT), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::OVERFLOW_LIMIT, this->_offset + begin + offset);
+		}
 		/**
 		 * Выполняем перебор всех разобранных пар расширения
 		 */
 		for(auto & pair : this->_pairs){
 			// Если имя ключа расширения пусто
-			if(pair.first.empty())
-				// Выводим отказ разбора пустым именем ключа
+			if(pair.first.empty()){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_offset + begin + offset, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::EMPTY_KEY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::EMPTY_KEY), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::EMPTY_KEY, this->_offset + begin + offset);
+			}
 			// Если длина имени ключа превышает допустимую
-			if(pair.first.size() > MAX_NAME)
-				// Выводим отказ разбора превышением длины имени
+			if(pair.first.size() > MAX_NAME){
+				// Выполняем определение положения места ошибки в исходном тексте
+				this->place(this->_offset + begin + offset, this->_errorLocation);
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Записываем отказ в журнал работы
+					log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {record}, log::flag_t::WARNING, codec::cef::message(error_t::NAME_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем отказ в журнал работы
+					log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::NAME_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+				#endif
+				// Объявляем отказ разбора
 				return this->fail(error_t::NAME_TOO_LONG, this->_offset + begin + offset);
+			}
 		}
 	}
 	// Устанавливаем этап выдачи приставки syslog, если она записи предшествует
@@ -407,13 +604,13 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 	// Выводим признак успешности разбора записи
 	return true;
 }
-
 /**
  * @brief Метод отыскания слова «CEF:» в записи
  *
  * @param text   текст записи целиком
  * @param result смещение найденного слова от начала записи
  * @return       признак того, что слово найдено
+ *
  */
 bool awh::codec::cef::Reader::signature(const string_view text, size_t & result) const noexcept {
 	// Смещение поиска слова в записи
@@ -435,13 +632,13 @@ bool awh::codec::cef::Reader::signature(const string_view text, size_t & result)
 	// Выводим признак того, что слово не найдено
 	return false;
 }
-
 /**
  * @brief Метод отыскания конца поля заголовка
  *
  * @param text   текст, начинающийся с поля заголовка
  * @param result длина поля до разделяющей черты
  * @return       признак того, что черта найдена
+ *
  */
 bool awh::codec::cef::Reader::bounds(const string_view text, size_t & result) const noexcept {
 	// Смещение поиска разделяющей черты в тексте
@@ -467,11 +664,11 @@ bool awh::codec::cef::Reader::bounds(const string_view text, size_t & result) co
  * @brief Метод разбора пар расширения записи
  *
  * @details Пары разделяются прямым пробелом, а имя ключа отделяется от значения прямым
- * знаком «=». Значение бывает многословным: концом его служит последний пробел,
- * встреченный перед знаком «=» следующей пары, оттого и разбор идёт одним проходом
- * вперёд, без возврата по прочитанному. Знак при нечётном числе предшествующих обратных
- * косых разделителем не считается, а значение в кавычках кончается закрывающей кавычкой,
- * а не пробелом
+ *          знаком «=». Значение бывает многословным: концом его служит последний пробел,
+ *          встреченный перед знаком «=» следующей пары, оттого и разбор идёт одним проходом
+ *          вперёд, без возврата по прочитанному. Знак при нечётном числе предшествующих обратных
+ *          косых разделителем не считается, а значение в кавычках кончается закрывающей кавычкой,
+ *          а не пробелом.
  *
  * @note Пропуск разделителей, порядок поисков и условия отмены здесь ТОЧНО такие, каким
  *       их выставлял общий разбор awh::fmk::kv, и пары сверены с ним на 1 200 000
@@ -484,12 +681,13 @@ bool awh::codec::cef::Reader::bounds(const string_view text, size_t & result) co
  *       знака — +6 %, то есть одно лишь то или другое хода не замедляло
  *
  * @param text текст расширения записи
+ *
  */
 void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
-	// Получаем объём текста расширения записи
-	const size_t length = text.size();
 	// Смещение начала имени ключа очередной пары
 	size_t pos = 0;
+	// Получаем объём текста расширения записи
+	const size_t length = text.size();
 	// Смещение знака «=», разделяющего имя и значение следующей пары
 	size_t pending = string_view::npos;
 	/**
@@ -522,7 +720,8 @@ void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
 		 * Если значение текущей пары заключено в кавычки
 		 *
 		 * @details Кавычка ограждает пробелы внутри значения, и концом такого значения
-		 *          служит закрывающая кавычка, а не последний пробел перед знаком «=»
+		 *          служит закрывающая кавычка, а не последний пробел перед знаком «=».
+		 *
 		 */
 		if((begin < length) && (text[begin] == '"')){
 			// Сдвигаем начало значения за открывающей кавычкой
@@ -545,6 +744,7 @@ void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
 			 *
 			 * @note Значение тогда занимает весь остаток текста и разбор прекращается:
 			 *       открыв кавычку последней пары, закрывающей встрече уже не бывать
+			 *
 			 */
 			if(quote == string_view::npos){
 				// Устанавливаем позицию конца
@@ -569,7 +769,8 @@ void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
 			 *
 			 * @details Ищем не отменённый знак «=», перед которым встречался разделитель
 			 *          пар: пробел, за которым знака «=» нет, принадлежит значению, а не
-			 *          разделяет пары
+			 *          разделяет пары.
+			 *
 			 */
 			while(scan < length){
 				// Если встречен разделитель пар
@@ -618,6 +819,7 @@ void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
 			 *
 			 * @note Найдено 09.09.2026 картой покрытия: ветвь предела стояла непроверенной
 			 *       вовсе, а поверка её вскрыла отклонение записи ровно на пределе
+			 *
 			 */
 			if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
 				// Выходим из метода: дальнейшие пары уже не принимаются
@@ -632,10 +834,11 @@ void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
 			 * Если снятие отмены знаков со значений включено
 			 *
 			 * @details Отмена снимается и с ИМЕНИ ключа, а не с одного лишь значения:
-			 * писатель имя ключа отменою знаков ограждает, и снятие её лишь со значения
-			 * давало бы разбор, обратный записи не равный - имя росло бы косыми при
-			 * всяком обороте. Найдено ворошителем 04.09.2026 расхождением деревьев:
-			 * ключ «\,|rt\» после оборота обращался в «\\,|rt\\»
+			 *          писатель имя ключа отменою знаков ограждает, и снятие её лишь со значения
+			 *          давало бы разбор, обратный записи не равный - имя росло бы косыми при
+			 *          всяком обороте. Найдено ворошителем 04.09.2026 расхождением деревьев:
+			 *          ключ «\,|rt\» после оборота обращался в «\\,|rt\\».
+			 *
 			 */
 			if(this->_settings.unescape)
 				// Выполняем снятие отмены знаков с имени ключа расширения
@@ -663,6 +866,7 @@ void awh::codec::cef::Reader::extensions(const string_view text) noexcept {
  * @param text   значение, отмену знаков несущее
  * @param area   область записи, из которой значение взято
  * @param result значение со снятой отменой знаков
+ *
  */
 void awh::codec::cef::Reader::unescape(const string_view text, const area_t area, string & result) const noexcept {
 	// Выполняем очистку результирующего значения
@@ -682,6 +886,7 @@ void awh::codec::cef::Reader::unescape(const string_view text, const area_t area
 		 *          потока дописывание по одному знаку «append(size_t, char)» держало
 		 *          1530 сэмплов из 10 179 учтённых, то есть 15.0 % вершины стека, и его
 		 *          снятие подняло поток в 1.379 раза
+		 *
 		 */
 		if(text[i] != '\\'){
 			// Длина отрезка знаков без обратной косой
@@ -761,28 +966,28 @@ void awh::codec::cef::Reader::unescape(const string_view text, const area_t area
 		}
 	}
 }
-
 /**
  * @brief Метод получения настроек разбора записей
  *
  * @return настройки разбора записей
+ *
  */
 const awh::codec::cef::Reader::settings_t & awh::codec::cef::Reader::settings() const noexcept {
 	// Выводим настройки разбора записей
 	return this->_settings;
 }
-
 /**
  * @brief Метод установки настроек разбора записей
  *
  * @param settings настройки разбора записей
  * @return         результат выполнения операции
+ *
  */
 bool awh::codec::cef::Reader::settings(const settings_t & settings) noexcept {
 	// Если разбор текста уже начат
 	if(!this->_buffer.empty()){
 		// Выводим в лог сообщение о невозможности смены настроек
-		awh::log::print("CEF settings cannot be changed in the middle of a parsing", awh::log::flag_t::WARNING);
+		log::print("CEF settings cannot be changed in the middle of a parsing", log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -791,42 +996,19 @@ bool awh::codec::cef::Reader::settings(const settings_t & settings) noexcept {
 	// Выводим положительный результат выполнения операции
 	return true;
 }
-
 /**
  * @brief Метод сброса состояния чтения
  *
  */
 void awh::codec::cef::Reader::reset() noexcept {
-	// Сбрасываем текущее состояние чтения
-	this->_state = state_t::HUNGRY;
-	// Сбрасываем вид текущего события разбора
-	this->_event = event_t::NONE;
-	// Сбрасываем код ошибки последней операции разбора
-	this->_error = error_t::NONE;
-	// Сбрасываем положение обнаруженной ошибки
-	this->_errorLocation = pos_t();
-	// Сбрасываем положение начала текущего события
-	this->_position = pos_t();
-	// Сбрасываем положение начала хранилища
-	this->_origin = pos_t();
-	// Выполняем очистку хранилища подаваемого текста
-	this->_buffer.clear();
+	// Сбрасываем признак подачи последнего куска текста
+	this->_end = false;
+	// Сбрасываем указатель выдачи полей и пар
+	this->_index = 0;
 	// Сбрасываем смещение разбора в хранилище
 	this->_offset = 0;
 	// Сбрасываем смещение начала неразобранного остатка записи
 	this->_record = 0;
-	// Сбрасываем признак подачи последнего куска текста
-	this->_end = false;
-	// Сбрасываем этап разбора текущей записи
-	this->_stage = stage_t::RECORD;
-	// Сбрасываем номер поля заголовка
-	this->_field = field_t::VERSION;
-	// Сбрасываем указатель выдачи полей и пар
-	this->_index = 0;
-	// Выполняем очистку полей заголовка текущей записи
-	this->_fields.clear();
-	// Выполняем очистку пар расширения текущей записи
-	this->_pairs.clear();
 	// Сбрасываем номер редакции записи
 	this->_version = 0;
 	// Сбрасываем важность события записи
@@ -835,8 +1017,29 @@ void awh::codec::cef::Reader::reset() noexcept {
 	this->_key.clear();
 	// Выполняем очистку значения текущего события
 	this->_value.clear();
+	// Выполняем очистку пар расширения текущей записи
+	this->_pairs.clear();
+	// Выполняем очистку полей заголовка текущей записи
+	this->_fields.clear();
+	// Выполняем очистку хранилища подаваемого текста
+	this->_buffer.clear();
+	// Сбрасываем положение начала хранилища
+	this->_origin = pos_t();
+	// Сбрасываем положение начала текущего события
+	this->_position = pos_t();
+	// Сбрасываем положение обнаруженной ошибки
+	this->_errorLocation = pos_t();
+	// Сбрасываем вид текущего события разбора
+	this->_event = event_t::NONE;
+	// Сбрасываем код ошибки последней операции разбора
+	this->_error = error_t::NONE;
+	// Сбрасываем текущее состояние чтения
+	this->_state = state_t::HUNGRY;
+	// Сбрасываем этап разбора текущей записи
+	this->_stage = stage_t::RECORD;
+	// Сбрасываем номер поля заголовка
+	this->_field = field_t::VERSION;
 }
-
 /**
  * @brief Метод передачи очередного куска исходного текста
  *
@@ -844,6 +1047,7 @@ void awh::codec::cef::Reader::reset() noexcept {
  * @param size   размер буфера очередного куска исходного текста
  * @param end    признак того, что кусок является последним
  * @return       результат выполнения операции
+ *
  */
 bool awh::codec::cef::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	// Если разбор уже прекращён ошибкой
@@ -853,7 +1057,7 @@ bool awh::codec::cef::Reader::feed(const void * buffer, const size_t size, const
 	// Если текст уже подан последним куском
 	if(this->_end){
 		// Выводим в лог сообщение о подаче текста после последнего куска
-		awh::log::print("CEF text is fed after the last chunk", awh::log::flag_t::WARNING);
+		log::print("CEF text is fed after the last chunk", log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -882,36 +1086,36 @@ bool awh::codec::cef::Reader::feed(const void * buffer, const size_t size, const
 	// Выводим положительный результат выполнения операции
 	return true;
 }
-
 /**
  * @brief Метод передачи исходного текста целиком
  *
  * @param text исходный текст записей целиком
  * @return     результат выполнения операции
+ *
  */
 bool awh::codec::cef::Reader::feed(const string_view text) noexcept {
 	// Выполняем передачу текста единственным и последним куском
 	return this->feed(text.data(), text.size(), true);
 }
-
 /**
  * @brief Метод перехода к следующему событию разбора
  *
  * @return признак наличия очередного события разбора
+ *
  */
 bool awh::codec::cef::Reader::next() noexcept {
 	// Если разбор прекращён ошибкой либо доведён до конца
 	if((this->_state == state_t::FAILED) || (this->_state == state_t::FINISHED))
 		// Выводим отсутствие очередного события разбора
 		return false;
-	// Длина текущей записи без знака конца строки
-	size_t length = 0;
 	// Смещение начала следующей записи
 	size_t next = 0;
+	// Длина текущей записи без знака конца строки
+	size_t length = 0;
 	/**
 	 * Выполняем разбор записей, пока они в хранилище отыскиваются
 	 */
-	while(true){
+	for(;;){
 		/**
 		 * Определяем этап разбора текущей записи
 		 */
@@ -1030,10 +1234,27 @@ bool awh::codec::cef::Reader::next() noexcept {
 				 * @note Сличение строгое: запись длиною РОВНО в предел годна, и отвергать
 				 *       её нельзя. Отвергается остаток, предел превзошедший, границы в
 				 *       себе не имея, - расти ему уже незачем
+				 *
 				 */
-				if((this->_buffer.size() - this->_offset) > static_cast <size_t> (this->_settings.maxRecord))
-					// Выводим отказ разбора превышением длины записи
+				if((this->_buffer.size() - this->_offset) > static_cast <size_t> (this->_settings.maxRecord)){
+					// Выполняем определение положения места ошибки в исходном тексте
+					this->place(this->_offset, this->_errorLocation);
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Записываем отказ в журнал работы
+						log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::cef::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем отказ в журнал работы
+						log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+					#endif
+					// Объявляем отказ разбора
 					return this->fail(error_t::RECORD_TOO_LONG, this->_offset);
+				}
 				// Устанавливаем состояние ожидания продолжения текста
 				this->_state = state_t::HUNGRY;
 			}
@@ -1041,9 +1262,25 @@ bool awh::codec::cef::Reader::next() noexcept {
 			return false;
 		}
 		// Если длина записи превышает допустимую
-		if(length > static_cast <size_t> (this->_settings.maxRecord))
-			// Выводим отказ разбора превышением длины записи
+		if(length > static_cast <size_t> (this->_settings.maxRecord)){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset, this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::cef::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::RECORD_TOO_LONG), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::RECORD_TOO_LONG, this->_offset);
+		}
 		// Получаем текст очередной записи целиком
 		const string_view record(this->_buffer.data() + this->_offset, length);
 		// Если запись пуста
@@ -1071,133 +1308,171 @@ bool awh::codec::cef::Reader::next() noexcept {
 		 *          (22 450 против 12 833 записей в секунду при одинаковом расходе
 		 *          памяти). Сама поверка бесплатна, платит путь отказа рядом с горячим
 		 *          ходом. Замерено 05.09.2026
+		 *
 		 */
-		if(this->_version > MAX_VERSION)
-			// Выводим отказ разбора неподдерживаемой редакцией записи
+		if(this->_version > MAX_VERSION){
+			// Выполняем определение положения места ошибки в исходном тексте
+			this->place(this->_offset + SIGNATURE.size(), this->_errorLocation);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Записываем отказ в журнал работы
+				log::debug("CEF parsing failed: %s at line %llu column %llu", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, codec::cef::message(error_t::UNSUPPORTED_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем отказ в журнал работы
+				log::print("CEF parsing failed: %s at line %llu column %llu", log::flag_t::WARNING, codec::cef::message(error_t::UNSUPPORTED_VERSION), static_cast <unsigned long long> (this->_errorLocation.line), static_cast <unsigned long long> (this->_errorLocation.column));
+			#endif
+			// Объявляем отказ разбора
 			return this->fail(error_t::UNSUPPORTED_VERSION, this->_offset + SIGNATURE.size());
+		}
 		// Сдвигаем смещение разбора к следующей записи
 		this->_offset = next;
 	}
 }
-
 /**
  * @brief Метод получения текущего состояния чтения
  *
  * @return текущее состояние чтения записей
+ *
  */
 awh::codec::cef::state_t awh::codec::cef::Reader::state() const noexcept {
 	// Выводим текущее состояние чтения записей
 	return this->_state;
 }
-
 /**
  * @brief Метод получения вида текущего события разбора
  *
  * @return вид текущего события разбора
+ *
  */
 awh::codec::cef::event_t awh::codec::cef::Reader::event() const noexcept {
 	// Выводим вид текущего события разбора
 	return this->_event;
 }
-
 /**
  * @brief Метод получения кода ошибки разбора
  *
  * @return код ошибки последней операции разбора
+ *
  */
 awh::codec::cef::error_t awh::codec::cef::Reader::error() const noexcept {
 	// Выводим код ошибки последней операции разбора
 	return this->_error;
 }
-
 /**
  * @brief Метод получения места обнаружения ошибки
  *
  * @return положение обнаруженной ошибки в исходном тексте
+ *
  */
 const awh::codec::cef::pos_t & awh::codec::cef::Reader::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки в исходном тексте
 	return this->_errorLocation;
 }
-
 /**
  * @brief Метод получения места начала текущего события
  *
  * @return положение начала текущего события в исходном тексте
+ *
  */
 const awh::codec::cef::pos_t & awh::codec::cef::Reader::position() const noexcept {
 	// Выводим положение начала текущего события в исходном тексте
 	return this->_position;
 }
-
+/**
+ * @brief Метод получения положения начала текущего события
+ *
+ * @return положение начала текущего события в исходном тексте
+ *
+ */
+const awh::codec::cef::location_t & awh::codec::cef::Reader::location() const noexcept {
+	// Выводим положение начала текущего события в исходном тексте
+	return this->position();
+}
 /**
  * @brief Метод получения поля заголовка текущего события
  *
  * @return поле заголовка, выдаваемое текущим событием
+ *
  */
 awh::codec::cef::field_t awh::codec::cef::Reader::field() const noexcept {
 	// Выводим поле заголовка, выдаваемое текущим событием
 	return this->_field;
 }
-
 /**
  * @brief Метод получения имени ключа текущего события
  *
  * @return имя ключа, выдаваемое текущим событием
+ *
  */
 const string & awh::codec::cef::Reader::key() const noexcept {
 	// Выводим имя ключа, выдаваемое текущим событием
 	return this->_key;
 }
-
 /**
  * @brief Метод получения значения текущего события
  *
  * @return значение, выдаваемое текущим событием
+ *
  */
 const string & awh::codec::cef::Reader::value() const noexcept {
 	// Выводим значение, выдаваемое текущим событием
 	return this->_value;
 }
-
 /**
  * @brief Метод получения номера редакции текущей записи
  *
  * @return номер редакции записи
+ *
  */
 uint32_t awh::codec::cef::Reader::version() const noexcept {
 	// Выводим номер редакции записи
 	return this->_version;
 }
-
 /**
  * @brief Метод получения важности события текущей записи
  *
  * @return важность события записи
+ *
  */
 uint32_t awh::codec::cef::Reader::severity() const noexcept {
 	// Выводим важность события записи
 	return this->_severity;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::cef::Reader::Reader() noexcept :
+ _end(false), _index(0), _offset(0), _record(0), _version(0),
+ _severity(0), _state(state_t::HUNGRY), _event(event_t::NONE),
+ _error(error_t::NONE), _stage(stage_t::RECORD), _field(field_t::VERSION) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора текста
+ *
+ */
+awh::codec::cef::Reader::Reader(const settings_t & settings) noexcept : Reader() {
+	// Выполняем установку настроек разбора текста
+	this->settings(settings);
 }
 
 /**
  * @brief Конструктор
  *
  */
-awh::codec::cef::Reader::Reader() noexcept :
- _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _offset(0), _record(0),
- _end(false), _stage(stage_t::RECORD), _field(field_t::VERSION), _index(0), _version(0), _severity(0) {}
+awh::codec::cef::Reader::Settings::Settings() noexcept :
+ syslog(true), unescape(true),
+ mode(mode_t::NONE), empty(empty_t::STRING),
+ maxRecord(MAX_RECORD), maxExtensions(MAX_EXTENSIONS),
+ fraction(TIMESTAMP_FRACTION_FORMAT), timestamp(TIMESTAMP_FORMAT) {}
 
 /**
  * Возвращаем имена, системными макросами занятые
  */
 #include <sys/macro/restore.hpp>
-/**
- * @brief Конструктор
- *
- */
-awh::codec::cef::Reader::Settings::Settings() noexcept :
- mode(mode_t::NONE), empty(empty_t::STRING),
- timestamp(TIMESTAMP_FORMAT), fraction(TIMESTAMP_FRACTION_FORMAT),
- syslog(true), unescape(true),
- maxRecord(MAX_RECORD), maxExtensions(MAX_EXTENSIONS) {}
