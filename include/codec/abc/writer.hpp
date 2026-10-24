@@ -696,20 +696,18 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод объявления отказа сборки
 					 *
-					 * @param method имя метода, объявившего отказ
-					 * @param error  код отказа сборки
-					 * @return       признак успешности сборки, всегда ложь
+					 * @param error код отказа сборки
+					 * @return      признак успешности сборки, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a refusal of the assembling
 					 *
-					 * @param method name of the method that declared the refusal
-					 * @param error  error code of the assembling
-					 * @return       sign of the success of the assembling, always false
+					 * @param error error code of the assembling
+					 * @return      sign of the success of the assembling, always false
 					 *
 					 * \~
 					 */
-					bool fail(const char * method, const error_t error) noexcept;
+					bool fail(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки места, куда укладывается значение

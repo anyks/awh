@@ -1202,20 +1202,18 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод объявления отказа разбора
 					 *
-					 * @param method имя метода, объявившего отказ
-					 * @param error  код отказа разбора
-					 * @return       признак успешности разбора, всегда ложь
+					 * @param error код отказа разбора
+					 * @return      признак успешности разбора, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a refusal of the parsing
 					 *
-					 * @param method name of the method that declared the refusal
-					 * @param error  error code of the parsing
-					 * @return       sign of the success of the parsing, always false
+					 * @param error error code of the parsing
+					 * @return      sign of the success of the parsing, always false
 					 *
 					 * \~
 					 */
-					bool fail(const char * method, const error_t error) noexcept;
+					bool fail(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перестроения указателя имён полей вместимого

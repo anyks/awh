@@ -1302,7 +1302,6 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод прекращения разбора ошибкой
 					 *
-					 * @param method имя метода, объявившего отказ
 					 * @param error  код ошибки разбора
 					 * @param offset положение ошибки в приведённом исходном тексте
 					 * @return       итог шага разбора, всегда отрицательный
@@ -1310,14 +1309,43 @@ namespace awh {
 					 * \~english
 					 * @brief Method of terminating the parsing with an error
 					 *
-					 * @param method name of the method that declared the refusal
 					 * @param error  error code of the parsing
 					 * @param offset position of the error in the converted source text
 					 * @return       result of the step of the parsing, always a negative one
 					 *
 					 * \~
 					 */
-					step_t fail(const char * method, const error_t error, const size_t offset) noexcept;
+					step_t fail(const error_t error, const size_t offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод прекращения разбора ошибкой с заданным местом
+					 *
+					 * @details Место отказа считается по ходу разбора и только вперёд, а
+					 *          построение, растянутое по кускам исходного текста, к мигу отказа
+					 *          начало своё уже миновало: досчитать место назад нечем. Такому отказу
+					 *          место передаётся снятым при входе в построение - иначе оно зависело бы
+					 *          от того, где легла граница куска.
+					 *
+					 * @param error    код ошибки разбора
+					 * @param location место обнаруженной ошибки в исходном тексте
+					 * @return         итог шага разбора, всегда отрицательный
+					 *
+					 * \~english
+					 * @brief Method of terminating the parsing with an error at a given place
+					 *
+					 * @details The place of a refusal is counted in the course of the parsing and only forwards, while
+					 *          a construct stretched over the chunks of the source text by the moment of the refusal
+					 *          has already passed its own beginning: there is nothing to count the place backwards with. To such a refusal
+					 *          the place taken at the entry into the construct is passed — otherwise it would depend
+					 *          on where the boundary of a chunk has fallen.
+					 *
+					 * @param error    error code of the parsing
+					 * @param location place of the detected error in the source text
+					 * @return         result of the step of the parsing, always a negative one
+					 *
+					 * \~
+					 */
+					step_t fail(const error_t error, const location_t & location) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод отказа разбора с сообщением о нём в журнал
@@ -1346,56 +1374,6 @@ namespace awh {
 					 * \~
 					 */
 					bool refuse(const error_t error) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод сообщения об отказе разбора в журнал
-					 *
-					 * @param method   имя метода, объявившего отказ
-					 * @param error    код ошибки разбора
-					 * @param location место обнаруженной ошибки в исходном тексте
-					 *
-					 * \~english
-					 * @brief Method of the reporting of a parsing refusal to the log
-					 *
-					 * @param method   name of the method that declared the refusal
-					 * @param error    the code of the parsing error
-					 * @param location the place of the found error in the source text
-					 *
-					 * \~
-					 */
-					void report(const char * method, const error_t error, const location_t & location) const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод прекращения разбора ошибкой с заданным местом
-					 *
-					 * @details Место отказа считается по ходу разбора и только вперёд, а
-					 *          построение, растянутое по кускам исходного текста, к мигу отказа
-					 *          начало своё уже миновало: досчитать место назад нечем. Такому отказу
-					 *          место передаётся снятым при входе в построение - иначе оно зависело бы
-					 *          от того, где легла граница куска.
-					 *
-					 * @param method   имя метода, объявившего отказ
-					 * @param error    код ошибки разбора
-					 * @param location место обнаруженной ошибки в исходном тексте
-					 * @return         итог шага разбора, всегда отрицательный
-					 *
-					 * \~english
-					 * @brief Method of terminating the parsing with an error at a given place
-					 *
-					 * @details The place of a refusal is counted in the course of the parsing and only forwards, while
-					 *          a construct stretched over the chunks of the source text by the moment of the refusal
-					 *          has already passed its own beginning: there is nothing to count the place backwards with. To such a refusal
-					 *          the place taken at the entry into the construct is passed — otherwise it would depend
-					 *          on where the boundary of a chunk has fallen.
-					 *
-					 * @param method   name of the method that declared the refusal
-					 * @param error    error code of the parsing
-					 * @param location place of the detected error in the source text
-					 * @return         result of the step of the parsing, always a negative one
-					 *
-					 * \~
-					 */
-					step_t fail(const char * method, const error_t error, const location_t & location) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения положения в исходном тексте

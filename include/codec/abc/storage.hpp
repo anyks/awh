@@ -380,9 +380,8 @@ namespace awh {
 					 *          разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
 					 *          тот слой донёс о нём сам, и второе донесение лишь двоило бы записи.
 					 *
-					 * @param method имя метода, объявившего отказ
-					 * @param error  объявляемый код отказа
-					 * @return       признак успешности, всегда ложь
+					 * @param error объявляемый код отказа
+					 * @return      признак успешности, всегда ложь
 					 *
 					 * \~english
 					 * @brief Method of the declaration of a failure
@@ -392,13 +391,12 @@ namespace awh {
 					 *          others. A failure ACCEPTED from a lower layer does not come here - that layer has reported it
 					 *          itself, and a second report would only double the records.
 					 *
-					 * @param method name of the method that declared the refusal
-					 * @param error  code of the failure being declared
-					 * @return       flag of the success, always false
+					 * @param error code of the failure being declared
+					 * @return      flag of the success, always false
 					 *
 					 * \~
 					 */
-					bool fail(const char * method, const error_t error) noexcept;
+					bool fail(const error_t error) noexcept;
 				public:
 					/**
 					 * \~russian

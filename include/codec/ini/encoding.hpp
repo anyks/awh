@@ -212,23 +212,6 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Decoder {
 				private:
-					/**
-					 * \~russian
-					 * @brief Метод вывода сообщения об отказе в лог
-					 *
-					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 *          его не заменяет, а лишь оповещает о случившемся.
-					 *
-					 * \~english
-					 * @brief Method of the output of the message about a refusal into the log
-					 *
-					 * @details The code of the refusal remains available to the consumer through error():
-					 *          the log does not replace it but merely notifies about what has happened.
-					 *
-					 * \~
-					 */
-					void report() const noexcept;
-				private:
 					// Признак того, что кодировка навязана извне
 					bool _forced;
 					// Признак того, что метка порядка байтов уже обработана

@@ -305,25 +305,6 @@ namespace awh {
 				private:
 					// Свёртки кадров контейнера
 					vector <vector <uint8_t>> _leaves;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод объявления отказа работы с деревом свёрток
-					 *
-					 * @param method  имя метода, объявившего отказ
-					 * @param message текст объявляемого отказа
-					 * @return        признак успешности, всегда ложь
-					 *
-					 * \~english
-					 * @brief Method of the declaration of a failure
-					 *
-					 * @param method  name of the method that declared the refusal
-					 * @param message text of the failure being declared
-					 * @return        flag of the success, always false
-					 *
-					 * \~
-					 */
-					bool fail(const char * method, const char * message) const noexcept;
 				public:
 					/**
 					 * \~russian

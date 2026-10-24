@@ -597,6 +597,7 @@ namespace awh {
 			 * @note They are visible to a consumer on a par with the living ones: he has the right to expect
 			 *       them and to write by them a parsing that will never work
 			 *
+			 * \~
 			 */
 
 			/**

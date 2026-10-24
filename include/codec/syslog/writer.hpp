@@ -287,7 +287,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool fail(const error_t error, const string_view name) noexcept;
+					bool fail(const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian

@@ -1712,25 +1712,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * @brief Метод вывода сообщения об отказе в лог
-					 *
-					 * @details Сообщение собирается из кода отказа да места его: код остаётся
-					 *          доступен потребителю через error(), а место - через location(), и журнал
-					 *          их не заменяет, а лишь оповещает о случившемся.
-					 *
-					 * \~english
-					 * @brief Method of the output of the message about a refusal into the log
-					 *
-					 * @details The message is composed of the code of the refusal and of its place: the code
-					 *          remains available to the consumer through error(), and the place through location(),
-					 *          and the log does not replace them but merely notifies about what has happened.
-					 *
-					 * \~
-					 */
-					void report() const noexcept;
-				private:
-					/**
-					 * \~russian
 					 * @brief Метод переноса записи в хранилище знаков
 					 *
 					 * @param text переносимая запись
